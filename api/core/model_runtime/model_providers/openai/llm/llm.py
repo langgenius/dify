@@ -656,6 +656,8 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 if assistant_message_function_call:
                     # start of stream function call
                     delta_assistant_message_function_call_storage = assistant_message_function_call
+                    if delta_assistant_message_function_call_storage.arguments is None:
+                        delta_assistant_message_function_call_storage.arguments = ''
                     if not has_finish_reason:
                         continue
 

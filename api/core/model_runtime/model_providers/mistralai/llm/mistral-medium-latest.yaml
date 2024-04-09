@@ -24,7 +24,7 @@ parameter_rules:
     min: 1
     max: 8000
   - name: safe_prompt
-    defulat: false
+    default: false
     type: boolean
     help:
       en_US: Whether to inject a safety prompt before all conversations.

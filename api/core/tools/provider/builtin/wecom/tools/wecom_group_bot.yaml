@@ -14,7 +14,7 @@ description:
   llm: A tool for sending messages to a chat group on Wecom(企业微信) .
 parameters:
   - name: hook_key
-    type: string
+    type: secret-input
     required: true
     label:
       en_US: Wecom Group bot webhook key

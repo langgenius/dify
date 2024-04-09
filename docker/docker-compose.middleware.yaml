@@ -1,4 +1,4 @@
-version: '3.1'
+version: '3'
 services:
   # The postgres database.
   db:
@@ -51,6 +51,20 @@ services:
     ports:
       - "8080:8080"
 
+  # The DifySandbox
+  sandbox:
+    image: langgenius/dify-sandbox:latest
+    restart: always
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      # The DifySandbox configurations
+      API_KEY: dify-sandbox
+      GIN_MODE: 'release'
+      WORKER_TIMEOUT: 15
+    ports:
+      - "8194:8194"
+
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.
   # (if uncommented, you need to comment out the weaviate service above,
@@ -61,6 +75,6 @@ services:
   #   volumes:
   #     - ./volumes/qdrant:/qdrant/storage
   #   environment:
-  #     QDRANT__API_KEY: 'difyai123456'
+  #     QDRANT_API_KEY: 'difyai123456'
   #   ports:
   #     - "6333:6333"

@@ -19,6 +19,9 @@ import Tooltip from '@/app/components/base/tooltip-plus'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Radio from '@/app/components/base/radio'
 type FormProps = {
+  className?: string
+  itemClassName?: string
+  fieldLabelClassName?: string
   value: FormValue
   onChange: (val: FormValue) => void
   formSchemas: CredentialFormSchema[]
@@ -33,6 +36,9 @@ type FormProps = {
 }
 
 const Form: FC<FormProps> = ({
+  className,
+  itemClassName,
+  fieldLabelClassName,
   value,
   onChange,
   formSchemas,
@@ -89,8 +95,8 @@ const Form: FC<FormProps> = ({
 
       const disabed = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       return (
-        <div key={variable} className='py-3'>
-          <div className='py-2 text-sm text-gray-900'>
+        <div key={variable} className={cn(itemClassName, 'py-3')}>
+          <div className={cn(fieldLabelClassName, 'py-2 text-sm text-gray-900')}>
             {label[language] || label.en_US}
             {
               required && (
@@ -130,8 +136,8 @@ const Form: FC<FormProps> = ({
       const disabed = isEditMode && (variable === '__model_type' || variable === '__model_name')
 
       return (
-        <div key={variable} className='py-3'>
-          <div className='py-2 text-sm text-gray-900'>
+        <div key={variable} className={cn(itemClassName, 'py-3')}>
+          <div className={cn(fieldLabelClassName, 'py-2 text-sm text-gray-900')}>
             {label[language] || label.en_US}
             {
               required && (
@@ -161,7 +167,7 @@ const Form: FC<FormProps> = ({
                     flex justify-center items-center mr-2 w-4 h-4 border border-gray-300 rounded-full
                     ${value[variable] === option.value && 'border-[5px] border-primary-600'}
                   `} />
-                  <div className='text-sm text-gray-900'>{option.label[language]}</div>
+                  <div className='text-sm text-gray-900'>{option.label[language] || option.label.en_US}</div>
                 </div>
               ))
             }
@@ -186,8 +192,8 @@ const Form: FC<FormProps> = ({
         return null
 
       return (
-        <div key={variable} className='py-3'>
-          <div className='py-2 text-sm text-gray-900'>
+        <div key={variable} className={cn(itemClassName, 'py-3')}>
+          <div className={cn(fieldLabelClassName, 'py-2 text-sm text-gray-900')}>
             {label[language] || label.en_US}
 
             {
@@ -206,9 +212,9 @@ const Form: FC<FormProps> = ({
                 return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
 
               return true
-            }).map(option => ({ value: option.value, name: option.label[language] }))}
+            }).map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
             onSelect={item => handleFormChange(variable, item.value as string)}
-            placeholder={placeholder?.[language]}
+            placeholder={placeholder?.[language] || placeholder?.en_US}
           />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
@@ -227,7 +233,7 @@ const Form: FC<FormProps> = ({
         return null
 
       return (
-        <div key={variable} className='py-3'>
+        <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className='flex items-center justify-between py-2 text-sm text-gray-900'>
             <div className='flex items-center space-x-2'>
               <span>{label[language] || label.en_US}</span>
@@ -249,7 +255,7 @@ const Form: FC<FormProps> = ({
   }
 
   return (
-    <div>
+    <div className={className}>
       {
         formSchemas.map(formSchema => renderField(formSchema))
       }

@@ -4,7 +4,11 @@ from werkzeug.exceptions import NotFound
 
 from controllers.service_api import api
 from controllers.service_api.app.error import ProviderNotInitializeError
-from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_resource_check
+from controllers.service_api.wraps import (
+    DatasetApiResource,
+    cloud_edition_billing_knowledge_limit_check,
+    cloud_edition_billing_resource_check,
+)
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -18,6 +22,7 @@ class SegmentApi(DatasetApiResource):
     """Resource for segments."""
 
     @cloud_edition_billing_resource_check('vector_space', 'dataset')
+    @cloud_edition_billing_knowledge_limit_check('add_segment', 'dataset')
     def post(self, tenant_id, dataset_id, document_id):
         """Create single segment."""
         # check dataset
@@ -197,11 +202,11 @@ class DatasetSegmentApi(DatasetApiResource):
 
         # validate args
         parser = reqparse.RequestParser()
-        parser.add_argument('segments', type=dict, required=False, nullable=True, location='json')
+        parser.add_argument('segment', type=dict, required=False, nullable=True, location='json')
         args = parser.parse_args()
 
-        SegmentService.segment_create_args_validate(args['segments'], document)
-        segment = SegmentService.update_segment(args['segments'], segment, document, dataset)
+        SegmentService.segment_create_args_validate(args['segment'], document)
+        segment = SegmentService.update_segment(args['segment'], segment, document, dataset)
         return {
             'data': marshal(segment, segment_fields),
             'doc_form': document.doc_form

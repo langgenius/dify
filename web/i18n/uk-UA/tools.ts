@@ -49,11 +49,14 @@ const translation = {
       test: 'Перевірка',
     },
     authMethod: {
-      title: 'Спосіб авторизації',
+      title: 'Метод авторизації',
       type: 'Тип авторизації',
+      keyTooltip: 'Ключ HTTP-заголовка. Якщо ви не знаєте, залиште його як "Authorization" або встановіть власне значення',
       types: {
-        none: 'Немає',
-        api_key: 'API ключі',
+        none: 'Відсутня',
+        api_key: 'API-ключ',
+        apiKeyPlaceholder: 'Назва HTTP-заголовка для API-ключа',
+        apiValuePlaceholder: 'Введіть API-ключ',
       },
       key: 'Ключ',
       value: 'Значення',

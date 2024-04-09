@@ -16,25 +16,12 @@ from controllers.console.workspace.error import (
 )
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
+from fields.member_fields import account_fields
 from libs.helper import TimestampField, timezone
 from libs.login import login_required
 from models.account import AccountIntegrate, InvitationCode
 from services.account_service import AccountService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
-
-account_fields = {
-    'id': fields.String,
-    'name': fields.String,
-    'avatar': fields.String,
-    'email': fields.String,
-    'is_password_set': fields.Boolean,
-    'interface_language': fields.String,
-    'interface_theme': fields.String,
-    'timezone': fields.String,
-    'last_login_at': TimestampField,
-    'last_login_ip': fields.String,
-    'created_at': TimestampField
-}
 
 
 class AccountInitApi(Resource):

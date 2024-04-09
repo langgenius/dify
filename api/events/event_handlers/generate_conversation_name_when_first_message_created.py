@@ -1,6 +1,7 @@
-from core.generator.llm_generator import LLMGenerator
+from core.llm_generator.llm_generator import LLMGenerator
 from events.message_event import message_was_created
 from extensions.ext_database import db
+from models.model import AppMode
 
 
 @message_was_created.connect
@@ -15,7 +16,7 @@ def handle(sender, **kwargs):
         auto_generate_conversation_name = extras.get('auto_generate_conversation_name', True)
 
     if auto_generate_conversation_name and is_first_message:
-        if conversation.mode == 'chat':
+        if conversation.mode != AppMode.COMPLETION.value:
             app_model = conversation.app
             if not app_model:
                 return
@@ -26,5 +27,6 @@ def handle(sender, **kwargs):
                 conversation.name = name
             except:
                 pass
-
+                
+            db.session.merge(conversation)
             db.session.commit()

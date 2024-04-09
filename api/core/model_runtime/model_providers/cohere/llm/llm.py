@@ -297,7 +297,6 @@ class CohereLargeLanguageModel(LargeLanguageModel):
             chat_history=chat_histories,
             model=real_model,
             stream=stream,
-            return_preamble=True,
             **model_parameters,
         )
 
@@ -472,7 +471,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         else:
             raise ValueError(f"Got unknown type {message}")
 
-        if message.name is not None:
+        if message.name:
             message_dict["user_name"] = message.name
 
         return message_dict

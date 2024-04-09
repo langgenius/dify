@@ -9,7 +9,7 @@ identity:
     en_US: Bing Search
     zh_Hans: Bing 搜索
     pt_BR: Bing Search
-  icon: icon.png
+  icon: icon.svg
 credentials_for_provider:
   subscription_key:
     type: secret-input
@@ -43,3 +43,63 @@ credentials_for_provider:
       zh_Hans: 例如 "https://api.bing.microsoft.com/v7.0/search"
       pt_BR: An endpoint is like "https://api.bing.microsoft.com/v7.0/search"
     default: https://api.bing.microsoft.com/v7.0/search
+  allow_entities:
+    type: boolean
+    required: false
+    label:
+      en_US: Allow Entities Search
+      zh_Hans: 支持实体搜索
+      pt_BR: Allow Entities Search
+    help:
+      en_US: Does your subscription plan allow entity search
+      zh_Hans: 您的订阅计划是否支持实体搜索
+      pt_BR: Does your subscription plan allow entity search
+    default: true
+  allow_web_pages:
+    type: boolean
+    required: false
+    label:
+      en_US: Allow Web Pages Search
+      zh_Hans: 支持网页搜索
+      pt_BR: Allow Web Pages Search
+    help:
+      en_US: Does your subscription plan allow web pages search
+      zh_Hans: 您的订阅计划是否支持网页搜索
+      pt_BR: Does your subscription plan allow web pages search
+    default: true
+  allow_computation:
+    type: boolean
+    required: false
+    label:
+      en_US: Allow Computation Search
+      zh_Hans: 支持计算搜索
+      pt_BR: Allow Computation Search
+    help:
+      en_US: Does your subscription plan allow computation search
+      zh_Hans: 您的订阅计划是否支持计算搜索
+      pt_BR: Does your subscription plan allow computation search
+    default: false
+  allow_news:
+    type: boolean
+    required: false
+    label:
+      en_US: Allow News Search
+      zh_Hans: 支持新闻搜索
+      pt_BR: Allow News Search
+    help:
+      en_US: Does your subscription plan allow news search
+      zh_Hans: 您的订阅计划是否支持新闻搜索
+      pt_BR: Does your subscription plan allow news search
+    default: false
+  allow_related_searches:
+    type: boolean
+    required: false
+    label:
+      en_US: Allow Related Searches
+      zh_Hans: 支持相关搜索
+      pt_BR: Allow Related Searches
+    help:
+      en_US: Does your subscription plan allow related searches
+      zh_Hans: 您的订阅计划是否支持相关搜索
+      pt_BR: Does your subscription plan allow related searches
+    default: false

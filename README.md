@@ -1,4 +1,4 @@
-[![](./images/describe.png)](https://dify.ai)
+[![](./images/GitHub_README_cover.png)](https://dify.ai)
 <p align="center">
   <a href="./README.md">English</a> |
   <a href="./README_CN.md">简体中文</a> |
@@ -22,31 +22,42 @@
 </p>
 
 <p align="center">
-  <a href="https://discord.com/events/1082486657678311454/1211724120996188220" target="_blank">
-   Dify.AI Upcoming Meetup Event [👉 Click to Join the Event Here 👈]
-  </a>
-   <ul align="center" style="text-decoration: none; list-style: none;">
-      <li> US EST: 09:00 (9:00 AM)</li>
-      <li> CET: 15:00 (3:00 PM)</li>
-      <li> CST:  22:00 (10:00 PM)</li>
-   </ul>
-</p>
-
-<p align="center">
-   <a href="https://dify.ai/blog/dify-ai-unveils-ai-agent-creating-gpts-and-assistants-with-various-llms" target="_blank">
-   Dify.AI Unveils AI Agent: Creating GPTs and Assistants with Various LLMs
+   <a href="https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6" target="_blank">
+   📌 Check out Dify Premium on AWS and deploy it to your own AWS VPC with one-click.
   </a>
 </p>
 
-**Dify** is an LLM application development platform that has helped built over **100,000** applications. It integrates BaaS and LLMOps, covering the essential tech stack for building generative AI-native applications, including a built-in RAG engine. Dify allows you to **deploy your own version of Assistants API and GPTs, based on any LLMs.**
+**Dify** is an open-source LLM app development platform. Dify's intuitive interface combines a RAG pipeline, AI workflow orchestration, agent capabilities, model management, observability features and more, letting you quickly go from prototype to production.
 
-![](./images/demo.png)
+https://github.com/langgenius/dify/assets/13230914/979e7a68-f067-4bbc-b38e-2deb2cc2bbb5
 
 
+## Using Dify Cloud
 
-## Using our Cloud Services
+You can try out [Dify Cloud](https://dify.ai) now. It provides all the capabilities of the self-deployed version, and includes 200 free GPT-4 calls.
 
-You can try out [Dify.AI Cloud](https://dify.ai) now. It provides all the capabilities of the self-deployed version, and includes 200 free requests to OpenAI GPT-3.5.
+## Dify for Enterprise / Organizations
+
+[Schedule a meeting with us](#Direct-Meetings) or [send us an email](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry) to discuss enterprise needs. 
+
+For startups and small businesses using AWS, check out [Dify Premium on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) and deploy it to your own AWS VPC with one-click. It's an affordable AMI offering with the option to create apps with custom logo and branding.
+
+## Features
+
+![](./images/models.png)
+
+**1. Workflow**: Create and test complex AI workflows on a visual canvas, with pre-built nodes taking advantage of the power of all the following features and beyond.
+
+**2. Extensive LLM support**: Seamless integration with hundreds of proprietary / open-source LLMs and dozens of inference providers, including GPT, Mistral, Llama2, and OpenAI API-compatible models. A full list of supported model providers is kept [here](https://docs.dify.ai/getting-started/readme/model-providers).
+
+**3. Prompt IDE**: Visual orchestration of applications and services based on any LLMs. Easily share with your team.
+
+**4. RAG Engine**: Includes various RAG capabilities based on full-text indexing or vector database embeddings, allowing direct upload of PDFs, TXTs, and other text formats.
+
+**5. AI Agent**: Based on Function Calling and ReAct, the Agent inference framework allows users to customize tools, what you see is what you get. Dify provides more than a dozen built-in tools for AI agents, such as Google Search, DELL·E, Stable Diffusion, WolframAlpha, etc.
+
+**6. LLMOps**: Monitor and analyze application logs and performance, continuously improving Prompts, datasets, or models based on production data.
+
 
 ## Dify vs. LangChain vs. Assistants API
 
@@ -60,28 +71,10 @@ You can try out [Dify.AI Cloud](https://dify.ai) now. It provides all the capabi
 | **Local Deployment** | Supported | Not Supported | Not Applicable |
 
 
-
-## Features
-
-![](./images/models.png)
-
-**1. LLM Support**: Integration with OpenAI's GPT family of models, or the open-source Llama2 family models. In fact, Dify supports mainstream commercial models and open-source models (locally deployed or based on MaaS).
-
-**2. Prompt IDE**: Visual orchestration of applications and services based on LLMs with your team.
-
-**3. RAG Engine**: Includes various RAG capabilities based on full-text indexing or vector database embeddings, allowing direct upload of PDFs, TXTs, and other text formats.
-
-**4. AI Agent**: Based on Function Calling and ReAct, the Agent inference framework allows users to customize tools, what you see is what you get. Dify provides more than a dozen built-in tool calling capabilities, such as Google Search, DELL·E, Stable Diffusion, WolframAlpha, etc.
-
-
-**5. Continuous Operations**: Monitor and analyze application logs and performance, continuously improving Prompts, datasets, or models using production data.
-
 ## Before You Start
 
 **Star us on GitHub, and be instantly notified for new releases!**
-
 ![star-us](https://github.com/langgenius/dify/assets/100913391/95f37259-7370-4456-a9f0-0bc01ef8642f)
-
 - [Website](https://dify.ai)
 - [Docs](https://docs.dify.ai)
 - [Deployment Docs](https://docs.dify.ai/getting-started/install-self-hosted)
@@ -108,10 +101,12 @@ docker compose up -d
 
 After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization installation process.
 
-### Helm Chart
+#### Deploy with Helm Chart
 
-Big thanks to @BorisPolonsky for providing us with a [Helm Chart](https://helm.sh/) version, which allows Dify to be deployed on Kubernetes.
-You can go to https://github.com/BorisPolonsky/dify-helm for deployment information.
+[Helm Chart](https://helm.sh/) version, which allows Dify to be deployed on Kubernetes.
+
+- [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
+- [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 
 ### Configuration
 
@@ -128,6 +123,10 @@ For those who'd like to contribute code, see our [Contribution Guide](https://gi
 
 At the same time, please consider supporting Dify by sharing it on social media and at events and conferences.
 
+### Projects made by community
+
+- [Chatbot Chrome Extension by @charli117](https://github.com/langgenius/chatbot-chrome-extension)
+
 ### Contributors
 
 <a href="https://github.com/langgenius/dify/graphs/contributors">
@@ -136,25 +135,22 @@ At the same time, please consider supporting Dify by sharing it on social media 
 
 ### Translations
 
-We are looking for contributors to help with translating Dify to languages other than Mandarin or English. If you are interested in helping, please see the [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n/README_EN.md) for more information, and leave us a comment in the `global-users` channel of our [Discord Community Server](https://discord.gg/AhzKf7dNgk).
+We are looking for contributors to help with translating Dify to languages other than Mandarin or English. If you are interested in helping, please see the [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) for more information, and leave us a comment in the `global-users` channel of our [Discord Community Server](https://discord.gg/8Tpq4AcN9c).
 
 ## Community & Support
 
-* [Canny](https://feedback.dify.ai/). Best for: sharing feedback and checking out our feature roadmap.
+* [Github Discussion](https://github.com/langgenius/dify/discussions). Best for: sharing feedback and asking questions.
 * [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs you encounter using Dify.AI, and feature proposals. See our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
 * [Email Support](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify). Best for: questions you have about using Dify.AI.
 * [Discord](https://discord.gg/FngNHpbcY7). Best for: sharing your applications and hanging out with the community.
 * [Twitter](https://twitter.com/dify_ai). Best for: sharing your applications and hanging out with the community.
-* [Business Contact](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry). Best for: business inquiries of licensing Dify.AI for commercial use.
 
 ### Direct Meetings
 
-**Help us make Dify better. Reach out directly to us**.
-
 |                       Point of Contact                       |                           Purpose                            |
 | :----------------------------------------------------------: | :----------------------------------------------------------: |
-| <a href='https://cal.com/guchenhe/15min' target='_blank'><img src='https://i.postimg.cc/fWBqSmjP/Git-Hub-README-Button-3x.png' border='0' alt='Git-Hub-README-Button-3x' height="60" width="214"/></a> | Product design feedback, user experience discussions, feature planning and roadmaps. |
-| <a href='https://cal.com/pinkbanana' target='_blank'><img src='https://i.postimg.cc/LsRTh87D/Git-Hub-README-Button-2x.png' border='0' alt='Git-Hub-README-Button-2x' height="60" width="225"/></a> |        Technical support, issues, or feature requests        |
+| <a href='https://cal.com/guchenhe/15min' target='_blank'><img src='https://i.postimg.cc/fWBqSmjP/Git-Hub-README-Button-3x.png' border='0' alt='Git-Hub-README-Button-3x' height="60" width="214"/></a> | Business enquiries & product feedback. |
+| <a href='https://cal.com/pinkbanana' target='_blank'><img src='https://i.postimg.cc/LsRTh87D/Git-Hub-README-Button-2x.png' border='0' alt='Git-Hub-README-Button-2x' height="60" width="225"/></a> | Contributions, issues & feature requests |
 
 ## Security Disclosure
 

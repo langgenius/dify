@@ -54,7 +54,7 @@ const List: FC<Props> = ({
                 className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
                 title={item.answer}
               >{item.answer}</td>
-              <td>{dayjs(item.created_at * 1000).format('YYYY-MM-DD hh:mm')}</td>
+              <td>{dayjs(item.created_at * 1000).format('YYYY-MM-DD HH:mm')}</td>
               <td>{item.hit_count}</td>
               <td className='w-[96px]' onClick={e => e.stopPropagation()}>
                 {/* Actions */}

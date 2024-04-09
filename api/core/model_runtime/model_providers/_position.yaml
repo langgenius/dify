@@ -2,13 +2,18 @@
 - anthropic
 - azure_openai
 - google
+- nvidia
 - cohere
 - bedrock
 - togetherai
+- openrouter
 - ollama
 - mistralai
+- groq
 - replicate
 - huggingface_hub
+- xinference
+- triton_inference_server
 - zhipuai
 - baichuan
 - spark
@@ -18,7 +23,7 @@
 - moonshot
 - jina
 - chatglm
-- xinference
+- yi
 - openllm
 - localai
 - openai_api_compatible

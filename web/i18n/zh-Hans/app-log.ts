@@ -12,6 +12,12 @@ const translation = {
       messageCount: '消息数',
       userRate: '用户反馈',
       adminRate: '管理员反馈',
+      startTime: '开始时间',
+      status: '状态',
+      runtime: '运行时间',
+      tokens: 'TOKENS',
+      user: '用户',
+      version: '版本',
     },
     pagination: {
       previous: '上一页',
@@ -64,6 +70,14 @@ const translation = {
       not_annotated: '未标注',
     },
   },
+  workflowTitle: '日志',
+  workflowSubtitle: '日志记录了应用的执行情况',
+  runDetail: {
+    title: '对话日志',
+    workflowTitle: '日志详情',
+  },
+  promptLog: 'Prompt 日志',
+  viewLog: '查看日志',
 }
 
 export default translation

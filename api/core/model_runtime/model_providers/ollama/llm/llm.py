@@ -449,7 +449,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     help=I18nObject(en_US="The temperature of the model. "
                                           "Increasing the temperature will make the model answer "
                                           "more creatively. (Default: 0.8)"),
-                    default=0.8,
+                    default=0.1,
                     min=0,
                     max=2
                 ),
@@ -472,7 +472,6 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     help=I18nObject(en_US="Reduces the probability of generating nonsense. "
                                           "A higher value (e.g. 100) will give more diverse answers, "
                                           "while a lower value (e.g. 10) will be more conservative. (Default: 40)"),
-                    default=40,
                     min=1,
                     max=100
                 ),
@@ -483,7 +482,6 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     help=I18nObject(en_US="Sets how strongly to penalize repetitions. "
                                           "A higher value (e.g., 1.5) will penalize repetitions more strongly, "
                                           "while a lower value (e.g., 0.9) will be more lenient. (Default: 1.1)"),
-                    default=1.1,
                     min=-2,
                     max=2
                 ),
@@ -494,7 +492,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     type=ParameterType.INT,
                     help=I18nObject(en_US="Maximum number of tokens to predict when generating text. "
                                           "(Default: 128, -1 = infinite generation, -2 = fill context)"),
-                    default=128,
+                    default=512 if int(credentials.get('max_tokens', 4096)) >= 768 else 128,
                     min=-2,
                     max=int(credentials.get('max_tokens', 4096)),
                 ),
@@ -504,7 +502,6 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     type=ParameterType.INT,
                     help=I18nObject(en_US="Enable Mirostat sampling for controlling perplexity. "
                                           "(default: 0, 0 = disabled, 1 = Mirostat, 2 = Mirostat 2.0)"),
-                    default=0,
                     min=0,
                     max=2
                 ),
@@ -516,7 +513,6 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                                           "the generated text. A lower learning rate will result in slower adjustments, "
                                           "while a higher learning rate will make the algorithm more responsive. "
                                           "(Default: 0.1)"),
-                    default=0.1,
                     precision=1
                 ),
                 ParameterRule(
@@ -525,7 +521,6 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     type=ParameterType.FLOAT,
                     help=I18nObject(en_US="Controls the balance between coherence and diversity of the output. "
                                           "A lower value will result in more focused and coherent text. (Default: 5.0)"),
-                    default=5.0,
                     precision=1
                 ),
                 ParameterRule(
@@ -543,7 +538,6 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     type=ParameterType.INT,
                     help=I18nObject(en_US="The number of layers to send to the GPU(s). "
                                           "On macOS it defaults to 1 to enable metal support, 0 to disable."),
-                    default=1,
                     min=0,
                     max=1
                 ),
@@ -563,7 +557,6 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     type=ParameterType.INT,
                     help=I18nObject(en_US="Sets how far back for the model to look back to prevent repetition. "
                                           "(Default: 64, 0 = disabled, -1 = num_ctx)"),
-                    default=64,
                     min=-1
                 ),
                 ParameterRule(
@@ -573,7 +566,6 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     help=I18nObject(en_US="Tail free sampling is used to reduce the impact of less probable tokens "
                                           "from the output. A higher value (e.g., 2.0) will reduce the impact more, "
                                           "while a value of 1.0 disables this setting. (default: 1)"),
-                    default=1,
                     precision=1
                 ),
                 ParameterRule(
@@ -583,7 +575,6 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     help=I18nObject(en_US="Sets the random number seed to use for generation. Setting this to "
                                           "a specific number will make the model generate the same text for "
                                           "the same prompt. (Default: 0)"),
-                    default=0
                 ),
                 ParameterRule(
                     name='format',

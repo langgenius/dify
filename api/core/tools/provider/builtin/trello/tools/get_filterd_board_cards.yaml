@@ -1,0 +1,40 @@
+identity:
+  name: get_filtered_board_cards
+  author: Yash Parmar
+  label:
+    en_US: Get Filtered Board Cards
+    zh_Hans: 获取筛选的看板卡片
+    pt_BR: Obter Cartões Filtrados do Quadro
+description:
+  human:
+    en_US: Retrieves cards from a Trello board using a specified filter and the board's ID. Filters include options like 'all', 'open', 'closed', 'none', and 'visible', allowing for tailored views of board content.
+    zh_Hans: 使用指定的过滤器和看板的 ID 从 Trello 看板检索卡片。过滤器包括 'all', 'open', 'closed', 'none' 和 'visible' 等选项，允许对看板内容进行定制查看。
+    pt_BR: Recupera cartões de um quadro Trello usando um filtro especificado e o ID do quadro. Os filtros incluem opções como 'all', 'open', 'closed', 'none' e 'visible', permitindo visualizações personalizadas do conteúdo do quadro.
+  llm: Access cards on a Trello board through specific filters such as 'all', 'open', 'closed', 'none', and 'visible' by providing the board's ID. This feature enables focused examination of the board's cards.
+parameters:
+  - name: boardId
+    type: string
+    required: true
+    label:
+      en_US: Board ID
+      zh_Hans: 看板 ID
+      pt_BR: ID do Quadro
+    human_description:
+      en_US: The unique identifier for the Trello board from which to retrieve the filtered cards.
+      zh_Hans: 用于检索筛选卡片的 Trello 看板的唯一标识符。
+      pt_BR: O identificador único do quadro Trello do qual os cartões filtrados serão recuperados.
+    llm_description: Enter the Trello board's ID to specify from which board to fetch the cards using the filter.
+    form: llm
+  - name: filter
+    type: string
+    required: true
+    label:
+      en_US: Filter
+      zh_Hans: 过滤器
+      pt_BR: Filtro
+    human_description:
+      en_US: The filter to apply when retrieving cards. Valid values are 'all', 'open', 'closed', 'none', and 'visible'.
+      zh_Hans: 检索卡片时应用的过滤器。有效值为 'all', 'open', 'closed', 'none', 和 'visible'。
+      pt_BR: O filtro a ser aplicado ao recuperar cartões. Os valores válidos são 'all', 'open', 'closed', 'none' e 'visible'.
+    llm_description: Specify the filter for card retrieval. Choose from 'all', 'open', 'closed', 'none', or 'visible' to control which cards are fetched.
+    form: llm

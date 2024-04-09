@@ -89,7 +89,7 @@ def enable_annotation_reply_task(job_id: str, app_id: str, user_id: str, tenant_
                 logging.info(
                     click.style('Delete annotation index error: {}'.format(str(e)),
                                 fg='red'))
-            vector.add_texts(documents)
+            vector.create(documents)
         db.session.commit()
         redis_client.setex(enable_app_annotation_job_key, 600, 'completed')
         end_at = time.perf_counter()

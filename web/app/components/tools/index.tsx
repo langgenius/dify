@@ -18,7 +18,7 @@ import NoSearchRes from './info/no-search-res'
 import NoCustomToolPlaceholder from './no-custom-tool-placeholder'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSlider from '@/app/components/base/tab-slider'
-import { createCustomCollection, fetchCollectionList as doFetchCollectionList, fetchBuiltInToolList, fetchCustomToolList } from '@/service/tools'
+import { createCustomCollection, fetchCollectionList as doFetchCollectionList, fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList } from '@/service/tools'
 import type { AgentTool } from '@/types/app'
 
 type Props = {
@@ -89,9 +89,11 @@ const Tools: FC<Props> = ({
   const showCollectionList = (() => {
     let typeFilteredList: Collection[] = []
     if (collectionType === CollectionType.all)
-      typeFilteredList = collectionList
-    else
-      typeFilteredList = collectionList.filter(item => item.type === collectionType)
+      typeFilteredList = collectionList.filter(item => item.type !== CollectionType.model)
+    else if (collectionType === CollectionType.builtIn)
+      typeFilteredList = collectionList.filter(item => item.type === CollectionType.builtIn)
+    else if (collectionType === CollectionType.custom)
+      typeFilteredList = collectionList.filter(item => item.type === CollectionType.custom)
     if (query)
       return typeFilteredList.filter(item => item.name.includes(query))
 
@@ -122,6 +124,10 @@ const Tools: FC<Props> = ({
           const list = await fetchBuiltInToolList(currCollection.name)
           setCurrentTools(list)
         }
+        else if (currCollection.type === CollectionType.model) {
+          const list = await fetchModelToolList(currCollection.name)
+          setCurrentTools(list)
+        }
         else {
           const list = await fetchCustomToolList(currCollection.name)
           setCurrentTools(list)
@@ -130,7 +136,7 @@ const Tools: FC<Props> = ({
       catch (e) { }
       setIsDetailLoading(false)
     })()
-  }, [currCollection?.name])
+  }, [currCollection?.name, currCollection?.type])
 
   const [isShowEditCollectionToolModal, setIsShowEditCollectionToolModal] = useState(false)
   const handleCreateToolCollection = () => {
@@ -197,7 +203,7 @@ const Tools: FC<Props> = ({
               (showCollectionList.length > 0 || !query)
                 ? <ToolNavList
                   className='mt-2 grow height-0 overflow-y-auto'
-                  currentName={currCollection?.name || ''}
+                  currentIndex={currCollectionIndex || 0}
                   list={showCollectionList}
                   onChosen={setCurrCollectionIndex}
                 />

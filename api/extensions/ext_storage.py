@@ -2,9 +2,12 @@ import os
 import shutil
 from collections.abc import Generator
 from contextlib import closing
+from datetime import datetime, timedelta
 from typing import Union
 
 import boto3
+from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
+from botocore.client import Config
 from botocore.exceptions import ClientError
 from flask import Flask
 
@@ -25,8 +28,21 @@ class Storage:
                 aws_secret_access_key=app.config.get('S3_SECRET_KEY'),
                 aws_access_key_id=app.config.get('S3_ACCESS_KEY'),
                 endpoint_url=app.config.get('S3_ENDPOINT'),
-                region_name=app.config.get('S3_REGION')
+                region_name=app.config.get('S3_REGION'),
+                config=Config(s3={'addressing_style': app.config.get('S3_ADDRESS_STYLE')})
             )
+        elif self.storage_type == 'azure-blob':
+            self.bucket_name = app.config.get('AZURE_BLOB_CONTAINER_NAME')
+            sas_token = generate_account_sas(
+                account_name=app.config.get('AZURE_BLOB_ACCOUNT_NAME'),
+                account_key=app.config.get('AZURE_BLOB_ACCOUNT_KEY'),
+                resource_types=ResourceTypes(service=True, container=True, object=True),
+                permission=AccountSasPermissions(read=True, write=True, delete=True, list=True, add=True, create=True),
+                expiry=datetime.utcnow() + timedelta(hours=1)
+            )
+            self.client = BlobServiceClient(account_url=app.config.get('AZURE_BLOB_ACCOUNT_URL'),
+                                            credential=sas_token)
+
         else:
             self.folder = app.config.get('STORAGE_LOCAL_PATH')
             if not os.path.isabs(self.folder):
@@ -35,6 +51,9 @@ class Storage:
     def save(self, filename, data):
         if self.storage_type == 's3':
             self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
+        elif self.storage_type == 'azure-blob':
+            blob_container = self.client.get_container_client(container=self.bucket_name)
+            blob_container.upload_blob(filename, data)
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
@@ -63,6 +82,10 @@ class Storage:
                     raise FileNotFoundError("File not found")
                 else:
                     raise
+        elif self.storage_type == 'azure-blob':
+            blob = self.client.get_container_client(container=self.bucket_name)
+            blob = blob.get_blob_client(blob=filename)
+            data = blob.download_blob().readall()
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
@@ -90,6 +113,11 @@ class Storage:
                         raise FileNotFoundError("File not found")
                     else:
                         raise
+            elif self.storage_type == 'azure-blob':
+                blob = self.client.get_blob_client(container=self.bucket_name, blob=filename)
+                with closing(blob.download_blob()) as blob_stream:
+                    while chunk := blob_stream.readall(4096):
+                        yield chunk
             else:
                 if not self.folder or self.folder.endswith('/'):
                     filename = self.folder + filename
@@ -109,6 +137,11 @@ class Storage:
         if self.storage_type == 's3':
             with closing(self.client) as client:
                 client.download_file(self.bucket_name, filename, target_filepath)
+        elif self.storage_type == 'azure-blob':
+            blob = self.client.get_blob_client(container=self.bucket_name, blob=filename)
+            with open(target_filepath, "wb") as my_blob:
+                blob_data = blob.download_blob()
+                blob_data.readinto(my_blob)
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
@@ -128,6 +161,9 @@ class Storage:
                     return True
                 except:
                     return False
+        elif self.storage_type == 'azure-blob':
+            blob = self.client.get_blob_client(container=self.bucket_name, blob=filename)
+            return blob.exists()
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
@@ -135,6 +171,20 @@ class Storage:
                 filename = self.folder + '/' + filename
 
             return os.path.exists(filename)
+
+    def delete(self, filename):
+        if self.storage_type == 's3':
+            self.client.delete_object(Bucket=self.bucket_name, Key=filename)
+        elif self.storage_type == 'azure-blob':
+            blob_container = self.client.get_container_client(container=self.bucket_name)
+            blob_container.delete_blob(filename)
+        else:
+            if not self.folder or self.folder.endswith('/'):
+                filename = self.folder + filename
+            else:
+                filename = self.folder + '/' + filename
+            if os.path.exists(filename):
+                os.remove(filename)
 
 
 storage = Storage()

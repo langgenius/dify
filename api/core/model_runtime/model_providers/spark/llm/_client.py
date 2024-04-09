@@ -148,7 +148,8 @@ class SparkLLMClient:
         data = {
             "header": {
                 "app_id": self.app_id,
-                "uid": user_id
+                # resolve this error message => $.header.uid' length must be less or equal than 32
+                "uid": user_id[:32] if user_id else None
             },
             "parameter": {
                 "chat": {

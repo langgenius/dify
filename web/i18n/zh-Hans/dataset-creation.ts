@@ -89,7 +89,7 @@ const translation = {
     other: '和其他 ',
     fileUnit: ' 个文件',
     notionUnit: ' 个页面',
-    lastStep: '上一步',
+    previousStep: '上一步',
     nextStep: '保存并处理',
     save: '保存并处理',
     cancel: '取消',

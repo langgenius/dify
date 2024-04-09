@@ -4,11 +4,12 @@ import type {
 } from 'react'
 import {
   memo,
+  useCallback,
   useEffect,
   useRef,
+  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useThrottleEffect } from 'ahooks'
 import { debounce } from 'lodash-es'
 import type {
   ChatConfig,
@@ -24,6 +25,8 @@ import { ChatContextProvider } from './context'
 import type { Emoji } from '@/app/components/tools/types'
 import Button from '@/app/components/base/button'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import PromptLogModal from '@/app/components/base/prompt-log-modal'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 export type ChatProps = {
   chatList: ChatItem[]
@@ -47,6 +50,7 @@ export type ChatProps = {
   onAnnotationRemoved?: (index: number) => void
   chatNode?: ReactNode
   onFeedback?: (messageId: string, feedback: Feedback) => void
+  chatAnswerContainerInner?: string
 }
 const Chat: FC<ChatProps> = ({
   config,
@@ -70,35 +74,51 @@ const Chat: FC<ChatProps> = ({
   onAnnotationRemoved,
   chatNode,
   onFeedback,
+  chatAnswerContainerInner,
 }) => {
   const { t } = useTranslation()
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal } = useAppStore()
+  const [width, setWidth] = useState(0)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const chatContainerInnerRef = useRef<HTMLDivElement>(null)
   const chatFooterRef = useRef<HTMLDivElement>(null)
   const chatFooterInnerRef = useRef<HTMLDivElement>(null)
+  const userScrolledRef = useRef(false)
 
-  const handleScrolltoBottom = () => {
-    if (chatContainerRef.current)
+  const handleScrolltoBottom = useCallback(() => {
+    if (chatContainerRef.current && !userScrolledRef.current)
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-  }
+  }, [])
 
-  const handleWindowResize = () => {
+  const handleWindowResize = useCallback(() => {
+    if (chatContainerRef.current)
+      setWidth(document.body.clientWidth - (chatContainerRef.current?.clientWidth + 16) - 8)
+
     if (chatContainerRef.current && chatFooterRef.current)
       chatFooterRef.current.style.width = `${chatContainerRef.current.clientWidth}px`
 
     if (chatContainerInnerRef.current && chatFooterInnerRef.current)
       chatFooterInnerRef.current.style.width = `${chatContainerInnerRef.current.clientWidth}px`
-  }
+  }, [])
 
-  useThrottleEffect(() => {
+  useEffect(() => {
     handleScrolltoBottom()
     handleWindowResize()
-  }, [chatList], { wait: 500 })
+  }, [handleScrolltoBottom, handleWindowResize])
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      requestAnimationFrame(() => {
+        handleScrolltoBottom()
+        handleWindowResize()
+      })
+    }
+  })
 
   useEffect(() => {
     window.addEventListener('resize', debounce(handleWindowResize))
     return () => window.removeEventListener('resize', handleWindowResize)
-  }, [])
+  }, [handleWindowResize])
 
   useEffect(() => {
     if (chatFooterRef.current && chatContainerRef.current) {
@@ -117,7 +137,19 @@ const Chat: FC<ChatProps> = ({
         resizeObserver.disconnect()
       }
     }
-  }, [chatFooterRef, chatContainerRef])
+  }, [handleScrolltoBottom])
+
+  useEffect(() => {
+    const chatContainer = chatContainerRef.current
+    if (chatContainer) {
+      const setUserScrolled = () => {
+        if (chatContainer)
+          userScrolledRef.current = chatContainer.scrollHeight - chatContainer.scrollTop >= chatContainer.clientHeight + 300
+      }
+      chatContainer.addEventListener('scroll', setUserScrolled)
+      return () => chatContainer.removeEventListener('scroll', setUserScrolled)
+    }
+  }, [])
 
   const hasTryToAsk = config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
 
@@ -160,6 +192,8 @@ const Chat: FC<ChatProps> = ({
                       answerIcon={answerIcon}
                       responding={isLast && isResponding}
                       allToolIcons={allToolIcons}
+                      showPromptLog={showPromptLog}
+                      chatAnswerContainerInner={chatAnswerContainerInner}
                     />
                   )
                 }
@@ -167,9 +201,7 @@ const Chat: FC<ChatProps> = ({
                   <Question
                     key={item.id}
                     item={item}
-                    showPromptLog={showPromptLog}
                     questionIcon={questionIcon}
-                    isResponding={isResponding}
                   />
                 )
               })
@@ -216,6 +248,16 @@ const Chat: FC<ChatProps> = ({
             }
           </div>
         </div>
+        {showPromptLogModal && (
+          <PromptLogModal
+            width={width}
+            currentLogItem={currentLogItem}
+            onCancel={() => {
+              setCurrentLogItem()
+              setShowPromptLogModal(false)
+            }}
+          />
+        )}
       </div>
     </ChatContextProvider>
   )

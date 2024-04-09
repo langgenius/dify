@@ -44,6 +44,9 @@ class XinferenceRerankModel(RerankModel):
                 docs=[]
             )
 
+        if credentials['server_url'].endswith('/'):
+            credentials['server_url'] = credentials['server_url'][:-1]
+
         # initialize client
         client = Client(
             base_url=credentials['server_url']

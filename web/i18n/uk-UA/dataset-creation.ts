@@ -89,7 +89,7 @@ const translation = {
     other: ' та інші ',
     fileUnit: ' файли',
     notionUnit: ' сторінки',
-    lastStep: 'Попередній крок',
+    previousStep: 'Попередній крок',
     nextStep: 'Зберегти та обробити',
     save: 'Зберегти та обробити',
     cancel: 'Скасувати',

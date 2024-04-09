@@ -22,11 +22,13 @@ DEFAULTS = {
     'SERVICE_API_URL': 'https://api.dify.ai',
     'APP_WEB_URL': 'https://udify.app',
     'FILES_URL': '',
+    'S3_ADDRESS_STYLE': 'auto',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
     'CHECK_UPDATE_URL': 'https://updates.dify.ai',
     'DEPLOY_ENV': 'PRODUCTION',
     'SQLALCHEMY_POOL_SIZE': 30,
+    'SQLALCHEMY_MAX_OVERFLOW': 10,
     'SQLALCHEMY_POOL_RECYCLE': 3600,
     'SQLALCHEMY_ECHO': 'False',
     'SENTRY_TRACES_SAMPLE_RATE': 1.0,
@@ -48,6 +50,8 @@ DEFAULTS = {
     'HOSTED_ANTHROPIC_PAID_ENABLED': 'False',
     'HOSTED_MODERATION_ENABLED': 'False',
     'HOSTED_MODERATION_PROVIDERS': '',
+    'HOSTED_FETCH_APP_TEMPLATES_MODE': 'remote',
+    'HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN': 'https://tmpl.dify.ai',
     'CLEAN_DAY_SETTING': 30,
     'UPLOAD_FILE_SIZE_LIMIT': 15,
     'UPLOAD_FILE_BATCH_LIMIT': 5,
@@ -59,7 +63,11 @@ DEFAULTS = {
     'CAN_REPLACE_LOGO': 'False',
     'ETL_TYPE': 'dify',
     'KEYWORD_STORE': 'jieba',
-    'BATCH_UPLOAD_LIMIT': 20
+    'BATCH_UPLOAD_LIMIT': 20,
+    'CODE_EXECUTION_ENDPOINT': '',
+    'CODE_EXECUTION_API_KEY': '',
+    'TOOL_ICON_CACHE_MAX_AGE': 3600,
+    'KEYWORD_DATA_SOURCE_TYPE': 'database',
 }
 
 
@@ -90,7 +98,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.5.8"
+        self.CURRENT_VERSION = "0.6.0-fix1"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -146,6 +154,7 @@ class Config:
         self.SQLALCHEMY_DATABASE_URI = f"postgresql://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
         self.SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
+            'max_overflow': int(get_env('SQLALCHEMY_MAX_OVERFLOW')),
             'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE'))
         }
 
@@ -180,6 +189,11 @@ class Config:
         self.S3_ACCESS_KEY = get_env('S3_ACCESS_KEY')
         self.S3_SECRET_KEY = get_env('S3_SECRET_KEY')
         self.S3_REGION = get_env('S3_REGION')
+        self.S3_ADDRESS_STYLE = get_env('S3_ADDRESS_STYLE')
+        self.AZURE_BLOB_ACCOUNT_NAME = get_env('AZURE_BLOB_ACCOUNT_NAME')
+        self.AZURE_BLOB_ACCOUNT_KEY = get_env('AZURE_BLOB_ACCOUNT_KEY')
+        self.AZURE_BLOB_CONTAINER_NAME = get_env('AZURE_BLOB_CONTAINER_NAME')
+        self.AZURE_BLOB_ACCOUNT_URL = get_env('AZURE_BLOB_ACCOUNT_URL')
 
         # ------------------------
         # Vector Store Configurations.
@@ -286,6 +300,10 @@ class Config:
         self.HOSTED_MODERATION_ENABLED = get_bool_env('HOSTED_MODERATION_ENABLED')
         self.HOSTED_MODERATION_PROVIDERS = get_env('HOSTED_MODERATION_PROVIDERS')
 
+        # fetch app templates mode, remote, builtin, db(only for dify SaaS), default: remote
+        self.HOSTED_FETCH_APP_TEMPLATES_MODE = get_env('HOSTED_FETCH_APP_TEMPLATES_MODE')
+        self.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = get_env('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN')
+
         self.ETL_TYPE = get_env('ETL_TYPE')
         self.UNSTRUCTURED_API_URL = get_env('UNSTRUCTURED_API_URL')
         self.BILLING_ENABLED = get_bool_env('BILLING_ENABLED')
@@ -293,8 +311,13 @@ class Config:
 
         self.BATCH_UPLOAD_LIMIT = get_env('BATCH_UPLOAD_LIMIT')
 
-        self.API_COMPRESSION_ENABLED = get_bool_env('API_COMPRESSION_ENABLED')
+        self.CODE_EXECUTION_ENDPOINT = get_env('CODE_EXECUTION_ENDPOINT')
+        self.CODE_EXECUTION_API_KEY = get_env('CODE_EXECUTION_API_KEY')
 
+        self.API_COMPRESSION_ENABLED = get_bool_env('API_COMPRESSION_ENABLED')
+        self.TOOL_ICON_CACHE_MAX_AGE = get_env('TOOL_ICON_CACHE_MAX_AGE')
+
+        self.KEYWORD_DATA_SOURCE_TYPE = get_env('KEYWORD_DATA_SOURCE_TYPE')
 
 class CloudEditionConfig(Config):
 

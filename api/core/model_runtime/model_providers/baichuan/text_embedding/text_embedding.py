@@ -124,7 +124,7 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
             elif err == 'insufficient_quota':
                 raise InsufficientAccountBalance(msg)
             elif err == 'invalid_authentication':
-                raise InvalidAuthenticationError(msg)
+                raise InvalidAuthenticationError(msg) 
             elif err and 'rate' in err:
                 raise RateLimitReachedError(msg)
             elif err and 'internal' in err:

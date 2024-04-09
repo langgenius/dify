@@ -12,6 +12,7 @@ import { SimpleSelect } from '@/app/components/base/select'
 import type { AppDetailResponse } from '@/models/app'
 import type { Language } from '@/types/app'
 import EmojiPicker from '@/app/components/base/emoji-picker'
+import { useToastContext } from '@/app/components/base/toast'
 
 import { languages } from '@/i18n/language'
 
@@ -42,6 +43,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const { notify } = useToastContext()
   const [isShowMore, setIsShowMore] = useState(false)
   const { icon, icon_background } = appInfo
   const { title, description, copyright, privacy_policy, default_language } = appInfo.site
@@ -67,6 +69,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   }
 
   const onClickSave = async () => {
+    if (!inputInfo.title) {
+      notify({ type: 'error', message: t('app.newApp.nameNotEmpty') })
+      return
+    }
     setSaveLoading(true)
     const params = {
       title: inputInfo.title,

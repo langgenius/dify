@@ -1,0 +1,83 @@
+const translation = {
+  title: 'Nhật ký',
+  description: 'Nhật ký ghi lại trạng thái hoạt động của ứng dụng, bao gồm đầu vào của người dùng và phản hồi của trí tuệ nhân tạo.',
+  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
+  table: {
+    header: {
+      time: 'Thời gian',
+      endUser: 'Người Dùng Cuối',
+      input: 'Đầu Vào',
+      output: 'Đầu Ra',
+      summary: 'Tiêu Đề',
+      messageCount: 'Số Lượng Tin Nhắn',
+      userRate: 'Tỷ Lệ Người Dùng',
+      adminRate: 'Tỷ Lệ Quản Trị',
+      startTime: 'THỜI GIAN BẮT ĐẦU',
+      status: 'TRẠNG THÁI',
+      runtime: 'THỜI GIAN CHẠY',
+      tokens: 'MÃ',
+      user: 'NGƯỜI DÙNG CUỐI',
+      version: 'PHIÊN BẢN',
+    },
+    pagination: {
+      previous: 'Trước',
+      next: 'Tiếp',
+    },
+    empty: {
+      noChat: 'Chưa có cuộc trò chuyện',
+      noOutput: 'Không có đầu ra',
+      element: {
+        title: 'Có ai đó ở đó không?',
+        content: 'Quan sát và chú thích các tương tác giữa người dùng cuối và ứng dụng trí tuệ nhân tạo ở đây để liên tục cải thiện độ chính xác của trí tuệ nhân tạo. Bạn có thể thử <shareLink>chia sẻ</shareLink> hoặc <testLink>kiểm tra</testLink> ứng dụng Web một cách tự nhiên, sau đó quay lại trang này.',
+      },
+    },
+  },
+  detail: {
+    time: 'Thời gian',
+    conversationId: 'ID Cuộc Trò Chuyện',
+    promptTemplate: 'Mẫu Nhắc Nhở',
+    promptTemplateBeforeChat: 'Mẫu Nhắc Nhở Trước Trò Chuyện · Như Tin Nhắn Hệ Thống',
+    annotationTip: 'Cải Thiện Được Đánh Dấu bởi {{user}}',
+    timeConsuming: '',
+    second: 'giây',
+    tokenCost: 'Chi Phí Mã',
+    loading: 'đang tải',
+    operation: {
+      like: 'thích',
+      dislike: 'không thích',
+      addAnnotation: 'Thêm Cải Thiện',
+      editAnnotation: 'Chỉnh Sửa Cải Thiện',
+      annotationPlaceholder: 'Nhập câu trả lời mong muốn mà bạn muốn trí tuệ nhân tạo trả lời, điều này có thể được sử dụng để điều chỉnh mô hình và cải thiện liên tục chất lượng sinh văn bản trong tương lai.',
+    },
+    variables: 'Biến',
+    uploadImages: 'Ảnh Đã Tải Lên',
+  },
+  filter: {
+    period: {
+      today: 'Hôm nay',
+      last7days: '7 Ngày Qua',
+      last4weeks: '4 Tuần Qua',
+      last3months: '3 Tháng Qua',
+      last12months: '12 Tháng Qua',
+      monthToDate: 'Tháng Đến Hiện Tại',
+      quarterToDate: 'Quý Đến Hiện Tại',
+      yearToDate: 'Năm Đến Hiện Tại',
+      allTime: 'Tất Cả Thời Gian',
+    },
+    annotation: {
+      all: 'Tất cả',
+      annotated: 'Cải Thiện Đã Đánh Dấu ({{count}} mục)',
+      not_annotated: 'Chưa Đánh Dấu',
+    },
+  },
+  workflowTitle: 'Nhật Ký Quy Trình Làm Việc',
+  workflowSubtitle: 'Nhật ký ghi lại hoạt động của Tự Động Hóa.',
+  runDetail: {
+    title: 'Nhật Ký Cuộc Trò Chuyện',
+    workflowTitle: 'Chi Tiết Nhật Ký',
+  },
+  promptLog: 'Nhật Ký Nhắc Nhở',
+  viewLog: 'Xem Nhật Ký',
+}
+
+export default translation

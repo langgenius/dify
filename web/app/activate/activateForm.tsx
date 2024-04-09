@@ -62,8 +62,10 @@ const ActivateForm = () => {
       showErrorMessage(t('login.error.passwordEmpty'))
       return false
     }
-    if (!validPassword.test(password))
+    if (!validPassword.test(password)) {
       showErrorMessage(t('login.error.passwordInvalid'))
+      return false
+    }
 
     return true
   }, [name, password, showErrorMessage, t])
@@ -169,8 +171,8 @@ const ActivateForm = () => {
                 </label>
                 <div className="relative mt-1 rounded-md shadow-sm">
                   <SimpleSelect
-                    defaultValue={defaultLanguage()}
-                    items={languages}
+                    defaultValue={LanguagesSupported[0]}
+                    items={languages.filter(item => item.supported)}
                     onSelect={(item) => {
                       setLanguage(item.value as string)
                     }}

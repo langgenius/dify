@@ -1,4 +1,3 @@
-import importlib
 import os
 from abc import ABC, abstractmethod
 
@@ -7,6 +6,7 @@ import yaml
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel
+from core.utils.module_import_helper import get_subclasses_from_module, import_module_from_source
 
 
 class ModelProvider(ABC):
@@ -104,17 +104,10 @@ class ModelProvider(ABC):
 
         # Dynamic loading {model_type_name}.py file and find the subclass of AIModel
         parent_module = '.'.join(self.__class__.__module__.split('.')[:-1])
-        spec = importlib.util.spec_from_file_location(f"{parent_module}.{model_type_name}.{model_type_name}", model_type_py_path)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-
-        model_class = None
-        for name, obj in vars(mod).items():
-            if (isinstance(obj, type) and issubclass(obj, AIModel) and not obj.__abstractmethods__
-                    and obj != AIModel and obj.__module__ == mod.__name__):
-                model_class = obj
-                break
-
+        mod = import_module_from_source(
+            f'{parent_module}.{model_type_name}.{model_type_name}', model_type_py_path)
+        model_class = next(filter(lambda x: x.__module__ == mod.__name__ and not x.__abstractmethods__,
+                                  get_subclasses_from_module(mod, AIModel)), None)
         if not model_class:
             raise Exception(f'Missing AIModel Class for model type {model_type} in {model_type_py_path}')
 

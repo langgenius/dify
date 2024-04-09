@@ -8,7 +8,7 @@ import Drawer from '@/app/components/base/drawer-plus'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import type { Collection, Tool } from '@/app/components/tools/types'
-import { fetchBuiltInToolList, fetchCustomToolList } from '@/service/tools'
+import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList } from '@/service/tools'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
@@ -19,6 +19,7 @@ import AppIcon from '@/app/components/base/app-icon'
 type Props = {
   collection: Collection
   isBuiltIn?: boolean
+  isModel?: boolean
   toolName: string
   setting?: Record<string, any>
   readonly?: boolean
@@ -29,6 +30,7 @@ type Props = {
 const SettingBuiltInTool: FC<Props> = ({
   collection,
   isBuiltIn = true,
+  isModel = true,
   toolName,
   setting = {},
   readonly,
@@ -56,7 +58,16 @@ const SettingBuiltInTool: FC<Props> = ({
     (async () => {
       setIsLoading(true)
       try {
-        const list = isBuiltIn ? await fetchBuiltInToolList(collection.name) : await fetchCustomToolList(collection.name)
+        const list = await new Promise<Tool[]>((resolve) => {
+          (async function () {
+            if (isModel)
+              resolve(await fetchModelToolList(collection.name))
+            else if (isBuiltIn)
+              resolve(await fetchBuiltInToolList(collection.name))
+            else
+              resolve(await fetchCustomToolList(collection.name))
+          }())
+        })
         setTools(list)
         const currTool = list.find(tool => tool.name === toolName)
         if (currTool) {

@@ -26,9 +26,9 @@ class UnstructuredXmlExtractor(BaseExtractor):
     def extract(self) -> list[Document]:
         from unstructured.partition.xml import partition_xml
 
-        elements = partition_xml(filename=self._file_path, xml_keep_tags=True, api_url=self._api_url)
+        elements = partition_xml(filename=self._file_path, xml_keep_tags=True)
         from unstructured.chunking.title import chunk_by_title
-        chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=0)
+        chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
         documents = []
         for chunk in chunks:
             text = chunk.text.strip()

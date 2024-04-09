@@ -9,7 +9,7 @@ identity:
     en_US: Autonavi Open Platform service toolkit.
     zh_Hans: 高德开放平台服务工具包。
     pt_BR: Kit de ferramentas de serviço Autonavi Open Platform.
-  icon: icon.png
+  icon: icon.svg
 credentials_for_provider:
   api_key:
     type: secret-input
