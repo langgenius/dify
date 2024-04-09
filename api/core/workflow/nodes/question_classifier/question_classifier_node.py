@@ -103,7 +103,12 @@ class QuestionClassifierNode(LLMNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
-                error=str(e)
+                error=str(e),
+                metadata={
+                    NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                    NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
+                    NodeRunMetadataKey.CURRENCY: usage.currency
+                }
             )
 
     @classmethod
