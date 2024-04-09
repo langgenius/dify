@@ -176,6 +176,28 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleVisionResolutionEnabledChange = useCallback((enabled: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      if (!draft.vision) {
+        draft.vision = {
+          enabled,
+          configs: {
+            detail: Resolution.high,
+          },
+        }
+      }
+      else {
+        draft.vision.enabled = enabled
+        if (!draft.vision.configs) {
+          draft.vision.configs = {
+            detail: Resolution.high,
+          }
+        }
+      }
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const handleVisionResolutionChange = useCallback((newResolution: Resolution) => {
     const newInputs = produce(inputs, (draft) => {
       if (!draft.vision.configs) {
@@ -296,6 +318,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     filterVar,
     handlePromptChange,
     handleMemoryChange,
+    handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
     isShowSingleRun,
     hideSingleRun,
