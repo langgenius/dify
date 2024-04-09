@@ -176,6 +176,8 @@ export const useWorkflowRun = () => {
           const {
             getNodes,
             setNodes,
+            edges,
+            setEdges,
           } = store.getState()
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             draft.task_id = task_id
@@ -192,6 +194,15 @@ export const useWorkflowRun = () => {
             })
           })
           setNodes(newNodes)
+          const newEdges = produce(edges, (draft) => {
+            draft.forEach((edge) => {
+              edge.data = {
+                ...edge.data,
+                _runned: false,
+              }
+            })
+          })
+          setEdges(newEdges)
 
           if (onWorkflowStarted)
             onWorkflowStarted(params)
