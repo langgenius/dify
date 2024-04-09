@@ -242,7 +242,10 @@ class KnowledgeRetrievalNode(BaseNode):
                 # get top k
                 top_k = retrieval_model_config['top_k']
                 # get retrieval method
-                retrival_method = retrieval_model_config['search_method']
+                if dataset.indexing_technique == "economy":
+                    retrival_method = 'keyword_search'
+                else:
+                    retrival_method = retrieval_model_config['search_method']
                 # get reranking model
                 reranking_model=retrieval_model_config['reranking_model'] \
                     if retrieval_model_config['reranking_enable'] else None
