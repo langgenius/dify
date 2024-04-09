@@ -115,6 +115,7 @@ docker compose up -d
 
 Difyに貢献していただき、コードの提出、問題の報告、新しいアイデアの提供、またはDifyを基に作成した興味深く有用なAIアプリケーションの共有により、Difyをより良いものにするお手伝いを歓迎します。同時に、さまざまなイベント、会議、ソーシャルメディアでDifyを共有することも歓迎します。
 
+- [Github Discussion](https://github.com/langgenius/dify/discussions). 👉：アプリを共有し、コミュニティとコミュニケーション。
 - [GitHub Issues](https://github.com/langgenius/dify/issues)。最適な使用法：Dify.AIの使用中に遭遇するバグやエラー、[貢献ガイド](CONTRIBUTING.md)を参照。
 - [Email サポート](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify)。最適な使用法：Dify.AIの使用に関する質問。
 - [Discord](https://discord.gg/FngNHpbcY7)。最適な使用法：アプリケーションの共有とコミュニティとの交流。
