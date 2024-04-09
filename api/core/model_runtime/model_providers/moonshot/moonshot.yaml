@@ -77,5 +77,5 @@ model_credential_schema:
             zh_Hans: 不支持
         - value: tool_call
           label:
-           en_US: Tool Call
-           zh_Hans: Tool Call
+            en_US: Tool Call
+            zh_Hans: Tool Call
