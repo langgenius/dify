@@ -333,7 +333,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               )}/>
               <div className='px-4 pb-2'>
                 <div className='flex items-center gap-1 text-gray-700 text-md leading-6 font-semibold'>
-                  {t('app.newApp.advanced')}
+                  {showSwitchTip === 'chat' ? t('app.newApp.advanced') : t('app.types.workflow')}
                   <span className='px-1 rounded-[5px] bg-white border border-black/8 text-gray-500 text-[10px] leading-[18px] font-medium'>BETA</span>
                 </div>
                 <div className='text-orange-500 text-xs leading-[18px] font-medium'>{t('app.newApp.advancedFor').toLocaleUpperCase()}</div>

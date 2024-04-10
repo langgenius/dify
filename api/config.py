@@ -67,6 +67,7 @@ DEFAULTS = {
     'CODE_EXECUTION_ENDPOINT': '',
     'CODE_EXECUTION_API_KEY': '',
     'TOOL_ICON_CACHE_MAX_AGE': 3600,
+    'MILVUS_DATABASE': 'default',
     'KEYWORD_DATA_SOURCE_TYPE': 'database',
 }
 
@@ -98,7 +99,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.6.0-fix1"
+        self.CURRENT_VERSION = "0.6.1"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -212,6 +213,7 @@ class Config:
         self.MILVUS_USER = get_env('MILVUS_USER')
         self.MILVUS_PASSWORD = get_env('MILVUS_PASSWORD')
         self.MILVUS_SECURE = get_env('MILVUS_SECURE')
+        self.MILVUS_DATABASE = get_env('MILVUS_DATABASE')
 
         # weaviate settings
         self.WEAVIATE_ENDPOINT = get_env('WEAVIATE_ENDPOINT')

@@ -5,6 +5,7 @@ from werkzeug.exceptions import NotFound
 from controllers.web import api
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
+from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
 from libs.helper import uuid_value
 from models.model import AppMode
@@ -37,7 +38,8 @@ class ConversationListApi(WebApiResource):
                 user=end_user,
                 last_id=args['last_id'],
                 limit=args['limit'],
-                pinned=pinned
+                invoke_from=InvokeFrom.WEB_APP,
+                pinned=pinned,
             )
         except LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")

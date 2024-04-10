@@ -112,7 +112,7 @@ const DebugItem: FC<DebugItemProps> = ({
       </div>
       <div style={{ height: 'calc(100% - 40px)' }}>
         {
-          mode === 'chat' && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
+          (mode === 'chat' || mode === 'agent-chat') && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
             <ChatItem modelAndParameter={modelAndParameter} />
           )
         }

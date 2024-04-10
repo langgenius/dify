@@ -24,6 +24,60 @@ import type { ToolNodeType } from './nodes/tool/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 
+const WHITE = 'WHITE'
+const GRAY = 'GRAY'
+const BLACK = 'BLACK'
+
+const isCyclicUtil = (nodeId: string, color: Record<string, string>, adjaList: Record<string, string[]>, stack: string[]) => {
+  color[nodeId] = GRAY
+  stack.push(nodeId)
+
+  for (let i = 0; i < adjaList[nodeId].length; ++i) {
+    const childId = adjaList[nodeId][i]
+
+    if (color[childId] === GRAY) {
+      stack.push(childId)
+      return true
+    }
+    if (color[childId] === WHITE && isCyclicUtil(childId, color, adjaList, stack))
+      return true
+  }
+  color[nodeId] = BLACK
+  if (stack.length > 0 && stack[stack.length - 1] === nodeId)
+    stack.pop()
+  return false
+}
+
+const getCycleEdges = (nodes: Node[], edges: Edge[]) => {
+  const adjaList: Record<string, string[]> = {}
+  const color: Record<string, string> = {}
+  const stack: string[] = []
+
+  for (const node of nodes) {
+    color[node.id] = WHITE
+    adjaList[node.id] = []
+  }
+
+  for (const edge of edges)
+    adjaList[edge.source].push(edge.target)
+
+  for (let i = 0; i < nodes.length; i++) {
+    if (color[nodes[i].id] === WHITE)
+      isCyclicUtil(nodes[i].id, color, adjaList, stack)
+  }
+
+  const cycleEdges = []
+  if (stack.length > 0) {
+    const cycleNodes = new Set(stack)
+    for (const edge of edges) {
+      if (cycleNodes.has(edge.source) && cycleNodes.has(edge.target))
+        cycleEdges.push(edge)
+    }
+  }
+
+  return cycleEdges
+}
+
 export const initialNodes = (nodes: Node[], edges: Edge[]) => {
   const firstNode = nodes[0]
 
@@ -35,6 +89,7 @@ export const initialNodes = (nodes: Node[], edges: Edge[]) => {
       }
     })
   }
+
   return nodes.map((node) => {
     node.type = 'custom'
 
@@ -75,7 +130,11 @@ export const initialEdges = (edges: Edge[], nodes: Node[]) => {
 
     return acc
   }, {} as Record<string, Node>)
-  return edges.map((edge) => {
+
+  const cycleEdges = getCycleEdges(nodes, edges)
+  return edges.filter((edge) => {
+    return !cycleEdges.find(cycEdge => cycEdge.source === edge.source && cycEdge.target === edge.target)
+  }).map((edge) => {
     edge.type = 'custom'
 
     if (!edge.sourceHandle)

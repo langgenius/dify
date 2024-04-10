@@ -301,6 +301,8 @@ export const useNodesInteractions = () => {
     target,
     targetHandle,
   }) => {
+    if (source === target)
+      return
     if (getNodesReadOnly())
       return
 

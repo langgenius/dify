@@ -297,7 +297,6 @@ class CohereLargeLanguageModel(LargeLanguageModel):
             chat_history=chat_histories,
             model=real_model,
             stream=stream,
-            return_preamble=True,
             **model_parameters,
         )
 

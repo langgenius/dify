@@ -34,7 +34,7 @@ class PythonTemplateTransformer(TemplateTransformer):
         """
         
         # transform inputs to json string
-        inputs_str = json.dumps(inputs, indent=4)
+        inputs_str = json.dumps(inputs, indent=4, ensure_ascii=False)
 
         # replace code and inputs
         runner = PYTHON_RUNNER.replace('{{code}}', code)

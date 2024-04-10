@@ -93,7 +93,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const {
     currentProvider,
     currentModel,
-    textGenerationModelList,
+    activeTextGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(
     { provider, model: modelId },
   )
@@ -114,7 +114,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }
 
   const handleChangeModel = ({ provider, model }: DefaultModel) => {
-    const targetProvider = textGenerationModelList.find(modelItem => modelItem.provider === provider)
+    const targetProvider = activeTextGenerationModelList.find(modelItem => modelItem.provider === provider)
     const targetModelItem = targetProvider?.models.find(modelItem => modelItem.model === model)
     setModel({
       modelId: model,
@@ -223,7 +223,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 </div>
                 <ModelSelector
                   defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
-                  modelList={textGenerationModelList}
+                  modelList={activeTextGenerationModelList}
                   onSelect={handleChangeModel}
                 />
               </div>

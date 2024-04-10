@@ -13,7 +13,7 @@ from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, Comp
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.llm.llm_node import LLMNode
 from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
@@ -65,7 +65,9 @@ class QuestionClassifierNode(LLMNode):
         categories = [_class.name for _class in node_data.classes]
         try:
             result_text_json = json.loads(result_text.strip('```JSON\n'))
-            categories = result_text_json.get('categories', [])
+            categories_result = result_text_json.get('categories', [])
+            if categories_result:
+                categories = categories_result
         except Exception:
             logging.error(f"Failed to parse result text: {result_text}")
         try:
@@ -89,14 +91,24 @@ class QuestionClassifierNode(LLMNode):
                 inputs=variables,
                 process_data=process_data,
                 outputs=outputs,
-                edge_source_handle=classes_map.get(categories[0], None)
+                edge_source_handle=classes_map.get(categories[0], None),
+                metadata={
+                    NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                    NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
+                    NodeRunMetadataKey.CURRENCY: usage.currency
+                }
             )
 
         except ValueError as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
-                error=str(e)
+                error=str(e),
+                metadata={
+                    NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                    NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
+                    NodeRunMetadataKey.CURRENCY: usage.currency
+                }
             )
 
     @classmethod

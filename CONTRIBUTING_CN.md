@@ -34,7 +34,7 @@
   | Feature Type                                                 | Priority        |
   | ------------------------------------------------------------ | --------------- |
   | High-Priority Features as being labeled by a team member     | High Priority   |
-  | Popular feature requests from our [community feedback board](https://feedback.dify.ai/) | Medium Priority |
+  | Popular feature requests from our [community feedback board](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Medium Priority |
   | Non-core features and minor enhancements                     | Low Priority    |
   | Valuable but not immediate                                   | Future-Feature  |
 
