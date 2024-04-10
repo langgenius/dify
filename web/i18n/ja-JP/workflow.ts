@@ -46,7 +46,7 @@ const translation = {
       content: '他のノードで変数が使用されています。それでも削除しますか？',
     },
     insertVarTip: 'クイック挿入のために\'/\'キーを押します',
-    processData: '処理データ',
+    processData: 'データ処理',
     input: '入力',
     output: '出力',
   },
