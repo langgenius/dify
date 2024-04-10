@@ -11,6 +11,7 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, 
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
+    PromptMessageContentType,
     PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
@@ -319,6 +320,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             iteration_step += 1
 
+            prompt_messages = self._clear_user_prompt_image_messages(prompt_messages)
+
         self.update_db_variables(self.variables_pool, self.db_variables_pool)
         # publish end event
         self.queue_manager.publish(QueueMessageEndEvent(llm_result=LLMResult(
@@ -390,7 +393,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 SystemPromptMessage(content=prompt_template),
             ]
         
-        if not isinstance(prompt_messages[0], SystemPromptMessage) and prompt_template:
+        if prompt_messages and not isinstance(prompt_messages[0], SystemPromptMessage) and prompt_template:
             prompt_messages.insert(0, SystemPromptMessage(content=prompt_template))
 
         return prompt_messages
@@ -425,5 +428,24 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     name=tool_call_name,
                 )
             )
+
+        return prompt_messages
+    
+    def _clear_user_prompt_image_messages(self, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
+        """
+        As for now, gpt supports both fc and vision at the first iteration.
+        We need to remove the image messages from the prompt messages at the first iteration.
+        """
+        prompt_messages = deepcopy(prompt_messages)
+
+        for prompt_message in prompt_messages:
+            if isinstance(prompt_message, UserPromptMessage):
+                if isinstance(prompt_message.content, list):
+                    prompt_message.content = '\n'.join([
+                        content.data if content.type == PromptMessageContentType.TEXT else 
+                        '[image]' if content.type == PromptMessageContentType.IMAGE else
+                        '[file]' 
+                        for content in prompt_message.content 
+                    ])
 
         return prompt_messages
