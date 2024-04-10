@@ -1,7 +1,4 @@
-import threading
 from typing import Any, cast
-
-from flask import Flask, current_app
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -9,21 +6,16 @@ from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from core.rerank.rerank import RerankRunner
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
-from core.workflow.nodes.knowledge_retrieval.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
-from core.workflow.nodes.knowledge_retrieval.multi_dataset_react_route import ReactMultiDatasetRouter
 from extensions.ext_database import db
-from models.dataset import Dataset, DatasetQuery, Document, DocumentSegment
+from models.dataset import Dataset, Document, DocumentSegment
 from models.workflow import WorkflowNodeExecutionStatus
 
 default_retrieval_model = {
