@@ -48,7 +48,8 @@ class CohereRerankModel(RerankModel):
             query=query,
             documents=docs,
             model=model,
-            top_n=top_n
+            top_n=top_n,
+            return_documents=True
         )
 
         rerank_documents = []

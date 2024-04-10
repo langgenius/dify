@@ -637,7 +637,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
             model=model
         )
 
-        return len(response.token_strings)
+        return len(response.tokens)
 
     def _num_tokens_from_messages(self, model: str, credentials: dict, messages: list[PromptMessage]) -> int:
         """Calculate num tokens Cohere model."""

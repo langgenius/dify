@@ -144,7 +144,8 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
 
         response = client.tokenize(
             text=text,
-            model=model
+            model=model,
+            offline=False
         )
 
         return response.token_strings
@@ -186,7 +187,7 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
             input_type='search_document' if len(texts) > 1 else 'search_query'
         )
 
-        return response.embeddings, response.meta['billed_units']['input_tokens']
+        return response.embeddings, int(response.meta.billed_units.input_tokens)
 
     def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
         """
