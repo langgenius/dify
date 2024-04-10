@@ -1,6 +1,8 @@
 import logging
 from typing import cast
 
+from flask_login import current_user
+
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.completion.app_config_manager import CompletionAppConfig
@@ -116,6 +118,8 @@ class CompletionAppRunner(AppRunner):
 
             dataset_retrieval = DatasetRetrieval()
             context = dataset_retrieval.retrieve(
+                app_id=app_record.id,
+                user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
                 model_config=application_generate_entity.model_config,
                 config=dataset_config,
