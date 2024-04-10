@@ -210,6 +210,7 @@ class AgentChatAppRunner(AppRunner):
             assistant_cot_runner = CotAgentRunner(
                 tenant_id=app_config.tenant_id,
                 application_generate_entity=application_generate_entity,
+                conversation=conversation,
                 app_config=app_config,
                 model_config=application_generate_entity.model_config,
                 config=agent_entity,
@@ -223,7 +224,6 @@ class AgentChatAppRunner(AppRunner):
                 model_instance=model_instance
             )
             invoke_result = assistant_cot_runner.run(
-                conversation=conversation,
                 message=message,
                 query=query,
                 inputs=inputs,
@@ -232,6 +232,7 @@ class AgentChatAppRunner(AppRunner):
             assistant_fc_runner = FunctionCallAgentRunner(
                 tenant_id=app_config.tenant_id,
                 application_generate_entity=application_generate_entity,
+                conversation=conversation,
                 app_config=app_config,
                 model_config=application_generate_entity.model_config,
                 config=agent_entity,
@@ -245,7 +246,6 @@ class AgentChatAppRunner(AppRunner):
                 model_instance=model_instance
             )
             invoke_result = assistant_fc_runner.run(
-                conversation=conversation,
                 message=message,
                 query=query,
             )

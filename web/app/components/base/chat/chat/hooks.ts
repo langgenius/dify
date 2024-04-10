@@ -229,7 +229,7 @@ export const useChat = (
 
     // answer
     const responseItem: ChatItem = {
-      id: `${Date.now()}`,
+      id: placeholderAnswerId,
       content: '',
       agent_thoughts: [],
       message_files: [],

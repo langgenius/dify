@@ -59,7 +59,7 @@ const getCycleEdges = (nodes: Node[], edges: Edge[]) => {
   }
 
   for (const edge of edges)
-    adjaList[edge.source].push(edge.target)
+    adjaList[edge.source]?.push(edge.target)
 
   for (let i = 0; i < nodes.length; i++) {
     if (color[nodes[i].id] === WHITE)
@@ -143,14 +143,14 @@ export const initialEdges = (edges: Edge[], nodes: Node[]) => {
     if (!edge.targetHandle)
       edge.targetHandle = 'target'
 
-    if (!edge.data?.sourceType) {
+    if (!edge.data?.sourceType && edge.source) {
       edge.data = {
         ...edge.data,
         sourceType: nodesMap[edge.source].data.type!,
       } as any
     }
 
-    if (!edge.data?.targetType) {
+    if (!edge.data?.targetType && edge.target) {
       edge.data = {
         ...edge.data,
         targetType: nodesMap[edge.target].data.type!,
