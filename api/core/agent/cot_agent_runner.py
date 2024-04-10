@@ -133,6 +133,7 @@ class CotAgentRunner(BaseAgentRunner):
 
             # recalc llm max tokens
             self.recalc_llm_max_tokens(self.model_config, prompt_messages)
+
             # invoke model
             chunks: Generator[LLMResultChunk, None, None] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
@@ -169,7 +170,6 @@ class CotAgentRunner(BaseAgentRunner):
                     action = chunk
                     # detect action
                     scratchpad.agent_response += json.dumps(chunk.dict())
-                    scratchpad.thought += json.dumps(chunk.dict())
                     scratchpad.action_str = json.dumps(chunk.dict())
                     scratchpad.action = action
                 else:
@@ -190,26 +190,28 @@ class CotAgentRunner(BaseAgentRunner):
 
             scratchpad.thought = scratchpad.thought.strip() or 'I am thinking about how to help you'
             agent_scratchpad.append(scratchpad)
-                        
+            
             # get llm usage
             if 'usage' in usage_dict:
                 increase_usage(llm_usage, usage_dict['usage'])
             else:
                 usage_dict['usage'] = LLMUsage.empty_usage()
             
-            self.save_agent_thought(agent_thought=agent_thought,
-                                    tool_name=scratchpad.action.action_name if scratchpad.action else '',
-                                    tool_input={
-                                        scratchpad.action.action_name: scratchpad.action.action_input
-                                    } if scratchpad.action else '',
-                                    tool_invoke_meta={},
-                                    thought=scratchpad.thought,
-                                    observation='',
-                                    answer=scratchpad.agent_response,
-                                    messages_ids=[],
-                                    llm_usage=usage_dict['usage'])
+            self.save_agent_thought(
+                agent_thought=agent_thought,
+                tool_name=scratchpad.action.action_name if scratchpad.action else '',
+                tool_input={
+                    scratchpad.action.action_name: scratchpad.action.action_input
+                } if scratchpad.action else {},
+                tool_invoke_meta={},
+                thought=scratchpad.thought,
+                observation={},
+                answer=scratchpad.agent_response,
+                messages_ids=[],
+                llm_usage=usage_dict['usage']
+            )
             
-            if scratchpad.action and scratchpad.action.action_name.lower() != "final answer":
+            if not scratchpad.is_final():
                 self.queue_manager.publish(QueueAgentThoughtEvent(
                     agent_thought_id=agent_thought.id
                 ), PublishFrom.APPLICATION_MANAGER)
@@ -221,13 +223,34 @@ class CotAgentRunner(BaseAgentRunner):
                 if scratchpad.action.action_name.lower() == "final answer":
                     # action is final answer, return final answer directly
                     try:
-                        final_answer = scratchpad.action.action_input if \
-                            isinstance(scratchpad.action.action_input, str) else \
-                                json.dumps(scratchpad.action.action_input)
+                        final_answer = json.dumps(scratchpad.action.action_input)
                     except json.JSONDecodeError:
                         final_answer = f'{scratchpad.action.action_input}'
                 else:
                     function_call_state = True
+                    # action is tool call, invoke tool
+                    tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
+                        action=scratchpad.action, 
+                        tool_instances=tool_instances
+                    )
+                    scratchpad.observation = tool_invoke_response
+                    scratchpad.agent_response = tool_invoke_response
+
+                    self.save_agent_thought(
+                        agent_thought=agent_thought,
+                        tool_name=scratchpad.action.action_name,
+                        tool_input={scratchpad.action.action_name: scratchpad.action.action_input},
+                        thought=scratchpad.thought,
+                        observation={scratchpad.action.action_name: tool_invoke_response},
+                        tool_invoke_meta=tool_invoke_meta.to_dict(),
+                        answer=scratchpad.agent_response,
+                        messages_ids=message_file_ids,
+                        llm_usage=usage_dict['usage']
+                    )
+
+                    self.queue_manager.publish(QueueAgentThoughtEvent(
+                        agent_thought_id=agent_thought.id
+                    ), PublishFrom.APPLICATION_MANAGER)
 
                 # update prompt tool message
                 for prompt_tool in prompt_messages_tools:
@@ -321,9 +344,11 @@ class CotAgentRunner(BaseAgentRunner):
         # publish files
         for message_file, save_as in message_files:
             if save_as:
-                self.variables_pool.set_file(tool_name=tool_call_name,
-                                                value=message_file.id,
-                                                name=save_as)
+                self.variables_pool.set_file(
+                    tool_name=tool_call_name,
+                    value=message_file.id,
+                    name=save_as
+                )
             self.queue_manager.publish(QueueMessageFileEvent(
                 message_file_id=message_file.id
             ), PublishFrom.APPLICATION_MANAGER)

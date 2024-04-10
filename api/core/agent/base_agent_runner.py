@@ -325,7 +325,7 @@ class BaseAgentRunner(AppRunner):
                            tool_name: str,
                            tool_input: Union[str, dict],
                            thought: str, 
-                           observation: Union[str, str], 
+                           observation: Union[str, dict], 
                            tool_invoke_meta: Union[str, dict],
                            answer: str,
                            messages_ids: list[str],

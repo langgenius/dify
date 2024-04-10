@@ -40,6 +40,14 @@ class AgentScratchpadUnit(BaseModel):
     observation: Optional[str] = None
     action: Optional[Action] = None
 
+    def is_final(self) -> bool:
+        """
+        Check if the scratchpad unit is final.
+        """
+        return self.action is None or (
+            'final' in self.action.action_name.lower() and 
+            'answer' in self.action.action_name.lower()
+        )
 
 class AgentEntity(BaseModel):
     """
