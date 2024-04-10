@@ -46,6 +46,9 @@ const translation = {
       content: 'Цю змінну використовується в інших вузлах. Ви все ще хочете її видалити?',
     },
     insertVarTip: 'Натисніть клавішу "/" для швидкого вставлення',
+    processData: 'Обробка даних',
+    input: 'Вхід',
+    output: 'Вихід',
   },
   errorMsg: {
     fieldRequired: '{{field}} є обов\'язковим',
