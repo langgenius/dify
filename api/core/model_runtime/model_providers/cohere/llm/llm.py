@@ -325,6 +325,9 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         message, chat_histories, tool_results \
             = self._convert_prompt_messages_to_message_and_chat_histories(prompt_messages)
 
+        if tool_results:
+            model_parameters['tool_results'] = tool_results
+
         # chat model
         real_model = model
         if self.get_model_schema(model, credentials).fetch_from == FetchFrom.PREDEFINED_MODEL:
@@ -334,7 +337,6 @@ class CohereLargeLanguageModel(LargeLanguageModel):
             response = client.chat_stream(
                 message=message,
                 chat_history=chat_histories,
-                tool_results=tool_results,
                 model=real_model,
                 **model_parameters,
             )
@@ -508,21 +510,39 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                             ),
                             outputs=[]
                         ))
-                chat_histories.append(self._convert_prompt_message_to_dict(prompt_message))
-            if prompt_message.role == PromptMessageRole.TOOL:
+                else:
+                    cohere_prompt_message = self._convert_prompt_message_to_dict(prompt_message)
+                    if cohere_prompt_message:
+                        chat_histories.append(cohere_prompt_message)
+            elif prompt_message.role == PromptMessageRole.TOOL:
                 prompt_message = cast(ToolPromptMessage, prompt_message)
                 if latest_tool_call_n_outputs:
+                    i = 0
                     for tool_call_n_outputs in latest_tool_call_n_outputs:
                         if tool_call_n_outputs.call.name == prompt_message.tool_call_id:
-                            tool_call_n_outputs.outputs = [{
-                                "result": prompt_message.content
-                            }]
+                            latest_tool_call_n_outputs[i] = ChatStreamRequestToolResultsItem(
+                                call=ToolCall(
+                                    name=tool_call_n_outputs.call.name,
+                                    parameters=tool_call_n_outputs.call.parameters
+                                ),
+                                outputs=[{
+                                    "result": prompt_message.content
+                                }]
+                            )
                             break
+                        i += 1
             else:
-                chat_histories.append(self._convert_prompt_message_to_dict(prompt_message))
+                cohere_prompt_message = self._convert_prompt_message_to_dict(prompt_message)
+                if cohere_prompt_message:
+                    chat_histories.append(cohere_prompt_message)
 
         if latest_tool_call_n_outputs:
-            chat_histories = []
+            new_latest_tool_call_n_outputs = []
+            for tool_call_n_outputs in latest_tool_call_n_outputs:
+                if tool_call_n_outputs.outputs:
+                    new_latest_tool_call_n_outputs.append(tool_call_n_outputs)
+
+            latest_tool_call_n_outputs = new_latest_tool_call_n_outputs
 
         # get latest message from chat histories and pop it
         if len(chat_histories) > 0:
@@ -533,7 +553,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
 
         return message, chat_histories, latest_tool_call_n_outputs
 
-    def _convert_prompt_message_to_dict(self, message: PromptMessage) -> ChatMessage:
+    def _convert_prompt_message_to_dict(self, message: PromptMessage) -> Optional[ChatMessage]:
         """
         Convert PromptMessage to dict for Cohere model
         """
@@ -551,10 +571,14 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                 chat_message = ChatMessage(role="USER", message=sub_message_text)
         elif isinstance(message, AssistantPromptMessage):
             message = cast(AssistantPromptMessage, message)
+            if not message.content:
+                return None
             chat_message = ChatMessage(role="CHATBOT", message=message.content)
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
             chat_message = ChatMessage(role="USER", message=message.content)
+        elif isinstance(message, ToolPromptMessage):
+            return None
         else:
             raise ValueError(f"Got unknown type {message}")
 
@@ -617,8 +641,12 @@ class CohereLargeLanguageModel(LargeLanguageModel):
 
     def _num_tokens_from_messages(self, model: str, credentials: dict, messages: list[PromptMessage]) -> int:
         """Calculate num tokens Cohere model."""
-        messages = [self._convert_prompt_message_to_dict(m) for m in messages]
-        message_strs = [f"{message.role}: {message.message}" for message in messages]
+        calc_messages = []
+        for message in messages:
+            cohere_message = self._convert_prompt_message_to_dict(message)
+            if cohere_message:
+                calc_messages.append(cohere_message)
+        message_strs = [f"{message.role}: {message.message}" for message in calc_messages]
         message_str = "\n".join(message_strs)
 
         real_model = model
