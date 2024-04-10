@@ -503,7 +503,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         if model_prefix == "amazon":
             payload["textGenerationConfig"] = { **model_parameters }
-            payload["textGenerationConfig"]["stopSequences"] = ["User:"] + (stop if stop else [])
+            payload["textGenerationConfig"]["stopSequences"] = ["User:"]
             
             payload["inputText"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
         
@@ -512,10 +512,6 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             payload["topP"] = model_parameters.get("topP")
             payload["maxTokens"] = model_parameters.get("maxTokens")
             payload["prompt"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
-
-            # jurassic models only support a single stop sequence
-            if stop:
-                payload["stopSequences"] = stop[0]
 
             if model_parameters.get("presencePenalty"):
                 payload["presencePenalty"] = {model_parameters.get("presencePenalty")}
