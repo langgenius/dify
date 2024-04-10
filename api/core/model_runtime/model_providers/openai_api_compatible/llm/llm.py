@@ -167,23 +167,27 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         """
             generate custom model entities from credentials
         """
-        support_function_call = False
         features = []
+
         function_calling_type = credentials.get('function_calling_type', 'no_call')
         if function_calling_type == 'function_call':
-            features = [ModelFeature.TOOL_CALL]
-            support_function_call = True
+            features.append(ModelFeature.TOOL_CALL)
         endpoint_url = credentials["endpoint_url"]
         # if not endpoint_url.endswith('/'):
         #     endpoint_url += '/'
         # if 'https://api.openai.com/v1/' == endpoint_url:
-        #     features = [ModelFeature.STREAM_TOOL_CALL]
+        #     features.append(ModelFeature.STREAM_TOOL_CALL)
+
+        vision_support = credentials.get('vision_support', 'not_support')
+        if vision_support == 'support':
+            features.append(ModelFeature.VISION)
+
         entity = AIModelEntity(
             model=model,
             label=I18nObject(en_US=model),
             model_type=ModelType.LLM,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            features=features if support_function_call else [],
+            features=features,
             model_properties={
                 ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size', "4096")),
                 ModelPropertyKey.MODE: credentials.get('mode'),
