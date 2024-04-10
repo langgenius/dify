@@ -4092,14 +4092,7 @@ jsonc-eslint-parser@^2.0.4, jsonc-eslint-parser@^2.1.0:
     object.assign "^4.1.4"
     object.values "^1.1.6"
 
-katex@^0.16.0:
-  version "0.16.8"
-  resolved "https://registry.npmjs.org/katex/-/katex-0.16.8.tgz"
-  integrity sha512-ftuDnJbcbOckGY11OO+zg3OofESlbR5DRl2cmN8HeWeeFIV7wTXvAOx8kEjZjobhA+9wh2fbKeO6cdcA9Mnovg==
-  dependencies:
-    commander "^8.3.0"
-
-katex@^0.16.10:
+katex@^0.16.0, katex@^0.16.10:
   version "0.16.10"
   resolved "https://registry.yarnpkg.com/katex/-/katex-0.16.10.tgz#6f81b71ac37ff4ec7556861160f53bc5f058b185"
   integrity sha512-ZiqaC04tp2O5utMsl2TEZTXxa6WSC4yo0fv5ML++D3QZv/vx2Mct0mTlRx3O+uUkjfuAgOkzsCmq5MiUEsDDdA==
