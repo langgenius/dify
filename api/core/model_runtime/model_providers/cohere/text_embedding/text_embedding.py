@@ -3,7 +3,6 @@ from typing import Optional
 
 import cohere
 import numpy as np
-from cohere.responses import Tokens
 
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -52,8 +51,8 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
                 text=text
             )
 
-            for j in range(0, tokenize_response.length, context_size):
-                tokens += [tokenize_response.token_strings[j: j + context_size]]
+            for j in range(0, len(tokenize_response), context_size):
+                tokens += [tokenize_response[j: j + context_size]]
                 indices += [i]
 
         batched_embeddings = []
@@ -127,9 +126,9 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
         except Exception as e:
             raise self._transform_invoke_error(e)
 
-        return response.length
+        return len(response)
 
-    def _tokenize(self, model: str, credentials: dict, text: str) -> Tokens:
+    def _tokenize(self, model: str, credentials: dict, text: str) -> list[str]:
         """
         Tokenize text
         :param model: model name
@@ -138,7 +137,7 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
         :return:
         """
         if not text:
-            return Tokens([], [], {})
+            return []
 
         # initialize client
         client = cohere.Client(credentials.get('api_key'))
@@ -148,7 +147,7 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
             model=model
         )
 
-        return response
+        return response.token_strings
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -231,13 +230,21 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
         """
         return {
             InvokeConnectionError: [
-                cohere.CohereConnectionError
+                cohere.errors.service_unavailable_error.ServiceUnavailableError
             ],
-            InvokeServerUnavailableError: [],
-            InvokeRateLimitError: [],
-            InvokeAuthorizationError: [],
+            InvokeServerUnavailableError: [
+                cohere.errors.internal_server_error.InternalServerError
+            ],
+            InvokeRateLimitError: [
+                cohere.errors.too_many_requests_error.TooManyRequestsError
+            ],
+            InvokeAuthorizationError: [
+                cohere.errors.unauthorized_error.UnauthorizedError,
+                cohere.errors.forbidden_error.ForbiddenError
+            ],
             InvokeBadRequestError: [
-                cohere.CohereAPIError,
-                cohere.CohereError,
+                cohere.core.api_error.ApiError,
+                cohere.errors.bad_request_error.BadRequestError,
+                cohere.errors.not_found_error.NotFoundError,
             ]
         }
