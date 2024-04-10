@@ -1,10 +1,10 @@
-![cover-v3](https://github.com/langgenius/dify/assets/13230914/c872e771-6d12-43a5-90cc-465a8febe1f9)
+![cover-v5-3](https://github.com/langgenius/dify/assets/13230914/e542f5da-57e3-4d99-80c1-c7697468d111)
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Self-hosting</a> ·
   <a href="https://docs.dify.ai">Documentation</a> ·
-  <a href="https://cal.com/guchenhe/30min">Commercial Inquiry</a>
+  <a href="https://cal.com/guchenhe/30min">Commercial inquiry</a>
 </p>
 
 <p align="center">
