@@ -55,6 +55,7 @@ class AdvancedChatAppRunner(AppRunner):
         inputs = application_generate_entity.inputs
         query = application_generate_entity.query
         files = application_generate_entity.files
+        history = application_generate_entity.history
 
         # moderation
         if self.handle_input_moderation(
@@ -99,6 +100,7 @@ class AdvancedChatAppRunner(AppRunner):
                 SystemVariable.QUERY: query,
                 SystemVariable.FILES: files,
                 SystemVariable.CONVERSATION: conversation.id,
+                SystemVariable.HISTORY: history
             },
             callbacks=workflow_callbacks
         )

@@ -125,6 +125,7 @@ class AdvancedChatAppGenerateEntity(AppGenerateEntity):
 
     conversation_id: Optional[str] = None
     query: Optional[str] = None
+    history: Optional[list[dict]] = None
 
 
 class WorkflowAppGenerateEntity(AppGenerateEntity):

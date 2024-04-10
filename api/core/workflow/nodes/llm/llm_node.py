@@ -78,7 +78,8 @@ class LLMNode(BaseNode):
                 files=files,
                 context=context,
                 memory=memory,
-                model_config=model_config
+                model_config=model_config,
+                history=variable_pool.get_variable_value(['sys', SystemVariable.HISTORY.value])
             )
 
             process_data = {
@@ -408,7 +409,8 @@ class LLMNode(BaseNode):
                                files: list[FileVar],
                                context: Optional[str],
                                memory: Optional[TokenBufferMemory],
-                               model_config: ModelConfigWithCredentialsEntity) \
+                               model_config: ModelConfigWithCredentialsEntity,
+                               history: Optional[list[dict]] = None) \
             -> tuple[list[PromptMessage], Optional[list[str]]]:
         """
         Fetch prompt messages
@@ -430,7 +432,8 @@ class LLMNode(BaseNode):
             context=context,
             memory_config=node_data.memory,
             memory=memory,
-            model_config=model_config
+            model_config=model_config,
+            history=history
         )
         stop = model_config.stop
 

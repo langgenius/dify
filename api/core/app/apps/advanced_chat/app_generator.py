@@ -54,6 +54,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         query = query.replace('\x00', '')
         inputs = args['inputs']
+        history = args.get('history', None)
 
         extras = {
             "auto_generate_conversation_name": args['auto_generate_name'] if 'auto_generate_name' in args else False
@@ -94,7 +95,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
-            extras=extras
+            extras=extras,
+            history=history
         )
 
         is_first_conversation = False

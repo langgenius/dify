@@ -31,7 +31,8 @@ class AdvancedPromptTransform(PromptTransform):
                    context: Optional[str],
                    memory_config: Optional[MemoryConfig],
                    memory: Optional[TokenBufferMemory],
-                   model_config: ModelConfigWithCredentialsEntity) -> list[PromptMessage]:
+                   model_config: ModelConfigWithCredentialsEntity,
+                   history: Optional[list[dict]] = None) -> list[PromptMessage]:
         prompt_messages = []
 
         model_mode = ModelMode.value_of(model_config.mode)
@@ -55,7 +56,8 @@ class AdvancedPromptTransform(PromptTransform):
                 context=context,
                 memory_config=memory_config,
                 memory=memory,
-                model_config=model_config
+                model_config=model_config,
+                history=history
             )
 
         return prompt_messages
@@ -119,7 +121,8 @@ class AdvancedPromptTransform(PromptTransform):
                                         context: Optional[str],
                                         memory_config: Optional[MemoryConfig],
                                         memory: Optional[TokenBufferMemory],
-                                        model_config: ModelConfigWithCredentialsEntity) -> list[PromptMessage]:
+                                        model_config: ModelConfigWithCredentialsEntity,
+                                        history: Optional[list[dict]] = None) -> list[PromptMessage]:
         """
         Get chat model prompt messages.
         """
@@ -145,6 +148,13 @@ class AdvancedPromptTransform(PromptTransform):
                 prompt_messages.append(SystemPromptMessage(content=prompt))
             elif prompt_item.role == PromptMessageRole.ASSISTANT:
                 prompt_messages.append(AssistantPromptMessage(content=prompt))
+        
+        if history:
+            for message in history:
+                if message['role'] == 'user':
+                    prompt_messages.append(UserPromptMessage(content=message['content']))
+                elif message['role'] == 'assistant':
+                    prompt_messages.append(AssistantPromptMessage(content=message['content']))
 
         if memory and memory_config:
             prompt_messages = self._append_chat_histories(memory, memory_config, prompt_messages, model_config)
