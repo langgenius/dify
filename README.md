@@ -175,11 +175,6 @@ If you'd like to configure a highly-available setup, there are community-contrib
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
-
-
 ## Contributing
 
 For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). 
@@ -208,6 +203,12 @@ Or, schedule a meeting directly with a team member:
 | :----------------------------------------------------------: | :----------------------------------------------------------: |
 | <a href='https://cal.com/guchenhe/15min' target='_blank'><img src='https://i.postimg.cc/fWBqSmjP/Git-Hub-README-Button-3x.png' border='0' alt='Git-Hub-README-Button-3x' height="60" width="214"/></a> | Business enquiries & product feedback |
 | <a href='https://cal.com/pinkbanana' target='_blank'><img src='https://i.postimg.cc/LsRTh87D/Git-Hub-README-Button-2x.png' border='0' alt='Git-Hub-README-Button-2x' height="60" width="225"/></a> | Contributions, issues & feature requests |
+
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
+
 
 ## Security Disclosure
 
