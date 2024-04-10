@@ -3,6 +3,7 @@ from typing import Optional
 
 import cohere
 import numpy as np
+from cohere.core import RequestOptions
 
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -145,7 +146,8 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
         response = client.tokenize(
             text=text,
             model=model,
-            offline=False
+            offline=False,
+            request_options=RequestOptions(max_retries=0)
         )
 
         return response.token_strings
@@ -184,7 +186,8 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
         response = client.embed(
             texts=texts,
             model=model,
-            input_type='search_document' if len(texts) > 1 else 'search_query'
+            input_type='search_document' if len(texts) > 1 else 'search_query',
+            request_options=RequestOptions(max_retries=1)
         )
 
         return response.embeddings, int(response.meta.billed_units.input_tokens)

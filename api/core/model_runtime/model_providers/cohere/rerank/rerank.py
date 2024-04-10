@@ -1,6 +1,7 @@
 from typing import Optional
 
 import cohere
+from cohere.core import RequestOptions
 
 from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from core.model_runtime.errors.invoke import (
@@ -49,7 +50,8 @@ class CohereRerankModel(RerankModel):
             documents=docs,
             model=model,
             top_n=top_n,
-            return_documents=True
+            return_documents=True,
+            request_options=RequestOptions(max_retries=0)
         )
 
         rerank_documents = []

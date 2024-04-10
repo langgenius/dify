@@ -21,6 +21,7 @@ from cohere import (
     ToolCall,
     ToolParameterDefinitionsValue,
 )
+from cohere.core import RequestOptions
 
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
@@ -182,6 +183,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                 prompt=prompt_messages[0].content,
                 model=model,
                 **model_parameters,
+                request_options=RequestOptions(max_retries=0)
             )
 
             return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
@@ -190,6 +192,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                 prompt=prompt_messages[0].content,
                 model=model,
                 **model_parameters,
+                request_options=RequestOptions(max_retries=0)
             )
 
             return self._handle_generate_response(model, credentials, response, prompt_messages)
@@ -339,6 +342,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                 chat_history=chat_histories,
                 model=real_model,
                 **model_parameters,
+                request_options=RequestOptions(max_retries=0)
             )
 
             return self._handle_chat_generate_stream_response(model, credentials, response, prompt_messages)
@@ -348,6 +352,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                 chat_history=chat_histories,
                 model=real_model,
                 **model_parameters,
+                request_options=RequestOptions(max_retries=0)
             )
 
             return self._handle_chat_generate_response(model, credentials, response, prompt_messages)
