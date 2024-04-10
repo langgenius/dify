@@ -96,7 +96,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, hideInfo = false }) => {
               <div className={cn('px-[10px] py-1', hideInfo && '!px-2 !py-0.5')}>
                 <CodeEditor
                   readOnly
-                  title={<div>INPUT</div>}
+                  title={<div>{t('workflow.common.input').toLocaleUpperCase()}</div>}
                   language={CodeLanguage.json}
                   value={nodeInfo.inputs}
                   isJSONStringifyBeauty
@@ -107,7 +107,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, hideInfo = false }) => {
               <div className={cn('px-[10px] py-1', hideInfo && '!px-2 !py-0.5')}>
                 <CodeEditor
                   readOnly
-                  title={<div>PROCESS DATA</div>}
+                  title={<div>{t('workflow.common.processData').toLocaleUpperCase()}</div>}
                   language={CodeLanguage.json}
                   value={nodeInfo.process_data}
                   isJSONStringifyBeauty
@@ -118,7 +118,7 @@ const NodePanel: FC<Props> = ({ nodeInfo, hideInfo = false }) => {
               <div className={cn('px-[10px] py-1', hideInfo && '!px-2 !py-0.5')}>
                 <CodeEditor
                   readOnly
-                  title={<div>OUTPUT</div>}
+                  title={<div>{t('workflow.common.output').toLocaleUpperCase()}</div>}
                   language={CodeLanguage.json}
                   value={nodeInfo.outputs}
                   isJSONStringifyBeauty
