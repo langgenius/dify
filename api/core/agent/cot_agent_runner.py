@@ -1,3 +1,4 @@
+from abc import abstractmethod
 import json
 import re
 from collections.abc import Generator
@@ -12,11 +13,8 @@ from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageTool,
-    SystemPromptMessage,
     ToolPromptMessage,
-    UserPromptMessage,
 )
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool.tool import Tool
 from core.tools.tool_engine import ToolEngine
@@ -26,6 +24,7 @@ from models.model import Message
 class CotAgentRunner(BaseAgentRunner):
     _is_first_iteration = True
     _ignore_observation_providers = ['wenxin']
+    _historic_prompt_messages: list[PromptMessage] = []
 
     def run(self, message: Message,
         query: str,
@@ -365,7 +364,7 @@ class CotAgentRunner(BaseAgentRunner):
                 if 'action' in action and 'action_input' in action:
                     return AgentScratchpadUnit.Action(
                         action_name=action['action'],
-                        action_input=action['action_input']
+                        action_input=action['action_input'],
                     )
             except:
                 return json_str
@@ -506,177 +505,42 @@ class CotAgentRunner(BaseAgentRunner):
                     current_scratchpad.observation = message.content
         
         return agent_scratchpad
-
-    def _check_cot_prompt_messages(self, mode: Literal["completion", "chat"], 
-                                      agent_prompt_message: AgentPromptEntity,
-    ):
-        """
-            check chain of thought prompt messages, a standard prompt message is like:
-                Respond to the human as helpfully and accurately as possible. 
-
-                {{instruction}}
-
-                You have access to the following tools:
-
-                {{tools}}
-
-                Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
-                Valid action values: "Final Answer" or {{tool_names}}
-
-                Provide only ONE action per $JSON_BLOB, as shown:
-
-                ```
-                {
-                "action": $TOOL_NAME,
-                "action_input": $ACTION_INPUT
-                }
-                ```
-        """
-
-        # parse agent prompt message
-        first_prompt = agent_prompt_message.first_prompt
-        next_iteration = agent_prompt_message.next_iteration
-
-        if not isinstance(first_prompt, str) or not isinstance(next_iteration, str):
-            raise ValueError("first_prompt or next_iteration is required in CoT agent mode")
-        
-        # check instruction, tools, and tool_names slots
-        if not first_prompt.find("{{instruction}}") >= 0:
-            raise ValueError("{{instruction}} is required in first_prompt")
-        if not first_prompt.find("{{tools}}") >= 0:
-            raise ValueError("{{tools}} is required in first_prompt")
-        if not first_prompt.find("{{tool_names}}") >= 0:
-            raise ValueError("{{tool_names}} is required in first_prompt")
-        
-        if mode == "completion":
-            if not first_prompt.find("{{query}}") >= 0:
-                raise ValueError("{{query}} is required in first_prompt")
-            if not first_prompt.find("{{agent_scratchpad}}") >= 0:
-                raise ValueError("{{agent_scratchpad}} is required in first_prompt")
-        
-        if mode == "completion":
-            if not next_iteration.find("{{observation}}") >= 0:
-                raise ValueError("{{observation}} is required in next_iteration")
-            
-    def _convert_scratchpad_list_to_str(self, agent_scratchpad: list[AgentScratchpadUnit]) -> str:
-        """
-            convert agent scratchpad list to str
-        """
-        next_iteration = self.app_config.agent.prompt.next_iteration
-
-        result = ''
-        for scratchpad in agent_scratchpad:
-            result += (scratchpad.thought or '') + (scratchpad.action_str or '') + \
-                next_iteration.replace("{{observation}}", scratchpad.observation or 'It seems that no response is available')
-
-        return result
     
-    def _organize_cot_prompt_messages(self, mode: Literal["completion", "chat"],
+    @abstractmethod
+    def _format_instructions(self, instruction: str, tools: list[PromptMessageTool],
+                                prompt_template: AgentPromptEntity
+        ) -> str:
+        pass
+    
+    @abstractmethod
+    def _format_scratchpads(self, scratchpad: list[AgentScratchpadUnit],
+        ) -> str:
+        """
+            format scratchpads
+        """
+        pass
+    
+    @abstractmethod
+    def _organize_historic_prompt_messages(self, mode: Literal["completion", "chat"],
+                                           prompt_messages: list[PromptMessage],
+                                           tools: list[PromptMessageTool],
+                                           agent_prompt_message: AgentPromptEntity,
+                                           instruction: str,
+        ) -> list[PromptMessage]:
+        """
+            organize historic prompt messages
+        """
+        pass
+
+    @abstractmethod
+    def _organize_current_prompt_messages(self, mode: Literal["completion", "chat"],
                                       prompt_messages: list[PromptMessage],
                                       tools: list[PromptMessageTool], 
-                                      agent_scratchpad: list[AgentScratchpadUnit],
                                       agent_prompt_message: AgentPromptEntity,
                                       instruction: str,
                                       input: str,
         ) -> list[PromptMessage]:
         """
-            organize chain of thought prompt messages, a standard prompt message is like:
-                Respond to the human as helpfully and accurately as possible. 
-
-                {{instruction}}
-
-                You have access to the following tools:
-
-                {{tools}}
-
-                Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
-                Valid action values: "Final Answer" or {{tool_names}}
-
-                Provide only ONE action per $JSON_BLOB, as shown:
-
-                ```
-                {{{{
-                "action": $TOOL_NAME,
-                "action_input": $ACTION_INPUT
-                }}}}
-                ```
+            organize current prompt messages
         """
-
-        self._check_cot_prompt_messages(mode, agent_prompt_message)
-
-        # parse agent prompt message
-        first_prompt = agent_prompt_message.first_prompt
-
-        # parse tools
-        tools_str = self._jsonify_tool_prompt_messages(tools)
-
-        # parse tools name
-        tool_names = '"' + '","'.join([tool.name for tool in tools]) + '"'
-
-        # get system message
-        system_message = first_prompt.replace("{{instruction}}", instruction) \
-                                     .replace("{{tools}}", tools_str) \
-                                     .replace("{{tool_names}}", tool_names)
-
-        # organize prompt messages
-        if mode == "chat":
-            # override system message
-            overridden = False
-            prompt_messages = prompt_messages.copy()
-            for prompt_message in prompt_messages:
-                if isinstance(prompt_message, SystemPromptMessage):
-                    prompt_message.content = system_message
-                    overridden = True
-                    break
-            
-            # convert tool prompt messages to user prompt messages
-            for idx, prompt_message in enumerate(prompt_messages):
-                if isinstance(prompt_message, ToolPromptMessage):
-                    prompt_messages[idx] = UserPromptMessage(
-                        content=prompt_message.content
-                    )
-
-            if not overridden:
-                prompt_messages.insert(0, SystemPromptMessage(
-                    content=system_message,
-                ))
-
-            # add assistant message
-            if len(agent_scratchpad) > 0 and not self._is_first_iteration:
-                prompt_messages.append(AssistantPromptMessage(
-                    content=(agent_scratchpad[-1].thought or '') + (agent_scratchpad[-1].action_str or ''),
-                ))
-            
-            # add user message
-            if len(agent_scratchpad) > 0 and not self._is_first_iteration:
-                prompt_messages.append(UserPromptMessage(
-                    content=(agent_scratchpad[-1].observation or 'It seems that no response is available'),
-                ))
-
-            self._is_first_iteration = False
-
-            return prompt_messages
-        elif mode == "completion":
-            # parse agent scratchpad
-            agent_scratchpad_str = self._convert_scratchpad_list_to_str(agent_scratchpad)
-            self._is_first_iteration = False
-            # parse prompt messages
-            return [UserPromptMessage(
-                content=first_prompt.replace("{{instruction}}", instruction)
-                                    .replace("{{tools}}", tools_str)
-                                    .replace("{{tool_names}}", tool_names)
-                                    .replace("{{query}}", input)
-                                    .replace("{{agent_scratchpad}}", agent_scratchpad_str),
-            )]
-        else:
-            raise ValueError(f"mode {mode} is not supported")
-            
-    def _jsonify_tool_prompt_messages(self, tools: list[PromptMessageTool]) -> str:
-        """
-            jsonify tool prompt messages
-        """
-        tools = jsonable_encoder(tools)
-        try:
-            return json.dumps(tools, ensure_ascii=False)
-        except json.JSONDecodeError:
-            return json.dumps(tools)
+        pass
