@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import StatusPanel from './status'
 import MetaData from './meta'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -33,6 +34,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   steps,
   showSteps,
 }) => {
+  const { t } = useTranslation()
   return (
     <div className='bg-white py-2'>
       <div className='px-4 py-2'>
@@ -46,7 +48,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
       <div className='px-4 py-2 flex flex-col gap-2'>
         <CodeEditor
           readOnly
-          title={<div>INPUT</div>}
+          title={<div>{t('workflow.common.input').toLocaleUpperCase()}</div>}
           language={CodeLanguage.json}
           value={inputs}
           isJSONStringifyBeauty
@@ -54,7 +56,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
         {process_data && (
           <CodeEditor
             readOnly
-            title={<div>PROCESS DATA</div>}
+            title={<div>{t('workflow.common.processData').toLocaleUpperCase()}</div>}
             language={CodeLanguage.json}
             value={process_data}
             isJSONStringifyBeauty
@@ -63,7 +65,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
         {(outputs || status === 'running') && (
           <CodeEditor
             readOnly
-            title={<div>OUTPUT</div>}
+            title={<div>{t('workflow.common.output').toLocaleUpperCase()}</div>}
             language={CodeLanguage.json}
             value={outputs}
             isJSONStringifyBeauty

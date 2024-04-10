@@ -46,6 +46,9 @@ const translation = {
       content: '他のノードで変数が使用されています。それでも削除しますか？',
     },
     insertVarTip: 'クイック挿入のために\'/\'キーを押します',
+    processData: '処理データ',
+    input: '入力',
+    output: '出力',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必須です',

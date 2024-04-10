@@ -46,6 +46,9 @@ const translation = {
       content: 'Biến được sử dụng trong các nút khác. Bạn vẫn muốn xóa nó?',
     },
     insertVarTip: 'Nhấn phím \'/\' để chèn nhanh',
+    processData: 'Xử lý dữ liệu',
+    input: 'Nhập',
+    output: 'Đầu ra',
   },
   errorMsg: {
     fieldRequired: '{{field}} là bắt buộc',
