@@ -43,7 +43,10 @@ export const useNodesInteractions = () => {
   const workflowStore = useWorkflowStore()
   const nodesExtraData = useNodesExtraData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { getAfterNodesInSameBranch } = useWorkflow()
+  const {
+    getAfterNodesInSameBranch,
+    getTreeLeafNodes,
+  } = useWorkflow()
   const { getNodesReadOnly } = useNodesReadOnly()
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as { x: number; y: number })
   const connectingNodeRef = useRef<{ nodeId: string; handleType: HandleType } | null>(null)
@@ -313,6 +316,13 @@ export const useNodesInteractions = () => {
       setEdges,
     } = store.getState()
     const nodes = getNodes()
+    const targetNode = nodes.find(node => node.id === target!)
+    if (targetNode && targetNode?.data.type === BlockEnum.VariableAssigner) {
+      const treeNodes = getTreeLeafNodes(target!)
+
+      if (!treeNodes.find(treeNode => treeNode.id === source))
+        return
+    }
     const needDeleteEdges = edges.filter((edge) => {
       if (edge.source === source) {
         if (edge.sourceHandle)
@@ -368,7 +378,7 @@ export const useNodesInteractions = () => {
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft, getNodesReadOnly])
+  }, [store, handleSyncWorkflowDraft, getNodesReadOnly, getTreeLeafNodes])
 
   const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType }) => {
     if (nodeId && handleType) {

@@ -19,15 +19,14 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
-from models.model import Conversation, Message
+from models.model import Message
 
 
 class CotAgentRunner(BaseAgentRunner):
     _is_first_iteration = True
     _ignore_observation_providers = ['wenxin']
 
-    def run(self, conversation: Conversation,
-        message: Message,
+    def run(self, message: Message,
         query: str,
         inputs: dict[str, str],
     ) -> Union[Generator, LLMResult]:
