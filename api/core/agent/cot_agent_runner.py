@@ -18,6 +18,7 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.tool.tool import Tool
 from core.tools.tool_engine import ToolEngine
 from models.model import Conversation, Message
 
@@ -165,30 +166,13 @@ class CotAgentRunner(BaseAgentRunner):
                 ), PublishFrom.APPLICATION_MANAGER)
 
             for chunk in react_chunks:
-                if isinstance(chunk, dict):
-                    scratchpad.agent_response += json.dumps(chunk)
-                    try:
-                        if scratchpad.action:
-                            raise Exception("")
-                        scratchpad.action_str = json.dumps(chunk)
-                        scratchpad.action = AgentScratchpadUnit.Action(
-                            action_name=chunk['action'],
-                            action_input=chunk['action_input']
-                        )
-                    except:
-                        scratchpad.thought += json.dumps(chunk)
-                        yield LLMResultChunk(
-                            model=self.model_config.model,
-                            prompt_messages=prompt_messages,
-                            system_fingerprint='',
-                            delta=LLMResultChunkDelta(
-                                index=0,
-                                message=AssistantPromptMessage(
-                                    content=json.dumps(chunk, ensure_ascii=False) # if ensure_ascii=True, the text in webui maybe garbled text
-                                ),
-                                usage=None
-                            )
-                        )
+                if isinstance(chunk, AgentScratchpadUnit.Action):
+                    action = chunk
+                    # detect action
+                    scratchpad.agent_response += json.dumps(chunk.dict())
+                    scratchpad.thought += json.dumps(chunk.dict())
+                    scratchpad.action_str = json.dumps(chunk.dict())
+                    scratchpad.action = action
                 else:
                     scratchpad.agent_response += chunk
                     scratchpad.thought += chunk
@@ -246,96 +230,6 @@ class CotAgentRunner(BaseAgentRunner):
                 else:
                     function_call_state = True
 
-                    # action is tool call, invoke tool
-                    tool_call_name = scratchpad.action.action_name
-                    tool_call_args = scratchpad.action.action_input
-                    tool_instance = tool_instances.get(tool_call_name)
-                    if not tool_instance:
-                        answer = f"there is not a tool named {tool_call_name}"
-                        self.save_agent_thought(
-                            agent_thought=agent_thought, 
-                            tool_name='',
-                            tool_input='',
-                            tool_invoke_meta=ToolInvokeMeta.error_instance(
-                                f"there is not a tool named {tool_call_name}"
-                            ).to_dict(),
-                            thought=None, 
-                            observation={
-                                tool_call_name: answer
-                            }, 
-                            answer=answer,
-                            messages_ids=[]
-                        )
-                        self.queue_manager.publish(QueueAgentThoughtEvent(
-                            agent_thought_id=agent_thought.id
-                        ), PublishFrom.APPLICATION_MANAGER)
-                    else:
-                        if isinstance(tool_call_args, str):
-                            try:
-                                tool_call_args = json.loads(tool_call_args)
-                            except json.JSONDecodeError:
-                                pass
-
-                        # invoke tool
-                        tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
-                            tool=tool_instance,
-                            tool_parameters=tool_call_args,
-                            user_id=self.user_id,
-                            tenant_id=self.tenant_id,
-                            message=self.message,
-                            invoke_from=self.application_generate_entity.invoke_from,
-                            agent_tool_callback=self.agent_callback
-                        )
-                        # publish files
-                        for message_file, save_as in message_files:
-                            if save_as:
-                                self.variables_pool.set_file(tool_name=tool_call_name, value=message_file.id, name=save_as)
-
-                            # publish message file
-                            self.queue_manager.publish(QueueMessageFileEvent(
-                                message_file_id=message_file.id
-                            ), PublishFrom.APPLICATION_MANAGER)
-                            # add message file ids
-                            message_file_ids.append(message_file.id)
-
-                        # publish files
-                        for message_file, save_as in message_files:
-                            if save_as:
-                                self.variables_pool.set_file(tool_name=tool_call_name,
-                                                                value=message_file.id,
-                                                                name=save_as)
-                            self.queue_manager.publish(QueueMessageFileEvent(
-                                message_file_id=message_file.id
-                            ), PublishFrom.APPLICATION_MANAGER)
-
-                        message_file_ids = [message_file.id for message_file, _ in message_files]
-
-                        observation = tool_invoke_response
-
-                        # save scratchpad
-                        scratchpad.observation = observation
-
-                        # save agent thought
-                        self.save_agent_thought(
-                            agent_thought=agent_thought, 
-                            tool_name=tool_call_name,
-                            tool_input={
-                                tool_call_name: tool_call_args
-                            },
-                            tool_invoke_meta={
-                                tool_call_name: tool_invoke_meta.to_dict()
-                            },
-                            thought=None,
-                            observation={
-                                tool_call_name: observation
-                            }, 
-                            answer=scratchpad.agent_response,
-                            messages_ids=message_file_ids,
-                        )
-                        self.queue_manager.publish(QueueAgentThoughtEvent(
-                            agent_thought_id=agent_thought.id
-                        ), PublishFrom.APPLICATION_MANAGER)
-
                 # update prompt tool message
                 for prompt_tool in prompt_messages_tools:
                     self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
@@ -379,11 +273,76 @@ class CotAgentRunner(BaseAgentRunner):
             system_fingerprint=''
         )), PublishFrom.APPLICATION_MANAGER)
 
-    def _handle_stream_react(self, llm_response: Generator[LLMResultChunk, None, None], usage: dict) \
-        -> Generator[Union[str, dict], None, None]:
-        def parse_json(json_str):
+    def _handle_invoke_action(self, action: AgentScratchpadUnit.Action, 
+                              tool_instances: dict[str, Tool]) -> tuple[str, ToolInvokeMeta]:
+        """
+        handle invoke action
+        :param action: action
+        :param tool_instances: tool instances
+        :return: observation, meta
+        """
+        # action is tool call, invoke tool
+        tool_call_name = action.action_name
+        tool_call_args = action.action_input
+        tool_instance = tool_instances.get(tool_call_name)
+
+        if not tool_instance:
+            answer = f"there is not a tool named {tool_call_name}"
+            return answer, ToolInvokeMeta.error_instance(answer)
+        
+        if isinstance(tool_call_args, str):
             try:
-                return json.loads(json_str.strip())
+                tool_call_args = json.loads(tool_call_args)
+            except json.JSONDecodeError:
+                pass
+
+        # invoke tool
+        tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+            tool=tool_instance,
+            tool_parameters=tool_call_args,
+            user_id=self.user_id,
+            tenant_id=self.tenant_id,
+            message=self.message,
+            invoke_from=self.application_generate_entity.invoke_from,
+            agent_tool_callback=self.agent_callback
+        )
+
+        # publish files
+        for message_file, save_as in message_files:
+            if save_as:
+                self.variables_pool.set_file(tool_name=tool_call_name, value=message_file.id, name=save_as)
+
+            # publish message file
+            self.queue_manager.publish(QueueMessageFileEvent(
+                message_file_id=message_file.id
+            ), PublishFrom.APPLICATION_MANAGER)
+            # add message file ids
+            message_file_ids.append(message_file.id)
+
+        # publish files
+        for message_file, save_as in message_files:
+            if save_as:
+                self.variables_pool.set_file(tool_name=tool_call_name,
+                                                value=message_file.id,
+                                                name=save_as)
+            self.queue_manager.publish(QueueMessageFileEvent(
+                message_file_id=message_file.id
+            ), PublishFrom.APPLICATION_MANAGER)
+
+        message_file_ids = [message_file.id for message_file, _ in message_files]
+
+        return tool_invoke_response, tool_invoke_meta
+
+    def _handle_stream_react(self, llm_response: Generator[LLMResultChunk, None, None], usage: dict) \
+        -> Generator[Union[str, AgentScratchpadUnit.Action], None, None]:
+        def parse_action(json_str):
+            try:
+                action = json.loads(json_str)
+                if 'action' in action and 'action_input' in action:
+                    return AgentScratchpadUnit.Action(
+                        action_name=action['action'],
+                        action_input=action['action_input']
+                    )
             except:
                 return json_str
             
@@ -393,7 +352,7 @@ class CotAgentRunner(BaseAgentRunner):
                 return
             for block in code_blocks:
                 json_text = re.sub(r'^[a-zA-Z]+\n', '', block.strip(), flags=re.MULTILINE)
-                yield parse_json(json_text)
+                yield parse_action(json_text)
             
         code_block_cache = ''
         code_block_delimiter_count = 0
@@ -454,7 +413,7 @@ class CotAgentRunner(BaseAgentRunner):
 
                     if got_json:
                         got_json = False
-                        yield parse_json(json_cache)
+                        yield parse_action(json_cache)
                         json_cache = ''
                         json_quote_count = 0
                         in_json = False
@@ -468,7 +427,16 @@ class CotAgentRunner(BaseAgentRunner):
             yield code_block_cache
 
         if json_cache:
-            yield parse_json(json_cache)
+            yield parse_action(json_cache)
+
+    def _convert_dict_to_action(self, action: dict) -> AgentScratchpadUnit.Action:
+        """
+        convert dict to action
+        """
+        return AgentScratchpadUnit.Action(
+            action_name=action['action'],
+            action_input=action['action_input']
+        )
 
     def _fill_in_inputs_from_external_data_tools(self, instruction: str, inputs: dict) -> str:
         """
