@@ -13,12 +13,10 @@ WORKDIR /app/web
 COPY package.json .
 COPY yarn.lock .
 
-RUN --mount=type=cache,target=/root/.yarn YARN_CACHE_FOLDER=/root/.yarn \
-    yarn install --frozen-lockfile
+RUN yarn install --frozen-lockfile
 
 # if you located in China, you can use taobao registry to speed up
-# RUN --mount=type=cache,target=/root/.yarn YARN_CACHE_FOLDER=/root/.yarn \
-#     yarn install --frozen-lockfile --registry https://registry.npm.taobao.org/
+# RUN yarn install --frozen-lockfile --registry https://registry.npm.taobao.org/
 
 
 
