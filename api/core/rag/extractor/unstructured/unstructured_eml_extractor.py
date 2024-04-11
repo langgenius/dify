@@ -26,7 +26,7 @@ class UnstructuredEmailExtractor(BaseExtractor):
 
     def extract(self) -> list[Document]:
         from unstructured.partition.email import partition_email
-        elements = partition_email(filename=self._file_path, api_url=self._api_url)
+        elements = partition_email(filename=self._file_path)
 
         # noinspection PyBroadException
         try:

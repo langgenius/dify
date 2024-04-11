@@ -120,19 +120,19 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
   const localDocumentId = docId ?? documentId
   const localIndexingTechnique = indexingType ?? indexingTechnique
 
-  // const { data: indexingStatusDetailFromApi, error: indexingStatusErr, mutate: statusMutate } = useSWR({
-  //   action: 'fetchIndexingStatus',
-  //   datasetId: localDatasetId,
-  //   documentId: localDocumentId,
-  // }, apiParams => fetchIndexingStatus(omit(apiParams, 'action')), {
-  //   refreshInterval: 2500,
-  //   revalidateOnFocus: false,
-  // })
-
   const [indexingStatusDetail, setIndexingStatusDetail, getIndexingStatusDetail] = useGetState<any>(null)
   const fetchIndexingStatus = async () => {
-    const status = await doFetchIndexingStatus({ datasetId: localDatasetId, documentId: localDocumentId })
-    setIndexingStatusDetail(status)
+    try {
+      const status = await doFetchIndexingStatus({ datasetId: localDatasetId, documentId: localDocumentId })
+      setIndexingStatusDetail(status)
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      startQueryStatus()
+    }
+    catch (err) {
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      stopQueryStatus()
+      notify({ type: 'error', message: `error: ${err}` })
+    }
   }
 
   const [runId, setRunId, getRunId] = useGetState<any>(null)
@@ -156,7 +156,6 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
 
   useEffect(() => {
     fetchIndexingStatus()
-    startQueryStatus()
     return () => {
       stopQueryStatus()
     }

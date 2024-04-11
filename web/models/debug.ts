@@ -143,7 +143,7 @@ export type DatasetConfigs = {
   }
   top_k: number
   score_threshold_enabled: boolean
-  score_threshold: number
+  score_threshold?: number | null
   datasets: {
     datasets: {
       enabled: boolean

@@ -1,0 +1,58 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "13",
+			"height": "12",
+			"viewBox": "0 0 13 12",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "route-sep"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Icon",
+							"d": "M6.08303 2.5H6.30023C7.82386 2.5 8.58567 2.5 8.87485 2.77364C9.12483 3.01018 9.23561 3.35864 9.16812 3.69611C9.09004 4.08651 8.46809 4.52643 7.22418 5.40627L5.19189 6.84373C3.94799 7.72357 3.32603 8.16349 3.24795 8.55389C3.18046 8.89136 3.29124 9.23982 3.54122 9.47636C3.8304 9.75 4.59221 9.75 6.11584 9.75H6.58303",
+							"stroke": "currentColor",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Icon_2",
+							"d": "M2.83301 4C3.66143 4 4.33301 3.32843 4.33301 2.5C4.33301 1.67157 3.66143 1 2.83301 1C2.00458 1 1.33301 1.67157 1.33301 2.5C1.33301 3.32843 2.00458 4 2.83301 4Z",
+							"fill": "currentColor"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Icon_3",
+							"d": "M9.83301 11C10.6614 11 11.333 10.3284 11.333 9.5C11.333 8.67157 10.6614 8 9.83301 8C9.00458 8 8.33301 8.67157 8.33301 9.5C8.33301 10.3284 9.00458 11 9.83301 11Z",
+							"fill": "currentColor"
+						},
+						"children": []
+					}
+				]
+			}
+		]
+	},
+	"name": "Route"
+}

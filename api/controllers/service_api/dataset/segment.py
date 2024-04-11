@@ -4,7 +4,11 @@ from werkzeug.exceptions import NotFound
 
 from controllers.service_api import api
 from controllers.service_api.app.error import ProviderNotInitializeError
-from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_resource_check
+from controllers.service_api.wraps import (
+    DatasetApiResource,
+    cloud_edition_billing_knowledge_limit_check,
+    cloud_edition_billing_resource_check,
+)
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -18,6 +22,7 @@ class SegmentApi(DatasetApiResource):
     """Resource for segments."""
 
     @cloud_edition_billing_resource_check('vector_space', 'dataset')
+    @cloud_edition_billing_knowledge_limit_check('add_segment', 'dataset')
     def post(self, tenant_id, dataset_id, document_id):
         """Create single segment."""
         # check dataset

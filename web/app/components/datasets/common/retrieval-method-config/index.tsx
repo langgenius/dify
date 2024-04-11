@@ -10,6 +10,7 @@ import { PatternRecognition, Semantic } from '@/app/components/base/icons/src/ve
 import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
 import { useProviderContext } from '@/context/provider-context'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type Props = {
   value: RetrievalConfig
@@ -22,7 +23,7 @@ const RetrievalMethodConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { supportRetrievalMethods } = useProviderContext()
-  const { data: rerankDefaultModel } = useDefaultModel(3)
+  const { data: rerankDefaultModel } = useDefaultModel(ModelTypeEnum.rerank)
   const value = (() => {
     if (!passValue.reranking_model.reranking_model_name) {
       return {

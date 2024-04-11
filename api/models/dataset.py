@@ -123,6 +123,7 @@ class Dataset(db.Model):
         normalized_dataset_id = dataset_id.replace("-", "_")
         return f'Vector_index_{normalized_dataset_id}_Node'
 
+
 class DatasetProcessRule(db.Model):
     __tablename__ = 'dataset_process_rules'
     __table_args__ = (
@@ -443,7 +444,8 @@ class DatasetKeywordTable(db.Model):
     id = db.Column(UUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
     dataset_id = db.Column(UUID, nullable=False, unique=True)
     keyword_table = db.Column(db.Text, nullable=False)
-    data_source_type = db.Column(db.String(255), nullable=False, server_default=db.text("'database'::character varying"))
+    data_source_type = db.Column(db.String(255), nullable=False,
+                                 server_default=db.text("'database'::character varying"))
 
     @property
     def keyword_table_dict(self):
@@ -457,6 +459,7 @@ class DatasetKeywordTable(db.Model):
                         if isinstance(node_idxs, list):
                             dct[keyword] = set(node_idxs)
                 return dct
+
         # get dataset
         dataset = Dataset.query.filter_by(
             id=self.dataset_id
@@ -481,7 +484,7 @@ class Embedding(db.Model):
     __tablename__ = 'embeddings'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='embedding_pkey'),
-        db.UniqueConstraint('model_name', 'hash', name='embedding_hash_idx')
+        db.UniqueConstraint('model_name', 'hash', 'provider_name', name='embedding_hash_idx')
     )
 
     id = db.Column(UUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
@@ -490,6 +493,8 @@ class Embedding(db.Model):
     hash = db.Column(db.String(64), nullable=False)
     embedding = db.Column(db.LargeBinary, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    provider_name = db.Column(db.String(40), nullable=False,
+                              server_default=db.text("''::character varying"))
 
     def set_embedding(self, embedding_data: list[float]):
         self.embedding = pickle.dumps(embedding_data, protocol=pickle.HIGHEST_PROTOCOL)

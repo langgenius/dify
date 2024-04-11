@@ -12,7 +12,11 @@ from controllers.console import api
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import InvalidActionError, NoFileUploadedError, TooManyFilesError
 from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_knowledge_limit_check,
+    cloud_edition_billing_resource_check,
+)
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -207,6 +211,7 @@ class DatasetDocumentSegmentAddApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check('vector_space')
+    @cloud_edition_billing_knowledge_limit_check('add_segment')
     def post(self, dataset_id, document_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -357,6 +362,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check('vector_space')
+    @cloud_edition_billing_knowledge_limit_check('add_segment')
     def post(self, dataset_id, document_id):
         # check dataset
         dataset_id = str(dataset_id)

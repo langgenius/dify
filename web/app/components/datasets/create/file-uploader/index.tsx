@@ -49,38 +49,20 @@ const FileUploader = ({
   const { data: supportFileTypesResponse } = useSWR({ url: '/files/support-type' }, fetchSupportFileTypes)
   const supportTypes = supportFileTypesResponse?.allowed_extensions || []
   const supportTypesShowNames = (() => {
-    let res = [...supportTypes]
-    if (res.includes('markdown') && res.includes('md'))
-      res = res.filter(item => item !== 'md')
+    const extensionMap: { [key: string]: string } = {
+      md: 'markdown',
+      pptx: 'pptx',
+      htm: 'html',
+      xlsx: 'xlsx',
+      docx: 'docx',
+    }
 
-    if (res.includes('pptx') && res.includes('ppt'))
-      res = res.filter(item => item !== 'ppt')
-
-    if (res.includes('html') && res.includes('htm'))
-      res = res.filter(item => item !== 'htm')
-
-    res = res.map((item) => {
-      if (item === 'md')
-        return 'markdown'
-
-      if (item === 'pptx')
-        return 'ppt'
-
-      if (item === 'htm')
-        return 'html'
-
-      if (item === 'xlsx')
-        return 'xls'
-
-      if (item === 'docx')
-        return 'doc'
-
-      return item
-    })
-    res = res.map(item => item.toLowerCase())
-    res = res.filter((item, index, self) => self.indexOf(item) === index)
-
-    return res.map(item => item.toUpperCase()).join(locale !== LanguagesSupported[1] ? ', ' : '、 ')
+    return [...supportTypes]
+      .map(item => extensionMap[item] || item) // map to standardized extension
+      .map(item => item.toLowerCase()) // convert to lower case
+      .filter((item, index, self) => self.indexOf(item) === index) // remove duplicates
+      .map(item => item.toUpperCase()) // convert to upper case
+      .join(locale !== LanguagesSupported[1] ? ', ' : '、 ')
   })()
   const ACCEPTS = supportTypes.map((ext: string) => `.${ext}`)
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {

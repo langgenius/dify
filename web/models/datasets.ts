@@ -1,6 +1,5 @@
-import type { AppMode } from './app'
 import type { DataSourceNotionPage } from './common'
-import type { RetrievalConfig } from '@/types/app'
+import type { AppMode, RetrievalConfig } from '@/types/app'
 
 export enum DataSourceType {
   FILE = 'upload_file',

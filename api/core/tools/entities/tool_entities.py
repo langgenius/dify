@@ -11,6 +11,7 @@ class ToolProviderType(Enum):
         Enum class for tool provider
     """
     BUILT_IN = "built-in"
+    DATASET_RETRIEVAL = "dataset-retrieval"
     APP_BASED = "app-based"
     API_BASED = "api-based"
 
@@ -161,6 +162,8 @@ class ToolIdentity(BaseModel):
     author: str = Field(..., description="The author of the tool")
     name: str = Field(..., description="The name of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
+    provider: str = Field(..., description="The provider of the tool")
+    icon: Optional[str] = None
 
 class ToolCredentialsOption(BaseModel):
     value: str = Field(..., description="The value of the option")
@@ -327,3 +330,32 @@ class ModelToolProviderConfiguration(BaseModel):
     provider: str = Field(..., description="The provider of the model tool")
     models: list[ModelToolConfiguration] = Field(..., description="The models of the model tool")
     label: I18nObject = Field(..., description="The label of the model tool")
+
+class ToolInvokeMeta(BaseModel):
+    """
+    Tool invoke meta
+    """
+    time_cost: float = Field(..., description="The time cost of the tool invoke")
+    error: Optional[str] = None
+    tool_config: Optional[dict] = None
+
+    @classmethod
+    def empty(cls) -> 'ToolInvokeMeta':
+        """
+        Get an empty instance of ToolInvokeMeta
+        """
+        return cls(time_cost=0.0, error=None, tool_config={})
+    
+    @classmethod
+    def error_instance(cls, error: str) -> 'ToolInvokeMeta':
+        """
+        Get an instance of ToolInvokeMeta with error
+        """
+        return cls(time_cost=0.0, error=error, tool_config={})
+    
+    def to_dict(self) -> dict:
+        return {
+            'time_cost': self.time_cost,
+            'error': self.error,
+            'tool_config': self.tool_config,
+        }
