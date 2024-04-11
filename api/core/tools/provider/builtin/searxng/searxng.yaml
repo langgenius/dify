@@ -10,7 +10,7 @@ identity:
   icon: icon.svg
 credentials_for_provider:
   searxng_base_url:
-    type: text-input
+    type: secret-input
     required: true
     label:
       en_US: SearXNG base URL
