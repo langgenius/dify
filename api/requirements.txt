@@ -34,7 +34,7 @@ redis[hiredis]~=5.0.3
 openpyxl==3.1.2
 chardet~=5.1.0
 python-docx~=1.1.0
-pypdfium2==4.16.0
+pypdfium2~=4.17.0
 resend~=0.7.0
 pyjwt~=2.8.0
 anthropic~=0.23.1
