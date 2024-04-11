@@ -113,6 +113,11 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleNodeConnect,
     handleNodeConnectStart,
     handleNodeConnectEnd,
+    handleNodeCut,
+    handleNodeDeleteSelected,
+    handleNodeCloneSelected,
+    handleNodeCopySelected,
+    handleNodePaste,
   } = useNodesInteractions()
   const {
     handleEdgeEnter,
@@ -128,7 +133,12 @@ const Workflow: FC<WorkflowProps> = memo(({
     },
   })
 
-  useKeyPress('Backspace', handleEdgeDelete)
+  useKeyPress('delete', handleEdgeDelete)
+  useKeyPress('delete', handleNodeDeleteSelected)
+  useKeyPress('ctrl.c', handleNodeCopySelected)
+  useKeyPress('ctrl.x', handleNodeCut)
+  useKeyPress('ctrl.v', handleNodePaste)
+  useKeyPress('ctrl.alt.d', handleNodeCloneSelected)
 
   return (
     <div

@@ -63,6 +63,8 @@ type Shape = {
   setBuildInTools: (tools: ToolWithProvider[]) => void
   customTools: ToolWithProvider[]
   setCustomTools: (tools: ToolWithProvider[]) => void
+  clipboardElements: Node[]
+  setClipboardElements: (clipboardElements: Node[]) => void
 }
 
 export const createWorkflowStore = () => {
@@ -107,6 +109,8 @@ export const createWorkflowStore = () => {
     setBuildInTools: buildInTools => set(() => ({ buildInTools })),
     customTools: [],
     setCustomTools: customTools => set(() => ({ customTools })),
+    clipboardElements: [],
+    setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
   }))
 }
 

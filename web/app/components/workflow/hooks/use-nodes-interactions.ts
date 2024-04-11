@@ -715,6 +715,112 @@ export const useNodesInteractions = () => {
     handleSyncWorkflowDraft()
   }, [store, handleSyncWorkflowDraft, getNodesReadOnly, t])
 
+  const handleNodeCopySelected = useCallback((): undefined | Node[] => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      setClipboardElements,
+    } = workflowStore.getState()
+
+    const {
+      getNodes,
+    } = store.getState()
+
+    const nodes = getNodes()
+    const nodesToCopy = nodes.filter(node => node.selected)
+
+    setClipboardElements(nodesToCopy)
+
+    return nodesToCopy
+  }, [getNodesReadOnly, store, workflowStore])
+
+  const handleNodePaste = useCallback((): undefined | Node[] => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      clipboardElements,
+    } = workflowStore.getState()
+
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+
+    const nodesToPaste: Node[] = []
+    const nodes = getNodes()
+
+    for (const nodeToPaste of clipboardElements) {
+      const nodeType = nodeToPaste.data.type
+      const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
+
+      const newNode = generateNewNode({
+        data: {
+          ...NODES_INITIAL_DATA[nodeType],
+          ...nodeToPaste.data,
+          _connectedSourceHandleIds: [],
+          _connectedTargetHandleIds: [],
+          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
+          selected: true,
+        },
+        position: {
+          x: nodeToPaste.position.x + 10,
+          y: nodeToPaste.position.y + 10,
+        },
+      })
+      nodesToPaste.push(newNode)
+    }
+
+    setNodes([...nodes.map((n: Node) => ({ ...n, selected: false, data: { ...n.data, selected: false } })), ...nodesToPaste])
+
+    handleSyncWorkflowDraft()
+
+    return nodesToPaste
+  }, [getNodesReadOnly, store, t, workflowStore])
+
+  const handleNodeCloneSelected = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    handleNodeCopySelected()
+    handleNodePaste()
+
+    handleSyncWorkflowDraft()
+  }, [handleNodeCopySelected, handleNodePaste, handleSyncWorkflowDraft])
+
+  const handleNodeCut = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    const nodesToCut = handleNodeCopySelected()
+    if (!nodesToCut)
+      return
+
+    for (const node of nodesToCut) {
+      handleNodeDelete(node.id)
+    }
+  }, [store, handleNodeCopySelected])
+
+  const handleNodeDeleteSelected = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      getNodes,
+    } = store.getState()
+
+    const nodes = getNodes()
+    const nodesToDelete = nodes.filter(node => node.selected)
+
+    if (!nodesToDelete)
+      return
+
+    for (const node of nodesToDelete) {
+      handleNodeDelete(node.id)
+    }
+  }, [store])
+
   return {
     handleNodeDragStart,
     handleNodeDrag,
@@ -729,5 +835,10 @@ export const useNodesInteractions = () => {
     handleNodeDelete,
     handleNodeChange,
     handleNodeAdd,
+    handleNodeCut,
+    handleNodeCopySelected,
+    handleNodeCloneSelected,
+    handleNodePaste,
+    handleNodeDeleteSelected,
   }
 }
