@@ -31,7 +31,7 @@ class DatasetMultiRetrieverToolInput(BaseModel):
 
 class DatasetMultiRetrieverTool(BaseTool):
     """Tool for querying multi dataset."""
-    name: str = "dataset-"
+    name: str = "dataset_"
     args_schema: type[BaseModel] = DatasetMultiRetrieverToolInput
     description: str = "dataset multi retriever and rerank. "
     tenant_id: str
