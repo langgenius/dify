@@ -113,10 +113,10 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleNodeConnect,
     handleNodeConnectStart,
     handleNodeConnectEnd,
-    handleNodeCut,
-    handleNodeDeleteSelected,
     handleNodeCloneSelected,
     handleNodeCopySelected,
+    handleNodeCut,
+    handleNodeDeleteSelected,
     handleNodePaste,
   } = useNodesInteractions()
   const {
