@@ -56,7 +56,9 @@ const TagInput: FC<TagInputProps> = ({
       }
 
       onChange([...items, valueTrimed])
-      setValue('')
+      setTimeout(() => {
+        setValue('')
+      })
     }
   }
 
