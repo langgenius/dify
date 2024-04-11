@@ -209,9 +209,9 @@ class AgentChatAppRunner(AppRunner):
         # start agent runner
         if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
             # check LLM mode
-            if model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT:
+            if model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
                 runner_cls = CotChatAgentRunner
-            elif model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.COMPLETION:
+            elif model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.COMPLETION.value:
                 runner_cls = CotCompletionAgentRunner
             else:
                 raise ValueError(f"Invalid LLM mode: {model_schema.model_properties.get(ModelPropertyKey.MODE)}")
