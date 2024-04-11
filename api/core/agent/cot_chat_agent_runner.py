@@ -58,10 +58,10 @@ class CotChatAgentRunner(CotAgentRunner):
 
         if assistant_messages:
             messages = [
-                system_message, 
-                *historic_messages, 
-                query_messages, 
-                *assistant_messages, 
+                system_message,
+                *historic_messages,
+                query_messages,
+                *assistant_messages,
                 UserPromptMessage(content='continue')
             ]
         else:

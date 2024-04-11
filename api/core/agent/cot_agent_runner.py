@@ -176,7 +176,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 } if scratchpad.action else {},
                 tool_invoke_meta={},
                 thought=scratchpad.thought,
-                observation={},
+                observation='',
                 answer=scratchpad.agent_response,
                 messages_ids=[],
                 llm_usage=usage_dict['usage']
@@ -194,7 +194,12 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 if scratchpad.action.action_name.lower() == "final answer":
                     # action is final answer, return final answer directly
                     try:
-                        final_answer = json.dumps(scratchpad.action.action_input)
+                        if isinstance(scratchpad.action.action_input, dict):
+                            final_answer = json.dumps(scratchpad.action.action_input)
+                        elif isinstance(scratchpad.action.action_input, str):
+                            final_answer = scratchpad.action.action_input
+                        else:
+                            final_answer = f'{scratchpad.action.action_input}'
                     except json.JSONDecodeError:
                         final_answer = f'{scratchpad.action.action_input}'
                 else:
@@ -202,7 +207,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     # action is tool call, invoke tool
                     tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
                         action=scratchpad.action, 
-                        tool_instances=tool_instances
+                        tool_instances=tool_instances,
+                        message_file_ids=message_file_ids
                     )
                     scratchpad.observation = tool_invoke_response
                     scratchpad.agent_response = tool_invoke_response
@@ -267,7 +273,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         )), PublishFrom.APPLICATION_MANAGER)
 
     def _handle_invoke_action(self, action: AgentScratchpadUnit.Action, 
-                              tool_instances: dict[str, Tool]) -> tuple[str, ToolInvokeMeta]:
+                              tool_instances: dict[str, Tool],
+                              message_file_ids: list[str]) -> tuple[str, ToolInvokeMeta]:
         """
         handle invoke action
         :param action: action
@@ -311,20 +318,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             ), PublishFrom.APPLICATION_MANAGER)
             # add message file ids
             message_file_ids.append(message_file.id)
-
-        # publish files
-        for message_file, save_as in message_files:
-            if save_as:
-                self.variables_pool.set_file(
-                    tool_name=tool_call_name,
-                    value=message_file.id,
-                    name=save_as
-                )
-            self.queue_manager.publish(QueueMessageFileEvent(
-                message_file_id=message_file.id
-            ), PublishFrom.APPLICATION_MANAGER)
-
-        message_file_ids = [message_file.id for message_file, _ in message_files]
 
         return tool_invoke_response, tool_invoke_meta
 

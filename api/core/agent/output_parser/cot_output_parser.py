@@ -14,8 +14,8 @@ class CotAgentOutputParser:
         def parse_action(json_str):
             try:
                 action = json.loads(json_str)
-                action_name = ''
-                action_input = {}
+                action_name = None
+                action_input = None
 
                 for key, value in action.items():
                     if 'input' in key.lower():
@@ -23,7 +23,7 @@ class CotAgentOutputParser:
                     else:
                         action_name = value
 
-                if 'action' in action and 'action_input' in action:
+                if action_name is not None and action_input is not None:
                     return AgentScratchpadUnit.Action(
                         action_name=action_name,
                         action_input=action_input,
@@ -49,6 +49,14 @@ class CotAgentOutputParser:
         in_json = False
         got_json = False
 
+        action_cache = ''
+        action_str = 'action:'
+        action_idx = 0
+
+        thought_cache = ''
+        thought_str = 'thought:'
+        thought_idx = 0
+
         for response in llm_response:
             response = response.delta.message.content
             if not isinstance(response, str):
@@ -59,6 +67,8 @@ class CotAgentOutputParser:
             while index < len(response):
                 steps = 1
                 delta = response[index:index+steps]
+                last_character = response[index-1] if index > 0 else ''
+
                 if delta == '`':
                     code_block_cache += delta
                     code_block_delimiter_count += 1
@@ -70,6 +80,61 @@ class CotAgentOutputParser:
                     else:
                         code_block_cache += delta
                     code_block_delimiter_count = 0
+
+                if not in_code_block and not in_json:
+                    if delta.lower() == action_str[action_idx] and action_idx == 0:
+                        if last_character not in ['\n', ' ', '']:
+                            index += steps
+                            yield delta
+                            continue
+
+                        action_cache += delta
+                        action_idx += 1
+                        if action_idx == len(action_str):
+                            action_cache = ''
+                            action_idx = 0
+                        index += steps
+                        continue
+                    elif delta.lower() == action_str[action_idx] and action_idx > 0:
+                        action_cache += delta
+                        action_idx += 1
+                        if action_idx == len(action_str):
+                            action_cache = ''
+                            action_idx = 0
+                        index += steps
+                        continue
+                    else:
+                        if action_cache:
+                            yield action_cache
+                            action_cache = ''
+                            action_idx = 0
+                    
+                    if delta.lower() == thought_str[thought_idx] and thought_idx == 0:
+                        if last_character not in ['\n', ' ', '']:
+                            index += steps
+                            yield delta
+                            continue
+
+                        thought_cache += delta
+                        thought_idx += 1
+                        if thought_idx == len(thought_str):
+                            thought_cache = ''
+                            thought_idx = 0
+                        index += steps
+                        continue
+                    elif delta.lower() == thought_str[thought_idx] and thought_idx > 0:
+                        thought_cache += delta
+                        thought_idx += 1
+                        if thought_idx == len(thought_str):
+                            thought_cache = ''
+                            thought_idx = 0
+                        index += steps
+                        continue
+                    else:
+                        if thought_cache:
+                            yield thought_cache
+                            thought_cache = ''
+                            thought_idx = 0
 
                 if code_block_delimiter_count == 3:
                     if in_code_block:
