@@ -1,11 +1,11 @@
 import json
-import re
 from abc import abstractmethod
 from collections.abc import Generator
-from typing import Literal, Union
+from typing import Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
-from core.agent.entities import AgentPromptEntity, AgentScratchpadUnit
+from core.agent.cot_output_parser import CotAgentOutputParser
+from core.agent.entities import AgentScratchpadUnit
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -14,6 +14,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessage,
     PromptMessageTool,
     ToolPromptMessage,
+    UserPromptMessage,
 )
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool.tool import Tool
@@ -24,7 +25,8 @@ from models.model import Message
 class CotAgentRunner(BaseAgentRunner):
     _is_first_iteration = True
     _ignore_observation_providers = ['wenxin']
-    _historic_prompt_messages: list[PromptMessage] = []
+    _historic_prompt_messages: list[PromptMessage] = None
+    _agent_scratchpad: list[AgentScratchpadUnit] = None
 
     def run(self, message: Message,
         query: str,
@@ -35,9 +37,7 @@ class CotAgentRunner(BaseAgentRunner):
         """
         app_generate_entity = self.application_generate_entity
         self._repack_app_generate_entity(app_generate_entity)
-
-        agent_scratchpad: list[AgentScratchpadUnit] = []
-        self._init_agent_scratchpad(agent_scratchpad, self.history_prompt_messages)
+        self._init_react_state()
 
         # check model mode
         if 'Observation' not in app_generate_entity.model_config.stop:
@@ -54,10 +54,10 @@ class CotAgentRunner(BaseAgentRunner):
         iteration_step = 1
         max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
 
-        prompt_messages = self.history_prompt_messages
-
         # convert tools into ModelRuntime Tool format
         prompt_messages_tools: list[PromptMessageTool] = []
+        prompt_messages = self._organize_prompt_messages()
+
         tool_instances = {}
         for tool in app_config.agent.tools if app_config.agent else []:
             try:
@@ -119,20 +119,9 @@ class CotAgentRunner(BaseAgentRunner):
                     agent_thought_id=agent_thought.id
                 ), PublishFrom.APPLICATION_MANAGER)
 
-            # update prompt messages
-            prompt_messages = self._organize_cot_prompt_messages(
-                mode=app_generate_entity.model_config.mode,
-                prompt_messages=prompt_messages,
-                tools=prompt_messages_tools,
-                agent_scratchpad=agent_scratchpad,
-                agent_prompt_message=app_config.agent.prompt,
-                instruction=instruction,
-                input=query
-            )
-
             # recalc llm max tokens
+            prompt_messages = self._organize_prompt_messages()
             self.recalc_llm_max_tokens(self.model_config, prompt_messages)
-
             # invoke model
             chunks: Generator[LLMResultChunk, None, None] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
@@ -149,7 +138,7 @@ class CotAgentRunner(BaseAgentRunner):
                 raise ValueError("failed to invoke llm")
             
             usage_dict = {}
-            react_chunks = self._handle_stream_react(chunks, usage_dict)
+            react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict)
             scratchpad = AgentScratchpadUnit(
                 agent_response='',
                 thought='',
@@ -188,7 +177,7 @@ class CotAgentRunner(BaseAgentRunner):
                     )
 
             scratchpad.thought = scratchpad.thought.strip() or 'I am thinking about how to help you'
-            agent_scratchpad.append(scratchpad)
+            self._agent_scratchpad.append(scratchpad)
             
             # get llm usage
             if 'usage' in usage_dict:
@@ -356,102 +345,6 @@ class CotAgentRunner(BaseAgentRunner):
 
         return tool_invoke_response, tool_invoke_meta
 
-    def _handle_stream_react(self, llm_response: Generator[LLMResultChunk, None, None], usage: dict) \
-        -> Generator[Union[str, AgentScratchpadUnit.Action], None, None]:
-        def parse_action(json_str):
-            try:
-                action = json.loads(json_str)
-                if 'action' in action and 'action_input' in action:
-                    return AgentScratchpadUnit.Action(
-                        action_name=action['action'],
-                        action_input=action['action_input'],
-                    )
-            except:
-                return json_str
-            
-        def extra_json_from_code_block(code_block) -> Generator[Union[dict, str], None, None]:
-            code_blocks = re.findall(r'```(.*?)```', code_block, re.DOTALL)
-            if not code_blocks:
-                return
-            for block in code_blocks:
-                json_text = re.sub(r'^[a-zA-Z]+\n', '', block.strip(), flags=re.MULTILINE)
-                yield parse_action(json_text)
-            
-        code_block_cache = ''
-        code_block_delimiter_count = 0
-        in_code_block = False
-        json_cache = ''
-        json_quote_count = 0
-        in_json = False
-        got_json = False
-    
-        for response in llm_response:
-            response = response.delta.message.content
-            if not isinstance(response, str):
-                continue
-
-            # stream
-            index = 0
-            while index < len(response):
-                steps = 1
-                delta = response[index:index+steps]
-                if delta == '`':
-                    code_block_cache += delta
-                    code_block_delimiter_count += 1
-                else:
-                    if not in_code_block:
-                        if code_block_delimiter_count > 0:
-                            yield code_block_cache
-                        code_block_cache = ''
-                    else:
-                        code_block_cache += delta
-                    code_block_delimiter_count = 0
-
-                if code_block_delimiter_count == 3:
-                    if in_code_block:
-                        yield from extra_json_from_code_block(code_block_cache)
-                        code_block_cache = ''
-                        
-                    in_code_block = not in_code_block
-                    code_block_delimiter_count = 0
-
-                if not in_code_block:
-                    # handle single json
-                    if delta == '{':
-                        json_quote_count += 1
-                        in_json = True
-                        json_cache += delta
-                    elif delta == '}':
-                        json_cache += delta
-                        if json_quote_count > 0:
-                            json_quote_count -= 1
-                            if json_quote_count == 0:
-                                in_json = False
-                                got_json = True
-                                index += steps
-                                continue
-                    else:
-                        if in_json:
-                            json_cache += delta
-
-                    if got_json:
-                        got_json = False
-                        yield parse_action(json_cache)
-                        json_cache = ''
-                        json_quote_count = 0
-                        in_json = False
-                    
-                if not in_code_block and not in_json:
-                    yield delta.replace('`', '')
-
-                index += steps
-
-        if code_block_cache:
-            yield code_block_cache
-
-        if json_cache:
-            yield parse_action(json_cache)
-
     def _convert_dict_to_action(self, action: dict) -> AgentScratchpadUnit.Action:
         """
         convert dict to action
@@ -473,15 +366,34 @@ class CotAgentRunner(BaseAgentRunner):
 
         return instruction
     
-    def _init_agent_scratchpad(self, 
-                               agent_scratchpad: list[AgentScratchpadUnit],
-                               messages: list[PromptMessage]
-                               ) -> list[AgentScratchpadUnit]:
+    def _init_react_state(self) -> None:
         """
         init agent scratchpad
         """
+        self._agent_scratchpad = []
+        self._historic_prompt_messages = self._organize_historic_prompt_messages()
+    
+    @abstractmethod
+    def _organize_prompt_messages(self) -> list[PromptMessage]:
+        """
+            organize prompt messages
+        """
+
+    @abstractmethod
+    def _format_assistant_message(self, agent_scratchpad: list[AgentScratchpadUnit]) -> str:
+        """
+            format assistant message
+        """
+
+    def _organize_historic_prompt_messages(self) -> list[PromptMessage]:
+        """
+            organize historic prompt messages
+        """
+        result: list[PromptMessage] = []
+        scratchpad: list[AgentScratchpadUnit] = []
         current_scratchpad: AgentScratchpadUnit = None
-        for message in messages:
+
+        for message in self.history_prompt_messages:
             if isinstance(message, AssistantPromptMessage):
                 current_scratchpad = AgentScratchpadUnit(
                     agent_response=message.content,
@@ -498,49 +410,16 @@ class CotAgentRunner(BaseAgentRunner):
                         )
                     except:
                         pass
-                    
-                agent_scratchpad.append(current_scratchpad)
+                
+                scratchpad.append(current_scratchpad)
             elif isinstance(message, ToolPromptMessage):
                 if current_scratchpad:
                     current_scratchpad.observation = message.content
+            elif isinstance(message, UserPromptMessage):
+                result.append(AssistantPromptMessage(
+                    content=self._format_assistant_message(scratchpad)
+                ))
+                result.append(message)
+                scratchpad = []
         
-        return agent_scratchpad
-    
-    @abstractmethod
-    def _format_instructions(self, instruction: str, tools: list[PromptMessageTool],
-                                prompt_template: AgentPromptEntity
-        ) -> str:
-        pass
-    
-    @abstractmethod
-    def _format_scratchpads(self, scratchpad: list[AgentScratchpadUnit],
-        ) -> str:
-        """
-            format scratchpads
-        """
-        pass
-    
-    @abstractmethod
-    def _organize_historic_prompt_messages(self, mode: Literal["completion", "chat"],
-                                           prompt_messages: list[PromptMessage],
-                                           tools: list[PromptMessageTool],
-                                           agent_prompt_message: AgentPromptEntity,
-                                           instruction: str,
-        ) -> list[PromptMessage]:
-        """
-            organize historic prompt messages
-        """
-        pass
-
-    @abstractmethod
-    def _organize_current_prompt_messages(self, mode: Literal["completion", "chat"],
-                                      prompt_messages: list[PromptMessage],
-                                      tools: list[PromptMessageTool], 
-                                      agent_prompt_message: AgentPromptEntity,
-                                      instruction: str,
-                                      input: str,
-        ) -> list[PromptMessage]:
-        """
-            organize current prompt messages
-        """
-        pass
+        return result
