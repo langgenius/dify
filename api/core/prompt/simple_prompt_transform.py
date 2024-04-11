@@ -232,8 +232,8 @@ class SimplePromptTransform(PromptTransform):
                     )
                 ),
                 max_token_limit=rest_tokens,
-                ai_prefix=prompt_rules['human_prefix'] if 'human_prefix' in prompt_rules else 'Human',
-                human_prefix=prompt_rules['assistant_prefix'] if 'assistant_prefix' in prompt_rules else 'Assistant'
+                human_prefix=prompt_rules['human_prefix'] if 'human_prefix' in prompt_rules else 'Human',
+                ai_prefix=prompt_rules['assistant_prefix'] if 'assistant_prefix' in prompt_rules else 'Assistant'
             )
 
             # get prompt

@@ -13,14 +13,14 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { CheckModal } from '@/hooks/use-pay'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
-import { DotsGrid, SearchLg } from '@/app/components/base/icons/src/vender/line/general'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import { DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
 import {
   // AiText,
   ChatBot,
   CuteRobot,
 } from '@/app/components/base/icons/src/vender/line/communication'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
+import SearchInput from '@/app/components/base/search-input'
 
 const getKey = (
   pageIndex: number,
@@ -94,10 +94,6 @@ const Apps = () => {
     handleSearch()
   }
 
-  const handleClear = () => {
-    handleKeywordsChange('')
-  }
-
   return (
     <>
       <div className='sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
@@ -106,32 +102,7 @@ const Apps = () => {
           onChange={setActiveTab}
           options={options}
         />
-        <div className="flex items-center px-2 w-[200px] h-8 rounded-lg bg-gray-200">
-          <div className="pointer-events-none shrink-0 flex items-center mr-1.5 justify-center w-4 h-4">
-            <SearchLg className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
-          </div>
-          <input
-            type="text"
-            name="query"
-            className="grow block h-[18px] bg-gray-200 rounded-md border-0 text-gray-600 text-[13px] placeholder:text-gray-500 appearance-none outline-none"
-            placeholder={t('common.operation.search')!}
-            value={keywords}
-            onChange={(e) => {
-              handleKeywordsChange(e.target.value)
-            }}
-            autoComplete="off"
-          />
-          {
-            keywords && (
-              <div
-                className='shrink-0 flex items-center justify-center w-4 h-4 cursor-pointer'
-                onClick={handleClear}
-              >
-                <XCircle className='w-3.5 h-3.5 text-gray-400' />
-              </div>
-            )
-          }
-        </div>
+        <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
       </div>
       <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
         {isCurrentWorkspaceManager

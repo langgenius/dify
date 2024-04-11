@@ -15,6 +15,8 @@ from .auth import activate, data_source_oauth, login, oauth
 from .billing import billing
 # Import datasets controllers
 from .datasets import data_source, datasets, datasets_document, datasets_segments, file, hit_testing
+# Import tag controllers
+from .tag import tags
 # Import explore controllers
 from .explore import (audio, completion, conversation, installed_app, message, parameter, recommended_app,
                       saved_message, workflow)

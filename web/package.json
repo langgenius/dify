@@ -44,7 +44,7 @@
     "immer": "^9.0.19",
     "js-audio-recorder": "^1.0.7",
     "js-cookie": "^3.0.1",
-    "katex": "^0.16.7",
+    "katex": "^0.16.10",
     "lamejs": "^1.2.1",
     "lexical": "^0.12.2",
     "lodash-es": "^4.17.21",

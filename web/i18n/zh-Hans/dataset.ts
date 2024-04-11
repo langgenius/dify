@@ -42,6 +42,15 @@ const translation = {
     change: '更改',
     changeRetrievalMethod: '更改检索方法',
   },
+  docsFailedNotice: '文档无法被索引',
+  retry: '重试',
+  tag: {
+    placeholder: '全部标签',
+    addNew: '创建新标签',
+    noTag: '没有标签',
+    noTagYet: '还没有标签',
+    addTag: '添加标签',
+  },
 }
 
 export default translation
