@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.2-fix1-fix1
+    image: langgenius/dify-api:0.6.2
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -150,7 +150,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.2-fix1
+    image: langgenius/dify-api:0.6.2
     restart: always
     environment:
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
@@ -232,7 +232,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.6.2-fix1
+    image: langgenius/dify-web:0.6.2
     restart: always
     environment:
       EDITION: SELF_HOSTED
