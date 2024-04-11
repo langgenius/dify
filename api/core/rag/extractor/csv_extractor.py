@@ -34,6 +34,7 @@ class CSVExtractor(BaseExtractor):
 
     def extract(self) -> list[Document]:
         """Load data into document objects."""
+        docs = []
         try:
             with open(self._file_path, newline="", encoding=self._encoding) as csvfile:
                 docs = self._read_from_file(csvfile)

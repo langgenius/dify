@@ -1,6 +1,7 @@
 from typing import Optional
 
 import cohere
+from cohere.core import RequestOptions
 
 from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from core.model_runtime.errors.invoke import (
@@ -44,19 +45,21 @@ class CohereRerankModel(RerankModel):
 
         # initialize client
         client = cohere.Client(credentials.get('api_key'))
-        results = client.rerank(
+        response = client.rerank(
             query=query,
             documents=docs,
             model=model,
-            top_n=top_n
+            top_n=top_n,
+            return_documents=True,
+            request_options=RequestOptions(max_retries=0)
         )
 
         rerank_documents = []
-        for idx, result in enumerate(results):
+        for idx, result in enumerate(response.results):
             # format document
             rerank_document = RerankDocument(
                 index=result.index,
-                text=result.document['text'],
+                text=result.document.text,
                 score=result.relevance_score,
             )
 
@@ -108,13 +111,21 @@ class CohereRerankModel(RerankModel):
         """
         return {
             InvokeConnectionError: [
-                cohere.CohereConnectionError,
+                cohere.errors.service_unavailable_error.ServiceUnavailableError
             ],
-            InvokeServerUnavailableError: [],
-            InvokeRateLimitError: [],
-            InvokeAuthorizationError: [],
+            InvokeServerUnavailableError: [
+                cohere.errors.internal_server_error.InternalServerError
+            ],
+            InvokeRateLimitError: [
+                cohere.errors.too_many_requests_error.TooManyRequestsError
+            ],
+            InvokeAuthorizationError: [
+                cohere.errors.unauthorized_error.UnauthorizedError,
+                cohere.errors.forbidden_error.ForbiddenError
+            ],
             InvokeBadRequestError: [
-                cohere.CohereAPIError,
-                cohere.CohereError,
+                cohere.core.api_error.ApiError,
+                cohere.errors.bad_request_error.BadRequestError,
+                cohere.errors.not_found_error.NotFoundError,
             ]
         }

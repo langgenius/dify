@@ -58,7 +58,7 @@ class ExcelExtractor(BaseExtractor):
     def _extract4xlsx(self) -> list[Document]:
         """Load from file path using Pandas."""
         data = []
-        # 使用 Pandas 读取 Excel 文件的每个工作表
+        # Read each worksheet of an Excel file using Pandas
         xls = pd.ExcelFile(self._file_path)
         for sheet_name in xls.sheet_names:
             df = pd.read_excel(xls, sheet_name=sheet_name)
@@ -76,13 +76,13 @@ class ExcelExtractor(BaseExtractor):
     @staticmethod
     def is_blank_row(row):
         """
-        判断指定行是否为空白行。
-        :param row: 行对象。
-        :return: 如果行是空白的，则返回True，否则返回False。
+
+        Determine whether the specified line is a blank line.
+        :param row: row object。
+        :return: Returns True if the row is blank, False otherwise.
         """
-        # 遍历单元格，如果发现非空单元格，则返回False
+        # Iterates through the cells and returns False if a non-empty cell is found
         for cell in row:
             if cell.value is not None and cell.value != '':
                 return False
-        # 如果所有单元格都是空的，则返回True
         return True

@@ -1,13 +1,14 @@
-model: command
+model: command-r
 label:
-  zh_Hans: command
-  en_US: command
+  en_US: command-r
 model_type: llm
 features:
+  - multi-tool-call
   - agent-thought
+  - stream-tool-call
 model_properties:
-  mode: completion
-  context_size: 4096
+  mode: chat
+  context_size: 128000
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -38,7 +39,7 @@ parameter_rules:
     default: 1024
     max: 4096
 pricing:
-  input: '1.0'
-  output: '2.0'
+  input: '0.5'
+  output: '1.5'
   unit: '0.000001'
   currency: USD
