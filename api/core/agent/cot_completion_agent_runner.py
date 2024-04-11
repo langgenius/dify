@@ -1,68 +1,68 @@
 import json
-from typing import Literal
 
 from core.agent.cot_agent_runner import CotAgentRunner
-from core.agent.entities import AgentPromptEntity, AgentScratchpadUnit
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
+from core.model_runtime.utils.encoders import jsonable_encoder
 
 
 class CotCompletionAgentRunner(CotAgentRunner):
-    def _format_instructions(self, instruction: str, tools: list[PromptMessageTool],
-                                prompt_template: AgentPromptEntity
-        ) -> str:
+    def _organize_instruction_prompt(self) -> str:
         """
-        format instructions
+        Organize instruction prompt
         """
-        result = prompt_template.first_prompt
+        prompt_entity = self.app_config.agent.prompt
+        first_prompt = prompt_entity.first_prompt
 
-        # format tools
-        result = result.replace('{{tools}}', json.dumps(tools))
+        system_prompt = first_prompt.replace("{{instruction}}", self._instruction) \
+            .replace("{{tools}}", json.dumps(jsonable_encoder(self._prompt_messages_tools))) \
+            .replace("{{tool_names}}", ', '.join([tool.name for tool in self._prompt_messages_tools]))
+        
+        return system_prompt
 
-        result = result.replace('{{tool_names}}', ', '.join([tool.name for tool in tools]))
-
-        # format instruction
-        result = result.replace('{{instruction}}', instruction)
-
-        return result
-
-    def _format_scratchpads(self, scratchpad: list[AgentScratchpadUnit],
-        ) -> str:
+    def _organize_historic_prompt(self) -> str:
         """
-            format scratchpads
+        Organize historic prompt
         """
-        result = ""
+        historic_prompt_messages = self._historic_prompt_messages
+        historic_prompt = ""
 
-        for unit in scratchpad:
+        for message in historic_prompt_messages:
+            if isinstance(message, UserPromptMessage):
+                historic_prompt += f"Query: {message.content}\n\n"
+            elif isinstance(message, AssistantPromptMessage):
+                historic_prompt += message.content + "\n\n"
+
+        return historic_prompt
+
+    def _organize_prompt_messages(self) -> list[PromptMessage]:
+        """
+        Organize prompt messages
+        """
+        # organize system prompt
+        system_prompt = self._organize_instruction_prompt()
+
+        # organize historic prompt messages
+        historic_prompt = self._organize_historic_prompt()
+
+        # organize current assistant messages
+        agent_scratchpad = self._agent_scratchpad
+        assistant_prompt = ''
+        for unit in agent_scratchpad:
             if unit.is_final():
-                result += f"Final Answer: {unit.agent_response}"
+                assistant_prompt += f"Final Answer: {unit.agent_response}"
             else:
-                result += f"Thought: {unit.thought}\n\n"
+                assistant_prompt += f"Thought: {unit.thought}\n\n"
                 if unit.action_str:
-                    result += f"Action: {unit.action_str}\n\n"
+                    assistant_prompt += f"Action: {unit.action_str}\n\n"
                 if unit.observation:
-                    result += f"Observation: {unit.observation}\n\n"
+                    assistant_prompt += f"Observation: {unit.observation}\n\n"
 
-        return result
-    
-    def _organize_historic_prompt_messages(self, mode: Literal["completion", "chat"],
-                                           prompt_messages: list[PromptMessage],
-                                           tools: list[PromptMessageTool],
-                                           agent_prompt_message: AgentPromptEntity,
-                                           instruction: str,
-        ) -> list[PromptMessage]:
-        """
-            organize historic prompt messages
-        """
-        result = []
+        # query messages
+        query_prompt = f"Question: {self._query}"
 
+        # join all messages
+        prompt = system_prompt \
+            .replace("{{agent_scratchpad}}", historic_prompt + assistant_prompt) \
+            .replace("{{query}}", query_prompt)
 
-    def _organize_current_prompt_messages(self, mode: Literal["completion", "chat"],
-                                      prompt_messages: list[PromptMessage],
-                                      tools: list[PromptMessageTool], 
-                                      agent_prompt_message: AgentPromptEntity,
-                                      instruction: str,
-                                      input: str,
-        ) -> list[PromptMessage]:
-        """
-            organize current prompt messages
-        """
+        return [UserPromptMessage(content=prompt)]

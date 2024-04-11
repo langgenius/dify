@@ -414,10 +414,18 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 if current_scratchpad:
                     current_scratchpad.observation = message.content
             elif isinstance(message, UserPromptMessage):
-                result.append(AssistantPromptMessage(
-                    content=self._format_assistant_message(scratchpad)
-                ))
                 result.append(message)
+
+                if scratchpad:
+                    result.append(AssistantPromptMessage(
+                        content=self._format_assistant_message(scratchpad)
+                    ))
+
                 scratchpad = []
+
+        if scratchpad:
+            result.append(AssistantPromptMessage(
+                content=self._format_assistant_message(scratchpad)
+            ))
         
         return result

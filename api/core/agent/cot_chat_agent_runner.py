@@ -28,9 +28,6 @@ class CotChatAgentRunner(CotAgentRunner):
         """
         Organize 
         """
-        prompt_entity = self.app_config.agent.prompt
-        next_iteration = prompt_entity.next_iteration
-
         # organize system prompt
         system_message = self._organize_system_prompt()
 
