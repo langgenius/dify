@@ -7,6 +7,7 @@ from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
     UserPromptMessage,
 )
+from core.model_runtime.utils.encoders import jsonable_encoder
 
 
 class CotChatAgentRunner(CotAgentRunner):
@@ -17,9 +18,11 @@ class CotChatAgentRunner(CotAgentRunner):
         prompt_entity = self.app_config.agent.prompt
         first_prompt = prompt_entity.first_prompt
 
-        return first_prompt.replace("{{instruction}}", self._instruction) \
-            .replace("{{tools}}", json.dumps(self._prompt_messages_tools)) \
+        system_prompt = first_prompt.replace("{{instruction}}", self._instruction) \
+            .replace("{{tools}}", json.dumps(jsonable_encoder(self._prompt_messages_tools))) \
             .replace("{{tool_names}}", ', '.join([tool.name for tool in self._prompt_messages_tools]))
+
+        return SystemPromptMessage(content=system_prompt)
 
     def _organize_prompt_messages(self) -> list[PromptMessage]:
         """
@@ -56,4 +59,4 @@ class CotChatAgentRunner(CotAgentRunner):
         query_messages = UserPromptMessage(content=self._query)
 
         # join all messages
-        return [system_message, *historic_messages, *assistant_messages, query_messages, next_iteration]
+        return [system_message, *historic_messages, *assistant_messages, query_messages]

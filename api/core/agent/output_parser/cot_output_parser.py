@@ -8,7 +8,8 @@ from core.model_runtime.entities.llm_entities import LLMResultChunk
 
 
 class CotAgentOutputParser:
-    def handle_react_stream_output(self, llm_response: Generator[LLMResultChunk, None, None], usage: dict) -> \
+    @classmethod
+    def handle_react_stream_output(cls, llm_response: Generator[LLMResultChunk, None, None]) -> \
         Generator[Union[str, AgentScratchpadUnit.Action], None, None]:
         def parse_action(json_str):
             try:

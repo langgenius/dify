@@ -57,8 +57,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
 
         # convert tools into ModelRuntime Tool format
-        prompt_messages = self._organize_prompt_messages()
         tool_instances, self._prompt_messages_tools = self._init_prompt_tools()
+
+        prompt_messages = self._organize_prompt_messages()
         
         function_call_state = True
         llm_usage = {
@@ -120,7 +121,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 raise ValueError("failed to invoke llm")
             
             usage_dict = {}
-            react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict)
+            react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks)
             scratchpad = AgentScratchpadUnit(
                 agent_response='',
                 thought='',

@@ -240,6 +240,7 @@ class AgentChatAppRunner(AppRunner):
         invoke_result = runner.run(
             message=message,
             query=query,
+            inputs=inputs,
         )
 
         # handle invoke result
