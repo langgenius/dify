@@ -1,17 +1,8 @@
-import boto3
-import time
 import json
+import time
 from typing import Optional
 
-from core.model_runtime.errors.invoke import (
-    InvokeAuthorizationError,
-    InvokeBadRequestError,
-    InvokeConnectionError,
-    InvokeError,
-    InvokeRateLimitError,
-    InvokeServerUnavailableError,
-)
-
+import boto3
 from botocore.config import Config
 from botocore.exceptions import (
     ClientError,
@@ -23,7 +14,16 @@ from botocore.exceptions import (
 
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+
 
 class BedrockTextEmbeddingModel(TextEmbeddingModel):
 
