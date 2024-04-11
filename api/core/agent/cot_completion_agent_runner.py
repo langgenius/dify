@@ -28,7 +28,7 @@ class CotCompletionAgentRunner(CotAgentRunner):
 
         for message in historic_prompt_messages:
             if isinstance(message, UserPromptMessage):
-                historic_prompt += f"Query: {message.content}\n\n"
+                historic_prompt += f"Question: {message.content}\n\n"
             elif isinstance(message, AssistantPromptMessage):
                 historic_prompt += message.content + "\n\n"
 
@@ -62,7 +62,8 @@ class CotCompletionAgentRunner(CotAgentRunner):
 
         # join all messages
         prompt = system_prompt \
-            .replace("{{agent_scratchpad}}", historic_prompt + assistant_prompt) \
+            .replace("{{historic_messages}}", historic_prompt) \
+            .replace("{{agent_scratchpad}}", assistant_prompt) \
             .replace("{{query}}", query_prompt)
 
         return [UserPromptMessage(content=prompt)]

@@ -20,7 +20,7 @@ class CotAgentOutputParser:
                         action_input=action['action_input'],
                     )
             except:
-                return json_str
+                return json_str or ''
             
         def extra_json_from_code_block(code_block) -> Generator[Union[dict, str], None, None]:
             code_blocks = re.findall(r'```(.*?)```', code_block, re.DOTALL)

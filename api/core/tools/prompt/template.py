@@ -38,6 +38,7 @@ Action:
 ```
 
 Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation:.
+{{historic_messages}}
 Question: {{query}}
 {{agent_scratchpad}}
 Thought:"""

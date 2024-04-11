@@ -18,7 +18,8 @@ class CotChatAgentRunner(CotAgentRunner):
         prompt_entity = self.app_config.agent.prompt
         first_prompt = prompt_entity.first_prompt
 
-        system_prompt = first_prompt.replace("{{instruction}}", self._instruction) \
+        system_prompt = first_prompt \
+            .replace("{{instruction}}", self._instruction) \
             .replace("{{tools}}", json.dumps(jsonable_encoder(self._prompt_messages_tools))) \
             .replace("{{tool_names}}", ', '.join([tool.name for tool in self._prompt_messages_tools]))
 
@@ -55,5 +56,10 @@ class CotChatAgentRunner(CotAgentRunner):
         # query messages
         query_messages = UserPromptMessage(content=self._query)
 
+        if assistant_messages:
+            messages = [system_message, *historic_messages, query_messages, *assistant_messages, query_messages]
+        else:
+            messages = [system_message, *historic_messages, query_messages]
+
         # join all messages
-        return [system_message, *historic_messages, *assistant_messages, query_messages]
+        return messages
