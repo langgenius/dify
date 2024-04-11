@@ -48,6 +48,9 @@ class Jieba(BaseKeyword):
                 text = texts[i]
                 if keywords_list:
                     keywords = keywords_list[i]
+                    if not keywords:
+                        keywords = keyword_table_handler.extract_keywords(text.page_content,
+                                                                          self._config.max_keywords_per_chunk)
                 else:
                     keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
                 self._update_segment_keywords(self.dataset.id, text.metadata['doc_id'], list(keywords))
