@@ -21,15 +21,44 @@ parameters:
       zh_Hans: 搜索查询语句。
     llm_description: Key words for searching
     form: llm
-  - name: limit
+  - name: search_type
+    type: select
+    required: true
+    label:
+      en_US: search type
+      zh_Hans: 搜索类型
+      pt_BR: search type
+    human_description:
+      en_US: search type for page, news or image.
+      zh_Hans: 选择搜索的类型：网页，新闻，图片。
+      pt_BR: search type for page, news or image.
+    default: Page
+    options:
+      - value: Page
+        label:
+          en_US: Page
+          zh_Hans: 网页
+          pt_BR: Page
+      - value: News
+        label:
+          en_US: News
+          zh_Hans: 新闻
+          pt_BR: News
+      - value: Image
+        label:
+          en_US: Image
+          zh_Hans: 图片
+          pt_BR: Image
+    form: form
+  - name: num_results
     type: number
     required: true
     label:
-      en_US: Number of query result.
-      zh_Hans: 返回查询结果的数量。
+      en_US: Number of query results
+      zh_Hans: 返回查询数量
     human_description:
-      en_US: The number of query result.
-      zh_Hans: 返回结果数量。
+      en_US: The number of query results.
+      zh_Hans: 返回查询结果的数量。
     form: form
     default: 5
     min: 1
@@ -42,9 +71,9 @@ parameters:
       zh_Hans: 结果类型
       pt_BR: result type
     human_description:
-      en_US: return a list of links or texts
-      zh_Hans: 返回一个连接列表还是纯文本内容
-      pt_BR: return a list of links or texts
+      en_US: return a list of links or texts.
+      zh_Hans: 返回一个连接列表还是纯文本内容。
+      pt_BR: return a list of links or texts.
     default: text
     options:
       - value: link
