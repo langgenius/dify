@@ -12,7 +12,6 @@ from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageContentType,
-    PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
     ToolPromptMessage,
@@ -25,8 +24,8 @@ from models.model import Message
 logger = logging.getLogger(__name__)
 
 class FunctionCallAgentRunner(BaseAgentRunner):
-    def run(self, message: Message,
-                query: str,
+    def run(self, 
+            message: Message, query: str, **kwargs: Any
     ) -> Generator[LLMResultChunk, None, None]:
         """
         Run FunctionCall agent application
@@ -41,26 +40,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         prompt_messages = self._organize_user_query(query, prompt_messages)
 
         # convert tools into ModelRuntime Tool format
-        prompt_messages_tools: list[PromptMessageTool] = []
-        tool_instances = {}
-        for tool in app_config.agent.tools if app_config.agent else []:
-            try:
-                prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
-            except Exception:
-                # api tool may be deleted
-                continue
-            # save tool entity
-            tool_instances[tool.tool_name] = tool_entity
-            # save prompt tool
-            prompt_messages_tools.append(prompt_tool)
-
-        # convert dataset tools into ModelRuntime Tool format
-        for dataset_tool in self.dataset_tools:
-            prompt_tool = self._convert_dataset_retriever_tool_to_prompt_message_tool(dataset_tool)
-            # save prompt tool
-            prompt_messages_tools.append(prompt_tool)
-            # save tool entity
-            tool_instances[dataset_tool.identity.name] = dataset_tool
+        tool_instances, prompt_messages_tools = self._init_prompt_tools()
 
         iteration_step = 1
         max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
