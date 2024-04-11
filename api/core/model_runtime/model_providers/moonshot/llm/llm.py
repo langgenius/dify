@@ -132,15 +132,13 @@ class MoonshotLargeLanguageModel(OAIAPICompatLargeLanguageModel):
                         "id": function_call.id,
                         "type": function_call.type,
                         "function": {
-                            "name": f"functions.{function_call.function.name}",
+                            "name": function_call.function.name,
                             "arguments": function_call.function.arguments
                         }
                     })
         elif isinstance(message, ToolPromptMessage):
             message = cast(ToolPromptMessage, message)
             message_dict = {"role": "tool", "content": message.content, "tool_call_id": message.tool_call_id}
-            if not message.name.startswith("functions."):
-                message.name = f"functions.{message.name}"
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
             message_dict = {"role": "system", "content": message.content}
@@ -238,11 +236,6 @@ class MoonshotLargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 if new_tool_call.type:
                     tool_call.type = new_tool_call.type
                 if new_tool_call.function.name:
-                    # remove the functions. prefix
-                    if new_tool_call.function.name.startswith('functions.'):
-                        parts = new_tool_call.function.name.split('functions.')
-                        if len(parts) > 1:
-                            new_tool_call.function.name = parts[1]
                     tool_call.function.name = new_tool_call.function.name
                 if new_tool_call.function.arguments:
                     tool_call.function.arguments += new_tool_call.function.arguments
