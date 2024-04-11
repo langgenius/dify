@@ -64,6 +64,22 @@ const translation = {
       not_annotated: 'Nicht annotiert',
     },
   },
+  workflowTitle: 'Workflow-Protokolle',
+  workflowSubtitle: 'Das Protokoll hat den Vorgang von Automate aufgezeichnet.',
+  runDetail: {
+    title: 'Konversationsprotokoll',
+    workflowTitle: 'Protokolldetail',
+  },
+  promptLog: 'Prompt-Protokoll',
+  agentLog: 'Agentenprotokoll',
+  viewLog: 'Protokoll anzeigen',
+  agentLogDetail: {
+    agentMode: 'Agentenmodus',
+    toolUsed: 'Verwendetes Werkzeug',
+    iterations: 'Iterationen',
+    iteration: 'Iteration',
+    finalProcessing: 'Endverarbeitung',
+  },
 }
 
 export default translation
