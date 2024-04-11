@@ -146,10 +146,11 @@ class SerpAPI:
                 toret = "No good search result found"
         return toret
 
+
 class GoogleSearchTool(BuiltinTool):
-    def _invoke(self, 
+    def _invoke(self,
                 user_id: str,
-               tool_parameters: dict[str, Any], 
+               tool_parameters: dict[str, Any],
         ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
@@ -161,4 +162,3 @@ class GoogleSearchTool(BuiltinTool):
         if result_type == 'text':
             return self.create_text_message(text=result)
         return self.create_link_message(link=result)
-    

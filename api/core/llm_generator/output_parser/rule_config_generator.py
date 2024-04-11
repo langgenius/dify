@@ -30,4 +30,3 @@ class RuleConfigGeneratorOutputParser(BaseOutputParser):
             raise OutputParserException(
                 f"Parsing text\n{text}\n of rule config generator raised following error:\n{e}"
             )
-

@@ -8,6 +8,8 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 logger = logging.getLogger(__name__)
+
+
 class ArxivAPIWrapper(BaseModel):
     """Wrapper around ArxivAPI.
 
@@ -91,6 +93,7 @@ class ArxivAPIWrapper(BaseModel):
 class ArxivSearchInput(BaseModel):
     query: str = Field(..., description="Search query.")
     
+
 class ArxivSearchTool(BuiltinTool):
     """
     A tool for searching articles on Arxiv.

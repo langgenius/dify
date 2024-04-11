@@ -10,10 +10,11 @@ from core.tools.tool.tool import ToolParameter
 
 class UserTool(BaseModel):
     author: str
-    name: str # identifier
-    label: I18nObject # label
+    name: str  # identifier
+    label: I18nObject  # label
     description: I18nObject
     parameters: Optional[list[ToolParameter]]
+
 
 class UserToolProvider(BaseModel):
     class ProviderType(Enum):
@@ -24,10 +25,10 @@ class UserToolProvider(BaseModel):
 
     id: str
     author: str
-    name: str # identifier
+    name: str  # identifier
     description: I18nObject
     icon: str
-    label: I18nObject # label
+    label: I18nObject  # label
     type: ProviderType
     masked_credentials: dict = None
     original_credentials: dict = None
@@ -49,6 +50,7 @@ class UserToolProvider(BaseModel):
             'allow_delete': self.allow_delete,
             'tools': self.tools
         }
+
 
 class UserToolProviderCredentials(BaseModel):
     credentials: dict[str, ToolProviderCredentials]

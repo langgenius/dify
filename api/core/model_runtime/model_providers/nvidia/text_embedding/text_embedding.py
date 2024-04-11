@@ -50,7 +50,7 @@ class NvidiaTextEmbeddingModel(TextEmbeddingModel):
 
         data = {
             'model': model,
-            'input': texts[0], 
+            'input': texts[0],
             'input_type': 'query'
         }
 

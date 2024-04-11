@@ -92,10 +92,10 @@ class HttpRequestNode(BaseNode):
             extension = guess_extension(mimetype) or '.bin'
 
             tool_file = ToolFileManager.create_file_by_raw(
-                user_id=self.user_id, 
-                tenant_id=self.tenant_id, 
-                conversation_id=None, 
-                file_binary=file_binary, 
+                user_id=self.user_id,
+                tenant_id=self.tenant_id,
+                conversation_id=None,
+                file_binary=file_binary,
                 mimetype=mimetype,
             )
 

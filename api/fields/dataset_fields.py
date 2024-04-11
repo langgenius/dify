@@ -58,5 +58,3 @@ dataset_query_detail_fields = {
     "created_by": fields.String,
     "created_at": TimestampField
 }
-
-

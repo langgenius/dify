@@ -14,7 +14,7 @@ class StackExchangeProvider(BuiltinToolProviderController):
                 user_id='',
                 tool_parameters={
                     "intitle": "Test",
-                    "sort": "relevance",  
+                    "sort": "relevance",
                     "order": "desc",
                     "site": "stackoverflow",
                     "accepted": True,

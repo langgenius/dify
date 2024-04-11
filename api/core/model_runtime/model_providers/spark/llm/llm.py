@@ -114,7 +114,7 @@ class SparkLargeLanguageModel(LargeLanguageModel):
         )
 
         thread = threading.Thread(target=client.run, args=(
-            [{ 'role': prompt_message.role.value, 'content': prompt_message.content } for prompt_message in prompt_messages],
+            [{'role': prompt_message.role.value, 'content': prompt_message.content} for prompt_message in prompt_messages],
             user,
             model_parameters,
             stream

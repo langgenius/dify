@@ -34,6 +34,7 @@ class FileTransferMethod(enum.Enum):
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
 
+
 class FileBelongsTo(enum.Enum):
     USER = 'user'
     ASSISTANT = 'assistant'

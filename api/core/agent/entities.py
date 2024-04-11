@@ -54,9 +54,10 @@ class AgentScratchpadUnit(BaseModel):
         Check if the scratchpad unit is final.
         """
         return self.action is None or (
-            'final' in self.action.action_name.lower() and 
+            'final' in self.action.action_name.lower() and
             'answer' in self.action.action_name.lower()
         )
+
 
 class AgentEntity(BaseModel):
     """

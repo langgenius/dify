@@ -221,6 +221,7 @@ if you are not sure about the structure.
 
         if isinstance(response, Generator):
             first_chunk = next(response)
+
             def new_generator():
                 yield first_chunk
                 yield from response
@@ -240,7 +241,7 @@ if you are not sure about the structure.
             
         return response
 
-    def _code_block_mode_stream_processor(self, model: str, prompt_messages: list[PromptMessage], 
+    def _code_block_mode_stream_processor(self, model: str, prompt_messages: list[PromptMessage],
                                           input_generator: Generator[LLMResultChunk, None, None]
                                         ) -> Generator[LLMResultChunk, None, None]:
         """
@@ -297,7 +298,7 @@ if you are not sure about the structure.
                     )
                 )
 
-    def _code_block_mode_stream_processor_with_backtick(self, model: str, prompt_messages: list, 
+    def _code_block_mode_stream_processor_with_backtick(self, model: str, prompt_messages: list,
                                         input_generator:  Generator[LLMResultChunk, None, None]) \
                                     ->  Generator[LLMResultChunk, None, None]:
         """

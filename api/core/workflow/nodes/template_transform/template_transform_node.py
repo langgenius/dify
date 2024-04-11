@@ -10,6 +10,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = int(os.environ.get('TEMPLATE_TRANSFORM_MAX_LENGTH', '80000'))
 
+
 class TemplateTransformNode(BaseNode):
     _node_data_cls = TemplateTransformNodeData
     _node_type = NodeType.TEMPLATE_TRANSFORM

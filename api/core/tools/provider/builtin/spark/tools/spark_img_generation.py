@@ -47,6 +47,7 @@ def parse_url(requset_url):
     u = Url(host, path, schema)
     return u
 
+
 def assemble_ws_auth_url(requset_url, method="GET", api_key="", api_secret=""):
     u = parse_url(requset_url)
     host = u.host

@@ -1,7 +1,7 @@
 """init
 
 Revision ID: 64b051264f32
-Revises: 
+Revises:
 Create Date: 2023-05-13 14:26:59.085018
 
 """

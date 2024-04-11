@@ -32,8 +32,8 @@ class WorkflowDailyRunsStatistic(Resource):
 
         sql_query = '''
         SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, count(id) AS runs
-            FROM workflow_runs 
-            WHERE app_id = :app_id 
+            FROM workflow_runs
+            WHERE app_id = :app_id
                 AND triggered_from = :triggered_from
         '''
         arg_dict = {'tz': account.timezone, 'app_id': app_model.id, 'triggered_from': WorkflowRunTriggeredFrom.APP_RUN.value}
@@ -77,6 +77,7 @@ class WorkflowDailyRunsStatistic(Resource):
             'data': response_data
         })
 
+
 class WorkflowDailyTerminalsStatistic(Resource):
     @setup_required
     @login_required
@@ -92,8 +93,8 @@ class WorkflowDailyTerminalsStatistic(Resource):
 
         sql_query = '''
                 SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, count(distinct workflow_runs.created_by) AS terminal_count
-                    FROM workflow_runs 
-                    WHERE app_id = :app_id 
+                    FROM workflow_runs
+                    WHERE app_id = :app_id
                         AND triggered_from = :triggered_from
                 '''
         arg_dict = {'tz': account.timezone, 'app_id': app_model.id, 'triggered_from': WorkflowRunTriggeredFrom.APP_RUN.value}
@@ -126,7 +127,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
         response_data = []
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)            
+            rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({
                     'date': str(i.date),
@@ -136,6 +137,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
         return jsonify({
             'data': response_data
         })
+
 
 class WorkflowDailyTokenCostStatistic(Resource):
     @setup_required
@@ -151,11 +153,11 @@ class WorkflowDailyTokenCostStatistic(Resource):
         args = parser.parse_args()
 
         sql_query = '''
-                SELECT 
-                    date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
+                SELECT
+                    date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
                     SUM(workflow_runs.total_tokens) as token_count
-                FROM workflow_runs 
-                WHERE app_id = :app_id 
+                FROM workflow_runs
+                WHERE app_id = :app_id
                     AND triggered_from = :triggered_from
                 '''
         arg_dict = {'tz': account.timezone, 'app_id': app_model.id, 'triggered_from': WorkflowRunTriggeredFrom.APP_RUN.value}
@@ -199,6 +201,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
             'data': response_data
         })
 
+
 class WorkflowAverageAppInteractionStatistic(Resource):
     @setup_required
     @login_required
@@ -213,12 +216,12 @@ class WorkflowAverageAppInteractionStatistic(Resource):
         args = parser.parse_args()
 
         sql_query = """
-            SELECT 
+            SELECT
                 AVG(sub.interactions) as interactions,
                 sub.date
             FROM
-                (SELECT 
-                    date(DATE_TRUNC('day', c.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
+                (SELECT
+                    date(DATE_TRUNC('day', c.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
                     c.created_by,
                     COUNT(c.id) AS interactions
                 FROM workflow_runs c
@@ -271,6 +274,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
         return jsonify({
             'data': response_data
         })
+
 
 api.add_resource(WorkflowDailyRunsStatistic, '/apps/<uuid:app_id>/workflow/statistics/daily-conversations')
 api.add_resource(WorkflowDailyTerminalsStatistic, '/apps/<uuid:app_id>/workflow/statistics/daily-terminals')

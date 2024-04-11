@@ -206,7 +206,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     function_call_state = True
                     # action is tool call, invoke tool
                     tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
-                        action=scratchpad.action, 
+                        action=scratchpad.action,
                         tool_instances=tool_instances,
                         message_file_ids=message_file_ids
                     )
@@ -250,12 +250,12 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         # save agent thought
         self.save_agent_thought(
-            agent_thought=agent_thought, 
+            agent_thought=agent_thought,
             tool_name='',
             tool_input={},
             tool_invoke_meta={},
             thought=final_answer,
-            observation={}, 
+            observation={},
             answer=final_answer,
             messages_ids=[]
         )
@@ -272,7 +272,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             system_fingerprint=''
         )), PublishFrom.APPLICATION_MANAGER)
 
-    def _handle_invoke_action(self, action: AgentScratchpadUnit.Action, 
+    def _handle_invoke_action(self, action: AgentScratchpadUnit.Action,
                               tool_instances: dict[str, Tool],
                               message_file_ids: list[str]) -> tuple[str, ToolInvokeMeta]:
         """

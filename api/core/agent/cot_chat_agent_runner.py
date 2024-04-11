@@ -27,7 +27,7 @@ class CotChatAgentRunner(CotAgentRunner):
 
     def _organize_prompt_messages(self) -> list[PromptMessage]:
         """
-        Organize 
+        Organize
         """
         # organize system prompt
         system_message = self._organize_system_prompt()

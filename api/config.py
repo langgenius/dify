@@ -321,6 +321,7 @@ class Config:
 
         self.KEYWORD_DATA_SOURCE_TYPE = get_env('KEYWORD_DATA_SOURCE_TYPE')
 
+
 class CloudEditionConfig(Config):
 
     def __init__(self):

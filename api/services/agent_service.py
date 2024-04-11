@@ -7,7 +7,7 @@ from models.model import App, Conversation, EndUser, Message, MessageAgentThough
 
 class AgentService:
     @classmethod
-    def get_agent_logs(cls, app_model: App, 
+    def get_agent_logs(cls, app_model: App,
                        conversation_id: str,
                        message_id: str) -> dict:
         """

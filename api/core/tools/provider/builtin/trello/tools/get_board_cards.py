@@ -40,4 +40,3 @@ class GetBoardCardsTool(BuiltinTool):
 
         cards_summary = "\n".join([f"{card['name']} (ID: {card['id']})" for card in cards])
         return self.create_text_message(text=f"Cards for Board ID {board_id}:\n{cards_summary}")
-

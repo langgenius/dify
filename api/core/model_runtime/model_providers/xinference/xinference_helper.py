@@ -15,7 +15,7 @@ class XinferenceModelExtraParameter:
     context_length: int = 2048
     support_function_call: bool = False
 
-    def __init__(self, model_format: str, model_handle_type: str, model_ability: list[str], 
+    def __init__(self, model_format: str, model_handle_type: str, model_ability: list[str],
                  support_function_call: bool, max_tokens: int, context_length: int) -> None:
         self.model_format = model_format
         self.model_handle_type = model_handle_type
@@ -24,8 +24,10 @@ class XinferenceModelExtraParameter:
         self.max_tokens = max_tokens
         self.context_length = context_length
 
+
 cache = {}
 cache_lock = Lock()
+
 
 class XinferenceHelper:
     @staticmethod

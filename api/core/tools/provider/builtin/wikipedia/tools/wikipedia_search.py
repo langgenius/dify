@@ -7,6 +7,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 WIKIPEDIA_MAX_QUERY_LENGTH = 300
 
+
 class WikipediaAPIWrapper:
     """Wrapper around WikipediaAPI.
 
@@ -53,6 +54,7 @@ class WikipediaAPIWrapper:
         ):
             return None
 
+
 class WikipediaQueryRun:
     """Tool that searches the Wikipedia API."""
 
@@ -74,10 +76,12 @@ class WikipediaQueryRun:
     ) -> str:
         """Use the Wikipedia tool."""
         return self.api_wrapper.run(query)
+
+
 class WikiPediaSearchTool(BuiltinTool):
-    def _invoke(self, 
-                user_id: str, 
-               tool_parameters: dict[str, Any], 
+    def _invoke(self,
+                user_id: str,
+               tool_parameters: dict[str, Any],
         ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
@@ -92,5 +96,4 @@ class WikiPediaSearchTool(BuiltinTool):
 
         result = tool._run(query)
 
-        return self.create_text_message(self.summary(user_id=user_id,content=result))
-    
+        return self.create_text_message(self.summary(user_id=user_id, content=result))

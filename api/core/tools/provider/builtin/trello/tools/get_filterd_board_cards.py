@@ -41,4 +41,3 @@ class GetFilteredBoardCardsTool(BuiltinTool):
 
         card_details = "\n".join([f"{card['name']} (ID: {card['id']})" for card in filtered_cards])
         return self.create_text_message(text=f"Filtered Cards for Board ID {board_id} with Filter '{filter}':\n{card_details}")
-

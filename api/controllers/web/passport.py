@@ -53,7 +53,9 @@ class PassportResource(Resource):
             'access_token': tk,
         }
 
+
 api.add_resource(PassportResource, '/passport')
+
 
 def generate_session_id():
     """

@@ -55,7 +55,7 @@ class ToolNode(BaseNode):
                 tool=tool_runtime,
                 tool_parameters=parameters,
                 user_id=self.user_id,
-                workflow_id=self.workflow_id, 
+                workflow_id=self.workflow_id,
                 workflow_tool_callback=DifyWorkflowCallbackHandler()
             )
         except Exception as e:

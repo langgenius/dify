@@ -38,6 +38,7 @@ if you are not sure about the structure.
 </instructions>
 """
 
+
 class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
     """
     Model class for OpenAI large language model.
@@ -149,9 +150,9 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             user=user
         )
 
-    def _transform_chat_json_prompts(self, model: str, credentials: dict, 
-                               prompt_messages: list[PromptMessage], model_parameters: dict, 
-                               tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+    def _transform_chat_json_prompts(self, model: str, credentials: dict,
+                               prompt_messages: list[PromptMessage], model_parameters: dict,
+                               tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
                                stream: bool = True, user: str | None = None, response_format: str = 'JSON') \
                             -> None:
         """
@@ -1032,7 +1033,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 key: property for key, property in base_model_schema_model_properties.items()
             },
             parameter_rules=[rule for rule in base_model_schema_parameters_rules],
-            pricing=base_model_schema.pricing    
+            pricing=base_model_schema.pricing
         )
 
         return entity

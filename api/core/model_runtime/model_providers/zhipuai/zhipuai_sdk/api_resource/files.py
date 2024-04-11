@@ -54,7 +54,7 @@ class Files(BaseAPI):
             self,
             *,
             purpose: str | NotGiven = NOT_GIVEN,
-            limit: int  | NotGiven = NOT_GIVEN,
+            limit: int | NotGiven = NOT_GIVEN,
             after: str | NotGiven = NOT_GIVEN,
             order: str | NotGiven = NOT_GIVEN,
             extra_headers: Headers | None = None,

@@ -38,4 +38,3 @@ class DeleteBoardTool(BuiltinTool):
             return self.create_text_message("Failed to delete board")
 
         return self.create_text_message(text=f"Board with ID {board_id} deleted successfully.")
-

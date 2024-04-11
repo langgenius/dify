@@ -165,7 +165,7 @@ class AppService:
             name=args.get("name") if args.get("name") else app_data.get('name'),
             description=args.get("description") if args.get("description") else app_data.get('description', ''),
             icon=args.get("icon") if args.get("icon") else app_data.get('icon'),
-            icon_background=args.get("icon_background") if args.get("icon_background") \
+            icon_background=args.get("icon_background") if args.get("icon_background")
                 else app_data.get('icon_background'),
             enable_site=True,
             enable_api=True

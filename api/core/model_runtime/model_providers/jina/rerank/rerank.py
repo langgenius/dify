@@ -47,13 +47,13 @@ class JinaRerankModel(RerankModel):
                     "documents": docs,
                     "top_n": top_n
                 },
-                headers={"Authorization": f"Bearer {credentials.get('api_key')}"}  
+                headers={"Authorization": f"Bearer {credentials.get('api_key')}"}
             )
-            response.raise_for_status() 
+            response.raise_for_status()
             results = response.json()
 
             rerank_documents = []
-            for result in results['results']:  
+            for result in results['results']:
                 rerank_document = RerankDocument(
                     index=result['index'],
                     text=result['document']['text'],
@@ -64,7 +64,7 @@ class JinaRerankModel(RerankModel):
 
             return RerankResult(model=model, docs=rerank_documents)
         except httpx.HTTPStatusError as e:
-            raise InvokeServerUnavailableError(str(e))  
+            raise InvokeServerUnavailableError(str(e))
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -99,7 +99,7 @@ class JinaRerankModel(RerankModel):
         return {
             InvokeConnectionError: [httpx.ConnectError],
             InvokeServerUnavailableError: [httpx.RemoteProtocolError],
-            InvokeRateLimitError: [], 
-            InvokeAuthorizationError: [httpx.HTTPStatusError],  
+            InvokeRateLimitError: [],
+            InvokeAuthorizationError: [httpx.HTTPStatusError],
             InvokeBadRequestError: [httpx.RequestError]
         }

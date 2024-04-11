@@ -148,7 +148,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
 
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
                   tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                  stream: bool = True, \
+                  stream: bool = True,
                   user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke llm completion model
@@ -201,7 +201,6 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 endpoint_url = server_url
         else:
             raise ValueError("Unsupported completion type for model configuration.")
-
 
         # annotate tools with names, descriptions, etc.
         function_calling_type = credentials.get('function_calling_type', 'no_call')

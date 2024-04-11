@@ -38,6 +38,7 @@ from services.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
 
+
 class ToolManager:
     _builtin_provider_lock = Lock()
     _builtin_providers = {}
@@ -438,10 +439,8 @@ class ToolManager:
         db_builtin_providers: list[BuiltinToolProvider] = db.session.query(BuiltinToolProvider). \
             filter(BuiltinToolProvider.tenant_id == tenant_id).all()
 
-        find_db_builtin_provider = lambda provider: next(
-            (x for x in db_builtin_providers if x.provider == provider),
-            None
-        )
+        def find_db_builtin_provider(provider):
+            return next((x for x in db_builtin_providers if x.provider == provider), None)
 
         # append builtin providers
         for provider in builtin_providers:
@@ -499,7 +498,7 @@ class ToolManager:
 
         controller = ApiBasedToolProviderController.from_db(
             provider,
-            ApiProviderAuthType.API_KEY if provider.credentials['auth_type'] == 'api_key' else 
+            ApiProviderAuthType.API_KEY if provider.credentials['auth_type'] == 'api_key' else
             ApiProviderAuthType.NONE
         )
         controller.load_bundled_tools(provider.tools)
@@ -586,5 +585,6 @@ class ToolManager:
                 }
         else:
             raise ValueError(f"provider type {provider_type} not found")
+
 
 ToolManager.load_builtin_providers_cache()

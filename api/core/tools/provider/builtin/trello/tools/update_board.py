@@ -44,4 +44,3 @@ class UpdateBoardByIdTool(BuiltinTool):
 
         updated_board = response.json()
         return self.create_text_message(text=f"Board '{updated_board['name']}' updated successfully.")
-

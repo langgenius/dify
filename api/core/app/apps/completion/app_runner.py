@@ -178,4 +178,3 @@ class CompletionAppRunner(AppRunner):
             queue_manager=queue_manager,
             stream=application_generate_entity.stream
         )
-    

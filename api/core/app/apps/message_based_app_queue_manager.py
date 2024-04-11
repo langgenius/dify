@@ -58,4 +58,3 @@ class MessageBasedAppQueueManager(AppQueueManager):
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
             raise GenerateTaskStoppedException()
-

@@ -1,14 +1,20 @@
 import re
-from typing import Any, Generator, List, Literal, Optional, Union
+from collections.abc import Generator
+from typing import Any, Literal, Optional, Union
 
 from _pytest.monkeypatch import MonkeyPatch
 from huggingface_hub import InferenceClient
-from huggingface_hub.inference._text_generation import (Details, StreamDetails, TextGenerationResponse,
-                                                        TextGenerationStreamResponse, Token)
+from huggingface_hub.inference._text_generation import (
+    Details,
+    StreamDetails,
+    TextGenerationResponse,
+    TextGenerationStreamResponse,
+    Token,
+)
 from huggingface_hub.utils import BadRequestError
 
 
-class MockHuggingfaceChatClass(object):
+class MockHuggingfaceChatClass:
     @staticmethod
     def generate_create_sync(model: str) -> TextGenerationResponse:
         response = TextGenerationResponse(
@@ -30,7 +36,7 @@ class MockHuggingfaceChatClass(object):
 
         for i in range(0, len(full_text)):
             response = TextGenerationStreamResponse(
-                token = Token(id=i, text=full_text[i], logprob=0.0, special=False),
+                token=Token(id=i, text=full_text[i], logprob=0.0, special=False),
             )
             response.generated_text = full_text[i]
             response.details = StreamDetails(finish_reason='stop_sequence', generated_tokens=1)
@@ -52,4 +58,3 @@ class MockHuggingfaceChatClass(object):
         if stream:
             return MockHuggingfaceChatClass.generate_create_stream(model)
         return MockHuggingfaceChatClass.generate_create_sync(model)
-

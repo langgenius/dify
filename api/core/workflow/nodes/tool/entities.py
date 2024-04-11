@@ -6,13 +6,15 @@ from core.workflow.entities.base_node_data_entities import BaseNodeData
 
 ToolParameterValue = Union[str, int, float, bool]
 
+
 class ToolEntity(BaseModel):
     provider_id: str
     provider_type: Literal['builtin', 'api']
-    provider_name: str # redundancy
+    provider_name: str  # redundancy
     tool_name: str
-    tool_label: str # redundancy
+    tool_label: str  # redundancy
     tool_configurations: dict[str, ToolParameterValue]
+
 
 class ToolNodeData(BaseNodeData, ToolEntity):
     class ToolInput(BaseModel):

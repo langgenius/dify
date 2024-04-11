@@ -10,6 +10,7 @@ todos_data = {
     "user1": ["Go for a run", "Read a book"],
 }
 
+
 class TodosResource(Resource):
     def get(self, username):
         todos = todos_data.get(username, [])
@@ -31,6 +32,7 @@ class TodosResource(Resource):
             return {"message": "Todo deleted successfully"}
 
         return {"error": "Invalid todo index"}, 400
+
 
 api.add_resource(TodosResource, '/todos/<string:username>')
 

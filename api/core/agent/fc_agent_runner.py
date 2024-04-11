@@ -23,8 +23,9 @@ from models.model import Message
 
 logger = logging.getLogger(__name__)
 
+
 class FunctionCallAgentRunner(BaseAgentRunner):
-    def run(self, 
+    def run(self,
             message: Message, query: str, **kwargs: Any
     ) -> Generator[LLMResultChunk, None, None]:
         """
@@ -190,7 +191,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 tool_calls=[]
             )
             if tool_calls:
-                assistant_message.tool_calls=[
+                assistant_message.tool_calls = [
                     AssistantPromptMessage.ToolCall(
                         id=tool_call[0],
                         type='function',
@@ -207,7 +208,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             # save thought
             self.save_agent_thought(
-                agent_thought=agent_thought, 
+                agent_thought=agent_thought,
                 tool_name=tool_call_names,
                 tool_input=tool_call_inputs,
                 thought=response,
@@ -275,16 +276,16 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             if len(tool_responses) > 0:
                 # save agent thought
                 self.save_agent_thought(
-                    agent_thought=agent_thought, 
+                    agent_thought=agent_thought,
                     tool_name=None,
                     tool_input=None,
-                    thought=None, 
+                    thought=None,
                     tool_invoke_meta={
-                        tool_response['tool_call_name']: tool_response['meta'] 
+                        tool_response['tool_call_name']: tool_response['meta']
                         for tool_response in tool_responses
                     },
                     observation={
-                        tool_response['tool_call_name']: tool_response['tool_response'] 
+                        tool_response['tool_call_name']: tool_response['tool_response']
                         for tool_response in tool_responses
                     },
                     answer=None,
@@ -378,7 +379,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return prompt_messages
 
-    def _organize_user_query(self, query,  prompt_messages: list[PromptMessage] = None) -> list[PromptMessage]:
+    def _organize_user_query(self, query, prompt_messages: list[PromptMessage] = None) -> list[PromptMessage]:
         """
         Organize user query
         """
@@ -393,7 +394,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return prompt_messages
     
-    def _organize_assistant_message(self, tool_call_id: str = None, tool_call_name: str = None, tool_response: str = None, 
+    def _organize_assistant_message(self, tool_call_id: str = None, tool_call_name: str = None, tool_response: str = None,
                                     prompt_messages: list[PromptMessage] = None) -> list[PromptMessage]:
         """
         Organize assistant message
@@ -422,10 +423,10 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             if isinstance(prompt_message, UserPromptMessage):
                 if isinstance(prompt_message.content, list):
                     prompt_message.content = '\n'.join([
-                        content.data if content.type == PromptMessageContentType.TEXT else 
+                        content.data if content.type == PromptMessageContentType.TEXT else
                         '[image]' if content.type == PromptMessageContentType.IMAGE else
-                        '[file]' 
-                        for content in prompt_message.content 
+                        '[file]'
+                        for content in prompt_message.content
                     ])
 
         return prompt_messages

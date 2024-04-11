@@ -63,4 +63,3 @@ class GetBoardByIdTool(BuiltinTool):
             f"Background Color: {board['prefs']['backgroundColor']}"
         )
         return details
-

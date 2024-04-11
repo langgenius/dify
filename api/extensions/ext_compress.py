@@ -13,4 +13,3 @@ def init_app(app: Flask):
 
         compress = Compress()
         compress.init_app(app)
-

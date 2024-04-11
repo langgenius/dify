@@ -76,7 +76,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         return self._chat_generate(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
 
     def _chat_generate(self, model: str, credentials: dict,
-                       prompt_messages: list[PromptMessage], model_parameters: dict, 
+                       prompt_messages: list[PromptMessage], model_parameters: dict,
                        tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                        stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """

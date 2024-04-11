@@ -10,11 +10,11 @@ from core.tools.tool.builtin_tool import BuiltinTool
 class BingSearchTool(BuiltinTool):
     url = 'https://api.bing.microsoft.com/v7.0/search'
 
-    def _invoke_bing(self, 
+    def _invoke_bing(self,
                      user_id: str,
                      server_url: str,
-                     subscription_key: str, query: str, limit: int, 
-                     result_type: str, market: str, lang: str, 
+                     subscription_key: str, query: str, limit: int,
+                     result_type: str, market: str, lang: str,
                      filters: list[str]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke bing search
@@ -48,7 +48,6 @@ class BingSearchTool(BuiltinTool):
                         text=f'{result["name"]}: {result["url"]}'
                     ))
 
-
             if entities:
                 for entity in entities:
                     results.append(self.create_text_message(
@@ -73,7 +72,7 @@ class BingSearchTool(BuiltinTool):
             text = ''
             if search_results:
                 for i, result in enumerate(search_results):
-                    text += f'{i+1}: {result["name"]} - {result["snippet"]}\n'
+                    text += f'{i + 1}: {result["name"]} - {result["snippet"]}\n'
 
             if computation and 'expression' in computation and 'value' in computation:
                 text += '\nComputation:\n'
@@ -96,7 +95,6 @@ class BingSearchTool(BuiltinTool):
 
             return self.create_text_message(text=self.summary(user_id=user_id, content=text))
         
-
     def validate_credentials(self, credentials: dict[str, Any], tool_parameters: dict[str, Any]) -> None:
         key = credentials.get('subscription_key', None)
         if not key:
@@ -147,9 +145,9 @@ class BingSearchTool(BuiltinTool):
             filters=filter
         )
         
-    def _invoke(self, 
+    def _invoke(self,
                 user_id: str,
-               tool_parameters: dict[str, Any], 
+               tool_parameters: dict[str, Any],
         ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools

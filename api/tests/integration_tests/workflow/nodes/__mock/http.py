@@ -1,16 +1,17 @@
 import os
+from json import dumps
+from typing import Literal
+
+import httpx._api as httpx
 import pytest
 import requests.api as requests
-import httpx._api as httpx
-from requests import Response as RequestsResponse
+from _pytest.monkeypatch import MonkeyPatch
 from httpx import Request as HttpxRequest
+from requests import Response as RequestsResponse
 from yarl import URL
 
-from typing import Literal
-from _pytest.monkeypatch import MonkeyPatch
-from json import dumps
-
 MOCK = os.getenv('MOCK_SWITCH', 'false') == 'true'
+
 
 class MockedHttp:
     def requests_request(method: Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], url: str,
@@ -42,7 +43,7 @@ class MockedHttp:
         response._content = resp
         return response
 
-    def httpx_request(method: Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], 
+    def httpx_request(method: Literal['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
                       url: str, **kwargs) -> httpx.Response:
         """
         Mocked httpx.request
@@ -72,6 +73,7 @@ class MockedHttp:
         response.status_code = 200
         response._content = resp
         return response
+
 
 @pytest.fixture
 def setup_http_mock(request, monkeypatch: MonkeyPatch):

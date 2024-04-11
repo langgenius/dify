@@ -40,4 +40,3 @@ class CreateNewCardOnBoardTool(BuiltinTool):
             return self.create_text_message("Failed to create card")
 
         return self.create_text_message(text=f"New card '{new_card['name']}' created successfully with ID {new_card['id']}.")
-

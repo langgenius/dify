@@ -10,6 +10,7 @@ from core.model_runtime.model_providers.__base.ai_model import AIModel
 
 logger = logging.getLogger(__name__)
 
+
 class LoggingCallback(Callback):
     def on_before_invoke(self, llm_instance: AIModel, model: str, credentials: dict,
                          prompt_messages: list[PromptMessage], model_parameters: dict,

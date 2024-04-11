@@ -247,7 +247,9 @@ class HttpExecutor:
                     self.files = {
                         k: ('', v) for k, v in body.items()
                     }
-                    random_str = lambda n: ''.join([chr(randint(97, 122)) for _ in range(n)])
+
+                    def random_str(n):
+                        return ''.join([chr(randint(97, 122)) for _ in range(n)])
                     self.boundary = f'----WebKitFormBoundary{random_str(16)}'
 
                     self.headers['Content-Type'] = f'multipart/form-data; boundary={self.boundary}'

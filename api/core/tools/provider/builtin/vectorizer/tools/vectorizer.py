@@ -43,7 +43,7 @@ class VectorizerTool(BuiltinTool):
             data={
                 'mode': mode
             } if mode == 'test' else {},
-            auth=(api_key_name, api_key_value), 
+            auth=(api_key_name, api_key_value),
             timeout=30
         )
 

@@ -1,10 +1,15 @@
 import os
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, PromptMessageTool,
-                                                          SystemPromptMessage, UserPromptMessage)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.togetherai.llm.llm import TogetherAILargeLanguageModel
 
@@ -28,6 +33,7 @@ def test_validate_credentials():
             'mode': 'chat'
         }
     )
+
 
 def test_invoke_model():
     model = TogetherAILargeLanguageModel()
@@ -58,6 +64,7 @@ def test_invoke_model():
 
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
+
 
 def test_invoke_stream_model():
     model = TogetherAILargeLanguageModel()
@@ -92,6 +99,7 @@ def test_invoke_stream_model():
         assert isinstance(chunk, LLMResultChunk)
         assert isinstance(chunk.delta, LLMResultChunkDelta)
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
+
 
 def test_get_num_tokens():
     model = TogetherAILargeLanguageModel()

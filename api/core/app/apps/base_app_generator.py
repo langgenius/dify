@@ -39,4 +39,3 @@ class BaseAppGenerator:
             filtered_inputs[variable] = value.replace('\x00', '') if value else None
 
         return filtered_inputs
-

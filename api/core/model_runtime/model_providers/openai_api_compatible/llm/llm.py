@@ -256,7 +256,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
     # validate_credentials method has been rewritten to use the requests library for compatibility with all providers following OpenAI's API standard.
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
                   tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                  stream: bool = True, \
+                  stream: bool = True,
                   user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke llm completion model
@@ -391,8 +391,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 )
                 if tool_call is None:
                     tool_call = AssistantPromptMessage.ToolCall(
-                        id='', 
-                        type='function', 
+                        id='',
+                        type='function',
                         function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                             name='',
                             arguments=''

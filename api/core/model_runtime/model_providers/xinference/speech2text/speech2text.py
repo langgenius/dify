@@ -85,9 +85,9 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
         }
 
     def _speech2text_invoke(
-        self, 
-        model: str, 
-        credentials: dict, 
+        self,
+        model: str,
+        credentials: dict,
         file: IO[bytes],
         language: Optional[str] = None,
         prompt: Optional[str] = None,
@@ -122,10 +122,10 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
         
         response = xinference_client.transcriptions(
             audio=file,
-            language = language,
-            prompt = prompt,
-            response_format = response_format,
-            temperature = temperature
+            language=language,
+            prompt=prompt,
+            response_format=response_format,
+            temperature=temperature
         )
 
         return response["text"]
@@ -141,7 +141,7 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.SPEECH2TEXT,
-            model_properties={ },
+            model_properties={},
             parameter_rules=[]
         )
 

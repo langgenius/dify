@@ -235,7 +235,7 @@ class ToolManageService:
         db.session.add(db_provider)
         db.session.commit()
 
-        return { 'result': 'success' }
+        return {'result': 'success'}
     
     @staticmethod
     def get_api_tool_provider_remote_schema(
@@ -297,7 +297,7 @@ class ToolManageService:
             BuiltinToolProvider.provider == provider_name,
         ).first()
 
-        try: 
+        try:
             # get provider
             provider_controller = ToolManager.get_builtin_provider(provider_name)
             if not provider_controller.need_credentials:
@@ -338,7 +338,7 @@ class ToolManageService:
             # delete cache
             tool_configuration.delete_tool_credentials_cache()
 
-        return { 'result': 'success' }
+        return {'result': 'success'}
     
     @staticmethod
     def get_builtin_tool_provider_credentials(
@@ -363,7 +363,7 @@ class ToolManageService:
 
     @staticmethod
     def update_api_tool_provider(
-        user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: dict, credentials: dict, 
+        user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: dict, credentials: dict,
         schema_type: str, schema: str, privacy_policy: str
     ):
         """
@@ -425,7 +425,7 @@ class ToolManageService:
         # delete cache
         tool_configuration.delete_tool_credentials_cache()
 
-        return { 'result': 'success' }
+        return {'result': 'success'}
     
     @staticmethod
     def delete_builtin_tool_provider(
@@ -450,7 +450,7 @@ class ToolManageService:
         tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
         tool_configuration.delete_tool_credentials_cache()
 
-        return { 'result': 'success' }
+        return {'result': 'success'}
     
     @staticmethod
     def get_builtin_tool_provider_icon(
@@ -521,7 +521,7 @@ class ToolManageService:
         db.session.delete(provider)
         db.session.commit()
 
-        return { 'result': 'success' }
+        return {'result': 'success'}
     
     @staticmethod
     def get_api_tool_provider(
@@ -534,12 +534,12 @@ class ToolManageService:
     
     @staticmethod
     def test_api_tool_preview(
-        tenant_id: str, 
+        tenant_id: str,
         provider_name: str,
-        tool_name: str, 
-        credentials: dict, 
-        parameters: dict, 
-        schema_type: str, 
+        tool_name: str,
+        credentials: dict,
+        parameters: dict,
+        schema_type: str,
         schema: str
     ):
         """
@@ -588,7 +588,7 @@ class ToolManageService:
         # decrypt credentials
         if db_provider.id:
             tool_configuration = ToolConfigurationManager(
-                tenant_id=tenant_id, 
+                tenant_id=tenant_id,
                 provider_controller=provider_controller
             )
             decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
@@ -608,9 +608,9 @@ class ToolManageService:
             })
             result = tool.validate_credentials(credentials, parameters)
         except Exception as e:
-            return { 'error': str(e) }
+            return {'error': str(e)}
         
-        return { 'result': result or 'empty response' }
+        return {'result': result or 'empty response'}
     
     @staticmethod
     def list_builtin_tools(
@@ -628,7 +628,8 @@ class ToolManageService:
         ).all() or []
 
         # find provider
-        find_provider = lambda provider: next(filter(lambda db_provider: db_provider.provider == provider, db_providers), None)
+        def find_provider(provider):
+            return next(filter(lambda db_provider: db_provider.provider == provider, db_providers), None)
 
         result: list[UserToolProvider] = []
 
@@ -647,8 +648,8 @@ class ToolManageService:
             for tool in tools:
                 user_builtin_provider.tools.append(ToolTransformService.tool_to_user_tool(
                     tenant_id=tenant_id,
-                    tool=tool, 
-                    credentials=user_builtin_provider.original_credentials, 
+                    tool=tool,
+                    credentials=user_builtin_provider.original_credentials,
                 ))
 
             result.append(user_builtin_provider)
@@ -688,8 +689,8 @@ class ToolManageService:
             for tool in tools:
                 user_provider.tools.append(ToolTransformService.tool_to_user_tool(
                     tenant_id=tenant_id,
-                    tool=tool, 
-                    credentials=user_provider.original_credentials, 
+                    tool=tool,
+                    credentials=user_provider.original_credentials,
                 ))
 
             result.append(user_provider)

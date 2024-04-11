@@ -1,7 +1,8 @@
 import os
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -39,6 +40,7 @@ def test_hosted_inference_api_validate_credentials(setup_huggingface_mock):
         }
     )
 
+
 @pytest.mark.parametrize('setup_huggingface_mock', [['none']], indirect=True)
 def test_hosted_inference_api_invoke_model(setup_huggingface_mock):
     model = HuggingfaceHubLargeLanguageModel()
@@ -66,6 +68,7 @@ def test_hosted_inference_api_invoke_model(setup_huggingface_mock):
 
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
+
 
 @pytest.mark.parametrize('setup_huggingface_mock', [['none']], indirect=True)
 def test_hosted_inference_api_invoke_stream_model(setup_huggingface_mock):
@@ -100,6 +103,7 @@ def test_hosted_inference_api_invoke_stream_model(setup_huggingface_mock):
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
+
 @pytest.mark.parametrize('setup_huggingface_mock', [['none']], indirect=True)
 def test_inference_endpoints_text_generation_validate_credentials(setup_huggingface_mock):
     model = HuggingfaceHubLargeLanguageModel()
@@ -124,6 +128,7 @@ def test_inference_endpoints_text_generation_validate_credentials(setup_huggingf
             'task_type': 'text-generation'
         }
     )
+
 
 @pytest.mark.parametrize('setup_huggingface_mock', [['none']], indirect=True)
 def test_inference_endpoints_text_generation_invoke_model(setup_huggingface_mock):
@@ -154,6 +159,7 @@ def test_inference_endpoints_text_generation_invoke_model(setup_huggingface_mock
 
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
+
 
 @pytest.mark.parametrize('setup_huggingface_mock', [['none']], indirect=True)
 def test_inference_endpoints_text_generation_invoke_stream_model(setup_huggingface_mock):
@@ -190,6 +196,7 @@ def test_inference_endpoints_text_generation_invoke_stream_model(setup_huggingfa
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
+
 @pytest.mark.parametrize('setup_huggingface_mock', [['none']], indirect=True)
 def test_inference_endpoints_text2text_generation_validate_credentials(setup_huggingface_mock):
     model = HuggingfaceHubLargeLanguageModel()
@@ -214,6 +221,7 @@ def test_inference_endpoints_text2text_generation_validate_credentials(setup_hug
             'task_type': 'text2text-generation'
         }
     )
+
 
 @pytest.mark.parametrize('setup_huggingface_mock', [['none']], indirect=True)
 def test_inference_endpoints_text2text_generation_invoke_model(setup_huggingface_mock):
@@ -244,6 +252,7 @@ def test_inference_endpoints_text2text_generation_invoke_model(setup_huggingface
 
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
+
 
 @pytest.mark.parametrize('setup_huggingface_mock', [['none']], indirect=True)
 def test_inference_endpoints_text2text_generation_invoke_stream_model(setup_huggingface_mock):

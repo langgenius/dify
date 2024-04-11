@@ -116,7 +116,7 @@ class ApiBasedToolProviderController(ToolProviderController):
         """
         return ApiTool(**{
             'api_bundle': tool_bundle,
-            'identity' : {
+            'identity': {
                 'author': tool_bundle.author,
                 'name': tool_bundle.operation_id,
                 'label': {
@@ -133,7 +133,7 @@ class ApiBasedToolProviderController(ToolProviderController):
                 },
                 'llm': tool_bundle.summary or ''
             },
-            'parameters' : tool_bundle.parameters if tool_bundle.parameters else [],
+            'parameters': tool_bundle.parameters if tool_bundle.parameters else [],
         })
 
     def load_bundled_tools(self, tools: list[ApiBasedToolBundle]) -> list[ApiTool]:

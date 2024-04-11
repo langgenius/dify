@@ -55,6 +55,7 @@ class BraveSearchWrapper(BaseModel):
 
         return response.json().get("web", {}).get("results", [])
 
+
 class BraveSearch(BaseModel):
     """Tool that queries the BraveSearch."""
 
@@ -90,6 +91,7 @@ class BraveSearch(BaseModel):
         """Use the tool."""
         return self.search_wrapper.run(query)
 
+
 class BraveSearchTool(BuiltinTool):
     """
     Tool for performing a search using Brave search engine.
@@ -121,4 +123,3 @@ class BraveSearchTool(BuiltinTool):
             return self.create_text_message(f"No results found for '{query}' in Tavily")
         else:
             return self.create_text_message(text=results)
-

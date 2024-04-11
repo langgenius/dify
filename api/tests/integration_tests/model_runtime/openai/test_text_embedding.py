@@ -1,6 +1,7 @@
 import os
 
 import pytest
+
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.openai.text_embedding.text_embedding import OpenAITextEmbeddingModel
@@ -25,6 +26,7 @@ def test_validate_credentials(setup_openai_mock):
             'openai_api_key': os.environ.get('OPENAI_API_KEY')
         }
     )
+
 
 @pytest.mark.parametrize('setup_openai_mock', [['text_embedding']], indirect=True)
 def test_invoke_model(setup_openai_mock):

@@ -1,8 +1,8 @@
 import pytest
+
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
-
 from tests.integration_tests.workflow.nodes.__mock.http import setup_http_mock
 
 BASIC_NODE_DATA = {
@@ -18,6 +18,7 @@ pool = VariablePool(system_variables={}, user_inputs={})
 pool.append_variable(node_id='a', variable_key_list=['b123', 'args1'], value=1)
 pool.append_variable(node_id='a', variable_key_list=['b123', 'args2'], value=2)
 
+
 @pytest.mark.parametrize('setup_http_mock', [['none']], indirect=True)
 def test_get(setup_http_mock):
     node = HttpRequestNode(config={
@@ -31,7 +32,7 @@ def test_get(setup_http_mock):
                 'type': 'api-key',
                 'config': {
                     'type': 'basic',
-                    'api_key':'ak-xxx',
+                    'api_key': 'ak-xxx',
                     'header': 'api-key',
                 }
             },
@@ -48,6 +49,7 @@ def test_get(setup_http_mock):
     assert '?A=b' in data
     assert 'api-key: Basic ak-xxx' in data
     assert 'X-Header: 123' in data
+
 
 @pytest.mark.parametrize('setup_http_mock', [['none']], indirect=True)
 def test_no_auth(setup_http_mock):
@@ -74,6 +76,7 @@ def test_no_auth(setup_http_mock):
 
     assert '?A=b' in data
     assert 'X-Header: 123' in data
+
 
 @pytest.mark.parametrize('setup_http_mock', [['none']], indirect=True)
 def test_custom_authorization_header(setup_http_mock):
@@ -106,6 +109,7 @@ def test_custom_authorization_header(setup_http_mock):
     assert 'X-Header: 123' in data
     assert 'X-Auth: Auth' in data
 
+
 @pytest.mark.parametrize('setup_http_mock', [['none']], indirect=True)
 def test_template(setup_http_mock):
     node = HttpRequestNode(config={
@@ -119,7 +123,7 @@ def test_template(setup_http_mock):
                 'type': 'api-key',
                 'config': {
                     'type': 'basic',
-                    'api_key':'ak-xxx',
+                    'api_key': 'ak-xxx',
                     'header': 'api-key',
                 }
             },
@@ -138,6 +142,7 @@ def test_template(setup_http_mock):
     assert 'X-Header: 123' in data
     assert 'X-Header2: 2' in data
 
+
 @pytest.mark.parametrize('setup_http_mock', [['none']], indirect=True)
 def test_json(setup_http_mock):
     node = HttpRequestNode(config={
@@ -151,7 +156,7 @@ def test_json(setup_http_mock):
                 'type': 'api-key',
                 'config': {
                     'type': 'basic',
-                    'api_key':'ak-xxx',
+                    'api_key': 'ak-xxx',
                     'header': 'api-key',
                 }
             },
@@ -171,6 +176,7 @@ def test_json(setup_http_mock):
     assert 'api-key: Basic ak-xxx' in data
     assert 'X-Header: 123' in data
 
+
 def test_x_www_form_urlencoded(setup_http_mock):
     node = HttpRequestNode(config={
         'id': '1',
@@ -183,7 +189,7 @@ def test_x_www_form_urlencoded(setup_http_mock):
                 'type': 'api-key',
                 'config': {
                     'type': 'basic',
-                    'api_key':'ak-xxx',
+                    'api_key': 'ak-xxx',
                     'header': 'api-key',
                 }
             },
@@ -203,6 +209,7 @@ def test_x_www_form_urlencoded(setup_http_mock):
     assert 'api-key: Basic ak-xxx' in data
     assert 'X-Header: 123' in data
 
+
 def test_form_data(setup_http_mock):
     node = HttpRequestNode(config={
         'id': '1',
@@ -215,7 +222,7 @@ def test_form_data(setup_http_mock):
                 'type': 'api-key',
                 'config': {
                     'type': 'basic',
-                    'api_key':'ak-xxx',
+                    'api_key': 'ak-xxx',
                     'header': 'api-key',
                 }
             },
@@ -238,6 +245,7 @@ def test_form_data(setup_http_mock):
     assert 'api-key: Basic ak-xxx' in data
     assert 'X-Header: 123' in data
 
+
 def test_none_data(setup_http_mock):
     node = HttpRequestNode(config={
         'id': '1',
@@ -250,7 +258,7 @@ def test_none_data(setup_http_mock):
                 'type': 'api-key',
                 'config': {
                     'type': 'basic',
-                    'api_key':'ak-xxx',
+                    'api_key': 'ak-xxx',
                     'header': 'api-key',
                 }
             },

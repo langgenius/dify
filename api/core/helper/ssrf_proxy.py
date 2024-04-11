@@ -25,17 +25,22 @@ httpx_proxies = {
     'https://': SSRF_PROXY_HTTPS_URL
 } if SSRF_PROXY_HTTP_URL and SSRF_PROXY_HTTPS_URL else None
 
+
 def get(url, *args, **kwargs):
     return _get(url=url, *args, proxies=httpx_proxies, **kwargs)
+
 
 def post(url, *args, **kwargs):
     return _post(url=url, *args, proxies=httpx_proxies, **kwargs)
 
+
 def put(url, *args, **kwargs):
     return _put(url=url, *args, proxies=httpx_proxies, **kwargs)
 
+
 def patch(url, *args, **kwargs):
     return _patch(url=url, *args, proxies=httpx_proxies, **kwargs)
+
 
 def delete(url, *args, **kwargs):
     if 'follow_redirects' in kwargs:
@@ -44,8 +49,10 @@ def delete(url, *args, **kwargs):
         kwargs.pop('follow_redirects')
     return _delete(url=url, *args, proxies=requests_proxies, **kwargs)
 
+
 def head(url, *args, **kwargs):
     return _head(url=url, *args, proxies=httpx_proxies, **kwargs)
+
 
 def options(url, *args, **kwargs):
     return _options(url=url, *args, proxies=httpx_proxies, **kwargs)

@@ -59,9 +59,9 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         # invoke model
         return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
     
-    def _code_block_mode_wrapper(self, model: str, credentials: dict, 
-                                 prompt_messages: list[PromptMessage], model_parameters: dict, 
-                                 tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+    def _code_block_mode_wrapper(self, model: str, credentials: dict,
+                                 prompt_messages: list[PromptMessage], model_parameters: dict,
+                                 tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
                                  stream: bool = True, user: str | None = None, callbacks: list[Callback] = None) \
                             -> LLMResult | Generator:
         """
@@ -227,7 +227,7 @@ if you are not sure about the structure.
 
         if stream:
             responses = stream_generate_with_retry(
-                client, 
+                client,
                 stream=True,
                 incremental_output=True,
                 **params

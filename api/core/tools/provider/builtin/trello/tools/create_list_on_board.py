@@ -45,4 +45,3 @@ class CreateListOnBoardTool(BuiltinTool):
 
         new_list = response.json()
         return self.create_text_message(text=f"List '{new_list['name']}' created successfully with Id {new_list['id']} on board {board_id}.")
-

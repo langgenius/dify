@@ -98,4 +98,3 @@ class AdvancedChatAppConfigManager(BaseAppConfigManager):
         filtered_config = {key: config.get(key) for key in related_config_keys}
 
         return filtered_config
-

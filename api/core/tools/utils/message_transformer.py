@@ -6,6 +6,7 @@ from core.tools.tool_file_manager import ToolFileManager
 
 logger = logging.getLogger(__name__)
 
+
 class ToolFileMessageTransformer:
     @staticmethod
     def transform_tool_invoke_messages(messages: list[ToolInvokeMessage],
@@ -26,7 +27,7 @@ class ToolFileMessageTransformer:
                 # try to download image
                 try:
                     file = ToolFileManager.create_file_by_url(
-                        user_id=user_id, 
+                        user_id=user_id,
                         tenant_id=tenant_id,
                         conversation_id=conversation_id,
                         file_url=message.message

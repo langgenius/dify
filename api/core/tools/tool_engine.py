@@ -38,7 +38,7 @@ class ToolEngine:
         if isinstance(tool_parameters, str):
             # check if this tool has only one parameter
             parameters = [
-                parameter for parameter in tool.parameters 
+                parameter for parameter in tool.parameters
                 if parameter.form == ToolParameter.ToolParameterForm.LLM
             ]
             if parameters and len(parameters) == 1:
@@ -52,15 +52,15 @@ class ToolEngine:
         try:
             # hit the callback handler
             agent_tool_callback.on_tool_start(
-                tool_name=tool.identity.name, 
+                tool_name=tool.identity.name,
                 tool_inputs=tool_parameters
             )
 
             meta, response = ToolEngine._invoke(tool, tool_parameters, user_id)
             response = ToolFileMessageTransformer.transform_tool_invoke_messages(
-                messages=response, 
-                user_id=user_id, 
-                tenant_id=tenant_id, 
+                messages=response,
+                user_id=user_id,
+                tenant_id=tenant_id,
                 conversation_id=message.conversation_id
             )
 
@@ -78,8 +78,8 @@ class ToolEngine:
 
             # hit the callback handler
             agent_tool_callback.on_tool_end(
-                tool_name=tool.identity.name, 
-                tool_inputs=tool_parameters, 
+                tool_name=tool.identity.name,
+                tool_inputs=tool_parameters,
                 tool_outputs=plain_text
             )
 
@@ -114,7 +114,7 @@ class ToolEngine:
 
     @staticmethod
     def workflow_invoke(tool: Tool, tool_parameters: dict,
-                        user_id: str, workflow_id: str, 
+                        user_id: str, workflow_id: str,
                         workflow_tool_callback: DifyWorkflowCallbackHandler) \
                               -> list[ToolInvokeMessage]:
         """
@@ -123,7 +123,7 @@ class ToolEngine:
         try:
             # hit the callback handler
             workflow_tool_callback.on_tool_start(
-                tool_name=tool.identity.name, 
+                tool_name=tool.identity.name,
                 tool_inputs=tool_parameters
             )
 
@@ -131,8 +131,8 @@ class ToolEngine:
 
             # hit the callback handler
             workflow_tool_callback.on_tool_end(
-                tool_name=tool.identity.name, 
-                tool_inputs=tool_parameters, 
+                tool_name=tool.identity.name,
+                tool_inputs=tool_parameters,
                 tool_outputs=response
             )
 

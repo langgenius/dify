@@ -13,10 +13,12 @@ from core.helper.code_executor.python_transformer import PythonTemplateTransform
 CODE_EXECUTION_ENDPOINT = environ.get('CODE_EXECUTION_ENDPOINT', '')
 CODE_EXECUTION_API_KEY = environ.get('CODE_EXECUTION_API_KEY', '')
 
-CODE_EXECUTION_TIMEOUT= (10, 60)
+CODE_EXECUTION_TIMEOUT = (10, 60)
+
 
 class CodeExecutionException(Exception):
     pass
+
 
 class CodeExecutionResponse(BaseModel):
     class Data(BaseModel):
@@ -26,6 +28,7 @@ class CodeExecutionResponse(BaseModel):
     code: int
     message: str
     data: Data
+
 
 class CodeExecutor:
     @classmethod

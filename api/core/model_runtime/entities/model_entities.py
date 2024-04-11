@@ -66,6 +66,7 @@ class ModelType(Enum):
         else:
             raise ValueError(f'invalid model type {self}')
 
+
 class FetchFrom(Enum):
     """
     Enum class for fetch from.

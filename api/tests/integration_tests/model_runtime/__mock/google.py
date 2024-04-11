@@ -1,4 +1,4 @@
-from typing import Generator, List
+from collections.abc import Generator
 
 import google.generativeai.types.content_types as content_types
 import google.generativeai.types.generation_types as generation_config_types
@@ -13,7 +13,8 @@ from google.generativeai.types.generation_types import BaseGenerateContentRespon
 
 current_api_key = ''
 
-class MockGoogleResponseClass(object):
+
+class MockGoogleResponseClass:
     _done = False
 
     def __iter__(self):
@@ -29,7 +30,7 @@ class MockGoogleResponseClass(object):
 
                     }),
                     chunks=[]
-                )                
+                )
             else:
                 yield GenerateContentResponse(
                     done=False,
@@ -40,10 +41,12 @@ class MockGoogleResponseClass(object):
                     chunks=[]
                 )
 
-class MockGoogleResponseCandidateClass(object):
+
+class MockGoogleResponseCandidateClass:
     finish_reason = 'stop'
 
-class MockGoogleClass(object):
+
+class MockGoogleClass:
     @staticmethod
     def generate_content_sync() -> GenerateContentResponse:
         return GenerateContentResponse(
@@ -82,7 +85,7 @@ class MockGoogleClass(object):
         return 'it\'s google!'
     
     @property
-    def generative_response_candidates(self) -> List[MockGoogleResponseCandidateClass]:
+    def generative_response_candidates(self) -> list[MockGoogleResponseCandidateClass]:
         return [MockGoogleResponseCandidateClass()]
     
     def make_client(self: _ClientManager, name: str):
@@ -113,6 +116,7 @@ class MockGoogleClass(object):
         if not self.default_metadata:
             return client
     
+
 @pytest.fixture
 def setup_google_mock(request, monkeypatch: MonkeyPatch):
     monkeypatch.setattr(BaseGenerateContentResponse, "text", MockGoogleClass.generative_response_text)

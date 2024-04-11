@@ -46,4 +46,3 @@ class BarChartTool(BuiltinTool):
             self.create_blob_message(blob=buf.read(),
                                     meta={'mime_type': 'image/png'})
         ]
-    

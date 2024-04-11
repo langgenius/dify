@@ -148,7 +148,7 @@ class ApiBasedToolSchemaParser:
             bundles.append(ApiBasedToolBundle(
                 server_url=server_url + interface['path'],
                 method=interface['method'],
-                summary=interface['operation']['description'] if 'description' in interface['operation'] else 
+                summary=interface['operation']['description'] if 'description' in interface['operation'] else
                         interface['operation']['summary'] if 'summary' in interface['operation'] else None,
                 operation_id=interface['operation']['operationId'],
                 parameters=parameters,

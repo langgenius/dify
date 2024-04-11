@@ -7,6 +7,7 @@ from transformers import GPT2Tokenizer as TransformerGPT2Tokenizer
 _tokenizer = None
 _lock = Lock()
 
+
 class GPT2Tokenizer:
     @staticmethod
     def _get_num_tokens_by_gpt2(text: str) -> int:

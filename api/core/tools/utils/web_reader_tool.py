@@ -144,6 +144,7 @@ def find_module_path(module_name):
 
     return None
 
+
 @contextmanager
 def chdir(path):
     """Change directory in context and return to original on exit"""
@@ -290,6 +291,7 @@ def normalise_whitespace(text):
     # Remove leading and trailing whitespace
     text = text.strip()
     return text
+
 
 def is_leaf(element):
     return (element.name in ['p', 'li'])

@@ -116,6 +116,7 @@ def _get_float(value):
     except (TypeError, ValueError):
         raise ValueError('{} is not a valid float'.format(value))
 
+
 def timezone(timezone_string):
     if timezone_string and timezone_string in available_timezones():
         return timezone_string

@@ -257,11 +257,12 @@ class QdrantVector(BaseVector):
             )
         except UnexpectedResponse as e:
             # Collection does not exist, so return
-            if e.status_code == 404:                
+            if e.status_code == 404:
                 return
             # Some other error occurred, so re-raise the exception
             else:
                 raise e
+
     def delete_by_ids(self, ids: list[str]) -> None:
 
         from qdrant_client.http import models

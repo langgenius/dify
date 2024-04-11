@@ -40,8 +40,8 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
         'abab5-chat': MinimaxChatCompletion
     }
 
-    def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
-                model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
+    def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                model_parameters: dict, tools: list[PromptMessageTool] | None = None,
                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
         -> LLMResult | Generator:
         return self._generate(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
@@ -92,8 +92,8 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
         messages_dict = [self._convert_prompt_message_to_minimax_message(m).to_dict() for m in messages]
         return self._get_num_tokens_by_gpt2(str(messages_dict))
 
-    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
-                model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
+    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                model_parameters: dict, tools: list[PromptMessageTool] | None = None,
                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
         -> LLMResult | Generator:
         """
@@ -138,7 +138,7 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
                     role=MinimaxMessage.Role.ASSISTANT.value,
                     content=''
                 )
-                message.function_call={
+                message.function_call = {
                     'name': prompt_message.tool_calls[0].function.name,
                     'arguments': prompt_message.tool_calls[0].function.arguments
                 }
@@ -150,8 +150,8 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
             raise NotImplementedError(f'Prompt message type {type(prompt_message)} is not supported')
 
     def _handle_chat_generate_response(self, model: str, prompt_messages: list[PromptMessage], credentials: dict, response: MinimaxMessage) -> LLMResult:
-        usage = self._calc_response_usage(model=model, credentials=credentials, 
-                                          prompt_tokens=response.usage['prompt_tokens'], 
+        usage = self._calc_response_usage(model=model, credentials=credentials,
+                                          prompt_tokens=response.usage['prompt_tokens'],
                                           completion_tokens=response.usage['completion_tokens']
                                         )
         return LLMResult(
@@ -164,14 +164,14 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
             usage=usage,
         )
 
-    def _handle_chat_generate_stream_response(self, model: str, prompt_messages: list[PromptMessage], 
+    def _handle_chat_generate_stream_response(self, model: str, prompt_messages: list[PromptMessage],
                                               credentials: dict, response: Generator[MinimaxMessage, None, None]) \
         -> Generator[LLMResultChunk, None, None]:
         for message in response:
             if message.usage:
                 usage = self._calc_response_usage(
-                    model=model, credentials=credentials, 
-                    prompt_tokens=message.usage['prompt_tokens'], 
+                    model=model, credentials=credentials,
+                    prompt_tokens=message.usage['prompt_tokens'],
                     completion_tokens=message.usage['completion_tokens']
                 )
                 yield LLMResultChunk(
@@ -252,4 +252,3 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
                 KeyError
             ]
         }
-

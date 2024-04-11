@@ -40,4 +40,3 @@ class GetListsFromBoardTool(BuiltinTool):
 
         lists_info = "\n".join([f"{list['name']} (ID: {list['id']})" for list in lists])
         return self.create_text_message(text=f"Lists on Board ID {board_id}:\n{lists_info}")
-

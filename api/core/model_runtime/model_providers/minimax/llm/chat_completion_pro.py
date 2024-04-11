@@ -20,7 +20,7 @@ class MinimaxChatCompletionPro:
         Minimax Chat Completion Pro API, supports function calling
         however, we do not have enough time and energy to implement it, but the parameters are reserved
     """
-    def generate(self, model: str, api_key: str, group_id: str, 
+    def generate(self, model: str, api_key: str, group_id: str,
                  prompt_messages: list[MinimaxMessage], model_parameters: dict,
                  tools: list[dict[str, Any]], stop: list[str] | None, stream: bool, user: str) \
         -> Union[MinimaxMessage, Generator[MinimaxMessage, None, None]]:
@@ -89,7 +89,7 @@ class MinimaxChatCompletionPro:
 
         if tools:
             body['functions'] = tools
-            body['function_call'] = { 'type': 'auto' }
+            body['function_call'] = {'type': 'auto'}
 
         try:
             response = post(
@@ -160,7 +160,7 @@ class MinimaxChatCompletionPro:
 
             if data['reply'] or 'usage' in data and data['usage']:
                 total_tokens = data['usage']['total_tokens']
-                message =  MinimaxMessage(
+                message = MinimaxMessage(
                     role=MinimaxMessage.Role.ASSISTANT.value,
                     content=''
                 )

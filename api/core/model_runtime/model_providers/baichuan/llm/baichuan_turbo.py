@@ -38,6 +38,7 @@ class BaichuanMessage:
         self.content = content
         self.role = role
 
+
 class BaichuanModel:
     api_key: str
     secret_key: str
@@ -54,23 +55,23 @@ class BaichuanModel:
         }[model]
 
     def _handle_chat_generate_response(self, response) -> BaichuanMessage:
-            resp = response.json()
-            choices = resp.get('choices', [])
-            message = BaichuanMessage(content='', role='assistant')
-            for choice in choices:
-                message.content += choice['message']['content']
-                message.role = choice['message']['role']
-                if choice['finish_reason']:
-                    message.stop_reason = choice['finish_reason']
+        resp = response.json()
+        choices = resp.get('choices', [])
+        message = BaichuanMessage(content='', role='assistant')
+        for choice in choices:
+            message.content += choice['message']['content']
+            message.role = choice['message']['role']
+            if choice['finish_reason']:
+                message.stop_reason = choice['finish_reason']
 
-            if 'usage' in resp:
-                message.usage = {
-                    'prompt_tokens': resp['usage']['prompt_tokens'],
-                    'completion_tokens': resp['usage']['completion_tokens'],
-                    'total_tokens': resp['usage']['total_tokens'],
-                }
-            
-            return message
+        if 'usage' in resp:
+            message.usage = {
+                'prompt_tokens': resp['usage']['prompt_tokens'],
+                'completion_tokens': resp['usage']['completion_tokens'],
+                'total_tokens': resp['usage']['total_tokens'],
+            }
+
+        return message
     
     def _handle_chat_stream_generate_response(self, response) -> Generator:
         for line in response.iter_lines():
@@ -156,7 +157,7 @@ class BaichuanModel:
     def _calculate_md5(self, input_string):
         return md5(input_string.encode('utf-8')).hexdigest()
 
-    def generate(self, model: str, stream: bool, messages: list[BaichuanMessage], 
+    def generate(self, model: str, stream: bool, messages: list[BaichuanMessage],
                  parameters: dict[str, Any], timeout: int) \
         -> Union[Generator, BaichuanMessage]:
         

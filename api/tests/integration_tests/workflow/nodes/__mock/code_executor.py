@@ -1,11 +1,13 @@
 import os
-import pytest
-
 from typing import Literal
+
+import pytest
 from _pytest.monkeypatch import MonkeyPatch
+
 from core.helper.code_executor.code_executor import CodeExecutor
 
 MOCK = os.getenv('MOCK_SWITCH', 'false') == 'true'
+
 
 class MockedCodeExecutor:
     @classmethod
@@ -19,6 +21,7 @@ class MockedCodeExecutor:
             return {
                 "result": "3"
             }
+
 
 @pytest.fixture
 def setup_code_executor_mock(request, monkeypatch: MonkeyPatch):

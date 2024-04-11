@@ -1,8 +1,9 @@
 import os
+from collections.abc import Generator
 from time import sleep
-from typing import Generator
 
 import pytest
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import AIModelEntity
@@ -15,6 +16,7 @@ def test_predefined_models():
     model_schemas = model.predefined_models()
     assert len(model_schemas) >= 1
     assert isinstance(model_schemas[0], AIModelEntity)
+
 
 def test_validate_credentials_for_chat_model():
     sleep(3)
@@ -36,6 +38,7 @@ def test_validate_credentials_for_chat_model():
             'secret_key': os.environ.get('WENXIN_SECRET_KEY')
         }
     )
+
 
 def test_invoke_model_ernie_bot():
     sleep(3)
@@ -65,6 +68,7 @@ def test_invoke_model_ernie_bot():
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
 
+
 def test_invoke_model_ernie_bot_turbo():
     sleep(3)
     model = ErnieBotLargeLanguageModel()
@@ -92,6 +96,7 @@ def test_invoke_model_ernie_bot_turbo():
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
+
 
 def test_invoke_model_ernie_8k():
     sleep(3)
@@ -121,6 +126,7 @@ def test_invoke_model_ernie_8k():
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
 
+
 def test_invoke_model_ernie_bot_4():
     sleep(3)
     model = ErnieBotLargeLanguageModel()
@@ -148,6 +154,7 @@ def test_invoke_model_ernie_bot_4():
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
+
 
 def test_invoke_stream_model():
     sleep(3)
@@ -180,6 +187,7 @@ def test_invoke_stream_model():
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
+
 def test_invoke_model_with_system():
     sleep(3)
     model = ErnieBotLargeLanguageModel()
@@ -209,6 +217,7 @@ def test_invoke_model_with_system():
 
     assert isinstance(response, LLMResult)
     assert 'kasumi' in response.message.content.lower()
+
 
 def test_invoke_with_search():
     sleep(3)
@@ -247,6 +256,7 @@ def test_invoke_with_search():
 
     # there should be 对不起、我不能、不支持……
     assert ('不' in total_message or '抱歉' in total_message or '无法' in total_message)
+
 
 def test_get_num_tokens():
     sleep(3)

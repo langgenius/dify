@@ -38,6 +38,7 @@ class BuiltinToolProvider(db.Model):
     def credentials(self) -> dict:
         return json.loads(self.encrypted_credentials)
 
+
 class PublishedAppTool(db.Model):
     """
     The table stores the apps published as a tool for each person.
@@ -76,6 +77,7 @@ class PublishedAppTool(db.Model):
     @property
     def app(self) -> App:
         return db.session.query(App).filter(App.id == self.app_id).first()
+
 
 class ApiToolProvider(db.Model):
     """
@@ -131,6 +133,7 @@ class ApiToolProvider(db.Model):
     def tenant(self) -> Tenant:
         return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
     
+
 class ToolModelInvoke(db.Model):
     """
     store the invoke logs from tool invoke
@@ -168,6 +171,7 @@ class ToolModelInvoke(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
+
 class ToolConversationVariables(db.Model):
     """
     store the conversation variables from tool invoke
@@ -197,6 +201,7 @@ class ToolConversationVariables(db.Model):
     def variables(self) -> dict:
         return json.loads(self.variables_str)
     
+
 class ToolFile(db.Model):
     """
     store the file created by agent

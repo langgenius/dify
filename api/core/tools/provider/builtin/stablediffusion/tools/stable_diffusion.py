@@ -88,7 +88,6 @@ class StableDiffusionTool(BuiltinTool):
         except Exception as e:
             raise ToolProviderCredentialValidationError('Failed to set model, please tell user to set model')
 
-        
         # prompt
         prompt = tool_parameters.get('prompt', '')
         if not prompt:
@@ -197,7 +196,7 @@ class StableDiffusionTool(BuiltinTool):
         except Exception as e:
             return []
 
-    def img2img(self, base_url: str, lora: str, image_binary: bytes, 
+    def img2img(self, base_url: str, lora: str, image_binary: bytes,
                 prompt: str, negative_prompt: str,
                 width: int, height: int, steps: int, model: str) \
         -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
@@ -232,8 +231,8 @@ class StableDiffusionTool(BuiltinTool):
             
             image = response.json()['images'][0]
 
-            return self.create_blob_message(blob=b64decode(image), 
-                                            meta={ 'mime_type': 'image/png' },
+            return self.create_blob_message(blob=b64decode(image),
+                                            meta={'mime_type': 'image/png'},
                                             save_as=self.VARIABLE_KEY.IMAGE.value)
             
         except Exception as e:
@@ -266,8 +265,8 @@ class StableDiffusionTool(BuiltinTool):
             
             image = response.json()['images'][0]
 
-            return self.create_blob_message(blob=b64decode(image), 
-                                            meta={ 'mime_type': 'image/png' },
+            return self.create_blob_message(blob=b64decode(image),
+                                            meta={'mime_type': 'image/png'},
                                             save_as=self.VARIABLE_KEY.IMAGE.value)
             
         except Exception as e:

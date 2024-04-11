@@ -20,6 +20,7 @@ from core.model_runtime.model_providers.wenxin.llm.ernie_bot_errors import (
 baidu_access_tokens: dict[str, 'BaiduAccessToken'] = {}
 baidu_access_tokens_lock = Lock()
 
+
 class BaiduAccessToken:
     api_key: str
     access_token: str
@@ -97,6 +98,7 @@ class BaiduAccessToken:
             baidu_access_tokens_lock.release()
             return token
 
+
 class ErnieMessage:
     class Role(Enum):
         USER = 'user'
@@ -118,6 +120,7 @@ class ErnieMessage:
     def __init__(self, content: str, role: str = 'user') -> None:
         self.content = content
         self.role = role
+
 
 class ErnieBotModel:
     api_bases = {
@@ -153,8 +156,8 @@ class ErnieBotModel:
         self.api_key = api_key
         self.secret_key = secret_key
 
-    def generate(self, model: str, stream: bool, messages: list[ErnieMessage], 
-                 parameters: dict[str, Any], timeout: int, tools: list[PromptMessageTool], \
+    def generate(self, model: str, stream: bool, messages: list[ErnieMessage],
+                 parameters: dict[str, Any], timeout: int, tools: list[PromptMessageTool],
                  stop: list[str], user: str) \
         -> Union[Generator[ErnieMessage, None, None], ErnieMessage]:
 
@@ -234,7 +237,7 @@ class ErnieBotModel:
     def _copy_messages(self, messages: list[ErnieMessage]) -> list[ErnieMessage]:
         return [ErnieMessage(message.content, message.role) for message in messages]
 
-    def _check_parameters(self, model: str, parameters: dict[str, Any], 
+    def _check_parameters(self, model: str, parameters: dict[str, Any],
                           tools: list[PromptMessageTool], stop: list[str]) -> None:
         if model not in self.api_bases:
             raise BadRequestError(f'Invalid model: {model}')
@@ -263,7 +266,7 @@ class ErnieBotModel:
         return self._build_chat_request_body(model, messages, stream, parameters, stop, user)
         
     def _build_function_calling_request_body(self, model: str, messages: list[ErnieMessage], stream: bool,
-                                                parameters: dict[str, Any], tools: list[PromptMessageTool], 
+                                                parameters: dict[str, Any], tools: list[PromptMessageTool],
                                                 stop: list[str], user: str) \
         -> dict[str, Any]:
         if len(messages) % 2 == 0:
@@ -275,7 +278,7 @@ class ErnieBotModel:
         TODO: implement function calling
         """
 
-    def _build_chat_request_body(self, model: str, messages: list[ErnieMessage], stream: bool, 
+    def _build_chat_request_body(self, model: str, messages: list[ErnieMessage], stream: bool,
                                  parameters: dict[str, Any], stop: list[str], user: str) \
         -> dict[str, Any]:
         if len(messages) == 0:

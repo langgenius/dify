@@ -182,6 +182,7 @@ class PubmedQueryRun(BaseModel):
 class PubMedInput(BaseModel):
     query: str = Field(..., description="Search query.")
 
+
 class PubMedSearchTool(BuiltinTool):
     """
     Tool for performing a search using PubMed search engine.
@@ -208,4 +209,3 @@ class PubMedSearchTool(BuiltinTool):
         result = tool._run(query)
 
         return self.create_text_message(self.summary(user_id=user_id, content=result))
-    

@@ -23,6 +23,7 @@ class ToolProviderListApi(Resource):
 
         return ToolManageService.list_tool_providers(user_id, tenant_id)
 
+
 class ToolBuiltinProviderListToolsApi(Resource):
     @setup_required
     @login_required
@@ -36,6 +37,7 @@ class ToolBuiltinProviderListToolsApi(Resource):
             tenant_id,
             provider,
         ))
+
 
 class ToolBuiltinProviderDeleteApi(Resource):
     @setup_required
@@ -54,6 +56,7 @@ class ToolBuiltinProviderDeleteApi(Resource):
             provider,
         )
     
+
 class ToolBuiltinProviderUpdateApi(Resource):
     @setup_required
     @login_required
@@ -77,6 +80,7 @@ class ToolBuiltinProviderUpdateApi(Resource):
             args['credentials'],
         )
     
+
 class ToolBuiltinProviderGetCredentialsApi(Resource):
     @setup_required
     @login_required
@@ -91,6 +95,7 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
             provider,
         )
 
+
 class ToolBuiltinProviderIconApi(Resource):
     @setup_required
     def get(self, provider):
@@ -98,12 +103,14 @@ class ToolBuiltinProviderIconApi(Resource):
         icon_cache_max_age = int(current_app.config.get('TOOL_ICON_CACHE_MAX_AGE'))
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
+
 class ToolModelProviderIconApi(Resource):
     @setup_required
     def get(self, provider):
         icon_bytes, mimetype = ToolManageService.get_model_tool_provider_icon(provider)
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype)
     
+
 class ToolModelProviderListToolsApi(Resource):
     @setup_required
     @login_required
@@ -122,6 +129,7 @@ class ToolModelProviderListToolsApi(Resource):
             tenant_id,
             args['provider'],
         ))
+
 
 class ToolApiProviderAddApi(Resource):
     @setup_required
@@ -155,6 +163,7 @@ class ToolApiProviderAddApi(Resource):
             args.get('privacy_policy', ''),
         )
 
+
 class ToolApiProviderGetRemoteSchemaApi(Resource):
     @setup_required
     @login_required
@@ -172,6 +181,7 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
             args['url'],
         )
     
+
 class ToolApiProviderListToolsApi(Resource):
     @setup_required
     @login_required
@@ -191,6 +201,7 @@ class ToolApiProviderListToolsApi(Resource):
             tenant_id,
             args['provider'],
         ))
+
 
 class ToolApiProviderUpdateApi(Resource):
     @setup_required
@@ -226,6 +237,7 @@ class ToolApiProviderUpdateApi(Resource):
             args['privacy_policy'],
         )
 
+
 class ToolApiProviderDeleteApi(Resource):
     @setup_required
     @login_required
@@ -249,6 +261,7 @@ class ToolApiProviderDeleteApi(Resource):
             args['provider'],
         )
 
+
 class ToolApiProviderGetApi(Resource):
     @setup_required
     @login_required
@@ -269,12 +282,14 @@ class ToolApiProviderGetApi(Resource):
             args['provider'],
         )
 
+
 class ToolBuiltinProviderCredentialsSchemaApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, provider):
         return ToolManageService.list_builtin_provider_credentials_schema(provider)
+
 
 class ToolApiProviderSchemaApi(Resource):
     @setup_required
@@ -290,6 +305,7 @@ class ToolApiProviderSchemaApi(Resource):
         return ToolManageService.parser_api_schema(
             schema=args['schema'],
         )
+
 
 class ToolApiProviderPreviousTestApi(Resource):
     @setup_required
@@ -317,6 +333,7 @@ class ToolApiProviderPreviousTestApi(Resource):
             args['schema'],
         )
 
+
 class ToolBuiltinListApi(Resource):
     @setup_required
     @login_required
@@ -330,6 +347,7 @@ class ToolBuiltinListApi(Resource):
             tenant_id,
         )])
     
+
 class ToolApiListApi(Resource):
     @setup_required
     @login_required
@@ -342,6 +360,7 @@ class ToolApiListApi(Resource):
             user_id,
             tenant_id,
         )])
+
 
 api.add_resource(ToolProviderListApi, '/workspaces/current/tool-providers')
 api.add_resource(ToolBuiltinProviderListToolsApi, '/workspaces/current/tool-provider/builtin/<provider>/tools')

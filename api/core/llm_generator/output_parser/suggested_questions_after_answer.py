@@ -17,7 +17,7 @@ class SuggestedQuestionsAfterAnswerOutputParser(BaseOutputParser):
         if action_match is not None:
             json_obj = json.loads(action_match.group(0).strip())
         else:
-            json_obj= []
+            json_obj = []
             print(f"Could not parse LLM output: {text}")
 
         return json_obj

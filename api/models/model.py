@@ -1249,6 +1249,7 @@ class MessageAgentThought(db.Model):
                     tool: self.observation for tool in tools
                 }
 
+
 class DatasetRetrieverResource(db.Model):
     __tablename__ = 'dataset_retriever_resources'
     __table_args__ = (

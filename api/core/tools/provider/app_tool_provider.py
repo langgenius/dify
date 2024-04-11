@@ -11,6 +11,7 @@ from models.tools import PublishedAppTool
 
 logger = logging.getLogger(__name__)
 
+
 class AppBasedToolProviderEntity(ToolProviderController):
     @property
     def app_type(self) -> ToolProviderType:

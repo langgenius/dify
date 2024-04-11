@@ -32,14 +32,14 @@ class TwilioAPIWrapper(BaseModel):
     auth_token: Optional[str] = None
     """Twilio auth token."""
     from_number: Optional[str] = None
-    """A Twilio phone number in [E.164](https://www.twilio.com/docs/glossary/what-e164) 
-        format, an 
-        [alphanumeric sender ID](https://www.twilio.com/docs/sms/send-messages#use-an-alphanumeric-sender-id), 
-        or a [Channel Endpoint address](https://www.twilio.com/docs/sms/channels#channel-addresses) 
-        that is enabled for the type of message you want to send. Phone numbers or 
-        [short codes](https://www.twilio.com/docs/sms/api/short-code) purchased from 
-        Twilio also work here. You cannot, for example, spoof messages from a private 
-        cell phone number. If you are using `messaging_service_sid`, this parameter 
+    """A Twilio phone number in [E.164](https://www.twilio.com/docs/glossary/what-e164)
+        format, an
+        [alphanumeric sender ID](https://www.twilio.com/docs/sms/send-messages#use-an-alphanumeric-sender-id),
+        or a [Channel Endpoint address](https://www.twilio.com/docs/sms/channels#channel-addresses)
+        that is enabled for the type of message you want to send. Phone numbers or
+        [short codes](https://www.twilio.com/docs/sms/api/short-code) purchased from
+        Twilio also work here. You cannot, for example, spoof messages from a private
+        cell phone number. If you are using `messaging_service_sid`, this parameter
         must be empty.
     """  # noqa: E501
 

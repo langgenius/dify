@@ -68,7 +68,7 @@ class InsertExploreAppListApi(Resource):
             copy_right = site.copyright if site.copyright else \
                 args['copyright'] if args['copyright'] else ''
             privacy_policy = site.privacy_policy if site.privacy_policy else \
-                args['privacy_policy'] if args['privacy_policy']  else ''
+                args['privacy_policy'] if args['privacy_policy'] else ''
 
         recommended_app = RecommendedApp.query.filter(RecommendedApp.app_id == args['app_id']).first()
 

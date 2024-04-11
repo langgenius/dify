@@ -49,8 +49,8 @@ class MoonshotLargeLanguageModel(OAIAPICompatLargeLanguageModel):
             model=model,
             label=I18nObject(en_US=model, zh_Hans=model),
             model_type=ModelType.LLM,
-            features=[ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL, ModelFeature.STREAM_TOOL_CALL] 
-                if credentials.get('function_calling_type') == 'tool_call' 
+            features=[ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL, ModelFeature.STREAM_TOOL_CALL]
+                if credentials.get('function_calling_type') == 'tool_call'
                 else [],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={

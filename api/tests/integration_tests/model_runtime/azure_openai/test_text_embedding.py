@@ -1,6 +1,7 @@
 import os
 
 import pytest
+
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.azure_openai.text_embedding.text_embedding import AzureOpenAITextEmbeddingModel
@@ -29,6 +30,7 @@ def test_validate_credentials(setup_openai_mock):
             'base_model_name': 'text-embedding-ada-002'
         }
     )
+
 
 @pytest.mark.parametrize('setup_openai_mock', [['text_embedding']], indirect=True)
 def test_invoke_model(setup_openai_mock):

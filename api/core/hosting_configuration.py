@@ -247,4 +247,3 @@ class HostingConfiguration:
         models_list = models_str.split(",") if models_str else []
         return [RestrictModel(model=model_name.strip(), model_type=ModelType.LLM) for model_name in models_list if
                 model_name.strip()]
-

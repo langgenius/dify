@@ -13,4 +13,3 @@ class FineTuning(BaseAPI):
     def __init__(self, client: "ZhipuAI") -> None:
         super().__init__(client)
         self.jobs = Jobs(client)
-

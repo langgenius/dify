@@ -23,4 +23,3 @@ class GroqLargeLanguageModel(OAIAPICompatLargeLanguageModel):
     def _add_custom_parameters(credentials: dict) -> None:
         credentials['mode'] = 'chat'
         credentials['endpoint_url'] = 'https://api.groq.com/openai/v1'
-    

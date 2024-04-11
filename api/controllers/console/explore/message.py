@@ -57,6 +57,7 @@ class MessageListApi(InstalledAppResource):
         except services.errors.message.FirstMessageNotExistsError:
             raise NotFound("First Message Not Exists.")
 
+
 class MessageFeedbackApi(InstalledAppResource):
     def post(self, installed_app, message_id):
         app_model = installed_app.app

@@ -40,4 +40,3 @@ class GetBoardActionsTool(BuiltinTool):
 
         actions_summary = "\n".join([f"{action['type']}: {action.get('data', {}).get('text', 'No details available')}" for action in actions])
         return self.create_text_message(text=f"Actions for Board ID {board_id}:\n{actions_summary}")
-

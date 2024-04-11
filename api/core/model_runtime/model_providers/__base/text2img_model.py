@@ -11,7 +11,7 @@ class Text2ImageModel(AIModel):
     """
     model_type: ModelType = ModelType.TEXT2IMG
 
-    def invoke(self, model: str, credentials: dict, prompt: str, 
+    def invoke(self, model: str, credentials: dict, prompt: str,
                model_parameters: dict, user: Optional[str] = None) \
             -> list[IO[bytes]]:
         """
@@ -31,7 +31,7 @@ class Text2ImageModel(AIModel):
             raise self._transform_invoke_error(e)
 
     @abstractmethod
-    def _invoke(self, model: str, credentials: dict, prompt: str, 
+    def _invoke(self, model: str, credentials: dict, prompt: str,
                 model_parameters: dict, user: Optional[str] = None) \
             -> list[IO[bytes]]:
         """

@@ -1,5 +1,5 @@
 # Written by YORKI MINAKO🤡, Edited by Xiaoyi
-CONVERSATION_TITLE_PROMPT = """You need to decompose the user's input into "subject" and "intention" in order to accurately figure out what the user's input language actually is. 
+CONVERSATION_TITLE_PROMPT = """You need to decompose the user's input into "subject" and "intention" in order to accurately figure out what the user's input language actually is.
 Notice: the language type user use could be diverse, which can be English, Chinese, Español, Arabic, Japanese, French, and etc.
 MAKE SURE your output is the SAME language as the user's input!
 Your output is restricted only to: (Input language) Intention + Subject(short as possible)
@@ -58,7 +58,7 @@ User Input: yo, 你今天咋样？
   "Your Output": "查询今日我的状态☺️"
 }
 
-User Input: 
+User Input:
 """
 
 SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
@@ -81,8 +81,8 @@ GENERATOR_QA_PROMPT = (
 )
 
 RULE_CONFIG_GENERATE_TEMPLATE = """Given MY INTENDED AUDIENCES and HOPING TO SOLVE using a language model, please select \
-the model prompt that best suits the input. 
-You will be provided with the prompt, variables, and an opening statement. 
+the model prompt that best suits the input.
+You will be provided with the prompt, variables, and an opening statement.
 Only the content enclosed in double curly braces, such as {{variable}}, in the prompt can be considered as a variable; \
 otherwise, it cannot exist as a variable in the variables.
 If you believe revising the original input will result in a better response from the language model, you may \
@@ -91,7 +91,7 @@ suggest revisions.
 <<PRINCIPLES OF GOOD PROMPT>>
 Integrate the intended audience in the prompt e.g. the audience is an expert in the field.
 Break down complex tasks into a sequence of simpler prompts in an interactive conversation.
-Implement example-driven prompting (Use few-shot prompting). 
+Implement example-driven prompting (Use few-shot prompting).
 When formatting your prompt start with Instruction followed by either Example if relevant. \
 Subsequently present your content. Use one or more line breaks to separate instructions examples questions context and input data.
 Incorporate the following phrases: “Your task is” and “You MUST”.

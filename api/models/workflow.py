@@ -157,6 +157,7 @@ class Workflow(db.Model):
 
         return variables
 
+
 class WorkflowRunTriggeredFrom(Enum):
     """
     Workflow Run Triggered From Enum

@@ -76,7 +76,7 @@ class ToolConfigurationManager(BaseModel):
         return a deep copy of credentials with decrypted values
         """
         cache = ToolProviderCredentialsCache(
-            tenant_id=self.tenant_id, 
+            tenant_id=self.tenant_id,
             identity_id=f'{self.provider_controller.app_type.value}.{self.provider_controller.identity.name}',
             cache_type=ToolProviderCredentialsCacheType.PROVIDER
         )
@@ -99,11 +99,12 @@ class ToolConfigurationManager(BaseModel):
     
     def delete_tool_credentials_cache(self):
         cache = ToolProviderCredentialsCache(
-            tenant_id=self.tenant_id, 
+            tenant_id=self.tenant_id,
             identity_id=f'{self.provider_controller.app_type.value}.{self.provider_controller.identity.name}',
             cache_type=ToolProviderCredentialsCacheType.PROVIDER
         )
         cache.delete()
+
 
 class ToolParameterConfigurationManager(BaseModel):
     """
@@ -191,7 +192,7 @@ class ToolParameterConfigurationManager(BaseModel):
         return a deep copy of parameters with decrypted values
         """
         cache = ToolParameterCache(
-            tenant_id=self.tenant_id, 
+            tenant_id=self.tenant_id,
             provider=f'{self.provider_type}.{self.provider_name}',
             tool_name=self.tool_runtime.identity.name,
             cache_type=ToolParameterCacheType.PARAMETER
@@ -220,12 +221,13 @@ class ToolParameterConfigurationManager(BaseModel):
     
     def delete_tool_parameters_cache(self):
         cache = ToolParameterCache(
-            tenant_id=self.tenant_id, 
+            tenant_id=self.tenant_id,
             provider=f'{self.provider_type}.{self.provider_name}',
             tool_name=self.tool_runtime.identity.name,
             cache_type=ToolParameterCacheType.PARAMETER
         )
         cache.delete()
+
 
 class ModelToolConfigurationManager:
     """

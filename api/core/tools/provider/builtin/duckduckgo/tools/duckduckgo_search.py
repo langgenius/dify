@@ -139,8 +139,10 @@ class DuckDuckGoSearchResults(BaseModel):
         res_strs = [", ".join([f"{k}: {v}" for k, v in d.items()]) for d in res]
         return ", ".join([f"[{rs}]" for rs in res_strs])
 
+
 class DuckDuckGoInput(BaseModel):
     query: str = Field(..., description="Search query.")
+
 
 class DuckDuckGoSearchTool(BuiltinTool):
     """
@@ -168,4 +170,3 @@ class DuckDuckGoSearchTool(BuiltinTool):
         result = tool._run(query)
 
         return self.create_text_message(self.summary(user_id=user_id, content=result))
-    

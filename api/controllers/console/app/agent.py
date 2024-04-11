@@ -29,4 +29,5 @@ class AgentLogApi(Resource):
             args['message_id']
         )
     
+
 api.add_resource(AgentLogApi, '/apps/<uuid:app_id>/agent/logs')

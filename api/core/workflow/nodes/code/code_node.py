@@ -28,6 +28,7 @@ PYTHON_DEFAULT_CODE = """def main(arg1: int, arg2: int) -> dict:
         "result": arg1 + arg2,
     }"""
 
+
 class CodeNode(BaseNode):
     _node_data_cls = CodeNodeData
     node_type = NodeType.CODE

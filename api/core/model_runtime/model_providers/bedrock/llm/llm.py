@@ -51,6 +51,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 
 logger = logging.getLogger(__name__)
 
+
 class BedrockLargeLanguageModel(LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
@@ -284,13 +285,13 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         first_loop = True
         for message in prompt_messages:
             if isinstance(message, SystemPromptMessage):
-                message.content=message.content.strip()
+                message.content = message.content.strip()
                 if first_loop:
-                    system=message.content
-                    first_loop=False
+                    system = message.content
+                    first_loop = False
                 else:
-                    system+="\n"
-                    system+=message.content
+                    system += "\n"
+                    system += message.content
 
         prompt_message_dicts = []
         for message in prompt_messages:
@@ -502,7 +503,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         payload = dict()
 
         if model_prefix == "amazon":
-            payload["textGenerationConfig"] = { **model_parameters }
+            payload["textGenerationConfig"] = {**model_parameters}
             payload["textGenerationConfig"]["stopSequences"] = ["User:"]
             
             payload["inputText"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
@@ -521,17 +522,17 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 payload["countPenalty"] = {model_parameters.get("countPenalty")}
 
         elif model_prefix == "anthropic":
-            payload = { **model_parameters }
+            payload = {**model_parameters}
             payload["prompt"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
             payload["stop_sequences"] = ["\n\nHuman:"] + (stop if stop else [])
             
         elif model_prefix == "cohere":
-            payload = { **model_parameters }
+            payload = {**model_parameters}
             payload["prompt"] = prompt_messages[0].content
             payload["stream"] = stream
         
         elif model_prefix == "meta":
-            payload = { **model_parameters }
+            payload = {**model_parameters}
             payload["prompt"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
 
         else:
@@ -576,11 +577,11 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             invoke = runtime_client.invoke_model
 
         try:
-            body_jsonstr=json.dumps(payload)
+            body_jsonstr = json.dumps(payload)
             response = invoke(
                 modelId=model,
                 contentType="application/json",
-                accept= "*/*",
+                accept="*/*",
                 body=body_jsonstr
             )
         except ClientError as ex:
@@ -597,7 +598,6 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         except Exception as ex:
             raise InvokeError(str(ex))
         
-
         if stream:
             return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
 
@@ -740,7 +740,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content = content_delta if content_delta else '',
+                content=content_delta if content_delta else '',
             )
             index += 1
            

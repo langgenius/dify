@@ -32,7 +32,7 @@ class DailyConversationStatistic(Resource):
 
         sql_query = '''
         SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, count(distinct messages.conversation_id) AS conversation_count
-            FROM messages where app_id = :app_id 
+            FROM messages where app_id = :app_id
         '''
         arg_dict = {'tz': account.timezone, 'app_id': app_model.id}
 
@@ -92,7 +92,7 @@ class DailyTerminalsStatistic(Resource):
 
         sql_query = '''
                 SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, count(distinct messages.from_end_user_id) AS terminal_count
-                    FROM messages where app_id = :app_id 
+                    FROM messages where app_id = :app_id
                 '''
         arg_dict = {'tz': account.timezone, 'app_id': app_model.id}
 
@@ -124,7 +124,7 @@ class DailyTerminalsStatistic(Resource):
         response_data = []
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)            
+            rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({
                     'date': str(i.date),
@@ -150,10 +150,10 @@ class DailyTokenCostStatistic(Resource):
         args = parser.parse_args()
 
         sql_query = '''
-                SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
+                SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
                     (sum(messages.message_tokens) + sum(messages.answer_tokens)) as token_count,
                     sum(total_price) as total_price
-                    FROM messages where app_id = :app_id 
+                    FROM messages where app_id = :app_id
                 '''
         arg_dict = {'tz': account.timezone, 'app_id': app_model.id}
 
@@ -212,7 +212,7 @@ class AverageSessionInteractionStatistic(Resource):
         parser.add_argument('end', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
         args = parser.parse_args()
 
-        sql_query = """SELECT date(DATE_TRUNC('day', c.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
+        sql_query = """SELECT date(DATE_TRUNC('day', c.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
 AVG(subquery.message_count) AS interactions
 FROM (SELECT m.conversation_id, COUNT(m.id) AS message_count
     FROM conversations c
@@ -278,11 +278,11 @@ class UserSatisfactionRateStatistic(Resource):
         args = parser.parse_args()
 
         sql_query = '''
-                        SELECT date(DATE_TRUNC('day', m.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
-                            COUNT(m.id) as message_count, COUNT(mf.id) as feedback_count 
+                        SELECT date(DATE_TRUNC('day', m.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+                            COUNT(m.id) as message_count, COUNT(mf.id) as feedback_count
                             FROM messages m
                             LEFT JOIN message_feedbacks mf on mf.message_id=m.id
-                            WHERE m.app_id = :app_id 
+                            WHERE m.app_id = :app_id
                         '''
         arg_dict = {'tz': account.timezone, 'app_id': app_model.id}
 
@@ -340,7 +340,7 @@ class AverageResponseTimeStatistic(Resource):
         args = parser.parse_args()
 
         sql_query = '''
-                SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
+                SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
                     AVG(provider_response_latency) as latency
                     FROM messages
                     WHERE app_id = :app_id
@@ -375,7 +375,7 @@ class AverageResponseTimeStatistic(Resource):
         response_data = []
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)            
+            rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({
                     'date': str(i.date),
@@ -400,8 +400,8 @@ class TokensPerSecondStatistic(Resource):
         parser.add_argument('end', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
         args = parser.parse_args()
 
-        sql_query = '''SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
-    CASE 
+        sql_query = '''SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+    CASE
         WHEN SUM(provider_response_latency) = 0 THEN 0
         ELSE (SUM(answer_tokens) / SUM(provider_response_latency))
     END as tokens_per_second

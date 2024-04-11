@@ -25,4 +25,3 @@ class TextEmbeddingResult(BaseModel):
     model: str
     embeddings: list[list[float]]
     usage: EmbeddingUsage
-

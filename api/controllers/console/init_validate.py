@@ -17,8 +17,8 @@ class InitValidateAPI(Resource):
     def get(self):
         init_status = get_init_validate_status()
         if init_status:
-            return { 'status': 'finished' }
-        return {'status': 'not_started' }
+            return {'status': 'finished'}
+        return {'status': 'not_started'}
 
     @only_edition_self_hosted
     def post(self):
@@ -39,11 +39,13 @@ class InitValidateAPI(Resource):
         session['is_init_validated'] = True
         return {'result': 'success'}, 201
 
+
 def get_init_validate_status():
     if current_app.config['EDITION'] == 'SELF_HOSTED':
         if os.environ.get('INIT_PASSWORD'):
             return session.get('is_init_validated') or DifySetup.query.first()
     
     return True
+
 
 api.add_resource(InitValidateAPI, '/init')

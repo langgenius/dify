@@ -29,7 +29,7 @@ QUESTION_CLASSIFIER_ASSISTANT_PROMPT_1 = """
 
 QUESTION_CLASSIFIER_USER_PROMPT_2 = """
     {"input_text": ["bad service, slow to bring the food"],
-    "categories": ["Food Quality, Experience, Price" ], 
+    "categories": ["Food Quality, Experience, Price" ],
     "classification_instructions": []}```JSON
 """
 
@@ -50,8 +50,8 @@ You are a text classification engine that analyzes text data and assigns categor
 ### Task
 Your task is to assign one categories ONLY to the input text and only one category may be assigned returned in the output.  Additionally, you need to extract the key words from the text that are related to the classification.
 ### Format
-The input text is in the variable text_field. Categories are specified as a comma-separated list in the variable categories or left empty for automatic determination. Classification instructions may be included to improve the classification accuracy. 
-### Constraint 
+The input text is in the variable text_field. Categories are specified as a comma-separated list in the variable categories or left empty for automatic determination. Classification instructions may be included to improve the classification accuracy.
+### Constraint
 DO NOT include anything other than the JSON array in your response.
 ### Example
 Here is the chat example between human and assistant, inside <example></example> XML tags.
@@ -60,7 +60,7 @@ User:{{"input_text": ["I recently had a great experience with your company. The 
 Assistant:{{"keywords": ["recently", "great experience", "company", "service", "prompt", "staff", "friendly"],"categories": ["Customer Service"]}}
 User:{{"input_text": ["bad service, slow to bring the food"],"categories": ["Food Quality, Experience, Price" ], "classification_instructions": []}}
 Assistant:{{"keywords": ["recently", "great experience", "company", "service", "prompt", "staff", "friendly"],"categories": ["Customer Service"]}}{{"keywords": ["bad service", "slow", "food", "tip", "terrible", "waitresses"],"categories": ["Experience""]}}
-</example> 
+</example>
 ### Memory
 Here is the chat histories between human and assistant, inside <histories></histories> XML tags.
 <histories>

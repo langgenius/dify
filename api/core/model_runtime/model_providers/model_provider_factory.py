@@ -199,7 +199,6 @@ class ModelProviderFactory:
         if self.model_provider_extensions:
             return self.model_provider_extensions
 
-
         # get the path of current classes
         current_path = os.path.abspath(__file__)
         model_providers_path = os.path.dirname(current_path)

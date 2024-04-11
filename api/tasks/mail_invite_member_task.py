@@ -40,12 +40,11 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
         else:
             html_content = render_template('invite_member_mail_template_en-US.html',
                                         to=to,
-                                        inviter_name=inviter_name, 
+                                        inviter_name=inviter_name,
                                         workspace_name=workspace_name,
                                         url=url)
             mail.send(to=to, subject="Join Dify Workspace Now", html=html_content)
         
-
         end_at = time.perf_counter()
         logging.info(
             click.style('Send invite member mail to {} succeeded: latency: {}'.format(to, end_at - start_at),

@@ -72,4 +72,3 @@ class FeatureService:
 
         features.docs_processing = billing_info['docs_processing']
         features.can_replace_logo = billing_info['can_replace_logo']
-

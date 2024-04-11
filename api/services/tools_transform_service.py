@@ -17,6 +17,7 @@ from models.tools import ApiToolProvider, BuiltinToolProvider
 
 logger = logging.getLogger(__name__)
 
+
 class ToolTransformService:
     @staticmethod
     def get_tool_provider_icon_url(provider_type: str, provider_name: str, icon: str) -> Union[str, dict]:
@@ -107,7 +108,7 @@ class ToolTransformService:
 
                 # init tool configuration
                 tool_configuration = ToolConfigurationManager(
-                    tenant_id=db_provider.tenant_id, 
+                    tenant_id=db_provider.tenant_id,
                     provider_controller=provider_controller
                 )
                 # decrypt the credentials and mask the credentials
@@ -129,7 +130,7 @@ class ToolTransformService:
         # package tool provider controller
         controller = ApiBasedToolProviderController.from_db(
             db_provider=db_provider,
-            auth_type=ApiProviderAuthType.API_KEY if db_provider.credentials['auth_type'] == 'api_key' else 
+            auth_type=ApiProviderAuthType.API_KEY if db_provider.credentials['auth_type'] == 'api_key' else
             ApiProviderAuthType.NONE
         )
 
@@ -173,7 +174,7 @@ class ToolTransformService:
         if decrypt_credentials:
             # init tool configuration
             tool_configuration = ToolConfigurationManager(
-                tenant_id=db_provider.tenant_id, 
+                tenant_id=db_provider.tenant_id,
                 provider_controller=provider_controller
             )
 

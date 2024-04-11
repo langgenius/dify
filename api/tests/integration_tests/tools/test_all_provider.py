@@ -1,10 +1,12 @@
 import pytest
+
 from core.tools.tool_manager import ToolManager
 
 provider_generator = ToolManager.list_builtin_providers()
 provider_names = [provider.identity.name for provider in provider_generator]
 ToolManager.clear_builtin_providers_cache()
 provider_generator = ToolManager.list_builtin_providers()
+
 
 @pytest.mark.parametrize('name', provider_names)
 def test_tool_providers(benchmark, name):

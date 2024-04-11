@@ -386,7 +386,7 @@ class AIPPTGenerateTool(BuiltinTool):
     def _calculate_sign(cls, access_key: str, secret_key: str, timestamp: int) -> str:
         return b64encode(
             hmac_new(
-                key=secret_key.encode('utf-8'), 
+                key=secret_key.encode('utf-8'),
                 msg=f'GET@/api/grant/token/@{timestamp}'.encode(),
                 digestmod=sha1
             ).digest()

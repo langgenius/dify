@@ -1,8 +1,9 @@
 import os
+from collections.abc import Generator
 from time import sleep
-from typing import Generator
 
 import pytest
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import AIModelEntity
@@ -15,6 +16,7 @@ def test_predefined_models():
     model_schemas = model.predefined_models()
     assert len(model_schemas) >= 1
     assert isinstance(model_schemas[0], AIModelEntity)
+
 
 def test_validate_credentials_for_chat_model():
     sleep(3)
@@ -36,6 +38,7 @@ def test_validate_credentials_for_chat_model():
             'secret_key': os.environ.get('BAICHUAN_SECRET_KEY')
         }
     )
+
 
 def test_invoke_model():
     sleep(3)
@@ -65,6 +68,7 @@ def test_invoke_model():
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
+
 
 def test_invoke_model_with_system_message():
     sleep(3)
@@ -98,6 +102,7 @@ def test_invoke_model_with_system_message():
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
 
+
 def test_invoke_stream_model():
     sleep(3)
     model = BaichuanLarguageModel()
@@ -129,6 +134,7 @@ def test_invoke_stream_model():
         assert isinstance(chunk.delta, LLMResultChunkDelta)
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
+
 
 def test_invoke_with_search():
     sleep(3)
@@ -166,6 +172,7 @@ def test_invoke_with_search():
         total_message += chunk.delta.message.content
 
     assert '不' not in total_message
+
 
 def test_get_num_tokens():
     sleep(3)

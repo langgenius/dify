@@ -66,8 +66,8 @@ class CotAgentOutputParser:
             index = 0
             while index < len(response):
                 steps = 1
-                delta = response[index:index+steps]
-                last_character = response[index-1] if index > 0 else ''
+                delta = response[index:index + steps]
+                last_character = response[index - 1] if index > 0 else ''
 
                 if delta == '`':
                     code_block_cache += delta
@@ -180,4 +180,3 @@ class CotAgentOutputParser:
 
         if json_cache:
             yield parse_action(json_cache)
-

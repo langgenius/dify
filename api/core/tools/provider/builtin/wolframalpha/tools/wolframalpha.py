@@ -10,9 +10,9 @@ from core.tools.tool.builtin_tool import BuiltinTool
 class WolframAlphaTool(BuiltinTool):
     _base_url = 'https://api.wolframalpha.com/v2/query'
 
-    def _invoke(self, 
-                user_id: str, 
-               tool_parameters: dict[str, Any], 
+    def _invoke(self,
+                user_id: str,
+               tool_parameters: dict[str, Any],
         ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
@@ -75,4 +75,3 @@ class WolframAlphaTool(BuiltinTool):
             return self.create_text_message('No result found')
 
         return self.create_text_message(result)
-    

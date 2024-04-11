@@ -11,6 +11,7 @@ _TEXT_COLOR_MAPPING = {
     "red": "31;1",
 }
 
+
 def get_colored_text(text: str, color: str) -> str:
     """Get colored text."""
     color_str = _TEXT_COLOR_MAPPING[color]
@@ -25,6 +26,7 @@ def print_text(
     print(text_to_print, end=end, file=file)
     if file:
         file.flush()  # ensure all printed content are written to file
+
 
 class DifyAgentCallbackHandler(BaseModel):
     """Callback Handler that prints to std out."""
@@ -70,8 +72,8 @@ class DifyAgentCallbackHandler(BaseModel):
     ) -> None:
         """Run on agent start."""
         if thought:
-            print_text("\n[on_agent_start] \nCurrent Loop: " + \
-                        str(self.current_loop) + \
+            print_text("\n[on_agent_start] \nCurrent Loop: " +
+                        str(self.current_loop) +
                         "\nThought: " + thought + "\n", color=self.color)
         else:
             print_text("\n[on_agent_start] \nCurrent Loop: " + str(self.current_loop) + "\n", color=self.color)

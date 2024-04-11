@@ -33,8 +33,8 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 
 
 class TritonInferenceAILargeLanguageModel(LargeLanguageModel):
-    def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
-                model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
+    def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                model_parameters: dict, tools: list[PromptMessageTool] | None = None,
                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
         -> LLMResult | Generator:
         """
@@ -150,9 +150,9 @@ class TritonInferenceAILargeLanguageModel(LargeLanguageModel):
 
         return entity
     
-    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
+    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                  model_parameters: dict,
-                 tools: list[PromptMessageTool] | None = None, 
+                 tools: list[PromptMessageTool] | None = None,
                  stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         """

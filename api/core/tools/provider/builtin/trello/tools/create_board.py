@@ -44,4 +44,3 @@ class CreateBoardTool(BuiltinTool):
 
         board = response.json()
         return self.create_text_message(text=f"Board created successfully! Board name: {board['name']}, ID: {board['id']}")
-

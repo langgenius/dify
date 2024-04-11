@@ -15,6 +15,7 @@ from core.tools.tool.tool import Tool
 
 API_TOOL_DEFAULT_TIMEOUT = (10, 60)
 
+
 class ApiTool(Tool):
     api_bundle: ApiBasedToolBundle
     
@@ -40,7 +41,7 @@ class ApiTool(Tool):
         """
             validate the credentials for Api tool
         """
-        # assemble validate request and request parameters 
+        # assemble validate request and request parameters
         headers = self.assembling_request(parameters)
 
         if format_only:
@@ -309,4 +310,3 @@ class ApiTool(Tool):
 
         # assemble invoke message
         return self.create_text_message(response)
-    
