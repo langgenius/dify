@@ -307,14 +307,14 @@ export type AgentLogMeta = {
 
 export type ToolCall = {
   status: string
-  error: string | null
-  time_cost: number
+  error?: string | null
+  time_cost?: number
   tool_icon: any
-  tool_input: any
-  tool_output: any
-  tool_name: string
-  tool_label: any
-  tool_parameters: any
+  tool_input?: any
+  tool_output?: any
+  tool_name?: string
+  tool_label?: any
+  tool_parameters?: any
 }
 
 export type AgentIteration = {
@@ -323,7 +323,7 @@ export type AgentIteration = {
   thought: string
   tokens: number
   tool_calls: ToolCall[]
-  toll_raw: {
+  tool_raw: {
     inputs: string
     outputs: string
   }

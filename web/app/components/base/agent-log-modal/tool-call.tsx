@@ -15,12 +15,17 @@ import I18n from '@/context/i18n'
 
 type Props = {
   toolCall: ToolCall
+  isLLM: boolean
+  isFinal?: boolean
+  tokens?: number
+  observation?: any
+  finalAnswer?: any
 }
 
-const ToolCallItem: FC<Props> = ({ toolCall }) => {
+const ToolCallItem: FC<Props> = ({ toolCall, isLLM = false, isFinal, tokens, observation, finalAnswer }) => {
   const [collapseState, setCollapseState] = useState<boolean>(true)
   const { locale } = useContext(I18n)
-  const toolName = toolCall.tool_label[locale] || toolCall.tool_label[locale.replaceAll('-', '_')]
+  const toolName = isLLM ? 'LLM' : (toolCall.tool_label[locale] || toolCall.tool_label[locale.replaceAll('-', '_')])
 
   const getTime = (time: number) => {
     if (time < 1)
@@ -55,13 +60,17 @@ const ToolCallItem: FC<Props> = ({ toolCall }) => {
               !collapseState && 'rotate-90',
             )}
           />
-          <BlockIcon className={cn('shrink-0 mr-2')} type={BlockEnum.Tool} toolIcon={toolCall.tool_icon} />
+          <BlockIcon className={cn('shrink-0 mr-2')} type={isLLM ? BlockEnum.LLM : BlockEnum.Tool} toolIcon={toolCall.tool_icon} />
           <div className={cn(
             'grow text-gray-700 text-[13px] leading-[16px] font-semibold truncate',
           )} title={toolName}>{toolName}</div>
           <div className='shrink-0 text-gray-500 text-xs leading-[18px]'>
-            <span>{getTime(toolCall.time_cost || 0)}</span>
-            {/* <span>{` · ${getTokenCount(0)} tokens`}</span> */}
+            {toolCall.time_cost && (
+              <span>{getTime(toolCall.time_cost || 0)}</span>
+            )}
+            {isLLM && (
+              <span>{`${getTokenCount(tokens || 0)} tokens`}</span>
+            )}
           </div>
           {toolCall.status === 'success' && (
             <CheckCircle className='shrink-0 ml-2 w-3.5 h-3.5 text-[#12B76A]' />
@@ -95,6 +104,28 @@ const ToolCallItem: FC<Props> = ({ toolCall }) => {
                   title={<div>OUTPUT</div>}
                   language={CodeLanguage.json}
                   value={toolCall.tool_output}
+                  isJSONStringifyBeauty
+                />
+              </div>
+            )}
+            {isLLM && (
+              <div className={cn('px-[10px] py-1')}>
+                <CodeEditor
+                  readOnly
+                  title={<div>OBSERVATION</div>}
+                  language={CodeLanguage.json}
+                  value={observation}
+                  isJSONStringifyBeauty
+                />
+              </div>
+            )}
+            {isLLM && (
+              <div className={cn('px-[10px] py-1')}>
+                <CodeEditor
+                  readOnly
+                  title={<div>{isFinal ? 'FINAL ANSWER' : 'THOUGHT'}</div>}
+                  language={CodeLanguage.json}
+                  value={finalAnswer}
                   isJSONStringifyBeauty
                 />
               </div>

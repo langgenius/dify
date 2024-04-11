@@ -322,6 +322,7 @@ export const useChat = (
                 }
                 draft[index] = {
                   ...draft[index],
+                  content: newResponseItem.answer,
                   log: [
                     ...newResponseItem.message,
                     ...(newResponseItem.message[newResponseItem.message.length - 1].role !== 'assistant'
