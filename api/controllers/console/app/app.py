@@ -46,32 +46,7 @@ class AppListApi(Resource):
         app_service = AppService()
         app_pagination = app_service.get_paginate_apps(current_user.current_tenant_id, args)
 
-        if 'name' in args and args['name']:
-            filters.append(App.name.ilike(f'%{args["name"]}%'))
-
-        if 'tag_ids' in args and args['tag_ids']:
-            target_ids = TagService.get_target_ids_by_tag_ids('knowledge',
-                                                              current_user.current_tenant_id,
-                                                              args['tag_ids'])
-            if target_ids:
-                filters.append(App.id.in_(target_ids))
-            else:
-                return {
-                    'data': [],
-                    'has_more': False,
-                    'limit': args['limit'],
-                    'total': 0,
-                    'page': args['page']
-                }
-
-        app_models = db.paginate(
-            db.select(App).where(*filters).order_by(App.created_at.desc()),
-            page=args['page'],
-            per_page=args['limit'],
-            error_out=False
-        )
-
-        return app_models
+        return app_pagination
 
     @setup_required
     @login_required
