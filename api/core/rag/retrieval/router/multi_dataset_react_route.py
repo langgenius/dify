@@ -12,8 +12,7 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage
-from core.rag.retrieval.agent.output_parser.structured_chat import StructuredChatOutputParser
-from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from core.rag.retrieval.output_parser.structured_chat import StructuredChatOutputParser
 from core.workflow.nodes.llm.llm_node import LLMNode
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
@@ -55,11 +54,10 @@ class ReactMultiDatasetRouter:
             self,
             query: str,
             dataset_tools: list[PromptMessageTool],
-            node_data: KnowledgeRetrievalNodeData,
             model_config: ModelConfigWithCredentialsEntity,
             model_instance: ModelInstance,
             user_id: str,
-            tenant_id: str,
+            tenant_id: str
 
     ) -> Union[str, None]:
         """Given input, decided what to do.
@@ -72,7 +70,8 @@ class ReactMultiDatasetRouter:
             return dataset_tools[0].name
 
         try:
-            return self._react_invoke(query=query, node_data=node_data, model_config=model_config, model_instance=model_instance,
+            return self._react_invoke(query=query, model_config=model_config,
+                                      model_instance=model_instance,
                                       tools=dataset_tools, user_id=user_id, tenant_id=tenant_id)
         except Exception as e:
             return None
@@ -80,7 +79,6 @@ class ReactMultiDatasetRouter:
     def _react_invoke(
             self,
             query: str,
-            node_data: KnowledgeRetrievalNodeData,
             model_config: ModelConfigWithCredentialsEntity,
             model_instance: ModelInstance,
             tools: Sequence[PromptMessageTool],
@@ -121,7 +119,7 @@ class ReactMultiDatasetRouter:
             model_config=model_config
         )
         result_text, usage = self._invoke_llm(
-            node_data=node_data,
+            completion_param=model_config.parameters,
             model_instance=model_instance,
             prompt_messages=prompt_messages,
             stop=stop,
@@ -134,10 +132,11 @@ class ReactMultiDatasetRouter:
             return agent_decision.tool
         return None
 
-    def _invoke_llm(self, node_data: KnowledgeRetrievalNodeData,
+    def _invoke_llm(self, completion_param: dict,
                     model_instance: ModelInstance,
                     prompt_messages: list[PromptMessage],
-                    stop: list[str], user_id: str, tenant_id: str) -> tuple[str, LLMUsage]:
+                    stop: list[str], user_id: str, tenant_id: str
+                    ) -> tuple[str, LLMUsage]:
         """
             Invoke large language model
             :param node_data: node data
@@ -148,7 +147,7 @@ class ReactMultiDatasetRouter:
         """
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
-            model_parameters=node_data.single_retrieval_config.model.completion_params,
+            model_parameters=completion_param,
             stop=stop,
             stream=True,
             user=user_id,
@@ -203,7 +202,8 @@ class ReactMultiDatasetRouter:
     ) -> list[ChatModelMessage]:
         tool_strings = []
         for tool in tools:
-            tool_strings.append(f"{tool.name}: {tool.description}, args: {{'query': {{'title': 'Query', 'description': 'Query for the dataset to be used to retrieve the dataset.', 'type': 'string'}}}}")
+            tool_strings.append(
+                f"{tool.name}: {tool.description}, args: {{'query': {{'title': 'Query', 'description': 'Query for the dataset to be used to retrieve the dataset.', 'type': 'string'}}}}")
         formatted_tools = "\n".join(tool_strings)
         unique_tool_names = set(tool.name for tool in tools)
         tool_names = ", ".join('"' + name + '"' for name in unique_tool_names)

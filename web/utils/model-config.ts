@@ -15,6 +15,9 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
       if (item['text-input'])
         return ['string', item['text-input']]
 
+      if (item.number)
+        return ['number', item.number]
+
       if (item.external_data_tool)
         return [item.external_data_tool.type, item.external_data_tool]
 

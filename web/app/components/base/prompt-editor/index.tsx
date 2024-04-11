@@ -15,6 +15,7 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
+import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 // import TreeView from './plugins/tree-view'
 import Placeholder from './plugins/placeholder'
 import ComponentPickerBlock from './plugins/component-picker-block'
@@ -208,6 +209,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <OnChangePlugin onChange={handleEditorChange} />
         <OnBlurBlock onBlur={onBlur} onFocus={onFocus} />
         <UpdateBlock instanceId={instanceId} />
+        <HistoryPlugin />
         {/* <TreeView /> */}
       </div>
     </LexicalComposer>

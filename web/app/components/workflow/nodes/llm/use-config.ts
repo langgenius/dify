@@ -103,6 +103,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig, isChatModel])
 
+  const [modelChanged, setModelChanged] = useState(false)
   const {
     currentProvider,
     currentModel,
@@ -118,6 +119,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
         appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
     })
     setInputs(newInputs)
+    setModelChanged(true)
   }, [setInputs, defaultConfig, appendDefaultPromptConfig])
 
   useEffect(() => {
@@ -146,7 +148,35 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     },
   )
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
-
+  // change to vision model to set vision enabled, else disabled
+  useEffect(() => {
+    if (!modelChanged)
+      return
+    setModelChanged(false)
+    if (!isShowVisionConfig) {
+      const newInputs = produce(inputs, (draft) => {
+        draft.vision = {
+          enabled: false,
+        }
+      })
+      setInputs(newInputs)
+      return
+    }
+    if (!inputs.vision?.enabled) {
+      const newInputs = produce(inputs, (draft) => {
+        if (!draft.vision?.enabled) {
+          draft.vision = {
+            enabled: true,
+            configs: {
+              detail: Resolution.high,
+            },
+          }
+        }
+      })
+      setInputs(newInputs)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isShowVisionConfig, modelChanged])
   // variables
   const { handleVarListChange, handleAddVariable } = useVarList<LLMNodeType>({
     inputs,
@@ -172,6 +202,28 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const handleMemoryChange = useCallback((newMemory?: Memory) => {
     const newInputs = produce(inputs, (draft) => {
       draft.memory = newMemory
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleVisionResolutionEnabledChange = useCallback((enabled: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      if (!draft.vision) {
+        draft.vision = {
+          enabled,
+          configs: {
+            detail: Resolution.high,
+          },
+        }
+      }
+      else {
+        draft.vision.enabled = enabled
+        if (!draft.vision.configs) {
+          draft.vision.configs = {
+            detail: Resolution.high,
+          }
+        }
+      }
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -296,6 +348,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     filterVar,
     handlePromptChange,
     handleMemoryChange,
+    handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
     isShowSingleRun,
     hideSingleRun,

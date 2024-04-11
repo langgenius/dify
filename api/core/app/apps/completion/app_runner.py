@@ -116,6 +116,8 @@ class CompletionAppRunner(AppRunner):
 
             dataset_retrieval = DatasetRetrieval()
             context = dataset_retrieval.retrieve(
+                app_id=app_record.id,
+                user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
                 model_config=application_generate_entity.model_config,
                 config=dataset_config,

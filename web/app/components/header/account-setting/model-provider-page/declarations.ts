@@ -1,8 +1,8 @@
 export type FormValue = Record<string, any>
 
 export type TypeWithI18N<T = string> = {
-  'en-US': T
-  'zh-Hans': T
+  en_US: T
+  zh_Hans: T
   [key: string]: T
 }
 
@@ -67,16 +67,16 @@ export enum ModelStatusEnum {
 
 export const MODEL_STATUS_TEXT: { [k: string]: TypeWithI18N } = {
   'no-configure': {
-    'en-US': 'No Configure',
-    'zh-Hans': '未配置凭据',
+    en_US: 'No Configure',
+    zh_Hans: '未配置凭据',
   },
   'quota-exceeded': {
-    'en-US': 'Quota Exceeded',
-    'zh-Hans': '额度不足',
+    en_US: 'Quota Exceeded',
+    zh_Hans: '额度不足',
   },
   'no-permission': {
-    'en-US': 'No Permission',
-    'zh-Hans': '无使用权限',
+    en_US: 'No Permission',
+    zh_Hans: '无使用权限',
   },
 }
 

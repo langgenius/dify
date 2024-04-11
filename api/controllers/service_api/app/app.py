@@ -1,14 +1,11 @@
-import json
 
 from flask import current_app
-from flask_restful import fields, marshal_with, Resource
+from flask_restful import Resource, fields, marshal_with
 
 from controllers.service_api import api
 from controllers.service_api.app.error import AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
-from extensions.ext_database import db
-from models.model import App, AppModelConfig, AppMode
-from models.tools import ApiToolProvider
+from models.model import App, AppMode
 from services.app_service import AppService
 
 
@@ -92,6 +89,16 @@ class AppMetaApi(Resource):
         """Get app meta"""
         return AppService().get_app_meta(app_model)
 
+class AppInfoApi(Resource):
+    @validate_app_token
+    def get(self, app_model: App):
+        """Get app infomation"""
+        return {
+            'name':app_model.name,
+            'description':app_model.description
+        } 
+
 
 api.add_resource(AppParameterApi, '/parameters')
 api.add_resource(AppMetaApi, '/meta')
+api.add_resource(AppInfoApi, '/info')

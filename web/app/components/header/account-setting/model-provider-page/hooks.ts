@@ -11,11 +11,11 @@ import type {
   DefaultModel,
   DefaultModelResponse,
   Model,
-
   ModelTypeEnum,
 } from './declarations'
 import {
   ConfigurateMethodEnum,
+  ModelStatusEnum,
 } from './declarations'
 import I18n from '@/context/i18n'
 import {
@@ -132,6 +132,7 @@ export const useCurrentProviderAndModel = (modelList: Model[], defaultModel?: De
 
 export const useTextGenerationCurrentProviderAndModelAndModelList = (defaultModel?: DefaultModel) => {
   const { textGenerationModelList } = useProviderContext()
+  const activeTextGenerationModelList = textGenerationModelList.filter(model => model.status === ModelStatusEnum.active)
   const {
     currentProvider,
     currentModel,
@@ -141,6 +142,7 @@ export const useTextGenerationCurrentProviderAndModelAndModelList = (defaultMode
     currentProvider,
     currentModel,
     textGenerationModelList,
+    activeTextGenerationModelList,
   }
 }
 

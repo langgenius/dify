@@ -16,6 +16,7 @@ import {
 } from '../store'
 import { useWorkflowRun } from '../hooks'
 import type { StartNodeType } from '../nodes/start/types'
+import { TransferMethod } from '../../base/text-generation/types'
 import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'
 
@@ -75,6 +76,13 @@ const InputsPanel = ({ onRun }: Props) => {
     handleRun({ inputs, files })
   }
 
+  const canRun = (() => {
+    if (files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
+      return false
+
+    return true
+  })()
+
   return (
     <>
       <div className='px-4 pb-2'>
@@ -97,7 +105,7 @@ const InputsPanel = ({ onRun }: Props) => {
       <div className='flex items-center justify-between px-4 py-2'>
         <Button
           type='primary'
-          disabled={workflowRunningData?.result?.status === WorkflowRunningStatus.Running}
+          disabled={!canRun || workflowRunningData?.result?.status === WorkflowRunningStatus.Running}
           className='py-0 w-full h-8 rounded-lg text-[13px] font-medium'
           onClick={doRun}
         >

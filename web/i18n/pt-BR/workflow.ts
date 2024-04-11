@@ -46,6 +46,9 @@ const translation = {
       content: 'A variável está sendo usada em outros nós. Deseja removê-la mesmo assim?',
     },
     insertVarTip: 'Pressione a tecla \'/\' para inserir rapidamente',
+    processData: 'Processar dados',
+    input: 'Entrada',
+    output: 'Saída',
   },
   errorMsg: {
     fieldRequired: '{{field}} é obrigatório',

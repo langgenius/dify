@@ -6,6 +6,7 @@ import produce from 'immer'
 import RemoveButton from '../../../_base/components/remove-button'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
 type Props = {
   readonly: boolean
@@ -71,6 +72,7 @@ const VarList: FC<Props> = ({
             onOpen={handleOpen(index)}
             onlyLeafNodeVar={onlyLeafNodeVar}
             filterVar={filterVar}
+            defaultVarKindType={VarKindType.variable}
           />
           {!readonly && (
             <RemoveButton

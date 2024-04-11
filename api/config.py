@@ -42,7 +42,7 @@ DEFAULTS = {
     'HOSTED_OPENAI_TRIAL_ENABLED': 'False',
     'HOSTED_OPENAI_TRIAL_MODELS': 'gpt-3.5-turbo,gpt-3.5-turbo-1106,gpt-3.5-turbo-instruct,gpt-3.5-turbo-16k,gpt-3.5-turbo-16k-0613,gpt-3.5-turbo-0613,gpt-3.5-turbo-0125,text-davinci-003',
     'HOSTED_OPENAI_PAID_ENABLED': 'False',
-    'HOSTED_OPENAI_PAID_MODELS': 'gpt-4,gpt-4-turbo-preview,gpt-4-1106-preview,gpt-4-0125-preview,gpt-3.5-turbo,gpt-3.5-turbo-16k,gpt-3.5-turbo-16k-0613,gpt-3.5-turbo-1106,gpt-3.5-turbo-0613,gpt-3.5-turbo-0125,gpt-3.5-turbo-instruct,text-davinci-003',
+    'HOSTED_OPENAI_PAID_MODELS': 'gpt-4,gpt-4-turbo-preview,gpt-4-turbo-2024-04-09,gpt-4-1106-preview,gpt-4-0125-preview,gpt-3.5-turbo,gpt-3.5-turbo-16k,gpt-3.5-turbo-16k-0613,gpt-3.5-turbo-1106,gpt-3.5-turbo-0613,gpt-3.5-turbo-0125,gpt-3.5-turbo-instruct,text-davinci-003',
     'HOSTED_AZURE_OPENAI_ENABLED': 'False',
     'HOSTED_AZURE_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_ANTHROPIC_QUOTA_LIMIT': 600000,
@@ -67,6 +67,7 @@ DEFAULTS = {
     'CODE_EXECUTION_ENDPOINT': '',
     'CODE_EXECUTION_API_KEY': '',
     'TOOL_ICON_CACHE_MAX_AGE': 3600,
+    'MILVUS_DATABASE': 'default',
     'KEYWORD_DATA_SOURCE_TYPE': 'database',
 }
 
@@ -98,7 +99,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.6.0-fix1"
+        self.CURRENT_VERSION = "0.6.1"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -212,6 +213,7 @@ class Config:
         self.MILVUS_USER = get_env('MILVUS_USER')
         self.MILVUS_PASSWORD = get_env('MILVUS_PASSWORD')
         self.MILVUS_SECURE = get_env('MILVUS_SECURE')
+        self.MILVUS_DATABASE = get_env('MILVUS_DATABASE')
 
         # weaviate settings
         self.WEAVIATE_ENDPOINT = get_env('WEAVIATE_ENDPOINT')
