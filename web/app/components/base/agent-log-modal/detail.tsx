@@ -12,14 +12,21 @@ import Loading from '@/app/components/base/loading'
 import { fetchAgentLogDetail } from '@/service/log'
 import type { AgentIteration, AgentLogDetailResponse } from '@/models/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import type { IChatItem } from '@/app/components/app/chat/type'
 
 export type AgentLogDetailProps = {
   activeTab?: 'DETAIL' | 'TRACING'
   conversationID: string
+  log: IChatItem
   messageID: string
 }
 
-const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', conversationID, messageID }) => {
+const AgentLogDetail: FC<AgentLogDetailProps> = ({
+  activeTab = 'DETAIL',
+  conversationID,
+  messageID,
+  log,
+}) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
@@ -99,8 +106,8 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', convers
         )}
         {!loading && currentTab === 'DETAIL' && runDetail && (
           <ResultPanel
-            inputs={''}
-            outputs={''}
+            inputs={log.input}
+            outputs={log.content}
             status={runDetail.meta.status}
             error={runDetail.meta.error}
             elapsed_time={runDetail.meta.elapsed_time}

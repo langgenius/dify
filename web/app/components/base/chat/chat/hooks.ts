@@ -341,6 +341,10 @@ export const useChat = (
                   },
                   // for agent log
                   conversationId: connversationId.current,
+                  input: {
+                    inputs: newResponseItem.inputs,
+                    query: newResponseItem.query,
+                  },
                 }
               }
             })

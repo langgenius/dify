@@ -85,6 +85,7 @@ export type IChatItem = {
   workflow_run_id?: string
   // for agent log
   conversationId?: string
+  input?: any
 }
 
 export type MessageEnd = {

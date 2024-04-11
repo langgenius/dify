@@ -57,7 +57,11 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
       <span className='absolute right-3 top-4 p-1 cursor-pointer z-20' onClick={onCancel}>
         <XClose className='w-4 h-4 text-gray-500' />
       </span>
-      <AgentLogDetail conversationID={currentLogItem.conversationId} messageID={currentLogItem.id} />
+      <AgentLogDetail
+        conversationID={currentLogItem.conversationId}
+        messageID={currentLogItem.id}
+        log={currentLogItem}
+      />
     </div>
   )
 }

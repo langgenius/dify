@@ -11,8 +11,8 @@ type ResultPanelProps = {
   elapsed_time?: number
   total_tokens?: number
   error?: string
-  inputs?: string
-  outputs?: string
+  inputs?: any
+  outputs?: any
   created_by?: string
   created_at?: string
   agentMode?: string

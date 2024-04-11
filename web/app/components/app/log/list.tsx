@@ -109,6 +109,10 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string) =
       ],
       workflow_run_id: item.workflow_run_id,
       conversationId,
+      input: {
+        inputs: item.inputs,
+        query: item.query,
+      },
       more: {
         time: dayjs.unix(item.created_at).format('hh:mm A'),
         tokens: item.answer_tokens + item.message_tokens,
