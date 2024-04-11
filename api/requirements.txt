@@ -39,10 +39,16 @@ resend~=0.7.0
 pyjwt~=2.8.0
 anthropic~=0.23.1
 newspaper3k==0.2.8
-google-api-python-client==2.90.0
 wikipedia==1.4.0
 readabilipy==0.2.0
+google-ai-generativelanguage==0.6.1
+google-api-core==2.18.0
+google-api-python-client==2.90.0
+google-auth==2.29.0
+google-auth-httplib2==0.2.0
+google-generativeai==0.5.0
 google-search-results==2.4.2
+googleapis-common-protos==1.63.0
 replicate~=0.22.0
 websocket-client~=1.7.0
 dashscope[tokenizer]~=1.14.0
@@ -62,7 +68,6 @@ numpy~=1.25.2
 unstructured[docx,pptx,msg,md,ppt]~=0.10.27
 bs4~=0.0.1
 markdown~=3.5.1
-google-generativeai~=0.3.2
 httpx[socks]~=0.24.1
 matplotlib~=3.8.2
 yfinance~=0.2.35
