@@ -31,7 +31,7 @@ parameter_rules:
     max: 500
   - name: max_tokens
     use_template: max_tokens
-    default: 256
+    default: 1024
     max: 4096
   - name: preamble_override
     label:
