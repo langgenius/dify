@@ -323,6 +323,9 @@ class CohereLargeLanguageModel(LargeLanguageModel):
             model_parameters['stop_sequences'] = stop
 
         if tools:
+            if len(tools) == 1:
+                raise ValueError("Cohere tool call requires at least two tools to be specified.")
+
             model_parameters['tools'] = self._convert_tools(tools)
 
         message, chat_histories, tool_results \
@@ -476,8 +479,6 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                 index += 1
             elif isinstance(chunk, StreamedChatResponse_ToolCallsGeneration):
                 chunk = cast(StreamedChatResponse_ToolCallsGeneration, chunk)
-
-                tool_calls = []
                 if chunk.tool_calls:
                     for cohere_tool_call in chunk.tool_calls:
                         tool_call = AssistantPromptMessage.ToolCall(

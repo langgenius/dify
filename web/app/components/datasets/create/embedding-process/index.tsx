@@ -1,11 +1,10 @@
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { omit } from 'lodash-es'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
-import { useGetState } from 'ahooks'
 import cn from 'classnames'
 import s from './index.module.css'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
@@ -89,27 +88,35 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
 
   const getFirstDocument = documents[0]
 
-  const [indexingStatusBatchDetail, setIndexingStatusDetail, getIndexingStatusDetail] = useGetState<IndexingStatusResponse[]>([])
+  const [indexingStatusBatchDetail, setIndexingStatusDetail] = useState<IndexingStatusResponse[]>([])
   const fetchIndexingStatus = async () => {
     const status = await doFetchIndexingStatus({ datasetId, batchId })
     setIndexingStatusDetail(status.data)
+    return status.data
   }
 
-  const [_, setRunId, getRunId] = useGetState<ReturnType<typeof setInterval>>()
-
+  // const [_, setRunId, getRunId] = useGetState<ReturnType<typeof setInterval>>()
+  const [runId, setRunId] = useState<ReturnType<typeof setInterval>>()
+  const runIdRef = useRef(runId)
+  const getRunId = () => runIdRef.current
+  useEffect(() => {
+    runIdRef.current = runId
+  }, [runId])
   const stopQueryStatus = () => {
     clearInterval(getRunId())
+    setRunId(undefined)
   }
 
   const startQueryStatus = () => {
-    const runId = setInterval(() => {
-      const indexingStatusBatchDetail = getIndexingStatusDetail()
-      const isCompleted = indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error'].includes(indexingStatusDetail.indexing_status))
-      if (isCompleted) {
-        stopQueryStatus()
+    const runId = setInterval(async () => {
+      // It's so strange that the interval can't be cleared after the clearInterval called. And the runId is current.
+      if (!getRunId())
         return
-      }
-      fetchIndexingStatus()
+
+      const indexingStatusBatchDetail = await fetchIndexingStatus()
+      const isCompleted = indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error'].includes(indexingStatusDetail.indexing_status))
+      if (isCompleted)
+        stopQueryStatus()
     }, 2500)
     setRunId(runId)
   }
@@ -221,11 +228,11 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
             indexingStatusDetail.indexing_status === 'completed' && s.success,
           )}>
             {isSourceEmbedding(indexingStatusDetail) && (
-              <div className={s.progressbar} style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}/>
+              <div className={s.progressbar} style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }} />
             )}
             <div className={`${s.info} grow`}>
               {getSourceType(indexingStatusDetail.id) === DataSourceType.FILE && (
-                <div className={cn(s.fileIcon, s[getFileType(getSourceName(indexingStatusDetail.id))])}/>
+                <div className={cn(s.fileIcon, s[getFileType(getSourceName(indexingStatusDetail.id))])} />
               )}
               {getSourceType(indexingStatusDetail.id) === DataSourceType.NOTION && (
                 <NotionIcon

@@ -59,12 +59,12 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
                         type={(node?.data.type as BlockEnum) || BlockEnum.Start}
                       />
                     </div>
-                    <div className='mx-0.5 text-xs font-medium text-gray-700'>{node?.data.title}</div>
+                    <div className='max-w-[85px] truncate mx-0.5 text-xs font-medium text-gray-700' title={node?.data.title}>{node?.data.title}</div>
                     <Line3 className='mr-0.5'></Line3>
                   </div>
                   <div className='flex items-center text-primary-600'>
                     <Variable02 className='w-3.5 h-3.5' />
-                    <div className='ml-0.5 text-xs font-medium'>{varName}</div>
+                    <div className='max-w-[75px] truncate ml-0.5 text-xs font-medium' title={varName}>{varName}</div>
                   </div>
                   {/* <div className='ml-0.5 text-xs font-normal text-gray-500'>{output_type}</div> */}
                 </div>
