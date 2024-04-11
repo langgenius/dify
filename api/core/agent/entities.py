@@ -34,12 +34,29 @@ class AgentScratchpadUnit(BaseModel):
         action_name: str
         action_input: Union[dict, str]
 
+        def to_dict(self) -> dict:
+            """
+            Convert to dictionary.
+            """
+            return {
+                'action': self.action_name,
+                'action_input': self.action_input,
+            }
+
     agent_response: Optional[str] = None
     thought: Optional[str] = None
     action_str: Optional[str] = None
     observation: Optional[str] = None
     action: Optional[Action] = None
 
+    def is_final(self) -> bool:
+        """
+        Check if the scratchpad unit is final.
+        """
+        return self.action is None or (
+            'final' in self.action.action_name.lower() and 
+            'answer' in self.action.action_name.lower()
+        )
 
 class AgentEntity(BaseModel):
     """
