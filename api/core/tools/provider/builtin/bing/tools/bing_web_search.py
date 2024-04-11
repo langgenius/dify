@@ -12,6 +12,7 @@ class BingSearchTool(BuiltinTool):
 
     def _invoke_bing(self, 
                      user_id: str,
+                     server_url: str,
                      subscription_key: str, query: str, limit: int, 
                      result_type: str, market: str, lang: str, 
                      filters: list[str]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
@@ -26,7 +27,7 @@ class BingSearchTool(BuiltinTool):
         }
 
         query = quote(query)
-        server_url = f'{self.url}?q={query}&mkt={market_code}&count={limit}&responseFilter={",".join(filters)}'
+        server_url = f'{server_url}?q={query}&mkt={market_code}&count={limit}&responseFilter={",".join(filters)}'
         response = get(server_url, headers=headers)
 
         if response.status_code != 200:
@@ -136,6 +137,7 @@ class BingSearchTool(BuiltinTool):
         
         self._invoke_bing(
             user_id='test',
+            server_url=server_url,
             subscription_key=key,
             query=query,
             limit=limit,
@@ -188,6 +190,7 @@ class BingSearchTool(BuiltinTool):
         
         return self._invoke_bing(
             user_id=user_id,
+            server_url=server_url,
             subscription_key=key,
             query=query,
             limit=limit,
