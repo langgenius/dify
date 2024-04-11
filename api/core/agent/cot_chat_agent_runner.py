@@ -1,65 +1,59 @@
 import json
-from typing import Literal
 
 from core.agent.cot_agent_runner import CotAgentRunner
-from core.agent.entities import AgentPromptEntity, AgentScratchpadUnit
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    SystemPromptMessage,
+    UserPromptMessage,
+)
 
 
 class CotChatAgentRunner(CotAgentRunner):
-    def _format_instructions(self, instruction: str, tools: list[PromptMessageTool],
-                                prompt_template: AgentPromptEntity
-        ) -> str:
+    def _organize_system_prompt(self) -> SystemPromptMessage:
         """
-        format instructions
+        Organize system prompt
         """
-        result = prompt_template.first_prompt
+        prompt_entity = self.app_config.agent.prompt
+        first_prompt = prompt_entity.first_prompt
 
-        # format tools
-        result = result.replace('{{tools}}', json.dumps(tools))
+        return first_prompt.replace("{{instruction}}", self._instruction) \
+            .replace("{{tools}}", json.dumps(self._prompt_messages_tools)) \
+            .replace("{{tool_names}}", ', '.join([tool.name for tool in self._prompt_messages_tools]))
 
-        result = result.replace('{{tool_names}}', ', '.join([tool.name for tool in tools]))
-
-        # format instruction
-        result = result.replace('{{instruction}}', instruction)
-
-        return result
-
-    def _format_scratchpads(self, scratchpad: list[AgentScratchpadUnit]) -> str:
+    def _organize_prompt_messages(self) -> list[PromptMessage]:
         """
-            format scratchpads
+        Organize 
         """
-        result = ""
+        prompt_entity = self.app_config.agent.prompt
+        next_iteration = prompt_entity.next_iteration
 
-        for unit in scratchpad:
-            if unit.is_final():
-                result += f"Final Answer: {unit.agent_response}"
-            else:
-                result += f"Thought: {unit.thought}\n\n"
-                if unit.action_str:
-                    result += f"Action: {unit.action_str}\n\n"
-                if unit.observation:
-                    result += f"Observation: {unit.observation}\n\n"
+        # organize system prompt
+        system_message = self._organize_system_prompt()
 
-        return result
-    
-    def _organize_historic_prompt_messages(self, mode: Literal["completion", "chat"],
-                                           prompt_messages: list[PromptMessage],
-                                           tools: list[PromptMessageTool],
-                                           agent_prompt_message: AgentPromptEntity,
-                                           instruction: str,
-        ) -> list[PromptMessage]:
-        """
-            organize historic prompt messages
-        """
+        # organize historic prompt messages
+        historic_messages = self._historic_prompt_messages
 
-    def _organize_current_prompt_messages(self, mode: Literal["completion", "chat"],
-                                      prompt_messages: list[PromptMessage],
-                                      tools: list[PromptMessageTool], 
-                                      agent_prompt_message: AgentPromptEntity,
-                                      instruction: str,
-                                      input: str,
-        ) -> list[PromptMessage]:
-        """
-            organize current prompt messages
-        """
+        # organize current assistant messages
+        agent_scratchpad = self._agent_scratchpad
+        if not agent_scratchpad:
+            assistant_messages = []
+        else:
+            assistant_message = AssistantPromptMessage(content='')
+            for unit in agent_scratchpad:
+                if unit.is_final():
+                    assistant_message.content += f"Final Answer: {unit.agent_response}"
+                else:
+                    assistant_message.content += f"Thought: {unit.thought}\n\n"
+                    if unit.action_str:
+                        assistant_message.content += f"Action: {unit.action_str}\n\n"
+                    if unit.observation:
+                        assistant_message.content += f"Observation: {unit.observation}\n\n"
+
+            assistant_messages = [assistant_message]
+
+        # query messages
+        query_messages = UserPromptMessage(content=self._query)
+
+        # join all messages
+        return [system_message, *historic_messages, *assistant_messages, query_messages, next_iteration]

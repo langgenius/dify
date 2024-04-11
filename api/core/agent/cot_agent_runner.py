@@ -1,18 +1,17 @@
 import json
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections.abc import Generator
 from typing import Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
-from core.agent.cot_output_parser import CotAgentOutputParser
 from core.agent.entities import AgentScratchpadUnit
+from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
-    PromptMessageTool,
     ToolPromptMessage,
     UserPromptMessage,
 )
@@ -22,11 +21,14 @@ from core.tools.tool_engine import ToolEngine
 from models.model import Message
 
 
-class CotAgentRunner(BaseAgentRunner):
+class CotAgentRunner(BaseAgentRunner, ABC):
     _is_first_iteration = True
     _ignore_observation_providers = ['wenxin']
     _historic_prompt_messages: list[PromptMessage] = None
     _agent_scratchpad: list[AgentScratchpadUnit] = None
+    _instruction: str = None
+    _query: str = None
+    _prompt_messages_tools: list[PromptMessage] = None
 
     def run(self, message: Message,
         query: str,
@@ -37,7 +39,7 @@ class CotAgentRunner(BaseAgentRunner):
         """
         app_generate_entity = self.application_generate_entity
         self._repack_app_generate_entity(app_generate_entity)
-        self._init_react_state()
+        self._init_react_state(query)
 
         # check model mode
         if 'Observation' not in app_generate_entity.model_config.stop:
@@ -46,38 +48,18 @@ class CotAgentRunner(BaseAgentRunner):
 
         app_config = self.app_config
 
-        # override inputs
+        # init instruction
         inputs = inputs or {}
         instruction = app_config.prompt_template.simple_prompt_template
-        instruction = self._fill_in_inputs_from_external_data_tools(instruction, inputs)
+        self._instruction = self._fill_in_inputs_from_external_data_tools(instruction, inputs)
 
         iteration_step = 1
         max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
 
         # convert tools into ModelRuntime Tool format
-        prompt_messages_tools: list[PromptMessageTool] = []
         prompt_messages = self._organize_prompt_messages()
-
-        tool_instances = {}
-        for tool in app_config.agent.tools if app_config.agent else []:
-            try:
-                prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
-            except Exception:
-                # api tool may be deleted
-                continue
-            # save tool entity
-            tool_instances[tool.tool_name] = tool_entity
-            # save prompt tool
-            prompt_messages_tools.append(prompt_tool)
-
-        # convert dataset tools into ModelRuntime Tool format
-        for dataset_tool in self.dataset_tools:
-            prompt_tool = self._convert_dataset_retriever_tool_to_prompt_message_tool(dataset_tool)
-            # save prompt tool
-            prompt_messages_tools.append(prompt_tool)
-            # save tool entity
-            tool_instances[dataset_tool.identity.name] = dataset_tool
-
+        tool_instances, self._prompt_messages_tools = self._init_prompt_tools()
+        
         function_call_state = True
         llm_usage = {
             'usage': None
@@ -102,7 +84,7 @@ class CotAgentRunner(BaseAgentRunner):
 
             if iteration_step == max_iteration_steps:
                 # the last iteration, remove all tools
-                prompt_messages_tools = []
+                self._prompt_messages_tools = []
 
             message_file_ids = []
 
@@ -241,7 +223,7 @@ class CotAgentRunner(BaseAgentRunner):
                     ), PublishFrom.APPLICATION_MANAGER)
 
                 # update prompt tool message
-                for prompt_tool in prompt_messages_tools:
+                for prompt_tool in self._prompt_messages_tools:
                     self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
 
             iteration_step += 1
@@ -366,10 +348,11 @@ class CotAgentRunner(BaseAgentRunner):
 
         return instruction
     
-    def _init_react_state(self) -> None:
+    def _init_react_state(self, query) -> None:
         """
         init agent scratchpad
         """
+        self._query = query
         self._agent_scratchpad = []
         self._historic_prompt_messages = self._organize_historic_prompt_messages()
     
@@ -379,11 +362,22 @@ class CotAgentRunner(BaseAgentRunner):
             organize prompt messages
         """
 
-    @abstractmethod
     def _format_assistant_message(self, agent_scratchpad: list[AgentScratchpadUnit]) -> str:
         """
             format assistant message
         """
+        message = ''
+        for scratchpad in agent_scratchpad:
+            if scratchpad.is_final():
+                message += f"Final Answer: {scratchpad.agent_response}"
+            else:
+                message += f"Thought: {scratchpad.thought}\n\n"
+                if scratchpad.action_str:
+                    message += f"Action: {scratchpad.action_str}\n\n"
+                if scratchpad.observation:
+                    message += f"Observation: {scratchpad.observation}\n\n"
+
+        return message
 
     def _organize_historic_prompt_messages(self) -> list[PromptMessage]:
         """
@@ -407,6 +401,9 @@ class CotAgentRunner(BaseAgentRunner):
                         current_scratchpad.action = AgentScratchpadUnit.Action(
                             action_name=message.tool_calls[0].function.name,
                             action_input=json.loads(message.tool_calls[0].function.arguments)
+                        )
+                        current_scratchpad.action_str = json.dumps(
+                            current_scratchpad.action.dict()
                         )
                     except:
                         pass

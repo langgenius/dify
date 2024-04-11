@@ -25,8 +25,8 @@ from models.model import Message
 logger = logging.getLogger(__name__)
 
 class FunctionCallAgentRunner(BaseAgentRunner):
-    def run(self, message: Message,
-                query: str,
+    def run(self, 
+            message: Message, query: str, **kwargs: Any
     ) -> Generator[LLMResultChunk, None, None]:
         """
         Run FunctionCall agent application
