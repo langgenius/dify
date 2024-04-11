@@ -797,10 +797,9 @@ export const useNodesInteractions = () => {
     if (!nodesToCut)
       return
 
-    for (const node of nodesToCut) {
+    for (const node of nodesToCut)
       handleNodeDelete(node.id)
-    }
-  }, [store, handleNodeCopySelected])
+  }, [getNodesReadOnly, handleNodeCopySelected, handleNodeDelete])
 
   const handleNodeDeleteSelected = useCallback(() => {
     if (getNodesReadOnly())
@@ -816,10 +815,9 @@ export const useNodesInteractions = () => {
     if (!nodesToDelete)
       return
 
-    for (const node of nodesToDelete) {
+    for (const node of nodesToDelete)
       handleNodeDelete(node.id)
-    }
-  }, [store])
+  }, [getNodesReadOnly, handleNodeDelete, store])
 
   return {
     handleNodeDragStart,
