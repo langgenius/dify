@@ -42,6 +42,8 @@ const translation = {
     change: '変更',
     changeRetrievalMethod: '検索方法の変更',
   },
+  docsFailedNotice: 'ドキュメントのインデックスに失敗しました',
+  retry: '再試行',
 }
 
 export default translation

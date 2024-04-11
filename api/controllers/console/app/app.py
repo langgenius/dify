@@ -20,7 +20,7 @@ from services.app_service import AppService
 from models.model import App, AppModelConfig, AppMode
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.tool_manager import ToolManager
-
+from services.tag_service import TagService
 
 ALLOW_CREATE_APP_MODES = ['chat', 'agent-chat', 'advanced-chat', 'workflow', 'completion']
 
@@ -38,13 +38,40 @@ class AppListApi(Resource):
         parser.add_argument('limit', type=inputs.int_range(1, 100), required=False, default=20, location='args')
         parser.add_argument('mode', type=str, choices=['chat', 'workflow', 'agent-chat', 'channel', 'all'], default='all', location='args', required=False)
         parser.add_argument('name', type=str, location='args', required=False)
+        parser.add_argument('tag_ids', type=list, location='args', required=False)
+
         args = parser.parse_args()
 
         # get app list
         app_service = AppService()
         app_pagination = app_service.get_paginate_apps(current_user.current_tenant_id, args)
 
-        return app_pagination
+        if 'name' in args and args['name']:
+            filters.append(App.name.ilike(f'%{args["name"]}%'))
+
+        if 'tag_ids' in args and args['tag_ids']:
+            target_ids = TagService.get_target_ids_by_tag_ids('knowledge',
+                                                              current_user.current_tenant_id,
+                                                              args['tag_ids'])
+            if target_ids:
+                filters.append(App.id.in_(target_ids))
+            else:
+                return {
+                    'data': [],
+                    'has_more': False,
+                    'limit': args['limit'],
+                    'total': 0,
+                    'page': args['page']
+                }
+
+        app_models = db.paginate(
+            db.select(App).where(*filters).order_by(App.created_at.desc()),
+            page=args['page'],
+            per_page=args['limit'],
+            error_out=False
+        )
+
+        return app_models
 
     @setup_required
     @login_required

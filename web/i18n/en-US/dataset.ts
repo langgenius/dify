@@ -20,7 +20,7 @@ const translation = {
   unavailable: 'Unavailable',
   unavailableTip: 'Embedding model is not available, the default embedding model needs to be configured',
   datasets: 'KNOWLEDGE',
-  datasetsApi: 'API',
+  datasetsApi: 'API ACCESS',
   retrieval: {
     semantic_search: {
       title: 'Vector Search',
@@ -41,6 +41,15 @@ const translation = {
     },
     change: 'Change',
     changeRetrievalMethod: 'Change retrieval method',
+  },
+  docsFailedNotice: 'documents failed to be indexed',
+  retry: 'Retry',
+  tag: {
+    placeholder: 'All Tags',
+    addNew: 'Add new tag',
+    noTag: 'No tags',
+    noTagYet: 'No tags yet',
+    addTag: 'add tag',
   },
 }
 
