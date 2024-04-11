@@ -34,6 +34,15 @@ class AgentScratchpadUnit(BaseModel):
         action_name: str
         action_input: Union[dict, str]
 
+        def to_dict(self) -> dict:
+            """
+            Convert to dictionary.
+            """
+            return {
+                'action': self.action_name,
+                'action_input': self.action_input,
+            }
+
     agent_response: Optional[str] = None
     thought: Optional[str] = None
     action_str: Optional[str] = None

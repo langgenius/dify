@@ -57,7 +57,13 @@ class CotChatAgentRunner(CotAgentRunner):
         query_messages = UserPromptMessage(content=self._query)
 
         if assistant_messages:
-            messages = [system_message, *historic_messages, query_messages, *assistant_messages, query_messages]
+            messages = [
+                system_message, 
+                *historic_messages, 
+                query_messages, 
+                *assistant_messages, 
+                UserPromptMessage(content='continue')
+            ]
         else:
             messages = [system_message, *historic_messages, query_messages]
 

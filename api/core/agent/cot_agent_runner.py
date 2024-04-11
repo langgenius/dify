@@ -404,7 +404,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                             action_input=json.loads(message.tool_calls[0].function.arguments)
                         )
                         current_scratchpad.action_str = json.dumps(
-                            current_scratchpad.action.dict()
+                            current_scratchpad.action.to_dict()
                         )
                     except:
                         pass

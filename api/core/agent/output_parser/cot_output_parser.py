@@ -14,11 +14,22 @@ class CotAgentOutputParser:
         def parse_action(json_str):
             try:
                 action = json.loads(json_str)
+                action_name = ''
+                action_input = {}
+
+                for key, value in action.items():
+                    if 'input' in key.lower():
+                        action_input = value
+                    else:
+                        action_name = value
+
                 if 'action' in action and 'action_input' in action:
                     return AgentScratchpadUnit.Action(
-                        action_name=action['action'],
-                        action_input=action['action_input'],
+                        action_name=action_name,
+                        action_input=action_input,
                     )
+                else:
+                    return json_str or ''
             except:
                 return json_str or ''
             
