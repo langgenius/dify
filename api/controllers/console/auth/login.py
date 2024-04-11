@@ -47,56 +47,77 @@ class LogoutApi(Resource):
         return {'result': 'success'}
 
 
-class ResetPasswordApi(Resource):
+class InitPasswordRestApi(Resource):
+    """Resource for user to request password reset."""
+
     @setup_required
-    def get(self):
+    def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('email', type=email, required=True, location='json')
         args = parser.parse_args()
 
-        # import mailchimp_transactional as MailchimpTransactional
-        # from mailchimp_transactional.api_client import ApiClientError
-
-        account = {'email': args['email']}
-        # account = AccountService.get_by_email(args['email'])
-        # if account is None:
-        #     raise ValueError('Email not found')
-        # new_password = AccountService.generate_password()
-        # AccountService.update_password(account, new_password)
-
-        # todo: Send email
-        MAILCHIMP_API_KEY = current_app.config['MAILCHIMP_TRANSACTIONAL_API_KEY']
-        # mailchimp = MailchimpTransactional(MAILCHIMP_API_KEY)
-
+        account = AccountService.get_by_email(args['email'])
+        if account is None:
+            # for security reason, donnot tell user if the email is not found
+            return {'result': 'success'}
+        token = AccountService.create_reset_password_token(account.id)
+        # TODO Send mail to user
         message = {
             'from_email': 'noreply@example.com',
             'to': [{'email': account.email}],
             'subject': 'Reset your Dify password',
-            'html': """
+            'html': f"""
                 <p>Dear User,</p>
-                <p>The Dify team has generated a new password for you, details as follows:</p> 
-                <p><strong>{new_password}</strong></p>
-                <p>Please change your password to log in as soon as possible.</p>
+                <p>Your requested reset password, please go to </p> 
+                <p><a>/finish-password-reset?user_id={account.id}token={token}</a></p>
                 <p>Regards,</p>
                 <p>The Dify Team</p> 
             """
         }
 
-        # response = mailchimp.messages.send({
-        #     'message': message,
-        #     # required for transactional email
-        #     ' settings': {
-        #         'sandbox_mode': current_app.config['MAILCHIMP_SANDBOX_MODE'],
-        #     },
-        # })
-
-        # Check if MSG was sent
-        # if response.status_code != 200:
-        #     # handle error
-        #     pass
-
         return {'result': 'success'}
 
+class FinishPasswordRestApi(Resource):
+    """Verify and reset password."""
+
+    @setup_required
+    def get(self):
+        """Verify only, return 200 if matched"""
+        parser = reqparse.RequestParser()
+        parser.add_argument('user_id', type=str, required=True, location='args')
+        parser.add_argument('token', type=str, required=True, location='args')
+        args = parser.parse_args()
+
+        user_id = args['user_id']
+        token = args['token']
+        if AccountService.check_reset_password_token(user_id, token):
+            return {'result': 'success'}
+        raise ValueError('Invalid token')
+
+    @setup_required
+    def post(self):
+        """Reset password"""
+        parser = reqparse.RequestParser()
+        parser.add_argument('user_id', type=str, required=True, location='json')
+        parser.add_argument('token', type=str, required=True, location='json')
+        parser.add_argument('password', type=valid_password, required=True, location='json')
+        args = parser.parse_args()
+
+        # import mailchimp_transactional as MailchimpTransactional
+        # from mailchimp_transactional.api_client import ApiClientError
+        user_id = args['user_id']
+        token = args['token']
+        password = args['password']
+        if AccountService.check_reset_password_token(user_id, token):
+            account = AccountService.load_user(user_id)
+            if not account:
+                # for security reason, donnot tell user if the email is not found
+                raise ValueError('Invalid token')
+            AccountService.change_account_password(account, password)
+            return {'result': 'success'}
+        raise ValueError('Invalid token')
 
 api.add_resource(LoginApi, '/login')
 api.add_resource(LogoutApi, '/logout')
+api.add_resource(InitPasswordRestApi, '/password-reset/init')
+api.add_resource(FinishPasswordRestApi, '/password-reset/finish')

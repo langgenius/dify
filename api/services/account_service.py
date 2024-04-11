@@ -65,6 +65,9 @@ class AccountService:
 
         return account
 
+    @staticemthod
+    def get_by_email(email: str) -> Optional[Account]:
+        return Account.query.filter_by(email=email).first()
 
     @staticmethod
     def get_account_jwt_token(account):
@@ -78,11 +81,11 @@ class AccountService:
         token = PassportService().issue(payload)
         return token
 
-    @staticmethod
-    def authenticate(email: str, password: str) -> Account:
+    @classmethod
+    def authenticate(cls, email: str, password: str) -> Account:
         """authenticate account with email and password"""
 
-        account = Account.query.filter_by(email=email).first()
+        account = cls.get_by_email(email)
         if not account:
             raise AccountLoginError('Invalid email or password.')
 
@@ -99,25 +102,31 @@ class AccountService:
         return account
 
     @staticmethod
-    def update_account_password(account, password, new_password):
-        """update account password"""
-        if account.password and not compare_password(password, account.password, account.password_salt):
-            raise CurrentPasswordIncorrectError("Current password is incorrect.")
-
+    def change_account_password(account, password):
+        """change account password(Unconditionally)"""
         # may be raised
-        valid_password(new_password)
-
+        valid_password(password)
         # generate password salt
         salt = secrets.token_bytes(16)
         base64_salt = base64.b64encode(salt).decode()
 
         # encrypt password with salt
-        password_hashed = hash_password(new_password, salt)
+        password_hashed = hash_password(password, salt)
         base64_password_hashed = base64.b64encode(password_hashed).decode()
         account.password = base64_password_hashed
         account.password_salt = base64_salt
         db.session.commit()
         return account
+
+    @staticmethod
+    def update_account_password(account, password, new_password):
+        """update account password(Self-service password change, using the old password)"""
+        if account.password and not compare_password(password, account.password, account.password_salt):
+            raise CurrentPasswordIncorrectError("Current password is incorrect.")
+
+        return AccountService.change_account_password(account, new_password)
+
+
 
     @staticmethod
     def create_account(email: str, name: str, interface_language: str,
@@ -203,6 +212,31 @@ class AccountService:
         db.session.commit()
         logging.info(f'Account {account.id} logged in successfully.')
 
+
+    @staticmethod
+    def _get_reset_password_token_key(user_id: str) -> str:
+        return f'reset_password:token:{user_id}'
+    
+    @staticmethod
+    def create_reset_password_token(user_id: str) -> None:
+        token = str(uuid.uuid4())
+        redis_client.setex(
+            AccountService._get_reset_password_token_key(user_id),
+            current_app.config['RESET_PASSWORD_EXPIRY_SECONDS'],
+            token
+        )
+        return token
+    
+    @staticmethod
+    def clear_reset_password_token(user_id: str) -> None:
+        redis_client.delete(AccountService._get_reset_password_token_key(user_id))
+
+    @staticmethod
+    def check_reset_password_token(user_id: str, token: str) -> bool:
+        key = AccountService._get_reset_password_token_key(user_id)
+        if redis_client.get(key) == token:
+            return True
+        return False
 
 class TenantService:
 
