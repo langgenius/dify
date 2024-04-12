@@ -111,7 +111,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
 
     try {
       const indexingStatusBatchDetail = await fetchIndexingStatus()
-      const isCompleted = indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error'].includes(indexingStatusDetail.indexing_status))
+      const isCompleted = indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error', 'paused'].includes(indexingStatusDetail.indexing_status))
       if (isCompleted) {
         stopQueryStatus()
         return
@@ -158,7 +158,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     return indexingStatusBatchDetail.some(indexingStatusDetail => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
   const isEmbeddingCompleted = useMemo(() => {
-    return indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error'].includes(indexingStatusDetail?.indexing_status || ''))
+    return indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error', 'paused'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
 
   const getSourceName = (id: string) => {

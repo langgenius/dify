@@ -141,7 +141,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
 
     try {
       const indexingStatusDetail = await fetchIndexingStatus()
-      if (indexingStatusDetail?.indexing_status === 'completed') {
+      if (['completed', 'error', 'paused'].includes(indexingStatusDetail?.indexing_status)) {
         stopQueryStatus()
         detailUpdate()
         return
