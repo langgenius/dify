@@ -150,6 +150,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             except json.JSONDecodeError as e:
                 raise CredentialsValidateFailedError('Credentials validation failed: JSON decode error')
 
+            if json_result['object'] == '':
+                json_result['object'] = 'chat.completion'
             if (completion_type is LLMMode.CHAT
                     and ('object' not in json_result or json_result['object'] != 'chat.completion')):
                 raise CredentialsValidateFailedError(
@@ -471,7 +473,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                     continue
 
                 # check payload indicator for completion
-                if finish_reason is not None:
+                if finish_reason is not None and finish_reason != '':
                     yield LLMResultChunk(
                         model=model,
                         prompt_messages=prompt_messages,
