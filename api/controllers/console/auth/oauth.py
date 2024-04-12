@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime,timezone
 from typing import Optional
 
 import requests
@@ -72,8 +72,8 @@ class OAuthCallback(Resource):
             return {'error': 'Account is banned or closed.'}, 403
 
         if account.status == AccountStatus.PENDING.value:
-            account.status = AccountStatus.ACTIVE.value
-            account.initialized_at = datetime.utcnow()
+            account.status = AccountStatus.ACTIVE.valueÍ
+            account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
         TenantService.create_owner_tenant_if_not_exist(account)

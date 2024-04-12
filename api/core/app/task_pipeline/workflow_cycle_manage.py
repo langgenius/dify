@@ -1,6 +1,6 @@
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional, Union, cast
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
@@ -120,7 +120,7 @@ class WorkflowCycleManage:
         workflow_run.elapsed_time = time.perf_counter() - start_at
         workflow_run.total_tokens = total_tokens
         workflow_run.total_steps = total_steps
-        workflow_run.finished_at = datetime.utcnow()
+        workflow_run.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
         db.session.commit()
         db.session.refresh(workflow_run)
@@ -149,7 +149,7 @@ class WorkflowCycleManage:
         workflow_run.elapsed_time = time.perf_counter() - start_at
         workflow_run.total_tokens = total_tokens
         workflow_run.total_steps = total_steps
-        workflow_run.finished_at = datetime.utcnow()
+        workflow_run.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
         db.session.commit()
         db.session.refresh(workflow_run)
@@ -223,7 +223,7 @@ class WorkflowCycleManage:
         workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
         workflow_node_execution.execution_metadata = json.dumps(jsonable_encoder(execution_metadata)) \
             if execution_metadata else None
-        workflow_node_execution.finished_at = datetime.utcnow()
+        workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
         db.session.commit()
         db.session.refresh(workflow_node_execution)
@@ -251,7 +251,7 @@ class WorkflowCycleManage:
         workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
         workflow_node_execution.error = error
         workflow_node_execution.elapsed_time = time.perf_counter() - start_at
-        workflow_node_execution.finished_at = datetime.utcnow()
+        workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
         workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
         workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
