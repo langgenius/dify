@@ -203,6 +203,19 @@ class AccountService:
         db.session.commit()
         logging.info(f'Account {account.id} logged in successfully.')
 
+    @staticmethod
+    def register(email: str, name: str, password: str):
+        existed_account = Account.query.filter_by(email=email).first()
+        if existed_account:
+            raise AccountRegisterError(f'Registration failed: {email} is already registered')
+
+        account = RegisterService.register(
+            email=email,
+            name=name,
+            password=password
+        )
+        return account
+
 
 class TenantService:
 

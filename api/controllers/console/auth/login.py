@@ -5,7 +5,7 @@ from flask_restful import Resource, reqparse
 import services
 from controllers.console import api
 from controllers.console.setup import setup_required
-from libs.helper import email
+from libs.helper import email, str_len
 from libs.password import valid_password
 from services.account_service import AccountService, TenantService
 
@@ -97,6 +97,28 @@ class ResetPasswordApi(Resource):
 
         return {'result': 'success'}
 
+class RegisterAPi(Resource):
+    @setup_required
+    def post(self):
+        # is tenant created
+        parser = reqparse.RequestParser()
+        parser.add_argument('email', type=email,
+                            required=True, location='json')
+        parser.add_argument('name', type=str_len(30), required=True, location='json')
+        parser.add_argument('password', type=valid_password,
+                            required=True, location='json')
+        args = parser.parse_args()
+
+        try:
+            account = AccountService.register(args['email'], args['name'], args['password'])
+        except services.errors.account.AccountRegisterError:
+            return {'code': 'invalid_param', 'message': f'Registration failed: {args.email} is already registered'}, 400
+
+        AccountService.update_last_login(account, request)
+
+        return {'result': 'success'}, 201
+
 
 api.add_resource(LoginApi, '/login')
 api.add_resource(LogoutApi, '/logout')
+api.add_resource(RegisterAPi, '/register')
