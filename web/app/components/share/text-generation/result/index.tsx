@@ -326,7 +326,7 @@ const Result: FC<IResultProps> = ({
   return (
     <div className={cn(isNoData && !isCallBatchAPI && 'h-full')}>
       {!isCallBatchAPI && (
-        (isResponding && (!completionRes || !isWorkflow))
+        (isResponding && !completionRes)
           ? (
             <div className='flex h-full w-full justify-center items-center'>
               <Loading type='area' />
