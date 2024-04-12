@@ -100,7 +100,6 @@ class ResetPasswordApi(Resource):
 class RegisterAPi(Resource):
     @setup_required
     def post(self):
-        # is tenant created
         parser = reqparse.RequestParser()
         parser.add_argument('email', type=email,
                             required=True, location='json')
