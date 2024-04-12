@@ -82,3 +82,4 @@ qrcode~=7.4.2
 azure-storage-blob==12.9.0
 azure-identity==1.15.0
 lxml==5.1.0
+xlrd~=2.0.1

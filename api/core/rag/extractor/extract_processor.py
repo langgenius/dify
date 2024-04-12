@@ -84,7 +84,7 @@ class ExtractProcessor:
                 etl_type = current_app.config['ETL_TYPE']
                 unstructured_api_url = current_app.config['UNSTRUCTURED_API_URL']
                 if etl_type == 'Unstructured':
-                    if file_extension == '.xlsx':
+                    if file_extension == '.xlsx' or file_extension == '.xls':
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == '.pdf':
                         extractor = PdfExtractor(file_path)
@@ -114,7 +114,7 @@ class ExtractProcessor:
                         extractor = UnstructuredTextExtractor(file_path, unstructured_api_url) if is_automatic \
                             else TextExtractor(file_path, autodetect_encoding=True)
                 else:
-                    if file_extension == '.xlsx':
+                    if file_extension == '.xlsx' or file_extension == '.xls':
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == '.pdf':
                         extractor = PdfExtractor(file_path)
