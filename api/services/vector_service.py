@@ -34,7 +34,7 @@ class VectorService:
         keyword = Keyword(dataset)
 
         if keywords_list and len(keywords_list) > 0:
-            keyword.add_texts(documents, keyword_list=keywords_list)
+            keyword.add_texts(documents, keywords_list=keywords_list)
         else:
             keyword.add_texts(documents)
 

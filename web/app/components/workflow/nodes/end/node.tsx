@@ -79,8 +79,7 @@ const Node: FC<NodeProps<EndNodeType>> = ({
               </div>
             </div>
             <div className='text-xs font-normal text-gray-700'>
-              <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize'>{getVarType(node?.id || '', value_selector)}</div>
-
+              <div className='max-w-[42px] ml-0.5 text-xs font-normal text-gray-500 capitalize truncate' title={getVarType(node?.id || '', value_selector)}>{getVarType(node?.id || '', value_selector)}</div>
             </div>
           </div>
         )

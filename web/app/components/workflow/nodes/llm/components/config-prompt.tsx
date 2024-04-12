@@ -6,11 +6,9 @@ import produce from 'immer'
 import type { PromptItem, ValueSelector, Var } from '../../../types'
 import { PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
+import ConfigPromptItem from './config-prompt-item'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
-import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 const i18nPrefix = 'workflow.nodes.llm'
 
 type Props = {
@@ -58,21 +56,6 @@ const ConfigPrompt: FC<Props> = ({
     }
   }, [onChange, payload])
 
-  const roleOptions = [
-    {
-      label: 'system',
-      value: PromptRole.system,
-    },
-    {
-      label: 'user',
-      value: PromptRole.user,
-    },
-    {
-      label: 'assistant',
-      value: PromptRole.assistant,
-    },
-  ]
-
   const handleChatModeMessageRoleChange = useCallback((index: number) => {
     return (role: PromptRole) => {
       const newPrompt = produce(payload as PromptItem[], (draft) => {
@@ -117,37 +100,20 @@ const ConfigPrompt: FC<Props> = ({
               {
                 (payload as PromptItem[]).map((item, index) => {
                   return (
-                    <Editor
-                      instanceId={`${nodeId}-chat-workflow-llm-prompt-editor-${item.role}-${index}`}
-                      key={index}
-                      title={
-                        <div className='relative left-1 flex items-center'>
-                          <TypeSelector
-                            value={item.role as string}
-                            options={roleOptions}
-                            onChange={handleChatModeMessageRoleChange(index)}
-                            triggerClassName='text-xs font-semibold text-gray-700 uppercase'
-                            itemClassName='text-[13px] font-medium text-gray-700'
-                          />
-                          <TooltipPlus
-                            popupContent={
-                              <div className='max-w-[180px]'>{t(`${i18nPrefix}.roleDescription.${item.role}`)}</div>
-                            }
-                          >
-                            <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
-                          </TooltipPlus>
-                        </div>
-                      }
-                      value={item.text}
-                      onChange={handleChatModePromptChange(index)}
+                    <ConfigPromptItem
+                      key={`${payload.length}-${index}`}
+                      canRemove={payload.length > 1}
                       readOnly={readOnly}
-                      showRemove={(payload as PromptItem[]).length > 1}
-                      onRemove={handleRemove(index)}
+                      id={`${payload.length}-${index}`}
+                      handleChatModeMessageRoleChange={handleChatModeMessageRoleChange(index)}
                       isChatModel={isChatModel}
                       isChatApp={isChatApp}
+                      payload={item}
+                      onPromptChange={handleChatModePromptChange(index)}
+                      onRemove={handleRemove(index)}
                       isShowContext={isShowContext}
                       hasSetBlockStatus={hasSetBlockStatus}
-                      nodesOutputVars={availableVars}
+                      availableVars={availableVars}
                       availableNodes={availableNodes}
                     />
                   )
