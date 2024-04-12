@@ -133,12 +133,12 @@ const Workflow: FC<WorkflowProps> = memo(({
     },
   })
 
-  useKeyPress('delete', handleEdgeDelete)
-  useKeyPress('delete', handleNodeDeleteSelected)
-  useKeyPress('ctrl.c', handleNodeCopySelected)
-  useKeyPress('ctrl.x', handleNodeCut)
-  useKeyPress('ctrl.v', handleNodePaste)
-  useKeyPress('ctrl.alt.d', handleNodeDuplicateSelected)
+  useKeyPress(['delete'], handleEdgeDelete)
+  useKeyPress(['delete'], handleNodeDeleteSelected)
+  useKeyPress(['ctrl.c', 'meta.c'], handleNodeCopySelected)
+  useKeyPress(['ctrl.x', 'meta.x'], handleNodeCut)
+  useKeyPress(['ctrl.v', 'meta.v'], handleNodePaste)
+  useKeyPress(['ctrl.alt.d', 'meta.shift.d'], handleNodeDuplicateSelected)
 
   return (
     <div
