@@ -1,10 +1,10 @@
 import logging
 from typing import Any
 
+from pgvecto_rs.sdk import PGVectoRs, Record
 from pydantic import BaseModel, root_validator
 from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session
-from pgvecto_rs.sdk import PGVectoRs, Record
 
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
@@ -138,15 +138,18 @@ class RelytVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         with Session(self._client._engine) as session:
             select_statement = sql_text(
-                f"SELECT id FROM collection_{self._collection_name} WHERE meta->>'doc_id' = '{id}'; "
+                f"SELECT id FROM collection_{self._collection_name} WHERE meta->>'doc_id' = '{id}' limit 1; "
             )
             result = session.execute(select_statement).fetchall()
         return len(result) > 0
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        from pgvecto_rs.sdk import filters
+        filter_condition = filters.meta_contains(kwargs.get('filter'))
         results = self._client.search(
             top_k=int(kwargs.get('top_k')),
-            embedding=query_vector
+            embedding=query_vector,
+            filter=filter_condition
         )
 
         # Organize results.
