@@ -113,7 +113,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleNodeConnect,
     handleNodeConnectStart,
     handleNodeConnectEnd,
-    handleNodeCloneSelected,
+    handleNodeDuplicateSelected,
     handleNodeCopySelected,
     handleNodeCut,
     handleNodeDeleteSelected,
@@ -138,7 +138,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   useKeyPress('ctrl.c', handleNodeCopySelected)
   useKeyPress('ctrl.x', handleNodeCut)
   useKeyPress('ctrl.v', handleNodePaste)
-  useKeyPress('ctrl.alt.d', handleNodeCloneSelected)
+  useKeyPress('ctrl.alt.d', handleNodeDuplicateSelected)
 
   return (
     <div

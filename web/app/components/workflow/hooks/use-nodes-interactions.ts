@@ -779,7 +779,7 @@ export const useNodesInteractions = () => {
     return nodesToPaste
   }, [getNodesReadOnly, handleSyncWorkflowDraft, store, t, workflowStore])
 
-  const handleNodeCloneSelected = useCallback(() => {
+  const handleNodeDuplicateSelected = useCallback(() => {
     if (getNodesReadOnly())
       return
 
@@ -831,7 +831,7 @@ export const useNodesInteractions = () => {
     handleNodeDelete,
     handleNodeChange,
     handleNodeAdd,
-    handleNodeCloneSelected,
+    handleNodeDuplicateSelected,
     handleNodeCopySelected,
     handleNodeCut,
     handleNodeDeleteSelected,
