@@ -173,13 +173,13 @@ class Vector:
         return CacheEmbedding(embedding_model)
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
+        seen_texts = set()
+        filtered_texts = []
         for text in texts:
-            doc_id = text.metadata['doc_id']
-            exists_duplicate_node = self.text_exists(doc_id)
-            if exists_duplicate_node:
-                texts.remove(text)
-
-        return texts
+            if text.page_content not in seen_texts:
+                seen_texts.add(text.page_content)
+                filtered_texts.append(text)
+        return filtered_texts
 
     def __getattr__(self, name):
         if self._vector_processor is not None:
