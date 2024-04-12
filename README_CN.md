@@ -1,71 +1,168 @@
-[![](./images/describe.png)](https://dify.ai)
-<p align="center">
-  <a href="./README.md">English</a> |
-  <a href="./README_CN.md">简体中文</a> |
-  <a href="./README_JA.md">日本語</a> |
-  <a href="./README_ES.md">Español</a> |
-  <a href="./README_KL.md">Klingon</a> |
-  <a href="./README_FR.md">Français</a>
-</p>
+![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
 
-<p align="center">
+<div align="center">
+  <a href="https://cloud.dify.ai">Dify 云服务</a> ·
+  <a href="https://docs.dify.ai/getting-started/install-self-hosted">自托管</a> ·
+  <a href="https://docs.dify.ai">文档</a> ·
+  <a href="https://cal.com/guchenhe/dify-demo">预约演示</a>
+</div>
+
+<div align="center">
     <a href="https://dify.ai" target="_blank">
-        <img alt="Static Badge" src="https://img.shields.io/badge/AI-Dify?logo=AI&logoColor=%20%23f5f5f5&label=Dify&labelColor=%20%23155EEF&color=%23EAECF0"></a>
+        <img alt="静态徽章" src="https://img.shields.io/badge/产品-F04438"></a>
+    <a href="https://dify.ai/pricing" target="_blank">
+        <img alt="静态徽章" src="https://img.shields.io/badge/免费-定价?logo=free&color=%20%23155EEF&label=价格&labelColor=%20%23528bff"></a>
     <a href="https://discord.gg/FngNHpbcY7" target="_blank">
-        <img src="https://img.shields.io/discord/1082486657678311454?logo=discord"
-            alt="chat on Discord"></a>
+        <img src="https://img.shields.io/discord/1082486657678311454?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb"
+            alt="在 Discord 上聊天"></a>
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
-        <img src="https://img.shields.io/twitter/follow/dify_ai?style=social&logo=X"
-            alt="follow on Twitter"></a>
+        <img src="https://img.shields.io/twitter/follow/dify_ai?logo=X&color=%20%23f5f5f5"
+            alt="在 Twitter 上关注"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
-        <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web"></a>
-</p>
+        <img alt="Docker 拉取次数" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
+    <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
+        <img alt="上个月的提交次数" src="https://img.shields.io/github/commit-activity/m/langgenius/dify?labelColor=%20%2332b583&color=%20%2312b76a"></a>
+    <a href="https://github.com/langgenius/dify/" target="_blank">
+        <img alt="已关闭的问题" src="https://img.shields.io/github/issues-search?query=repo%3Alanggenius%2Fdify%20is%3Aclosed&label=已关闭的问题&labelColor=%20%237d89b0&color=%20%235d6b98"></a>
+    <a href="https://github.com/langgenius/dify/discussions/" target="_blank">
+        <img alt="讨论帖子" src="https://img.shields.io/github/discussions/langgenius/dify?labelColor=%20%239b8afb&color=%20%237a5af8"></a>
+</div>
 
-<p align="center">
-<a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-</p>
-
-<p align="center">
-   <a href="https://mp.weixin.qq.com/s/TnyfIuH-tPi9o1KNjwVArw" target="_blank">
-   Dify 发布 AI Agent 能力：基于不同的大型语言模型构建 GPTs 和 Assistants
-  </a>
-</p>
-
-Dify 是一个 LLM 应用开发平台，已经有超过 10 万个应用基于 Dify.AI 构建。它融合了 Backend as Service 和 LLMOps 的理念，涵盖了构建生成式 AI 原生应用所需的核心技术栈，包括一个内置 RAG 引擎。使用 Dify，你可以基于任何模型自部署类似 Assistants API 和 GPTs 的能力。
-
-![](./images/demo.png)
-
-## 使用云端服务
-
-使用 [Dify.AI Cloud](https://dify.ai) 提供开源版本的所有功能,并包含 200 次 GPT 试用额度。
-
-## 为什么选择 Dify
-
-Dify 具有模型中立性，相较 LangChain 等硬编码开发库 Dify 是一个完整的、工程化的技术栈，而相较于 OpenAI 的 Assistants API 你可以完全将服务部署在本地。
-
-| 功能 | Dify.AI | Assistants API | LangChain |
-| --- | --- | --- | --- |
-| 编程方式 | 面向 API | 面向 API | 面向 Python 代码 |
-| 生态策略 | 开源 | 封闭且商用 | 开源 |
-| RAG 引擎 | 支持 | 支持 | 不支持 |
-| Prompt IDE | 包含 | 包含 | 没有 |
-| 支持的 LLMs | 丰富 | 仅 GPT | 丰富 |
-| 本地部署 | 支持 | 不支持 | 不适用 |
+<div align="center">
+  <a href="./README.md"><img alt="上个月的提交次数" src="https://img.shields.io/badge/英文-d9d9d9"></a>
+  <a href="./README_CN.md"><img alt="上个月的提交次数" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
+  <a href="./README_JA.md"><img alt="上个月的提交次数" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
+  <a href="./README_ES.md"><img alt="上个月的提交次数" src="https://img.shields.io/badge/西班牙语-d9d9d9"></a>
+  <a href="./README_KL.md"><img alt="上个月的提交次数" src="https://img.shields.io/badge/法语-d9d9d9"></a>
+  <a href="./README_FR.md"><img alt="上个月的提交次数" src="https://img.shields.io/badge/克林贡语-d9d9d9"></a>
+</div>
 
 
-## 特点
+#
 
-![](./images/models.png)
+<div align="center">
+  <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | 趋势转变" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+</div>
 
-**1. LLM支持**：与 OpenAI 的 GPT 系列模型集成,或者与开源的 Llama2 系列模型集成。事实上，Dify支持主流的商业模型和开源模型(本地部署或基于 MaaS)。
+Dify 是一个开源的LLM应用开发平台。其直观的界面结合了AI工作流程、RAG管道、代理功能、模型管理、可观察性功能等，让您可以快速从原型到生产。以下是其核心功能列表：
+</br> </br>
 
-**2. Prompt IDE**：和团队一起在 Dify 协作，通过可视化的 Prompt 和应用编排工具开发 AI 应用。 支持无缝切换多种大型语言模型。
+**1. 工作流**: 
+  在视觉画布上构建和测试功能强大的AI工作流程，利用以下所有功能以及更多功能。
 
-**3. RAG引擎**：包括各种基于全文索引或向量数据库嵌入的 RAG 能力，允许直接上传 PDF、TXT 等各种文本格式。
 
-**4. AI Agent**：基于 Function Calling 和 ReAct 的 Agent 推理框架，允许用户自定义工具，所见即所得。Dify 提供了十多种内置工具调用能力，如谷歌搜索、DELL·E、Stable Diffusion、WolframAlpha 等。
+  https://github.com/langgenius/dify/assets/13230914/356df23e-1604-483d-80a6-9517ece318aa
 
-**5. 持续运营**：监控和分析应用日志和性能，使用生产数据持续改进 Prompt、数据集或模型。
+
+
+**2. 全面的模型支持**: 
+  与数百种专有/开源LLMs以及数十种推理提供商和自托管解决方案无缝集成，涵盖GPT、Mistral、Llama2以及任何与OpenAI API兼容的模型。完整的支持模型提供商列表可在[此处](https://docs.dify.ai/getting-started/readme/model-providers)找到。
+
+![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
+
+
+**3. Prompt IDE**: 
+  用于制作提示、比较模型性能以及向基于聊天的应用程序添加其他功能（如文本转语音）的直观界面。
+
+**4. RAG Pipeline**: 
+  广泛的RAG功能，涵盖从文档摄入到检索的所有内容，支持从PDF、PPT和其他常见文档格式中提取文本的开箱即用的支持。
+
+**5. Agent 智能体**: 
+  您可以基于LLM函数调用或ReAct定义代理，并为代理添加预构建或自定义工具。Dify为AI代理提供了50多种内置工具，如谷歌搜索、DELL·E、稳定扩散和WolframAlpha等。
+
+**6. LLMOps**: 
+  随时间监视和分析应用程序日志和性能。您可以根据生产数据和注释持续改进提示、数据集和模型。
+
+**7. 后端即服务**: 
+  所有Dify的功能都带有相应的API，因此您可以轻松地将Dify集成到自己的业务逻辑中。
+
+
+## 功能比较
+<table style="width: 100%;">
+  <tr>
+    <th align="center">功能</th>
+    <th align="center">Dify.AI</th>
+    <th align="center">LangChain</th>
+    <th align="center">Flowise</th>
+    <th align="center">OpenAI助理API</th>
+  </tr>
+  <tr>
+    <td align="center">编程方法</td>
+    <td align="center">API + 应用程序导向</td>
+    <td align="center">Python代码</td>
+    <td align="center">应用程序导向</td>
+    <td align="center">API导向</td>
+  </tr>
+  <tr>
+    <td align="center">支持的LLMs</td>
+    <td align="center">丰富多样</td>
+    <td align="center">丰富多样</td>
+    <td align="center">丰富多样</td>
+    <td align="center">仅限OpenAI</td>
+  </tr>
+  <tr>
+    <td align="center">RAG引擎</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+  </tr>
+  <tr>
+    <td align="center">代理</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+  </tr>
+  <tr>
+    <td align="center">工作流程</td>
+    <td align="center">✅</td>
+    <td align="center">❌</td>
+    <td align="center">✅</td>
+    <td align="center">❌</td>
+  </tr>
+  <tr>
+    <td align="center">可观察性</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">❌</td>
+    <td align="center">❌</td>
+  </tr>
+  <tr>
+    <td align="center">企业功能（SSO/访问控制）</td>
+    <td align="center">✅</td>
+    <td align="center">❌</td>
+    <td align="center">❌</td>
+    <td align="center">❌</td>
+  </tr>
+  <tr>
+    <td align="center">本地部署</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">✅</td>
+    <td align="center">❌</td>
+  </tr>
+</table>
+
+## 使用 Dify
+
+- **云 </br>**
+我们提供[ Dify 云服务](https://dify.ai)，任何人都可以零设置尝试。它提供了自部署版本的所有功能，并在沙盒计划中包含 200 次免费的 GPT-4 调用。
+
+- **自托管 Dify 社区版</br>**
+使用这个[入门指南](#quick-start)快速在您的环境中运行 Dify。
+使用我们的[文档](https://docs.dify.ai)进行进一步的参考和更深入的说明。
+
+- **面向企业/组织的 Dify</br>**
+我们提供额外的面向企业的功能。[与我们安排会议](https://cal.com/guchenhe/30min)或[给我们发送电子邮件](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)讨论企业需求。 </br>
+  > 对于使用 AWS 的初创公司和中小型企业，请查看 [AWS Marketplace 上的 Dify 高级版](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)，并使用一键部署到您自己的 AWS VPC。它是一个价格实惠的 AMI 产品，提供了使用自定义徽标和品牌创建应用程序的选项。
+
+
+## 保持领先
+
+在 GitHub 上给 Dify Star，并立即收到新版本的通知。
+
+![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
 
 ## 在开始之前
 
@@ -113,6 +210,19 @@ docker compose up -d
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
 
+
+## Contributing
+
+对于那些想要贡献代码的人，请参阅我们的[贡献指南](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)。
+同时，请考虑通过社交媒体、活动和会议来支持Dify的分享。
+
+> 我们正在寻找贡献者来帮助将Dify翻译成除了中文和英文之外的其他语言。如果您有兴趣帮助，请参阅我们的[i18n README](https://github.com/langgenius/dify/blob/main/web/i18n/README.md)获取更多信息，并在我们的[Discord社区服务器](https://discord.gg/8Tpq4AcN9c)的`global-users`频道中留言。
+
+**Contributors**
+
+<a href="https://github.com/langgenius/dify/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=langgenius/dify" />
+</a>
 
 ## 社区与支持
 
