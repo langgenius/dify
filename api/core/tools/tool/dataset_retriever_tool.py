@@ -1,7 +1,5 @@
 from typing import Any
 
-from langchain.tools import BaseTool
-
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
@@ -14,11 +12,12 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+from core.tools.tool.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from core.tools.tool.tool import Tool
 
 
 class DatasetRetrieverTool(Tool):
-    langchain_tool: BaseTool
+    retrival_tool: DatasetRetrieverBaseTool
 
     @staticmethod
     def get_dataset_tools(tenant_id: str,
@@ -43,7 +42,7 @@ class DatasetRetrieverTool(Tool):
         # Agent only support SINGLE mode
         original_retriever_mode = retrieve_config.retrieve_strategy
         retrieve_config.retrieve_strategy = DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE
-        langchain_tools = feature.to_dataset_retriever_tool(
+        retrival_tools = feature.to_dataset_retriever_tool(
             tenant_id=tenant_id,
             dataset_ids=dataset_ids,
             retrieve_config=retrieve_config,
@@ -54,17 +53,17 @@ class DatasetRetrieverTool(Tool):
         # restore retrieve strategy
         retrieve_config.retrieve_strategy = original_retriever_mode
 
-        # convert langchain tools to Tools
+        # convert retrival tools to Tools
         tools = []
-        for langchain_tool in langchain_tools:
+        for retrival_tool in retrival_tools:
             tool = DatasetRetrieverTool(
-                langchain_tool=langchain_tool,
-                identity=ToolIdentity(provider='', author='', name=langchain_tool.name, label=I18nObject(en_US='', zh_Hans='')),
+                retrival_tool=retrival_tool,
+                identity=ToolIdentity(provider='', author='', name=retrival_tool.name, label=I18nObject(en_US='', zh_Hans='')),
                 parameters=[],
                 is_team_authorization=True,
                 description=ToolDescription(
                     human=I18nObject(en_US='', zh_Hans=''),
-                    llm=langchain_tool.description),
+                    llm=retrival_tool.description),
                 runtime=DatasetRetrieverTool.Runtime()
             )
 
@@ -96,7 +95,7 @@ class DatasetRetrieverTool(Tool):
             return self.create_text_message(text='please input query')
 
         # invoke dataset retriever tool
-        result = self.langchain_tool._run(query=query)
+        result = self.retrival_tool._run(query=query)
 
         return self.create_text_message(text=result)
 
