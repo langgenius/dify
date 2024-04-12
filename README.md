@@ -4,7 +4,7 @@
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Self-hosting</a> ·
   <a href="https://docs.dify.ai">Documentation</a> ·
-  <a href="https://cal.com/guchenhe/30min">Commercial inquiry</a>
+  <a href="https://cal.com/guchenhe/dify-demo">Schedule demo</a>
 </p>
 
 <p align="center">
