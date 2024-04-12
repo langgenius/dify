@@ -133,7 +133,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         """
         
         try:
-            ping_message = PromptMessage(content="ping", role="system")
+            ping_message = SystemPromptMessage(content="ping")
             self._generate(model, credentials, [ping_message], {"max_tokens_to_sample": 5})
             
         except Exception as ex:
