@@ -81,7 +81,7 @@ class FileService:
             mime_type=file.mimetype,
             created_by_role=('account' if isinstance(user, Account) else 'end_user'),
             created_by=user.id,
-            created_at=datetime.datetime.utcnow(),
+            created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
             used=False,
             hash=hashlib.sha3_256(file_content).hexdigest()
         )
@@ -111,10 +111,10 @@ class FileService:
             extension='txt',
             mime_type='text/plain',
             created_by=current_user.id,
-            created_at=datetime.datetime.utcnow(),
+            created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
             used=True,
             used_by=current_user.id,
-            used_at=datetime.datetime.utcnow()
+            used_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         )
 
         db.session.add(upload_file)
