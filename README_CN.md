@@ -7,26 +7,26 @@
   <a href="https://cal.com/guchenhe/dify-demo">预约演示</a>
 </div>
 
-<div align="center">
+<p align="center">
     <a href="https://dify.ai" target="_blank">
-        <img alt="静态徽章" src="https://img.shields.io/badge/产品-F04438"></a>
+        <img alt="Static Badge" src="https://img.shields.io/badge/Product-F04438"></a>
     <a href="https://dify.ai/pricing" target="_blank">
-        <img alt="静态徽章" src="https://img.shields.io/badge/免费-定价?logo=free&color=%20%23155EEF&label=价格&labelColor=%20%23528bff"></a>
+        <img alt="Static Badge" src="https://img.shields.io/badge/free-pricing?logo=free&color=%20%23155EEF&label=pricing&labelColor=%20%23528bff"></a>
     <a href="https://discord.gg/FngNHpbcY7" target="_blank">
         <img src="https://img.shields.io/discord/1082486657678311454?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb"
-            alt="在 Discord 上聊天"></a>
+            alt="chat on Discord"></a>
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
         <img src="https://img.shields.io/twitter/follow/dify_ai?logo=X&color=%20%23f5f5f5"
-            alt="在 Twitter 上关注"></a>
+            alt="follow on Twitter"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
-        <img alt="Docker 拉取次数" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
+        <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
     <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
-        <img alt="上个月的提交次数" src="https://img.shields.io/github/commit-activity/m/langgenius/dify?labelColor=%20%2332b583&color=%20%2312b76a"></a>
+        <img alt="Commits last month" src="https://img.shields.io/github/commit-activity/m/langgenius/dify?labelColor=%20%2332b583&color=%20%2312b76a"></a>
     <a href="https://github.com/langgenius/dify/" target="_blank">
-        <img alt="已关闭的问题" src="https://img.shields.io/github/issues-search?query=repo%3Alanggenius%2Fdify%20is%3Aclosed&label=已关闭的问题&labelColor=%20%237d89b0&color=%20%235d6b98"></a>
+        <img alt="Issues closed" src="https://img.shields.io/github/issues-search?query=repo%3Alanggenius%2Fdify%20is%3Aclosed&label=issues%20closed&labelColor=%20%237d89b0&color=%20%235d6b98"></a>
     <a href="https://github.com/langgenius/dify/discussions/" target="_blank">
-        <img alt="讨论帖子" src="https://img.shields.io/github/discussions/langgenius/dify?labelColor=%20%239b8afb&color=%20%237a5af8"></a>
-</div>
+        <img alt="Discussion posts" src="https://img.shields.io/github/discussions/langgenius/dify?labelColor=%20%239b8afb&color=%20%237a5af8"></a>
+</p>
 
 <div align="center">
   <a href="./README.md"><img alt="上个月的提交次数" src="https://img.shields.io/badge/英文-d9d9d9"></a>
