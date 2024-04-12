@@ -82,7 +82,9 @@ const ChatRecord = () => {
           </div>
           <div className='grow h-0'>
             <Chat
-              config={{} as any}
+              config={{
+                supportCitationHitInfo: true,
+              } as any}
               chatList={chatMessageList}
               chatContainerClassName='px-4'
               chatContainerInnerClassName='pt-6'
