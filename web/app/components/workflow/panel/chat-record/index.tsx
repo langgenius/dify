@@ -35,7 +35,7 @@ const ChatRecord = () => {
           content: item.answer,
           feedback: item.feedback,
           isAnswer: true,
-          citation: item.retriever_resources,
+          citation: item.metadata?.retriever_resources,
           message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
           workflow_run_id: item.workflow_run_id,
         })
@@ -84,7 +84,7 @@ const ChatRecord = () => {
             <Chat
               config={{} as any}
               chatList={chatMessageList}
-              chatContainerclassName='px-4'
+              chatContainerClassName='px-4'
               chatContainerInnerClassName='pt-6'
               chatFooterClassName='px-4 rounded-b-2xl'
               chatFooterInnerClassName='pb-4'
