@@ -56,7 +56,7 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
 **2. Comprehensive model support**: 
   Seamless integration with hundreds of proprietary / open-source LLMs from dozens of inference providers and self-hosted solutions, covering GPT, Mistral, Llama2, and any OpenAI API-compatible models. A full list of supported model providers can be found [here](https://docs.dify.ai/getting-started/readme/model-providers).
 
-![providers-v3](https://github.com/langgenius/dify/assets/13230914/55fab860-d818-4c95-95a2-7ac39f6aea83)
+![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
 
 **3. Prompt IDE**: 
