@@ -1,5 +1,6 @@
 """Functionality for splitting text."""
 from __future__ import annotations
+
 import re
 from typing import Any, Optional, cast
 
@@ -66,8 +67,8 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
     def split_text(self, text: str) -> list[str]:
         """Split incoming text and return chunks."""
         if self._fixed_separator:
-            if re.match(r'^\/.+\/$',self._fixed_separator):
-                chunks = re.split(self._fixed_separator.strip("/"), text)
+            if re.match(r'^reg\/.+\/$',self._fixed_separator):
+                chunks = re.split(self._fixed_separator[4:-1], text)
             else:
                 chunks = text.split(self._fixed_separator)
         else:

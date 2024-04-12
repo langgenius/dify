@@ -58,7 +58,7 @@ const translation = {
     custom: 'Custom',
     customDescription: 'Customize chunks rules, chunks length, and preprocessing rules, etc.',
     separator: 'Segment identifier',
-    separatorPlaceholder: 'For example, newline (\\\\n) or separator or regex pattern(such as "/pattern/")',
+    separatorPlaceholder: 'For example, newline (\\\\n) or separator or regex pattern(such as "reg/pattern/")',
     maxLength: 'Maximum chunk length',
     overlap: 'Chunk overlap',
     overlapTip: 'Setting the chunk overlap can maintain the semantic relevance between them, enhancing the retrieve effect. It is recommended to set 10%-25% of the maximum chunk size.',
