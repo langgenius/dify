@@ -67,6 +67,7 @@ DEFAULTS = {
     'CODE_EXECUTION_ENDPOINT': '',
     'CODE_EXECUTION_API_KEY': '',
     'TOOL_ICON_CACHE_MAX_AGE': 3600,
+    'ENTERPRISE_ENABLED': 'False',
     'MILVUS_DATABASE': 'default',
     'KEYWORD_DATA_SOURCE_TYPE': 'database',
 }
@@ -132,6 +133,11 @@ class Config:
         # You can generate a strong key using `openssl rand -base64 42`.
         # Alternatively you can set it with `SECRET_KEY` environment variable.
         self.SECRET_KEY = get_env('SECRET_KEY')
+
+        # Enterprise Edition
+        # Only the inner_api edition can be set to True
+        self.INNER_API = get_bool_env('INNER_API')
+        self.INNER_API_KEY = get_env('INNER_API_KEY')
 
         # cors settings
         self.CONSOLE_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
@@ -318,6 +324,8 @@ class Config:
 
         self.API_COMPRESSION_ENABLED = get_bool_env('API_COMPRESSION_ENABLED')
         self.TOOL_ICON_CACHE_MAX_AGE = get_env('TOOL_ICON_CACHE_MAX_AGE')
+
+        self.ENTERPRISE_ENABLED = get_bool_env('ENTERPRISE_ENABLED')
 
         self.KEYWORD_DATA_SOURCE_TYPE = get_env('KEYWORD_DATA_SOURCE_TYPE')
 

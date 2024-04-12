@@ -1,12 +1,25 @@
-import React from 'react'
+'use client'
+import React, { useEffect, useState } from 'react'
 import cn from 'classnames'
 import Script from 'next/script'
 import Forms from './forms'
 import Header from './_header'
 import style from './page.module.css'
+import EnterpriseSSOForm from './enterpriseSSOForm'
 import { IS_CE_EDITION } from '@/config'
+import { getEnterpriseFeatures } from '@/service/enterprise'
+import type { EnterpriseFeatures } from '@/types/enterprise'
+import { defaultEnterpriseFeatures } from '@/types/enterprise'
 
 const SignIn = () => {
+  const [enterpriseFeatures, setEnterpriseFeatures] = useState<EnterpriseFeatures>(defaultEnterpriseFeatures)
+
+  useEffect(() => {
+    getEnterpriseFeatures().then((res) => {
+      setEnterpriseFeatures(res)
+    })
+  }, [])
+
   return (
     <>
       {!IS_CE_EDITION && (
@@ -40,10 +53,17 @@ gtag('config', 'AW-11217955271"');
           )
         }>
           <Header />
-          <Forms />
-          <div className='px-8 py-6 text-sm font-normal text-gray-500'>
-            © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
-          </div>
+          {!enterpriseFeatures.sso_enforced_for_signin && (
+            <>
+              <Forms />
+              <div className='px-8 py-6 text-sm font-normal text-gray-500'>
+                © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
+              </div>
+            </>
+          )}
+          {enterpriseFeatures.sso_enforced_for_signin && (
+            <EnterpriseSSOForm protocol={enterpriseFeatures.sso_enforced_for_signin_protocol} />
+          )}
         </div>
 
       </div>
