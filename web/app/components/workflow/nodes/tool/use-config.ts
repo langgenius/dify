@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
@@ -25,7 +25,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const { t } = useTranslation()
 
   const language = useLanguage()
-  const { inputs, setInputs } = useNodeCrud<ToolNodeType>(id, payload)
+  const { inputs, setInputs: doSetInputs } = useNodeCrud<ToolNodeType>(id, payload)
   /*
   * tool_configurations: tool setting, not dynamic setting
   * tool_parameters: tool dynamic setting(by user)
@@ -58,10 +58,41 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   }, [currCollection?.name, hideSetAuthModal, t, handleFetchAllTools, provider_type])
 
   const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
-  const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
+  const formSchemas = useMemo(() => {
+    return currTool ? toolParametersToFormSchemas(currTool.parameters) : []
+  }, [currTool])
   const toolInputVarSchema = formSchemas.filter((item: any) => item.form === 'llm')
   // use setting
   const toolSettingSchema = formSchemas.filter((item: any) => item.form !== 'llm')
+  const hasShouldTransferTypeSettingInput = toolSettingSchema.some(item => item.type === 'boolean' || item.type === 'number-input')
+
+  const setInputs = useCallback((value: ToolNodeType) => {
+    if (!hasShouldTransferTypeSettingInput) {
+      doSetInputs(value)
+      return
+    }
+    const newInputs = produce(value, (draft) => {
+      const newConfig = { ...draft.tool_configurations }
+      Object.keys(draft.tool_configurations).forEach((key) => {
+        const schema = formSchemas.find(item => item.variable === key)
+        const value = newConfig[key]
+        if (schema?.type === 'boolean') {
+          if (typeof value === 'string')
+            newConfig[key] = parseInt(value, 10)
+
+          if (typeof value === 'boolean')
+            newConfig[key] = value ? 1 : 0
+        }
+
+        if (schema?.type === 'number-input') {
+          if (typeof value === 'string' && value !== '')
+            newConfig[key] = parseFloat(value)
+        }
+      })
+      draft.tool_configurations = newConfig
+    })
+    doSetInputs(newInputs)
+  }, [doSetInputs, formSchemas, hasShouldTransferTypeSettingInput])
   const [notSetDefaultValue, setNotSetDefaultValue] = useState(false)
   const toolSettingValue = (() => {
     if (notSetDefaultValue)
