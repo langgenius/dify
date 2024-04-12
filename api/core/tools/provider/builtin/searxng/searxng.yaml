@@ -21,3 +21,4 @@ credentials_for_provider:
     placeholder:
       en_US: Please input your SearXNG base URL
       zh_Hans: 请输入您的 SearXNG base URL
+    url: https://docs.dify.ai/tutorials/tool-configuration/searxng
