@@ -1,6 +1,7 @@
 - google
 - bing
 - duckduckgo
+- searxng
 - dalle
 - azuredalle
 - wikipedia
@@ -26,4 +27,3 @@
 - qrcode
 - dingtalk
 - feishu
-- searxng
