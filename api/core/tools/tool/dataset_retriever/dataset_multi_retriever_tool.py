@@ -31,7 +31,7 @@ class DatasetMultiRetrieverToolInput(BaseModel):
 
 class DatasetMultiRetrieverTool(BaseTool):
     """Tool for querying multi dataset."""
-    name: str = "dataset-"
+    name: str = "dataset_"
     args_schema: type[BaseModel] = DatasetMultiRetrieverToolInput
     description: str = "dataset multi retriever and rerank. "
     tenant_id: str
@@ -47,7 +47,7 @@ class DatasetMultiRetrieverTool(BaseTool):
     @classmethod
     def from_dataset(cls, dataset_ids: list[str], tenant_id: str, **kwargs):
         return cls(
-            name=f'dataset-{tenant_id}',
+            name=f"dataset_{tenant_id.replace('-', '_')}",
             tenant_id=tenant_id,
             dataset_ids=dataset_ids,
             **kwargs
