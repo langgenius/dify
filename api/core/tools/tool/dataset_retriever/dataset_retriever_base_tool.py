@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Any, Optional
 
 from msal_extensions.persistence import ABC
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 

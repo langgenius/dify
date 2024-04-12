@@ -1,5 +1,6 @@
 from collections.abc import Generator, Sequence
-from typing import Optional, Union
+from typing import Union
+
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
