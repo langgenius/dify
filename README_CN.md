@@ -157,23 +157,11 @@ Dify 是一个开源的LLM应用开发平台。其直观的界面结合了AI工�
 我们提供额外的面向企业的功能。[与我们安排会议](https://cal.com/guchenhe/30min)或[给我们发送电子邮件](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)讨论企业需求。 </br>
   > 对于使用 AWS 的初创公司和中小型企业，请查看 [AWS Marketplace 上的 Dify 高级版](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)，并使用一键部署到您自己的 AWS VPC。它是一个价格实惠的 AMI 产品，提供了使用自定义徽标和品牌创建应用程序的选项。
 
-
 ## 保持领先
 
 在 GitHub 上给 Dify Star，并立即收到新版本的通知。
 
 ![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
-
-## 在开始之前
-
-**关注我们，您将立即收到 GitHub 上所有新发布版本的通知！**
-
-![star-us](https://github.com/langgenius/dify/assets/100913391/95f37259-7370-4456-a9f0-0bc01ef8642f)
-
-- [网站](https://dify.ai)
-- [文档](https://docs.dify.ai)
-- [部署文档](https://docs.dify.ai/getting-started/install-self-hosted)
-- [常见问题](https://docs.dify.ai/getting-started/faq)
 
 ## 安装社区版
 
