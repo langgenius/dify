@@ -728,7 +728,7 @@ export const useNodesInteractions = () => {
     } = store.getState()
 
     const nodes = getNodes()
-    const nodesToCopy = nodes.filter(node => node.selected)
+    const nodesToCopy = nodes.filter(node => node.data.selected)
 
     setClipboardElements(nodesToCopy)
 
@@ -808,7 +808,7 @@ export const useNodesInteractions = () => {
     } = store.getState()
 
     const nodes = getNodes()
-    const nodesToDelete = nodes.filter(node => node.selected)
+    const nodesToDelete = nodes.filter(node => node.data.selected)
 
     if (!nodesToDelete)
       return
