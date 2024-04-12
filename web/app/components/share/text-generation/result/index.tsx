@@ -17,6 +17,7 @@ import type { ModerationService } from '@/models/common'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import { sleep } from '@/utils'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -179,16 +180,16 @@ const Result: FC<IResultProps> = ({
       onShowRes()
 
     setRespondingTrue()
-    const startTime = Date.now()
-    let isTimeout = false
-    const runId = setInterval(() => {
-      if (Date.now() - startTime > 1000 * 60) { // 1min timeout
-        clearInterval(runId)
+    let isEnd = false
+    let isTimeout = false;
+    (async () => {
+      await sleep(1000 * 60) // 1min timeout
+      if (!isEnd) {
         setRespondingFalse()
         onCompleted(getCompletionRes(), taskId, false)
         isTimeout = true
       }
-    }, 1000)
+    })()
 
     if (isWorkflow) {
       sendWorkflowMessage(
@@ -234,7 +235,7 @@ const Result: FC<IResultProps> = ({
               notify({ type: 'error', message: data.error })
               setRespondingFalse()
               onCompleted(getCompletionRes(), taskId, false)
-              clearInterval(runId)
+              isEnd = true
               return
             }
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
@@ -249,7 +250,7 @@ const Result: FC<IResultProps> = ({
             setRespondingFalse()
             setMessageId(tempMessageId)
             onCompleted(getCompletionRes(), taskId, true)
-            clearInterval(runId)
+            isEnd = true
           },
         },
         isInstalledApp,
@@ -269,7 +270,7 @@ const Result: FC<IResultProps> = ({
           setRespondingFalse()
           setMessageId(tempMessageId)
           onCompleted(getCompletionRes(), taskId, true)
-          clearInterval(runId)
+          isEnd = true
         },
         onMessageReplace: (messageReplace) => {
           res = [messageReplace.answer]
@@ -280,7 +281,7 @@ const Result: FC<IResultProps> = ({
             return
           setRespondingFalse()
           onCompleted(getCompletionRes(), taskId, false)
-          clearInterval(runId)
+          isEnd = true
         },
       }, isInstalledApp, installedAppInfo?.id)
     }
