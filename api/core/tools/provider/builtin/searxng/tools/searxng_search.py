@@ -1,7 +1,7 @@
 import json
-import requests
+from typing import Any
 
-from typing import Any, List, Dict
+import requests
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -46,7 +46,7 @@ class SearXNGSearchTool(BuiltinTool):
         # "file": "magnetlink"
     }
 
-    def _invoke_query(self, user_id: str, host: str, query: str, search_type: str, result_type: str, topK: int = 5) -> List[Dict]:
+    def _invoke_query(self, user_id: str, host: str, query: str, search_type: str, result_type: str, topK: int = 5) -> list[dict]:
         """Run query and return the results."""
 
         search_type = search_type.lower()
