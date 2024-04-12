@@ -58,7 +58,7 @@ const translation = {
     custom: 'カスタム',
     customDescription: 'チャンクのルール、チャンクの長さ、前処理ルールなどをカスタマイズします。',
     separator: 'セグメント識別子',
-    separatorPlaceholder: '例えば改行（\\\\n）や特殊なセパレータ（例：「***」）',
+    separatorPlaceholder: '例えば改行（\\\\\n）や特殊なセパレータ（例：「reg/pattern/」）',
     maxLength: '最大チャンク長',
     overlap: 'チャンクのオーバーラップ',
     overlapTip: 'チャンクのオーバーラップを設定することで、それらの間の意味的な関連性を維持し、検索効果を向上させることができます。最大チャンクサイズの10%〜25%を設定することをおすすめします。',

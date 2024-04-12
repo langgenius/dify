@@ -58,7 +58,7 @@ const translation = {
     custom: 'Personnalisé',
     customDescription: 'Personnalisez les règles de morceaux, la longueur des morceaux et les règles de prétraitement, etc.',
     separator: 'Identifiant de segment',
-    separatorPlaceholder: 'Par exemple, nouvelle ligne (\\\\n) ou séparateur spécial (tel que "***")',
+    separatorPlaceholder: 'Par exemple, nouvelle ligne (\\\\n) ou séparateur spécial (tel que "reg/pattern/")',
     maxLength: 'Longueur maximale du morceau',
     overlap: 'Chevauchement de morceaux',
     overlapTip: 'La définition d\'un chevauchement de morceaux peut maintenir la pertinence sémantique entre eux, améliorant ainsi l\'effet de récupération. Il est recommandé de définir 10%-25% de la taille maximale du morceau.',

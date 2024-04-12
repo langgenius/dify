@@ -58,7 +58,7 @@ const translation = {
     custom: 'Personalizado',
     customDescription: 'Personalize as regras de fragmentação, comprimento dos fragmentos e regras de pré-processamento, etc.',
     separator: 'Identificador de segmento',
-    separatorPlaceholder: 'Por exemplo, nova linha (\\\\n) ou separador especial (como "***")',
+    separatorPlaceholder: 'Por exemplo, nova linha (\\\\\n) ou separador especial (como "reg/pattern/")',
     maxLength: 'Comprimento máximo do fragmento',
     overlap: 'Sobreposição de blocos',
     overlapTip: 'Configurar a sobreposição de blocos pode manter a relevância semântica entre eles, melhorando o efeito de recuperação. É recomendado definir de 10% a 25% do tamanho máximo do bloco.',

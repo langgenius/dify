@@ -58,7 +58,7 @@ const translation = {
     custom: 'Tùy chỉnh',
     customDescription: 'Tùy chỉnh quy tắc đoạn, độ dài đoạn và quy tắc tiền xử lý, v.v.',
     separator: 'Bộ phận xác định đoạn',
-    separatorPlaceholder: 'Ví dụ, dòng mới (\\\\n) hoặc bộ phận phân cách đặc biệt (như "***")',
+    separatorPlaceholder: 'Ví dụ, dòng mới (\\\\n) hoặc bộ phận phân cách đặc biệt (như "reg/pattern/")',
     maxLength: 'Độ dài tối đa của đoạn',
     overlap: 'Chồng lấn đoạn',
     overlapTip: 'Thiết lập chồng lấn đoạn có thể duy trì sự liên quan ngữ nghĩa giữa chúng, tăng cường hiệu ứng truy xuất. Đề xuất thiết lập từ 10% đến 25% của kích thước đoạn tối đa.',

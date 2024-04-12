@@ -58,7 +58,7 @@ const translation = {
     custom: 'Benutzerdefiniert',
     customDescription: 'Chunk-Regeln, Chunk-Länge und Vorverarbeitungsregeln usw. anpassen.',
     separator: 'Segmentidentifikator',
-    separatorPlaceholder: 'Zum Beispiel Neuer Absatz (\\\\n) oder spezieller Separator (wie "***")',
+    separatorPlaceholder: 'Zum Beispiel: Zeilenumbruch (\\\\n) oder Trennzeichen oder Regex-Muster (z. B. "reg/pattern/")',
     maxLength: 'Maximale Chunk-Länge',
     overlap: 'Chunk-Überlappung',
     overlapTip: 'Die Einstellung der Chunk-Überlappung kann die semantische Relevanz zwischen ihnen aufrechterhalten und so die Abrufeffekt verbessern. Es wird empfohlen, 10%-25% der maximalen Chunk-Größe einzustellen.',
