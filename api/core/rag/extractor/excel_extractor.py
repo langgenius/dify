@@ -36,11 +36,11 @@ class ExcelExtractor(BaseExtractor):
 
     def _extract4xls(self) -> list[Document]:
         wb = xlrd.open_workbook(filename=self._file_path)
-        row_header = None
         documents = []
         # loop over all sheets
         for sheet in wb.sheets():
             for row_index, row in enumerate(sheet.get_rows(), start=1):
+                row_header = None
                 if self.is_blank_row(row):
                     continue
                 if row_header is None:
