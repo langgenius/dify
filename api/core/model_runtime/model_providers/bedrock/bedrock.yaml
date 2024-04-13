@@ -15,6 +15,7 @@ help:
     en_US: https://console.aws.amazon.com/
 supported_model_types:
   - llm
+  - text-embedding
 configurate_methods:
   - predefined-model
 provider_credential_schema:
@@ -74,7 +75,7 @@ provider_credential_schema:
       label:
         en_US: Available Model Name
         zh_Hans: 可用模型名称
-      type: secret-input
+      type: text-input
       placeholder:
         en_US: A model you have access to (e.g. amazon.titan-text-lite-v1) for validation.
         zh_Hans: 为了进行验证，请输入一个您可用的模型名称 (例如：amazon.titan-text-lite-v1)

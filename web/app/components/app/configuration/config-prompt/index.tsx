@@ -70,7 +70,7 @@ const Prompt: FC<IPromptProps> = ({
       }])
       return
     }
-    const lastMessageType = currentAdvancedPromptList[currentAdvancedPromptList.length - 1].role
+    const lastMessageType = currentAdvancedPromptList[currentAdvancedPromptList.length - 1]?.role
     const appendMessage = {
       role: lastMessageType === PromptRole.user ? PromptRole.assistant : PromptRole.user,
       text: '',

@@ -24,56 +24,67 @@ class Jieba(BaseKeyword):
         self._config = KeywordTableConfig()
 
     def create(self, texts: list[Document], **kwargs) -> BaseKeyword:
-        keyword_table_handler = JiebaKeywordTableHandler()
-        keyword_table = self._get_dataset_keyword_table()
-        for text in texts:
-            keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
-            self._update_segment_keywords(self.dataset.id, text.metadata['doc_id'], list(keywords))
-            keyword_table = self._add_text_to_keyword_table(keyword_table, text.metadata['doc_id'], list(keywords))
+        lock_name = 'keyword_indexing_lock_{}'.format(self.dataset.id)
+        with redis_client.lock(lock_name, timeout=600):
+            keyword_table_handler = JiebaKeywordTableHandler()
+            keyword_table = self._get_dataset_keyword_table()
+            for text in texts:
+                keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
+                self._update_segment_keywords(self.dataset.id, text.metadata['doc_id'], list(keywords))
+                keyword_table = self._add_text_to_keyword_table(keyword_table, text.metadata['doc_id'], list(keywords))
 
-        self._save_dataset_keyword_table(keyword_table)
+            self._save_dataset_keyword_table(keyword_table)
 
-        return self
+            return self
 
     def add_texts(self, texts: list[Document], **kwargs):
-        keyword_table_handler = JiebaKeywordTableHandler()
+        lock_name = 'keyword_indexing_lock_{}'.format(self.dataset.id)
+        with redis_client.lock(lock_name, timeout=600):
+            keyword_table_handler = JiebaKeywordTableHandler()
 
-        keyword_table = self._get_dataset_keyword_table()
-        keywords_list = kwargs.get('keywords_list', None)
-        for i in range(len(texts)):
-            text = texts[i]
-            if keywords_list:
-                keywords = keywords_list[i]
-            else:
-                keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
-            self._update_segment_keywords(self.dataset.id, text.metadata['doc_id'], list(keywords))
-            keyword_table = self._add_text_to_keyword_table(keyword_table, text.metadata['doc_id'], list(keywords))
+            keyword_table = self._get_dataset_keyword_table()
+            keywords_list = kwargs.get('keywords_list', None)
+            for i in range(len(texts)):
+                text = texts[i]
+                if keywords_list:
+                    keywords = keywords_list[i]
+                    if not keywords:
+                        keywords = keyword_table_handler.extract_keywords(text.page_content,
+                                                                          self._config.max_keywords_per_chunk)
+                else:
+                    keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
+                self._update_segment_keywords(self.dataset.id, text.metadata['doc_id'], list(keywords))
+                keyword_table = self._add_text_to_keyword_table(keyword_table, text.metadata['doc_id'], list(keywords))
 
-        self._save_dataset_keyword_table(keyword_table)
+            self._save_dataset_keyword_table(keyword_table)
 
     def text_exists(self, id: str) -> bool:
         keyword_table = self._get_dataset_keyword_table()
         return id in set.union(*keyword_table.values())
 
     def delete_by_ids(self, ids: list[str]) -> None:
-        keyword_table = self._get_dataset_keyword_table()
-        keyword_table = self._delete_ids_from_keyword_table(keyword_table, ids)
+        lock_name = 'keyword_indexing_lock_{}'.format(self.dataset.id)
+        with redis_client.lock(lock_name, timeout=600):
+            keyword_table = self._get_dataset_keyword_table()
+            keyword_table = self._delete_ids_from_keyword_table(keyword_table, ids)
 
-        self._save_dataset_keyword_table(keyword_table)
+            self._save_dataset_keyword_table(keyword_table)
 
     def delete_by_document_id(self, document_id: str):
-        # get segment ids by document_id
-        segments = db.session.query(DocumentSegment).filter(
-            DocumentSegment.dataset_id == self.dataset.id,
-            DocumentSegment.document_id == document_id
-        ).all()
+        lock_name = 'keyword_indexing_lock_{}'.format(self.dataset.id)
+        with redis_client.lock(lock_name, timeout=600):
+            # get segment ids by document_id
+            segments = db.session.query(DocumentSegment).filter(
+                DocumentSegment.dataset_id == self.dataset.id,
+                DocumentSegment.document_id == document_id
+            ).all()
 
-        ids = [segment.index_node_id for segment in segments]
+            ids = [segment.index_node_id for segment in segments]
 
-        keyword_table = self._get_dataset_keyword_table()
-        keyword_table = self._delete_ids_from_keyword_table(keyword_table, ids)
+            keyword_table = self._get_dataset_keyword_table()
+            keyword_table = self._delete_ids_from_keyword_table(keyword_table, ids)
 
-        self._save_dataset_keyword_table(keyword_table)
+            self._save_dataset_keyword_table(keyword_table)
 
     def search(
             self, query: str,
@@ -106,13 +117,15 @@ class Jieba(BaseKeyword):
         return documents
 
     def delete(self) -> None:
-        dataset_keyword_table = self.dataset.dataset_keyword_table
-        if dataset_keyword_table:
-            db.session.delete(dataset_keyword_table)
-            db.session.commit()
-            if dataset_keyword_table.data_source_type != 'database':
-                file_key = 'keyword_files/' + self.dataset.tenant_id + '/' + self.dataset.id + '.txt'
-                storage.delete(file_key)
+        lock_name = 'keyword_indexing_lock_{}'.format(self.dataset.id)
+        with redis_client.lock(lock_name, timeout=600):
+            dataset_keyword_table = self.dataset.dataset_keyword_table
+            if dataset_keyword_table:
+                db.session.delete(dataset_keyword_table)
+                db.session.commit()
+                if dataset_keyword_table.data_source_type != 'database':
+                    file_key = 'keyword_files/' + self.dataset.tenant_id + '/' + self.dataset.id + '.txt'
+                    storage.delete(file_key)
 
     def _save_dataset_keyword_table(self, keyword_table):
         keyword_table_dict = {
@@ -135,33 +148,31 @@ class Jieba(BaseKeyword):
             storage.save(file_key, json.dumps(keyword_table_dict, cls=SetEncoder).encode('utf-8'))
 
     def _get_dataset_keyword_table(self) -> Optional[dict]:
-        lock_name = 'keyword_indexing_lock_{}'.format(self.dataset.id)
-        with redis_client.lock(lock_name, timeout=20):
-            dataset_keyword_table = self.dataset.dataset_keyword_table
-            if dataset_keyword_table:
-                keyword_table_dict = dataset_keyword_table.keyword_table_dict
-                if keyword_table_dict:
-                    return keyword_table_dict['__data__']['table']
-            else:
-                keyword_data_source_type = current_app.config['KEYWORD_DATA_SOURCE_TYPE']
-                dataset_keyword_table = DatasetKeywordTable(
-                    dataset_id=self.dataset.id,
-                    keyword_table='',
-                    data_source_type=keyword_data_source_type,
-                )
-                if keyword_data_source_type == 'database':
-                    dataset_keyword_table.keyword_table = json.dumps({
-                        '__type__': 'keyword_table',
-                        '__data__': {
-                            "index_id": self.dataset.id,
-                            "summary": None,
-                            "table": {}
-                        }
-                    }, cls=SetEncoder)
-                db.session.add(dataset_keyword_table)
-                db.session.commit()
+        dataset_keyword_table = self.dataset.dataset_keyword_table
+        if dataset_keyword_table:
+            keyword_table_dict = dataset_keyword_table.keyword_table_dict
+            if keyword_table_dict:
+                return keyword_table_dict['__data__']['table']
+        else:
+            keyword_data_source_type = current_app.config['KEYWORD_DATA_SOURCE_TYPE']
+            dataset_keyword_table = DatasetKeywordTable(
+                dataset_id=self.dataset.id,
+                keyword_table='',
+                data_source_type=keyword_data_source_type,
+            )
+            if keyword_data_source_type == 'database':
+                dataset_keyword_table.keyword_table = json.dumps({
+                    '__type__': 'keyword_table',
+                    '__data__': {
+                        "index_id": self.dataset.id,
+                        "summary": None,
+                        "table": {}
+                    }
+                }, cls=SetEncoder)
+            db.session.add(dataset_keyword_table)
+            db.session.commit()
 
-            return {}
+        return {}
 
     def _add_text_to_keyword_table(self, keyword_table: dict, id: str, keywords: list[str]) -> dict:
         for keyword in keywords:

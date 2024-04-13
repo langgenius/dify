@@ -2,8 +2,6 @@ model: amazon.titan-text-express-v1
 label:
   en_US: Titan Text G1 - Express
 model_type: llm
-features:
-  - agent-thought
 model_properties:
   mode: chat
   context_size: 8192

@@ -1,12 +1,32 @@
 import os
-from typing import Any, Optional, Union
+from typing import Any, Optional, TextIO, Union
 
-from langchain.callbacks.base import BaseCallbackHandler
-from langchain.input import print_text
 from pydantic import BaseModel
 
+_TEXT_COLOR_MAPPING = {
+    "blue": "36;1",
+    "yellow": "33;1",
+    "pink": "38;5;200",
+    "green": "32;1",
+    "red": "31;1",
+}
 
-class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
+def get_colored_text(text: str, color: str) -> str:
+    """Get colored text."""
+    color_str = _TEXT_COLOR_MAPPING[color]
+    return f"\u001b[{color_str}m\033[1;3m{text}\u001b[0m"
+
+
+def print_text(
+    text: str, color: Optional[str] = None, end: str = "", file: Optional[TextIO] = None
+) -> None:
+    """Print text with highlighting and no end characters."""
+    text_to_print = get_colored_text(text, color) if color else text
+    print(text_to_print, end=end, file=file)
+    if file:
+        file.flush()  # ensure all printed content are written to file
+
+class DifyAgentCallbackHandler(BaseModel):
     """Callback Handler that prints to std out."""
     color: Optional[str] = ''
     current_loop = 1
@@ -36,7 +56,7 @@ class DifyAgentCallbackHandler(BaseCallbackHandler, BaseModel):
         print_text("\n[on_tool_end]\n", color=self.color)
         print_text("Tool: " + tool_name + "\n", color=self.color)
         print_text("Inputs: " + str(tool_inputs) + "\n", color=self.color)
-        print_text("Outputs: " + str(tool_outputs) + "\n", color=self.color)
+        print_text("Outputs: " + str(tool_outputs)[:1000] + "\n", color=self.color)
         print_text("\n")
 
     def on_tool_error(

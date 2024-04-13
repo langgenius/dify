@@ -189,7 +189,7 @@ class StableDiffusionTool(BuiltinTool):
             if not base_url:
                 return []
             api_url = str(URL(base_url) / 'sdapi' / 'v1' / 'sd-models')
-            response = get(url=api_url, timeout=10)
+            response = get(url=api_url, timeout=(2, 10))
             if response.status_code != 200:
                 return []
             else:

@@ -27,7 +27,7 @@ class ToolFilePreviewApi(Resource):
             raise Forbidden('Invalid request.')
         
         try:
-            result = ToolFileManager.get_file_generator_by_message_file_id(
+            result = ToolFileManager.get_file_generator_by_tool_file_id(
                 file_id,
             )
 

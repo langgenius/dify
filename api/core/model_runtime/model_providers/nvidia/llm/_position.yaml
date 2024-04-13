@@ -1,4 +1,5 @@
 - google/gemma-7b
+- google/codegemma-7b
 - meta/llama2-70b
 - mistralai/mixtral-8x7b-instruct-v0.1
 - fuyu-8b

@@ -402,25 +402,25 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :param credentials: model credentials
         :return:
         """
-
-        if "anthropic.claude-3" in model:
-            try:
-                self._invoke_claude(model=model,
-                                        credentials=credentials,
-                                        prompt_messages=[{"role": "user", "content": "ping"}],
-                                        model_parameters={},
-                                        stop=None,
-                                        stream=False)
-
-            except Exception as ex:
-                raise CredentialsValidateFailedError(str(ex))
-
+        required_params = {}
+        if "anthropic" in model:
+            required_params = {
+                "max_tokens": 32,
+            }
+        elif "ai21" in model:
+            # ValidationException: Malformed input request: #/temperature: expected type: Number, found: Null#/maxTokens: expected type: Integer, found: Null#/topP: expected type: Number, found: Null, please reformat your input and try again.
+            required_params = {
+                "temperature": 0.7,
+                "topP": 0.9,
+                "maxTokens": 32,
+            }
+            
         try:
             ping_message = UserPromptMessage(content="ping")
-            self._generate(model=model,
+            self._invoke(model=model,
                            credentials=credentials,
                            prompt_messages=[ping_message],
-                           model_parameters={},
+                           model_parameters=required_params,
                            stream=False)
         
         except ClientError as ex:
@@ -503,7 +503,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         if model_prefix == "amazon":
             payload["textGenerationConfig"] = { **model_parameters }
-            payload["textGenerationConfig"]["stopSequences"] = ["User:"] + (stop if stop else [])
+            payload["textGenerationConfig"]["stopSequences"] = ["User:"]
             
             payload["inputText"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
         
@@ -512,10 +512,6 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             payload["topP"] = model_parameters.get("topP")
             payload["maxTokens"] = model_parameters.get("maxTokens")
             payload["prompt"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
-
-            # jurassic models only support a single stop sequence
-            if stop:
-                payload["stopSequences"] = stop[0]
 
             if model_parameters.get("presencePenalty"):
                 payload["presencePenalty"] = {model_parameters.get("presencePenalty")}

@@ -1,10 +1,8 @@
-from typing import Optional
 
-from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 
-from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.tools.tool.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
@@ -24,19 +22,13 @@ class DatasetRetrieverToolInput(BaseModel):
     query: str = Field(..., description="Query for the dataset to be used to retrieve the dataset.")
 
 
-class DatasetRetrieverTool(BaseTool):
+class DatasetRetrieverTool(DatasetRetrieverBaseTool):
     """Tool for querying a Dataset."""
     name: str = "dataset"
     args_schema: type[BaseModel] = DatasetRetrieverToolInput
     description: str = "use this to retrieve a dataset. "
-
-    tenant_id: str
     dataset_id: str
-    top_k: int = 2
-    score_threshold: Optional[float] = None
-    hit_callbacks: list[DatasetIndexToolCallbackHandler] = []
-    return_resource: bool
-    retriever_from: str
+
 
     @classmethod
     def from_dataset(cls, dataset: Dataset, **kwargs):
@@ -46,7 +38,7 @@ class DatasetRetrieverTool(BaseTool):
 
         description = description.replace('\n', '').replace('\r', '')
         return cls(
-            name=f'dataset-{dataset.id}',
+            name=f"dataset_{dataset.id.replace('-', '_')}",
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             description=description,
@@ -154,6 +146,3 @@ class DatasetRetrieverTool(BaseTool):
                         hit_callback.return_retriever_resource_info(context_list)
 
             return str("\n".join(document_context_list))
-
-    async def _arun(self, tool_input: str) -> str:
-        raise NotImplementedError()

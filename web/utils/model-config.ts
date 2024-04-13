@@ -15,12 +15,15 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
       if (item['text-input'])
         return ['string', item['text-input']]
 
+      if (item.number)
+        return ['number', item.number]
+
       if (item.external_data_tool)
         return [item.external_data_tool.type, item.external_data_tool]
 
-      return ['select', item.select]
+      return ['select', item.select || {}]
     })()
-    const is_context_var = dataset_query_variable === content.variable
+    const is_context_var = dataset_query_variable === content?.variable
 
     if (type === 'string' || type === 'paragraph') {
       promptVariables.push({
@@ -31,6 +34,15 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         max_length: content.max_length,
         options: [],
         is_context_var,
+      })
+    }
+    else if (type === 'number') {
+      promptVariables.push({
+        key: content.variable,
+        name: content.label,
+        required: content.required,
+        type,
+        options: [],
       })
     }
     else if (type === 'select') {
@@ -78,6 +90,17 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           default: '',
         },
       } as any)
+      return
+    }
+    if (item.type === 'number') {
+      userInputs.push({
+        number: {
+          label: item.name,
+          variable: item.key,
+          required: item.required !== false, // default true
+          default: '',
+        },
+      } as any)
     }
     else if (item.type === 'select') {
       userInputs.push({
@@ -105,5 +128,6 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
       } as any)
     }
   })
+
   return userInputs
 }

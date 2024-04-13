@@ -1,5 +1,6 @@
 from typing import Optional, Union
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
@@ -11,8 +12,8 @@ from services.conversation_service import ConversationService
 class WebConversationService:
     @classmethod
     def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account, EndUser]],
-                              last_id: Optional[str], limit: int, pinned: Optional[bool] = None,
-                              exclude_debug_conversation: bool = False) -> InfiniteScrollPagination:
+                              last_id: Optional[str], limit: int, invoke_from: InvokeFrom,
+                              pinned: Optional[bool] = None) -> InfiniteScrollPagination:
         include_ids = None
         exclude_ids = None
         if pinned is not None:
@@ -32,9 +33,9 @@ class WebConversationService:
             user=user,
             last_id=last_id,
             limit=limit,
+            invoke_from=invoke_from,
             include_ids=include_ids,
             exclude_ids=exclude_ids,
-            exclude_debug_conversation=exclude_debug_conversation
         )
 
     @classmethod

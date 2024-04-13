@@ -1,4 +1,5 @@
 import os
+from copy import deepcopy
 from typing import Any, Union
 
 from pydantic import BaseModel
@@ -25,7 +26,7 @@ class ToolConfigurationManager(BaseModel):
         """
         deep copy credentials
         """
-        return {key: value for key, value in credentials.items()}
+        return deepcopy(credentials)
     
     def encrypt_tool_credentials(self, credentials: dict[str, str]) -> dict[str, str]:
         """

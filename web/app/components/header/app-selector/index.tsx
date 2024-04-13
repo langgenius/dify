@@ -6,7 +6,7 @@ import { Menu, Transition } from '@headlessui/react'
 import { useRouter } from 'next/navigation'
 import Indicator from '../indicator'
 import type { AppDetailResponse } from '@/models/app'
-import NewAppDialog from '@/app/(commonLayout)/apps/NewAppDialog'
+import CreateAppDialog from '@/app/components/app/create-app-dialog'
 import AppIcon from '@/app/components/base/app-icon'
 import { useAppContext } from '@/context/app-context'
 
@@ -101,7 +101,11 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
           </Menu.Items>
         </Transition>
       </Menu>
-      <NewAppDialog show={showNewAppDialog} onClose={() => setShowNewAppDialog(false)} />
+      <CreateAppDialog
+        show={showNewAppDialog}
+        onClose={() => setShowNewAppDialog(false)}
+        onSuccess={() => {}}
+      />
     </div>
   )
 }

@@ -1,0 +1,39 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "16",
+			"height": "16",
+			"viewBox": "0 0 16 16",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Icon"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector",
+							"d": "M8.75 11H14M8.75 5H14M2 5.75L3.125 6.5L5.375 3.5M2 11.75L3.125 12.5L5.375 9.5",
+							"stroke": "currentColor",
+							"stroke-width": "1.5",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					}
+				]
+			}
+		]
+	},
+	"name": "Checklist"
+}

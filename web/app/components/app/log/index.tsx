@@ -14,10 +14,10 @@ import Filter from './filter'
 import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
 import { fetchChatConversations, fetchCompletionConversations } from '@/service/log'
-import { fetchAppDetail } from '@/service/apps'
 import { APP_PAGE_LIMIT } from '@/config'
+import type { App, AppMode } from '@/types/app'
 export type ILogsProps = {
-  appId: string
+  appDetail: App
 }
 
 export type QueryParam = {
@@ -50,7 +50,7 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
   </div>
 }
 
-const Logs: FC<ILogsProps> = ({ appId }) => {
+const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
   const [queryParams, setQueryParams] = useState<QueryParam>({ period: 7, annotation_status: 'all' })
   const [currPage, setCurrPage] = React.useState<number>(0)
@@ -67,21 +67,26 @@ const Logs: FC<ILogsProps> = ({ appId }) => {
     ...omit(queryParams, ['period']),
   }
 
+  const getWebAppType = (appType: AppMode) => {
+    if (appType !== 'completion' && appType !== 'workflow')
+      return 'chat'
+    return appType
+  }
+
   // Get the app type first
-  const { data: appDetail } = useSWR({ url: '/apps', id: appId }, fetchAppDetail)
-  const isChatMode = appDetail?.mode === 'chat'
+  const isChatMode = appDetail.mode !== 'completion'
 
   // When the details are obtained, proceed to the next request
   const { data: chatConversations, mutate: mutateChatList } = useSWR(() => isChatMode
     ? {
-      url: `/apps/${appId}/chat-conversations`,
+      url: `/apps/${appDetail.id}/chat-conversations`,
       params: query,
     }
     : null, fetchChatConversations)
 
   const { data: completionConversations, mutate: mutateCompletionList } = useSWR(() => !isChatMode
     ? {
-      url: `/apps/${appId}/completion-conversations`,
+      url: `/apps/${appDetail.id}/completion-conversations`,
       params: query,
     }
     : null, fetchCompletionConversations)
@@ -92,12 +97,12 @@ const Logs: FC<ILogsProps> = ({ appId }) => {
     <div className='flex flex-col h-full'>
       <p className='flex text-sm font-normal text-gray-500'>{t('appLog.description')}</p>
       <div className='flex flex-col py-4 flex-1'>
-        <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams} />
+        <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams} />
         {total === undefined
           ? <Loading type='app' />
           : total > 0
             ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
-            : <EmptyElement appUrl={`${appDetail?.site.app_base_url}/${appDetail?.mode}/${appDetail?.site.access_token}`} />
+            : <EmptyElement appUrl={`${appDetail.site.app_base_url}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)

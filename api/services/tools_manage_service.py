@@ -1,29 +1,29 @@
 import json
 import logging
 
-from flask import current_app
 from httpx import get
 
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ApiProviderSchemaType,
     ToolCredentialsOption,
-    ToolParameter,
     ToolProviderCredentials,
 )
 from core.tools.entities.user_entities import UserTool, UserToolProvider
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
+from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolConfigurationManager
-from core.tools.utils.encoder import serialize_base_model_array, serialize_base_model_dict
 from core.tools.utils.parser import ApiBasedToolSchemaParser
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
 from services.model_provider_service import ModelProviderService
+from services.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
 
@@ -36,44 +36,22 @@ class ToolManageService:
 
             :return: the list of tool providers
         """
-        result = [provider.to_dict() for provider in ToolManager.user_list_providers(
+        providers = ToolManager.user_list_providers(
             user_id, tenant_id
-        )]
+        )
 
-        # add icon url prefix
-        for provider in result:
-            ToolManageService.repack_provider(provider)
+        # add icon
+        for provider in providers:
+            ToolTransformService.repack_provider(provider)
+
+        result = [provider.to_dict() for provider in providers]
 
         return result
     
     @staticmethod
-    def repack_provider(provider: dict):
-        """
-            repack provider
-
-            :param provider: the provider dict
-        """
-        url_prefix = (current_app.config.get("CONSOLE_API_URL")
-                      + "/console/api/workspaces/current/tool-provider/")
-        
-        if 'icon' in provider:
-            if provider['type'] == UserToolProvider.ProviderType.BUILTIN.value:
-                provider['icon'] = url_prefix + 'builtin/' + provider['name'] + '/icon'
-            elif provider['type'] == UserToolProvider.ProviderType.MODEL.value:
-                provider['icon'] = url_prefix + 'model/' + provider['name'] + '/icon'
-            elif provider['type'] == UserToolProvider.ProviderType.API.value:
-                try:
-                    provider['icon'] = json.loads(provider['icon'])
-                except:
-                    provider['icon'] =  {
-                        "background": "#252525",
-                        "content": "\ud83d\ude01"
-                    }
-    
-    @staticmethod
     def list_builtin_tool_provider_tools(
         user_id: str, tenant_id: str, provider: str
-    ):
+    ) -> list[UserTool]:
         """
             list builtin tool provider tools
         """
@@ -95,41 +73,11 @@ class ToolManageService:
 
         result = []
         for tool in tools:
-            # fork tool runtime
-            tool = tool.fork_tool_runtime(meta={
-                'credentials': credentials,
-                'tenant_id': tenant_id,
-            })
+            result.append(ToolTransformService.tool_to_user_tool(
+                tool=tool, credentials=credentials, tenant_id=tenant_id
+            ))
 
-            # get tool parameters
-            parameters = tool.parameters or []
-            # get tool runtime parameters
-            runtime_parameters = tool.get_runtime_parameters()
-            # override parameters
-            current_parameters = parameters.copy()
-            for runtime_parameter in runtime_parameters:
-                found = False
-                for index, parameter in enumerate(current_parameters):
-                    if parameter.name == runtime_parameter.name and parameter.form == runtime_parameter.form:
-                        current_parameters[index] = runtime_parameter
-                        found = True
-                        break
-
-                if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
-                    current_parameters.append(runtime_parameter)
-
-            user_tool = UserTool(
-                author=tool.identity.author,
-                name=tool.identity.name,
-                label=tool.identity.label,
-                description=tool.description.human,
-                parameters=current_parameters
-            )
-            result.append(user_tool)
-
-        return json.loads(
-            serialize_base_model_array(result)
-        )
+        return result
     
     @staticmethod
     def list_builtin_provider_credentials_schema(
@@ -141,9 +89,9 @@ class ToolManageService:
             :return: the list of tool providers
         """
         provider = ToolManager.get_builtin_provider(provider_name)
-        return json.loads(serialize_base_model_array([
+        return jsonable_encoder([
             v for _, v in (provider.credentials_schema or {}).items()
-        ]))
+        ])
 
     @staticmethod
     def parser_api_schema(schema: str) -> list[ApiBasedToolBundle]:
@@ -204,14 +152,12 @@ class ToolManageService:
                 ),
             ]
 
-            return json.loads(serialize_base_model_dict(
-                {
-                    'schema_type': schema_type,
-                    'parameters_schema': tool_bundles,
-                    'credentials_schema': credentials_schema,
-                    'warning': warnings
-                }
-            ))
+            return jsonable_encoder({
+                'schema_type': schema_type,
+                'parameters_schema': tool_bundles,
+                'credentials_schema': credentials_schema,
+                'warning': warnings
+            })
         except Exception as e:
             raise ValueError(f'invalid schema: {str(e)}')
 
@@ -265,7 +211,7 @@ class ToolManageService:
             schema=schema,
             description=extra_info.get('description', ''),
             schema_type_str=schema_type,
-            tools_str=serialize_base_model_array(tool_bundles),
+            tools_str=json.dumps(jsonable_encoder(tool_bundles)),
             credentials_str={},
             privacy_policy=privacy_policy
         )
@@ -322,7 +268,7 @@ class ToolManageService:
     @staticmethod
     def list_api_tool_provider_tools(
         user_id: str, tenant_id: str, provider: str
-    ):
+    ) -> list[UserTool]:
         """
             list api tool provider tools
         """
@@ -334,23 +280,9 @@ class ToolManageService:
         if provider is None:
             raise ValueError(f'you have not added provider {provider}')
         
-        return json.loads(
-            serialize_base_model_array([
-                UserTool(
-                    author=tool_bundle.author,
-                    name=tool_bundle.operation_id,
-                    label=I18nObject(
-                        en_US=tool_bundle.operation_id,
-                        zh_Hans=tool_bundle.operation_id
-                    ),
-                    description=I18nObject(
-                        en_US=tool_bundle.summary or '',
-                        zh_Hans=tool_bundle.summary or ''
-                    ),
-                    parameters=tool_bundle.parameters
-                ) for tool_bundle in provider.tools
-            ])
-        )
+        return [
+            ToolTransformService.tool_to_user_tool(tool_bundle) for tool_bundle in provider.tools
+        ]
 
     @staticmethod
     def update_builtin_tool_provider(
@@ -409,6 +341,27 @@ class ToolManageService:
         return { 'result': 'success' }
     
     @staticmethod
+    def get_builtin_tool_provider_credentials(
+        user_id: str, tenant_id: str, provider: str
+    ):
+        """
+            get builtin tool provider credentials
+        """
+        provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
+            BuiltinToolProvider.tenant_id == tenant_id,
+            BuiltinToolProvider.provider == provider,
+        ).first()
+
+        if provider is None:
+            return {}
+        
+        provider_controller = ToolManager.get_builtin_provider(provider.provider)
+        tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
+        credentials = tool_configuration.decrypt_tool_credentials(provider.credentials)
+        credentials = tool_configuration.mask_tool_credentials(credentials)
+        return credentials
+
+    @staticmethod
     def update_api_tool_provider(
         user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: dict, credentials: dict, 
         schema_type: str, schema: str, privacy_policy: str
@@ -439,7 +392,7 @@ class ToolManageService:
         provider.schema = schema
         provider.description = extra_info.get('description', '')
         provider.schema_type_str = ApiProviderSchemaType.OPENAPI.value
-        provider.tools_str = serialize_base_model_array(tool_bundles)
+        provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
         provider.privacy_policy = privacy_policy
 
         if 'auth_type' not in credentials:
@@ -531,7 +484,7 @@ class ToolManageService:
     @staticmethod
     def list_model_tool_provider_tools(
         user_id: str, tenant_id: str, provider: str
-    ):
+    ) -> list[UserTool]:
         """
             list model tool provider tools
         """
@@ -548,9 +501,7 @@ class ToolManageService:
             ) for tool in tools
         ]
 
-        return json.loads(
-            serialize_base_model_array(result)
-        )
+        return jsonable_encoder(result)
     
     @staticmethod
     def delete_api_tool_provider(
@@ -619,7 +570,7 @@ class ToolManageService:
                 schema=schema,
                 description='',
                 schema_type_str=ApiProviderSchemaType.OPENAPI.value,
-                tools_str=serialize_base_model_array(tool_bundles),
+                tools_str=json.dumps(jsonable_encoder(tool_bundles)),
                 credentials_str=json.dumps(credentials),
             )
 
@@ -660,3 +611,87 @@ class ToolManageService:
             return { 'error': str(e) }
         
         return { 'result': result or 'empty response' }
+    
+    @staticmethod
+    def list_builtin_tools(
+        user_id: str, tenant_id: str
+    ) -> list[UserToolProvider]:
+        """
+            list builtin tools
+        """
+        # get all builtin providers
+        provider_controllers = ToolManager.list_builtin_providers()
+
+        # get all user added providers
+        db_providers: list[BuiltinToolProvider] = db.session.query(BuiltinToolProvider).filter(
+            BuiltinToolProvider.tenant_id == tenant_id
+        ).all() or []
+
+        # find provider
+        find_provider = lambda provider: next(filter(lambda db_provider: db_provider.provider == provider, db_providers), None)
+
+        result: list[UserToolProvider] = []
+
+        for provider_controller in provider_controllers:
+            # convert provider controller to user provider
+            user_builtin_provider = ToolTransformService.builtin_provider_to_user_provider(
+                provider_controller=provider_controller,
+                db_provider=find_provider(provider_controller.identity.name),
+                decrypt_credentials=True
+            )
+
+            # add icon
+            ToolTransformService.repack_provider(user_builtin_provider)
+
+            tools = provider_controller.get_tools()
+            for tool in tools:
+                user_builtin_provider.tools.append(ToolTransformService.tool_to_user_tool(
+                    tenant_id=tenant_id,
+                    tool=tool, 
+                    credentials=user_builtin_provider.original_credentials, 
+                ))
+
+            result.append(user_builtin_provider)
+
+        return BuiltinToolProviderSort.sort(result)
+    
+    @staticmethod
+    def list_api_tools(
+        user_id: str, tenant_id: str
+    ) -> list[UserToolProvider]:
+        """
+            list api tools
+        """
+        # get all api providers
+        db_providers: list[ApiToolProvider] = db.session.query(ApiToolProvider).filter(
+            ApiToolProvider.tenant_id == tenant_id
+        ).all() or []
+
+        result: list[UserToolProvider] = []
+
+        for provider in db_providers:
+            # convert provider controller to user provider
+            provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
+            user_provider = ToolTransformService.api_provider_to_user_provider(
+                provider_controller,
+                db_provider=provider,
+                decrypt_credentials=True
+            )
+
+            # add icon
+            ToolTransformService.repack_provider(user_provider)
+
+            tools = provider_controller.get_tools(
+                user_id=user_id, tenant_id=tenant_id
+            )
+
+            for tool in tools:
+                user_provider.tools.append(ToolTransformService.tool_to_user_tool(
+                    tenant_id=tenant_id,
+                    tool=tool, 
+                    credentials=user_provider.original_credentials, 
+                ))
+
+            result.append(user_provider)
+
+        return result

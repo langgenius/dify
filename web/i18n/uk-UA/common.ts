@@ -117,7 +117,7 @@ const translation = {
     workspace: 'Робочий простір',
     createWorkspace: 'Створити робочий простір',
     helpCenter: 'Довідковий центр',
-    roadmapAndFeedback: 'Дорожня карта та відгуки',
+    roadmapAndFeedback: 'відгуки',
     community: 'Спільнота',
     about: 'Про нас',
     logout: 'Вийти',
@@ -400,6 +400,7 @@ const translation = {
     promptEng: 'Налаштування',
     apiAccess: 'Доступ до API',
     logAndAnn: 'Журнали та Повідомлення.',
+    logs: 'Журнали',
   },
   environment: {
     testing: 'ТЕСТУВАННЯ',
@@ -476,6 +477,10 @@ const translation = {
       item: {
         title: 'Змінні та зовнішні інструменти',
         desc: 'Вставити змінні та зовнішні інструменти',
+      },
+      outputToolDisabledItem: {
+        title: 'Змінні',
+        desc: 'Вставити змінні',
       },
       modal: {
         add: 'Нова змінна',

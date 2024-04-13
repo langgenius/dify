@@ -2,7 +2,7 @@ import os
 import shutil
 from collections.abc import Generator
 from contextlib import closing
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Union
 
 import boto3
@@ -38,7 +38,7 @@ class Storage:
                 account_key=app.config.get('AZURE_BLOB_ACCOUNT_KEY'),
                 resource_types=ResourceTypes(service=True, container=True, object=True),
                 permission=AccountSasPermissions(read=True, write=True, delete=True, list=True, add=True, create=True),
-                expiry=datetime.utcnow() + timedelta(hours=1)
+                expiry=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1)
             )
             self.client = BlobServiceClient(account_url=app.config.get('AZURE_BLOB_ACCOUNT_URL'),
                                             credential=sas_token)

@@ -16,12 +16,12 @@ import AddFeatureBtn from './feature/add-feature-btn'
 import ChooseFeature from './feature/choose-feature'
 import useFeature from './feature/use-feature'
 import AgentTools from './agent/agent-tools'
-import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/advanced-mode-waring'
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import { type CitationConfig, type ModelConfig, type ModerationConfig, type MoreLikeThisConfig, PromptMode, type PromptVariable, type SpeechToTextConfig, type SuggestedQuestionsAfterAnswerConfig, type TextToSpeechConfig } from '@/models/debug'
-import { AppType, ModelModeType } from '@/types/app'
+import { type CitationConfig, type ModelConfig, type ModerationConfig, type MoreLikeThisConfig, type PromptVariable, type SpeechToTextConfig, type SuggestedQuestionsAfterAnswerConfig, type TextToSpeechConfig } from '@/models/debug'
+import type { AppType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
 import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
@@ -35,8 +35,8 @@ const Config: FC = () => {
     isAdvancedMode,
     modelModeType,
     isAgent,
-    canReturnToSimpleMode,
-    setPromptMode,
+    // canReturnToSimpleMode,
+    // setPromptMode,
     hasSetBlockStatus,
     showHistoryModal,
     introduction,
@@ -61,7 +61,7 @@ const Config: FC = () => {
     moderationConfig,
     setModerationConfig,
   } = useContext(ConfigContext)
-  const isChatApp = mode === AppType.chat
+  const isChatApp = ['advanced-chat', 'agent-chat', 'chat'].includes(mode)
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const { setShowModerationSettingModal } = useModalContext()
@@ -210,11 +210,6 @@ const Config: FC = () => {
         className="grow h-0 relative px-6 pb-[50px] overflow-y-auto"
       >
         <AddFeatureBtn toBottomHeight={toBottomHeight} onClick={showChooseFeatureTrue} />
-        {
-          (isAdvancedMode && canReturnToSimpleMode && !isAgent) && (
-            <AdvancedModeWaring onReturnToSimpleMode={() => setPromptMode(PromptMode.simple)} />
-          )
-        }
         {showChooseFeature && (
           <ChooseFeature
             isShow={showChooseFeature}
@@ -245,7 +240,7 @@ const Config: FC = () => {
         <DatasetConfig />
 
         {/* Tools */}
-        {(isAgent && isChatApp) && (
+        {isAgent && (
           <AgentTools />
         )}
 
