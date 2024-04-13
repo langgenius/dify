@@ -56,7 +56,6 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
         embeddings = []
         token_usage = 0
         
-        model_list = ["amazon","cohere"]
         model_prefix = model.split('.')[0]
          
         if model_prefix == "amazon" :
