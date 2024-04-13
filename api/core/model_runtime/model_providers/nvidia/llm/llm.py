@@ -24,6 +24,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
         'fuyu-8b': 'vlm/adept/fuyu-8b',
         'mistralai/mixtral-8x7b-instruct-v0.1': '',
         'google/gemma-7b': '',
+        'google/codegemma-7b': '',
         'meta/llama2-70b': ''
     }
 
