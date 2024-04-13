@@ -50,6 +50,10 @@ const translation = {
     noTag: '没有标签',
     noTagYet: '还没有标签',
     addTag: '添加标签',
+    manageTags: '管理标签',
+    selectorPlaceholder: '搜索或者创建',
+    create: '创建',
+    delete: '删除标签',
   },
 }
 

@@ -50,6 +50,10 @@ const translation = {
     noTag: 'No tags',
     noTagYet: 'No tags yet',
     addTag: 'add tag',
+    manageTags: 'Manage Tags',
+    selectorPlaceholder: 'Type to search or create',
+    create: 'Create',
+    delete: 'Delete tag',
   },
 }
 

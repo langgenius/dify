@@ -18,7 +18,7 @@ import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/gene
 import RenameDatasetModal from '@/app/components/datasets/rename-modal'
 import TagItem from '@/app/components/base/tag-management/tag-item'
 import type { Tag } from '@/app/components/base/tag-management/constant'
-// import TagSelector from '@/app/components/base/tag-management/selector'
+import TagSelector from '@/app/components/base/tag-management/selector'
 import { unBindTag } from '@/service/tag'
 
 export type DatasetCardProps = {
@@ -167,19 +167,22 @@ const DatasetCard = ({
                 onRemove={() => removeTag(tag)}
               />
             ))}
-          </div>
-          {/* TODO popover tags */}
-          {dataset.tags.length > 3 && (
-            <div className={cn('shrink-0 ml-1 flex items-center px-1 border bg-white border-gray-200 rounded-[5px] text-gray-500 text-xs leading-4.5')}>
-              {`+${dataset.tags.length - 3}`}
+            {/* TODO popover tags */}
+            {dataset.tags.length > 3 && (
+              <div className={cn('shrink-0 ml-1 flex items-center px-1 border bg-white border-gray-200 rounded-[5px] text-gray-500 text-xs leading-4.5')}>
+                {`+${dataset.tags.length - 3}`}
+              </div>
+            )}
+            {/* TODO tag selector */}
+            <div className='!hidden group-hover:!flex shrink-0'>
+              <TagSelector
+                position='bl'
+                type='knowledge'
+                value={dataset.tags.map(tag => tag.id)}
+                onChange={() => {}}
+              />
             </div>
-          )}
-          {/* TODO tag selector */}
-          {/* <TagSelector
-            type='knowledge'
-            value={dataset.tags.map(tag => tag.id)}
-            onChange={() => {}}
-          /> */}
+          </div>
           <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200'/>
           <div className='!hidden group-hover:!flex shrink-0'>
             <CustomPopover

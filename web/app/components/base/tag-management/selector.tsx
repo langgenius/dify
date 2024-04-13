@@ -4,35 +4,35 @@ import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
 import cn from 'classnames'
 import { useStore as useTagStore } from './store'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+// import {
+//   PortalToFollowElem,
+//   PortalToFollowElemContent,
+//   PortalToFollowElemTrigger,
+// } from '@/app/components/base/portal-to-follow-elem'
+import type { HtmlContentProps } from '@/app/components/base/popover'
+import CustomPopover from '@/app/components/base/popover'
+import Divider from '@/app/components/base/divider'
 import SearchInput from '@/app/components/base/search-input'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
-import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+// import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
+import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import { Plus } from '@/app/components/base/icons/src/vender/line/general'
+// import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { Tag } from '@/app/components/base/tag-management/constant'
-
+import Checkbox from '@/app/components/base/checkbox'
 import { fetchTagList } from '@/service/tag'
 
 type TagSelectorProps = {
+  isPopover?: boolean
+  position?: 'bl' | 'br'
   type: 'knowledge' | 'app'
   value: string[]
   onChange: (v: string[]) => void
 }
-const TagSelector: FC<TagSelectorProps> = ({
-  type,
-  value,
-  onChange,
-}) => {
+
+const Panel = (props: HtmlContentProps & TagSelectorProps) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-
-  const { tagList, setTagList } = useTagStore()
-
+  const { type, value, onChange } = props
+  const { tagList } = useTagStore()
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
   const { run: handleSearch } = useDebounceFn(() => {
@@ -47,99 +47,123 @@ const TagSelector: FC<TagSelectorProps> = ({
     return tagList.filter(tag => tag.type === type && tag.name.includes(searchKeywords))
   }, [type, tagList, searchKeywords])
 
-  const currentTag = useMemo(() => {
-    return tagList.find(tag => tag.id === value[0])
-  }, [value, tagList])
+  const notExisted = useMemo(() => {
+    return tagList.every(tag => tag.type === type && tag.name !== searchKeywords)
+  }, [type, tagList, searchKeywords])
 
+  // TODO
   const selectTag = (tag: Tag) => {
     if (value.includes(tag.id))
       onChange(value.filter(v => v !== tag.id))
     else
       onChange([...value, tag.id])
   }
+  const onMouseLeave = async () => {
+    // props.onClose?.()
+  }
+  return (
+    <div className='relative w-[240px] bg-white rounded-lg border-[0.5px] border-gray-200' onMouseLeave={onMouseLeave}>
+      <div className='p-2 border-b-[0.5px] border-black/5'>
+        <SearchInput placeholder={t('dataset.tag.selectorPlaceholder') || ''} white value={keywords} onChange={handleKeywordsChange} />
+      </div>
+      {keywords && notExisted && (
+        <div className='p-1'>
+          <div className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'>
+            <Plus className='h-4 w-4 text-gray-500' />
+            <div className='grow text-sm text-gray-700 leading-5 truncate'>
+              {`${t('dataset.tag.create')} `}
+              <span className='font-medium'>{`"${keywords}"`}</span>
+            </div>
+          </div>
+        </div>
+      )}
+      {keywords && notExisted && filteredTagList.length > 0 && (
+        <Divider className='!h-[1px] !my-0' />
+      )}
+      {filteredTagList.length > 0 && (
+        <div className='p-1'>
+          {filteredTagList.map(tag => (
+            <div
+              key={tag.id}
+              className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'
+              onClick={() => selectTag(tag)}
+            >
+              <Checkbox
+                className='shrink-0 mr-2'
+                checked={value.includes(tag.id)}
+                onCheck={() => {}}
+              />
+              <div title={tag.name} className='grow text-sm text-gray-700 leading-5 truncate'>{tag.name}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {!keywords && !filteredTagList.length && (
+        <div className='p-1'>
+          <div className='p-3 flex flex-col items-center gap-1'>
+            <Tag03 className='h-6 w-6 text-gray-300' />
+            <div className='text-gray-500 text-xs leading-[14px]'>{t('dataset.tag.noTag')}</div>
+          </div>
+        </div>
+      )}
+      <Divider className='!h-[1px] !my-0' />
+      <div className='p-1'>
+        <div className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'>
+          <Tag03 className='h-4 w-4 text-gray-500' />
+          <div className='grow text-sm text-gray-700 leading-5 truncate'>
+            {t('dataset.tag.manageTags')}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+const TagSelector: FC<TagSelectorProps> = ({
+  isPopover = true,
+  position,
+  type,
+  value,
+  onChange,
+}) => {
+  const { t } = useTranslation()
+
+  const { setTagList } = useTagStore()
 
   useEffect(() => {
     fetchTagList().then((res) => {
       setTagList(res)
     })
-    // setTagList(MOCK_TAGS)
   }, [])
 
-  return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement='bottom-start'
-      offset={4}
-    >
-      <div className='relative'>
-        <PortalToFollowElemTrigger
-          onClick={() => setOpen(v => !v)}
-          className='block'
-        >
-          <div className={cn(
-            'flex items-center gap-1 px-2 h-8 rounded-lg border-[0.5px] border-transparent bg-gray-200 cursor-pointer hover:bg-gray-300',
-            open && !value.length && '!bg-gray-300 hover:bg-gray-300',
-            !open && !!value.length && '!bg-white/80 shadow-xs !border-black/5 hover:!bg-gray-200',
-            open && !!value.length && '!bg-gray-200 !border-black/5 shadow-xs hover:!bg-gray-200',
-          )}>
-            <div className='p-[1px]'>
-              <Tag01 className='h-3.5 w-3.5 text-gray-700' />
-            </div>
-            <div className='text-[13px] leading-[18px] text-gray-700'>
-              {!value.length && t('dataset.tag.placeholder')}
-              {!!value.length && currentTag?.name}
-            </div>
-            {value.length > 1 && (
-              <div className='text-xs font-medium leading-[18px] text-gray-500'>{`+${value.length - 1}`}</div>
-            )}
-            {!value.length && (
-              <div className='p-[1px]'>
-                <ChevronDown className='h-3.5 w-3.5 text-gray-700'/>
-              </div>
-            )}
-            {!!value.length && (
-              <div className='p-[1px] cursor-pointer group/clear' onClick={(e) => {
-                e.stopPropagation()
-                onChange([])
-              }}>
-                <XCircle className='h-3.5 w-3.5 text-gray-400 group-hover/clear:text-gray-600'/>
-              </div>
-            )}
-          </div>
-        </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[1002]'>
-          <div
-            className='relative w-[240px] bg-white rounded-lg border-[0.5px] border-gray-200  shadow-lg'
-            // onMouseLeave={() => {
-            //   setTimeout(() => setOpen(false), 200)
-            // }}
-          >
-            <div className='p-2 border-b-[0.5px] border-black/5'>
-              <SearchInput white value={keywords} onChange={handleKeywordsChange} />
-            </div>
-            <div className='p-1'>
-              {filteredTagList.map(tag => (
-                <div
-                  key={tag.id}
-                  className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'
-                  onClick={() => selectTag(tag)}
-                >
-                  <div title={tag.name} className='grow text-sm text-gray-700 leading-5 truncate'>{tag.name}</div>
-                  {value.includes(tag.id) && <Check className='shrink-0 w-4 h-4 text-primary-600'/>}
-                </div>
-              ))}
-              {!filteredTagList.length && (
-                <div className='p-3 flex flex-col items-center gap-1'>
-                  <Tag03 className='h-6 w-6 text-gray-300' />
-                  <div className='text-gray-500 text-xs leading-[14px]'>{t('dataset.tag.noTag')}</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </PortalToFollowElemContent>
+  const Trigger = () => {
+    return (
+      <div className={cn(
+        'flex items-center px-1 text-xs leading-4.5 cursor-pointer border border-dashed rounded-[5px]',
+      )}>
+        <Plus className='w-3 h-3' />
+        <span className='ml-0.5 '>{t('dataset.tag.addTag')}</span>
       </div>
-    </PortalToFollowElem>
+    )
+  }
+  return (
+    <>
+      {isPopover && (
+        <CustomPopover
+          htmlContent={<Panel type={type} value={value} onChange={onChange} />}
+          position={position}
+          trigger="click"
+          btnElement={<Trigger />}
+          btnClassName={open =>
+            cn(
+              open ? '!bg-gray-50 !text-gray-500' : '!bg-transparent',
+              '!p-0 !border-0 !text-gray-400 hover:!bg-gray-50 hover:!text-gray-500',
+            )
+          }
+          popupClassName='!ring-0'
+          className={'!w-[128px] h-fit !z-20'}
+        />
+      )}
+    </>
 
   )
 }
