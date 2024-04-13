@@ -65,6 +65,8 @@ type Shape = {
   setCustomTools: (tools: ToolWithProvider[]) => void
   clipboardElements: Node[]
   setClipboardElements: (clipboardElements: Node[]) => void
+  shortcutsDisabled: boolean
+  setShortcutsDisabled: (shortcutsDisabled: boolean) => void
 }
 
 export const createWorkflowStore = () => {
@@ -111,6 +113,8 @@ export const createWorkflowStore = () => {
     setCustomTools: customTools => set(() => ({ customTools })),
     clipboardElements: [],
     setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
+    shortcutsDisabled: false,
+    setShortcutsDisabled: shortcutsDisabled => set(() => ({ shortcutsDisabled })),
   }))
 }
 

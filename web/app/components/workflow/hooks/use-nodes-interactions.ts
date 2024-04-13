@@ -721,7 +721,11 @@ export const useNodesInteractions = () => {
 
     const {
       setClipboardElements,
+      shortcutsDisabled,
     } = workflowStore.getState()
+
+    if (shortcutsDisabled)
+      return
 
     const {
       getNodes,
@@ -741,7 +745,11 @@ export const useNodesInteractions = () => {
 
     const {
       clipboardElements,
+      shortcutsDisabled,
     } = workflowStore.getState()
+
+    if (shortcutsDisabled)
+      return
 
     const {
       getNodes,
@@ -804,6 +812,13 @@ export const useNodesInteractions = () => {
       return
 
     const {
+      shortcutsDisabled,
+    } = workflowStore.getState()
+
+    if (shortcutsDisabled)
+      return
+
+    const {
       getNodes,
     } = store.getState()
 
@@ -815,7 +830,7 @@ export const useNodesInteractions = () => {
 
     for (const node of nodesToDelete)
       handleNodeDelete(node.id)
-  }, [getNodesReadOnly, handleNodeDelete, store])
+  }, [getNodesReadOnly, handleNodeDelete, store, workflowStore])
 
   return {
     handleNodeDragStart,
