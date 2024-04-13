@@ -34,6 +34,8 @@ const translation = {
     log: 'ログ',
     learnMore: '詳細を見る',
     params: 'パラメータ',
+    duplicate: '重複',
+    rename: '名前の変更',
   },
   placeholder: {
     input: '入力してください',

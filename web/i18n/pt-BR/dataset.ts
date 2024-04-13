@@ -1,7 +1,7 @@
 const translation = {
   knowledge: 'Wiedza',
   documentCount: ' documentos',
-  wordCount: 'k palavras',
+  wordCount: ' k palavras',
   appCount: ' aplicativos vinculados',
   createDataset: 'Criar Conhecimento',
   createDatasetIntro: 'Importe seus próprios dados de texto ou escreva dados em tempo real via Webhook para aprimoramento de contexto LLM.',

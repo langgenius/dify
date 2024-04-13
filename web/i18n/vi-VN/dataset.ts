@@ -1,7 +1,7 @@
 const translation = {
   knowledge: 'Kiến thức',
   documentCount: ' tài liệu',
-  wordCount: 'k từ',
+  wordCount: ' k từ',
   appCount: ' ứng dụng liên kết',
   createDataset: 'Tạo Kiến thức',
   createDatasetIntro: 'Nhập dữ liệu văn bản của bạn hoặc viết dữ liệu theo thời gian thực qua Webhook để tăng cường ngữ cảnh LLM.',

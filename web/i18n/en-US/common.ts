@@ -34,6 +34,8 @@ const translation = {
     log: 'Log',
     learnMore: 'Learn More',
     params: 'Params',
+    duplicate: 'Duplicate',
+    rename: 'Rename',
   },
   placeholder: {
     input: 'Please enter',

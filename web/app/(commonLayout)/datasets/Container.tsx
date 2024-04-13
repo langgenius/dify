@@ -56,7 +56,7 @@ const Container = () => {
         />
         {activeTab === 'dataset' && (
           <div className='flex items-center gap-2'>
-            <TagFilter value={tagIDs} onChange={setTagIDs} />
+            <TagFilter type='knowledge' value={tagIDs} onChange={setTagIDs} />
             <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
           </div>
         )}

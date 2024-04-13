@@ -34,6 +34,8 @@ const translation = {
     log: 'Nhật ký',
     learnMore: 'Tìm hiểu thêm',
     params: 'Tham số',
+    duplicate: 'Nhân bản',
+    rename: 'Đổi tên',
   },
   placeholder: {
     input: 'Vui lòng nhập',

@@ -1,7 +1,7 @@
 const translation = {
   knowledge: '知识库',
   documentCount: ' 文档',
-  wordCount: '千字符',
+  wordCount: ' 千字符',
   appCount: ' 关联应用',
   createDataset: '创建知识库',
   createDatasetIntro: '导入您自己的文本数据或通过 Webhook 实时写入数据以增强 LLM 的上下文。',
