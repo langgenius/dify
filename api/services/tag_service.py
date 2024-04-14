@@ -25,7 +25,7 @@ class TagService:
         query = query.group_by(
             Tag.id
         )
-        results = query.all()
+        results = query.order_by(Tag.created_at.desc()).all()
         return results
 
     @staticmethod
