@@ -1,4 +1,7 @@
+from threading import Thread
 from typing import Optional, Union
+
+from flask import Flask, current_app
 
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -19,9 +22,10 @@ from core.app.entities.task_entities import (
     MessageReplaceStreamResponse,
     MessageStreamResponse,
 )
+from core.llm_generator.llm_generator import LLMGenerator
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_database import db
-from models.model import MessageAnnotation, MessageFile
+from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
 
 
@@ -33,6 +37,59 @@ class MessageCycleManage:
         AdvancedChatAppGenerateEntity
     ]
     _task_state: Union[EasyUITaskState, AdvancedChatTaskState]
+
+    def _generate_conversation_name(self, conversation: Conversation, query: str) -> Optional[Thread]:
+        """
+        Generate conversation name.
+        :param conversation: conversation
+        :param query: query
+        :return: thread
+        """
+        is_first_message = self._application_generate_entity.conversation_id is None
+        extras = self._application_generate_entity.extras
+        auto_generate_conversation_name = extras.get('auto_generate_conversation_name', True)
+
+        if auto_generate_conversation_name and is_first_message:
+            # start generate thread
+            thread = Thread(target=self._generate_conversation_name_worker, kwargs={
+                'flask_app': current_app._get_current_object(),
+                'conversation_id': conversation.id,
+                'query': query
+            })
+
+            thread.start()
+
+            return thread
+
+        return None
+
+    def _generate_conversation_name_worker(self,
+                                           flask_app: Flask,
+                                           conversation_id: str,
+                                           query: str):
+        with flask_app.app_context():
+            # get conversation and message
+            conversation = (
+                db.session.query(Conversation)
+                .filter(Conversation.id == conversation_id)
+                .first()
+            )
+
+            if conversation.mode != AppMode.COMPLETION.value:
+                app_model = conversation.app
+                if not app_model:
+                    return
+
+                # generate conversation name
+                try:
+                    name = LLMGenerator.generate_conversation_name(app_model.tenant_id, query)
+                    conversation.name = name
+                except:
+                    pass
+
+                db.session.merge(conversation)
+                db.session.commit()
+                db.session.close()
 
     def _handle_annotation_reply(self, event: QueueAnnotationReplyEvent) -> Optional[MessageAnnotation]:
         """
