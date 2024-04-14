@@ -1,50 +1,108 @@
 'use client'
 
 // import type { MouseEventHandler } from 'react'
-import cn from 'classnames'
-import { useState } from 'react'
+// import cn from 'classnames'
+import { useEffect, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 // import Button from '@/app/components/base/button'
+import { useStore as useTagStore } from './store'
+import TagItemEditor from './tag-item-editor'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-// import type { DataSet } from '@/models/datasets'
+import {
+  createTag,
+  deleteTag,
+  fetchTagList,
+} from '@/service/tag'
 
 type TagManagementModalProps = {
   type: 'knowledge' | 'app'
   show: boolean
 }
 
-const TagManagementModal = ({ show }: TagManagementModalProps) => {
+const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const [loading, setLoading] = useState(false)
+  const { tagList, setTagList, setShowTagManagementModal } = useTagStore()
+
+  const getTagList = async (type: 'knowledge' | 'app') => {
+    const res = await fetchTagList(type)
+    setTagList(res)
+  }
+
+  const [pending, setPending] = useState<Boolean>(false)
   const [name, setName] = useState<string>('')
+  const createNewTag = async () => {
+    if (!name)
+      return
+    if (pending)
+      return
+    try {
+      setPending(true)
+      const newTag = await createTag(name, type)
+      notify({ type: 'success', message: t('dataset.tag.created') })
+      setTagList([
+        newTag,
+        ...tagList,
+      ])
+      setName('')
+      setPending(false)
+    }
+    catch (e: any) {
+      notify({ type: 'error', message: t('dataset.tag.failed') })
+      setPending(false)
+    }
+  }
+
+  const removeTag = async (tagID: string) => {
+    if (pending)
+      return
+    try {
+      setPending(true)
+      await deleteTag(tagID)
+      notify({ type: 'success', message: t('dataset.tag.created') })
+      const newList = tagList.filter(tag => tag.id !== tagID)
+      setTagList([
+        ...newList,
+      ])
+      setPending(false)
+    }
+    catch (e: any) {
+      notify({ type: 'error', message: t('dataset.tag.failed') })
+      setPending(false)
+    }
+  }
+
+  useEffect(() => {
+    getTagList(type)
+  }, [type])
 
   return (
     <Modal
-      wrapperClassName='z-20'
-      className='px-8 py-6 max-w-[600px] w-[600px] rounded-xl'
+      wrapperClassName='!z-[1020]'
+      className='px-8 py-6 !max-w-[600px] !w-[600px] rounded-xl'
       isShow={show}
-      onClose={() => {}}
+      onClose={() => setShowTagManagementModal(false)}
     >
-      <div className='relative pb-2 text-xl font-medium leading-[30px] text-gray-900'>{t('datasetSettings.tag.manageTags')}</div>
-      <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={() => {}}>
+      <div className='relative pb-2 text-xl font-semibold leading-[30px] text-gray-900'>{t('dataset.tag.manageTags')}</div>
+      <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={() => setShowTagManagementModal(false)}>
         <XClose className='w-4 h-4 text-gray-500' />
       </div>
-      <div>
-        <div className={cn('flex justify-between py-4 flex-wrap items-center')}>
-          <div className='shrink-0 py-2 text-sm font-medium leading-[20px] text-gray-900'>
-            {t('datasetSettings.form.name')}
-          </div>
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            className='block px-3 w-full h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
-            placeholder={t('datasetSettings.form.namePlaceholder') || ''}
-          />
-        </div>
+      <div className='mt-3 flex flex-wrap gap-2'>
+        <input
+          className='shrink-0 w-[100px] px-2 py-1 rounded-lg border border-dashed border-gray-200 text-sm leading-5 text-gray-700 outline-none appearance-none  placeholder:text-gray-300 caret-primary-600 focus:border-solid'
+          placeholder={t('dataset.tag.addNew') || ''}
+          autoFocus
+          value={name}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && createNewTag()}
+          onBlur={createNewTag}
+        />
+        {tagList.map(tag => (
+          <TagItemEditor key={tag.id} tag={tag} onRemove={removeTag}/>
+        ))}
       </div>
     </Modal>
   )
