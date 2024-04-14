@@ -80,7 +80,7 @@ const TagFilter: FC<TagFilterProps> = ({
   }
 
   useEffect(() => {
-    fetchTagList().then((res) => {
+    fetchTagList(type).then((res) => {
       setTagList(res)
     })
     // setTagList(MOCK_TAGS)

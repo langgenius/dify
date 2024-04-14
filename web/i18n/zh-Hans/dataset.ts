@@ -54,6 +54,8 @@ const translation = {
     selectorPlaceholder: '搜索或者创建',
     create: '创建',
     delete: '删除标签',
+    created: '标签创建成功',
+    faild: '标签创建失败',
   },
 }
 

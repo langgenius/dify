@@ -54,6 +54,8 @@ const translation = {
     selectorPlaceholder: 'Type to search or create',
     create: 'Create',
     delete: 'Delete tag',
+    created: 'Tag created successfully',
+    faild: 'Tag creation failed',
   },
 }
 

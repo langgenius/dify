@@ -1,12 +1,12 @@
 import { del, get, patch, post } from './base'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 
-export const fetchTagList = () => {
-  return get<Tag[]>('/tags')
+export const fetchTagList = (type: string) => {
+  return get<Tag[]>('/tags', { params: { type } })
 }
 
 export const createTag = (name: string, type: string) => {
-  return post('/tags', {
+  return post<Tag>('/tags', {
     body: {
       name,
       type,

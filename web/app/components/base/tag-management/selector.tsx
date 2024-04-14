@@ -1,7 +1,8 @@
 import type { FC } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import { useDebounceFn } from 'ahooks'
+// import { useDebounceFn } from 'ahooks'
 import cn from 'classnames'
 import { useStore as useTagStore } from './store'
 // import {
@@ -19,47 +20,92 @@ import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 // import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import Checkbox from '@/app/components/base/checkbox'
-import { fetchTagList } from '@/service/tag'
+import { bindTag, createTag, fetchTagList, unBindTag } from '@/service/tag'
+import { ToastContext } from '@/app/components/base/toast'
 
 type TagSelectorProps = {
+  targetID: string
   isPopover?: boolean
   position?: 'bl' | 'br'
   type: 'knowledge' | 'app'
   value: string[]
-  onChange: (v: string[]) => void
+  onChange?: () => void
 }
 
-const Panel = (props: HtmlContentProps & TagSelectorProps) => {
+type PanelProps = {
+  onCreate: () => void
+} & HtmlContentProps & TagSelectorProps
+
+const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
-  const { type, value, onChange } = props
-  const { tagList } = useTagStore()
+  const { notify } = useContext(ToastContext)
+  const { targetID, type, value, onChange, onCreate } = props
+  const { tagList, setTagList, setShowTagManagementModal } = useTagStore()
   const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
-  const { run: handleSearch } = useDebounceFn(() => {
-    setSearchKeywords(keywords)
-  }, { wait: 500 })
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
-    handleSearch()
   }
 
   const filteredTagList = useMemo(() => {
-    return tagList.filter(tag => tag.type === type && tag.name.includes(searchKeywords))
-  }, [type, tagList, searchKeywords])
-
+    return tagList.filter(tag => tag.type === type && tag.name.includes(keywords))
+  }, [type, tagList, keywords])
   const notExisted = useMemo(() => {
-    return tagList.every(tag => tag.type === type && tag.name !== searchKeywords)
-  }, [type, tagList, searchKeywords])
+    return tagList.every(tag => tag.type === type && tag.name !== keywords)
+  }, [type, tagList, keywords])
 
-  // TODO
+  const [creating, setCreating] = useState<Boolean>(false)
+  const createNewTag = async () => {
+    if (!keywords)
+      return
+    if (creating)
+      return
+    try {
+      setCreating(true)
+      const newTag = await createTag(keywords, type)
+      notify({ type: 'success', message: t('dataset.tag.created') })
+      setTagList([
+        ...tagList,
+        newTag,
+      ])
+      setCreating(false)
+      onCreate()
+    }
+    catch (e: any) {
+      notify({ type: 'error', message: t('dataset.tag.failed') })
+      setCreating(false)
+    }
+  }
+  const bind = async (tag: Tag) => {
+    try {
+      await bindTag([tag.id], targetID, 'knowledge')
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      if (onChange)
+        onChange()
+    }
+    catch (e: any) {
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+    }
+  }
+  const unbind = async (tag: Tag) => {
+    try {
+      await unBindTag([tag.id], targetID, 'knowledge')
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      if (onChange)
+        onChange()
+    }
+    catch (e: any) {
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+    }
+  }
   const selectTag = (tag: Tag) => {
     if (value.includes(tag.id))
-      onChange(value.filter(v => v !== tag.id))
+      unbind(tag)
     else
-      onChange([...value, tag.id])
+      bind(tag)
   }
+
   const onMouseLeave = async () => {
-    // props.onClose?.()
+    props.onClose?.()
   }
   return (
     <div className='relative w-[240px] bg-white rounded-lg border-[0.5px] border-gray-200' onMouseLeave={onMouseLeave}>
@@ -68,7 +114,7 @@ const Panel = (props: HtmlContentProps & TagSelectorProps) => {
       </div>
       {keywords && notExisted && (
         <div className='p-1'>
-          <div className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'>
+          <div className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100' onClick={createNewTag}>
             <Plus className='h-4 w-4 text-gray-500' />
             <div className='grow text-sm text-gray-700 leading-5 truncate'>
               {`${t('dataset.tag.create')} `}
@@ -81,7 +127,7 @@ const Panel = (props: HtmlContentProps & TagSelectorProps) => {
         <Divider className='!h-[1px] !my-0' />
       )}
       {filteredTagList.length > 0 && (
-        <div className='p-1'>
+        <div className='p-1 max-h-[172px] overflow-y-auto'>
           {filteredTagList.map(tag => (
             <div
               key={tag.id}
@@ -108,7 +154,7 @@ const Panel = (props: HtmlContentProps & TagSelectorProps) => {
       )}
       <Divider className='!h-[1px] !my-0' />
       <div className='p-1'>
-        <div className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'>
+        <div className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100' onClick={() => setShowTagManagementModal(true)}>
           <Tag03 className='h-4 w-4 text-gray-500' />
           <div className='grow text-sm text-gray-700 leading-5 truncate'>
             {t('dataset.tag.manageTags')}
@@ -118,7 +164,9 @@ const Panel = (props: HtmlContentProps & TagSelectorProps) => {
     </div>
   )
 }
+
 const TagSelector: FC<TagSelectorProps> = ({
+  targetID,
   isPopover = true,
   position,
   type,
@@ -129,11 +177,10 @@ const TagSelector: FC<TagSelectorProps> = ({
 
   const { setTagList } = useTagStore()
 
-  useEffect(() => {
-    fetchTagList().then((res) => {
-      setTagList(res)
-    })
-  }, [])
+  const getTagList = async () => {
+    const res = await fetchTagList(type)
+    setTagList(res)
+  }
 
   const Trigger = () => {
     return (
@@ -149,7 +196,15 @@ const TagSelector: FC<TagSelectorProps> = ({
     <>
       {isPopover && (
         <CustomPopover
-          htmlContent={<Panel type={type} value={value} onChange={onChange} />}
+          htmlContent={
+            <Panel
+              targetID={targetID}
+              type={type}
+              value={value}
+              onChange={onChange}
+              onCreate={getTagList}
+            />
+          }
           position={position}
           trigger="click"
           btnElement={<Trigger />}

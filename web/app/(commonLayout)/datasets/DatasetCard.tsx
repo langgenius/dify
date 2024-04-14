@@ -144,8 +144,8 @@ const DatasetCard = ({
         </div>
         <div
           className={cn(
-            'grow mb-1 px-[14px] text-xs leading-normal text-gray-500 group-hover:line-clamp-3',
-            dataset.tags.length ? 'line-clamp-3' : 'line-clamp-4',
+            'grow mb-2 px-[14px] max-h-[72px] text-xs leading-normal text-gray-500 group-hover:line-clamp-2',
+            dataset.tags.length ? 'line-clamp-2' : 'line-clamp-4',
             !dataset.embedding_available && 'opacity-50 hover:opacity-100',
           )}
           title={dataset.description}>
@@ -173,13 +173,13 @@ const DatasetCard = ({
                 {`+${dataset.tags.length - 3}`}
               </div>
             )}
-            {/* TODO tag selector */}
             <div className='!hidden group-hover:!flex shrink-0'>
               <TagSelector
                 position='bl'
                 type='knowledge'
                 value={dataset.tags.map(tag => tag.id)}
-                onChange={() => {}}
+                onChange={onSuccess}
+                targetID={dataset.id}
               />
             </div>
           </div>
