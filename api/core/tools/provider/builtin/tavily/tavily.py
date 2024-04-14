@@ -21,8 +21,8 @@ class TavilyProvider(BuiltinToolProviderController):
                     "include_images": False,
                     "include_raw_content": False,
                     "max_results": 5,
-                    "include_domains": [],
-                    "exclude_domains": []
+                    "include_domains": "",
+                    "exclude_domains": ""
                 },
             )
         except Exception as e:
