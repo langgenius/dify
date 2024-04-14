@@ -22,9 +22,6 @@ class ValueType(Enum):
 
 
 class VariablePool:
-    variables_mapping = {}
-    user_inputs: dict
-    system_variables: dict[SystemVariable, Any]
 
     def __init__(self, system_variables: dict[SystemVariable, Any],
                  user_inputs: dict) -> None:
@@ -34,6 +31,7 @@ class VariablePool:
         #     'query': 'abc',
         #     'files': []
         # }
+        self.variables_mapping = {}
         self.user_inputs = user_inputs
         self.system_variables = system_variables
         for system_variable, value in system_variables.items():

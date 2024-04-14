@@ -1,6 +1,7 @@
 - google
 - bing
 - duckduckgo
+- searxng
 - dalle
 - azuredalle
 - wikipedia
@@ -12,6 +13,7 @@
 - pubmed
 - stablediffusion
 - webscraper
+- jina
 - model.zhipuai
 - aippt
 - youtube

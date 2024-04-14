@@ -1,10 +1,10 @@
-![cover-v5-3](https://github.com/langgenius/dify/assets/13230914/e542f5da-57e3-4d99-80c1-c7697468d111)
+![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Self-hosting</a> ·
   <a href="https://docs.dify.ai">Documentation</a> ·
-  <a href="https://cal.com/guchenhe/30min">Commercial inquiry</a>
+  <a href="https://cal.com/guchenhe/dify-demo">Schedule demo</a>
 </p>
 
 <p align="center">
@@ -38,18 +38,25 @@
 </p>
 
 #
-Dify is an open-source LLM app development platform. Its intuitive interface combines RAG pipeline, AI workflow, agent capabilities, model management, observability features and more, letting you quickly go from prototype to production.
 
-
-[![](./images/models.png)](https://github.com/langgenius/dify/assets/13230914/979e7a68-f067-4bbc-b38e-2deb2cc2bbb5)
+<p align="center">
+  <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+</p>
+Dify is an open-source LLM app development platform. Its intuitive interface combines AI workflow, RAG pipeline, agent capabilities, model management, observability features and more, letting you quickly go from prototype to production. Here's a list of the core features:
+</br> </br>
 
 **1. Workflow**: 
   Build and test powerful AI workflows on a visual canvas, leveraging all the following features and beyond.
 
+
+  https://github.com/langgenius/dify/assets/13230914/356df23e-1604-483d-80a6-9517ece318aa
+
+
+
 **2. Comprehensive model support**: 
   Seamless integration with hundreds of proprietary / open-source LLMs from dozens of inference providers and self-hosted solutions, covering GPT, Mistral, Llama2, and any OpenAI API-compatible models. A full list of supported model providers can be found [here](https://docs.dify.ai/getting-started/readme/model-providers).
 
-![providers-2](https://github.com/langgenius/dify/assets/13230914/dc6e615c-9c3b-482f-a405-eea64555c83f)
+![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
 
 **3. Prompt IDE**: 
@@ -156,6 +163,7 @@ Star Dify on GitHub and be instantly notified of new releases.
 ![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
 
 
+
 ## Quick Start
 > Before installing Dify, make sure your machine meets the following minimum system requirements:
 > 
@@ -215,11 +223,11 @@ Or, schedule a meeting directly with a team member:
     <th>Purpose</th>
   </tr>
   <tr>
-    <td><a href='https://cal.com/guchenhe/15min' target='_blank'><img class="schedule-button" src='https://github.com/langgenius/dify/assets/13230914/7630336c-eb2d-4ec4-88b7-de1f95cbcdd0' alt='Git-Hub-README-Button-3x' style="width: 180px; height: auto; object-fit: contain;"/></a></td>
+    <td><a href='https://cal.com/guchenhe/15min' target='_blank'><img class="schedule-button" src='https://github.com/langgenius/dify/assets/13230914/9ebcd111-1205-4d71-83d5-948d70b809f5' alt='Git-Hub-README-Button-3x' style="width: 180px; height: auto; object-fit: contain;"/></a></td>
     <td>Business enquiries & product feedback</td>
   </tr>
   <tr>
-    <td><a href='https://cal.com/pinkbanana' target='_blank'><img class="schedule-button" src='https://github.com/langgenius/dify/assets/13230914/f6420840-b0fc-46df-ad8c-7dae076cf7f4' alt='Git-Hub-README-Button-2x' style="width: 180px; height: auto; object-fit: contain;"/></a></td>
+    <td><a href='https://cal.com/pinkbanana' target='_blank'><img class="schedule-button" src='https://github.com/langgenius/dify/assets/13230914/d1edd00a-d7e4-4513-be6c-e57038e143fd' alt='Git-Hub-README-Button-2x' style="width: 180px; height: auto; object-fit: contain;"/></a></td>
     <td>Contributions, issues & feature requests</td>
   </tr>
 </table>

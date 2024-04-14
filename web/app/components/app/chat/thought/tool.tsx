@@ -19,7 +19,7 @@ type Props = {
 }
 
 const getIcon = (toolName: string, allToolIcons: Record<string, string | Emoji>) => {
-  if (toolName.startsWith('dataset-'))
+  if (toolName.startsWith('dataset_'))
     return <DataSetIcon className='shrink-0'></DataSetIcon>
   const icon = allToolIcons[toolName]
   if (!icon)
@@ -50,9 +50,9 @@ const Tool: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { name, input, isFinished, output } = payload
-  const toolName = name.startsWith('dataset-') ? t('dataset.knowledge') : name
+  const toolName = name.startsWith('dataset_') ? t('dataset.knowledge') : name
   const [isShowDetail, setIsShowDetail] = useState(false)
-  const icon = getIcon(toolName, allToolIcons) as any
+  const icon = getIcon(name, allToolIcons) as any
   return (
     <div>
       <div className={cn(!isShowDetail && 'shadow-sm', !isShowDetail && 'inline-block', 'max-w-full overflow-x-auto bg-white rounded-md')}>
