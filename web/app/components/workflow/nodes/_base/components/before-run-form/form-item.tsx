@@ -52,18 +52,19 @@ const FormItem: FC<Props> = ({
   }, [value, onChange])
 
   const onGetCurrentPosition = () => {
-    if ("geolocation" in navigator) {
+    if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const result = 'lat:' + position.coords.latitude + ',lon:' + position.coords.longitude;
-          onChange(result);
+          const result = `lat:${position.coords.latitude},lon:${position.coords.longitude}`
+          onChange(result)
         },
         (error) => {
-          console.log(error.message);
-        }
-      );
-    } else {
-      console.log("Geolocation is not supported by this browser.");
+          console.log(error.message)
+        },
+      )
+    }
+    else {
+      console.log('Geolocation is not supported by this browser.')
     }
   }
 

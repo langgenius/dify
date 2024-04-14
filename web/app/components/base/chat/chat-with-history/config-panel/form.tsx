@@ -22,18 +22,19 @@ const Form = () => {
   }, [newConversationInputs, handleNewConversationInputsChange])
 
   const onGetCurrentPosition = (key: any) => {
-    if ("geolocation" in navigator) {
+    if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const result = 'lat:' + position.coords.latitude + ',lon:' + position.coords.longitude;
+          const result = `lat:${position.coords.latitude},lon:${position.coords.longitude}`
           handleNewConversationInputsChange({ ...newConversationInputs, [key]: result })
         },
         (error) => {
-          console.log(error.message);
-        }
-      );
-    } else {
-      console.log("Geolocation is not supported by this browser.");
+          console.log(error.message)
+        },
+      )
+    }
+    else {
+      console.log('Geolocation is not supported by this browser.')
     }
   }
 

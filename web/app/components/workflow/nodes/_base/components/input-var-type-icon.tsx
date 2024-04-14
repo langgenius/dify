@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { InputVarType } from '../../../types'
-import { AlignLeft, LetterSpacing01, BezierCurve03 } from '@/app/components/base/icons/src/vender/line/editor'
+import { AlignLeft, BezierCurve03, LetterSpacing01 } from '@/app/components/base/icons/src/vender/line/editor'
 import { CheckDone01, Hash02 } from '@/app/components/base/icons/src/vender/line/general'
 
 type Props = {

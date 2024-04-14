@@ -92,18 +92,19 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   }
 
   const onGetCurrentPosition = (key: any) => {
-    if ("geolocation" in navigator) {
+    if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const result = 'lat:' + position.coords.latitude + ',lon:' + position.coords.longitude;
-          handleInputValueChange(key, result);
+          const result = `lat:${position.coords.latitude},lon:${position.coords.longitude}`
+          handleInputValueChange(key, result)
         },
         (error) => {
-          console.log(error.message);
-        }
-      );
-    } else {
-      console.log("Geolocation is not supported by this browser.");
+          console.log(error.message)
+        },
+      )
+    }
+    else {
+      console.log('Geolocation is not supported by this browser.')
     }
   }
 
