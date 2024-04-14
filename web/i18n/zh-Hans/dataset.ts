@@ -56,7 +56,7 @@ const translation = {
     delete: '删除标签',
     deleteTip: '标签正在使用中，是否删除？',
     created: '标签创建成功',
-    faild: '标签创建失败',
+    failed: '标签创建失败',
   },
 }
 

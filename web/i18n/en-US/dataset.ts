@@ -56,7 +56,7 @@ const translation = {
     delete: 'Delete tag',
     deleteTip: 'The tag is being used, delete it?',
     created: 'Tag created successfully',
-    faild: 'Tag creation failed',
+    failed: 'Tag creation failed',
   },
 }
 

@@ -42,6 +42,22 @@ const translation = {
     change: 'Ändern',
     changeRetrievalMethod: 'Abfragemethode ändern',
   },
+  docsFailedNotice: 'Dokumente konnten nicht indiziert werden',
+  retry: 'Wiederholen',
+  tag: {
+    placeholder: 'Alle Tags',
+    addNew: 'Neues Tag hinzufügen',
+    noTag: 'Keine Tags',
+    noTagYet: 'Noch keine Tags',
+    addTag: 'Tag hinzufügen',
+    manageTags: 'Tags verwalten',
+    selectorPlaceholder: 'Typ zum Suchen oder Erstellen',
+    create: 'Erstellen',
+    delete: 'Tag löschen',
+    deleteTip: 'Das Tag wird verwendet, löschen?',
+    created: 'Tag erfolgreich erstellt',
+    failed: 'Tag-Erstellung fehlgeschlagen',
+  },
 }
 
 export default translation
