@@ -1,11 +1,8 @@
 'use client'
 
-// import type { MouseEventHandler } from 'react'
-// import cn from 'classnames'
 import { useEffect, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-// import Button from '@/app/components/base/button'
 import { useStore as useTagStore } from './store'
 import TagItemEditor from './tag-item-editor'
 import Modal from '@/app/components/base/modal'
@@ -13,7 +10,6 @@ import { ToastContext } from '@/app/components/base/toast'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import {
   createTag,
-  deleteTag,
   fetchTagList,
 } from '@/service/tag'
 
@@ -56,25 +52,6 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
     }
   }
 
-  const removeTag = async (tagID: string) => {
-    if (pending)
-      return
-    try {
-      setPending(true)
-      await deleteTag(tagID)
-      notify({ type: 'success', message: t('dataset.tag.created') })
-      const newList = tagList.filter(tag => tag.id !== tagID)
-      setTagList([
-        ...newList,
-      ])
-      setPending(false)
-    }
-    catch (e: any) {
-      notify({ type: 'error', message: t('dataset.tag.failed') })
-      setPending(false)
-    }
-  }
-
   useEffect(() => {
     getTagList(type)
   }, [type])
@@ -101,7 +78,10 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
           onBlur={createNewTag}
         />
         {tagList.map(tag => (
-          <TagItemEditor key={tag.id} tag={tag} onRemove={removeTag}/>
+          <TagItemEditor
+            key={tag.id}
+            tag={tag}
+          />
         ))}
       </div>
     </Modal>

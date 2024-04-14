@@ -5,19 +5,12 @@ import { useTranslation } from 'react-i18next'
 // import { useDebounceFn } from 'ahooks'
 import cn from 'classnames'
 import { useStore as useTagStore } from './store'
-// import {
-//   PortalToFollowElem,
-//   PortalToFollowElemContent,
-//   PortalToFollowElemTrigger,
-// } from '@/app/components/base/portal-to-follow-elem'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
 import SearchInput from '@/app/components/base/search-input'
-// import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
-// import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import Checkbox from '@/app/components/base/checkbox'
 import { bindTag, createTag, fetchTagList, unBindTag } from '@/service/tag'
