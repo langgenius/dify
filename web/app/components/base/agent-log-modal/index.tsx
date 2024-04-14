@@ -10,13 +10,11 @@ import type { IChatItem } from '@/app/components/app/chat/type'
 type AgentLogModalProps = {
   currentLogItem?: IChatItem
   width: number
-  fixedWidth?: boolean
   onCancel: () => void
 }
 const AgentLogModal: FC<AgentLogModalProps> = ({
   currentLogItem,
   width,
-  fixedWidth,
   onCancel,
 }) => {
   const { t } = useTranslation()
@@ -39,17 +37,11 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
     <div
       className={cn('relative flex flex-col py-3 bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl z-10')}
       style={{
-        width,
-        ...(!fixedWidth
-          ? {
-            position: 'fixed',
-            top: 56 + 8,
-            left: 8,
-            bottom: 16,
-          }
-          : {
-            marginRight: 8,
-          }),
+        width: 480,
+        position: 'fixed',
+        top: 56 + 8,
+        left: 8 + (width - 480),
+        bottom: 16,
       }}
       ref={ref}
     >
