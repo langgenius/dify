@@ -1,9 +1,9 @@
 import json
+import logging
 import time
 from typing import Optional
-import logging
-import boto3
 
+import boto3
 from botocore.config import Config
 from botocore.exceptions import (
     ClientError,
