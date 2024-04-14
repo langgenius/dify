@@ -18,6 +18,9 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
       if (item.number)
         return ['number', item.number]
 
+      if (item.geolocation)
+        return ['geolocation', item.geolocation]
+
       if (item.external_data_tool)
         return [item.external_data_tool.type, item.external_data_tool]
 
@@ -25,7 +28,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
     })()
     const is_context_var = dataset_query_variable === content?.variable
 
-    if (type === 'string' || type === 'paragraph') {
+    if (type === 'string' || type === 'paragraph' || type === 'geolocation') {
       promptVariables.push({
         key: content.variable,
         name: content.label,
@@ -92,7 +95,17 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
       } as any)
       return
     }
-    if (item.type === 'number') {
+    if (item.type === 'geolocation') {
+      userInputs.push({
+        geolocation: {
+          label: item.name,
+          variable: item.key,
+          required: item.required !== false, // default true
+          default: '',
+        },
+      } as any)
+    }
+    else if (item.type === 'number') {
       userInputs.push({
         number: {
           label: item.name,

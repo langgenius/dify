@@ -39,6 +39,22 @@ const RunOnce: FC<IRunOnceProps> = ({
     onInputsChange(newInputs)
   }
 
+  const onGetCurrentPosition = (key: any) => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const result = 'lat:' + position.coords.latitude + ',lon:' + position.coords.longitude;
+          onInputsChange({ ...inputs, [key]: result })
+        },
+        (error) => {
+          console.log(error.message);
+        }
+      );
+    } else {
+      console.log("Geolocation is not supported by this browser.");
+    }
+  }
+
   return (
     <div className="">
       <section>
@@ -84,6 +100,22 @@ const RunOnce: FC<IRunOnceProps> = ({
                     value={inputs[item.key]}
                     onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
                   />
+                )}
+                {item.type === 'geolocation' && (
+                  <div className={'w-full'}>
+                    <input
+                      className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
+                      placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                      value={inputs[item.key]}
+                      onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                    />
+                    <Button
+                      type="primary"
+                      onClick={() => onGetCurrentPosition(item.key)}
+                      className='!h-8 !p-3'>
+                      <span className='uppercase text-[13px]'>{t('appDebug.variableConig.getCurrentLocation')}</span>
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>

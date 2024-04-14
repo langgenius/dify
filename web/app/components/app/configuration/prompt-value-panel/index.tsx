@@ -91,6 +91,22 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     setInputs(newInputs)
   }
 
+  const onGetCurrentPosition = (key: any) => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const result = 'lat:' + position.coords.latitude + ',lon:' + position.coords.longitude;
+          handleInputValueChange(key, result);
+        },
+        (error) => {
+          console.log(error.message);
+        }
+      );
+    } else {
+      console.log("Geolocation is not supported by this browser.");
+    }
+  }
+
   return (
     <div className="pb-3 border border-gray-200 bg-white rounded-xl" style={{
       boxShadow: '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)',
@@ -157,6 +173,23 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                             value={inputs[key] ? `${inputs[key]}` : ''}
                             onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                           />
+                        )}
+                        {type === 'geolocation' && (
+                          <div className={'w-full'}>
+                            <input
+                              className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+                              placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                              type="text"
+                              value={inputs[key] ? `${inputs[key]}` : ''}
+                              onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                            />
+                            <Button
+                              type="primary"
+                              onClick={() => onGetCurrentPosition(key)}
+                              className='!h-8 !p-3'>
+                              <span className='uppercase text-[13px]'>{t('appDebug.variableConig.getCurrentLocation')}</span>
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ))}

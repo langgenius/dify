@@ -48,6 +48,7 @@ class BasicVariablesConfigManager:
                 VariableEntity.Type.TEXT_INPUT.value,
                 VariableEntity.Type.PARAGRAPH.value,
                 VariableEntity.Type.NUMBER.value,
+                VariableEntity.Type.GEOLOCATION.value,
             ]:
                 variables.append(
                     VariableEntity(
@@ -108,8 +109,8 @@ class BasicVariablesConfigManager:
         variables = []
         for item in config["user_input_form"]:
             key = list(item.keys())[0]
-            if key not in ["text-input", "select", "paragraph", "number", "external_data_tool"]:
-                raise ValueError("Keys in user_input_form list can only be 'text-input', 'paragraph'  or 'select'")
+            if key not in ["text-input", "select", "paragraph", "number", "geolocation", "external_data_tool"]:
+                raise ValueError("Keys in user_input_form list can only be 'text-input', 'paragraph', 'geolocation' or 'select'")
 
             form_item = item[key]
             if 'label' not in form_item:

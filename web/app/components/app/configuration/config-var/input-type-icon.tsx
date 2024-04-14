@@ -25,6 +25,9 @@ const IconMap = (type: IInputTypeIconProps['type'], className: string) => {
     number: (
       <InputVarTypeIcon type={InputVarType.number} className={classNames} />
     ),
+    geolocation: (
+      <InputVarTypeIcon type={InputVarType.geolocation} className={classNames} />
+    ),
     api: (
       <ApiConnection className={classNames} />
     ),

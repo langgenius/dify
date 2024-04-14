@@ -11,6 +11,7 @@ import type { PromptConfig } from '@/models/debug'
 import { ToastContext } from '@/app/components/base/toast'
 import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import Button from '@/app/components/base/button'
 
 // regex to match the {{}} and replace it with a span
 const regex = /\{\{([^}]+)\}\}/g
@@ -98,6 +99,22 @@ const Welcome: FC<IWelcomeProps> = ({
   //   )
   // }
 
+  const onGetCurrentPosition = (key: any) => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const result = 'lat:' + position.coords.latitude + ',lon:' + position.coords.longitude;
+          setInputs({ ...inputs, [key]: result })
+        },
+        (error) => {
+          console.log(error.message);
+        }
+      );
+    } else {
+      console.log("Geolocation is not supported by this browser.");
+    }
+  }
+
   const renderInputs = () => {
     return (
       <div className='space-y-3'>
@@ -141,6 +158,22 @@ const Welcome: FC<IWelcomeProps> = ({
                 onChange={(e) => { setInputs({ ...inputs, [item.key]: e.target.value }) }}
                 className={'w-full flex-grow py-2 pl-3 pr-3 box-border rounded-lg bg-gray-50'}
               />
+            )}
+            {item.type === 'geolocation' && (
+              <div className={'w-full'}>
+                <input
+                  placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                  value={inputs?.[item.key] || ''}
+                  onChange={(e) => { setInputs({ ...inputs, [item.key]: e.target.value }) }}
+                  className={'w-full flex-grow py-2 pl-3 pr-3 box-border rounded-lg bg-gray-50'}
+                />
+                <Button
+                  type="primary"
+                  onClick={() => onGetCurrentPosition(item.key)}
+                  className='!h-8 !p-3'>
+                  <span className='uppercase text-[13px]'>{t('appDebug.variableConig.getCurrentLocation')}</span>
+                </Button>
+              </div>
             )}
           </div>
         ))}
