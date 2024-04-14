@@ -122,7 +122,7 @@ parameters:
           pt_BR: No
     default: false
   - name: max_results
-    type: integer
+    type: number
     required: false
     label:
       en_US: Max Results
@@ -137,7 +137,7 @@ parameters:
     max: 20
     default: 5
   - name: include_domains
-    type: array
+    type: string
     required: false
     label:
       en_US: Include Domains
@@ -148,10 +148,8 @@ parameters:
       zh_Hans: 在搜索结果中特别包含的域名列表
       pt_BR: A list of domains to specifically include in the search results
     form: form
-    items:
-      type: string
   - name: exclude_domains
-    type: array
+    type: string
     required: false
     label:
       en_US: Exclude Domains
@@ -162,5 +160,3 @@ parameters:
       zh_Hans: 从搜索结果中特别排除的域名列表
       pt_BR: A list of domains to specifically exclude from the search results
     form: form
-    items:
-      type: string
