@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useRef } from 'react'
 import cn from 'classnames'
+import { sleep } from '@/utils'
 
 type IProps = {
   placeholder?: string
@@ -32,14 +33,13 @@ const AutoHeightTextarea = forwardRef(
       return false
     }
 
-    const focus = () => {
+    const focus = async () => {
       if (!doFocus()) {
         let hasFocus = false
-        const runId = setInterval(() => {
-          hasFocus = doFocus()
-          if (hasFocus)
-            clearInterval(runId)
-        }, 100)
+        await sleep(100)
+        hasFocus = doFocus()
+        if (!hasFocus)
+          focus()
       }
     }
 

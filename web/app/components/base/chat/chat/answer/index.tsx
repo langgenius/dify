@@ -163,8 +163,8 @@ const Answer: FC<AnswerProps> = ({
             }
             <SuggestedQuestions item={item} />
             {
-              !!citation?.length && config?.retriever_resource?.enabled && !responding && (
-                <Citation data={citation} showHitInfo={config.supportCitationHitInfo} />
+              !!citation?.length && !responding && (
+                <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
               )
             }
           </div>

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask import request
 from flask_login import current_user
@@ -637,7 +637,7 @@ class DocumentProcessingApi(DocumentResource):
                 raise InvalidActionError('Document not in indexing state.')
 
             document.paused_by = current_user.id
-            document.paused_at = datetime.utcnow()
+            document.paused_at = datetime.now(timezone.utc).replace(tzinfo=None)
             document.is_paused = True
             db.session.commit()
 
@@ -717,7 +717,7 @@ class DocumentMetadataApi(DocumentResource):
                     document.doc_metadata[key] = value
 
         document.doc_type = doc_type
-        document.updated_at = datetime.utcnow()
+        document.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
         return {'result': 'success', 'message': 'Document metadata updated.'}, 200
@@ -755,7 +755,7 @@ class DocumentStatusApi(DocumentResource):
             document.enabled = True
             document.disabled_at = None
             document.disabled_by = None
-            document.updated_at = datetime.utcnow()
+            document.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
             # Set cache to prevent indexing the same document multiple times
@@ -772,9 +772,9 @@ class DocumentStatusApi(DocumentResource):
                 raise InvalidActionError('Document already disabled.')
 
             document.enabled = False
-            document.disabled_at = datetime.utcnow()
+            document.disabled_at = datetime.now(timezone.utc).replace(tzinfo=None)
             document.disabled_by = current_user.id
-            document.updated_at = datetime.utcnow()
+            document.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
             # Set cache to prevent indexing the same document multiple times
@@ -789,9 +789,9 @@ class DocumentStatusApi(DocumentResource):
                 raise InvalidActionError('Document already archived.')
 
             document.archived = True
-            document.archived_at = datetime.utcnow()
+            document.archived_at = datetime.now(timezone.utc).replace(tzinfo=None)
             document.archived_by = current_user.id
-            document.updated_at = datetime.utcnow()
+            document.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
             if document.enabled:
@@ -808,7 +808,7 @@ class DocumentStatusApi(DocumentResource):
             document.archived = False
             document.archived_at = None
             document.archived_by = None
-            document.updated_at = datetime.utcnow()
+            document.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
             # Set cache to prevent indexing the same document multiple times

@@ -1,19 +1,20 @@
 from collections.abc import Generator, Sequence
-from typing import Optional, Union
-
-from langchain import PromptTemplate
-from langchain.agents.structured_chat.base import HUMAN_MESSAGE_TEMPLATE
-from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
-from langchain.schema import AgentAction
+from typing import Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole, PromptMessageTool
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
-from core.prompt.entities.advanced_prompt_entities import ChatModelMessage
+from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
+from core.rag.retrieval.output_parser.react_output import ReactAction
 from core.rag.retrieval.output_parser.structured_chat import StructuredChatOutputParser
 from core.workflow.nodes.llm.llm_node import LLMNode
+
+PREFIX = """Respond to the human as helpfully and accurately as possible. You have access to the following tools:"""
+
+SUFFIX = """Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation:.
+Thought:"""
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
 The nouns in the format of "Thought", "Action", "Action Input", "Final Answer" must be expressed in English.
@@ -86,7 +87,6 @@ class ReactMultiDatasetRouter:
             tenant_id: str,
             prefix: str = PREFIX,
             suffix: str = SUFFIX,
-            human_message_template: str = HUMAN_MESSAGE_TEMPLATE,
             format_instructions: str = FORMAT_INSTRUCTIONS,
     ) -> Union[str, None]:
         if model_config.mode == "chat":
@@ -95,7 +95,6 @@ class ReactMultiDatasetRouter:
                 tools=tools,
                 prefix=prefix,
                 suffix=suffix,
-                human_message_template=human_message_template,
                 format_instructions=format_instructions,
             )
         else:
@@ -103,7 +102,6 @@ class ReactMultiDatasetRouter:
                 tools=tools,
                 prefix=prefix,
                 format_instructions=format_instructions,
-                input_variables=None
             )
         stop = ['Observation:']
         # handle invoke result
@@ -127,9 +125,9 @@ class ReactMultiDatasetRouter:
             tenant_id=tenant_id
         )
         output_parser = StructuredChatOutputParser()
-        agent_decision = output_parser.parse(result_text)
-        if isinstance(agent_decision, AgentAction):
-            return agent_decision.tool
+        react_decision = output_parser.parse(result_text)
+        if isinstance(react_decision, ReactAction):
+            return react_decision.tool
         return None
 
     def _invoke_llm(self, completion_param: dict,
@@ -139,7 +137,6 @@ class ReactMultiDatasetRouter:
                     ) -> tuple[str, LLMUsage]:
         """
             Invoke large language model
-            :param node_data: node data
             :param model_instance: model instance
             :param prompt_messages: prompt messages
             :param stop: stop
@@ -197,7 +194,6 @@ class ReactMultiDatasetRouter:
             tools: Sequence[PromptMessageTool],
             prefix: str = PREFIX,
             suffix: str = SUFFIX,
-            human_message_template: str = HUMAN_MESSAGE_TEMPLATE,
             format_instructions: str = FORMAT_INSTRUCTIONS,
     ) -> list[ChatModelMessage]:
         tool_strings = []
@@ -227,16 +223,13 @@ class ReactMultiDatasetRouter:
             tools: Sequence[PromptMessageTool],
             prefix: str = PREFIX,
             format_instructions: str = FORMAT_INSTRUCTIONS,
-            input_variables: Optional[list[str]] = None,
-    ) -> PromptTemplate:
+    ) -> CompletionModelPromptTemplate:
         """Create prompt in the style of the zero shot agent.
 
         Args:
             tools: List of tools the agent will have access to, used to format the
                 prompt.
             prefix: String to put before the list of tools.
-            input_variables: List of input variables the final prompt will expect.
-
         Returns:
             A PromptTemplate with the template assembled from the pieces here.
         """
@@ -249,6 +242,4 @@ Thought: {agent_scratchpad}
         tool_names = ", ".join([tool.name for tool in tools])
         format_instructions = format_instructions.format(tool_names=tool_names)
         template = "\n\n".join([prefix, tool_strings, format_instructions, suffix])
-        if input_variables is None:
-            input_variables = ["input", "agent_scratchpad"]
-        return PromptTemplate(template=template, input_variables=input_variables)
+        return CompletionModelPromptTemplate(text=template)

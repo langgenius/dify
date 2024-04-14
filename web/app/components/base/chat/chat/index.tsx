@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { debounce } from 'lodash-es'
+import classNames from 'classnames'
 import type {
   ChatConfig,
   ChatItem,
@@ -36,7 +37,7 @@ export type ChatProps = {
   onStopResponding?: () => void
   noChatInput?: boolean
   onSend?: OnSend
-  chatContainerclassName?: string
+  chatContainerClassName?: string
   chatContainerInnerClassName?: string
   chatFooterClassName?: string
   chatFooterInnerClassName?: string
@@ -60,7 +61,7 @@ const Chat: FC<ChatProps> = ({
   noStopResponding,
   onStopResponding,
   noChatInput,
-  chatContainerclassName,
+  chatContainerClassName,
   chatContainerInnerClassName,
   chatFooterClassName,
   chatFooterInnerClassName,
@@ -171,7 +172,7 @@ const Chat: FC<ChatProps> = ({
       <div className='relative h-full'>
         <div
           ref={chatContainerRef}
-          className={`relative h-full overflow-y-auto ${chatContainerclassName}`}
+          className={classNames('relative h-full overflow-y-auto', chatContainerClassName)}
         >
           {chatNode}
           <div

@@ -4,12 +4,15 @@ from werkzeug.exceptions import Unauthorized
 
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     from gevent import monkey
+
     monkey.patch_all()
     # if os.environ.get("VECTOR_STORE") == 'milvus':
     import grpc.experimental.gevent
+
     grpc.experimental.gevent.init_gevent()
 
     import langchain
+
     langchain.verbose = True
 
 import json
@@ -44,6 +47,7 @@ from services.account_service import AccountService
 # DO NOT REMOVE BELOW
 from events import event_handlers
 from models import account, dataset, model, source, task, tool, tools, web
+
 # DO NOT REMOVE ABOVE
 
 
@@ -51,7 +55,7 @@ warnings.simplefilter("ignore", ResourceWarning)
 
 # fix windows platform
 if os.name == "nt":
-    os.system('tzutil /s "UTC"')    
+    os.system('tzutil /s "UTC"')
 else:
     os.environ['TZ'] = 'UTC'
     time.tzset()
@@ -60,12 +64,14 @@ else:
 class DifyApp(Flask):
     pass
 
+
 # -------------
 # Configuration
 # -------------
 
 
 config_type = os.getenv('EDITION', default='SELF_HOSTED')  # ce edition first
+
 
 # ----------------------------
 # Application Factory Function
@@ -191,7 +197,6 @@ def register_blueprints(app):
 # create app
 app = create_app()
 celery = app.extensions["celery"]
-
 
 if app.config['TESTING']:
     print("App is running in TESTING mode")
