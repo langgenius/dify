@@ -56,7 +56,10 @@ parameters:
       en_US: Include Images
       zh_Hans: 包含图片
       pt_BR: Include Images
-    human_description: Include images in the search results
+    human_description:
+      en_US: Include images in the search results
+      zh_Hans: 在搜索结果中包含图片
+      pt_BR: Include images in the search results
     form: form
     options:
       - value: true
@@ -77,7 +80,10 @@ parameters:
       en_US: Include Answer
       zh_Hans: 包含答案
       pt_BR: Include Answer
-    human_description: Include answers in the search results
+    human_description:
+      en_US: Include answers in the search results
+      zh_Hans: 在搜索结果中包含答案
+      pt_BR: Include answers in the search results
     form: form
     options:
       - value: true
@@ -98,7 +104,10 @@ parameters:
       en_US: Include Raw Content
       zh_Hans: 包含原始内容
       pt_BR: Include Raw Content
-    human_description: Include raw content in the search results
+    human_description:
+      en_US: Include raw content in the search results
+      zh_Hans: 在搜索结果中包含原始内容
+      pt_BR: Include raw content in the search results
     form: form
     options:
       - value: true
@@ -119,7 +128,10 @@ parameters:
       en_US: Max Results
       zh_Hans: 最大结果
       pt_BR: Max Results
-    human_description: The number of maximum search results to return
+    human_description:
+      en_US: The number of maximum search results to return
+      zh_Hans: 返回的最大搜索结果数
+      pt_BR: The number of maximum search results to return
     form: form
     min: 1
     max: 20
@@ -131,8 +143,13 @@ parameters:
       en_US: Include Domains
       zh_Hans: 包含域
       pt_BR: Include Domains
-    human_description: A list of domains to specifically include in the search results
+    human_description:
+      en_US: A list of domains to specifically include in the search results
+      zh_Hans: 在搜索结果中特别包含的域名列表
+      pt_BR: A list of domains to specifically include in the search results
     form: form
+    items:
+      type: string
   - name: exclude_domains
     type: array
     required: false
@@ -140,4 +157,10 @@ parameters:
       en_US: Exclude Domains
       zh_Hans: 排除域
       pt_BR: Exclude Domains
-    human_description: A list of domains to specifically exclude from the search results
+    human_description:
+      en_US: A list of domains to specifically exclude from the search results
+      zh_Hans: 从搜索结果中特别排除的域名列表
+      pt_BR: A list of domains to specifically exclude from the search results
+    form: form
+    items:
+      type: string
