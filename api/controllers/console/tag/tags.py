@@ -114,9 +114,9 @@ class TagBindingCreateApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument('tag_ids', type=list, nullable=False, required=True,
+        parser.add_argument('tag_ids', type=list, nullable=False, required=True, location='json',
                             help='Tag IDs is required.')
-        parser.add_argument('target_id', type=str, nullable=False, required=True,
+        parser.add_argument('target_id', type=str, nullable=False, required=True, location='json',
                             help='Target ID is required.')
         parser.add_argument('type', type=str, location='json',
                             choices=Tag.TAG_TYPE_LIST,
