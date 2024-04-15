@@ -138,6 +138,42 @@ class Vector:
                 ),
                 dim=dim
             )
+        elif vector_type == "pgvector":
+            from core.rag.datasource.vdb.pgvector.pgvector import PgvectorConfig, PGVector
+            if self._dataset.collection_binding_id:
+                dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
+                    filter(DatasetCollectionBinding.id == self._dataset.collection_binding_id). \
+                    one_or_none()
+                if dataset_collection_binding:
+                    collection_name = dataset_collection_binding.collection_name
+                else:
+                    raise ValueError('Dataset Collection Bindings is not exist!')
+            else:
+                if self._dataset.index_struct_dict:
+                    class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
+                    collection_name = class_prefix
+                else:
+                    dataset_id = self._dataset.id
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+
+            if not self._dataset.index_struct_dict:
+                index_struct_dict = {
+                    "type": 'pgvector',
+                    "vector_store": {"class_prefix": collection_name}
+                }
+                self._dataset.index_struct = json.dumps(index_struct_dict)
+            dim = len(self._embeddings.embed_query("pgvector"))
+            return PGVector(
+                collection_name=collection_name,
+                config=PgvectorConfig(
+                    host=config.get('POSTGRESQL_HOST'),
+                    port=config.get('POSTGRESQL_PORT'),
+                    user=config.get('POSTGRESQL_USER'),
+                    password=config.get('POSTGRESQL_PASSWORD'),
+                    database=config.get('POSTGRESQL_DATABASE'),
+                ),
+                dim=dim
+            )
         else:
             raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
 
