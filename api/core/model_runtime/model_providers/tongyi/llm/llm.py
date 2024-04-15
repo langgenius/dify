@@ -1,8 +1,8 @@
 from collections.abc import Generator
 from typing import Optional, Union
 
-from dashscope import get_tokenizer
-from dashscope.api_entities.dashscope_response import DashScopeAPIResponse
+from dashscope import Generation, get_tokenizer
+from dashscope.api_entities.dashscope_response import GenerationResponse
 from dashscope.common.error import (
     AuthenticationError,
     InvalidParameter,
@@ -11,7 +11,6 @@ from dashscope.common.error import (
     UnsupportedHTTPMethod,
     UnsupportedModel,
 )
-from langchain.llms.tongyi import generate_with_retry, stream_generate_with_retry
 
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
@@ -33,10 +32,13 @@ from core.model_runtime.errors.invoke import (
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
-from ._client import EnhanceTongyi
-
 
 class TongyiLargeLanguageModel(LargeLanguageModel):
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.tokenizers = {}
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
@@ -58,12 +60,12 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         """
         # invoke model
         return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
-    
-    def _code_block_mode_wrapper(self, model: str, credentials: dict, 
-                                 prompt_messages: list[PromptMessage], model_parameters: dict, 
-                                 tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+
+    def _code_block_mode_wrapper(self, model: str, credentials: dict,
+                                 prompt_messages: list[PromptMessage], model_parameters: dict,
+                                 tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
                                  stream: bool = True, user: str | None = None, callbacks: list[Callback] = None) \
-                            -> LLMResult | Generator:
+            -> LLMResult | Generator:
         """
         Wrapper for code block mode
         """
@@ -88,7 +90,7 @@ if you are not sure about the structure.
                 stream=stream,
                 user=user
             )
-        
+
         model_parameters.pop("response_format")
         stop = stop or []
         stop.extend(["\n```", "```\n"])
@@ -99,13 +101,13 @@ if you are not sure about the structure.
             # override the system message
             prompt_messages[0] = SystemPromptMessage(
                 content=block_prompts
-                    .replace("{{instructions}}", prompt_messages[0].content)
+                .replace("{{instructions}}", prompt_messages[0].content)
             )
         else:
             # insert the system message
             prompt_messages.insert(0, SystemPromptMessage(
                 content=block_prompts
-                    .replace("{{instructions}}", f"Please output a valid {code_block} object.")
+                .replace("{{instructions}}", f"Please output a valid {code_block} object.")
             ))
 
         mode = self.get_model_mode(model, credentials)
@@ -138,7 +140,7 @@ if you are not sure about the structure.
                 prompt_messages=prompt_messages,
                 input_generator=response
             )
-        
+
         return response
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
@@ -152,7 +154,14 @@ if you are not sure about the structure.
         :param tools: tools for tool calling
         :return:
         """
-        tokenizer = get_tokenizer(model)
+        if model in ['qwen-turbo-chat', 'qwen-plus-chat']:
+            model = model.replace('-chat', '')
+
+        if model in self.tokenizers:
+            tokenizer = self.tokenizers[model]
+        else:
+            tokenizer = get_tokenizer(model)
+            self.tokenizers[model] = tokenizer
 
         # convert string to token ids
         tokens = tokenizer.encode(self._convert_messages_to_prompt(prompt_messages))
@@ -198,18 +207,17 @@ if you are not sure about the structure.
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        extra_model_kwargs = {}
-        if stop:
-            extra_model_kwargs['stop'] = stop
-
         # transform credentials to kwargs for model instance
         credentials_kwargs = self._to_credential_kwargs(credentials)
 
-        client = EnhanceTongyi(
-            model_name=model,
-            streaming=stream,
-            dashscope_api_key=credentials_kwargs['api_key'],
-        )
+        mode = self.get_model_mode(model, credentials)
+
+        if model in ['qwen-turbo-chat', 'qwen-plus-chat']:
+            model = model.replace('-chat', '')
+
+        extra_model_kwargs = {}
+        if stop:
+            extra_model_kwargs['stop'] = stop
 
         params = {
             'model': model,
@@ -218,30 +226,21 @@ if you are not sure about the structure.
             **extra_model_kwargs,
         }
 
-        mode = self.get_model_mode(model, credentials)
-
         if mode == LLMMode.CHAT:
             params['messages'] = self._convert_prompt_messages_to_tongyi_messages(prompt_messages)
         else:
-            params['prompt'] = self._convert_messages_to_prompt(prompt_messages)
+            params['prompt'] = prompt_messages[0].content.rstrip()
+
+        response = Generation.call(**params,
+                                   result_format='message',
+                                   stream=stream)
 
         if stream:
-            responses = stream_generate_with_retry(
-                client, 
-                stream=True,
-                incremental_output=True,
-                **params
-            )
+            return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
 
-            return self._handle_generate_stream_response(model, credentials, responses, prompt_messages)
-
-        response = generate_with_retry(
-            client,
-            **params,
-        )
         return self._handle_generate_response(model, credentials, response, prompt_messages)
-        
-    def _handle_generate_response(self, model: str, credentials: dict, response: DashScopeAPIResponse,
+
+    def _handle_generate_response(self, model: str, credentials: dict, response: GenerationResponse,
                                   prompt_messages: list[PromptMessage]) -> LLMResult:
         """
         Handle llm response
@@ -254,7 +253,7 @@ if you are not sure about the structure.
         """
         # transform assistant message to prompt message
         assistant_prompt_message = AssistantPromptMessage(
-            content=response.output.text
+            content=response.output.choices[0].message.content,
         )
 
         # transform usage
@@ -270,7 +269,8 @@ if you are not sure about the structure.
 
         return result
 
-    def _handle_generate_stream_response(self, model: str, credentials: dict, responses: Generator,
+    def _handle_generate_stream_response(self, model: str, credentials: dict,
+                                         response: Generator[GenerationResponse, None, None],
                                          prompt_messages: list[PromptMessage]) -> Generator:
         """
         Handle llm stream response
@@ -281,9 +281,10 @@ if you are not sure about the structure.
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
         """
-        for index, response in enumerate(responses):
+        full_text = ''
+        for index, response in enumerate(response):
             resp_finish_reason = response.output.finish_reason
-            resp_content = response.output.text
+            resp_content = response.output.choices[0].message.content
             usage = response.usage
 
             if resp_finish_reason is None and (resp_content is None or resp_content == ''):
@@ -291,8 +292,10 @@ if you are not sure about the structure.
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content=resp_content if resp_content else '',
+                content=resp_content.replace(full_text, '', 1),
             )
+
+            full_text = resp_content
 
             if resp_finish_reason is not None:
                 # transform usage

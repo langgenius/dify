@@ -1,9 +1,9 @@
-model: qwen-plus
+model: qwen-plus-chat
 label:
-  en_US: qwen-plus
+  en_US: qwen-plus-chat
 model_type: llm
 model_properties:
-  mode: completion
+  mode: chat
   context_size: 32768
 parameter_rules:
   - name: temperature
