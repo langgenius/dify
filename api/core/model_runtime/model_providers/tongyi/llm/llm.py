@@ -44,11 +44,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 
 
 class TongyiLargeLanguageModel(LargeLanguageModel):
-
-    def __init__(self) -> None:
-        super().__init__()
-
-        self.tokenizers = {}
+    tokenizers = {}
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
