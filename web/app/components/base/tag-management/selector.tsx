@@ -81,7 +81,7 @@ const Panel = (props: PanelProps) => {
   }
   const unbind = async (tag: Tag) => {
     try {
-      await unBindTag([tag.id], targetID, 'knowledge')
+      await unBindTag(tag.id, targetID, 'knowledge')
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       if (onChange)
         onChange()

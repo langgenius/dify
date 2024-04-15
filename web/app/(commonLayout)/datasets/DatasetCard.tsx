@@ -35,7 +35,7 @@ const DatasetCard = ({
 
   const removeTag = async (tag: Tag) => {
     try {
-      await unBindTag([tag.id], dataset.id, 'knowledge')
+      await unBindTag(tag.id, dataset.id, 'knowledge')
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       if (onSuccess)
         onSuccess()
