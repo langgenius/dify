@@ -1,11 +1,13 @@
-model: qwen-turbo
+model: qwen-max-0403
 label:
-  en_US: qwen-turbo
+  en_US: qwen-max-0403
 model_type: llm
 features:
+  - multi-tool-call
   - agent-thought
+  - stream-tool-call
 model_properties:
-  mode: completion
+  mode: chat
   context_size: 8192
 parameter_rules:
   - name: temperature
@@ -20,9 +22,9 @@ parameter_rules:
   - name: max_tokens
     use_template: max_tokens
     type: int
-    default: 1500
+    default: 2000
     min: 1
-    max: 1500
+    max: 2000
     help:
       zh_Hans: 用于指定模型在生成内容时token的最大数量，它定义了生成的上限，但不保证每次都会生成到这个数量。
       en_US: It is used to specify the maximum number of tokens when the model generates content. It defines the upper limit of generation, but does not guarantee that this number will be generated every time.
@@ -73,7 +75,7 @@ parameter_rules:
   - name: response_format
     use_template: response_format
 pricing:
-  input: '0.008'
-  output: '0.008'
+  input: '0.12'
+  output: '0.12'
   unit: '0.001'
   currency: RMB

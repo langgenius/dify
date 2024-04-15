@@ -9,7 +9,6 @@ flask-restful~=0.3.10
 flask-cors~=4.0.0
 gunicorn~=21.2.0
 gevent~=23.9.1
-langchain==0.0.250
 openai~=1.13.3
 tiktoken~=0.6.0
 psycopg2-binary~=2.9.6
@@ -47,7 +46,7 @@ google-search-results==2.4.2
 googleapis-common-protos==1.63.0
 replicate~=0.22.0
 websocket-client~=1.7.0
-dashscope[tokenizer]~=1.14.0
+dashscope[tokenizer]~=1.17.0
 huggingface_hub~=0.16.4
 transformers~=4.35.0
 tokenizers~=0.15.0
@@ -79,4 +78,5 @@ azure-storage-blob==12.9.0
 azure-identity==1.15.0
 lxml==5.1.0
 xlrd~=2.0.1
+pydantic~=1.10.0
 pgvecto-rs==0.1.4
