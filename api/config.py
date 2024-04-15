@@ -198,7 +198,7 @@ class Config:
 
         # ------------------------
         # Vector Store Configurations.
-        # Currently, only support: qdrant, milvus, zilliz, weaviate
+        # Currently, only support: qdrant, milvus, zilliz, weaviate, relyt
         # ------------------------
         self.VECTOR_STORE = get_env('VECTOR_STORE')
         self.KEYWORD_STORE = get_env('KEYWORD_STORE')
@@ -220,6 +220,13 @@ class Config:
         self.WEAVIATE_API_KEY = get_env('WEAVIATE_API_KEY')
         self.WEAVIATE_GRPC_ENABLED = get_bool_env('WEAVIATE_GRPC_ENABLED')
         self.WEAVIATE_BATCH_SIZE = int(get_env('WEAVIATE_BATCH_SIZE'))
+
+        # relyt settings
+        self.RELYT_HOST = get_env('RELYT_HOST')
+        self.RELYT_PORT = get_env('RELYT_PORT')
+        self.RELYT_USER = get_env('RELYT_USER')
+        self.RELYT_PASSWORD = get_env('RELYT_PASSWORD')
+        self.RELYT_DATABASE = get_env('RELYT_DATABASE')
 
         # ------------------------
         # Mail Configurations.

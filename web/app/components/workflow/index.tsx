@@ -138,7 +138,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   })
 
   useKeyPress(['delete'], handleEdgeDelete)
-  useKeyPress(['delete'], handleNodeDeleteSelected)
+  useKeyPress(['delete', 'backspace'], handleNodeDeleteSelected)
   useKeyPress(['ctrl.c', 'meta.c'], handleNodeCopySelected)
   useKeyPress(['ctrl.x', 'meta.x'], handleNodeCut)
   useKeyPress(['ctrl.v', 'meta.v'], handleNodePaste)
