@@ -2,6 +2,10 @@ model: qwen-max-longcontext
 label:
   en_US: qwen-max-longcontext
 model_type: llm
+features:
+  - multi-tool-call
+  - agent-thought
+  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 32768

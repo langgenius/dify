@@ -2,6 +2,10 @@ model: qwen-plus-chat
 label:
   en_US: qwen-plus-chat
 model_type: llm
+features:
+  - multi-tool-call
+  - agent-thought
+  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 32768

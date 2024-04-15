@@ -2,6 +2,8 @@ model: qwen-turbo
 label:
   en_US: qwen-turbo
 model_type: llm
+features:
+  - agent-thought
 model_properties:
   mode: completion
   context_size: 8192

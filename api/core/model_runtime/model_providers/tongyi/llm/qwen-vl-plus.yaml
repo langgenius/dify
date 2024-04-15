@@ -4,6 +4,7 @@ label:
 model_type: llm
 features:
   - vision
+  - agent-thought
 model_properties:
   mode: chat
   context_size: 32768

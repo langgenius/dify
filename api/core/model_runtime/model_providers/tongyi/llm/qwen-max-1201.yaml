@@ -2,6 +2,10 @@ model: qwen-max-1201
 label:
   en_US: qwen-max-1201
 model_type: llm
+features:
+  - multi-tool-call
+  - agent-thought
+  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 8192

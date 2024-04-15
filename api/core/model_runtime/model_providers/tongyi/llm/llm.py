@@ -3,6 +3,7 @@ import os
 import tempfile
 import uuid
 from collections.abc import Generator
+from http import HTTPStatus
 from typing import Optional, Union, cast
 
 from dashscope import Generation, MultiModalConversation, get_tokenizer
@@ -26,6 +27,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
+    ToolPromptMessage,
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import ModelFeature
@@ -67,7 +69,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # invoke model
-        return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
+        return self._generate(model, credentials, prompt_messages, tools, model_parameters, stop, stream, user)
 
     def _code_block_mode_wrapper(self, model: str, credentials: dict,
                                  prompt_messages: list[PromptMessage], model_parameters: dict,
@@ -200,7 +202,8 @@ if you are not sure about the structure.
             raise CredentialsValidateFailedError(str(ex))
 
     def _generate(self, model: str, credentials: dict,
-                  prompt_messages: list[PromptMessage], model_parameters: dict,
+                  prompt_messages: list[PromptMessage], tools: Optional[list[PromptMessageTool]],
+                  model_parameters: dict,
                   stop: Optional[list[str]] = None, stream: bool = True,
                   user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
@@ -209,6 +212,7 @@ if you are not sure about the structure.
         :param model: model name
         :param credentials: credentials
         :param prompt_messages: prompt messages
+        :param tools: tools for tool calling
         :param model_parameters: model parameters
         :param stop: stop words
         :param stream: is stream response
@@ -224,6 +228,9 @@ if you are not sure about the structure.
             model = model.replace('-chat', '')
 
         extra_model_kwargs = {}
+        if tools:
+            extra_model_kwargs['tools'] = self._convert_tools(tools)
+
         if stop:
             extra_model_kwargs['stop'] = stop
 
@@ -291,32 +298,57 @@ if you are not sure about the structure.
 
         :param model: model name
         :param credentials: credentials
-        :param response: response
+        :param responses: response
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
         """
         full_text = ''
+        tool_calls = []
         for index, response in enumerate(responses):
-            resp_finish_reason = response.output.finish_reason
-            resp_content = response.output.choices[0].message.content
-            usage = response.usage
+            if response.status_code != 200 and response.status_code != HTTPStatus.OK:
+                raise ServiceUnavailableError(
+                    f"Failed to invoke model {model}, status code: {response.status_code}, "
+                    f"message: {response.message}"
+                )
 
-            if resp_finish_reason is None and not resp_content:
-                continue
+            resp_finish_reason = response.output.choices[0].finish_reason
 
-            # special for qwen-vl
-            if isinstance(resp_content, list):
-                resp_content = resp_content[0]['text']
+            if resp_finish_reason is not None and resp_finish_reason != 'null':
+                resp_content = response.output.choices[0].message.content
 
-            # transform assistant message to prompt message
-            assistant_prompt_message = AssistantPromptMessage(
-                content=resp_content.replace(full_text, '', 1),
-            )
+                assistant_prompt_message = AssistantPromptMessage(
+                    content='',
+                )
 
-            full_text = resp_content
+                if 'tool_calls' in response.output.choices[0].message:
+                    tool_calls = response.output.choices[0].message['tool_calls']
+                elif resp_content:
+                    # special for qwen-vl
+                    if isinstance(resp_content, list):
+                        resp_content = resp_content[0]['text']
 
-            if resp_finish_reason is not None:
+                    # transform assistant message to prompt message
+                    assistant_prompt_message.content = resp_content.replace(full_text, '', 1)
+
+                    full_text = resp_content
+
+                if tool_calls:
+                    message_tool_calls = []
+                    for tool_call_obj in tool_calls:
+                        message_tool_call = AssistantPromptMessage.ToolCall(
+                            id=tool_call_obj['function']['name'],
+                            type='function',
+                            function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                name=tool_call_obj['function']['name'],
+                                arguments=tool_call_obj['function']['arguments']
+                            )
+                        )
+                        message_tool_calls.append(message_tool_call)
+
+                    assistant_prompt_message.tool_calls = message_tool_calls
+
                 # transform usage
+                usage = response.usage
                 usage = self._calc_response_usage(model, credentials, usage.input_tokens, usage.output_tokens)
 
                 yield LLMResultChunk(
@@ -330,6 +362,23 @@ if you are not sure about the structure.
                     )
                 )
             else:
+                resp_content = response.output.choices[0].message.content
+                if not resp_content:
+                    if 'tool_calls' in response.output.choices[0].message:
+                        tool_calls = response.output.choices[0].message['tool_calls']
+                    continue
+
+                # special for qwen-vl
+                if isinstance(resp_content, list):
+                    resp_content = resp_content[0]['text']
+
+                # transform assistant message to prompt message
+                assistant_prompt_message = AssistantPromptMessage(
+                    content=resp_content.replace(full_text, '', 1),
+                )
+
+                full_text = resp_content
+
                 yield LLMResultChunk(
                     model=model,
                     prompt_messages=prompt_messages,
@@ -375,6 +424,8 @@ if you are not sure about the structure.
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
         elif isinstance(message, SystemPromptMessage):
+            message_text = content
+        elif isinstance(message, ToolPromptMessage):
             message_text = content
         else:
             raise ValueError(f"Got unknown type {message}")
@@ -449,9 +500,18 @@ if you are not sure about the structure.
                         'content': sub_messages
                     })
             elif isinstance(prompt_message, AssistantPromptMessage):
+                content = prompt_message.content
+                if not content:
+                    content = ' '
                 tongyi_messages.append({
                     'role': 'assistant',
-                    'content': prompt_message.content if not rich_content else [{"text": prompt_message.content}],
+                    'content': content if not rich_content else [{"text": content}],
+                })
+            elif isinstance(prompt_message, ToolPromptMessage):
+                tongyi_messages.append({
+                    "role": "tool",
+                    "content": prompt_message.content,
+                    "name": prompt_message.tool_call_id
                 })
             else:
                 raise ValueError(f"Got unknown type {prompt_message}")
@@ -478,6 +538,41 @@ if you are not sure about the structure.
             image_file.write(base64.b64decode(encoded_string))
 
         return f"file://{file_path}"
+
+    def _convert_tools(self, tools: list[PromptMessageTool]) -> list[dict]:
+        """
+        Convert tools
+        """
+        tool_definitions = []
+        for tool in tools:
+            properties = tool.parameters['properties']
+            required_properties = tool.parameters['required']
+
+            properties_definitions = {}
+            for p_key, p_val in properties.items():
+                desc = p_val['description']
+                if 'enum' in p_val:
+                    desc += (f"; Only accepts one of the following predefined options: "
+                             f"[{', '.join(p_val['enum'])}]")
+
+                properties_definitions[p_key] = {
+                    'description': desc,
+                    'type': p_val['type'],
+                }
+
+            tool_definition = {
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": properties_definitions,
+                    "required": required_properties
+                }
+            }
+
+            tool_definitions.append(tool_definition)
+
+        return tool_definitions
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:

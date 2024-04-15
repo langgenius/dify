@@ -2,6 +2,8 @@ model: qwen-plus
 label:
   en_US: qwen-plus
 model_type: llm
+features:
+  - agent-thought
 model_properties:
   mode: completion
   context_size: 32768
