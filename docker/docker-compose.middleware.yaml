@@ -56,6 +56,8 @@ services:
     image: langgenius/dify-sandbox:latest
     restart: always
     cap_add:
+      # Why is sys_admin permission needed?
+      # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-sys_admin-permission-needed
       - SYS_ADMIN
     environment:
       # The DifySandbox configurations
