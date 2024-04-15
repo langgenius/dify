@@ -139,7 +139,7 @@ class TagBindingDeleteApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument('tag_id', type=list, nullable=False, required=True,
+        parser.add_argument('tag_id', type=str, nullable=False, required=True,
                             help='Tag ID is required.')
         parser.add_argument('target_id', type=str, nullable=False, required=True,
                             help='Target ID is required.')
