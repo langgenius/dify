@@ -1,6 +1,6 @@
 import base64
+import datetime
 import secrets
-from datetime import datetime
 
 from flask_restful import Resource, reqparse
 
@@ -66,7 +66,7 @@ class ActivateApi(Resource):
         account.timezone = args['timezone']
         account.interface_theme = 'light'
         account.status = AccountStatus.ACTIVE.value
-        account.initialized_at = datetime.utcnow()
+        account.initialized_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
         return {'result': 'success'}

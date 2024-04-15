@@ -211,7 +211,7 @@ class QuestionClassifierNode(LLMNode):
         model_mode = ModelMode.value_of(node_data.model.mode)
         classes = node_data.classes
         class_names = [class_.name for class_ in classes]
-        class_names_str = ','.join(class_names)
+        class_names_str = ','.join(f'"{name}"' for name in class_names)
         instruction = node_data.instruction if node_data.instruction else ''
         input_text = query
         memory_str = ''

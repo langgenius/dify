@@ -174,7 +174,12 @@ const TextGeneration: FC<IMainProps> = ({
     promptConfig?.prompt_variables.forEach((v) => {
       res[v.name] = inputs[v.key]
     })
-    res[t('share.generation.completionResult')] = batchCompletionResLatest[task.id]
+    let result = batchCompletionResLatest[task.id]
+    // task might return multiple fields, should marshal object to string
+    if (typeof batchCompletionResLatest[task.id] === 'object')
+      result = JSON.stringify(result)
+
+    res[t('share.generation.completionResult')] = result
     return res
   })
   const checkBatchInputs = (data: string[][]) => {

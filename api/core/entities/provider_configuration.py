@@ -203,7 +203,7 @@ class ProviderConfiguration(BaseModel):
         if provider_record:
             provider_record.encrypted_config = json.dumps(credentials)
             provider_record.is_valid = True
-            provider_record.updated_at = datetime.datetime.utcnow()
+            provider_record.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
         else:
             provider_record = Provider(
@@ -351,7 +351,7 @@ class ProviderConfiguration(BaseModel):
         if provider_model_record:
             provider_model_record.encrypted_config = json.dumps(credentials)
             provider_model_record.is_valid = True
-            provider_model_record.updated_at = datetime.datetime.utcnow()
+            provider_model_record.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
         else:
             provider_model_record = ProviderModel(

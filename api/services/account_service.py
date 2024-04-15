@@ -2,7 +2,7 @@ import base64
 import logging
 import secrets
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from typing import Any, Optional
 
@@ -59,8 +59,8 @@ class AccountService:
             available_ta.current = True
             db.session.commit()
 
-        if datetime.utcnow() - account.last_active_at > timedelta(minutes=10):
-            account.last_active_at = datetime.utcnow()
+        if datetime.now(timezone.utc).replace(tzinfo=None) - account.last_active_at > timedelta(minutes=10):
+            account.last_active_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
         return account
@@ -70,7 +70,7 @@ class AccountService:
     def get_account_jwt_token(account):
         payload = {
             "user_id": account.id,
-            "exp": datetime.utcnow() + timedelta(days=30),
+            "exp": datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30),
             "iss": current_app.config['EDITION'],
             "sub": 'Console API Passport',
         }
@@ -91,7 +91,7 @@ class AccountService:
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
-            account.initialized_at = datetime.utcnow()
+            account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
         if account.password is None or not compare_password(password, account.password, account.password_salt):
@@ -163,7 +163,7 @@ class AccountService:
                 # If it exists, update the record
                 account_integrate.open_id = open_id
                 account_integrate.encrypted_token = ""  # todo
-                account_integrate.updated_at = datetime.utcnow()
+                account_integrate.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             else:
                 # If it does not exist, create a new record
                 account_integrate = AccountIntegrate(account_id=account.id, provider=provider, open_id=open_id,
@@ -197,7 +197,7 @@ class AccountService:
     @staticmethod
     def update_last_login(account: Account, request) -> None:
         """Update last login time and ip"""
-        account.last_login_at = datetime.utcnow()
+        account.last_login_at = datetime.now(timezone.utc).replace(tzinfo=None)
         account.last_login_ip = get_remote_ip(request)
         db.session.add(account)
         db.session.commit()
@@ -431,7 +431,7 @@ class RegisterService:
                 password=password
             )
             account.status = AccountStatus.ACTIVE.value if not status else status.value
-            account.initialized_at = datetime.utcnow()
+            account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)

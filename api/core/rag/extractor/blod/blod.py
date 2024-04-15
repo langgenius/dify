@@ -159,7 +159,7 @@ class BlobLoader(ABC):
     def yield_blobs(
         self,
     ) -> Iterable[Blob]:
-        """A lazy loader for raw data represented by LangChain's Blob object.
+        """A lazy loader for raw data represented by Blob object.
 
         Returns:
             A generator over blobs
