@@ -2,19 +2,20 @@ import { memo } from 'react'
 import type { ConnectionLineComponentProps } from 'reactflow'
 import {
   Position,
-  getSimpleBezierPath,
+  getBezierPath,
 } from 'reactflow'
 
 const CustomConnectionLine = ({ fromX, fromY, toX, toY }: ConnectionLineComponentProps) => {
   const [
     edgePath,
-  ] = getSimpleBezierPath({
+  ] = getBezierPath({
     sourceX: fromX,
     sourceY: fromY,
     sourcePosition: Position.Right,
     targetX: toX,
     targetY: toY,
     targetPosition: Position.Left,
+    curvature: 0.16,
   })
 
   return (
