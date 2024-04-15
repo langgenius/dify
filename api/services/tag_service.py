@@ -117,10 +117,10 @@ class TagService:
             if tag_binding:
                 continue
             new_tag_binding = TagBinding(
-                id=str(uuid.uuid4()),
                 tag_id=tag_id,
                 target_id=args['target_id'],
-                tenant_id=current_user.current_tenant_id
+                tenant_id=current_user.current_tenant_id,
+                created_by=current_user.id
             )
             db.session.add(new_tag_binding)
         db.session.commit()
