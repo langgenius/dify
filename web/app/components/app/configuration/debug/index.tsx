@@ -367,7 +367,12 @@ const Debug: FC<IDebug> = ({
     handleVisionConfigInMultipleModel()
   }, [multipleModelConfigs, mode])
 
-  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal } = useAppStore()
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal } = useAppStore(state => ({
+    currentLogItem: state.currentLogItem,
+    setCurrentLogItem: state.setCurrentLogItem,
+    showPromptLogModal: state.showPromptLogModal,
+    setShowPromptLogModal: state.setShowPromptLogModal,
+  }))
   const [width, setWidth] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
 
