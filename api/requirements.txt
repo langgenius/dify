@@ -9,7 +9,6 @@ flask-restful~=0.3.10
 flask-cors~=4.0.0
 gunicorn~=21.2.0
 gevent~=23.9.1
-langchain==0.0.250
 openai~=1.13.3
 tiktoken~=0.6.0
 psycopg2-binary~=2.9.6

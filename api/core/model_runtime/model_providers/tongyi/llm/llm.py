@@ -1,7 +1,11 @@
+import base64
+import os
+import tempfile
+import uuid
 from collections.abc import Generator
-from typing import Optional, Union
+from typing import Optional, Union, cast
 
-from dashscope import Generation, get_tokenizer
+from dashscope import Generation, MultiModalConversation, get_tokenizer
 from dashscope.api_entities.dashscope_response import GenerationResponse
 from dashscope.common.error import (
     AuthenticationError,
@@ -16,11 +20,15 @@ from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    ImagePromptMessageContent,
     PromptMessage,
+    PromptMessageContentType,
     PromptMessageTool,
     SystemPromptMessage,
+    TextPromptMessageContent,
     UserPromptMessage,
 )
+from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -226,14 +234,20 @@ if you are not sure about the structure.
             **extra_model_kwargs,
         }
 
-        if mode == LLMMode.CHAT:
-            params['messages'] = self._convert_prompt_messages_to_tongyi_messages(prompt_messages)
-        else:
-            params['prompt'] = prompt_messages[0].content.rstrip()
+        model_schema = self.get_model_schema(model, credentials)
+        if ModelFeature.VISION in (model_schema.features or []):
+            params['messages'] = self._convert_prompt_messages_to_tongyi_messages(prompt_messages, rich_content=True)
 
-        response = Generation.call(**params,
-                                   result_format='message',
-                                   stream=stream)
+            response = MultiModalConversation.call(**params, stream=stream)
+        else:
+            if mode == LLMMode.CHAT:
+                params['messages'] = self._convert_prompt_messages_to_tongyi_messages(prompt_messages)
+            else:
+                params['prompt'] = prompt_messages[0].content.rstrip()
+
+            response = Generation.call(**params,
+                                       result_format='message',
+                                       stream=stream)
 
         if stream:
             return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
@@ -270,7 +284,7 @@ if you are not sure about the structure.
         return result
 
     def _handle_generate_stream_response(self, model: str, credentials: dict,
-                                         response: Generator[GenerationResponse, None, None],
+                                         responses: Generator[GenerationResponse, None, None],
                                          prompt_messages: list[PromptMessage]) -> Generator:
         """
         Handle llm stream response
@@ -282,13 +296,17 @@ if you are not sure about the structure.
         :return: llm response chunk generator result
         """
         full_text = ''
-        for index, response in enumerate(response):
+        for index, response in enumerate(responses):
             resp_finish_reason = response.output.finish_reason
             resp_content = response.output.choices[0].message.content
             usage = response.usage
 
-            if resp_finish_reason is None and (resp_content is None or resp_content == ''):
+            if resp_finish_reason is None and not resp_content:
                 continue
+
+            # special for qwen-vl
+            if isinstance(resp_content, list):
+                resp_content = resp_content[0]['text']
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
@@ -346,7 +364,14 @@ if you are not sure about the structure.
         content = message.content
 
         if isinstance(message, UserPromptMessage):
-            message_text = f"{human_prompt} {content}"
+            if isinstance(content, str):
+                message_text = f"{human_prompt} {content}"
+            else:
+                message_text = ""
+                for sub_message in content:
+                    if sub_message.type == PromptMessageContentType.TEXT:
+                        message_text = f"{human_prompt} {sub_message.data}"
+                        break
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
         elif isinstance(message, SystemPromptMessage):
@@ -373,7 +398,8 @@ if you are not sure about the structure.
         # trim off the trailing ' ' that might come from the "Assistant: "
         return text.rstrip()
 
-    def _convert_prompt_messages_to_tongyi_messages(self, prompt_messages: list[PromptMessage]) -> list[dict]:
+    def _convert_prompt_messages_to_tongyi_messages(self, prompt_messages: list[PromptMessage],
+                                                    rich_content: bool = False) -> list[dict]:
         """
         Convert prompt messages to tongyi messages
 
@@ -385,22 +411,73 @@ if you are not sure about the structure.
             if isinstance(prompt_message, SystemPromptMessage):
                 tongyi_messages.append({
                     'role': 'system',
-                    'content': prompt_message.content,
+                    'content': prompt_message.content if not rich_content else [{"text": prompt_message.content}],
                 })
             elif isinstance(prompt_message, UserPromptMessage):
-                tongyi_messages.append({
-                    'role': 'user',
-                    'content': prompt_message.content,
-                })
+                if isinstance(prompt_message.content, str):
+                    tongyi_messages.append({
+                        'role': 'user',
+                        'content': prompt_message.content if not rich_content else [{"text": prompt_message.content}],
+                    })
+                else:
+                    sub_messages = []
+                    for message_content in prompt_message.content:
+                        if message_content.type == PromptMessageContentType.TEXT:
+                            message_content = cast(TextPromptMessageContent, message_content)
+                            sub_message_dict = {
+                                "text": message_content.data
+                            }
+                            sub_messages.append(sub_message_dict)
+                        elif message_content.type == PromptMessageContentType.IMAGE:
+                            message_content = cast(ImagePromptMessageContent, message_content)
+
+                            image_url = message_content.data
+                            if message_content.data.startswith("data:"):
+                                # convert image base64 data to file in /tmp
+                                image_url = self._save_base64_image_to_file(message_content.data)
+
+                            sub_message_dict = {
+                                "image": image_url
+                            }
+                            sub_messages.append(sub_message_dict)
+
+                    # resort sub_messages to ensure text is always at last
+                    sub_messages = sorted(sub_messages, key=lambda x: 'text' in x)
+
+                    tongyi_messages.append({
+                        'role': 'user',
+                        'content': sub_messages
+                    })
             elif isinstance(prompt_message, AssistantPromptMessage):
                 tongyi_messages.append({
                     'role': 'assistant',
-                    'content': prompt_message.content,
+                    'content': prompt_message.content if not rich_content else [{"text": prompt_message.content}],
                 })
             else:
                 raise ValueError(f"Got unknown type {prompt_message}")
 
         return tongyi_messages
+
+    def _save_base64_image_to_file(self, base64_image: str) -> str:
+        """
+        Save base64 image to file
+        'data:{upload_file.mime_type};base64,{encoded_string}'
+
+        :param base64_image: base64 image data
+        :return: image file path
+        """
+        # get mime type and encoded string
+        mime_type, encoded_string = base64_image.split(',')[0].split(';')[0].split(':')[1], base64_image.split(',')[1]
+
+        # save image to file
+        temp_dir = tempfile.gettempdir()
+
+        file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.{mime_type.split('/')[1]}")
+
+        with open(file_path, "wb") as image_file:
+            image_file.write(base64.b64decode(encoded_string))
+
+        return f"file://{file_path}"
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
