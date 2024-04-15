@@ -69,7 +69,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # invoke model
-        return self._generate(model, credentials, prompt_messages, tools, model_parameters, stop, stream, user)
+        return self._generate(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
 
     def _code_block_mode_wrapper(self, model: str, credentials: dict,
                                  prompt_messages: list[PromptMessage], model_parameters: dict,
@@ -202,8 +202,8 @@ if you are not sure about the structure.
             raise CredentialsValidateFailedError(str(ex))
 
     def _generate(self, model: str, credentials: dict,
-                  prompt_messages: list[PromptMessage], tools: Optional[list[PromptMessageTool]],
-                  model_parameters: dict,
+                  prompt_messages: list[PromptMessage], model_parameters: dict,
+                  tools: Optional[list[PromptMessageTool]] = None,
                   stop: Optional[list[str]] = None, stream: bool = True,
                   user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
