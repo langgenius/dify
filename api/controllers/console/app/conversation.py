@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytz
 from flask_login import current_user
@@ -262,7 +262,7 @@ def _get_conversation(app_model, conversation_id):
         raise NotFound("Conversation Not Exists.")
 
     if not conversation.read_at:
-        conversation.read_at = datetime.utcnow()
+        conversation.read_at = datetime.now(timezone.utc).replace(tzinfo=None)
         conversation.read_account_id = current_user.id
         db.session.commit()
 

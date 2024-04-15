@@ -34,6 +34,8 @@ const translation = {
     log: '日志',
     learnMore: '了解更多',
     params: '参数设置',
+    duplicate: '复制',
+    rename: '重命名',
   },
   placeholder: {
     input: '请输入',

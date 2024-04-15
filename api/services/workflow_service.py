@@ -1,6 +1,6 @@
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -93,7 +93,7 @@ class WorkflowService:
             workflow.graph = json.dumps(graph)
             workflow.features = json.dumps(features)
             workflow.updated_by = account.id
-            workflow.updated_at = datetime.utcnow()
+            workflow.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # commit db session changes
         db.session.commit()
@@ -123,7 +123,7 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=draft_workflow.type,
-            version=str(datetime.utcnow()),
+            version=str(datetime.now(timezone.utc).replace(tzinfo=None)),
             graph=draft_workflow.graph,
             features=draft_workflow.features,
             created_by=account.id
@@ -202,8 +202,8 @@ class WorkflowService:
                 elapsed_time=time.perf_counter() - start_at,
                 created_by_role=CreatedByRole.ACCOUNT.value,
                 created_by=account.id,
-                created_at=datetime.utcnow(),
-                finished_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                finished_at=datetime.now(timezone.utc).replace(tzinfo=None)
             )
             db.session.add(workflow_node_execution)
             db.session.commit()
@@ -230,8 +230,8 @@ class WorkflowService:
                 elapsed_time=time.perf_counter() - start_at,
                 created_by_role=CreatedByRole.ACCOUNT.value,
                 created_by=account.id,
-                created_at=datetime.utcnow(),
-                finished_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                finished_at=datetime.now(timezone.utc).replace(tzinfo=None)
             )
         else:
             # create workflow node execution
@@ -249,8 +249,8 @@ class WorkflowService:
                 elapsed_time=time.perf_counter() - start_at,
                 created_by_role=CreatedByRole.ACCOUNT.value,
                 created_by=account.id,
-                created_at=datetime.utcnow(),
-                finished_at=datetime.utcnow()
+                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                finished_at=datetime.now(timezone.utc).replace(tzinfo=None)
             )
 
         db.session.add(workflow_node_execution)

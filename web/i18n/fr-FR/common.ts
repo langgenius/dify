@@ -34,6 +34,8 @@ const translation = {
     log: 'Journal',
     learnMore: 'En savoir plus',
     params: 'Paramètres',
+    duplicate: 'Dupliquer',
+    rename: 'Renommer',
   },
   placeholder: {
     input: 'Veuillez entrer',

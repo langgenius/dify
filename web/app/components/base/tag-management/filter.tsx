@@ -16,7 +16,7 @@ import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 
-// import { fetchTagList } from '@/service/tag'
+import { fetchTagList } from '@/service/tag'
 
 const MOCK_TAGS = [
   {
@@ -40,10 +40,12 @@ const MOCK_TAGS = [
 ]
 
 type TagFilterProps = {
+  type: 'knowledge' | 'app'
   value: string[]
   onChange: (v: string[]) => void
 }
 const TagFilter: FC<TagFilterProps> = ({
+  type,
   value,
   onChange,
 }) => {
@@ -63,8 +65,8 @@ const TagFilter: FC<TagFilterProps> = ({
   }
 
   const filteredTagList = useMemo(() => {
-    return tagList.filter(tag => tag.name.includes(searchKeywords))
-  }, [tagList, searchKeywords])
+    return tagList.filter(tag => tag.type === type && tag.name.includes(searchKeywords))
+  }, [type, tagList, searchKeywords])
 
   const currentTag = useMemo(() => {
     return tagList.find(tag => tag.id === value[0])
@@ -78,10 +80,10 @@ const TagFilter: FC<TagFilterProps> = ({
   }
 
   useEffect(() => {
-    // fetchTagList().then((res) => {
-    //   setTagList(res)
-    // })
-    setTagList(MOCK_TAGS)
+    fetchTagList(type).then((res) => {
+      setTagList(res)
+    })
+    // setTagList(MOCK_TAGS)
   }, [])
 
   return (

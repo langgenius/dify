@@ -38,7 +38,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
 
         description = description.replace('\n', '').replace('\r', '')
         return cls(
-            name=f'dataset-{dataset.id}',
+            name=f"dataset_{dataset.id.replace('-', '_')}",
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             description=description,

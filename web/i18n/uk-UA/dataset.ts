@@ -44,6 +44,20 @@ const translation = {
   },
   docsFailedNotice: 'документи не вдалося проіндексувати',
   retry: 'Повторити спробу',
+  tag: {
+    placeholder: 'Усі теги',
+    addNew: 'Додати новий тег',
+    noTag: 'Без тегів',
+    noTagYet: 'Ще немає тегів',
+    addTag: 'додати тег',
+    manageTags: 'Керувати тегами',
+    selectorPlaceholder: 'Введіть для пошуку або створення',
+    create: 'Створити',
+    delete: 'Видалити тег',
+    deleteTip: 'Тег використовується, видалити його?',
+    created: 'Тег створено успішно',
+    failed: 'Не вдалося створити тег',
+  },
 }
 
 export default translation

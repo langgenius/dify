@@ -1,7 +1,7 @@
 const translation = {
   knowledge: '知識',
   documentCount: ' ドキュメント',
-  wordCount: 'k 単語',
+  wordCount: ' k 単語',
   appCount: ' リンクされたアプリ',
   createDataset: '知識を作成',
   createDatasetIntro: '独自のテキストデータをインポートするか、LLMコンテキストの強化のためにWebhookを介してリアルタイムでデータを書き込むことができます。',
@@ -44,6 +44,20 @@ const translation = {
   },
   docsFailedNotice: 'ドキュメントのインデックスに失敗しました',
   retry: '再試行',
+  tag: {
+    placeholder: 'すべてのタグ',
+    addNew: '新しいタグを追加',
+    noTag: 'タグなし',
+    noTagYet: 'まだタグがありません',
+    addTag: 'タグを追加',
+    manageTags: 'タグの管理',
+    selectorPlaceholder: '検索または作成する文字を入力',
+    create: '作成',
+    delete: 'タグを削除',
+    deleteTip: 'タグは使用されています、削除しますか',
+    created: 'タグは正常に作成されました',
+    failed: 'タグの作成に失敗しました',
+  },
 }
 
 export default translation

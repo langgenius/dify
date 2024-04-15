@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import cast
 
 import yaml
@@ -260,7 +260,7 @@ class AppService:
         app.description = args.get('description', '')
         app.icon = args.get('icon')
         app.icon_background = args.get('icon_background')
-        app.updated_at = datetime.utcnow()
+        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
         return app
@@ -273,7 +273,7 @@ class AppService:
         :return: App instance
         """
         app.name = name
-        app.updated_at = datetime.utcnow()
+        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
         return app
@@ -288,7 +288,7 @@ class AppService:
         """
         app.icon = icon
         app.icon_background = icon_background
-        app.updated_at = datetime.utcnow()
+        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
         return app
@@ -304,7 +304,7 @@ class AppService:
             return app
 
         app.enable_site = enable_site
-        app.updated_at = datetime.utcnow()
+        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
         return app
@@ -320,7 +320,7 @@ class AppService:
             return app
 
         app.enable_api = enable_api
-        app.updated_at = datetime.utcnow()
+        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
         return app

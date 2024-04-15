@@ -34,6 +34,8 @@ const translation = {
     log: 'Журнал',
     learnMore: 'Дізнатися більше',
     params: 'Параметри',
+    duplicate: 'дублікат',
+    rename: 'Перейменувати',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',

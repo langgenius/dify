@@ -34,6 +34,8 @@ const translation = {
     log: 'Log',
     learnMore: 'Learn More',
     params: 'Params',
+    duplicate: 'Duplicate',
+    rename: 'Rename',
   },
   placeholder: {
     input: 'Please enter',
@@ -390,7 +392,7 @@ const translation = {
     type: 'Type',
   },
   about: {
-    changeLog: 'Changlog',
+    changeLog: 'Changelog',
     updateNow: 'Update now',
     nowAvailable: 'Dify {{version}} is now available.',
     latestAvailable: 'Dify {{version}} is the latest version available.',

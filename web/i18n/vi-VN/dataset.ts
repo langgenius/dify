@@ -1,7 +1,7 @@
 const translation = {
   knowledge: 'Kiến thức',
   documentCount: ' tài liệu',
-  wordCount: 'k từ',
+  wordCount: ' k từ',
   appCount: ' ứng dụng liên kết',
   createDataset: 'Tạo Kiến thức',
   createDatasetIntro: 'Nhập dữ liệu văn bản của bạn hoặc viết dữ liệu theo thời gian thực qua Webhook để tăng cường ngữ cảnh LLM.',
@@ -41,6 +41,22 @@ const translation = {
     },
     change: 'Thay đổi',
     changeRetrievalMethod: 'Thay đổi phương pháp truy xuất',
+  },
+  docsFailedNotice: 'tài liệu không được lập chỉ mục',
+  retry: 'Thử lại',
+  tag: {
+    placeholder: 'Tất cả các thẻ',
+    addNew: 'Thêm thẻ mới',
+    noTag: 'Không có thẻ',
+    noTagYet: 'Chưa có thẻ',
+    addTag: 'thêm thẻ',
+    manageTags: 'Quản lý thẻ',
+    selectorPlaceholder: 'Nhập để tìm kiếm hoặc tạo',
+    create: 'Tạo',
+    delete: 'Xóa thẻ',
+    deleteTip: 'Thẻ đang được sử dụng, xóa nó đi?',
+    created: 'Thẻ được tạo thành công',
+    failed: 'Tạo thẻ không thành công',
   },
 }
 

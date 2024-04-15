@@ -1,7 +1,7 @@
 const translation = {
   knowledge: '知识库',
   documentCount: ' 文档',
-  wordCount: '千字符',
+  wordCount: ' 千字符',
   appCount: ' 关联应用',
   createDataset: '创建知识库',
   createDatasetIntro: '导入您自己的文本数据或通过 Webhook 实时写入数据以增强 LLM 的上下文。',
@@ -50,6 +50,13 @@ const translation = {
     noTag: '没有标签',
     noTagYet: '还没有标签',
     addTag: '添加标签',
+    manageTags: '管理标签',
+    selectorPlaceholder: '搜索或者创建',
+    create: '创建',
+    delete: '删除标签',
+    deleteTip: '标签正在使用中，是否删除？',
+    created: '标签创建成功',
+    failed: '标签创建失败',
   },
 }
 

@@ -6,12 +6,14 @@ import { SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type SearchInputProps = {
+  placeholder?: string
   className?: string
   value: string
   onChange: (v: string) => void
   white?: boolean
 }
 const SearchInput: FC<SearchInputProps> = ({
+  placeholder,
   className,
   value,
   onChange,
@@ -40,7 +42,7 @@ const SearchInput: FC<SearchInputProps> = ({
           !focus && value && 'hover:!bg-gray-200 group-hover:!bg-gray-200',
           white && '!bg-white hover:!bg-white group-hover:!bg-white placeholder:!text-gray-400',
         )}
-        placeholder={t('common.operation.search')!}
+        placeholder={placeholder || t('common.operation.search')!}
         value={value}
         onChange={(e) => {
           onChange(e.target.value)

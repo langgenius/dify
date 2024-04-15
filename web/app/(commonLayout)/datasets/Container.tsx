@@ -13,6 +13,7 @@ import ApiServer from './ApiServer'
 import Doc from './Doc'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import SearchInput from '@/app/components/base/search-input'
+import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 
 // Services
@@ -20,9 +21,11 @@ import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 
 // Hooks
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
+import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 
 const Container = () => {
   const { t } = useTranslation()
+  const { showTagManagementModal } = useTagStore()
 
   const options = [
     { value: 'dataset', text: t('dataset.datasets') },
@@ -56,7 +59,7 @@ const Container = () => {
         />
         {activeTab === 'dataset' && (
           <div className='flex items-center gap-2'>
-            <TagFilter value={tagIDs} onChange={setTagIDs} />
+            <TagFilter type='knowledge' value={tagIDs} onChange={setTagIDs} />
             <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
           </div>
         )}
@@ -67,6 +70,7 @@ const Container = () => {
         <>
           <Datasets containerRef={containerRef} tags={tagIDs} keywords={searchKeywords} />
           <DatasetFooter />
+          <TagManagementModal type='knowledge' show={showTagManagementModal} />
         </>
       )}
 

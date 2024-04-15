@@ -113,6 +113,11 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleNodeConnect,
     handleNodeConnectStart,
     handleNodeConnectEnd,
+    handleNodeDuplicateSelected,
+    handleNodeCopySelected,
+    handleNodeCut,
+    handleNodeDeleteSelected,
+    handleNodePaste,
   } = useNodesInteractions()
   const {
     handleEdgeEnter,
@@ -120,7 +125,11 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleEdgeDelete,
     handleEdgesChange,
   } = useEdgesInteractions()
-  const { isValidConnection } = useWorkflow()
+  const {
+    isValidConnection,
+    enableShortcuts,
+    disableShortcuts,
+  } = useWorkflow()
 
   useOnViewportChange({
     onEnd: () => {
@@ -128,7 +137,12 @@ const Workflow: FC<WorkflowProps> = memo(({
     },
   })
 
-  useKeyPress('Backspace', handleEdgeDelete)
+  useKeyPress(['delete'], handleEdgeDelete)
+  useKeyPress(['delete'], handleNodeDeleteSelected)
+  useKeyPress(['ctrl.c', 'meta.c'], handleNodeCopySelected)
+  useKeyPress(['ctrl.x', 'meta.x'], handleNodeCut)
+  useKeyPress(['ctrl.v', 'meta.v'], handleNodePaste)
+  useKeyPress(['ctrl.alt.d', 'meta.shift.d'], handleNodeDuplicateSelected)
 
   return (
     <div
@@ -151,6 +165,8 @@ const Workflow: FC<WorkflowProps> = memo(({
         edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
+        onPointerDown={enableShortcuts}
+        onMouseLeave={disableShortcuts}
         onNodeDragStart={handleNodeDragStart}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}

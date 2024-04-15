@@ -81,7 +81,7 @@ class IndexingRunner:
             except ProviderTokenNotInitError as e:
                 dataset_document.indexing_status = 'error'
                 dataset_document.error = str(e.description)
-                dataset_document.stopped_at = datetime.datetime.utcnow()
+                dataset_document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 db.session.commit()
             except ObjectDeletedError:
                 logging.warning('Document deleted, document id: {}'.format(dataset_document.id))
@@ -89,7 +89,7 @@ class IndexingRunner:
                 logging.exception("consume document failed")
                 dataset_document.indexing_status = 'error'
                 dataset_document.error = str(e)
-                dataset_document.stopped_at = datetime.datetime.utcnow()
+                dataset_document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 db.session.commit()
 
     def run_in_splitting_status(self, dataset_document: DatasetDocument):
@@ -140,13 +140,13 @@ class IndexingRunner:
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = 'error'
             dataset_document.error = str(e.description)
-            dataset_document.stopped_at = datetime.datetime.utcnow()
+            dataset_document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
         except Exception as e:
             logging.exception("consume document failed")
             dataset_document.indexing_status = 'error'
             dataset_document.error = str(e)
-            dataset_document.stopped_at = datetime.datetime.utcnow()
+            dataset_document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
     def run_in_indexing_status(self, dataset_document: DatasetDocument):
@@ -202,13 +202,13 @@ class IndexingRunner:
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = 'error'
             dataset_document.error = str(e.description)
-            dataset_document.stopped_at = datetime.datetime.utcnow()
+            dataset_document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
         except Exception as e:
             logging.exception("consume document failed")
             dataset_document.indexing_status = 'error'
             dataset_document.error = str(e)
-            dataset_document.stopped_at = datetime.datetime.utcnow()
+            dataset_document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
     def indexing_estimate(self, tenant_id: str, extract_settings: list[ExtractSetting], tmp_processing_rule: dict,
@@ -382,7 +382,7 @@ class IndexingRunner:
             after_indexing_status="splitting",
             extra_update_params={
                 DatasetDocument.word_count: sum([len(text_doc.page_content) for text_doc in text_docs]),
-                DatasetDocument.parsing_completed_at: datetime.datetime.utcnow()
+                DatasetDocument.parsing_completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             }
         )
 
@@ -467,7 +467,7 @@ class IndexingRunner:
         doc_store.add_documents(documents)
 
         # update document status to indexing
-        cur_time = datetime.datetime.utcnow()
+        cur_time = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         self._update_document_index_status(
             document_id=dataset_document.id,
             after_indexing_status="indexing",
@@ -482,7 +482,7 @@ class IndexingRunner:
             dataset_document_id=dataset_document.id,
             update_params={
                 DocumentSegment.status: "indexing",
-                DocumentSegment.indexing_at: datetime.datetime.utcnow()
+                DocumentSegment.indexing_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             }
         )
 
@@ -685,7 +685,7 @@ class IndexingRunner:
             after_indexing_status="completed",
             extra_update_params={
                 DatasetDocument.tokens: tokens,
-                DatasetDocument.completed_at: datetime.datetime.utcnow(),
+                DatasetDocument.completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
                 DatasetDocument.indexing_latency: indexing_end_at - indexing_start_at,
             }
         )
@@ -706,7 +706,7 @@ class IndexingRunner:
                 ).update({
                     DocumentSegment.status: "completed",
                     DocumentSegment.enabled: True,
-                    DocumentSegment.completed_at: datetime.datetime.utcnow()
+                    DocumentSegment.completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 })
 
                 db.session.commit()
@@ -739,7 +739,7 @@ class IndexingRunner:
             ).update({
                 DocumentSegment.status: "completed",
                 DocumentSegment.enabled: True,
-                DocumentSegment.completed_at: datetime.datetime.utcnow()
+                DocumentSegment.completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             })
 
             db.session.commit()
@@ -838,7 +838,7 @@ class IndexingRunner:
         doc_store.add_documents(documents)
 
         # update document status to indexing
-        cur_time = datetime.datetime.utcnow()
+        cur_time = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         self._update_document_index_status(
             document_id=dataset_document.id,
             after_indexing_status="indexing",
@@ -853,7 +853,7 @@ class IndexingRunner:
             dataset_document_id=dataset_document.id,
             update_params={
                 DocumentSegment.status: "indexing",
-                DocumentSegment.indexing_at: datetime.datetime.utcnow()
+                DocumentSegment.indexing_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             }
         )
         pass

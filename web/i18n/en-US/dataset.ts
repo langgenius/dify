@@ -1,7 +1,7 @@
 const translation = {
   knowledge: 'Knowledge',
   documentCount: ' docs',
-  wordCount: 'k words',
+  wordCount: ' k words',
   appCount: ' linked apps',
   createDataset: 'Create Knowledge',
   createDatasetIntro: 'Import your own text data or write data in real-time via Webhook for LLM context enhancement.',
@@ -50,6 +50,13 @@ const translation = {
     noTag: 'No tags',
     noTagYet: 'No tags yet',
     addTag: 'add tag',
+    manageTags: 'Manage Tags',
+    selectorPlaceholder: 'Type to search or create',
+    create: 'Create',
+    delete: 'Delete tag',
+    deleteTip: 'The tag is being used, delete it?',
+    created: 'Tag created successfully',
+    failed: 'Tag creation failed',
   },
 }
 
