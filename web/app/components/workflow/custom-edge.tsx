@@ -9,7 +9,7 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   Position,
-  getSimpleBezierPath,
+  getBezierPath,
 } from 'reactflow'
 import {
   useNodesExtraData,
@@ -38,13 +38,14 @@ const CustomEdge = ({
     edgePath,
     labelX,
     labelY,
-  ] = getSimpleBezierPath({
+  ] = getBezierPath({
     sourceX: sourceX - 8,
     sourceY,
     sourcePosition: Position.Right,
     targetX: targetX + 8,
     targetY,
     targetPosition: Position.Left,
+    curvature: 0.16,
   })
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()

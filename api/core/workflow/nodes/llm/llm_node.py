@@ -248,16 +248,19 @@ class LLMNode(BaseNode):
                 context_str = ''
                 original_retriever_resource = []
                 for item in context_value:
-                    if 'content' not in item:
-                        raise ValueError(f'Invalid context structure: {item}')
+                    if isinstance(item, str):
+                        context_str += item + '\n'
+                    else:
+                        if 'content' not in item:
+                            raise ValueError(f'Invalid context structure: {item}')
 
-                    context_str += item['content'] + '\n'
+                        context_str += item['content'] + '\n'
 
-                    retriever_resource = self._convert_to_original_retriever_resource(item)
-                    if retriever_resource:
-                        original_retriever_resource.append(retriever_resource)
+                        retriever_resource = self._convert_to_original_retriever_resource(item)
+                        if retriever_resource:
+                            original_retriever_resource.append(retriever_resource)
 
-                if self.callbacks:
+                if self.callbacks and original_retriever_resource:
                     for callback in self.callbacks:
                         callback.on_event(
                             event=QueueRetrieverResourcesEvent(

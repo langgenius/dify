@@ -1,6 +1,6 @@
 provider: nvidia
 label:
-  en_US: NVIDIA
+  en_US: API Catalog
 icon_small:
   en_US: icon_s_en.svg
 icon_large:
