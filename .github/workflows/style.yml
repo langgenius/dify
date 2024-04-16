@@ -29,6 +29,9 @@ jobs:
       - name: Ruff check
         run: ruff check ./api
 
+      - name: Dotenv check
+        run: dotenv-linter ./api/.env.example ./web/.env.example
+
       - name: Lint hints
         if: failure()
         run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
