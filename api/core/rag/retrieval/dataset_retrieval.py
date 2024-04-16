@@ -2,7 +2,6 @@ import threading
 from typing import Optional, cast
 
 from flask import Flask, current_app
-from langchain.tools import BaseTool
 
 from core.app.app_config.entities import DatasetEntity, DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
@@ -19,6 +18,7 @@ from core.rag.retrieval.router.multi_dataset_function_call_router import Functio
 from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
 from core.rerank.rerank import RerankRunner
 from core.tools.tool.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
+from core.tools.tool.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
@@ -383,7 +383,7 @@ class DatasetRetrieval:
                                   return_resource: bool,
                                   invoke_from: InvokeFrom,
                                   hit_callback: DatasetIndexToolCallbackHandler) \
-            -> Optional[list[BaseTool]]:
+            -> Optional[list[DatasetRetrieverBaseTool]]:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
         :param tenant_id: tenant id

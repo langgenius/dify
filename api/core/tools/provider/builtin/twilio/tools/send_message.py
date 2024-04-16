@@ -13,17 +13,6 @@ class TwilioAPIWrapper(BaseModel):
     and the environment variables ``TWILIO_ACCOUNT_SID``, ``TWILIO_AUTH_TOKEN``, and
     ``TWILIO_FROM_NUMBER``, or pass `account_sid`, `auth_token`, and `from_number` as
     named parameters to the constructor.
-
-    Example:
-        .. code-block:: python
-
-            from langchain.utilities.twilio import TwilioAPIWrapper
-            twilio = TwilioAPIWrapper(
-                account_sid="ACxxx",
-                auth_token="xxx",
-                from_number="+10123456789"
-            )
-            twilio.run('test', '+12484345508')
     """
 
     client: Any  #: :meta private:

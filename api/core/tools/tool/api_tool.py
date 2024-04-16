@@ -1,5 +1,6 @@
 import json
 from json import dumps
+from os import getenv
 from typing import Any, Union
 from urllib.parse import urlencode
 
@@ -13,7 +14,10 @@ from core.tools.entities.user_entities import UserToolProvider
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.tool.tool import Tool
 
-API_TOOL_DEFAULT_TIMEOUT = (10, 60)
+API_TOOL_DEFAULT_TIMEOUT = (
+    int(getenv('API_TOOL_DEFAULT_CONNECT_TIMEOUT', '10')),
+    int(getenv('API_TOOL_DEFAULT_READ_TIMEOUT', '60'))
+)
 
 class ApiTool(Tool):
     api_bundle: ApiBasedToolBundle

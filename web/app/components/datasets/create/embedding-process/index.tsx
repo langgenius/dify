@@ -21,6 +21,7 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { sleep } from '@/utils'
 
 type Props = {
   datasetId: string
@@ -95,38 +96,41 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     return status.data
   }
 
-  // const [_, setRunId, getRunId] = useGetState<ReturnType<typeof setInterval>>()
-  const [runId, setRunId] = useState<ReturnType<typeof setInterval>>()
-  const runIdRef = useRef(runId)
-  const getRunId = () => runIdRef.current
+  const [isStopQuery, setIsStopQuery] = useState(false)
+  const isStopQueryRef = useRef(isStopQuery)
   useEffect(() => {
-    runIdRef.current = runId
-  }, [runId])
+    isStopQueryRef.current = isStopQuery
+  }, [isStopQuery])
   const stopQueryStatus = () => {
-    clearInterval(getRunId())
-    setRunId(undefined)
+    setIsStopQuery(true)
   }
 
-  const startQueryStatus = () => {
-    const runId = setInterval(async () => {
-      // It's so strange that the interval can't be cleared after the clearInterval called. And the runId is current.
-      if (!getRunId())
-        return
+  const startQueryStatus = async () => {
+    if (isStopQueryRef.current)
+      return
 
+    try {
       const indexingStatusBatchDetail = await fetchIndexingStatus()
-      const isCompleted = indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error'].includes(indexingStatusDetail.indexing_status))
-      if (isCompleted)
+      const isCompleted = indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error', 'paused'].includes(indexingStatusDetail.indexing_status))
+      if (isCompleted) {
         stopQueryStatus()
-    }, 2500)
-    setRunId(runId)
+        return
+      }
+      await sleep(2500)
+      await startQueryStatus()
+    }
+    catch (e) {
+      await sleep(2500)
+      await startQueryStatus()
+    }
   }
 
   useEffect(() => {
-    fetchIndexingStatus()
     startQueryStatus()
     return () => {
       stopQueryStatus()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // get rule
@@ -154,7 +158,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     return indexingStatusBatchDetail.some(indexingStatusDetail => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
   const isEmbeddingCompleted = useMemo(() => {
-    return indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error'].includes(indexingStatusDetail?.indexing_status || ''))
+    return indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error', 'paused'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
 
   const getSourceName = (id: string) => {

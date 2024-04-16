@@ -223,6 +223,12 @@ services:
       # the api-key for resend (https://resend.com)
       RESEND_API_KEY: ''
       RESEND_API_URL: https://api.resend.com
+      # relyt configurations
+      RELYT_HOST: db
+      RELYT_PORT: 5432
+      RELYT_USER: postgres
+      RELYT_PASSWORD: difyai123456
+      RELYT_DATABASE: postgres
     depends_on:
       - db
       - redis
@@ -317,6 +323,8 @@ services:
     image: langgenius/dify-sandbox:latest
     restart: always
     cap_add:
+    # Why is sys_admin permission needed?
+    # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-sys_admin-permission-needed
       - SYS_ADMIN
     environment:
       # The DifySandbox configurations
