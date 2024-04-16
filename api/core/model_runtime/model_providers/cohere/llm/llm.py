@@ -602,7 +602,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
             parameter_definitions = {}
             for p_key, p_val in properties.items():
                 required = False
-                if property in required_properties:
+                if p_key in required_properties:
                     required = True
 
                 desc = p_val['description']

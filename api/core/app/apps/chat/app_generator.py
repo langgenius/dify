@@ -1,4 +1,5 @@
 import logging
+import os
 import threading
 import uuid
 from collections.abc import Generator
@@ -195,6 +196,8 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except (ValueError, InvokeError) as e:
+                if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
+                    logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:
                 logger.exception("Unknown Error when generating")

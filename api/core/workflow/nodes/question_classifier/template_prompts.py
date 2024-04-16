@@ -35,7 +35,7 @@ QUESTION_CLASSIFIER_USER_PROMPT_2 = """
 
 QUESTION_CLASSIFIER_ASSISTANT_PROMPT_2 = """
     {"keywords": ["bad service", "slow", "food", "tip", "terrible", "waitresses"],
-    "categories": ["Experience""]}```
+    "categories": ["Experience"]}```
 """
 
 QUESTION_CLASSIFIER_USER_PROMPT_3 = """
