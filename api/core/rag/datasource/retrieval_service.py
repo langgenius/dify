@@ -118,10 +118,13 @@ class RetrievalService:
                 dataset=dataset
             )
 
+            top_k1 = top_k
+            if reranking_model:
+                top_k1 = 50
             documents = vector.search_by_vector(
                 query,
                 search_type='similarity_score_threshold',
-                top_k=top_k,
+                top_k=top_k1,
                 score_threshold=score_threshold,
                 filter={
                     'group_id': [dataset.id]
@@ -135,7 +138,7 @@ class RetrievalService:
                         query=query,
                         documents=documents,
                         score_threshold=score_threshold,
-                        top_n=len(documents)
+                        top_n=top_k
                     ))
                 else:
                     all_documents.extend(documents)
