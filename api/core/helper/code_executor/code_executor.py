@@ -1,4 +1,3 @@
-from os import environ
 from typing import Literal, Optional
 
 from httpx import post
