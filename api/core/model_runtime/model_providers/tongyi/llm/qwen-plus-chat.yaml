@@ -1,12 +1,14 @@
-model: qwen-turbo
+model: qwen-plus-chat
 label:
-  en_US: qwen-turbo
+  en_US: qwen-plus-chat
 model_type: llm
 features:
+  - multi-tool-call
   - agent-thought
+  - stream-tool-call
 model_properties:
-  mode: completion
-  context_size: 8192
+  mode: chat
+  context_size: 32768
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -73,7 +75,7 @@ parameter_rules:
   - name: response_format
     use_template: response_format
 pricing:
-  input: '0.008'
-  output: '0.008'
+  input: '0.02'
+  output: '0.02'
   unit: '0.001'
   currency: RMB

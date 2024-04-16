@@ -1,11 +1,13 @@
-model: qwen-turbo
+model: qwen-turbo-chat
 label:
-  en_US: qwen-turbo
+  en_US: qwen-turbo-chat
 model_type: llm
 features:
+  - multi-tool-call
   - agent-thought
+  - stream-tool-call
 model_properties:
-  mode: completion
+  mode: chat
   context_size: 8192
 parameter_rules:
   - name: temperature
