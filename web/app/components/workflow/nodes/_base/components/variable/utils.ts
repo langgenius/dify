@@ -233,6 +233,13 @@ const matchNotSystemVars = (prompts: string[]) => {
   return uniqVars
 }
 
+const replaceOldVarInText = (text: string, oldVar: ValueSelector, newVar: ValueSelector) => {
+  if (!text || typeof text !== 'string')
+    return text
+
+  return text.replaceAll(`{{#${oldVar.join('.')}#}}`, `{{#${newVar.join('.')}#}}`)
+}
+
 export const getNodeUsedVars = (node: Node): ValueSelector[] => {
   const { data } = node
   const { type } = data
@@ -349,14 +356,21 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
       }
       case BlockEnum.LLM: {
         const payload = data as LLMNodeType
-        // TODO: update in inputs
-        // if (payload.variables) {
-        //   payload.variables = payload.variables.map((v) => {
-        //     if (v.value_selector.join('.') === oldVarSelector.join('.'))
-        //       v.value_selector = newVarSelector
-        //     return v
-        //   })
-        // }
+        const isChatModel = payload.model?.mode === 'chat'
+        if (isChatModel) {
+          payload.prompt_template = (payload.prompt_template as PromptItem[]).map((prompt) => {
+            return {
+              ...prompt,
+              text: replaceOldVarInText(prompt.text, oldVarSelector, newVarSelector),
+            }
+          })
+        }
+        else {
+          payload.prompt_template = {
+            ...payload.prompt_template,
+            text: replaceOldVarInText((payload.prompt_template as PromptItem).text, oldVarSelector, newVarSelector),
+          }
+        }
         if (payload.context?.variable_selector?.join('.') === oldVarSelector.join('.'))
           payload.context.variable_selector = newVarSelector
 
