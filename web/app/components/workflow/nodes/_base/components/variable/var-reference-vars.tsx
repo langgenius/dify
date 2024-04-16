@@ -272,7 +272,7 @@ const VarReferenceVars: FC<Props> = ({
       }
 
       {filteredVars.length > 0
-        ? <div>
+        ? <div className='max-h-[85vh] overflow-y-auto'>
 
           {
             filteredVars.map((item, i) => (
