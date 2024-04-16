@@ -50,6 +50,7 @@ const translation = {
     noTag: 'タグなし',
     noTagYet: 'まだタグがありません',
     addTag: 'タグを追加',
+    editTag: 'タグを編集',
     manageTags: 'タグの管理',
     selectorPlaceholder: '検索または作成する文字を入力',
     create: '作成',

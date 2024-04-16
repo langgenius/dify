@@ -50,6 +50,7 @@ const translation = {
     noTag: 'Không có thẻ',
     noTagYet: 'Chưa có thẻ',
     addTag: 'thêm thẻ',
+    editTag: 'Chỉnh sửa thẻ',
     manageTags: 'Quản lý thẻ',
     selectorPlaceholder: 'Nhập để tìm kiếm hoặc tạo',
     create: 'Tạo',

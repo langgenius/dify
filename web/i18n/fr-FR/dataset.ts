@@ -50,6 +50,7 @@ const translation = {
     noTag: 'Aucune balise',
     noTagYet: 'Aucune balise pour l\'instant',
     addTag: 'ajouter une balise',
+    editTag: 'Modifier les balises',
     manageTags: 'Gérer les balises',
     selectorPlaceholder: 'Type de recherche ou de création',
     create: 'Créer',

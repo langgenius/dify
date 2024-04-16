@@ -70,7 +70,9 @@ const Container = () => {
         <>
           <Datasets containerRef={containerRef} tags={tagIDs} keywords={searchKeywords} />
           <DatasetFooter />
-          <TagManagementModal type='knowledge' show={showTagManagementModal} />
+          {showTagManagementModal && (
+            <TagManagementModal type='knowledge' show={showTagManagementModal} />
+          )}
         </>
       )}
 

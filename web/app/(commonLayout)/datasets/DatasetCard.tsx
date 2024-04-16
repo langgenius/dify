@@ -16,10 +16,8 @@ import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
 import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import RenameDatasetModal from '@/app/components/datasets/rename-modal'
-import TagItem from '@/app/components/base/tag-management/tag-item'
-import type { Tag } from '@/app/components/base/tag-management/constant'
+// import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
-import { unBindTag } from '@/service/tag'
 
 export type DatasetCardProps = {
   dataset: DataSet
@@ -32,18 +30,6 @@ const DatasetCard = ({
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-
-  const removeTag = async (tag: Tag) => {
-    try {
-      await unBindTag(tag.id, dataset.id, 'knowledge')
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      if (onSuccess)
-        onSuccess()
-    }
-    catch (e: any) {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-    }
-  }
 
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
@@ -61,14 +47,9 @@ const DatasetCard = ({
   }, [dataset.id])
 
   const Operations = (props: HtmlContentProps) => {
-    const onMouseLeave = async (e: React.MouseEvent<HTMLDivElement>) => {
+    const onMouseLeave = async () => {
       props.onClose?.()
     }
-    // const onClickDuplicate = async (e: React.MouseEvent<HTMLDivElement>) => {
-    //   e.stopPropagation()
-    //   props.onClick?.()
-    //   e.preventDefault()
-    // }
     const onClickRename = async (e: React.MouseEvent<HTMLDivElement>) => {
       e.stopPropagation()
       props.onClick?.()
@@ -83,9 +64,6 @@ const DatasetCard = ({
     }
     return (
       <div className="relative w-full py-1" onMouseLeave={onMouseLeave}>
-        {/* <div className='h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer' onClick={onClickDuplicate}>
-          <span className='text-gray-700 text-sm'>{t('common.operation.duplicate')}</span>
-        </div> */}
         <div className='h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer' onClick={onClickRename}>
           <span className='text-gray-700 text-sm'>{t('common.operation.settings')}</span>
         </div>
@@ -159,25 +137,15 @@ const DatasetCard = ({
             e.stopPropagation()
             e.preventDefault()
           }}>
-            {dataset.tags.slice(0, 3).map(tag => (
-              <TagItem
-                className='max-w-[64px]'
-                key={tag.id}
-                tag={tag}
-                onRemove={() => removeTag(tag)}
-              />
-            ))}
-            {/* TODO popover tags */}
-            {dataset.tags.length > 3 && (
-              <div className={cn('shrink-0 ml-1 flex items-center px-1 border bg-white border-gray-200 rounded-[5px] text-gray-500 text-xs leading-4.5')}>
-                {`+${dataset.tags.length - 3}`}
-              </div>
-            )}
-            <div className='!hidden group-hover:!flex shrink-0'>
+            <div className={cn(
+              'group-hover:!block group-hover:!mr-0 mr-[41px] grow w-full',
+              dataset.tags.length ? '!block' : '!hidden',
+            )}>
               <TagSelector
                 position='bl'
                 type='knowledge'
                 value={dataset.tags.map(tag => tag.id)}
+                selectedTags={dataset.tags}
                 onChange={onSuccess}
                 targetID={dataset.id}
               />
