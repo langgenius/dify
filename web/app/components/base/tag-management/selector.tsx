@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-// import { useDebounceFn } from 'ahooks'
+import { useUnmount } from 'ahooks'
 import cn from 'classnames'
 import { useStore as useTagStore } from './store'
 import type { HtmlContentProps } from '@/app/components/base/popover'
@@ -22,7 +22,7 @@ type TagSelectorProps = {
   position?: 'bl' | 'br'
   type: 'knowledge' | 'app'
   value: string[]
-  selectedTags?: Tag[]
+  selectedTags: Tag[]
   onChange?: () => void
 }
 
@@ -35,17 +35,21 @@ const Panel = (props: PanelProps) => {
   const { notify } = useContext(ToastContext)
   const { targetID, type, value, selectedTags, onChange, onCreate } = props
   const { tagList, setTagList, setShowTagManagementModal } = useTagStore()
+  const [selectedTagIDs, setSelectedTagIDs] = useState<string[]>(value)
   const [keywords, setKeywords] = useState('')
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
   }
 
-  const filteredTagList = useMemo(() => {
-    return tagList.filter(tag => tag.type === type && tag.name.includes(keywords))
-  }, [type, tagList, keywords])
   const notExisted = useMemo(() => {
     return tagList.every(tag => tag.type === type && tag.name !== keywords)
   }, [type, tagList, keywords])
+  const filteredSelectedTagList = useMemo(() => {
+    return selectedTags.filter(tag => tag.name.includes(keywords))
+  }, [keywords, selectedTags])
+  const filteredTagList = useMemo(() => {
+    return tagList.filter(tag => tag.type === type && !value.includes(tag.id) && tag.name.includes(keywords))
+  }, [type, tagList, value, keywords])
 
   const [creating, setCreating] = useState<Boolean>(false)
   const createNewTag = async () => {
@@ -69,34 +73,51 @@ const Panel = (props: PanelProps) => {
       setCreating(false)
     }
   }
-  const bind = async (tag: Tag) => {
+  const bind = async (tagIDs: string[]) => {
     try {
-      await bindTag([tag.id], targetID, 'knowledge')
+      await bindTag(tagIDs, targetID, 'knowledge')
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      if (onChange)
-        onChange()
     }
     catch (e: any) {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
   }
-  const unbind = async (tag: Tag) => {
+  const unbind = async (tagID: string) => {
     try {
-      await unBindTag(tag.id, targetID, 'knowledge')
+      await unBindTag(tagID, targetID, 'knowledge')
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      if (onChange)
-        onChange()
     }
     catch (e: any) {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
   }
   const selectTag = (tag: Tag) => {
-    if (value.includes(tag.id))
-      unbind(tag)
+    if (selectedTagIDs.includes(tag.id))
+      setSelectedTagIDs(selectedTagIDs.filter(v => v !== tag.id))
     else
-      bind(tag)
+      setSelectedTagIDs([...selectedTagIDs, tag.id])
   }
+
+  const valueNotChanged = useMemo(() => {
+    return value.length === selectedTagIDs.length && value.every(v => selectedTagIDs.includes(v)) && selectedTagIDs.every(v => value.includes(v))
+  }, [value, selectedTagIDs])
+  const handleValueChange = () => {
+    const addTagIDs = selectedTagIDs.filter(v => !value.includes(v))
+    const removeTagIDs = value.filter(v => !selectedTagIDs.includes(v))
+
+    Promise.all([
+      ...(addTagIDs.length ? [bind(addTagIDs)] : []),
+      ...[removeTagIDs.length ? removeTagIDs.map(tagID => unbind(tagID)) : []],
+    ]).finally(() => {
+      if (onChange)
+        onChange()
+    })
+  }
+  useUnmount(() => {
+    if (valueNotChanged)
+      return
+    handleValueChange()
+  })
 
   const onMouseLeave = async () => {
     props.onClose?.()
@@ -120,8 +141,22 @@ const Panel = (props: PanelProps) => {
       {keywords && notExisted && filteredTagList.length > 0 && (
         <Divider className='!h-[1px] !my-0' />
       )}
-      {filteredTagList.length > 0 && (
+      {(filteredTagList.length > 0 || filteredSelectedTagList.length > 0) && (
         <div className='p-1 max-h-[172px] overflow-y-auto'>
+          {filteredSelectedTagList.map(tag => (
+            <div
+              key={tag.id}
+              className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'
+              onClick={() => selectTag(tag)}
+            >
+              <Checkbox
+                className='shrink-0 mr-2'
+                checked={selectedTagIDs.includes(tag.id)}
+                onCheck={() => {}}
+              />
+              <div title={tag.name} className='grow text-sm text-gray-700 leading-5 truncate'>{tag.name}</div>
+            </div>
+          ))}
           {filteredTagList.map(tag => (
             <div
               key={tag.id}
@@ -130,7 +165,7 @@ const Panel = (props: PanelProps) => {
             >
               <Checkbox
                 className='shrink-0 mr-2'
-                checked={value.includes(tag.id)}
+                checked={selectedTagIDs.includes(tag.id)}
                 onCheck={() => {}}
               />
               <div title={tag.name} className='grow text-sm text-gray-700 leading-5 truncate'>{tag.name}</div>
@@ -138,7 +173,7 @@ const Panel = (props: PanelProps) => {
           ))}
         </div>
       )}
-      {!keywords && !filteredTagList.length && (
+      {!keywords && !filteredTagList.length && !filteredSelectedTagList.length && (
         <div className='p-1'>
           <div className='p-3 flex flex-col items-center gap-1'>
             <Tag03 className='h-6 w-6 text-gray-300' />

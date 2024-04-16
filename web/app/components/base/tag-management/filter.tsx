@@ -1,7 +1,7 @@
 import type { FC } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDebounceFn } from 'ahooks'
+import { useDebounceFn, useMount } from 'ahooks'
 import cn from 'classnames'
 import { useStore as useTagStore } from './store'
 import {
@@ -17,27 +17,6 @@ import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 
 import { fetchTagList } from '@/service/tag'
-
-const MOCK_TAGS = [
-  {
-    id: '001',
-    type: 'knowledge',
-    name: 'good',
-    bingding_count: 27,
-  },
-  {
-    id: '002',
-    type: 'knowledge',
-    name: 'bad',
-    bingding_count: 12,
-  },
-  {
-    id: '003',
-    type: 'knowledge',
-    name: 'nice',
-    bingding_count: 6,
-  },
-]
 
 type TagFilterProps = {
   type: 'knowledge' | 'app'
@@ -79,12 +58,11 @@ const TagFilter: FC<TagFilterProps> = ({
       onChange([...value, tag.id])
   }
 
-  useEffect(() => {
+  useMount(() => {
     fetchTagList(type).then((res) => {
       setTagList(res)
     })
-    // setTagList(MOCK_TAGS)
-  }, [])
+  })
 
   return (
     <PortalToFollowElem
