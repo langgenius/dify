@@ -72,7 +72,7 @@ numexpr~=2.9.0
 duckduckgo-search==5.2.2
 arxiv==2.1.0
 yarl~=1.9.4
-twilio==9.0.0
+twilio~=9.0.4
 qrcode~=7.4.2
 azure-storage-blob==12.9.0
 azure-identity==1.15.0
