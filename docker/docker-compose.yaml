@@ -2,6 +2,7 @@ version: '3'
 services:
   # API service
   api:
+    container_name: api
     image: langgenius/dify-api:0.6.2
     restart: always
     environment:
@@ -150,6 +151,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
+    container_name: worker
     image: langgenius/dify-api:0.6.2
     restart: always
     environment:
@@ -232,6 +234,7 @@ services:
 
   # Frontend web application.
   web:
+    container_name: web
     image: langgenius/dify-web:0.6.2
     restart: always
     environment:
@@ -252,6 +255,7 @@ services:
 
   # The postgres database.
   db:
+    container_name: db
     image: postgres:15-alpine
     restart: always
     environment:
@@ -275,6 +279,7 @@ services:
 
   # The redis cache.
   redis:
+    container_name: redis
     image: redis:6-alpine
     restart: always
     volumes:
@@ -290,6 +295,7 @@ services:
 
   # The Weaviate vector store.
   weaviate:
+    container_name: weaviate
     image: semitechnologies/weaviate:1.19.0
     restart: always
     volumes:
@@ -314,6 +320,7 @@ services:
 
   # The DifySandbox
   sandbox:
+    container_name: sandbox
     image: langgenius/dify-sandbox:latest
     restart: always
     cap_add:
@@ -329,6 +336,7 @@ services:
   # (if uncommented, you need to comment out the weaviate service above,
   # and set VECTOR_STORE to qdrant in the api & worker service.)
   # qdrant:
+  #   container_name: qdrant
   #   image: langgenius/qdrant:v1.7.3
   #   restart: always
   #   volumes:
@@ -342,6 +350,7 @@ services:
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
   nginx:
+    container_name: nginx
     image: nginx:latest
     restart: always
     volumes:
