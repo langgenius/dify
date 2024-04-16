@@ -2,6 +2,8 @@ model: qwen-plus
 label:
   en_US: qwen-plus
 model_type: llm
+features:
+  - agent-thought
 model_properties:
   mode: completion
   context_size: 32768
@@ -9,7 +11,7 @@ parameter_rules:
   - name: temperature
     use_template: temperature
     type: float
-    default: 0.85
+    default: 0.3
     min: 0.0
     max: 2.0
     help:

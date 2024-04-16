@@ -97,6 +97,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             )
         )
 
+        self._conversation_name_generate_thread = None
+
     def process(self) -> Union[
         ChatbotAppBlockingResponse,
         CompletionAppBlockingResponse,
@@ -109,6 +111,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
         db.session.refresh(self._conversation)
         db.session.refresh(self._message)
         db.session.close()
+
+        if self._application_generate_entity.app_config.app_mode != AppMode.COMPLETION:
+            # start generate conversation name thread
+            self._conversation_name_generate_thread = self._generate_conversation_name(
+                self._conversation,
+                self._application_generate_entity.query
+            )
 
         generator = self._process_stream_response()
         if self._stream:
@@ -255,6 +264,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                 yield self._ping_stream_response()
             else:
                 continue
+
+        if self._conversation_name_generate_thread:
+            self._conversation_name_generate_thread.join()
 
     def _save_message(self) -> None:
         """
