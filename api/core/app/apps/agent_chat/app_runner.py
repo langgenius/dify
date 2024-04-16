@@ -1,7 +1,8 @@
 import logging
 from typing import cast
 
-from core.agent.cot_agent_runner import CotAgentRunner
+from core.agent.cot_chat_agent_runner import CotChatAgentRunner
+from core.agent.cot_completion_agent_runner import CotCompletionAgentRunner
 from core.agent.entities import AgentEntity
 from core.agent.fc_agent_runner import FunctionCallAgentRunner
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
@@ -11,8 +12,8 @@ from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, Mo
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.model_entities import ModelFeature
+from core.model_runtime.entities.llm_entities import LLMMode, LLMUsage
+from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.moderation.base import ModerationException
 from core.tools.entities.tool_entities import ToolRuntimeVariablePool
@@ -207,48 +208,40 @@ class AgentChatAppRunner(AppRunner):
 
         # start agent runner
         if agent_entity.strategy == AgentEntity.Strategy.CHAIN_OF_THOUGHT:
-            assistant_cot_runner = CotAgentRunner(
-                tenant_id=app_config.tenant_id,
-                application_generate_entity=application_generate_entity,
-                conversation=conversation,
-                app_config=app_config,
-                model_config=application_generate_entity.model_config,
-                config=agent_entity,
-                queue_manager=queue_manager,
-                message=message,
-                user_id=application_generate_entity.user_id,
-                memory=memory,
-                prompt_messages=prompt_message,
-                variables_pool=tool_variables,
-                db_variables=tool_conversation_variables,
-                model_instance=model_instance
-            )
-            invoke_result = assistant_cot_runner.run(
-                message=message,
-                query=query,
-                inputs=inputs,
-            )
+            # check LLM mode
+            if model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
+                runner_cls = CotChatAgentRunner
+            elif model_schema.model_properties.get(ModelPropertyKey.MODE) == LLMMode.COMPLETION.value:
+                runner_cls = CotCompletionAgentRunner
+            else:
+                raise ValueError(f"Invalid LLM mode: {model_schema.model_properties.get(ModelPropertyKey.MODE)}")
         elif agent_entity.strategy == AgentEntity.Strategy.FUNCTION_CALLING:
-            assistant_fc_runner = FunctionCallAgentRunner(
-                tenant_id=app_config.tenant_id,
-                application_generate_entity=application_generate_entity,
-                conversation=conversation,
-                app_config=app_config,
-                model_config=application_generate_entity.model_config,
-                config=agent_entity,
-                queue_manager=queue_manager,
-                message=message,
-                user_id=application_generate_entity.user_id,
-                memory=memory,
-                prompt_messages=prompt_message,
-                variables_pool=tool_variables,
-                db_variables=tool_conversation_variables,
-                model_instance=model_instance
-            )
-            invoke_result = assistant_fc_runner.run(
-                message=message,
-                query=query,
-            )
+            runner_cls = FunctionCallAgentRunner
+        else:
+            raise ValueError(f"Invalid agent strategy: {agent_entity.strategy}")
+        
+        runner = runner_cls(
+            tenant_id=app_config.tenant_id,
+            application_generate_entity=application_generate_entity,
+            conversation=conversation,
+            app_config=app_config,
+            model_config=application_generate_entity.model_config,
+            config=agent_entity,
+            queue_manager=queue_manager,
+            message=message,
+            user_id=application_generate_entity.user_id,
+            memory=memory,
+            prompt_messages=prompt_message,
+            variables_pool=tool_variables,
+            db_variables=tool_conversation_variables,
+            model_instance=model_instance
+        )
+
+        invoke_result = runner.run(
+            message=message,
+            query=query,
+            inputs=inputs,
+        )
 
         # handle invoke result
         self._handle_invoke_result(

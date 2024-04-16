@@ -1,8 +1,7 @@
 import json
 import logging
 
-from langchain.schema import OutputParserException
-
+from core.llm_generator.output_parser.errors import OutputParserException
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT, GENERATOR_QA_PROMPT

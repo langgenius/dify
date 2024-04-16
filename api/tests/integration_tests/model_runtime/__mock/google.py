@@ -10,6 +10,7 @@ from google.generativeai import GenerativeModel
 from google.generativeai.client import _ClientManager, configure
 from google.generativeai.types import GenerateContentResponse
 from google.generativeai.types.generation_types import BaseGenerateContentResponse
+from google.ai.generativelanguage_v1beta.types import content as gag_content
 
 current_api_key = ''
 
@@ -29,7 +30,7 @@ class MockGoogleResponseClass(object):
 
                     }),
                     chunks=[]
-                )                
+                )
             else:
                 yield GenerateContentResponse(
                     done=False,
@@ -42,6 +43,14 @@ class MockGoogleResponseClass(object):
 
 class MockGoogleResponseCandidateClass(object):
     finish_reason = 'stop'
+
+    @property
+    def content(self) -> gag_content.Content:
+        return gag_content.Content(
+            parts=[
+                gag_content.Part(text='it\'s google!')
+            ]
+        )
 
 class MockGoogleClass(object):
     @staticmethod

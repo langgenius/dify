@@ -94,7 +94,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
       } as any}
       chatList={chatList}
       isResponding={isResponding}
-      chatContainerclassName='px-4'
+      chatContainerClassName='px-4'
       chatContainerInnerClassName='pt-6'
       chatFooterClassName='px-4 rounded-bl-2xl'
       chatFooterInnerClassName='pb-4'

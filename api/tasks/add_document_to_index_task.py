@@ -70,7 +70,7 @@ def add_document_to_index_task(dataset_document_id: str):
     except Exception as e:
         logging.exception("add document to index failed")
         dataset_document.enabled = False
-        dataset_document.disabled_at = datetime.datetime.utcnow()
+        dataset_document.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         dataset_document.status = 'error'
         dataset_document.error = str(e)
         db.session.commit()
