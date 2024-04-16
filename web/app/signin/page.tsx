@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react'
 import cn from 'classnames'
 import Script from 'next/script'
+import Loading from '../components/base/loading'
 import Forms from './forms'
 import Header from './_header'
 import style from './page.module.css'
@@ -12,11 +13,14 @@ import type { EnterpriseFeatures } from '@/types/enterprise'
 import { defaultEnterpriseFeatures } from '@/types/enterprise'
 
 const SignIn = () => {
+  const [loading, setLoading] = useState<boolean>(true)
   const [enterpriseFeatures, setEnterpriseFeatures] = useState<EnterpriseFeatures>(defaultEnterpriseFeatures)
 
   useEffect(() => {
     getEnterpriseFeatures().then((res) => {
       setEnterpriseFeatures(res)
+    }).finally(() => {
+      setLoading(false)
     })
   }, [])
 
@@ -53,7 +57,20 @@ gtag('config', 'AW-11217955271"');
           )
         }>
           <Header />
-          {!enterpriseFeatures.sso_enforced_for_signin && (
+
+          {loading && (
+            <div className={
+              cn(
+                'flex flex-col items-center w-full grow items-center justify-center',
+                'px-6',
+                'md:px-[108px]',
+              )
+            }>
+              <Loading type='area' />
+            </div>
+          )}
+
+          {!loading && !enterpriseFeatures.sso_enforced_for_signin && (
             <>
               <Forms />
               <div className='px-8 py-6 text-sm font-normal text-gray-500'>
@@ -61,7 +78,8 @@ gtag('config', 'AW-11217955271"');
               </div>
             </>
           )}
-          {enterpriseFeatures.sso_enforced_for_signin && (
+
+          {!loading && enterpriseFeatures.sso_enforced_for_signin && (
             <EnterpriseSSOForm protocol={enterpriseFeatures.sso_enforced_for_signin_protocol} />
           )}
         </div>
