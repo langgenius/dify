@@ -140,23 +140,12 @@ class Vector:
             )
         elif vector_type == "pgvector":
             from core.rag.datasource.vdb.pgvector.pgvector import PgvectorConfig, PGVector
-            if self._dataset.collection_binding_id:
-                dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
-                    filter(DatasetCollectionBinding.id == self._dataset.collection_binding_id). \
-                    one_or_none()
-                if dataset_collection_binding:
-                    collection_name = dataset_collection_binding.collection_name
-                else:
-                    raise ValueError('Dataset Collection Bindings is not exist!')
+            if self._dataset.index_struct_dict:
+                class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
+                collection_name = class_prefix
             else:
-                if self._dataset.index_struct_dict:
-                    class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
-                    collection_name = class_prefix
-                else:
-                    dataset_id = self._dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-
-            if not self._dataset.index_struct_dict:
+                dataset_id = self._dataset.id
+                collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                 index_struct_dict = {
                     "type": 'pgvector',
                     "vector_store": {"class_prefix": collection_name}

@@ -63,10 +63,10 @@ class PGVector(BaseVector):
                 return
             index_name = f"{self._collection_name}_embedding_index"
             with Session(self._client._engine) as session:
-                drop_statement = sql_text(f"DROP TABLE IF EXISTS {self._collection_name}")
+                drop_statement = sql_text(f"DROP TABLE IF EXISTS collection_{self._collection_name}")
                 session.execute(drop_statement)
                 create_statement = sql_text(f"""
-                    CREATE TABLE IF NOT EXISTS {self._collection_name} (
+                    CREATE TABLE IF NOT EXISTS collection_{self._collection_name} (
                         id UUID PRIMARY KEY,
                         text TEXT NOT NULL,
                         meta JSONB NOT NULL,
@@ -76,7 +76,7 @@ class PGVector(BaseVector):
                 session.execute(create_statement)
                 index_statement = sql_text(f"""
                         CREATE INDEX {index_name}
-                        ON {self._collection_name} USING vectors(embedding vector_l2_ops)
+                        ON collection_{self._collection_name} USING vectors(embedding vector_l2_ops)
                         WITH (options = $$
                                 optimizing.optimizing_threads = 30
                                 segment.max_growing_segment_size = 2000
@@ -106,7 +106,7 @@ class PGVector(BaseVector):
         result = None
         with Session(self._client._engine) as session:
             select_statement = sql_text(
-                f"SELECT id FROM {self._collection_name} WHERE meta->>'{key}' = '{value}'; "
+                f"SELECT id FROM collection_{self._collection_name} WHERE meta->>'{key}' = '{value}'; "
             )
             result = session.execute(select_statement).fetchall()
         if result:
@@ -123,7 +123,7 @@ class PGVector(BaseVector):
     def delete_by_ids(self, doc_ids: list[str]) -> None:
         with Session(self._client._engine) as session:
             select_statement = sql_text(
-                f"SELECT id FROM {self._collection_name} WHERE meta->>'doc_id' in ('{doc_ids}'); "
+                f"SELECT id FROM collection_{self._collection_name} WHERE meta->>'doc_id' in ('{doc_ids}'); "
             )
             result = session.execute(select_statement).fetchall()
         if result:
@@ -132,13 +132,13 @@ class PGVector(BaseVector):
 
     def delete(self) -> None:
         with Session(self._client._engine) as session:
-            session.execute(sql_text(f"DROP TABLE IF EXISTS {self._collection_name}"))
+            session.execute(sql_text(f"DROP TABLE IF EXISTS collection_{self._collection_name}"))
             session.commit()
 
     def text_exists(self, id: str) -> bool:
         with Session(self._client._engine) as session:
             select_statement = sql_text(
-                f"SELECT id FROM {self._collection_name} WHERE meta->>'doc_id' = '{id}' limit 1; "
+                f"SELECT id FROM collection_{self._collection_name} WHERE meta->>'doc_id' = '{id}' limit 1; "
             )
             result = session.execute(select_statement).fetchall()
         return len(result) > 0
