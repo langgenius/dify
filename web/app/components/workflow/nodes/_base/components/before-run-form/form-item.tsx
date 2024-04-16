@@ -15,6 +15,7 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import Button from '@/app/components/base/button'
 
 type Props = {
   payload: InputVar
@@ -49,6 +50,24 @@ const FormItem: FC<Props> = ({
       onChange(newValues)
     }
   }, [value, onChange])
+
+  const onGetCurrentPosition = () => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const result = `lat:${position.coords.latitude},lon:${position.coords.longitude}`
+          onChange(result)
+        },
+        (error) => {
+          console.log(error.message)
+        },
+      )
+    }
+    else {
+      console.log('Geolocation is not supported by this browser.')
+    }
+  }
+
   const nodeKey = (() => {
     if (typeof payload.label === 'object') {
       const { nodeType, nodeName, variable } = payload.label
@@ -100,6 +119,25 @@ const FormItem: FC<Props> = ({
               onChange={e => onChange(e.target.value)}
               placeholder={t('appDebug.variableConig.inputPlaceholder')!}
             />
+          )
+        }
+
+        {
+          type === InputVarType.geolocation && (
+            <div className={'w-full'}>
+              <input
+                className="w-full px-3 text-sm leading-8 text-gray-900 border-0 rounded-lg grow h-8 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+                value={value || ''}
+                onChange={e => onChange(e.target.value)}
+                placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              />
+              <Button
+                type="primary"
+                onClick={() => onGetCurrentPosition()}
+                className='!h-8 !p-3'>
+                <span className='uppercase text-[13px]'>{t('appDebug.variableConig.getCurrentLocation')}</span>
+              </Button>
+            </div>
           )
         }
 

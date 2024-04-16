@@ -100,6 +100,8 @@ export type UserInputFormItem = {
   'select': SelectTypeFormItem
 } | {
   'paragraph': TextTypeFormItem
+} | {
+  'geolocation': TextTypeFormItem
 }
 
 export type AgentTool = {

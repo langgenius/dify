@@ -271,6 +271,8 @@ const translation = {
     'paragraph': '段落',
     'select': '下拉选项',
     'number': '数字',
+    'geolocation': '当前位置',
+    'getCurrentLocation': '获取当前位置',
     'notSet': '未设置，在 Prompt 中输入 {{input}} 试试',
     'stringTitle': '文本框设置',
     'maxLength': '最大长度',

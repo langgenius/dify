@@ -273,6 +273,8 @@ const translation = {
     'string': 'Short Text',
     'text-input': 'Short Text',
     'paragraph': 'Paragraph',
+    'geolocation': 'GeoLocation',
+    'getCurrentLocation': 'Get Current GeoLocation',
     'select': 'Select',
     'number': 'Number',
     'notSet': 'Not set, try typing {{input}} in the prefix prompt',

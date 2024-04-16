@@ -102,7 +102,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.labelNameRequired') })
       return
     }
-    if (isStringInput || type === InputVarType.number) {
+    if (isStringInput || type === InputVarType.number || type === InputVarType.geolocation) {
       onConfirm(tempPayload, moreInfo)
     }
     else {
@@ -143,6 +143,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
               <SelectTypeItem type={InputVarType.paragraph} selected={type === InputVarType.paragraph} onClick={() => handlePayloadChange('type')(InputVarType.paragraph)} />
               <SelectTypeItem type={InputVarType.select} selected={type === InputVarType.select} onClick={() => handlePayloadChange('type')(InputVarType.select)} />
               <SelectTypeItem type={InputVarType.number} selected={type === InputVarType.number} onClick={() => handlePayloadChange('type')(InputVarType.number)} />
+              <SelectTypeItem type={InputVarType.geolocation} selected={type === InputVarType.geolocation} onClick={() => handlePayloadChange('type')(InputVarType.geolocation)} />
             </div>
           </Field>
 

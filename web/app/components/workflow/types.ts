@@ -86,6 +86,7 @@ export enum InputVarType {
   textInput = 'text-input',
   paragraph = 'paragraph',
   select = 'select',
+  geolocation = 'geolocation',
   number = 'number',
   url = 'url',
   files = 'files',

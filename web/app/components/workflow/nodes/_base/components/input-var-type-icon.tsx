@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { InputVarType } from '../../../types'
-import { AlignLeft, LetterSpacing01 } from '@/app/components/base/icons/src/vender/line/editor'
+import { AlignLeft, BezierCurve03, LetterSpacing01 } from '@/app/components/base/icons/src/vender/line/editor'
 import { CheckDone01, Hash02 } from '@/app/components/base/icons/src/vender/line/general'
 
 type Props = {
@@ -16,6 +16,7 @@ const getIcon = (type: InputVarType) => {
     [InputVarType.paragraph]: AlignLeft,
     [InputVarType.select]: CheckDone01,
     [InputVarType.number]: Hash02,
+    [InputVarType.geolocation]: BezierCurve03,
   } as any)[type] || LetterSpacing01
 }
 

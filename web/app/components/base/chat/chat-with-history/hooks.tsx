@@ -129,7 +129,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
-    return (appParams?.user_input_form || []).filter((item: any) => item.paragraph || item.select || item['text-input']).map((item: any) => {
+    return (appParams?.user_input_form || []).filter((item: any) => item.geolocation || item.paragraph || item.select || item['text-input']).map((item: any) => {
+      if (item.geolocation) {
+        return {
+          ...item.geolocation,
+          type: 'geolocation',
+        }
+      }
       if (item.paragraph) {
         return {
           ...item.paragraph,

@@ -66,6 +66,7 @@ const SelectVarType: FC<Props> = ({
             <SelectItem type={InputVarType.paragraph} value='paragraph' text={t('appDebug.variableConig.paragraph')} onClick={handleChange}></SelectItem>
             <SelectItem type={InputVarType.select} value='select' text={t('appDebug.variableConig.select')} onClick={handleChange}></SelectItem>
             <SelectItem type={InputVarType.number} value='number' text={t('appDebug.variableConig.number')} onClick={handleChange}></SelectItem>
+            <SelectItem type={InputVarType.geolocation} value='geolocation' text={t('appDebug.variableConig.geolocation')} onClick={handleChange}></SelectItem>
           </div>
           <div className='h-[1px] bg-gray-100'></div>
           <div className='p-1'>
