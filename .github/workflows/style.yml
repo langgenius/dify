@@ -24,7 +24,7 @@ jobs:
           python-version: '3.10'
 
       - name: Python dependencies
-        run: pip install ruff
+        run: pip install ruff dotenv-linter
 
       - name: Ruff check
         run: ruff check ./api
