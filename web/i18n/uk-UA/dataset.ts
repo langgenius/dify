@@ -50,6 +50,7 @@ const translation = {
     noTag: 'Без тегів',
     noTagYet: 'Ще немає тегів',
     addTag: 'додати тег',
+    editTag: 'Редагувати теги',
     manageTags: 'Керувати тегами',
     selectorPlaceholder: 'Введіть для пошуку або створення',
     create: 'Створити',

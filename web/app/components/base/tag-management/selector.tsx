@@ -9,7 +9,7 @@ import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
 import SearchInput from '@/app/components/base/search-input'
-import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import Checkbox from '@/app/components/base/checkbox'
@@ -22,6 +22,7 @@ type TagSelectorProps = {
   position?: 'bl' | 'br'
   type: 'knowledge' | 'app'
   value: string[]
+  selectedTags?: Tag[]
   onChange?: () => void
 }
 
@@ -32,7 +33,7 @@ type PanelProps = {
 const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { targetID, type, value, onChange, onCreate } = props
+  const { targetID, type, value, selectedTags, onChange, onCreate } = props
   const { tagList, setTagList, setShowTagManagementModal } = useTagStore()
   const [keywords, setKeywords] = useState('')
   const handleKeywordsChange = (value: string) => {
@@ -101,7 +102,7 @@ const Panel = (props: PanelProps) => {
     props.onClose?.()
   }
   return (
-    <div className='relative w-[240px] bg-white rounded-lg border-[0.5px] border-gray-200' onMouseLeave={onMouseLeave}>
+    <div className='relative w-full bg-white rounded-lg border-[0.5px] border-gray-200' onMouseLeave={onMouseLeave}>
       <div className='p-2 border-b-[0.5px] border-black/5'>
         <SearchInput placeholder={t('dataset.tag.selectorPlaceholder') || ''} white value={keywords} onChange={handleKeywordsChange} />
       </div>
@@ -164,6 +165,7 @@ const TagSelector: FC<TagSelectorProps> = ({
   position,
   type,
   value,
+  selectedTags,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -175,13 +177,22 @@ const TagSelector: FC<TagSelectorProps> = ({
     setTagList(res)
   }
 
+  const triggerContent = useMemo(() => {
+    if (selectedTags?.length)
+      return selectedTags.map(tag => tag.name).join(', ')
+    return ''
+  }, [selectedTags])
+
   const Trigger = () => {
     return (
       <div className={cn(
-        'flex items-center px-1 text-xs leading-4.5 cursor-pointer border border-dashed rounded-[5px]',
+        'group/tip relative w-full flex items-center gap-1 px-2 py-[7px] rounded-md cursor-pointer hover:bg-gray-100',
       )}>
-        <Plus className='w-3 h-3' />
-        <span className='ml-0.5 '>{t('dataset.tag.addTag')}</span>
+        <Tag01 className='shrink-0 w-3 h-3' />
+        <div className='grow text-xs text-start leading-[18px] font-normal truncate'>
+          {!triggerContent ? t('dataset.tag.addTag') : triggerContent}
+        </div>
+        <span className='hidden absolute top-[-21px] left-[50%] translate-x-[-50%] px-2 py-[3px] border-[0.5px] border-black/5 rounded-md bg-gray-25 text-gray-700 text-xs font-medium leading-[18px] group-hover/tip:block'>{t('dataset.tag.editTag')}</span>
       </div>
     )
   }
@@ -194,6 +205,7 @@ const TagSelector: FC<TagSelectorProps> = ({
               targetID={targetID}
               type={type}
               value={value}
+              selectedTags={selectedTags}
               onChange={onChange}
               onCreate={getTagList}
             />
@@ -203,12 +215,12 @@ const TagSelector: FC<TagSelectorProps> = ({
           btnElement={<Trigger />}
           btnClassName={open =>
             cn(
-              open ? '!bg-gray-50 !text-gray-500' : '!bg-transparent',
-              '!p-0 !border-0 !text-gray-400 hover:!bg-gray-50 hover:!text-gray-500',
+              open ? '!bg-gray-100 !text-gray-700' : '!bg-transparent',
+              '!w-full !p-0 !border-0 !text-gray-500 hover:!bg-gray-100 hover:!text-gray-700',
             )
           }
-          popupClassName='!ring-0'
-          className={'!w-[128px] h-fit !z-20'}
+          popupClassName='!w-full !ring-0'
+          className={'!w-full h-fit !z-20'}
         />
       )}
     </>

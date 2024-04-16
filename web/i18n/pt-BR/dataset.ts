@@ -49,6 +49,7 @@ const translation = {
     noTag: 'Sem tags',
     noTagYet: 'Nenhuma tag ainda',
     addTag: 'adicionar etiqueta',
+    editTag: 'Editar tags',
     manageTags: 'Gerenciar tags',
     selectorPlaceholder: 'Digite para pesquisar ou criar',
     create: 'Criar',
