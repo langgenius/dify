@@ -1,4 +1,4 @@
-model: anthropic.claude-3-opus-20240307-v1:0
+model: anthropic.claude-3-opus-20240229-v1:0
 label:
   en_US: Claude 3 Opus
 model_type: llm
