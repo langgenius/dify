@@ -19,29 +19,33 @@ QUESTION_CLASSIFIER_SYSTEM_PROMPT = """
 QUESTION_CLASSIFIER_USER_PROMPT_1 = """
     { "input_text": ["I recently had a great experience with your company. The service was prompt and the staff was very friendly."],
     "categories": ["Customer Service", "Satisfaction", "Sales", "Product"],
-    "classification_instructions": ["classify the text based on the feedback provided by customer"]}```JSON
+    "classification_instructions": ["classify the text based on the feedback provided by customer"]}
 """
 
 QUESTION_CLASSIFIER_ASSISTANT_PROMPT_1 = """
+```json
     {"keywords": ["recently", "great experience", "company", "service", "prompt", "staff", "friendly"],
-    "categories": ["Customer Service"]}```
+    "categories": ["Customer Service"]}
+```
 """
 
 QUESTION_CLASSIFIER_USER_PROMPT_2 = """
     {"input_text": ["bad service, slow to bring the food"],
     "categories": ["Food Quality", "Experience", "Price" ], 
-    "classification_instructions": []}```JSON
+    "classification_instructions": []}
 """
 
 QUESTION_CLASSIFIER_ASSISTANT_PROMPT_2 = """
+```json
     {"keywords": ["bad service", "slow", "food", "tip", "terrible", "waitresses"],
-    "categories": ["Experience"]}```
+    "categories": ["Experience"]}
+```
 """
 
 QUESTION_CLASSIFIER_USER_PROMPT_3 = """
     '{{"input_text": ["{input_text}"],',
     '"categories": ["{categories}" ], ',
-    '"classification_instructions": ["{classification_instructions}"]}}```JSON'
+    '"classification_instructions": ["{classification_instructions}"]}}'
 """
 
 QUESTION_CLASSIFIER_COMPLETION_PROMPT = """
