@@ -81,7 +81,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
     try {
       setPending(true)
       await deleteTag(tagID)
-      notify({ type: 'success', message: t('dataset.tag.created') })
+      notify({ type: 'success', message: t('common.tag.created') })
       const newList = tagList.filter(tag => tag.id !== tagID)
       setTagList([
         ...newList,
@@ -89,7 +89,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       setPending(false)
     }
     catch (e: any) {
-      notify({ type: 'error', message: t('dataset.tag.failed') })
+      notify({ type: 'error', message: t('common.tag.failed') })
       setPending(false)
     }
   }

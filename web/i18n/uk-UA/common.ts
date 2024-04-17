@@ -507,6 +507,21 @@ const translation = {
     pasteImageLinkInvalid: 'Недійсне посилання на зображення',
     imageUpload: 'Завантаження зображення',
   },
+  tag: {
+    placeholder: 'Усі теги',
+    addNew: 'Додати новий тег',
+    noTag: 'Без тегів',
+    noTagYet: 'Ще немає тегів',
+    addTag: 'додати тег',
+    editTag: 'Редагувати теги',
+    manageTags: 'Керувати тегами',
+    selectorPlaceholder: 'Введіть для пошуку або створення',
+    create: 'Створити',
+    delete: 'Видалити тег',
+    deleteTip: 'Тег використовується, видалити його?',
+    created: 'Тег створено успішно',
+    failed: 'Не вдалося створити тег',
+  },
 }
 
 export default translation

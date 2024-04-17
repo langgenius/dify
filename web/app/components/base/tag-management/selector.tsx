@@ -23,6 +23,7 @@ type TagSelectorProps = {
   type: 'knowledge' | 'app'
   value: string[]
   selectedTags: Tag[]
+  onCacheUpdate: (tags: Tag[]) => void
   onChange?: () => void
 }
 
@@ -33,7 +34,7 @@ type PanelProps = {
 const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { targetID, type, value, selectedTags, onChange, onCreate } = props
+  const { targetID, type, value, selectedTags, onCacheUpdate, onChange, onCreate } = props
   const { tagList, setTagList, setShowTagManagementModal } = useTagStore()
   const [selectedTagIDs, setSelectedTagIDs] = useState<string[]>(value)
   const [keywords, setKeywords] = useState('')
@@ -60,7 +61,7 @@ const Panel = (props: PanelProps) => {
     try {
       setCreating(true)
       const newTag = await createTag(keywords, type)
-      notify({ type: 'success', message: t('dataset.tag.created') })
+      notify({ type: 'success', message: t('common.tag.created') })
       setTagList([
         ...tagList,
         newTag,
@@ -69,7 +70,7 @@ const Panel = (props: PanelProps) => {
       onCreate()
     }
     catch (e: any) {
-      notify({ type: 'error', message: t('dataset.tag.failed') })
+      notify({ type: 'error', message: t('common.tag.failed') })
       setCreating(false)
     }
   }
@@ -104,7 +105,8 @@ const Panel = (props: PanelProps) => {
   const handleValueChange = () => {
     const addTagIDs = selectedTagIDs.filter(v => !value.includes(v))
     const removeTagIDs = value.filter(v => !selectedTagIDs.includes(v))
-
+    const selectedTags = tagList.filter(tag => selectedTagIDs.includes(tag.id))
+    onCacheUpdate(selectedTags)
     Promise.all([
       ...(addTagIDs.length ? [bind(addTagIDs)] : []),
       ...[removeTagIDs.length ? removeTagIDs.map(tagID => unbind(tagID)) : []],
@@ -125,14 +127,14 @@ const Panel = (props: PanelProps) => {
   return (
     <div className='relative w-full bg-white rounded-lg border-[0.5px] border-gray-200' onMouseLeave={onMouseLeave}>
       <div className='p-2 border-b-[0.5px] border-black/5'>
-        <SearchInput placeholder={t('dataset.tag.selectorPlaceholder') || ''} white value={keywords} onChange={handleKeywordsChange} />
+        <SearchInput placeholder={t('common.tag.selectorPlaceholder') || ''} white value={keywords} onChange={handleKeywordsChange} />
       </div>
       {keywords && notExisted && (
         <div className='p-1'>
           <div className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100' onClick={createNewTag}>
             <Plus className='h-4 w-4 text-gray-500' />
             <div className='grow text-sm text-gray-700 leading-5 truncate'>
-              {`${t('dataset.tag.create')} `}
+              {`${t('common.tag.create')} `}
               <span className='font-medium'>{`"${keywords}"`}</span>
             </div>
           </div>
@@ -177,7 +179,7 @@ const Panel = (props: PanelProps) => {
         <div className='p-1'>
           <div className='p-3 flex flex-col items-center gap-1'>
             <Tag03 className='h-6 w-6 text-gray-300' />
-            <div className='text-gray-500 text-xs leading-[14px]'>{t('dataset.tag.noTag')}</div>
+            <div className='text-gray-500 text-xs leading-[14px]'>{t('common.tag.noTag')}</div>
           </div>
         </div>
       )}
@@ -186,7 +188,7 @@ const Panel = (props: PanelProps) => {
         <div className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100' onClick={() => setShowTagManagementModal(true)}>
           <Tag03 className='h-4 w-4 text-gray-500' />
           <div className='grow text-sm text-gray-700 leading-5 truncate'>
-            {t('dataset.tag.manageTags')}
+            {t('common.tag.manageTags')}
           </div>
         </div>
       </div>
@@ -201,6 +203,7 @@ const TagSelector: FC<TagSelectorProps> = ({
   type,
   value,
   selectedTags,
+  onCacheUpdate,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -225,9 +228,9 @@ const TagSelector: FC<TagSelectorProps> = ({
       )}>
         <Tag01 className='shrink-0 w-3 h-3' />
         <div className='grow text-xs text-start leading-[18px] font-normal truncate'>
-          {!triggerContent ? t('dataset.tag.addTag') : triggerContent}
+          {!triggerContent ? t('common.tag.addTag') : triggerContent}
         </div>
-        <span className='hidden absolute top-[-21px] left-[50%] translate-x-[-50%] px-2 py-[3px] border-[0.5px] border-black/5 rounded-md bg-gray-25 text-gray-700 text-xs font-medium leading-[18px] group-hover/tip:block'>{t('dataset.tag.editTag')}</span>
+        <span className='hidden absolute top-[-21px] left-[50%] translate-x-[-50%] px-2 py-[3px] border-[0.5px] border-black/5 rounded-md bg-gray-25 text-gray-700 text-xs font-medium leading-[18px] group-hover/tip:block'>{t('common.tag.editTag')}</span>
       </div>
     )
   }
@@ -237,10 +240,11 @@ const TagSelector: FC<TagSelectorProps> = ({
         <CustomPopover
           htmlContent={
             <Panel
-              targetID={targetID}
               type={type}
+              targetID={targetID}
               value={value}
               selectedTags={selectedTags}
+              onCacheUpdate={onCacheUpdate}
               onChange={onChange}
               onCreate={getTagList}
             />

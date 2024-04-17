@@ -15,17 +15,20 @@ import TabSliderNew from '@/app/components/base/tab-slider-new'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
 import {
-  // AiText,
   ChatBot,
   CuteRobot,
 } from '@/app/components/base/icons/src/vender/line/communication'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import SearchInput from '@/app/components/base/search-input'
+import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
+import TagManagementModal from '@/app/components/base/tag-management'
+import TagFilter from '@/app/components/base/tag-management/filter'
 
 const getKey = (
   pageIndex: number,
   previousPageData: AppListResponse,
   activeTab: string,
+  tags: string[],
   keywords: string,
 ) => {
   if (!pageIndex || previousPageData.has_more) {
@@ -36,6 +39,9 @@ const getKey = (
     else
       delete params.params.mode
 
+    if (tags.length)
+      params.params.tag_ids = tags
+
     return params
   }
   return null
@@ -44,14 +50,17 @@ const getKey = (
 const Apps = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
+  const { showTagManagementModal } = useTagStore()
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'all',
   })
+  const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
+  const [tagIDs, setTagIDs] = useState<string[]>([])
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
 
   const { data, isLoading, setSize, mutate } = useSWRInfinite(
-    (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, searchKeywords),
+    (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, tagIDs, searchKeywords),
     fetchAppList,
     { revalidateFirstPage: true },
   )
@@ -61,7 +70,6 @@ const Apps = () => {
     { value: 'all', text: t('app.types.all'), icon: <DotsGrid className='w-[14px] h-[14px] mr-1'/> },
     { value: 'chat', text: t('app.types.chatbot'), icon: <ChatBot className='w-[14px] h-[14px] mr-1'/> },
     { value: 'agent-chat', text: t('app.types.agent'), icon: <CuteRobot className='w-[14px] h-[14px] mr-1'/> },
-    // { value: 'completion', text: t('app.newApp.completeApp'), icon: <AiText className='w-[14px] h-[14px] mr-1'/> },
     { value: 'workflow', text: t('app.types.workflow'), icon: <Route className='w-[14px] h-[14px] mr-1'/> },
   ]
 
@@ -88,10 +96,17 @@ const Apps = () => {
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
   }, { wait: 500 })
-
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
     handleSearch()
+  }
+
+  const { run: handleTagsUpdate } = useDebounceFn(() => {
+    setTagIDs(tagFilterValue)
+  }, { wait: 500 })
+  const handleTagsChange = (value: string[]) => {
+    setTagFilterValue(value)
+    handleTagsUpdate()
   }
 
   return (
@@ -102,7 +117,10 @@ const Apps = () => {
           onChange={setActiveTab}
           options={options}
         />
-        <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+        <div className='flex items-center gap-2'>
+          <TagFilter type='app' value={tagFilterValue} onChange={handleTagsChange} />
+          <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+        </div>
       </div>
       <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
         {isCurrentWorkspaceManager
@@ -113,6 +131,9 @@ const Apps = () => {
         <CheckModal />
       </nav>
       <div ref={anchorRef} className='h-0'> </div>
+      {showTagManagementModal && (
+        <TagManagementModal type='app' show={showTagManagementModal} />
+      )}
     </>
   )
 }

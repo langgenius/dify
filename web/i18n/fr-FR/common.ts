@@ -507,6 +507,21 @@ const translation = {
     pasteImageLinkInvalid: 'Lien d\'image invalide',
     imageUpload: 'Téléchargement d\'image',
   },
+  tag: {
+    placeholder: 'Toutes les balises',
+    addNew: 'Ajouter une nouvelle balise',
+    noTag: 'Aucune balise',
+    noTagYet: 'Aucune balise pour l\'instant',
+    addTag: 'ajouter une balise',
+    editTag: 'Modifier les balises',
+    manageTags: 'Gérer les balises',
+    selectorPlaceholder: 'Type de recherche ou de création',
+    create: 'Créer',
+    delete: 'Supprimer la balise',
+    deleteTip: 'Le tag est utilisé, le supprimer ?',
+    created: 'Tag créé avec succès',
+    failed: 'La création de la balise a échoué',
+  },
 }
 
 export default translation
