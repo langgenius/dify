@@ -139,7 +139,8 @@ class Vector:
                 dim=dim
             )
         elif vector_type == "elasticsearch":
-            from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import ElasticSearchConfig, ElasticSearchVector
+            from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import ElasticSearchConfig, \
+                ElasticSearchVector
             if self._dataset.index_struct_dict:
                 class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
                 index_name = class_prefix
