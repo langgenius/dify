@@ -507,6 +507,21 @@ const translation = {
     pasteImageLinkInvalid: 'Invalid image link',
     imageUpload: 'Image Upload',
   },
+  tag: {
+    placeholder: 'All Tags',
+    addNew: 'Add new tag',
+    noTag: 'No tags',
+    noTagYet: 'No tags yet',
+    addTag: 'Add tags',
+    editTag: 'Edit tags',
+    manageTags: 'Manage Tags',
+    selectorPlaceholder: 'Type to search or create',
+    create: 'Create',
+    delete: 'Delete tag',
+    deleteTip: 'The tag is being used, delete it?',
+    created: 'Tag created successfully',
+    failed: 'Tag creation failed',
+  },
 }
 
 export default translation

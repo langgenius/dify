@@ -502,6 +502,21 @@ const translation = {
     pasteImageLinkInvalid: 'Ungültiger Bildlink',
     imageUpload: 'Bild-Upload',
   },
+  tag: {
+    placeholder: 'Alle Tags',
+    addNew: 'Neues Tag hinzufügen',
+    noTag: 'Keine Tags',
+    noTagYet: 'Noch keine Tags',
+    addTag: 'Tags hinzufügen',
+    editTag: 'Tags bearbeiten',
+    manageTags: 'Tags verwalten',
+    selectorPlaceholder: 'Typ zum Suchen oder Erstellen',
+    create: 'Erstellen',
+    delete: 'Tag löschen',
+    deleteTip: 'Das Tag wird verwendet, löschen?',
+    created: 'Tag erfolgreich erstellt',
+    failed: 'Tag-Erstellung fehlgeschlagen',
+  },
 }
 
 export default translation

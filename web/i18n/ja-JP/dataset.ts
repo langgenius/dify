@@ -44,21 +44,6 @@ const translation = {
   },
   docsFailedNotice: 'ドキュメントのインデックスに失敗しました',
   retry: '再試行',
-  tag: {
-    placeholder: 'すべてのタグ',
-    addNew: '新しいタグを追加',
-    noTag: 'タグなし',
-    noTagYet: 'まだタグがありません',
-    addTag: 'タグを追加',
-    editTag: 'タグを編集',
-    manageTags: 'タグの管理',
-    selectorPlaceholder: '検索または作成する文字を入力',
-    create: '作成',
-    delete: 'タグを削除',
-    deleteTip: 'タグは使用されています、削除しますか',
-    created: 'タグは正常に作成されました',
-    failed: 'タグの作成に失敗しました',
-  },
 }
 
 export default translation

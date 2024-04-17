@@ -86,7 +86,7 @@ const TagFilter: FC<TagFilterProps> = ({
               <Tag01 className='h-3.5 w-3.5 text-gray-700' />
             </div>
             <div className='text-[13px] leading-[18px] text-gray-700'>
-              {!value.length && t('dataset.tag.placeholder')}
+              {!value.length && t('common.tag.placeholder')}
               {!!value.length && currentTag?.name}
             </div>
             {value.length > 1 && (
@@ -126,7 +126,7 @@ const TagFilter: FC<TagFilterProps> = ({
               {!filteredTagList.length && (
                 <div className='p-3 flex flex-col items-center gap-1'>
                   <Tag03 className='h-6 w-6 text-gray-300' />
-                  <div className='text-gray-500 text-xs leading-[14px]'>{t('dataset.tag.noTag')}</div>
+                  <div className='text-gray-500 text-xs leading-[14px]'>{t('common.tag.noTag')}</div>
                 </div>
               )}
             </div>
