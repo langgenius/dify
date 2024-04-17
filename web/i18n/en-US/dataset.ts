@@ -44,20 +44,6 @@ const translation = {
   },
   docsFailedNotice: 'documents failed to be indexed',
   retry: 'Retry',
-  tag: {
-    placeholder: 'All Tags',
-    addNew: 'Add new tag',
-    noTag: 'No tags',
-    noTagYet: 'No tags yet',
-    addTag: 'add tag',
-    manageTags: 'Manage Tags',
-    selectorPlaceholder: 'Type to search or create',
-    create: 'Create',
-    delete: 'Delete tag',
-    deleteTip: 'The tag is being used, delete it?',
-    created: 'Tag created successfully',
-    failed: 'Tag creation failed',
-  },
 }
 
 export default translation

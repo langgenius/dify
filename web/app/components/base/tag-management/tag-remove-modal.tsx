@@ -33,11 +33,11 @@ const TagRemoveModal = ({ show, tag, onConfirm, onClose }: TagRemoveModalProps) 
         <AlertTriangle className='w-6 h-6 text-[rgb(247,144,9)]' />
       </div>
       <div className='mt-3 text-xl font-semibold leading-[30px] text-gray-900'>
-        {`${t('dataset.tag.delete')} `}
+        {`${t('common.tag.delete')} `}
         <span>{`"${tag.name}"`}</span>
       </div>
       <div className='my-1 text-gray-500 text-sm leading-5'>
-        {t('dataset.tag.deleteTip')}
+        {t('common.tag.deleteTip')}
       </div>
       <div className='pt-6 flex items-center justify-end'>
         <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onClose}>{t('common.operation.cancel')}</Button>

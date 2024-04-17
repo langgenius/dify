@@ -1,7 +1,7 @@
 import type { FC } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDebounceFn } from 'ahooks'
+import { useDebounceFn, useMount } from 'ahooks'
 import cn from 'classnames'
 import { useStore as useTagStore } from './store'
 import {
@@ -17,27 +17,6 @@ import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 
 import { fetchTagList } from '@/service/tag'
-
-const MOCK_TAGS = [
-  {
-    id: '001',
-    type: 'knowledge',
-    name: 'good',
-    bingding_count: 27,
-  },
-  {
-    id: '002',
-    type: 'knowledge',
-    name: 'bad',
-    bingding_count: 12,
-  },
-  {
-    id: '003',
-    type: 'knowledge',
-    name: 'nice',
-    bingding_count: 6,
-  },
-]
 
 type TagFilterProps = {
   type: 'knowledge' | 'app'
@@ -79,12 +58,11 @@ const TagFilter: FC<TagFilterProps> = ({
       onChange([...value, tag.id])
   }
 
-  useEffect(() => {
+  useMount(() => {
     fetchTagList(type).then((res) => {
       setTagList(res)
     })
-    // setTagList(MOCK_TAGS)
-  }, [])
+  })
 
   return (
     <PortalToFollowElem
@@ -108,7 +86,7 @@ const TagFilter: FC<TagFilterProps> = ({
               <Tag01 className='h-3.5 w-3.5 text-gray-700' />
             </div>
             <div className='text-[13px] leading-[18px] text-gray-700'>
-              {!value.length && t('dataset.tag.placeholder')}
+              {!value.length && t('common.tag.placeholder')}
               {!!value.length && currentTag?.name}
             </div>
             {value.length > 1 && (
@@ -148,7 +126,7 @@ const TagFilter: FC<TagFilterProps> = ({
               {!filteredTagList.length && (
                 <div className='p-3 flex flex-col items-center gap-1'>
                   <Tag03 className='h-6 w-6 text-gray-300' />
-                  <div className='text-gray-500 text-xs leading-[14px]'>{t('dataset.tag.noTag')}</div>
+                  <div className='text-gray-500 text-xs leading-[14px]'>{t('common.tag.noTag')}</div>
                 </div>
               )}
             </div>

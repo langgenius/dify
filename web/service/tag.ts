@@ -36,10 +36,10 @@ export const bindTag = (tagIDList: string[], targetID: string, type: string) => 
   })
 }
 
-export const unBindTag = (tagIDList: string[], targetID: string, type: string) => {
+export const unBindTag = (tagID: string, targetID: string, type: string) => {
   return post('/tag-bindings/remove', {
     body: {
-      tag_ids: tagIDList,
+      tag_id: tagID,
       target_id: targetID,
       type,
     },
