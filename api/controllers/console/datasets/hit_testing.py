@@ -12,7 +12,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.console.datasets.error import DatasetNotInitializedError, HighQualityDatasetOnlyError
+from controllers.console.datasets.error import DatasetNotInitializedError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.errors.error import (

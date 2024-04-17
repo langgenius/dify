@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import Optional, Union, cast
 
@@ -26,8 +25,8 @@ from core.workflow.nodes.question_classifier.template_prompts import (
     QUESTION_CLASSIFIER_USER_PROMPT_2,
     QUESTION_CLASSIFIER_USER_PROMPT_3,
 )
-from models.workflow import WorkflowNodeExecutionStatus
 from libs.json_in_md_parser import parse_and_check_json_markdown
+from models.workflow import WorkflowNodeExecutionStatus
 
 
 class QuestionClassifierNode(LLMNode):
