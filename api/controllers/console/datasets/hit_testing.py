@@ -45,10 +45,6 @@ class HitTestingApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        # only high quality dataset can be used for hit testing
-        if dataset.indexing_technique != 'high_quality':
-            raise HighQualityDatasetOnlyError()
-
         parser = reqparse.RequestParser()
         parser.add_argument('query', type=str, location='json')
         parser.add_argument('retrieval_model', type=dict, required=False, location='json')

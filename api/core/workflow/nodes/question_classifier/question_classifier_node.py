@@ -27,6 +27,7 @@ from core.workflow.nodes.question_classifier.template_prompts import (
     QUESTION_CLASSIFIER_USER_PROMPT_3,
 )
 from models.workflow import WorkflowNodeExecutionStatus
+from libs.json_in_md_parser import parse_and_check_json_markdown
 
 
 class QuestionClassifierNode(LLMNode):
@@ -64,7 +65,8 @@ class QuestionClassifierNode(LLMNode):
         )
         categories = [_class.name for _class in node_data.classes]
         try:
-            result_text_json = json.loads(result_text.strip('```JSON\n'))
+            result_text_json = parse_and_check_json_markdown(result_text, [])
+            #result_text_json = json.loads(result_text.strip('```JSON\n'))
             categories_result = result_text_json.get('categories', [])
             if categories_result:
                 categories = categories_result
