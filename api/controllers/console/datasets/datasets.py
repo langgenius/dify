@@ -49,7 +49,7 @@ class DatasetListApi(Resource):
         ids = request.args.getlist('ids')
         provider = request.args.get('provider', default="vendor")
         search = request.args.get('keyword', default=None, type=str)
-        tag_ids = request.args.get('tag_ids', default=None, type=list)
+        tag_ids = request.args.getlist('tag_ids')
 
         if ids:
             datasets, total = DatasetService.get_datasets_by_ids(ids, current_user.current_tenant_id)
