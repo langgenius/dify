@@ -473,7 +473,7 @@ const Debug: FC<IDebug> = ({
                 )}
               </div>
             )}
-            {showPromptLogModal && (
+            {mode === AppType.completion && showPromptLogModal && (
               <PromptLogModal
                 width={width}
                 currentLogItem={currentLogItem}
