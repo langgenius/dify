@@ -24,10 +24,13 @@ jobs:
           python-version: '3.10'
 
       - name: Python dependencies
-        run: pip install ruff
+        run: pip install ruff dotenv-linter
 
       - name: Ruff check
         run: ruff check ./api
+
+      - name: Dotenv check
+        run: dotenv-linter ./api/.env.example ./web/.env.example
 
       - name: Lint hints
         if: failure()

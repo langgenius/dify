@@ -1,7 +1,5 @@
 import os
 
-from werkzeug.exceptions import Unauthorized
-
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     from gevent import monkey
 
@@ -10,10 +8,6 @@ if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     import grpc.experimental.gevent
 
     grpc.experimental.gevent.init_gevent()
-
-    import langchain
-
-    langchain.verbose = True
 
 import json
 import logging
@@ -24,6 +18,7 @@ import warnings
 from flask import Flask, Response, request
 from flask_cors import CORS
 
+from werkzeug.exceptions import Unauthorized
 from commands import register_commands
 from config import CloudEditionConfig, Config
 from extensions import (
