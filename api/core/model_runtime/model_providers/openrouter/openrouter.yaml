@@ -80,7 +80,7 @@ model_credential_schema:
       label:
         zh_Hans: Vision 支持
         en_US: Vision Support
-      type: select
+      type: radio
       required: false
       default: no_support
       options:
