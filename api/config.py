@@ -62,6 +62,7 @@ DEFAULTS = {
     'KEYWORD_STORE': 'jieba',
     'BATCH_UPLOAD_LIMIT': 20,
     'TOOL_ICON_CACHE_MAX_AGE': 3600,
+    'INNER_API': 'False',
     'ENTERPRISE_ENABLED': 'False',
 }
 
@@ -127,9 +128,9 @@ class Config:
         # Alternatively you can set it with `SECRET_KEY` environment variable.
         self.SECRET_KEY = get_env('SECRET_KEY')
 
-        # Enterprise Edition
-        # Only the inner_api edition can be set to True
+        # Enable or disable the inner API.
         self.INNER_API = get_bool_env('INNER_API')
+        # The inner API key is used to authenticate the inner API.
         self.INNER_API_KEY = get_env('INNER_API_KEY')
 
         # cors settings
