@@ -3,7 +3,7 @@ from typing import Any
 
 from pgvecto_rs.sdk import PGVectoRs, Record
 from pydantic import BaseModel, root_validator
-from sqlalchemy import text as sql_text
+from sqlalchemy import text as sql_text, create_engine, text
 from sqlalchemy.orm import Session
 
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -46,7 +46,12 @@ class PGVector(BaseVector):
             collection_name=self._collection_name,
             dimension=dim
         )
+        self._client = create_engine(self._url)
+        with Session(self._client) as session:
+            session.execute(text("CREATE EXTENSION IF NOT EXISTS vectors"))
+            session.commit()
         self._fields = []
+
 
     def get_type(self) -> str:
         return 'pgvector'
@@ -62,7 +67,7 @@ class PGVector(BaseVector):
             if redis_client.get(collection_exist_cache_key):
                 return
             index_name = f"{self._collection_name}_embedding_index"
-            with Session(self._client._engine) as session:
+            with Session(self._client) as session:
                 drop_statement = sql_text(f"DROP TABLE IF EXISTS collection_{self._collection_name}")
                 session.execute(drop_statement)
                 create_statement = sql_text(f"""
