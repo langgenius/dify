@@ -127,7 +127,7 @@ const DatasetCard = ({
         </div>
         <div
           className={cn(
-            'grow mb-2 px-[14px] max-h-[72px] text-xs leading-normal text-gray-500 group-hover:line-clamp-2',
+            'grow mb-2 px-[14px] max-h-[72px] text-xs leading-normal text-gray-500 group-hover:line-clamp-2 group-hover:max-h-[36px]',
             tags.length ? 'line-clamp-2' : 'line-clamp-4',
             !dataset.embedding_available && 'opacity-50 hover:opacity-100',
           )}
@@ -135,7 +135,7 @@ const DatasetCard = ({
           {dataset.description}
         </div>
         <div className={cn(
-          'items-center shrink-0 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
+          'items-center shrink-0 mt-1 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
           tags.length ? 'flex' : '!hidden group-hover:!flex',
         )}>
           <div className={cn('grow flex items-center gap-1 w-0', !dataset.embedding_available && 'opacity-50 hover:opacity-100')} onClick={(e) => {
