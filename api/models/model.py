@@ -194,7 +194,7 @@ class App(db.Model):
             TagBinding.target_id == self.id,
             TagBinding.tenant_id == self.tenant_id,
             Tag.tenant_id == self.tenant_id,
-            Tag.type == 'knowledge'
+            Tag.type == 'app'
         ).all()
 
         return tags if tags else []
