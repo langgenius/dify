@@ -76,7 +76,7 @@ const Panel = (props: PanelProps) => {
   }
   const bind = async (tagIDs: string[]) => {
     try {
-      await bindTag(tagIDs, targetID, 'knowledge')
+      await bindTag(tagIDs, targetID, type)
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
     catch (e: any) {
@@ -85,7 +85,7 @@ const Panel = (props: PanelProps) => {
   }
   const unbind = async (tagID: string) => {
     try {
-      await unBindTag(tagID, targetID, 'knowledge')
+      await unBindTag(tagID, targetID, type)
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
     catch (e: any) {
@@ -152,7 +152,7 @@ const Panel = (props: PanelProps) => {
               onClick={() => selectTag(tag)}
             >
               <Checkbox
-                className='shrink-0 mr-2'
+                className='shrink-0'
                 checked={selectedTagIDs.includes(tag.id)}
                 onCheck={() => {}}
               />
@@ -166,7 +166,7 @@ const Panel = (props: PanelProps) => {
               onClick={() => selectTag(tag)}
             >
               <Checkbox
-                className='shrink-0 mr-2'
+                className='shrink-0'
                 checked={selectedTagIDs.includes(tag.id)}
                 onCheck={() => {}}
               />
