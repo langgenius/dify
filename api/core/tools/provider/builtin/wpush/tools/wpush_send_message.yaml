@@ -1,0 +1,86 @@
+identity:
+  name: wpush_send_message
+  author: Anhao
+  label:
+    en_US: Send WPush Message
+    zh_Hans: 发送WPush消息
+    pt_BR: Send WPush Message
+  icon: icon.png
+description:
+  human:
+    en_US: Sending a wpush message on Wpush
+    zh_Hans: 通过WPush发送微信消息
+    pt_BR: Sending a wpush message on WPush
+  llm: A tool for sending messages WPush.
+parameters:
+  - name: title
+    type: string
+    required: true
+    label:
+      en_US: title
+      zh_Hans: 消息标题
+      pt_BR: title
+    human_description:
+      en_US: Title to sent to the message.
+      zh_Hans: 群消息文本
+      pt_BR: Title to sent to the group.
+    llm_description: Title of the message
+    form: llm
+  - name: content
+    type: string
+    required: false
+    label:
+      en_US: content
+      zh_Hans: 消息内容
+      pt_BR: content
+    human_description:
+      en_US: Content to sent to the message.
+      zh_Hans: 群消息文本
+      pt_BR: Content to sent to the message.
+    llm_description: Content of the message
+    form: llm
+  - name: channel
+    type: select
+    required: false
+    options:
+      - value: wechat
+        label:
+          en_US: wechat
+          zh_Hans: 微信
+          pt_BR: wechat
+      - value: sms
+        label:
+          en_US: sms
+          zh_Hans: 短信
+          pt_BR: sms
+      - value: mail
+        label:
+          en_US: email
+          zh_Hans: 邮件
+          pt_BR: email
+      - value: feishu
+        label:
+          en_US: feishu
+          zh_Hans: 飞书
+          pt_BR: feishu
+      - value: dingtalk
+        label:
+          en_US: dingtalk
+          zh_Hans: 钉钉
+          pt_BR: dingtalk
+      - value: wechat_work
+        label:
+          en_US: Wecom
+          zh_Hans: 企业微信
+          pt_BR: Wecom
+    default: wechat
+    label:
+      en_US: Message channel
+      zh_Hans: 消息发送通道
+      pt_BR: Message channel
+    human_description:
+      en_US: Message channel
+      zh_Hans: 消息发送通道
+      pt_BR: Message channel
+    llm_description: Send Channel of the message
+    form: form

@@ -1,0 +1,29 @@
+identity:
+  author: Anhao
+  name: wpush
+  label:
+    en_US: WPush
+    zh_Hans: WPush
+    pt_BR: WPush
+  description:
+    en_US: WPush Message
+    zh_Hans: WPush 消息推送
+    pt_BR: WPush Message
+  icon: icon.svg
+credentials_for_provider:
+  api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: API Key
+      zh_Hans: API Key
+      pt_BR: Fogo a chave
+    placeholder:
+      en_US: Please enter your WPush API Key
+      zh_Hans: 请输入你的WPush平台 API Key
+      pt_BR: Insira sua chave de API WPush
+    help:
+      en_US: Get your API Key from WPush
+      zh_Hans: 从WPush获取您的 API Key
+      pt_BR: Obtenha sua chave de API do WPush
+    url: https://wpush.cn/apikey
