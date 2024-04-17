@@ -33,6 +33,7 @@ export enum RETRIEVE_METHOD {
   fullText = 'full_text_search',
   hybrid = 'hybrid_search',
   invertedIndex = 'invertedIndex',
+  keywordSearch = 'keyword_search',
 }
 
 export type VariableInput = {
