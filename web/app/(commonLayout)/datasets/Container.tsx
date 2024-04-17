@@ -47,7 +47,15 @@ const Container = () => {
     setKeywords(value)
     handleSearch()
   }
+  const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
   const [tagIDs, setTagIDs] = useState<string[]>([])
+  const { run: handleTagsUpdate } = useDebounceFn(() => {
+    setTagIDs(tagFilterValue)
+  }, { wait: 500 })
+  const handleTagsChange = (value: string[]) => {
+    setTagFilterValue(value)
+    handleTagsUpdate()
+  }
 
   return (
     <div ref={containerRef} className='grow relative flex flex-col bg-gray-100 overflow-y-auto'>
@@ -59,7 +67,7 @@ const Container = () => {
         />
         {activeTab === 'dataset' && (
           <div className='flex items-center gap-2'>
-            <TagFilter type='knowledge' value={tagIDs} onChange={setTagIDs} />
+            <TagFilter type='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
             <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
           </div>
         )}
