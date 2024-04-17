@@ -35,6 +35,7 @@ import ModelName from '@/app/components/header/account-setting/model-provider-pa
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
+import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -76,7 +77,7 @@ const PARAM_MAP = {
 }
 
 // Format interface data for easy display
-const getFormattedChatList = (messages: ChatMessage[]) => {
+const getFormattedChatList = (messages: ChatMessage[], conversationId: string) => {
   const newChatList: IChatItem[] = []
   messages.forEach((item: ChatMessage) => {
     newChatList.push({
@@ -107,6 +108,11 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
           : []),
       ],
       workflow_run_id: item.workflow_run_id,
+      conversationId,
+      input: {
+        inputs: item.inputs,
+        query: item.query,
+      },
       more: {
         time: dayjs.unix(item.created_at).format('hh:mm A'),
         tokens: item.answer_tokens + item.message_tokens,
@@ -148,7 +154,7 @@ type IDetailPanel<T> = {
 
 function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionConversationFullDetailResponse>({ detail, onFeedback }: IDetailPanel<T>) {
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showMessageLogModal, setShowMessageLogModal } = useAppStore()
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal, showMessageLogModal, setShowMessageLogModal } = useAppStore()
   const { t } = useTranslation()
   const [items, setItems] = React.useState<IChatItem[]>([])
   const [hasMore, setHasMore] = useState(true)
@@ -172,7 +178,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         const varValues = messageRes.data[0].inputs
         setVarValues(varValues)
       }
-      const newItems = [...getFormattedChatList(messageRes.data), ...items]
+      const newItems = [...getFormattedChatList(messageRes.data, detail.id), ...items]
       if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
         newItems.unshift({
           id: 'introduction',
@@ -401,6 +407,16 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           }}
         />
       )}
+      {showAgentLogModal && (
+        <AgentLogModal
+          width={width}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowAgentLogModal(false)
+          }}
+        />
+      )}
       {showMessageLogModal && (
         <MessageLogModal
           width={width}
@@ -607,7 +623,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'
+        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl'
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,
