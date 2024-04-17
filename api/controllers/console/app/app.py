@@ -2,7 +2,7 @@ import json
 import uuid
 
 from flask_login import current_user
-from flask_restful import Resource, inputs, marshal_with, reqparse
+from flask_restful import Resource, inputs, marshal_with, reqparse, marshal
 from werkzeug.exceptions import Forbidden, BadRequest, abort
 
 from controllers.console import api
@@ -31,7 +31,6 @@ class AppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(app_pagination_fields)
     def get(self):
         """Get app list"""
         def uuid_list(value):
@@ -54,7 +53,7 @@ class AppListApi(Resource):
         if not app_pagination:
             return {'data': [], 'total': 0, 'page': 1, 'limit': 20, 'has_more': False}
 
-        return app_pagination
+        return marshal(app_pagination, app_pagination_fields)
 
     @setup_required
     @login_required
