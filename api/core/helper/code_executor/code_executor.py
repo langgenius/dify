@@ -30,34 +30,24 @@ class CodeExecutionResponse(BaseModel):
 
 class CodeExecutor:
     @classmethod
-    def execute_code(cls, language: Literal['python3', 'javascript', 'jinja2'], code: str, inputs: dict) -> dict:
+    def execute_code(cls, language: Literal['python3', 'javascript', 'jinja2'], preload: str, code: str) -> str:
         """
         Execute code
         :param language: code language
         :param code: code
-        :param inputs: inputs
         :return:
         """
-        template_transformer = None
-        if language == 'python3':
-            template_transformer = PythonTemplateTransformer
-        elif language == 'jinja2':
-            template_transformer = Jinja2TemplateTransformer
-        elif language == 'javascript':
-            template_transformer = NodeJsTemplateTransformer
-        else:
-            raise CodeExecutionException('Unsupported language')
-
-        runner, preload = template_transformer.transform_caller(code, inputs)
         url = URL(CODE_EXECUTION_ENDPOINT) / 'v1' / 'sandbox' / 'run'
+
         headers = {
             'X-Api-Key': CODE_EXECUTION_API_KEY
         }
+
         data = {
             'language': 'python3' if language == 'jinja2' else
                         'nodejs' if language == 'javascript' else
                         'python3' if language == 'python3' else None,
-            'code': runner,
+            'code': code,
             'preload': preload
         }
 
@@ -85,4 +75,32 @@ class CodeExecutor:
         if response.data.error:
             raise CodeExecutionException(response.data.error)
         
-        return template_transformer.transform_response(response.data.stdout)
+        return response.data.stdout
+
+    @classmethod
+    def execute_workflow_code_template(cls, language: Literal['python3', 'javascript', 'jinja2'], code: str, inputs: dict) -> dict:
+        """
+        Execute code
+        :param language: code language
+        :param code: code
+        :param inputs: inputs
+        :return:
+        """
+        template_transformer = None
+        if language == 'python3':
+            template_transformer = PythonTemplateTransformer
+        elif language == 'jinja2':
+            template_transformer = Jinja2TemplateTransformer
+        elif language == 'javascript':
+            template_transformer = NodeJsTemplateTransformer
+        else:
+            raise CodeExecutionException('Unsupported language')
+
+        runner, preload = template_transformer.transform_caller(code, inputs)
+
+        try:
+            response = cls.execute_code(language, preload, runner)
+        except CodeExecutionException as e:
+            raise e
+
+        return template_transformer.transform_response(response)
