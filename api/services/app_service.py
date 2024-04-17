@@ -22,7 +22,7 @@ from services.workflow_service import WorkflowService
 
 
 class AppService:
-    def get_paginate_apps(self, tenant_id: str, args: dict) -> Pagination:
+    def get_paginate_apps(self, tenant_id: str, args: dict) -> Pagination | None:
         """
         Get app list with pagination
         :param tenant_id: tenant id
@@ -47,13 +47,13 @@ class AppService:
             name = args['name'][:30]
             filters.append(App.name.ilike(f'%{name}%'))
         if 'tag_ids' in args and args['tag_ids']:
-            target_ids = TagService.get_target_ids_by_tag_ids('knowledge',
+            target_ids = TagService.get_target_ids_by_tag_ids('app',
                                                               tenant_id,
                                                               args['tag_ids'])
             if target_ids:
                 filters.append(App.id.in_(target_ids))
             else:
-                return Pagination(None, 1, 0, False)
+                return None
 
         app_models = db.paginate(
             db.select(App).where(*filters).order_by(App.created_at.desc()),
