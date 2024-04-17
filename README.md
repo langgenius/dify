@@ -4,7 +4,7 @@
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Self-hosting</a> ·
   <a href="https://docs.dify.ai">Documentation</a> ·
-  <a href="https://cal.com/guchenhe/dify-demo">Schedule demo</a>
+  <a href="https://cal.com/guchenhe/60-min-meeting">Enterprise inquiry</a>
 </p>
 
 <p align="center">
@@ -75,7 +75,7 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
   All of Dify's offerings come with corresponding APIs, so you could effortlessly integrate Dify into your own business logic.
 
 
-## Feature Comparison
+## Feature comparison
 <table style="width: 100%;">
   <tr>
     <th align="center">Feature</th>
@@ -151,7 +151,7 @@ We host a [Dify Cloud](https://dify.ai) service for anyone to try with zero setu
 Quickly get Dify running in your environment with this [starter guide](#quick-start).
 Use our [documentation](https://docs.dify.ai) for further references and more in-depth instructions.
 
-- **Dify for Enterprise / Organizations</br>**
+- **Dify for enterprise / organizations</br>**
 We provide additional enterprise-centric features. [Schedule a meeting with us](https://cal.com/guchenhe/30min) or [send us an email](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry) to discuss enterprise needs. </br>
   > For startups and small businesses using AWS, check out [Dify Premium on AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) and deploy it to your own AWS VPC with one-click. It's an affordable AMI offering with the option to create apps with custom logo and branding.
 
@@ -164,7 +164,7 @@ Star Dify on GitHub and be instantly notified of new releases.
 
 
 
-## Quick Start
+## Quick start
 > Before installing Dify, make sure your machine meets the following minimum system requirements:
 > 
 >- CPU >= 2 Core
@@ -207,7 +207,7 @@ At the same time, please consider supporting Dify by sharing it on social media 
   <img src="https://contrib.rocks/image?repo=langgenius/dify" />
 </a>
 
-## Community & Contact
+## Community & contact
 
 * [Github Discussion](https://github.com/langgenius/dify/discussions). Best for: sharing feedback and asking questions.
 * [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs you encounter using Dify.AI, and feature proposals. See our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
@@ -232,12 +232,12 @@ Or, schedule a meeting directly with a team member:
   </tr>
 </table>
 
-## Star History
+## Star history
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
 
 
-## Security Disclosure
+## Security disclosure
 
 To protect your privacy, please avoid posting security issues on GitHub. Instead, send your questions to security@dify.ai and we will provide you with a more detailed answer.
 
