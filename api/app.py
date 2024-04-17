@@ -251,4 +251,7 @@ def pool_stat():
 
 
 if __name__ == '__main__':
+    # 在 Flask 应用启动时运行 Celery worker - Dev
+    # subprocess.Popen(['celery', '-A', 'app.celery', 'worker', '-P', 'gevent', '-c', '1', '--loglevel', 'INFO', '-Q',
+    #                   'dataset,generation,mail'])
     app.run(host='0.0.0.0', port=5001)
