@@ -229,6 +229,14 @@ services:
       RELYT_USER: postgres
       RELYT_PASSWORD: difyai123456
       RELYT_DATABASE: postgres
+      # tencent configurations
+      TENCENT_URL: http://127.0.0.1
+      TENCENT_API_KEY: dify
+      TENCENT_TIMEOUT: 30
+      TENCENT_USERNAME: dify
+      TENCENT_DATABASE: dify
+      TENCENT_SHARD: 1
+      TENCENT_REPLICAS: 2
     depends_on:
       - db
       - redis

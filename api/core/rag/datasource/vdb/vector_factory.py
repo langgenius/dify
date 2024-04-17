@@ -25,7 +25,6 @@ class Vector:
     def _init_vector(self) -> BaseVector:
         config = current_app.config
         vector_type = config.get('VECTOR_STORE')
-
         if self._dataset.index_struct_dict:
             vector_type = self._dataset.index_struct_dict['type']
 
@@ -137,6 +136,31 @@ class Vector:
                     database=config.get('RELYT_DATABASE'),
                 ),
                 dim=dim
+            )
+        elif vector_type == "tencent":
+            from core.rag.datasource.vdb.tencent.tencent_vector import TencentConfig, TencentVector
+            if self._dataset.index_struct_dict:
+                class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
+                collection_name = class_prefix
+            else:
+                dataset_id = self._dataset.id
+                collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+                index_struct_dict = {
+                    "type": 'tencent',
+                    "vector_store": {"class_prefix": collection_name}
+                }
+                self._dataset.index_struct = json.dumps(index_struct_dict)
+            return TencentVector(
+                collection_name=collection_name,
+                config=TencentConfig(
+                    url=config.get('TENCENT_URL'),
+                    api_key=config.get('TENCENT_API_KEY'),
+                    timeout=config.get('TENCENT_TIMEOUT'),
+                    username=config.get('TENCENT_USERNAME'),
+                    database=config.get('TENCENT_DATABASE'),
+                    shard=config.get('TENCENT_SHARD'),
+                    replicas=config.get('TENCENT_REPLICAS'),
+                )
             )
         else:
             raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")

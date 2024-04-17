@@ -228,6 +228,15 @@ class Config:
         self.RELYT_PASSWORD = get_env('RELYT_PASSWORD')
         self.RELYT_DATABASE = get_env('RELYT_DATABASE')
 
+        # tencent settings
+        self.TENCENT_URL = get_env('TENCENT_URL')
+        self.TENCENT_API_KEY = get_env('TENCENT_API_KEY')
+        self.TENCENT_TIMEOUT = get_env('TENCENT_TIMEOUT')
+        self.TENCENT_USERNAME = get_env('TENCENT_USERNAME')
+        self.TENCENT_DATABASE = get_env('TENCENT_DATABASE')
+        self.TENCENT_SHARD = get_env('TENCENT_SHARD')
+        self.TENCENT_REPLICAS = get_env('TENCENT_REPLICAS')
+
         # ------------------------
         # Mail Configurations.
         # ------------------------
