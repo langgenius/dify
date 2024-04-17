@@ -62,7 +62,7 @@ class CompletionAppGenerateResponseConverter(AppGenerateResponseConverter):
             sub_stream_response = chunk.stream_response
 
             if isinstance(sub_stream_response, PingStreamResponse):
-                yield 'ping'
+                yield 'event: ping\n\n'
                 continue
 
             response_chunk = {
