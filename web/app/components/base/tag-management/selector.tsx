@@ -23,6 +23,7 @@ type TagSelectorProps = {
   type: 'knowledge' | 'app'
   value: string[]
   selectedTags: Tag[]
+  onCacheUpdate: (tags: Tag[]) => void
   onChange?: () => void
 }
 
@@ -33,7 +34,7 @@ type PanelProps = {
 const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { targetID, type, value, selectedTags, onChange, onCreate } = props
+  const { targetID, type, value, selectedTags, onCacheUpdate, onChange, onCreate } = props
   const { tagList, setTagList, setShowTagManagementModal } = useTagStore()
   const [selectedTagIDs, setSelectedTagIDs] = useState<string[]>(value)
   const [keywords, setKeywords] = useState('')
@@ -104,7 +105,8 @@ const Panel = (props: PanelProps) => {
   const handleValueChange = () => {
     const addTagIDs = selectedTagIDs.filter(v => !value.includes(v))
     const removeTagIDs = value.filter(v => !selectedTagIDs.includes(v))
-
+    const selectedTags = tagList.filter(tag => selectedTagIDs.includes(tag.id))
+    onCacheUpdate(selectedTags)
     Promise.all([
       ...(addTagIDs.length ? [bind(addTagIDs)] : []),
       ...[removeTagIDs.length ? removeTagIDs.map(tagID => unbind(tagID)) : []],
@@ -201,6 +203,7 @@ const TagSelector: FC<TagSelectorProps> = ({
   type,
   value,
   selectedTags,
+  onCacheUpdate,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -237,10 +240,11 @@ const TagSelector: FC<TagSelectorProps> = ({
         <CustomPopover
           htmlContent={
             <Panel
-              targetID={targetID}
               type={type}
+              targetID={targetID}
               value={value}
               selectedTags={selectedTags}
+              onCacheUpdate={onCacheUpdate}
               onChange={onChange}
               onCreate={getTagList}
             />

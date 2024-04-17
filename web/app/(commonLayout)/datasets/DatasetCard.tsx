@@ -2,7 +2,7 @@
 
 import { useContext } from 'use-context-selector'
 import Link from 'next/link'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import Confirm from '@/app/components/base/confirm'
@@ -16,7 +16,7 @@ import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
 import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import RenameDatasetModal from '@/app/components/datasets/rename-modal'
-// import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
 
 export type DatasetCardProps = {
@@ -30,6 +30,7 @@ const DatasetCard = ({
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const [tags, setTags] = useState<Tag[]>(dataset.tags)
 
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
@@ -80,6 +81,10 @@ const DatasetCard = ({
     )
   }
 
+  useEffect(() => {
+    setTags(dataset.tags)
+  }, [dataset])
+
   return (
     <>
       <Link
@@ -123,7 +128,7 @@ const DatasetCard = ({
         <div
           className={cn(
             'grow mb-2 px-[14px] max-h-[72px] text-xs leading-normal text-gray-500 group-hover:line-clamp-2',
-            dataset.tags.length ? 'line-clamp-2' : 'line-clamp-4',
+            tags.length ? 'line-clamp-2' : 'line-clamp-4',
             !dataset.embedding_available && 'opacity-50 hover:opacity-100',
           )}
           title={dataset.description}>
@@ -131,7 +136,7 @@ const DatasetCard = ({
         </div>
         <div className={cn(
           'items-center shrink-0 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
-          dataset.tags.length ? 'flex' : '!hidden group-hover:!flex',
+          tags.length ? 'flex' : '!hidden group-hover:!flex',
         )}>
           <div className={cn('grow flex items-center gap-1 w-0', !dataset.embedding_available && 'opacity-50 hover:opacity-100')} onClick={(e) => {
             e.stopPropagation()
@@ -139,15 +144,16 @@ const DatasetCard = ({
           }}>
             <div className={cn(
               'group-hover:!block group-hover:!mr-0 mr-[41px] grow w-full',
-              dataset.tags.length ? '!block' : '!hidden',
+              tags.length ? '!block' : '!hidden',
             )}>
               <TagSelector
                 position='bl'
                 type='knowledge'
-                value={dataset.tags.map(tag => tag.id)}
-                selectedTags={dataset.tags}
-                onChange={onSuccess}
                 targetID={dataset.id}
+                value={tags.map(tag => tag.id)}
+                selectedTags={tags}
+                onCacheUpdate={setTags}
+                onChange={onSuccess}
               />
             </div>
           </div>
