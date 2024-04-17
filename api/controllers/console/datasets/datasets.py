@@ -475,7 +475,7 @@ class DatasetRetrievalSettingApi(Resource):
                     'semantic_search'
                 ]
             }
-        elif vector_type == 'qdrant' or vector_type == 'weaviate':
+        elif vector_type == 'qdrant' or vector_type == 'weaviate' or vector_type == 'elasticsearch':
             return {
                 'retrieval_method': [
                     'semantic_search', 'full_text_search', 'hybrid_search'

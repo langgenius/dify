@@ -229,6 +229,11 @@ services:
       RELYT_USER: postgres
       RELYT_PASSWORD: difyai123456
       RELYT_DATABASE: postgres
+      # relyt configurations
+      ELASTICSEARCH_HOST: localhost
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_API_KEY_ID: difyai
+      ELASTICSEARCH_API_KEY: difyai123456
     depends_on:
       - db
       - redis

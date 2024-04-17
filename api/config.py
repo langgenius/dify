@@ -198,7 +198,7 @@ class Config:
 
         # ------------------------
         # Vector Store Configurations.
-        # Currently, only support: qdrant, milvus, zilliz, weaviate, relyt
+        # Currently, only support: qdrant, milvus, zilliz, weaviate, relyt, elasticsearch
         # ------------------------
         self.VECTOR_STORE = get_env('VECTOR_STORE')
         self.KEYWORD_STORE = get_env('KEYWORD_STORE')
@@ -227,6 +227,12 @@ class Config:
         self.RELYT_USER = get_env('RELYT_USER')
         self.RELYT_PASSWORD = get_env('RELYT_PASSWORD')
         self.RELYT_DATABASE = get_env('RELYT_DATABASE')
+
+        # elasticsearch settings
+        self.ELASTICSEARCH_HOST = get_env('ELASTICSEARCH_HOST')
+        self.ELASTICSEARCH_PORT = get_env('ELASTICSEARCH_PORT')
+        self.ELASTICSEARCH_API_KEY_ID = get_env('ELASTICSEARCH_API_KEY_ID')
+        self.ELASTICSEARCH_API_KEY = get_env('ELASTICSEARCH_API_KEY')
 
         # ------------------------
         # Mail Configurations.
