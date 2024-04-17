@@ -57,7 +57,7 @@ import { fetchCollectionList } from '@/service/tools'
 import { type Collection } from '@/app/components/tools/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
-type PublichConfig = {
+type PublishConfig = {
   modelConfig: ModelConfig
   completionParams: FormValue
 }
@@ -74,7 +74,7 @@ const Configuration: FC = () => {
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const [mode, setMode] = useState('')
-  const [publishedConfig, setPublishedConfig] = useState<PublichConfig | null>(null)
+  const [publishedConfig, setPublishedConfig] = useState<PublishConfig | null>(null)
 
   const modalConfig = useMemo(() => appDetail?.model_config || {} as BackendModelConfig, [appDetail])
   const [conversationId, setConversationId] = useState<string | null>('')
@@ -225,7 +225,7 @@ const Configuration: FC = () => {
 
   const [isShowHistoryModal, { setTrue: showHistoryModal, setFalse: hideHistoryModal }] = useBoolean(false)
 
-  const syncToPublishedConfig = (_publishedConfig: PublichConfig) => {
+  const syncToPublishedConfig = (_publishedConfig: PublishConfig) => {
     const modelConfig = _publishedConfig.modelConfig
     setModelConfig(_publishedConfig.modelConfig)
     setCompletionParams(_publishedConfig.completionParams)
