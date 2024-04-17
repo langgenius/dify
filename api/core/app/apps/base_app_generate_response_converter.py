@@ -26,7 +26,10 @@ class AppGenerateResponseConverter(ABC):
             else:
                 def _generate():
                     for chunk in cls.convert_stream_full_response(response):
-                        yield f'data: {chunk}\n\n'
+                        if chunk.startswith('event:'):
+                            yield chunk
+                        else:
+                            yield f'data: {chunk}\n\n'
 
                 return _generate()
         else:
