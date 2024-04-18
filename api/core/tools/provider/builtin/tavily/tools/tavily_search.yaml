@@ -26,7 +26,7 @@ parameters:
     llm_description: key words for searching
     form: llm
   - name: search_depth
-    type: string
+    type: select
     required: false
     label:
       en_US: Search Depth
