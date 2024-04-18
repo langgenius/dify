@@ -117,7 +117,7 @@ const translation = {
     workspace: 'Espaço de trabalho',
     createWorkspace: 'Criar Espaço de Trabalho',
     helpCenter: 'Ajuda',
-    roadmapAndFeedback: 'Roadmap e Feedback',
+    roadmapAndFeedback: 'Feedback',
     community: 'Comunidade',
     about: 'Sobre',
     logout: 'Sair',
@@ -400,6 +400,7 @@ const translation = {
     promptEng: 'Orquestrar',
     apiAccess: 'Acesso à API',
     logAndAnn: 'Logs e Anúncios',
+    logs: 'Logs',
   },
   environment: {
     testing: 'TESTE',
@@ -476,6 +477,10 @@ const translation = {
       item: {
         title: 'Variáveis e Ferramentas Externas',
         desc: 'Inserir Variáveis e Ferramentas Externas',
+      },
+      outputToolDisabledItem: {
+        title: 'Variáveis',
+        desc: 'Inserir variáveis',
       },
       modal: {
         add: 'Nova variável',

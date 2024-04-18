@@ -1,0 +1,13 @@
+identity:
+  author: Dify
+  name: jina
+  label:
+    en_US: JinaReader
+    zh_Hans: JinaReader
+    pt_BR: JinaReader
+  description:
+    en_US: Convert any URL to an LLM-friendly input. Experience improved output for your agent and RAG systems at no cost.
+    zh_Hans: 将任何 URL 转换为 LLM 友好的输入。无需付费即可体验为您的 Agent 和 RAG 系统提供的改进输出。
+    pt_BR: Converta qualquer URL em uma entrada amigável ao LLM. Experimente uma saída aprimorada para seus sistemas de agente e RAG sem custo.
+  icon: icon.svg
+credentials_for_provider:

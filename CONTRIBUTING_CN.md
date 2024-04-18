@@ -34,7 +34,7 @@
   | Feature Type                                                 | Priority        |
   | ------------------------------------------------------------ | --------------- |
   | High-Priority Features as being labeled by a team member     | High Priority   |
-  | Popular feature requests from our [community feedback board](https://feedback.dify.ai/) | Medium Priority |
+  | Popular feature requests from our [community feedback board](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Medium Priority |
   | Non-core features and minor enhancements                     | Low Priority    |
   | Valuable but not immediate                                   | Future-Feature  |
 
@@ -152,4 +152,4 @@ Dify的后端使用Python编写，使用[Flask](https://flask.palletsprojects.co
 
 ## 获取帮助
 
-如果你在贡献过程中遇到困难或者有任何问题，可以通过相关的 GitHub 问题提出你的疑问，或者加入我们的 [Discord](https://discord.gg/AhzKf7dNgk) 进行快速交流。
+如果你在贡献过程中遇到困难或者有任何问题，可以通过相关的 GitHub 问题提出你的疑问，或者加入我们的 [Discord](https://discord.gg/8Tpq4AcN9c) 进行快速交流。

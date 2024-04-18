@@ -11,7 +11,8 @@ RUN apt-get update \
 
 COPY requirements.txt /requirements.txt
 
-RUN pip install --prefix=/pkg -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --prefix=/pkg -r requirements.txt
 
 # production stage
 FROM base AS production

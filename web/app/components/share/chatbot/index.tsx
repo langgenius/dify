@@ -729,7 +729,7 @@ const Main: FC<IMainProps> = ({
         title={siteInfo.title}
         icon=''
         customerIcon={difyIcon}
-        icon_background={siteInfo.icon_background}
+        icon_background={siteInfo.icon_background || ''}
         isEmbedScene={true}
         isMobile={isMobile}
         onCreateNewChat={() => handleConversationIdChange('-1')}

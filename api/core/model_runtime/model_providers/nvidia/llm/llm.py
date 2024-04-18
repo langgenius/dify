@@ -24,6 +24,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
         'fuyu-8b': 'vlm/adept/fuyu-8b',
         'mistralai/mixtral-8x7b-instruct-v0.1': '',
         'google/gemma-7b': '',
+        'google/codegemma-7b': '',
         'meta/llama2-70b': ''
     }
 
@@ -130,7 +131,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 endpoint_url,
                 headers=headers,
                 json=data,
-                timeout=(10, 60)
+                timeout=(10, 300)
             )
 
             if response.status_code != 200:
@@ -231,7 +232,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
             endpoint_url,
             headers=headers,
             json=data,
-            timeout=(10, 60),
+            timeout=(10, 300),
             stream=stream
         )
 

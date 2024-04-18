@@ -18,6 +18,7 @@ export const toolParametersToFormSchemas = (parameters: ToolParameter[]) => {
       ...parameter,
       variable: parameter.name,
       type: toType(parameter.type),
+      _type: parameter.type,
       show_on: [],
       options: parameter.options?.map((option) => {
         return {

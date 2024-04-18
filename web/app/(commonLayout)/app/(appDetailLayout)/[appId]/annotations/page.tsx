@@ -6,11 +6,9 @@ export type IProps = {
   params: { appId: string }
 }
 
-const Logs = async ({
-  params: { appId },
-}: IProps) => {
+const Logs = async () => {
   return (
-    <Main pageType={PageType.annotation} appId={appId} />
+    <Main pageType={PageType.annotation} />
   )
 }
 

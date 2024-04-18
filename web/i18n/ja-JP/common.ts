@@ -117,7 +117,7 @@ const translation = {
     workspace: 'ワークスペース',
     createWorkspace: 'ワークスペースを作成',
     helpCenter: 'ヘルプ',
-    roadmapAndFeedback: 'ロードマップとフィードバック',
+    roadmapAndFeedback: 'フィードバック',
     community: 'コミュニティ',
     about: 'Difyについて',
     logout: 'ログアウト',
@@ -351,6 +351,7 @@ const translation = {
     promptEng: 'Orchestrate',
     apiAccess: 'APIアクセス',
     logAndAnn: 'ログ＆アナウンス',
+    logs: 'ログ',
   },
   environment: {
     testing: 'テスト',
@@ -427,6 +428,10 @@ const translation = {
       item: {
         title: '変数＆外部ツール',
         desc: '変数＆外部ツールを挿入',
+      },
+      outputToolDisabledItem: {
+        title: '変数',
+        desc: '変数を挿入',
       },
       modal: {
         add: '新しい変数',

@@ -1,0 +1,40 @@
+identity:
+  name: create_list_on_board
+  author: Yash Parmar
+  label:
+    en_US: Create List on Board
+    zh_Hans: 在看板上创建列表
+    pt_BR: Criar Lista no Quadro
+description:
+  human:
+    en_US: Creates a new list on a specified Trello board by providing the board's ID and the desired name for the list. Streamlines the process of organizing board content.
+    zh_Hans: 通过提供看板的 ID 和列表的所需名称，在指定的 Trello 看板上创建一个新列表。简化了组织看板内容的过程。
+    pt_BR: Cria uma nova lista em um quadro Trello especificado, fornecendo o ID do quadro e o nome desejado para a lista. Facilita o processo de organização do conteúdo do quadro.
+  llm: Generate a new list within a Trello board by specifying the board's ID and a name for the list. Enhances board management by allowing quick additions of new lists.
+parameters:
+  - name: id
+    type: string
+    required: true
+    label:
+      en_US: Board ID
+      zh_Hans: 看板 ID
+      pt_BR: ID do Quadro
+    human_description:
+      en_US: The unique identifier of the Trello board where the new list will be created.
+      zh_Hans: 新列表将被创建在其上的 Trello 看板的唯一标识符。
+      pt_BR: O identificador único do quadro Trello onde a nova lista será criada.
+    llm_description: Input the ID of the Trello board to pinpoint where the new list should be added, ensuring correct placement.
+    form: llm
+  - name: name
+    type: string
+    required: true
+    label:
+      en_US: List Name
+      zh_Hans: 列表名称
+      pt_BR: Nome da Lista
+    human_description:
+      en_US: The name for the new list to be created on the Trello board.
+      zh_Hans: 将在 Trello 看板上创建的新列表的名称。
+      pt_BR: O nome para a nova lista que será criada no quadro Trello.
+    llm_description: Provide a name for the new list, defining its purpose or content focus, to facilitate board organization.
+    form: llm

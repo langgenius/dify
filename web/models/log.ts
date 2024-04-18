@@ -1,4 +1,9 @@
+import type { Viewport } from 'reactflow'
 import type { VisionFile } from '@/types/app'
+import type {
+  Edge,
+  Node,
+} from '@/app/components/workflow/types'
 
 // Log type contains key:string conversation_id:string created_at:string quesiton:string answer:string
 export type Conversation = {
@@ -73,8 +78,7 @@ export type MessageContent = {
   conversation_id: string
   query: string
   inputs: Record<string, any>
-  // message: Record<string, any>
-  message: string
+  message: { role: string; text: string; files?: VisionFile[] }[]
   message_tokens: number
   answer_tokens: number
   answer: string
@@ -97,6 +101,8 @@ export type MessageContent = {
     from_end_user_id?: string
   }>
   message_files: VisionFile[]
+  agent_thoughts: any[] // TODO
+  workflow_run_id: string
 }
 
 export type CompletionConversationGeneralDetail = {
@@ -216,4 +222,128 @@ export type LogMessageAnnotationsResponse = LogMessageFeedbacksResponse
 
 export type AnnotationsCountResponse = {
   count: number
+}
+
+export type WorkflowRunDetail = {
+  id: string
+  version: string
+  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  error?: string
+  elapsed_time: number
+  total_tokens: number
+  total_price: number
+  currency: string
+  total_steps: number
+  finished_at: number
+}
+export type AccountInfo = {
+  id: string
+  name: string
+  email: string
+}
+export type EndUserInfo = {
+  id: string
+  type: 'browser' | 'service_api'
+  is_anonymous: boolean
+  session_id: string
+}
+export type WorkflowAppLogDetail = {
+  id: string
+  workflow_run: WorkflowRunDetail
+  created_from: 'service-api' | 'web-app' | 'explore'
+  created_by_role: 'account' | 'end_user'
+  created_by_account?: AccountInfo
+  created_by_end_user?: EndUserInfo
+  created_at: number
+  read_at?: number
+}
+export type WorkflowLogsResponse = {
+  data: Array<WorkflowAppLogDetail>
+  has_more: boolean
+  limit: number
+  total: number
+  page: number
+}
+export type WorkflowLogsRequest = {
+  keyword: string
+  status: string
+  page: number
+  limit: number // The default value is 20 and the range is 1-100
+}
+
+export type WorkflowRunDetailResponse = {
+  id: string
+  sequence_number: number
+  version: string
+  graph: {
+    nodes: Node[]
+    edges: Edge[]
+    viewport?: Viewport
+  }
+  inputs: string
+  status: 'running' | 'succeeded' | 'failed' | 'stopped'
+  outputs?: string
+  error?: string
+  elapsed_time?: number
+  total_tokens?: number
+  total_steps: number
+  created_by_role: 'account' | 'end_user'
+  created_by_account?: AccountInfo
+  created_by_end_user?: EndUserInfo
+  created_at: number
+  finished_at: number
+}
+
+export type AgentLogMeta = {
+  status: string
+  executor: string
+  start_time: string
+  elapsed_time: number
+  total_tokens: number
+  agent_mode: string
+  iterations: number
+  error?: string
+}
+
+export type ToolCall = {
+  status: string
+  error?: string | null
+  time_cost?: number
+  tool_icon: any
+  tool_input?: any
+  tool_output?: any
+  tool_name?: string
+  tool_label?: any
+  tool_parameters?: any
+}
+
+export type AgentIteration = {
+  created_at: string
+  files: string[]
+  thought: string
+  tokens: number
+  tool_calls: ToolCall[]
+  tool_raw: {
+    inputs: string
+    outputs: string
+  }
+}
+
+export type AgentLogFile = {
+  id: string
+  type: string
+  url: string
+  name: string
+  belongs_to: string
+}
+
+export type AgentLogDetailRequest = {
+  conversation_id: string
+  message_id: string
+}
+
+export type AgentLogDetailResponse = {
+  meta: AgentLogMeta
+  iterations: AgentIteration[]
+  files: AgentLogFile[]
 }

@@ -1,0 +1,39 @@
+.preview {
+  display: none;
+  position: absolute;
+  transform: translate(480px, -54px);
+  width: 280px;
+  height: 360px;
+  background: center center no-repeat;
+  background-size: contain;
+  border-radius: 8px;
+}
+
+.wrap:hover .preview {
+  display: block;
+}
+
+.openingStatementPreview {
+  background-image: url(./preview-imgs/opening-statement.png);
+}
+
+.suggestedQuestionsAfterAnswerPreview {
+  background-image: url(./preview-imgs/suggested-questions-after-answer.svg);
+}
+
+.moreLikeThisPreview {
+  background-image: url(./preview-imgs/more-like-this.svg);
+}
+
+.speechToTextPreview {
+  background-image: url(./preview-imgs/speech-to-text.svg);
+}
+
+.textToSpeechPreview {
+  @apply shadow-lg rounded-lg;
+  background-image: url(./preview-imgs/text-to-audio-preview-assistant@2x.png);
+}
+
+.citationPreview {
+  background-image: url(./preview-imgs/citation.svg);
+}

@@ -121,6 +121,10 @@ const translation = {
       title: 'Avg. Session Interactions',
       explanation: 'Continuous user-AI communication count; for conversation-based apps.',
     },
+    avgUserInteractions: {
+      title: 'Avg. User Interactions',
+      explanation: 'Reflects the daily usage frequency of users. This metric reflects user stickiness.',
+    },
     userSatisfactionRate: {
       title: 'User Satisfaction Rate',
       explanation: 'The number of likes per 1,000 messages. This indicates the proportion of answers that users are highly satisfied with.',

@@ -1,4 +1,5 @@
 import enum
+import importlib
 import json
 import logging
 import os
@@ -6,7 +7,6 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from core.utils.module_import_helper import load_single_subclass_from_source
 from core.utils.position_helper import sort_to_dict_by_position_map
 
 
@@ -73,9 +73,17 @@ class Extensible:
 
                 # Dynamic loading {subdir_name}.py file and find the subclass of Extensible
                 py_path = os.path.join(subdir_path, extension_name + '.py')
-                try:
-                    extension_class = load_single_subclass_from_source(extension_name, py_path, cls)
-                except Exception:
+                spec = importlib.util.spec_from_file_location(extension_name, py_path)
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+
+                extension_class = None
+                for name, obj in vars(mod).items():
+                    if isinstance(obj, type) and issubclass(obj, cls) and obj != cls:
+                        extension_class = obj
+                        break
+
+                if not extension_class:
                     logging.warning(f"Missing subclass of {cls.__name__} in {py_path}, Skip.")
                     continue
 
