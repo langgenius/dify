@@ -3,6 +3,7 @@ import logging
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse
+from werkzeug.exceptions import Unauthorized
 
 import services
 from controllers.console import api
@@ -19,7 +20,7 @@ from controllers.console.wraps import account_initialization_required, cloud_edi
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import login_required
-from models.account import Tenant
+from models.account import Tenant, TenantStatus
 from services.account_service import TenantService
 from services.file_service import FileService
 from services.workspace_service import WorkspaceService
@@ -115,6 +116,16 @@ class TenantApi(Resource):
             logging.warning('Deprecated URL /info was used.')
 
         tenant = current_user.current_tenant
+
+        if tenant.status == TenantStatus.ARCHIVE:
+            tenants = TenantService.get_join_tenants(current_user)
+            # if there is any tenant, switch to the first one
+            if len(tenants) > 0:
+                TenantService.switch_tenant(current_user, tenants[0].id)
+                tenant = tenants[0]
+            # else, raise Unauthorized
+            else:
+                raise Unauthorized('workspace is archived')
 
         return WorkspaceService.get_tenant_info(tenant), 200
 

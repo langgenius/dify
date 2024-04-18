@@ -1,0 +1,142 @@
+identity:
+  name: stability_text2image
+  author: Dify
+  label:
+    en_US: StableDiffusion
+    zh_Hans: 稳定扩散
+    pt_BR: StableDiffusion
+description:
+  human:
+    en_US: A tool for generate images based on the text input
+    zh_Hans: 一个基于文本输入生成图像的工具
+    pt_BR: A tool for generate images based on the text input
+  llm: A tool for generate images based on the text input
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+      pt_BR: Prompt
+    human_description:
+      en_US: used for generating images
+      zh_Hans: 用于生成图像
+      pt_BR: used for generating images
+    llm_description: key words for generating images
+    form: llm
+  - name: model
+    type: select
+    default: sd3-turbo
+    required: true
+    label:
+      en_US: Model
+      zh_Hans: 模型
+      pt_BR: Model
+    options:
+      - value: core
+        label:
+          en_US: Core
+          zh_Hans: Core
+          pt_BR: Core
+      - value: sd3
+        label:
+          en_US: Stable Diffusion 3
+          zh_Hans: Stable Diffusion 3
+          pt_BR: Stable Diffusion 3
+      - value: sd3-turbo
+        label:
+          en_US: Stable Diffusion 3 Turbo
+          zh_Hans: Stable Diffusion 3 Turbo
+          pt_BR: Stable Diffusion 3 Turbo
+    human_description:
+      en_US: Model for generating images
+      zh_Hans: 用于生成图像的模型
+      pt_BR: Model for generating images
+    llm_description: Model for generating images
+    form: form
+  - name: negative_prompt
+    type: string
+    default: bad art, ugly, deformed, watermark, duplicated, discontinuous lines
+    required: false
+    label:
+      en_US: Negative Prompt
+      zh_Hans: 负面提示
+      pt_BR: Negative Prompt
+    human_description:
+      en_US: Negative Prompt
+      zh_Hans: 负面提示
+      pt_BR: Negative Prompt
+    llm_description: Negative Prompt
+    form: form
+  - name: seeds
+    type: number
+    default: 0
+    required: false
+    label:
+      en_US: Seeds
+      zh_Hans: 种子
+      pt_BR: Seeds
+    human_description:
+      en_US: Seeds
+      zh_Hans: 种子
+      pt_BR: Seeds
+    llm_description: Seeds
+    min: 0
+    max: 4294967294
+    form: form
+  - name: aspect_radio
+    type: select
+    default: '16:9'
+    options:
+      - value: '16:9'
+        label:
+          en_US: '16:9'
+          zh_Hans: '16:9'
+          pt_BR: '16:9'
+      - value: '1:1'
+        label:
+          en_US: '1:1'
+          zh_Hans: '1:1'
+          pt_BR: '1:1'
+      - value: '21:9'
+        label:
+          en_US: '21:9'
+          zh_Hans: '21:9'
+          pt_BR: '21:9'
+      - value: '2:3'
+        label:
+          en_US: '2:3'
+          zh_Hans: '2:3'
+          pt_BR: '2:3'
+      - value: '4:5'
+        label:
+          en_US: '4:5'
+          zh_Hans: '4:5'
+          pt_BR: '4:5'
+      - value: '5:4'
+        label:
+          en_US: '5:4'
+          zh_Hans: '5:4'
+          pt_BR: '5:4'
+      - value: '9:16'
+        label:
+          en_US: '9:16'
+          zh_Hans: '9:16'
+          pt_BR: '9:16'
+      - value: '9:21'
+        label:
+          en_US: '9:21'
+          zh_Hans: '9:21'
+          pt_BR: '9:21'
+    required: false
+    label:
+      en_US: Aspect Radio
+      zh_Hans: 长宽比
+      pt_BR: Aspect Radio
+    human_description:
+      en_US: Aspect Radio
+      zh_Hans: 长宽比
+      pt_BR: Aspect Radio
+    llm_description: Aspect Radio
+    form: form
