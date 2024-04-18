@@ -1,4 +1,5 @@
 import os
+from logging.handlers import RotatingFileHandler
 
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     from gevent import monkey
@@ -86,7 +87,21 @@ def create_app(test_config=None) -> Flask:
 
     app.secret_key = app.config['SECRET_KEY']
 
-    logging.basicConfig(level=app.config.get('LOG_LEVEL', 'INFO'))
+    log_file = app.config.get('LOG_FILE')
+    log_dir = os.path.dirname(log_file)
+    os.makedirs(log_dir, exist_ok=True)
+    logging.basicConfig(
+        level=app.config.get('LOG_LEVEL'),
+        format=app.config.get('LOG_FORMAT'),
+        handlers=[
+            RotatingFileHandler(
+                filename=log_file,
+                maxBytes=1024 * 1024 * 1024,
+                backupCount=5
+            ),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
 
     initialize_extensions(app)
     register_blueprints(app)
