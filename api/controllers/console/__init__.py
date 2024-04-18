@@ -20,3 +20,5 @@ from .explore import (audio, completion, conversation, installed_app, message, p
                       saved_message, workflow)
 # Import workspace controllers
 from .workspace import account, members, model_providers, models, tool_providers, workspace
+# Import enterprise controllers
+from .enterprise import enterprise_sso
