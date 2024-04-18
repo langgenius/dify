@@ -45,8 +45,8 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
             </div>
           </div>
         ))}
-      </div>
-    </div>
+      </div >
+    </div >
   )
 }
 
