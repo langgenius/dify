@@ -31,7 +31,7 @@ const VariableValueBlock = () => {
     if (matchArr === null)
       return null
 
-    const hashtagLength = matchArr[3].length + 4
+    const hashtagLength = matchArr[0].length
     const startOffset = matchArr.index
     const endOffset = startOffset + hashtagLength
     return {

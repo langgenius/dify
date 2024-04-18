@@ -9,7 +9,7 @@ import pandas as pd
 from flask import Flask, current_app
 from werkzeug.datastructures import FileStorage
 
-from core.generator.llm_generator import LLMGenerator
+from core.llm_generator.llm_generator import LLMGenerator
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector

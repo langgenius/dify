@@ -1,0 +1,2 @@
+class OutputParserException(Exception):
+    pass

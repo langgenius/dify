@@ -63,7 +63,7 @@ class LargeLanguageModel(AIModel):
 
         callbacks = callbacks or []
 
-        if bool(os.environ.get("DEBUG")):
+        if bool(os.environ.get("DEBUG", 'False').lower() == 'true'):
             callbacks.append(LoggingCallback())
 
         # trigger before invoke callbacks

@@ -2,14 +2,14 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
-from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.tools.entities.tool_entities import (
     ToolDescription,
     ToolIdentity,
     ToolInvokeMessage,
     ToolParameter,
+    ToolProviderType,
     ToolRuntimeImageVariable,
     ToolRuntimeVariable,
     ToolRuntimeVariablePool,
@@ -22,8 +22,13 @@ class Tool(BaseModel, ABC):
     parameters: Optional[list[ToolParameter]] = None
     description: ToolDescription = None
     is_team_authorization: bool = False
-    agent_callback: Optional[DifyAgentCallbackHandler] = None
-    use_callback: bool = False
+
+    @validator('parameters', pre=True, always=True)
+    def set_parameters(cls, v, values):
+        if not v:
+            return []
+
+        return v
 
     class Runtime(BaseModel):
         """
@@ -45,15 +50,10 @@ class Tool(BaseModel, ABC):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-        if not self.agent_callback:
-            self.use_callback = False
-        else:
-            self.use_callback = True
-
     class VARIABLE_KEY(Enum):
         IMAGE = 'image'
 
-    def fork_tool_runtime(self, meta: dict[str, Any], agent_callback: DifyAgentCallbackHandler = None) -> 'Tool':
+    def fork_tool_runtime(self, meta: dict[str, Any]) -> 'Tool':
         """
             fork a new tool with meta data
 
@@ -65,8 +65,15 @@ class Tool(BaseModel, ABC):
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.copy() if self.description else None,
             runtime=Tool.Runtime(**meta),
-            agent_callback=agent_callback
         )
+    
+    @abstractmethod
+    def tool_provider_type(self) -> ToolProviderType:
+        """
+            get the tool provider type
+
+            :return: the tool provider type
+        """
     
     def load_variables(self, variables: ToolRuntimeVariablePool):
         """
@@ -174,50 +181,22 @@ class Tool(BaseModel, ABC):
 
         return result
 
-    def invoke(self, user_id: str, tool_parameters: Union[dict[str, Any], str]) -> list[ToolInvokeMessage]:
-        # check if tool_parameters is a string
-        if isinstance(tool_parameters, str):
-            # check if this tool has only one parameter
-            parameters = [parameter for parameter in self.parameters if parameter.form == ToolParameter.ToolParameterForm.LLM]
-            if parameters and len(parameters) == 1:
-                tool_parameters = {
-                    parameters[0].name: tool_parameters
-                }
-            else:
-                raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
-
+    def invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
         # update tool_parameters
         if self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
 
-        # hit callback
-        if self.use_callback:
-            self.agent_callback.on_tool_start(
-                tool_name=self.identity.name,
-                tool_inputs=tool_parameters
-            )
+        # try parse tool parameters into the correct type
+        tool_parameters = self._transform_tool_parameters_type(tool_parameters)
 
-        try:
-            result = self._invoke(
-                user_id=user_id,
-                tool_parameters=tool_parameters,
-            )
-        except Exception as e:
-            if self.use_callback:
-                self.agent_callback.on_tool_error(e)
-            raise e
+        result = self._invoke(
+            user_id=user_id,
+            tool_parameters=tool_parameters,
+        )
 
         if not isinstance(result, list):
             result = [result]
 
-        # hit callback
-        if self.use_callback:
-            self.agent_callback.on_tool_end(
-                tool_name=self.identity.name,
-                tool_inputs=tool_parameters,
-                tool_outputs=self._convert_tool_response_to_str(result)
-            )
-        
         return result
     
     def _convert_tool_response_to_str(self, tool_response: list[ToolInvokeMessage]) -> str:
@@ -242,6 +221,44 @@ class Tool(BaseModel, ABC):
                 result += f"tool response: {response.message}."
 
         return result
+    
+    def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
+        """
+        Transform tool parameters type
+        """
+        for parameter in self.parameters:
+            if parameter.name in tool_parameters:
+                if parameter.type in [
+                    ToolParameter.ToolParameterType.SECRET_INPUT, 
+                    ToolParameter.ToolParameterType.STRING, 
+                    ToolParameter.ToolParameterType.SELECT,
+                ] and not isinstance(tool_parameters[parameter.name], str):
+                    tool_parameters[parameter.name] = str(tool_parameters[parameter.name])
+                elif parameter.type == ToolParameter.ToolParameterType.NUMBER \
+                    and not isinstance(tool_parameters[parameter.name], int | float):
+                    if isinstance(tool_parameters[parameter.name], str):
+                        try:
+                            tool_parameters[parameter.name] = int(tool_parameters[parameter.name])
+                        except ValueError:
+                            tool_parameters[parameter.name] = float(tool_parameters[parameter.name])
+                elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
+                    if not isinstance(tool_parameters[parameter.name], bool):
+                        # check if it is a string
+                        if isinstance(tool_parameters[parameter.name], str):
+                            # check true false
+                            if tool_parameters[parameter.name].lower() in ['true', 'false']:
+                                tool_parameters[parameter.name] = tool_parameters[parameter.name].lower() == 'true'
+                            # check 1 0
+                            elif tool_parameters[parameter.name] in ['1', '0']:
+                                tool_parameters[parameter.name] = tool_parameters[parameter.name] == '1'
+                            else:
+                                tool_parameters[parameter.name] = bool(tool_parameters[parameter.name])
+                        elif isinstance(tool_parameters[parameter.name], int | float):
+                            tool_parameters[parameter.name] = tool_parameters[parameter.name] != 0
+                        else:
+                            tool_parameters[parameter.name] = bool(tool_parameters[parameter.name])
+                            
+        return tool_parameters
 
     @abstractmethod
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:

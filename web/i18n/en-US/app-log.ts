@@ -12,6 +12,12 @@ const translation = {
       messageCount: 'Message Count',
       userRate: 'User Rate',
       adminRate: 'Op. Rate',
+      startTime: 'START TIME',
+      status: 'STATUS',
+      runtime: 'RUN TIME',
+      tokens: 'TOKENS',
+      user: 'END-USER',
+      version: 'VERSION',
     },
     pagination: {
       previous: 'Prev',
@@ -63,6 +69,22 @@ const translation = {
       annotated: 'Annotated Improvements ({{count}} items)',
       not_annotated: 'Not Annotated',
     },
+  },
+  workflowTitle: 'Workflow Logs',
+  workflowSubtitle: 'The log recorded the operation of Automate.',
+  runDetail: {
+    title: 'Conversation Log',
+    workflowTitle: 'Log Detail',
+  },
+  promptLog: 'Prompt Log',
+  agentLog: 'Agent Log',
+  viewLog: 'View Log',
+  agentLogDetail: {
+    agentMode: 'Agent Mode',
+    toolUsed: 'Tool Used',
+    iterations: 'Iterations',
+    iteration: 'Iteration',
+    finalProcessing: 'Final Processing',
   },
 }
 

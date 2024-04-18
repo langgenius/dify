@@ -79,9 +79,13 @@ export type IChatItem = {
   useCurrentUserAvatar?: boolean
   isOpeningStatement?: boolean
   suggestedQuestions?: string[]
-  log?: { role: string; text: string }[]
+  log?: { role: string; text: string; files?: VisionFile[] }[]
   agent_thoughts?: ThoughtItem[]
   message_files?: VisionFile[]
+  workflow_run_id?: string
+  // for agent log
+  conversationId?: string
+  input?: any
 }
 
 export type MessageEnd = {

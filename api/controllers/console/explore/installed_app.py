@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask_login import current_user
 from flask_restful import Resource, inputs, marshal_with, reqparse
@@ -34,8 +34,7 @@ class InstalledAppsListApi(Resource):
                 'is_pinned': installed_app.is_pinned,
                 'last_used_at': installed_app.last_used_at,
                 'editable': current_user.role in ["owner", "admin"],
-                'uninstallable': current_tenant_id == installed_app.app_owner_tenant_id,
-                'is_agent': installed_app.is_agent
+                'uninstallable': current_tenant_id == installed_app.app_owner_tenant_id
             }
             for installed_app in installed_apps
         ]
@@ -82,7 +81,7 @@ class InstalledAppsListApi(Resource):
                 tenant_id=current_tenant_id,
                 app_owner_tenant_id=app.tenant_id,
                 is_pinned=False,
-                last_used_at=datetime.utcnow()
+                last_used_at=datetime.now(timezone.utc).replace(tzinfo=None)
             )
             db.session.add(new_installed_app)
             db.session.commit()

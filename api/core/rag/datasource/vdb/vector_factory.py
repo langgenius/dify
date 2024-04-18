@@ -110,7 +110,33 @@ class Vector:
                     user=config.get('MILVUS_USER'),
                     password=config.get('MILVUS_PASSWORD'),
                     secure=config.get('MILVUS_SECURE'),
+                    database=config.get('MILVUS_DATABASE'),
                 )
+            )
+        elif vector_type == "relyt":
+            from core.rag.datasource.vdb.relyt.relyt_vector import RelytConfig, RelytVector
+            if self._dataset.index_struct_dict:
+                class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
+                collection_name = class_prefix
+            else:
+                dataset_id = self._dataset.id
+                collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+                index_struct_dict = {
+                    "type": 'relyt',
+                    "vector_store": {"class_prefix": collection_name}
+                }
+                self._dataset.index_struct = json.dumps(index_struct_dict)
+            dim = len(self._embeddings.embed_query("hello relyt"))
+            return RelytVector(
+                collection_name=collection_name,
+                config=RelytConfig(
+                    host=config.get('RELYT_HOST'),
+                    port=config.get('RELYT_PORT'),
+                    user=config.get('RELYT_USER'),
+                    password=config.get('RELYT_PASSWORD'),
+                    database=config.get('RELYT_DATABASE'),
+                ),
+                dim=dim
             )
         else:
             raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")

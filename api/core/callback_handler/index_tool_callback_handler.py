@@ -1,6 +1,7 @@
 
-from core.application_queue_manager import ApplicationQueueManager, PublishFrom
-from core.entities.application_entities import InvokeFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import DatasetQuery, DocumentSegment
@@ -10,7 +11,7 @@ from models.model import DatasetRetrieverResource
 class DatasetIndexToolCallbackHandler:
     """Callback handler for dataset tool."""
 
-    def __init__(self, queue_manager: ApplicationQueueManager,
+    def __init__(self, queue_manager: AppQueueManager,
                  app_id: str,
                  message_id: str,
                  user_id: str,
@@ -82,4 +83,7 @@ class DatasetIndexToolCallbackHandler:
                 db.session.add(dataset_retriever_resource)
                 db.session.commit()
 
-        self._queue_manager.publish_retriever_resources(resource, PublishFrom.APPLICATION_MANAGER)
+        self._queue_manager.publish(
+            QueueRetrieverResourcesEvent(retriever_resources=resource),
+            PublishFrom.APPLICATION_MANAGER
+        )

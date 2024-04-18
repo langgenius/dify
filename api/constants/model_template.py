@@ -1,27 +1,31 @@
 import json
 
-model_templates = {
-    # completion default mode
-    'completion_default': {
+from models.model import AppMode
+
+default_app_templates = {
+    # workflow default mode
+    AppMode.WORKFLOW: {
         'app': {
-            'mode': 'completion',
+            'mode': AppMode.WORKFLOW.value,
             'enable_site': True,
-            'enable_api': True,
-            'is_demo': False,
-            'api_rpm': 0,
-            'api_rph': 0,
-            'status': 'normal'
+            'enable_api': True
+        }
+    },
+
+    # completion default mode
+    AppMode.COMPLETION: {
+        'app': {
+            'mode': AppMode.COMPLETION.value,
+            'enable_site': True,
+            'enable_api': True
         },
         'model_config': {
-            'provider': '',
-            'model_id': '',
-            'configs': {},
-            'model': json.dumps({
+            'model': {
                 "provider": "openai",
-                "name": "gpt-3.5-turbo-instruct",
-                "mode": "completion",
+                "name": "gpt-4",
+                "mode": "chat",
                 "completion_params": {}
-            }),
+            },
             'user_input_form': json.dumps([
                 {
                     "paragraph": {
@@ -33,32 +37,50 @@ model_templates = {
                 }
             ]),
             'pre_prompt': '{{query}}'
-        }
+        },
+
     },
 
     # chat default mode
-    'chat_default': {
+    AppMode.CHAT: {
         'app': {
-            'mode': 'chat',
+            'mode': AppMode.CHAT.value,
             'enable_site': True,
-            'enable_api': True,
-            'is_demo': False,
-            'api_rpm': 0,
-            'api_rph': 0,
-            'status': 'normal'
+            'enable_api': True
         },
         'model_config': {
-            'provider': '',
-            'model_id': '',
-            'configs': {},
-            'model': json.dumps({
+            'model': {
                 "provider": "openai",
-                "name": "gpt-3.5-turbo",
+                "name": "gpt-4",
                 "mode": "chat",
                 "completion_params": {}
-            })
+            }
         }
     },
+
+    # advanced-chat default mode
+    AppMode.ADVANCED_CHAT: {
+        'app': {
+            'mode': AppMode.ADVANCED_CHAT.value,
+            'enable_site': True,
+            'enable_api': True
+        }
+    },
+
+    # agent-chat default mode
+    AppMode.AGENT_CHAT: {
+        'app': {
+            'mode': AppMode.AGENT_CHAT.value,
+            'enable_site': True,
+            'enable_api': True
+        },
+        'model_config': {
+            'model': {
+                "provider": "openai",
+                "name": "gpt-4",
+                "mode": "chat",
+                "completion_params": {}
+            }
+        }
+    }
 }
-
-

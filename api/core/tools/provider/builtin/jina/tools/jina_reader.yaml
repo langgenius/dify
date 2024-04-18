@@ -1,0 +1,41 @@
+identity:
+  name: jina_reader
+  author: Dify
+  label:
+    en_US: JinaReader
+    zh_Hans: JinaReader
+    pt_BR: JinaReader
+description:
+  human:
+    en_US: Convert any URL to an LLM-friendly input. Experience improved output for your agent and RAG systems at no cost.
+    zh_Hans: 将任何 URL 转换为 LLM 友好的输入。无需付费即可体验为您的 Agent 和 RAG 系统提供的改进输出。
+    pt_BR: Converta qualquer URL em uma entrada amigável ao LLM. Experimente uma saída aprimorada para seus sistemas de agente e RAG sem custo.
+  llm: A tool for scraping webpages. Input should be a URL.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: URL
+      zh_Hans: 网页链接
+      pt_BR: URL
+    human_description:
+      en_US: used for linking to webpages
+      zh_Hans: 用于链接到网页
+      pt_BR: used for linking to webpages
+    llm_description: url for scraping
+    form: llm
+  - name: summary
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Enable summary
+      zh_Hans: 是否启用摘要
+      pt_BR: Habilitar resumo
+    human_description:
+      en_US: Enable summary for the output
+      zh_Hans: 为输出启用摘要
+      pt_BR: Habilitar resumo para a saída
+    llm_description: enable summary
+    form: form

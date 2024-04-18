@@ -1,14 +1,18 @@
+import logging
+
 from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
 from controllers.service_api import api
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import message_file_fields
 from libs.helper import TimestampField, uuid_value
-from models.model import App, EndUser
+from models.model import App, AppMode, EndUser
+from services.errors.message import SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
 
 
@@ -54,12 +58,14 @@ class MessageListApi(Resource):
         'conversation_id': fields.String,
         'inputs': fields.Raw,
         'query': fields.String,
-        'answer': fields.String,
+        'answer': fields.String(attribute='re_sign_file_url_answer'),
         'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
         'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
         'retriever_resources': fields.List(fields.Nested(retriever_resource_fields)),
         'created_at': TimestampField,
-        'agent_thoughts': fields.List(fields.Nested(agent_thought_fields))
+        'agent_thoughts': fields.List(fields.Nested(agent_thought_fields)),
+        'status': fields.String,
+        'error': fields.String,
     }
 
     message_infinite_scroll_pagination_fields = {
@@ -71,7 +77,8 @@ class MessageListApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model: App, end_user: EndUser):
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -110,7 +117,8 @@ class MessageSuggestedApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     def get(self, app_model: App, end_user: EndUser, message_id):
         message_id = str(message_id)
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotChatAppError()
 
         try:
@@ -118,10 +126,15 @@ class MessageSuggestedApi(Resource):
                 app_model=app_model,
                 user=end_user,
                 message_id=message_id,
-                check_enabled=False
+                invoke_from=InvokeFrom.SERVICE_API
             )
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
+        except SuggestedQuestionsAfterAnswerDisabledError:
+            raise BadRequest("Message Not Exists.")
+        except Exception:
+            logging.exception("internal server error.")
+            raise InternalServerError()
 
         return {'result': 'success', 'data': questions}
 

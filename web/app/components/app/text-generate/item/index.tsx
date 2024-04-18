@@ -1,5 +1,5 @@
 'use client'
-import type { Dispatch, FC, SetStateAction } from 'react'
+import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
@@ -8,8 +8,9 @@ import { useParams } from 'next/navigation'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
 import { HashtagIcon } from '@heroicons/react/24/solid'
-import PromptLog from '@/app/components/app/chat/log'
+// import PromptLog from '@/app/components/app/chat/log'
 import { Markdown } from '@/app/components/base/markdown'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import AudioBtn from '@/app/components/base/audio-btn'
@@ -22,13 +23,20 @@ import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows
 import { fetchTextGenerationMessge } from '@/service/debug'
 import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
+import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
 const MAX_DEPTH = 3
+
 export type IGenerationItemProps = {
+  isWorkflow?: boolean
+  workflowProcessData?: WorkflowProcess
   className?: string
   isError: boolean
   onRetry: () => void
-  content: string
+  content: any
   messageId?: string | null
   conversationId?: string
   isLoading?: boolean
@@ -75,6 +83,8 @@ export const copyIcon = (
 )
 
 const GenerationItem: FC<IGenerationItemProps> = ({
+  isWorkflow,
+  workflowProcessData,
   className,
   isError,
   onRetry,
@@ -111,7 +121,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [childFeedback, setChildFeedback] = useState<Feedbacktype>({
     rating: null,
   })
-  const [promptLog, setPromptLog] = useState<{ role: string; text: string }[]>([])
+  const { setCurrentLogItem, setShowPromptLogModal } = useAppStore()
 
   const handleFeedback = async (childFeedback: Feedbacktype) => {
     await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
@@ -137,6 +147,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     isInstalledApp,
     installedAppId,
     controlClearMoreLikeThis,
+    isWorkflow,
   }
 
   const handleMoreLikeThis = async () => {
@@ -180,18 +191,33 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       setChildMessageId(null)
   }, [isLoading])
 
-  const handleOpenLogModal = async (setModal: Dispatch<SetStateAction<boolean>>) => {
+  const handleOpenLogModal = async () => {
     const data = await fetchTextGenerationMessge({
       appId: params.appId as string,
       messageId: messageId!,
     })
-    setPromptLog(data.message as any || [])
-    setModal(true)
+    const logItem = {
+      ...data,
+      log: [
+        ...data.message,
+        ...(data.message[data.message.length - 1].role !== 'assistant'
+          ? [
+            {
+              role: 'assistant',
+              text: data.answer,
+              files: data.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+            },
+          ]
+          : []),
+      ],
+    }
+    setCurrentLogItem(logItem)
+    setShowPromptLogModal(true)
   }
 
   const ratingContent = (
     <>
-      {!isError && messageId && !feedback?.rating && (
+      {!isWorkflow && !isError && messageId && !feedback?.rating && (
         <SimpleBtn className="!px-0">
           <>
             <div
@@ -215,7 +241,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
           </>
         </SimpleBtn>
       )}
-      {!isError && messageId && feedback?.rating === 'like' && (
+      {!isWorkflow && !isError && messageId && feedback?.rating === 'like' && (
         <div
           onClick={() => {
             onFeedback?.({
@@ -226,7 +252,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
           <HandThumbUpIcon width={16} height={16} />
         </div>
       )}
-      {!isError && messageId && feedback?.rating === 'dislike' && (
+      {!isWorkflow && !isError && messageId && feedback?.rating === 'dislike' && (
         <div
           onClick={() => {
             onFeedback?.({
@@ -265,12 +291,24 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             }
             <div className={`flex ${contentClassName}`}>
               <div className='grow w-0'>
-                {isError
-                  ? <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
-                  : (
-                    <Markdown content={content} />
-                  )}
-
+                {workflowProcessData && (
+                  <WorkflowProcessItem grayBg data={workflowProcessData} expand={workflowProcessData.expand} />
+                )}
+                {isError && (
+                  <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
+                )}
+                {!isError && (typeof content === 'string') && (
+                  <Markdown content={content} />
+                )}
+                {!isError && (typeof content !== 'string') && (
+                  <CodeEditor
+                    readOnly
+                    title={<div/>}
+                    language={CodeLanguage.json}
+                    value={content}
+                    isJSONStringifyBeauty
+                  />
+                )}
               </div>
             </div>
 
@@ -278,29 +316,23 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               <div className='flex items-center'>
                 {
                   !isInWebApp && !isInstalledApp && !isResponding && (
-                    <PromptLog
-                      log={promptLog}
-                      containerRef={ref}
-                    >
-                      {
-                        showModal => (
-                          <SimpleBtn
-                            isDisabled={isError || !messageId}
-                            className={cn(isMobile && '!px-1.5', 'space-x-1 mr-1')}
-                            onClick={() => handleOpenLogModal(showModal)}>
-                            <File02 className='w-3.5 h-3.5' />
-                            {!isMobile && <div>{t('common.operation.log')}</div>}
-                          </SimpleBtn>
-                        )
-                      }
-                    </PromptLog>
+                    <SimpleBtn
+                      isDisabled={isError || !messageId}
+                      className={cn(isMobile && '!px-1.5', 'space-x-1 mr-1')}
+                      onClick={handleOpenLogModal}>
+                      <File02 className='w-3.5 h-3.5' />
+                      {!isMobile && <div>{t('common.operation.log')}</div>}
+                    </SimpleBtn>
                   )
                 }
                 <SimpleBtn
                   isDisabled={isError || !messageId}
                   className={cn(isMobile && '!px-1.5', 'space-x-1')}
                   onClick={() => {
-                    copy(content)
+                    if (typeof content === 'string')
+                      copy(content)
+                    else
+                      copy(JSON.stringify(content))
                     Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
                   }}>
                   <Clipboard className='w-3.5 h-3.5' />
@@ -308,14 +340,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 </SimpleBtn>
                 {isInWebApp && (
                   <>
-                    <SimpleBtn
-                      isDisabled={isError || !messageId}
-                      className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
-                      onClick={() => { onSave?.(messageId as string) }}
-                    >
-                      <Bookmark className='w-3.5 h-3.5' />
-                      {!isMobile && <div>{t('common.operation.save')}</div>}
-                    </SimpleBtn>
+                    {!isWorkflow && (
+                      <SimpleBtn
+                        isDisabled={isError || !messageId}
+                        className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
+                        onClick={() => { onSave?.(messageId as string) }}
+                      >
+                        <Bookmark className='w-3.5 h-3.5' />
+                        {!isMobile && <div>{t('common.operation.save')}</div>}
+                      </SimpleBtn>
+                    )}
                     {(moreLikeThis && depth < MAX_DEPTH) && (
                       <SimpleBtn
                         isDisabled={isError || !messageId}
@@ -324,15 +358,20 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                       >
                         <Stars02 className='w-3.5 h-3.5' />
                         {!isMobile && <div>{t('appDebug.feature.moreLikeThis.title')}</div>}
-                      </SimpleBtn>)}
-                    {isError && <SimpleBtn
-                      onClick={onRetry}
-                      className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
-                    >
-                      <RefreshCcw01 className='w-3.5 h-3.5' />
-                      {!isMobile && <div>{t('share.generation.batchFailed.retry')}</div>}
-                    </SimpleBtn>}
-                    {!isError && messageId && <div className="mx-3 w-[1px] h-[14px] bg-gray-200"></div>}
+                      </SimpleBtn>
+                    )}
+                    {isError && (
+                      <SimpleBtn
+                        onClick={onRetry}
+                        className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
+                      >
+                        <RefreshCcw01 className='w-3.5 h-3.5' />
+                        {!isMobile && <div>{t('share.generation.batchFailed.retry')}</div>}
+                      </SimpleBtn>
+                    )}
+                    {!isError && messageId && !isWorkflow && (
+                      <div className="mx-3 w-[1px] h-[14px] bg-gray-200"></div>
+                    )}
                     {ratingContent}
                   </>
                 )}

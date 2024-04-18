@@ -68,6 +68,7 @@ class BuiltinToolProviderController(ToolProviderController):
                     script_path=path.join(path.dirname(path.realpath(__file__)),
                                            'builtin', provider, 'tools', f'{tool_name}.py'),
                     parent_type=BuiltinTool)
+                tool["identity"]["provider"] = provider
                 tools.append(assistant_tool_class(**tool))
 
         self.tools = tools
@@ -126,7 +127,8 @@ class BuiltinToolProviderController(ToolProviderController):
 
             :return: whether the provider needs credentials
         """
-        return self.credentials_schema is not None and len(self.credentials_schema) != 0
+        return self.credentials_schema is not None and \
+            len(self.credentials_schema) != 0
 
     @property
     def app_type(self) -> ToolProviderType:

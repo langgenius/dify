@@ -1,6 +1,8 @@
 import type { Fetcher } from 'swr'
 import { get, post } from './base'
 import type {
+  AgentLogDetailRequest,
+  AgentLogDetailResponse,
   AnnotationsCountResponse,
   ChatConversationFullDetailResponse,
   ChatConversationsRequest,
@@ -15,7 +17,11 @@ import type {
   LogMessageAnnotationsResponse,
   LogMessageFeedbacksRequest,
   LogMessageFeedbacksResponse,
+  WorkflowLogsRequest,
+  WorkflowLogsResponse,
+  WorkflowRunDetailResponse,
 } from '@/models/log'
+import type { NodeTracingListResponse } from '@/types/workflow'
 
 export const fetchConversationList: Fetcher<ConversationListResponse, { name: string; appId: string; params?: Record<string, any> }> = ({ appId, params }) => {
   return get<ConversationListResponse>(`/console/api/apps/${appId}/messages`, params)
@@ -56,4 +62,20 @@ export const updateLogMessageAnnotations: Fetcher<LogMessageAnnotationsResponse,
 
 export const fetchAnnotationsCount: Fetcher<AnnotationsCountResponse, { url: string }> = ({ url }) => {
   return get<AnnotationsCountResponse>(url)
+}
+
+export const fetchWorkflowLogs: Fetcher<WorkflowLogsResponse, { url: string; params?: WorkflowLogsRequest }> = ({ url, params }) => {
+  return get<WorkflowLogsResponse>(url, { params })
+}
+
+export const fetchRunDetail = ({ appID, runID }: { appID: string; runID: string }) => {
+  return get<WorkflowRunDetailResponse>(`/apps/${appID}/workflow-runs/${runID}`)
+}
+
+export const fetchTracingList: Fetcher<NodeTracingListResponse, { url: string }> = ({ url }) => {
+  return get<NodeTracingListResponse>(url)
+}
+
+export const fetchAgentLogDetail = ({ appID, params }: { appID: string; params: AgentLogDetailRequest }) => {
+  return get<AgentLogDetailResponse>(`/apps/${appID}/agent/logs`, { params })
 }

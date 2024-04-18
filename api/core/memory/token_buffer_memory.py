@@ -1,7 +1,9 @@
+from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file.message_file_parser import MessageFileParser
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    ImagePromptMessageContent,
     PromptMessage,
     PromptMessageRole,
     TextPromptMessageContent,
@@ -10,7 +12,7 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers import model_provider_factory
 from extensions.ext_database import db
-from models.model import Conversation, Message
+from models.model import AppMode, Conversation, Message
 
 
 class TokenBufferMemory:
@@ -43,9 +45,21 @@ class TokenBufferMemory:
         for message in messages:
             files = message.message_files
             if files:
-                file_objs = message_file_parser.transform_message_files(
-                    files, message.app_model_config
-                )
+                if self.conversation.mode not in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
+                    file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
+                else:
+                    file_extra_config = FileUploadConfigManager.convert(
+                        message.workflow_run.workflow.features_dict,
+                        is_vision=False
+                    )
+
+                if file_extra_config:
+                    file_objs = message_file_parser.transform_message_files(
+                        files,
+                        file_extra_config
+                    )
+                else:
+                    file_objs = []
 
                 if not file_objs:
                     prompt_messages.append(UserPromptMessage(content=message.query))
@@ -111,7 +125,17 @@ class TokenBufferMemory:
             else:
                 continue
 
-            message = f"{role}: {m.content}"
-            string_messages.append(message)
+            if isinstance(m.content, list):
+                inner_msg = ""
+                for content in m.content:
+                    if isinstance(content, TextPromptMessageContent):
+                        inner_msg += f"{content.data}\n"
+                    elif isinstance(content, ImagePromptMessageContent):
+                        inner_msg += "[image]\n"
+
+                string_messages.append(f"{role}: {inner_msg.strip()}")
+            else:
+                message = f"{role}: {m.content}"
+                string_messages.append(message)
 
         return "\n".join(string_messages)

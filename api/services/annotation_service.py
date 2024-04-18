@@ -415,7 +415,7 @@ class AppAnnotationService:
             raise NotFound("App annotation not found")
         annotation_setting.score_threshold = args['score_threshold']
         annotation_setting.updated_user_id = current_user.id
-        annotation_setting.updated_at = datetime.datetime.utcnow()
+        annotation_setting.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         db.session.add(annotation_setting)
         db.session.commit()
 

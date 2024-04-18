@@ -2,13 +2,13 @@ import base64
 import logging
 import secrets
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from typing import Any, Optional
 
 from flask import current_app
 from sqlalchemy import func
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Unauthorized
 
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
@@ -44,7 +44,7 @@ class AccountService:
             return None
 
         if account.status in [AccountStatus.BANNED.value, AccountStatus.CLOSED.value]:
-            raise Forbidden('Account is banned or closed.')
+            raise Unauthorized("Account is banned or closed.")
 
         current_tenant = TenantAccountJoin.query.filter_by(account_id=account.id, current=True).first()
         if current_tenant:
@@ -59,8 +59,8 @@ class AccountService:
             available_ta.current = True
             db.session.commit()
 
-        if datetime.utcnow() - account.last_active_at > timedelta(minutes=10):
-            account.last_active_at = datetime.utcnow()
+        if datetime.now(timezone.utc).replace(tzinfo=None) - account.last_active_at > timedelta(minutes=10):
+            account.last_active_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
         return account
@@ -70,7 +70,7 @@ class AccountService:
     def get_account_jwt_token(account):
         payload = {
             "user_id": account.id,
-            "exp": datetime.utcnow() + timedelta(days=30),
+            "exp": datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=30),
             "iss": current_app.config['EDITION'],
             "sub": 'Console API Passport',
         }
@@ -91,7 +91,7 @@ class AccountService:
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
-            account.initialized_at = datetime.utcnow()
+            account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
         if account.password is None or not compare_password(password, account.password, account.password_salt):
@@ -163,7 +163,7 @@ class AccountService:
                 # If it exists, update the record
                 account_integrate.open_id = open_id
                 account_integrate.encrypted_token = ""  # todo
-                account_integrate.updated_at = datetime.utcnow()
+                account_integrate.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             else:
                 # If it does not exist, create a new record
                 account_integrate = AccountIntegrate(account_id=account.id, provider=provider, open_id=open_id,
@@ -178,7 +178,7 @@ class AccountService:
 
     @staticmethod
     def close_account(account: Account) -> None:
-        """todo: Close account"""
+        """Close account"""
         account.status = AccountStatus.CLOSED.value
         db.session.commit()
 
@@ -197,7 +197,7 @@ class AccountService:
     @staticmethod
     def update_last_login(account: Account, request) -> None:
         """Update last login time and ip"""
-        account.last_login_at = datetime.utcnow()
+        account.last_login_at = datetime.now(timezone.utc).replace(tzinfo=None)
         account.last_login_ip = get_remote_ip(request)
         db.session.add(account)
         db.session.commit()
@@ -255,7 +255,7 @@ class TenantService:
         """Get account join tenants"""
         return db.session.query(Tenant).join(
             TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id
-        ).filter(TenantAccountJoin.account_id == account.id).all()
+        ).filter(TenantAccountJoin.account_id == account.id, Tenant.status == TenantStatus.NORMAL).all()
 
     @staticmethod
     def get_current_tenant_by_account(account: Account):
@@ -279,7 +279,12 @@ class TenantService:
         if tenant_id is None:
             raise ValueError("Tenant ID must be provided.")
 
-        tenant_account_join = TenantAccountJoin.query.filter_by(account_id=account.id, tenant_id=tenant_id).first()
+        tenant_account_join = db.session.query(TenantAccountJoin).join(Tenant, TenantAccountJoin.tenant_id == Tenant.id).filter(
+            TenantAccountJoin.account_id == account.id,
+            TenantAccountJoin.tenant_id == tenant_id,
+            Tenant.status == TenantStatus.NORMAL,
+        ).first()
+
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
         else:
@@ -431,7 +436,7 @@ class RegisterService:
                 password=password
             )
             account.status = AccountStatus.ACTIVE.value if not status else status.value
-            account.initialized_at = datetime.utcnow()
+            account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
@@ -445,7 +450,7 @@ class RegisterService:
 
             db.session.commit()
         except Exception as e:
-            db.session.rollback()  # todo: do not work
+            db.session.rollback()
             logging.error(f'Register failed: {e}')
             raise AccountRegisterError(f'Registration failed: {e}') from e
 

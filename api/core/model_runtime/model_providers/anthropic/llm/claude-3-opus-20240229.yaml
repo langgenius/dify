@@ -5,6 +5,7 @@ model_type: llm
 features:
   - agent-thought
   - vision
+  - tool-call
 model_properties:
   mode: chat
   context_size: 200000

@@ -2,6 +2,10 @@ model: qwen-max-longcontext
 label:
   en_US: qwen-max-longcontext
 model_type: llm
+features:
+  - multi-tool-call
+  - agent-thought
+  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 32768
@@ -9,7 +13,7 @@ parameter_rules:
   - name: temperature
     use_template: temperature
     type: float
-    default: 0.85
+    default: 0.3
     min: 0.0
     max: 2.0
     help:

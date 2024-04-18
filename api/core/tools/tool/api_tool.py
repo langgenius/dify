@@ -1,5 +1,6 @@
 import json
 from json import dumps
+from os import getenv
 from typing import Any, Union
 from urllib.parse import urlencode
 
@@ -8,11 +9,15 @@ import requests
 
 import core.helper.ssrf_proxy as ssrf_proxy
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
+from core.tools.entities.user_entities import UserToolProvider
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.tool.tool import Tool
 
-API_TOOL_DEFAULT_TIMEOUT = (10, 60)
+API_TOOL_DEFAULT_TIMEOUT = (
+    int(getenv('API_TOOL_DEFAULT_CONNECT_TIMEOUT', '10')),
+    int(getenv('API_TOOL_DEFAULT_READ_TIMEOUT', '60'))
+)
 
 class ApiTool(Tool):
     api_bundle: ApiBasedToolBundle
@@ -34,7 +39,7 @@ class ApiTool(Tool):
             api_bundle=self.api_bundle.copy() if self.api_bundle else None,
             runtime=Tool.Runtime(**meta)
         )
-
+    
     def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any], format_only: bool = False) -> str:
         """
             validate the credentials for Api tool
@@ -48,6 +53,9 @@ class ApiTool(Tool):
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
         # validate response
         return self.validate_and_parse_response(response)
+
+    def tool_provider_type(self) -> ToolProviderType:
+        return UserToolProvider.ProviderType.API
 
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
         headers = {}
@@ -283,6 +291,16 @@ class ApiTool(Tool):
                 elif property['type'] == 'null':
                     if value is None:
                         return None
+                elif property['type'] == 'object':
+                    if isinstance(value, str):
+                        try:
+                            return json.loads(value)
+                        except ValueError:
+                            return value
+                    elif isinstance(value, dict):
+                        return value
+                    else:
+                        return value
                 else:
                     raise ValueError(f"Invalid type {property['type']} for property {property}")
             elif 'anyOf' in property and isinstance(property['anyOf'], list):
