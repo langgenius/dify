@@ -820,7 +820,13 @@ export const useNodesInteractions = () => {
 
     const {
       getNodes,
+      edges,
     } = store.getState()
+
+    const currentEdgeIndex = edges.findIndex(edge => edge.selected)
+
+    if (currentEdgeIndex > -1)
+      return
 
     const nodes = getNodes()
     const nodesToDelete = nodes.filter(node => node.data.selected)
