@@ -6,6 +6,7 @@ from core.workflow.nodes.template_transform.template_transform_node import Templ
 from models.workflow import WorkflowNodeExecutionStatus
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 
+
 @pytest.mark.parametrize('setup_code_executor_mock', [['none']], indirect=True)
 def test_execute_code(setup_code_executor_mock):
     code = '''{{args2}}'''
