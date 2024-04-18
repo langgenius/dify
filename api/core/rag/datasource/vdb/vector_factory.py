@@ -154,12 +154,12 @@ class Vector:
                 collection_name=collection_name,
                 config=TencentConfig(
                     url=config.get('TENCENT_VECTOR_DB_URL'),
-                    api_key=config.get('TENCENT_API_KEY'),
-                    timeout=config.get('TENCENT_TIMEOUT'),
-                    username=config.get('TENCENT_USERNAME'),
-                    database=config.get('TENCENT_DATABASE'),
-                    shard=config.get('TENCENT_SHARD'),
-                    replicas=config.get('TENCENT_REPLICAS'),
+                    api_key=config.get('TENCENT_VECTOR_DB_API_KEY'),
+                    timeout=config.get('TENCENT_VECTOR_DB_TIMEOUT'),
+                    username=config.get('TENCENT_VECTOR_DB_USERNAME'),
+                    database=config.get('TENCENT_VECTOR_DB_DATABASE'),
+                    shard=config.get('TENCENT_VECTOR_DB_SHARD'),
+                    replicas=config.get('TENCENT_VECTOR_DB_REPLICAS'),
                 )
             )
         else:

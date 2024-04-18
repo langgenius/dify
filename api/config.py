@@ -230,12 +230,12 @@ class Config:
 
         # tencent settings
         self.TENCENT_VECTOR_DB_URL = get_env('TENCENT_VECTOR_DB_URL')
-        self.TENCENT_API_KEY = get_env('TENCENT_API_KEY')
-        self.TENCENT_TIMEOUT = get_env('TENCENT_TIMEOUT')
-        self.TENCENT_USERNAME = get_env('TENCENT_USERNAME')
-        self.TENCENT_DATABASE = get_env('TENCENT_DATABASE')
-        self.TENCENT_SHARD = get_env('TENCENT_SHARD')
-        self.TENCENT_REPLICAS = get_env('TENCENT_REPLICAS')
+        self.TENCENT_VECTOR_DB_API_KEY = get_env('TENCENT_VECTOR_DB_API_KEY')
+        self.TENCENT_VECTOR_DB_TIMEOUT = get_env('TENCENT_VECTOR_DB_TIMEOUT')
+        self.TENCENT_VECTOR_DB_USERNAME = get_env('TENCENT_VECTOR_DB_USERNAME')
+        self.TENCENT_VECTOR_DB_DATABASE = get_env('TENCENT_VECTOR_DB_DATABASE')
+        self.TENCENT_VECTOR_DB_SHARD = get_env('TENCENT_VECTOR_DB_SHARD')
+        self.TENCENT_VECTOR_DB_REPLICAS = get_env('TENCENT_VECTOR_DB_REPLICAS')
 
         # ------------------------
         # Mail Configurations.
