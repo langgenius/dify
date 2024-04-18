@@ -229,7 +229,7 @@ class Config:
         self.RELYT_DATABASE = get_env('RELYT_DATABASE')
 
         # tencent settings
-        self.TENCENT_URL = get_env('TENCENT_URL')
+        self.TENCENT_VECTOR_DB_URL = get_env('TENCENT_VECTOR_DB_URL')
         self.TENCENT_API_KEY = get_env('TENCENT_API_KEY')
         self.TENCENT_TIMEOUT = get_env('TENCENT_TIMEOUT')
         self.TENCENT_USERNAME = get_env('TENCENT_USERNAME')

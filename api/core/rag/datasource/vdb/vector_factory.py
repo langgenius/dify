@@ -153,7 +153,7 @@ class Vector:
             return TencentVector(
                 collection_name=collection_name,
                 config=TencentConfig(
-                    url=config.get('TENCENT_URL'),
+                    url=config.get('TENCENT_VECTOR_DB_URL'),
                     api_key=config.get('TENCENT_API_KEY'),
                     timeout=config.get('TENCENT_TIMEOUT'),
                     username=config.get('TENCENT_USERNAME'),

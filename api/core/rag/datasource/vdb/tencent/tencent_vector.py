@@ -156,14 +156,15 @@ class TencentVector(BaseVector):
         return self._get_search_res(res)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        res = (self._db.collection(self._collection_name)
-               .searchByText(embeddingItems=[query],
-                             params=document.HNSWSearchParams(ef=kwargs.get("ef", 10)),
-                             retrieve_vector=False,
-                             limit=kwargs.get('top_k', 4),
-                             timeout=self._client_config.timeout,
-                             ))
-        return self._get_search_res(res)
+        # res = (self._db.collection(self._collection_name)
+        #        .searchByText(embeddingItems=[query],
+        #                      params=document.HNSWSearchParams(ef=kwargs.get("ef", 10)),
+        #                      retrieve_vector=False,
+        #                      limit=kwargs.get('top_k', 4),
+        #                      timeout=self._client_config.timeout,
+        #                      ))
+        # must deploy embedding model in tencent vector db , for now not support
+        return []
 
     def _get_search_res(self, res):
         docs = []
