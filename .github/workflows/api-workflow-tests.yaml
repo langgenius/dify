@@ -12,6 +12,7 @@ jobs:
 
     env:
       MOCK_SWITCH: true
+      OPENAI_API_KEY: sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii
 
     steps:
       - name: Checkout code
