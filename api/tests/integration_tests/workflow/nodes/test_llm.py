@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.entities.provider_configuration import ProviderModelBundle, ProviderConfiguration
-from core.entities.provider_entities import SystemConfiguration, CustomConfiguration, CustomProviderConfiguration
+from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
+from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers import ModelProviderFactory
