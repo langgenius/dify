@@ -154,7 +154,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 json_result['object'] = 'chat.completion'
             elif (completion_type is LLMMode.COMPLETION and json_result['object'] == ''):
                 json_result['object'] = 'text_completion'
-                
+
             if (completion_type is LLMMode.CHAT
                     and ('object' not in json_result or json_result['object'] != 'chat.completion')):
                 raise CredentialsValidateFailedError(
@@ -425,6 +425,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         finish_reason = 'Unknown'
 
         for chunk in response.iter_lines(decode_unicode=True, delimiter=delimiter):
+            chunk = chunk.strip()
             if chunk:
                 # ignore sse comments
                 if chunk.startswith(':'):

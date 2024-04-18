@@ -20,8 +20,28 @@ result = f'''<<RESULT>>
 print(result)
 """
 
-PYTHON_PRELOAD = """"""
-
+PYTHON_PRELOAD = """
+# prepare general imports
+import json
+import datetime
+import math
+import random
+import re
+import string
+import sys
+import time
+import traceback
+import uuid
+import os
+import base64
+import hashlib
+import hmac
+import binascii
+import collections
+import functools
+import operator
+import itertools
+"""
 
 class PythonTemplateTransformer(TemplateTransformer):
     @classmethod

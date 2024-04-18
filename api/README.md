@@ -55,3 +55,16 @@
 9. If you need to debug local async processing, please start the worker service by running 
 `celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail`.
 The started celery app handles the async tasks, e.g. dataset importing and documents indexing.
+
+
+## Testing
+
+1. Install dependencies for both the backend and the test environment
+   ```bash
+   pip install -r requirements.txt -r requirements-dev.txt
+   ``` 
+   
+2. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`
+   ```bash
+   dev/pytest/pytest_all_tests.sh
+   ```
