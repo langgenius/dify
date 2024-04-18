@@ -39,8 +39,8 @@ class ExcelExtractor(BaseExtractor):
         documents = []
         # loop over all sheets
         for sheet in wb.sheets():
-            for row_index, row in enumerate(sheet.get_rows(), start=1):
-                row_header = None
+            row_header = None
+            for row_index, row in enumerate(sheet.get_rows(), start=1):                
                 if self.is_blank_row(row):
                     continue
                 if row_header is None:
@@ -50,7 +50,7 @@ class ExcelExtractor(BaseExtractor):
                 for index, cell in enumerate(row):
                     txt_value = str(cell.value)
                     item_arr.append(f'"{row_header[index].value}":"{txt_value}"')
-                item_str = "\n".join(item_arr)
+                item_str = ",".join(item_arr)
                 document = Document(page_content=item_str, metadata={'source': self._file_path})
                 documents.append(document)
         return documents
