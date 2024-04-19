@@ -1,7 +1,7 @@
-model: google/codegemma-7b
+model: meta/llama3-8b
 label:
-  zh_Hans: google/codegemma-7b
-  en_US: google/codegemma-7b
+  zh_Hans: meta/llama3-8b
+  en_US: meta/llama3-8b
 model_type: llm
 features:
   - agent-thought
