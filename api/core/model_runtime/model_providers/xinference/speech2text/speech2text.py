@@ -47,6 +47,7 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
             if "/" in credentials['model_uid'] or "?" in credentials['model_uid'] or "#" in credentials['model_uid']:
                 raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
 
+
             # initialize client
             client = Client(
                 base_url=credentials['server_url']
