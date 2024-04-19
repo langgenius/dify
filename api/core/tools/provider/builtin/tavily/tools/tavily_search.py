@@ -36,8 +36,15 @@ class TavilySearch:
 
         """
         params["api_key"] = self.api_key
-        params['exclude_domains'] = params.get('exclude_domains', '').split()
-        params['include_domains'] = params.get('include_domains', '').split()
+        if 'exclude_domains' in params and isinstance(params['exclude_domains'], str) and params['exclude_domains'] != 'None':
+            params['exclude_domains'] = params['exclude_domains'].split()
+        else:
+            params['exclude_domains'] = []
+        if 'include_domains' in params and isinstance(params['include_domains'], str) and params['include_domains'] != 'None':
+            params['include_domains'] = params['include_domains'].split()
+        else:
+            params['include_domains'] = []
+        
         response = requests.post(f"{TAVILY_API_URL}/search", json=params)
         response.raise_for_status()
         return response.json()
