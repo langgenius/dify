@@ -3,9 +3,9 @@ label:
   zh_Hans: Lepton AI
   en_US: Lepton AI
 icon_small:
-  en_US: icon_s_en.svg
+  en_US: icon_s_en.png
 icon_large:
-  en_US: icon_l_en.svg
+  en_US: icon_l_en.png
 background: "#F5F5F4"
 help:
   title:
