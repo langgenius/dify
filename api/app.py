@@ -104,6 +104,7 @@ def create_app(test_config=None) -> Flask:
     logging.basicConfig(
         level=app.config.get('LOG_LEVEL'),
         format=app.config.get('LOG_FORMAT'),
+        datefmt=app.config.get('LOG_DATEFORMAT'),
         handlers=log_handlers
     )
 
