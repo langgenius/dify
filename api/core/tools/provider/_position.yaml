@@ -4,6 +4,7 @@
 - searxng
 - dalle
 - azuredalle
+- stability
 - wikipedia
 - model.openai
 - model.google
@@ -17,6 +18,7 @@
 - model.zhipuai
 - aippt
 - youtube
+- code
 - wolframalpha
 - maths
 - github

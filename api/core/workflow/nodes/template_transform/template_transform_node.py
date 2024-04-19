@@ -52,7 +52,7 @@ class TemplateTransformNode(BaseNode):
             variables[variable] = value
         # Run code
         try:
-            result = CodeExecutor.execute_code(
+            result = CodeExecutor.execute_workflow_code_template(
                 language='jinja2',
                 code=node_data.template,
                 inputs=variables

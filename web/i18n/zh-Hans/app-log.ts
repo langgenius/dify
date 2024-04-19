@@ -77,7 +77,15 @@ const translation = {
     workflowTitle: '日志详情',
   },
   promptLog: 'Prompt 日志',
+  agentLog: 'Agent 日志',
   viewLog: '查看日志',
+  agentLogDetail: {
+    agentMode: 'Agent 模式',
+    toolUsed: '使用工具',
+    iterations: '迭代次数',
+    iteration: '迭代',
+    finalProcessing: '最终处理',
+  },
 }
 
 export default translation
