@@ -1,4 +1,5 @@
 import os
+import sys
 from logging.handlers import RotatingFileHandler
 
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
@@ -87,13 +88,12 @@ def create_app(test_config=None) -> Flask:
 
     app.secret_key = app.config['SECRET_KEY']
 
+    log_handlers = None
     log_file = app.config.get('LOG_FILE')
-    log_dir = os.path.dirname(log_file)
-    os.makedirs(log_dir, exist_ok=True)
-    logging.basicConfig(
-        level=app.config.get('LOG_LEVEL'),
-        format=app.config.get('LOG_FORMAT'),
-        handlers=[
+    if log_file:
+        log_dir = os.path.dirname(log_file)
+        os.makedirs(log_dir, exist_ok=True)
+        log_handlers = [
             RotatingFileHandler(
                 filename=log_file,
                 maxBytes=1024 * 1024 * 1024,
@@ -101,6 +101,10 @@ def create_app(test_config=None) -> Flask:
             ),
             logging.StreamHandler(sys.stdout)
         ]
+    logging.basicConfig(
+        level=app.config.get('LOG_LEVEL'),
+        format=app.config.get('LOG_FORMAT'),
+        handlers=log_handlers
     )
 
     initialize_extensions(app)

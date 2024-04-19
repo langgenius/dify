@@ -38,7 +38,7 @@ DEFAULTS = {
     'QDRANT_CLIENT_TIMEOUT': 20,
     'CELERY_BACKEND': 'database',
     'LOG_LEVEL': 'INFO',
-    'LOG_FILE': 'logs/app.log',
+    'LOG_FILE': '',
     'LOG_FORMAT': '%(asctime)s %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s',
     'HOSTED_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_OPENAI_TRIAL_ENABLED': 'False',
