@@ -1,9 +1,11 @@
-version: '3'
+version: "3"
 services:
   # API service
   api:
     image: langgenius/dify-api:0.6.8
     restart: always
+    networks:
+      - captain-overlay-network
     environment:
       # Startup mode, 'api' starts the API server.
       MODE: api
@@ -14,28 +16,28 @@ services:
       # The base URL of console application web frontend, refers to the Console base URL of WEB service if console domain is
       # different from api or web app domain.
       # example: http://cloud.dify.ai
-      CONSOLE_WEB_URL: ''
+      CONSOLE_WEB_URL: ""
       # Password for admin user initialization.
       # If left unset, admin user will not be prompted for a password when creating the initial admin account.
-      INIT_PASSWORD: ''
+      INIT_PASSWORD: ""
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
       # different from api or web app domain.
       # example: http://cloud.dify.ai
-      CONSOLE_API_URL: ''
+      CONSOLE_API_URL: ""
       # The URL prefix for Service API endpoints, refers to the base URL of the current API service if api domain is
       # different from console domain.
       # example: http://api.dify.ai
-      SERVICE_API_URL: ''
+      SERVICE_API_URL: ""
       # The URL prefix for Web APP frontend, refers to the Web App base URL of WEB service if web app domain is different from
       # console or api domain.
       # example: http://udify.app
-      APP_WEB_URL: ''
+      APP_WEB_URL: ""
       # File preview or download Url prefix.
       # used to display File preview or download Url to the front-end or as Multi-model inputs;
       # Url is signed and has expiration time.
-      FILES_URL: ''
+      FILES_URL: ""
       # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
-      MIGRATION_ENABLED: 'true'
+      MIGRATION_ENABLED: "true"
       # The configurations of postgres database connection.
       # It is consistent with the configuration in the 'db' service below.
       DB_USERNAME: postgres
@@ -47,18 +49,18 @@ services:
       # It is consistent with the configuration in the 'redis' service below.
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_USERNAME: ''
+      REDIS_USERNAME: ""
       REDIS_PASSWORD: difyai123456
-      REDIS_USE_SSL: 'false'
+      REDIS_USE_SSL: "false"
       # use redis db 0 for redis cache
       REDIS_DB: 0
       # The configurations of celery broker.
       # Use redis as the broker, and redis db 1 for celery broker.
       CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
       # Specifies the allowed origins for cross-origin requests to the Web API, e.g. https://dify.app or * for all origins.
-      WEB_API_CORS_ALLOW_ORIGINS: '*'
+      WEB_API_CORS_ALLOW_ORIGINS: "*"
       # Specifies the allowed origins for cross-origin requests to the console API, e.g. https://cloud.dify.ai or * for all origins.
-      CONSOLE_CORS_ALLOW_ORIGINS: '*'
+      CONSOLE_CORS_ALLOW_ORIGINS: "*"
       # CSRF Cookie settings
       # Controls whether a cookie is sent with cross-site requests,
       # providing some protection against cross-site request forgery attacks
@@ -76,11 +78,11 @@ services:
       # only available when STORAGE_TYPE is `local`.
       STORAGE_LOCAL_PATH: storage
       # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
-      S3_ENDPOINT: 'https://xxx.r2.cloudflarestorage.com'
-      S3_BUCKET_NAME: 'difyai'
-      S3_ACCESS_KEY: 'ak-difyai'
-      S3_SECRET_KEY: 'sk-difyai'
-      S3_REGION: 'us-east-1'
+      S3_ENDPOINT: "https://xxx.r2.cloudflarestorage.com"
+      S3_BUCKET_NAME: "difyai"
+      S3_ACCESS_KEY: "ak-difyai"
+      S3_SECRET_KEY: "sk-difyai"
+      S3_REGION: "us-east-1"
       # The Azure Blob storage configurations, only available when STORAGE_TYPE is `azure-blob`.
       AZURE_BLOB_ACCOUNT_NAME: 'difyai'
       AZURE_BLOB_ACCOUNT_KEY: 'difyai'
@@ -129,19 +131,19 @@ services:
       PGVECTOR_PASSWORD: difyai123456
       PGVECTOR_DATABASE: dify
       # Mail configuration, support: resend, smtp
-      MAIL_TYPE: ''
+      MAIL_TYPE: ""
       # default send from email address, if not specified
-      MAIL_DEFAULT_SEND_FROM: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
-      SMTP_SERVER: ''
+      MAIL_DEFAULT_SEND_FROM: "YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)"
+      SMTP_SERVER: ""
       SMTP_PORT: 587
-      SMTP_USERNAME: ''
-      SMTP_PASSWORD: ''
-      SMTP_USE_TLS: 'true'
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
+      SMTP_USE_TLS: "true"
       # the api-key for resend (https://resend.com)
-      RESEND_API_KEY: ''
+      RESEND_API_KEY: ""
       RESEND_API_URL: https://api.resend.com
       # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
-      SENTRY_DSN: ''
+      SENTRY_DSN: ""
       # The sample rate for Sentry events. Default: `1.0`
       SENTRY_TRACES_SAMPLE_RATE: 1.0
       # The sample rate for Sentry profiles. Default: `1.0`
@@ -182,6 +184,8 @@ services:
   worker:
     image: langgenius/dify-api:0.6.8
     restart: always
+    networks:
+      - captain-overlay-network
     environment:
       CONSOLE_WEB_URL: ''
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
@@ -204,21 +208,21 @@ services:
       # The configurations of redis cache connection.
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_USERNAME: ''
+      REDIS_USERNAME: ""
       REDIS_PASSWORD: difyai123456
       REDIS_DB: 0
-      REDIS_USE_SSL: 'false'
+      REDIS_USE_SSL: "false"
       # The configurations of celery broker.
       CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
       # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage`, Default: `local`
       STORAGE_TYPE: local
       STORAGE_LOCAL_PATH: storage
       # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
-      S3_ENDPOINT: 'https://xxx.r2.cloudflarestorage.com'
-      S3_BUCKET_NAME: 'difyai'
-      S3_ACCESS_KEY: 'ak-difyai'
-      S3_SECRET_KEY: 'sk-difyai'
-      S3_REGION: 'us-east-1'
+      S3_ENDPOINT: "https://xxx.r2.cloudflarestorage.com"
+      S3_BUCKET_NAME: "difyai"
+      S3_ACCESS_KEY: "ak-difyai"
+      S3_SECRET_KEY: "sk-difyai"
+      S3_REGION: "us-east-1"
       # The Azure Blob storage configurations, only available when STORAGE_TYPE is `azure-blob`.
       AZURE_BLOB_ACCOUNT_NAME: 'difyai'
       AZURE_BLOB_ACCOUNT_KEY: 'difyai'
@@ -253,9 +257,9 @@ services:
       # The milvus password.
       MILVUS_PASSWORD: Milvus
       # The milvus tls switch.
-      MILVUS_SECURE: 'false'
+      MILVUS_SECURE: "false"
       # Mail configuration, support: resend
-      MAIL_TYPE: ''
+      MAIL_TYPE: ""
       # default send from email address, if not specified
       MAIL_DEFAULT_SEND_FROM: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
       SMTP_SERVER: ''
@@ -264,7 +268,7 @@ services:
       SMTP_PASSWORD: ''
       SMTP_USE_TLS: 'true'
       # the api-key for resend (https://resend.com)
-      RESEND_API_KEY: ''
+      RESEND_API_KEY: ""
       RESEND_API_URL: https://api.resend.com
       # relyt configurations
       RELYT_HOST: db
@@ -297,17 +301,19 @@ services:
   web:
     image: langgenius/dify-web:0.6.8
     restart: always
+    networks:
+      - captain-overlay-network
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
       # different from api or web app domain.
       # example: http://cloud.dify.ai
-      CONSOLE_API_URL: ''
+      CONSOLE_API_URL: ""
       # The URL for Web APP api server, refers to the Web App base URL of WEB service if web app domain is different from
       # console or api domain.
       # example: http://udify.app
-      APP_API_URL: ''
+      APP_API_URL: ""
       # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
-      SENTRY_DSN: ''
+      SENTRY_DSN: ""
     # uncomment to expose dify-web port to host
     # ports:
     #   - "3000:3000"
@@ -316,6 +322,8 @@ services:
   db:
     image: postgres:15-alpine
     restart: always
+    networks:
+      - captain-overlay-network
     environment:
       PGUSER: postgres
       # The password for the default postgres user.
@@ -330,7 +338,7 @@ services:
     # ports:
     #   - "5432:5432"
     healthcheck:
-      test: [ "CMD", "pg_isready" ]
+      test: ["CMD", "pg_isready"]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -339,13 +347,15 @@ services:
   redis:
     image: redis:6-alpine
     restart: always
+    networks:
+      - captain-overlay-network
     volumes:
       # Mount the redis data directory to the container.
       - ./volumes/redis/data:/data
     # Set the redis password when startup redis server.
     command: redis-server --requirepass difyai123456
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
     # uncomment to expose redis port to host
     # ports:
     #   - "6379:6379"
@@ -354,6 +364,8 @@ services:
   weaviate:
     image: semitechnologies/weaviate:1.19.0
     restart: always
+    networks:
+      - captain-overlay-network
     volumes:
       # Mount the Weaviate data directory to the container.
       - ./volumes/weaviate:/var/lib/weaviate
@@ -361,15 +373,15 @@ services:
       # The Weaviate configurations
       # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
       QUERY_DEFAULTS_LIMIT: 25
-      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'false'
-      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
-      DEFAULT_VECTORIZER_MODULE: 'none'
-      CLUSTER_HOSTNAME: 'node1'
-      AUTHENTICATION_APIKEY_ENABLED: 'true'
-      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih'
-      AUTHENTICATION_APIKEY_USERS: 'hello@dify.ai'
-      AUTHORIZATION_ADMINLIST_ENABLED: 'true'
-      AUTHORIZATION_ADMINLIST_USERS: 'hello@dify.ai'
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "false"
+      PERSISTENCE_DATA_PATH: "/var/lib/weaviate"
+      DEFAULT_VECTORIZER_MODULE: "none"
+      CLUSTER_HOSTNAME: "node1"
+      AUTHENTICATION_APIKEY_ENABLED: "true"
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: "WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih"
+      AUTHENTICATION_APIKEY_USERS: "hello@dify.ai"
+      AUTHORIZATION_ADMINLIST_ENABLED: "true"
+      AUTHORIZATION_ADMINLIST_USERS: "hello@dify.ai"
     # uncomment to expose weaviate port to host
     # ports:
     #  - "8080:8080"
@@ -378,6 +390,13 @@ services:
   sandbox:
     image: langgenius/dify-sandbox:0.2.0
     restart: always
+    networks:
+      - ssrf_proxy_network
+      - captain-overlay-network
+    cap_add:
+      # Why is sys_admin permission needed?
+      # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-sys_admin-permission-needed
+      - SYS_ADMIN
     environment:
       # The DifySandbox configurations
       # Make sure you are changing this key for your deployment with a strong key.
@@ -390,8 +409,7 @@ services:
       HTTPS_PROXY: 'http://ssrf_proxy:3128'
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
-    networks:
-      - ssrf_proxy_network
+
 
   # ssrf_proxy server
   # for more information, please refer to
@@ -451,6 +469,8 @@ services:
   nginx:
     image: nginx:latest
     restart: always
+    networks:
+      - captain-overlay-network
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/proxy.conf:/etc/nginx/proxy.conf
@@ -460,10 +480,12 @@ services:
       - api
       - web
     ports:
-      - "80:80"
+      - "8080:80"
       #- "443:443"
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
     driver: bridge
     internal: true
+  captain-overlay-network:
+    external: true
