@@ -1,15 +1,11 @@
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
-from core.tools.tool.tool import Tool
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.errors import ToolProviderCredentialValidationError
-
 from core.tools.provider.builtin.judge0ce.tools.submitCodeExecutionTask import SubmitCodeExecutionTaskTool
-from core.tools.provider.builtin.judge0ce.tools.getExecutionResult import GetExecutionResultTool
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
-from typing import Any, Dict
+from typing import Any
 
 class Judge0CEProvider(BuiltinToolProviderController):
-    def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             SubmitCodeExecutionTaskTool().fork_tool_runtime(
                 meta={
@@ -18,8 +14,8 @@ class Judge0CEProvider(BuiltinToolProviderController):
             ).invoke(
                 user_id='',
                 tool_parameters={
-                    "source_code": "print('Hello, World!')",
-                    "language_id": 71,  # Python 3
+                    "source_code": "print('hello world')",
+                    "language_id": 71,
                 },
             )
         except Exception as e:
