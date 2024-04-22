@@ -216,7 +216,9 @@
 .githubIcon {
   background-image: url("./apps/assets/github.svg");
 }
-
+.tooneIcon {
+  background-image: url("./apps/assets/toone.svg");
+}
 .discordIcon {
   background-image: url("./apps/assets/discord.svg");
 }

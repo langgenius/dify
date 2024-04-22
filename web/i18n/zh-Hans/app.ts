@@ -20,6 +20,8 @@ const translation = {
   appDeleteFailed: '应用删除失败',
   join: '参与社区',
   communityIntro: '与团队成员、贡献者和开发者在不同频道中交流',
+  contactUs: '联系我们',
+  address: '地址：广东省珠海市港湾大道科技五路19号同望科技园',
   roadmap: '产品路线图',
   newApp: {
     startFromBlank: '创建空白应用',
