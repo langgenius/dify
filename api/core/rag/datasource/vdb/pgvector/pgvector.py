@@ -1,9 +1,10 @@
 import logging
 from typing import Any
+from uuid import uuid4
 
-from pgvecto_rs.sdk import PGVectoRs, Record
+from pgvecto_rs.sdk import PGVectoRs
 from pydantic import BaseModel, root_validator
-from sqlalchemy import text as sql_text, create_engine, text
+from sqlalchemy import text as sql_text, create_engine, text, insert
 from sqlalchemy.orm import Session
 
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -35,7 +36,7 @@ class PgvectorConfig(BaseModel):
         return values
 
 
-class PGVector(BaseVector):
+class PGVectoRS(BaseVector):
 
     def __init__(self, collection_name: str, config: PgvectorConfig, dim: int):
         super().__init__(collection_name)
@@ -54,7 +55,7 @@ class PGVector(BaseVector):
 
 
     def get_type(self) -> str:
-        return 'pgvector'
+        return 'pgvecto-rs'
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self.create_collection(len(embeddings[0]))
@@ -68,20 +69,20 @@ class PGVector(BaseVector):
                 return
             index_name = f"{self._collection_name}_embedding_index"
             with Session(self._client) as session:
-                drop_statement = sql_text(f"DROP TABLE IF EXISTS collection_{self._collection_name}")
+                drop_statement = sql_text(f"DROP TABLE IF EXISTS {self._collection_name}")
                 session.execute(drop_statement)
                 create_statement = sql_text(f"""
-                    CREATE TABLE IF NOT EXISTS collection_{self._collection_name} (
+                    CREATE TABLE IF NOT EXISTS {self._collection_name} (
                         id UUID PRIMARY KEY,
                         text TEXT NOT NULL,
-                        meta JSONB NOT NULL,
-                        embedding vector({dimension}) NOT NULL
+                        metadata JSONB NOT NULL,
+                        vector vector({dimension}) NOT NULL
                     ) using heap; 
                 """)
                 session.execute(create_statement)
                 index_statement = sql_text(f"""
                         CREATE INDEX {index_name}
-                        ON collection_{self._collection_name} USING vectors(embedding vector_l2_ops)
+                        ON {self._collection_name} USING vectors(vector vector_l2_ops)
                         WITH (options = $$
                                 optimizing.optimizing_threads = 30
                                 segment.max_growing_segment_size = 2000
@@ -96,10 +97,21 @@ class PGVector(BaseVector):
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
-        records = [Record.from_text(document.page_content, embedding, document.metadata)
-                   for document, embedding in zip(documents, embeddings)]
-        pks = [str(r.id) for r in records]
-        self._client.insert(records)
+        pks = []
+        with Session(self._client) as session:
+            for document, embedding in zip(documents, embeddings):
+                pk = uuid4()
+                session.execute(
+                    insert(self._collection_name).values(
+                        id=pk,
+                        text=document.page_content,
+                        metadata=document.metadata,
+                        vector=embedding,
+                    ),
+                )
+                pks.append(pk)
+            session.commit()
+
         return pks
 
     def delete_by_document_id(self, document_id: str):
@@ -109,9 +121,9 @@ class PGVector(BaseVector):
 
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None
-        with Session(self._client._engine) as session:
+        with Session(self._client) as session:
             select_statement = sql_text(
-                f"SELECT id FROM collection_{self._collection_name} WHERE meta->>'{key}' = '{value}'; "
+                f"SELECT id FROM {self._collection_name} WHERE meta->>'{key}' = '{value}'; "
             )
             result = session.execute(select_statement).fetchall()
         if result:
@@ -126,9 +138,9 @@ class PGVector(BaseVector):
             self._client.delete_by_ids(ids)
 
     def delete_by_ids(self, doc_ids: list[str]) -> None:
-        with Session(self._client._engine) as session:
+        with Session(self._client) as session:
             select_statement = sql_text(
-                f"SELECT id FROM collection_{self._collection_name} WHERE meta->>'doc_id' in ('{doc_ids}'); "
+                f"SELECT id FROM {self._collection_name} WHERE meta->>'doc_id' in ('{doc_ids}'); "
             )
             result = session.execute(select_statement).fetchall()
         if result:
@@ -136,14 +148,14 @@ class PGVector(BaseVector):
             self._client.delete_by_ids(ids)
 
     def delete(self) -> None:
-        with Session(self._client._engine) as session:
-            session.execute(sql_text(f"DROP TABLE IF EXISTS collection_{self._collection_name}"))
+        with Session(self._client) as session:
+            session.execute(sql_text(f"DROP TABLE IF EXISTS {self._collection_name}"))
             session.commit()
 
     def text_exists(self, id: str) -> bool:
-        with Session(self._client._engine) as session:
+        with Session(self._client) as session:
             select_statement = sql_text(
-                f"SELECT id FROM collection_{self._collection_name} WHERE meta->>'doc_id' = '{id}' limit 1; "
+                f"SELECT id FROM {self._collection_name} WHERE meta->>'doc_id' = '{id}' limit 1; "
             )
             result = session.execute(select_statement).fetchall()
         return len(result) > 0
