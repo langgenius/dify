@@ -1,0 +1,23 @@
+identity:
+  name: getExecutionResult
+  author: Richards Tu
+  label:
+    en_US: Get Execution Result
+    zh_Hans: 获取执行结果
+description:
+  human:
+    en_US: A tool for retrieving the details of a code submission by a specific token from submitCodeExecutionTask.
+    zh_Hans: 一个用于通过 submitCodeExecutionTask 工具提供的特定令牌来检索代码提交详细信息的工具。
+  llm: A tool for retrieving the details of a code submission by a specific token from submitCodeExecutionTask.
+parameters:
+  - name: token
+    type: string
+    required: true
+    label:
+      en_US: Token
+      zh_Hans: 令牌
+    human_description:
+      en_US: The submission's unique token.
+      zh_Hans: 提交的唯一令牌。
+    llm_description: The submission's unique token. MUST get from submitCodeExecution.
+    form: llm
