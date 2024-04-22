@@ -530,6 +530,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             payload["top_p"] = model_parameters.get("top_p")
             payload["max_tokens"] = model_parameters.get("max_tokens")
             payload["prompt"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
+            payload["stop"] = stop[:10] if stop else []
 
         elif model_prefix == "anthropic":
             payload = { **model_parameters }
