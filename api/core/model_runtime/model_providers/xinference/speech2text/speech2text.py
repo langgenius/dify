@@ -47,6 +47,8 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
             if "/" in credentials['model_uid'] or "?" in credentials['model_uid'] or "#" in credentials['model_uid']:
                 raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
 
+            if credentials['server_url'].endswith('/'):
+                credentials['server_url'] = credentials['server_url'][:-1]
 
             # initialize client
             client = Client(
@@ -119,6 +121,9 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
         :param temperature: The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output mor            e random,while lower values like 0.2 will make it more focused and deterministic.If set to 0, the model wi            ll use log probability to automatically increase the temperature until certain thresholds are hit.
         :return: text for given audio file
         """
+        if credentials['server_url'].endswith('/'):
+            credentials['server_url'] = credentials['server_url'][:-1]
+
         handle = RESTfulAudioModelHandle(credentials['model_uid'],credentials['server_url'],auth_headers={})
         response = handle.transcriptions(
             audio=file,
