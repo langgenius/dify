@@ -1,12 +1,16 @@
 import logging
 from typing import Any
-from uuid import uuid4
+from uuid import uuid4, UUID
 
+from numpy import ndarray
 from pgvecto_rs.sdk import PGVectoRs
+from pgvecto_rs.sqlalchemy import Vector
 from pydantic import BaseModel, root_validator
-from sqlalchemy import text as sql_text, create_engine, text, insert
-from sqlalchemy.orm import Session
+from sqlalchemy import text as sql_text, create_engine, text, insert, delete, select, String
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.orm import Session, mapped_column, Mapped
 
+from core.rag.datasource.vdb.pgvector.collection import CollectionORM
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
@@ -52,7 +56,19 @@ class PGVectoRS(BaseVector):
             session.execute(text("CREATE EXTENSION IF NOT EXISTS vectors"))
             session.commit()
         self._fields = []
+        class _Table(CollectionORM):
+            __tablename__ = f"collection_{collection_name}"
+            __table_args__ = {"extend_existing": True}  # noqa: RUF012
+            id: Mapped[UUID] = mapped_column(
+                postgresql.UUID(as_uuid=True),
+                primary_key=True,
+            )
+            text: Mapped[str] = mapped_column(String)
+            metadata: Mapped[dict] = mapped_column(postgresql.JSONB)
+            vector: Mapped[ndarray] = mapped_column(Vector(dim))
 
+        self._table = _Table
+        self._distance_op = "<=>"
 
     def get_type(self) -> str:
         return 'pgvecto-rs'
@@ -102,7 +118,7 @@ class PGVectoRS(BaseVector):
             for document, embedding in zip(documents, embeddings):
                 pk = uuid4()
                 session.execute(
-                    insert(self._collection_name).values(
+                    insert(self._table).values(
                         id=pk,
                         text=document.page_content,
                         metadata=document.metadata,
@@ -117,7 +133,11 @@ class PGVectoRS(BaseVector):
     def delete_by_document_id(self, document_id: str):
         ids = self.get_ids_by_metadata_field('document_id', document_id)
         if ids:
-            self._client.delete_by_ids(ids)
+
+            with Session(self._client) as session:
+                select_statement = sql_text(f"DELETE FROM {self._collection_name} WHERE id = ANY(:ids)")
+                session.execute(select_statement, {'ids': ids})
+                session.commit()
 
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None
@@ -135,7 +155,10 @@ class PGVectoRS(BaseVector):
 
         ids = self.get_ids_by_metadata_field(key, value)
         if ids:
-            self._client.delete_by_ids(ids)
+            with Session(self._client) as session:
+                select_statement = sql_text(f"DELETE FROM {self._collection_name} WHERE id = ANY(:ids)")
+                session.execute(select_statement, {'ids': ids})
+                session.commit()
 
     def delete_by_ids(self, doc_ids: list[str]) -> None:
         with Session(self._client) as session:
@@ -145,7 +168,11 @@ class PGVectoRS(BaseVector):
             result = session.execute(select_statement).fetchall()
         if result:
             ids = [item[0] for item in result]
-            self._client.delete_by_ids(ids)
+            if ids:
+                with Session(self._client) as session:
+                    select_statement = sql_text(f"DELETE FROM {self._collection_name} WHERE id = ANY(:ids)")
+                    session.execute(select_statement, {'ids': ids})
+                    session.commit()
 
     def delete(self) -> None:
         with Session(self._client) as session:
@@ -163,11 +190,21 @@ class PGVectoRS(BaseVector):
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from pgvecto_rs.sdk import filters
         filter_condition = filters.meta_contains(kwargs.get('filter'))
-        results = self._client.search(
-            top_k=int(kwargs.get('top_k')),
-            embedding=query_vector,
-            filter=filter_condition
-        )
+        with Session(self._client) as session:
+            stmt = (
+                select(
+                    self._table,
+                    self._table.vector.op(distance_op, return_type=Float)(
+                        embedding,
+                    ).label("distance"),
+                )
+                .limit(top_k)
+                .order_by("distance")
+            )
+            if filter is not None:
+                stmt = stmt.where(filter(self._table))
+            res = session.execute(stmt)
+            return [(Record.from_orm(row[0]), row[1]) for row in res]
 
         # Organize results.
         docs = []
