@@ -5,6 +5,7 @@ import requests
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
+
 class GetExecutionResultTool(BuiltinTool):
     def _invoke(self, 
                 user_id: str,
