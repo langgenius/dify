@@ -62,3 +62,4 @@ services:
 networks:
   default:
     name: milvus
+
