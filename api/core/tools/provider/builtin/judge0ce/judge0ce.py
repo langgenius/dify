@@ -1,5 +1,3 @@
-from typing import Any
-
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.controller import BuiltinToolProviderController
 from core.tools.provider.builtin.judge0ce.tools.submitCodeExecution import SubmitCodeExecutionTaskTool
