@@ -6,9 +6,9 @@ identity:
     zh_Hans: Judge0 CE
     pt_BR: Judge0 CE
   description:
-    en_US: Judge0 CE is an open-source online code execution system.
-    zh_Hans: Judge0 CE 是一个开源的在线代码执行系统。
-    pt_BR: Judge0 CE é um sistema de execução de código online de código aberto.
+    en_US: Judge0 CE is an open-source code execution system. Support various languages, including C, C++, Java, Python, Ruby, etc.
+    zh_Hans: Judge0 CE 是一个开源的代码执行系统。支持多种语言，包括 C、C++、Java、Python、Ruby 等。
+    pt_BR: Judge0 CE é um sistema de execução de código de código aberto. Suporta várias linguagens, incluindo C, C++, Java, Python, Ruby, etc.
   icon: icon.svg
 credentials_for_provider:
   X-RapidAPI-Key:
