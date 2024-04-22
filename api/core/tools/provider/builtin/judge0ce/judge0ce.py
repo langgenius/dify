@@ -1,8 +1,8 @@
 from typing import Any
 
 from core.tools.errors import ToolProviderCredentialValidationError
-from core.tools.provider.builtin.controller import BuiltinToolProviderController
 from core.tools.provider.builtin.judge0ce.tools.submitCodeExecutionTask import SubmitCodeExecutionTaskTool
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
 class Judge0CEProvider(BuiltinToolProviderController):
