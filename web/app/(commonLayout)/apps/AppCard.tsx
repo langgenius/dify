@@ -5,22 +5,26 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import style from '../list.module.css'
-import AppModeLabel from './AppModeLabel'
 import s from './style.module.css'
-import SettingsModal from '@/app/components/app/overview/settings'
-import type { ConfigParams } from '@/app/components/app/overview/settings'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
-import { deleteApp, fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
+import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
+import DuplicateAppModal from '@/app/components/app/duplicate-modal'
+import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsContext, { useAppContext } from '@/context/app-context'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
-import { asyncRunSafe } from '@/utils'
+import { getRedirection } from '@/utils/app-redirection'
 import { useProviderContext } from '@/context/provider-context'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
+import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import EditAppModal from '@/app/components/explore/create-app-modal'
+import SwitchAppModal from '@/app/components/app/switch-app-modal'
 
 export type AppCardProps = {
   app: App
@@ -39,12 +43,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     state => state.mutateApps,
   )
 
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false)
+  const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-  const [showSettingsModal, setShowSettingsModal] = useState(false)
-  const [detailState, setDetailState] = useState<{
-    loading: boolean
-    detail?: App
-  }>({ loading: false })
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -64,51 +66,105 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     setShowConfirmDelete(false)
   }, [app.id])
 
-  const getAppDetail = async () => {
-    setDetailState({ loading: true })
-    const [err, res] = await asyncRunSafe(
-      fetchAppDetail({ url: '/apps', id: app.id }),
-    )
-    if (!err) {
-      setDetailState({ loading: false, detail: res })
-      setShowSettingsModal(true)
+  const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
+    name,
+    icon,
+    icon_background,
+    description,
+  }) => {
+    try {
+      await updateAppInfo({
+        appID: app.id,
+        name,
+        icon,
+        icon_background,
+        description,
+      })
+      setShowEditModal(false)
+      notify({
+        type: 'success',
+        message: t('app.editDone'),
+      })
+      if (onRefresh)
+        onRefresh()
+      mutateApps()
     }
-    else { setDetailState({ loading: false }) }
+    catch (e) {
+      notify({ type: 'error', message: t('app.editFailed') })
+    }
+  }, [app.id, mutateApps, notify, onRefresh, t])
+
+  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
+    try {
+      const newApp = await copyApp({
+        appID: app.id,
+        name,
+        icon,
+        icon_background,
+        mode: app.mode,
+      })
+      setShowDuplicateModal(false)
+      notify({
+        type: 'success',
+        message: t('app.newApp.appCreated'),
+      })
+      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+      if (onRefresh)
+        onRefresh()
+      mutateApps()
+      onPlanInfoChanged()
+      getRedirection(isCurrentWorkspaceManager, newApp, push)
+    }
+    catch (e) {
+      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+    }
   }
 
-  const onSaveSiteConfig = useCallback(
-    async (params: ConfigParams) => {
-      const [err] = await asyncRunSafe(
-        updateAppSiteConfig({
-          url: `/apps/${app.id}/site`,
-          body: params,
-        }),
-      )
-      if (!err) {
-        notify({
-          type: 'success',
-          message: t('common.actionMsg.modifiedSuccessfully'),
-        })
-        if (onRefresh)
-          onRefresh()
-        mutateApps()
-      }
-      else {
-        notify({
-          type: 'error',
-          message: t('common.actionMsg.modifiedUnsuccessfully'),
-        })
-      }
-    },
-    [app.id],
-  )
+  const onExport = async () => {
+    try {
+      const { data } = await exportAppConfig(app.id)
+      const a = document.createElement('a')
+      const file = new Blob([data], { type: 'application/yaml' })
+      a.href = URL.createObjectURL(file)
+      a.download = `${app.name}.yml`
+      a.click()
+    }
+    catch (e) {
+      notify({ type: 'error', message: t('app.exportFailed') })
+    }
+  }
+
+  const onSwitch = () => {
+    if (onRefresh)
+      onRefresh()
+    mutateApps()
+    setShowSwitchModal(false)
+  }
 
   const Operations = (props: HtmlContentProps) => {
     const onClickSettings = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
-      await getAppDetail()
+      setShowEditModal(true)
+    }
+    const onClickDuplicate = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      setShowDuplicateModal(true)
+    }
+    const onClickExport = async (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      onExport()
+    }
+    const onClickSwitch = async (e: React.MouseEvent<HTMLDivElement>) => {
+      e.stopPropagation()
+      props.onClick?.()
+      e.preventDefault()
+      setShowSwitchModal(true)
     }
     const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
       e.stopPropagation()
@@ -117,11 +173,28 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       setShowConfirmDelete(true)
     }
     return (
-      <div className="w-full py-1">
-        <button className={s.actionItem} onClick={onClickSettings} disabled={detailState.loading}>
-          <span className={s.actionName}>{t('common.operation.settings')}</span>
+      <div className="relative w-full py-1">
+        <button className={s.actionItem} onClick={onClickSettings}>
+          <span className={s.actionName}>{t('app.editApp')}</span>
         </button>
-
+        <Divider className="!my-1" />
+        <button className={s.actionItem} onClick={onClickDuplicate}>
+          <span className={s.actionName}>{t('app.duplicate')}</span>
+        </button>
+        <button className={s.actionItem} onClick={onClickExport}>
+          <span className={s.actionName}>{t('app.export')}</span>
+        </button>
+        {(app.mode === 'completion' || app.mode === 'chat') && (
+          <>
+            <Divider className="!my-1" />
+            <div
+              className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer'
+              onClick={onClickSwitch}
+            >
+              <span className='text-gray-700 text-sm leading-5'>{t('app.switch')}</span>
+            </div>
+          </>
+        )}
         <Divider className="!my-1" />
         <div
           className={cn(s.actionItem, s.deleteActionItem, 'group')}
@@ -139,22 +212,47 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     <>
       <div
         onClick={(e) => {
-          if (showSettingsModal)
-            return
           e.preventDefault()
-
-          push(`/app/${app.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`)
+          getRedirection(isCurrentWorkspaceManager, app, push)
         }}
-        className={style.listItem}
+        className='group flex col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
       >
-        <div className={style.listItemTitle}>
-          <AppIcon
-            size="small"
-            icon={app.icon}
-            background={app.icon_background}
-          />
-          <div className={style.listItemHeading}>
-            <div className={style.listItemHeadingContent}>{app.name}</div>
+        <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
+          <div className='relative shrink-0'>
+            <AppIcon
+              size="large"
+              icon={app.icon}
+              background={app.icon_background}
+            />
+            <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
+              {app.mode === 'advanced-chat' && (
+                <ChatBot className='w-3 h-3 text-[#1570EF]' />
+              )}
+              {app.mode === 'agent-chat' && (
+                <CuteRobote className='w-3 h-3 text-indigo-600' />
+              )}
+              {app.mode === 'chat' && (
+                <ChatBot className='w-3 h-3 text-[#1570EF]' />
+              )}
+              {app.mode === 'completion' && (
+                <AiText className='w-3 h-3 text-[#0E9384]' />
+              )}
+              {app.mode === 'workflow' && (
+                <Route className='w-3 h-3 text-[#f79009]' />
+              )}
+            </span>
+          </div>
+          <div className='grow w-0 py-[1px]'>
+            <div className='flex items-center text-sm leading-5 font-semibold text-gray-800'>
+              <div className='truncate' title={app.name}>{app.name}</div>
+            </div>
+            <div className='flex items-center text-[10px] leading-[18px] text-gray-500 font-medium'>
+              {app.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
+              {app.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
+              {app.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
+              {app.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
+              {app.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
+            </div>
           </div>
           {isCurrentWorkspaceManager && <CustomPopover
             htmlContent={<Operations />}
@@ -164,20 +262,49 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             btnClassName={open =>
               cn(
                 open ? '!bg-gray-100 !shadow-none' : '!bg-transparent',
-                style.actionIconWrapper,
+                '!hidden h-8 w-8 !p-2 rounded-md border-none hover:!bg-gray-100 group-hover:!inline-flex',
               )
             }
             className={'!w-[128px] h-fit !z-20'}
+            popupClassName={
+              (app.mode === 'completion' || app.mode === 'chat')
+                ? '!w-[238px] translate-x-[-110px]'
+                : ''
+            }
             manualClose
           />}
         </div>
-        <div className={style.listItemDescription}>
-          {app.model_config?.pre_prompt}
-        </div>
-        <div className={style.listItemFooter}>
-          <AppModeLabel mode={app.mode} isAgent={app.is_agent} />
-        </div>
-
+        <div className='mb-1 px-[14px] text-xs leading-normal text-gray-500 line-clamp-4'>{app.description}</div>
+        {showEditModal && (
+          <EditAppModal
+            isEditModal
+            appIcon={app.icon}
+            appIconBackground={app.icon_background}
+            appName={app.name}
+            appDescription={app.description}
+            show={showEditModal}
+            onConfirm={onEdit}
+            onHide={() => setShowEditModal(false)}
+          />
+        )}
+        {showDuplicateModal && (
+          <DuplicateAppModal
+            appName={app.name}
+            icon={app.icon}
+            icon_background={app.icon_background}
+            show={showDuplicateModal}
+            onConfirm={onCopy}
+            onHide={() => setShowDuplicateModal(false)}
+          />
+        )}
+        {showSwitchModal && (
+          <SwitchAppModal
+            show={showSwitchModal}
+            appDetail={app}
+            onClose={() => setShowSwitchModal(false)}
+            onSuccess={onSwitch}
+          />
+        )}
         {showConfirmDelete && (
           <Confirm
             title={t('app.deleteAppConfirmTitle')}
@@ -186,14 +313,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             onClose={() => setShowConfirmDelete(false)}
             onConfirm={onConfirmDelete}
             onCancel={() => setShowConfirmDelete(false)}
-          />
-        )}
-        {showSettingsModal && detailState.detail && (
-          <SettingsModal
-            appInfo={detailState.detail}
-            isShow={showSettingsModal}
-            onClose={() => setShowSettingsModal(false)}
-            onSave={onSaveSiteConfig}
           />
         )}
       </div>

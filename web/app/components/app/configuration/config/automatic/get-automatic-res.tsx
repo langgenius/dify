@@ -186,7 +186,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               )
               : ''}
 
-            {(mode === AppType.chat && res?.opening_statement) && (
+            {(mode !== AppType.completion && res?.opening_statement) && (
               <div className='mt-7'>
                 <GroupName name={t('appDebug.feature.groupChat.title')} />
                 <OpeningStatement

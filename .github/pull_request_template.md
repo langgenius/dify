@@ -12,6 +12,8 @@ Please delete options that are not relevant.
 - [ ] New feature (non-breaking change which adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] This change requires a documentation update, included: [Dify Document](https://github.com/langgenius/dify-docs)
+- [ ] Improvement, including but not limited to code refactoring, performance optimization, and UI/UX improvement
+- [ ] Dependency upgrade
 
 # How Has This Been Tested?
 

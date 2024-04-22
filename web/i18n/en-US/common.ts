@@ -117,7 +117,7 @@ const translation = {
     workspace: 'Workspace',
     createWorkspace: 'Create Workspace',
     helpCenter: 'Help',
-    roadmapAndFeedback: 'Roadmap & Feedback',
+    roadmapAndFeedback: 'Feedback',
     community: 'Community',
     about: 'About',
     logout: 'Log out',
@@ -390,7 +390,7 @@ const translation = {
     type: 'Type',
   },
   about: {
-    changeLog: 'Changlog',
+    changeLog: 'Changelog',
     updateNow: 'Update now',
     nowAvailable: 'Dify {{version}} is now available.',
     latestAvailable: 'Dify {{version}} is the latest version available.',
@@ -400,6 +400,7 @@ const translation = {
     promptEng: 'Orchestrate',
     apiAccess: 'API Access',
     logAndAnn: 'Logs & Ann.',
+    logs: 'Logs',
   },
   environment: {
     testing: 'TESTING',
@@ -476,6 +477,10 @@ const translation = {
       item: {
         title: 'Variables & External Tools',
         desc: 'Insert Variables & External Tools',
+      },
+      outputToolDisabledItem: {
+        title: 'Variables',
+        desc: 'Insert Variables',
       },
       modal: {
         add: 'New variable',

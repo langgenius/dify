@@ -1,3 +1,4 @@
+import concurrent.futures
 import datetime
 import json
 import logging
@@ -13,11 +14,12 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 
 from core.docstore.dataset_docstore import DatasetDocumentStore
 from core.errors.error import ProviderTokenNotInitError
-from core.generator.llm_generator import LLMGenerator
+from core.llm_generator.llm_generator import LLMGenerator
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType, PriceType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
@@ -79,7 +81,7 @@ class IndexingRunner:
             except ProviderTokenNotInitError as e:
                 dataset_document.indexing_status = 'error'
                 dataset_document.error = str(e.description)
-                dataset_document.stopped_at = datetime.datetime.utcnow()
+                dataset_document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 db.session.commit()
             except ObjectDeletedError:
                 logging.warning('Document deleted, document id: {}'.format(dataset_document.id))
@@ -87,7 +89,7 @@ class IndexingRunner:
                 logging.exception("consume document failed")
                 dataset_document.indexing_status = 'error'
                 dataset_document.error = str(e)
-                dataset_document.stopped_at = datetime.datetime.utcnow()
+                dataset_document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 db.session.commit()
 
     def run_in_splitting_status(self, dataset_document: DatasetDocument):
@@ -138,13 +140,13 @@ class IndexingRunner:
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = 'error'
             dataset_document.error = str(e.description)
-            dataset_document.stopped_at = datetime.datetime.utcnow()
+            dataset_document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
         except Exception as e:
             logging.exception("consume document failed")
             dataset_document.indexing_status = 'error'
             dataset_document.error = str(e)
-            dataset_document.stopped_at = datetime.datetime.utcnow()
+            dataset_document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
     def run_in_indexing_status(self, dataset_document: DatasetDocument):
@@ -200,13 +202,13 @@ class IndexingRunner:
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = 'error'
             dataset_document.error = str(e.description)
-            dataset_document.stopped_at = datetime.datetime.utcnow()
+            dataset_document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
         except Exception as e:
             logging.exception("consume document failed")
             dataset_document.indexing_status = 'error'
             dataset_document.error = str(e)
-            dataset_document.stopped_at = datetime.datetime.utcnow()
+            dataset_document.stopped_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
     def indexing_estimate(self, tenant_id: str, extract_settings: list[ExtractSetting], tmp_processing_rule: dict,
@@ -380,7 +382,7 @@ class IndexingRunner:
             after_indexing_status="splitting",
             extra_update_params={
                 DatasetDocument.word_count: sum([len(text_doc.page_content) for text_doc in text_docs]),
-                DatasetDocument.parsing_completed_at: datetime.datetime.utcnow()
+                DatasetDocument.parsing_completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             }
         )
 
@@ -465,7 +467,7 @@ class IndexingRunner:
         doc_store.add_documents(documents)
 
         # update document status to indexing
-        cur_time = datetime.datetime.utcnow()
+        cur_time = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         self._update_document_index_status(
             document_id=dataset_document.id,
             after_indexing_status="indexing",
@@ -480,7 +482,7 @@ class IndexingRunner:
             dataset_document_id=dataset_document.id,
             update_params={
                 DocumentSegment.status: "indexing",
-                DocumentSegment.indexing_at: datetime.datetime.utcnow()
+                DocumentSegment.indexing_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             }
         )
 
@@ -650,17 +652,72 @@ class IndexingRunner:
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
         tokens = 0
-        chunk_size = 100
+        chunk_size = 10
 
         embedding_model_type_instance = None
         if embedding_model_instance:
             embedding_model_type_instance = embedding_model_instance.model_type_instance
             embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
+        # create keyword index
+        create_keyword_thread = threading.Thread(target=self._process_keyword_index,
+                                                 args=(current_app._get_current_object(),
+                                                       dataset.id, dataset_document.id, documents))
+        create_keyword_thread.start()
+        if dataset.indexing_technique == 'high_quality':
+            with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                futures = []
+                for i in range(0, len(documents), chunk_size):
+                    chunk_documents = documents[i:i + chunk_size]
+                    futures.append(executor.submit(self._process_chunk, current_app._get_current_object(), index_processor,
+                                                   chunk_documents, dataset,
+                                                   dataset_document, embedding_model_instance,
+                                                   embedding_model_type_instance))
 
-        for i in range(0, len(documents), chunk_size):
+                for future in futures:
+                    tokens += future.result()
+
+        create_keyword_thread.join()
+        indexing_end_at = time.perf_counter()
+
+        # update document status to completed
+        self._update_document_index_status(
+            document_id=dataset_document.id,
+            after_indexing_status="completed",
+            extra_update_params={
+                DatasetDocument.tokens: tokens,
+                DatasetDocument.completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                DatasetDocument.indexing_latency: indexing_end_at - indexing_start_at,
+            }
+        )
+
+    def _process_keyword_index(self, flask_app, dataset_id, document_id, documents):
+        with flask_app.app_context():
+            dataset = Dataset.query.filter_by(id=dataset_id).first()
+            if not dataset:
+                raise ValueError("no dataset found")
+            keyword = Keyword(dataset)
+            keyword.create(documents)
+            if dataset.indexing_technique != 'high_quality':
+                document_ids = [document.metadata['doc_id'] for document in documents]
+                db.session.query(DocumentSegment).filter(
+                    DocumentSegment.document_id == document_id,
+                    DocumentSegment.index_node_id.in_(document_ids),
+                    DocumentSegment.status == "indexing"
+                ).update({
+                    DocumentSegment.status: "completed",
+                    DocumentSegment.enabled: True,
+                    DocumentSegment.completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                })
+
+                db.session.commit()
+
+    def _process_chunk(self, flask_app, index_processor, chunk_documents, dataset, dataset_document,
+                       embedding_model_instance, embedding_model_type_instance):
+        with flask_app.app_context():
             # check document is paused
             self._check_document_paused_status(dataset_document.id)
-            chunk_documents = documents[i:i + chunk_size]
+
+            tokens = 0
             if dataset.indexing_technique == 'high_quality' or embedding_model_type_instance:
                 tokens += sum(
                     embedding_model_type_instance.get_num_tokens(
@@ -670,9 +727,9 @@ class IndexingRunner:
                     )
                     for document in chunk_documents
                 )
+
             # load index
-            index_processor.load(dataset, chunk_documents)
-            db.session.add(dataset)
+            index_processor.load(dataset, chunk_documents, with_keywords=False)
 
             document_ids = [document.metadata['doc_id'] for document in chunk_documents]
             db.session.query(DocumentSegment).filter(
@@ -682,23 +739,12 @@ class IndexingRunner:
             ).update({
                 DocumentSegment.status: "completed",
                 DocumentSegment.enabled: True,
-                DocumentSegment.completed_at: datetime.datetime.utcnow()
+                DocumentSegment.completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             })
 
             db.session.commit()
 
-        indexing_end_at = time.perf_counter()
-
-        # update document status to completed
-        self._update_document_index_status(
-            document_id=dataset_document.id,
-            after_indexing_status="completed",
-            extra_update_params={
-                DatasetDocument.tokens: tokens,
-                DatasetDocument.completed_at: datetime.datetime.utcnow(),
-                DatasetDocument.indexing_latency: indexing_end_at - indexing_start_at,
-            }
-        )
+            return tokens
 
     def _check_document_paused_status(self, document_id: str):
         indexing_cache_key = 'document_{}_is_paused'.format(document_id)
@@ -792,7 +838,7 @@ class IndexingRunner:
         doc_store.add_documents(documents)
 
         # update document status to indexing
-        cur_time = datetime.datetime.utcnow()
+        cur_time = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         self._update_document_index_status(
             document_id=dataset_document.id,
             after_indexing_status="indexing",
@@ -807,7 +853,7 @@ class IndexingRunner:
             dataset_document_id=dataset_document.id,
             update_params={
                 DocumentSegment.status: "indexing",
-                DocumentSegment.indexing_at: datetime.datetime.utcnow()
+                DocumentSegment.indexing_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             }
         )
         pass

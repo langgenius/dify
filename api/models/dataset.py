@@ -1,4 +1,5 @@
 import json
+import logging
 import pickle
 from json import JSONDecodeError
 
@@ -6,6 +7,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from extensions.ext_database import db
+from extensions.ext_storage import storage
 from models.account import Account
 from models.model import App, UploadFile
 
@@ -121,6 +123,7 @@ class Dataset(db.Model):
         normalized_dataset_id = dataset_id.replace("-", "_")
         return f'Vector_index_{normalized_dataset_id}_Node'
 
+
 class DatasetProcessRule(db.Model):
     __tablename__ = 'dataset_process_rules'
     __table_args__ = (
@@ -176,6 +179,7 @@ class Document(db.Model):
         db.PrimaryKeyConstraint('id', name='document_pkey'),
         db.Index('document_dataset_id_idx', 'dataset_id'),
         db.Index('document_is_paused_idx', 'is_paused'),
+        db.Index('document_tenant_idx', 'tenant_id'),
     )
 
     # initial fields
@@ -334,6 +338,7 @@ class DocumentSegment(db.Model):
         db.Index('document_segment_tenant_dataset_idx', 'dataset_id', 'tenant_id'),
         db.Index('document_segment_tenant_document_idx', 'document_id', 'tenant_id'),
         db.Index('document_segment_dataset_node_idx', 'dataset_id', 'index_node_id'),
+        db.Index('document_segment_tenant_idx', 'tenant_id'),
     )
 
     # initial fields
@@ -439,6 +444,8 @@ class DatasetKeywordTable(db.Model):
     id = db.Column(UUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
     dataset_id = db.Column(UUID, nullable=False, unique=True)
     keyword_table = db.Column(db.Text, nullable=False)
+    data_source_type = db.Column(db.String(255), nullable=False,
+                                 server_default=db.text("'database'::character varying"))
 
     @property
     def keyword_table_dict(self):
@@ -453,14 +460,31 @@ class DatasetKeywordTable(db.Model):
                             dct[keyword] = set(node_idxs)
                 return dct
 
-        return json.loads(self.keyword_table, cls=SetDecoder) if self.keyword_table else None
+        # get dataset
+        dataset = Dataset.query.filter_by(
+            id=self.dataset_id
+        ).first()
+        if not dataset:
+            return None
+        if self.data_source_type == 'database':
+            return json.loads(self.keyword_table, cls=SetDecoder) if self.keyword_table else None
+        else:
+            file_key = 'keyword_files/' + dataset.tenant_id + '/' + self.dataset_id + '.txt'
+            try:
+                keyword_table_text = storage.load_once(file_key)
+                if keyword_table_text:
+                    return json.loads(keyword_table_text.decode('utf-8'), cls=SetDecoder)
+                return None
+            except Exception as e:
+                logging.exception(str(e))
+                return None
 
 
 class Embedding(db.Model):
     __tablename__ = 'embeddings'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='embedding_pkey'),
-        db.UniqueConstraint('model_name', 'hash', name='embedding_hash_idx')
+        db.UniqueConstraint('model_name', 'hash', 'provider_name', name='embedding_hash_idx')
     )
 
     id = db.Column(UUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
@@ -469,6 +493,8 @@ class Embedding(db.Model):
     hash = db.Column(db.String(64), nullable=False)
     embedding = db.Column(db.LargeBinary, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    provider_name = db.Column(db.String(40), nullable=False,
+                              server_default=db.text("''::character varying"))
 
     def set_embedding(self, embedding_data: list[float]):
         self.embedding = pickle.dumps(embedding_data, protocol=pickle.HIGHEST_PROTOCOL)

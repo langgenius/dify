@@ -18,6 +18,7 @@ from core.model_runtime.entities.model_entities import (
 )
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
+from core.utils.position_helper import get_position_map, sort_by_position_map
 
 
 class AIModel(ABC):
@@ -148,15 +149,7 @@ class AIModel(ABC):
         ]
 
         # get _position.yaml file path
-        position_file_path = os.path.join(provider_model_type_path, '_position.yaml')
-
-        # read _position.yaml file
-        position_map = {}
-        if os.path.exists(position_file_path):
-            with open(position_file_path, encoding='utf-8') as f:
-                positions = yaml.safe_load(f)
-                # convert list to dict with key as model provider name, value as index
-                position_map = {position: index for index, position in enumerate(positions)}
+        position_map = get_position_map(provider_model_type_path)
 
         # traverse all model_schema_yaml_paths
         for model_schema_yaml_path in model_schema_yaml_paths:
@@ -206,8 +199,7 @@ class AIModel(ABC):
             model_schemas.append(model_schema)
 
         # resort model schemas by position
-        if position_map:
-            model_schemas.sort(key=lambda x: position_map.get(x.model, 999))
+        model_schemas = sort_by_position_map(position_map, model_schemas, lambda x: x.model)
 
         # cache model schemas
         self.model_schemas = model_schemas

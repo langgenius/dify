@@ -45,11 +45,12 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     # delete Spliter character
                     page_content = document_node.page_content
                     if page_content.startswith(".") or page_content.startswith("。"):
-                        page_content = page_content[1:]
+                        page_content = page_content[1:].strip()
                     else:
                         page_content = page_content
-                    document_node.page_content = page_content
-                    split_documents.append(document_node)
+                    if len(page_content) > 0:
+                        document_node.page_content = page_content
+                        split_documents.append(document_node)
             all_documents.extend(split_documents)
         return all_documents
 

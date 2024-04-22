@@ -11,6 +11,7 @@ import type { AnnotationReplyConfig } from '@/models/debug'
 import { ANNOTATION_DEFAULT } from '@/config'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type Props = {
   appId: string
@@ -36,7 +37,7 @@ const ConfigParamModal: FC<Props> = ({
     modelList: embeddingsModelList,
     defaultModel: embeddingsDefaultModel,
     currentModel: isEmbeddingsDefaultModelValid,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(2)
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textEmbedding)
   const [annotationConfig, setAnnotationConfig] = useState(oldAnnotationConfig)
 
   const [isLoading, setLoading] = useState(false)

@@ -557,7 +557,7 @@ const Main: FC<IMainProps> = ({
       conversation_id: isNewConversation ? null : currConversationId,
     }
 
-    if (visionConfig.enabled && files && files?.length > 0) {
+    if (visionConfig?.enabled && files && files?.length > 0) {
       data.files = files.map((item) => {
         if (item.transfer_method === TransferMethod.local_file) {
           return {

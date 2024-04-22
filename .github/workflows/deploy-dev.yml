@@ -1,0 +1,24 @@
+name: Deploy Dev
+
+on:
+  workflow_run:
+    workflows: ["Build and Push API & Web"]
+    branches:
+      - "deploy/dev"
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: |
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            ${{ vars.SSH_SCRIPT || secrets.SSH_SCRIPT }}

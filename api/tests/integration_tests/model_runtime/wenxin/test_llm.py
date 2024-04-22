@@ -1,8 +1,9 @@
 import os
+from collections.abc import Generator
 from time import sleep
-from typing import Generator
 
 import pytest
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import AIModelEntity
@@ -154,7 +155,7 @@ def test_invoke_stream_model():
     model = ErnieBotLargeLanguageModel()
 
     response = model.invoke(
-        model='ernie-bot',
+        model='ernie-3.5-8k',
         credentials={
             'api_key': os.environ.get('WENXIN_API_KEY'),
             'secret_key': os.environ.get('WENXIN_SECRET_KEY')

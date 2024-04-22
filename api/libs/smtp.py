@@ -16,7 +16,7 @@ class SMTPClient:
         smtp = smtplib.SMTP(self.server, self.port)
         if self._use_tls:
             smtp.starttls()
-        if (self.username):
+        if self.username and self.password:
             smtp.login(self.username, self.password)
         msg = MIMEMultipart()
         msg['Subject'] = mail['subject']

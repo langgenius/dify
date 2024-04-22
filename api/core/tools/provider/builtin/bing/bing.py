@@ -12,12 +12,11 @@ class BingProvider(BuiltinToolProviderController):
                 meta={
                     "credentials": credentials,
                 }
-            ).invoke(
-                user_id='',
+            ).validate_credentials(
+                credentials=credentials,
                 tool_parameters={
                     "query": "test",
                     "result_type": "link",
-                    "enable_webpages": True,
                 },
             )
         except Exception as e:

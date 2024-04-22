@@ -116,11 +116,11 @@ const ProviderCard: FC<ProviderCardProps> = ({
                 return (
                   <Button
                     key={method}
-                    className='h-7 bg-white text-xs text-gray-700'
+                    className={'h-7 bg-white text-xs text-gray-700 shrink-0'}
                     onClick={() => onOpenModal(method)}
                   >
-                    <Settings01 className='mr-[5px] w-3.5 h-3.5' />
-                    {t('common.operation.setup')}
+                    <Settings01 className={`mr-[5px] w-3.5 h-3.5 ${s.icon}`} />
+                    <span className='text-xs inline-flex items-center justify-center overflow-ellipsis shrink-0'>{t('common.operation.setup')}</span>
                   </Button>
                 )
               }

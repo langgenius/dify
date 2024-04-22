@@ -210,6 +210,7 @@ const AgentTools: FC = () => {
             setting={currentTool?.tool_parameters as any}
             collection={currentTool?.collection as Collection}
             isBuiltIn={currentTool?.collection?.type === CollectionType.builtIn}
+            isModel={currentTool?.collection?.type === CollectionType.model}
             onSave={handleToolSettingChange}
             onHide={() => setIsShowSettingTool(false)}
           />)

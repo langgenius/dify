@@ -1,0 +1,145 @@
+identity:
+  name: create_new_card_on_board
+  author: Yash Parmar
+  label:
+    en_US: Create New Card on Board
+    zh_Hans: 在看板上创建新卡片
+    pt_BR: Criar Novo Cartão no Quadro
+description:
+  human:
+    en_US: Creates a new card on a Trello board with specified details like name, description, list ID, and other optional parameters. Facilitates task addition and project management within Trello.
+    zh_Hans: 用指定的详情（如名称、描述、列表 ID 和其他可选参数）在 Trello 看板上创建一个新卡片。便于在 Trello 中添加任务和管理项目。
+    pt_BR: Cria um novo cartão em um quadro Trello com detalhes especificados, como nome, descrição, ID da lista e outros parâmetros opcionais. Facilita a adição de tarefas e a gestão de projetos dentro do Trello.
+  llm: Initiate a new card on a Trello board by specifying essential details such as the card's name, description, and the list it belongs to, among other settings. Streamlines project task additions and organizational workflows.
+parameters:
+  - name: name
+    type: string
+    required: true
+    label:
+      en_US: Card Name
+      zh_Hans: 卡片名称
+      pt_BR: Nome do Cartão
+    human_description:
+      en_US: The name for the new card. Acts as the primary identifier and summary of the card's purpose.
+      zh_Hans: 新卡片的名称。作为卡片目的的主要标识和总结。
+      pt_BR: O nome para o novo cartão. Funciona como o identificador principal e resumo do propósito do cartão.
+    llm_description: Provide a concise, descriptive name for the card, outlining its main focus or task.
+    form: llm
+  # Include additional parameters like desc, pos, due, idList, etc., following the same pattern.
+  - name: desc
+    type: string
+    required: false
+    label:
+      en_US: Card Description
+      zh_Hans: 卡片描述
+      pt_BR: Descrição do Cartão
+    human_description:
+      en_US: Optional. A brief description of the card's purpose or contents.
+      zh_Hans: 可选。卡片目的或内容的简要描述。
+      pt_BR: Opcional. Uma breve descrição do propósito ou conteúdo do cartão.
+    llm_description: Add a brief description to the card to provide context or additional information about its purpose.
+    form: llm
+  - name: pos
+    type: string
+    required: false
+    label:
+      en_US: Position
+      zh_Hans: 位置
+      pt_BR: Posição
+    human_description:
+      en_US: Optional. The position of the card in the list. Can be 'top', 'bottom', or a positive number.
+      zh_Hans: 可选。卡片在列表中的位置。可以是“top”、“bottom” 或正数。
+      pt_BR: Opcional. A posição do cartão na lista. Pode ser 'top', 'bottom' ou um número positivo.
+    llm_description: Specify the position of the card within the list, either at the top, bottom, or a specific numerical index.
+    form: llm
+  - name: due
+    type: string
+    required: false
+    label:
+      en_US: Due Date
+      zh_Hans: 截止日期
+      pt_BR: Data de Vencimento
+    human_description:
+      en_US: Optional. The due date for the card in the format 'MM/DD/YYYY'.
+      zh_Hans: 可选。卡片的截止日期，格式为“MM/DD/YYYY”。
+      pt_BR: Opcional. A data de vencimento do cartão no formato 'MM/DD/YYYY'.
+    llm_description: Set a due date for the card to establish a deadline for completion or action.
+    form: llm
+  - name: start
+    type: string
+    required: false
+    label:
+      en_US: Start Date
+      zh_Hans: 开始日期
+      pt_BR: Data de Início
+    human_description:
+      en_US: Optional. The start date for the card in the format 'MM/DD/YYYY'.
+      zh_Hans: 可选。卡片的开始日期，格式为“MM/DD/YYYY”。
+      pt_BR: Opcional. A data de início do cartão no formato 'MM/DD/YYYY'.
+    llm_description: Specify a start date for the card to mark the beginning of a task or project phase.
+    form: llm
+  - name: dueComplete
+    type: boolean
+    required: false
+    label:
+      en_US: Due Complete
+      zh_Hans: 截止日期已完成
+      pt_BR: Vencimento Concluído
+    human_description:
+      en_US: Optional. Set to true if the due date has been completed, or false if it is pending.
+      zh_Hans: 可选。如果截止日期已完成，则设置为 true；如果尚未完成，则设置为 false。
+      pt_BR: Opcional. Defina como true se a data de vencimento foi concluída, ou como false se estiver pendente.
+    llm_description: Indicate whether the due date for the card has been marked as complete or is still pending.
+    form: llm
+  - name: idList
+    type: string
+    required: true
+    label:
+      en_US: List ID
+      zh_Hans: 列表 ID
+      pt_BR: ID da Lista
+    human_description:
+      en_US: The unique identifier of the list where the card will be added.
+      zh_Hans: 卡片将被添加到的列表的唯一标识符。
+      pt_BR: O identificador único da lista onde o cartão será adicionado.
+    llm_description: Input the ID of the list where the card should be placed, ensuring it is added to the correct list.
+    form: llm
+  - name: idMembers
+    type: string
+    required: false
+    label:
+      en_US: Member IDs
+      zh_Hans: 成员 ID
+      pt_BR: IDs de Membros
+    human_description:
+      en_US: Optional. The IDs of members to assign to the card.
+      zh_Hans: 可选。要分配给卡片的成员的 ID。
+      pt_BR: Opcional. Os IDs dos membros a serem atribuídos ao cartão.
+    llm_description: Specify the IDs of members to assign to the card, allowing for task delegation or collaboration.
+    form: llm
+  - name: idLabels
+    type: string
+    required: false
+    label:
+      en_US: Label IDs
+      zh_Hans: 标签 ID
+      pt_BR: IDs de Etiquetas
+    human_description:
+      en_US: Optional. The IDs of labels to assign to the card.
+      zh_Hans: 可选。要分配给卡片的标签的 ID。
+      pt_BR: Opcional. Os IDs das etiquetas a serem atribuídos ao cartão.
+    llm_description: Assign specific labels to the card by providing their IDs, aiding in visual categorization or prioritization.
+    form: llm
+  - name: urlSource
+    type: string
+    required: false
+    label:
+      en_US: Source URL
+      zh_Hans: 来源 URL
+      pt_BR: URL de Origem
+    human_description:
+      en_US: Optional. The URL to attach as the card's source.
+      zh_Hans: 可选。要附加为卡片来源的 URL。
+      pt_BR: Opcional. O URL a ser anexado como a fonte do cartão.
+    llm_description: Provide a URL to serve as the source reference for the card, linking to external resources or documents.
+    form: llm

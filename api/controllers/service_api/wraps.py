@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from functools import wraps
 from typing import Optional
@@ -8,11 +8,11 @@ from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restful import Resource
 from pydantic import BaseModel
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from extensions.ext_database import db
 from libs.login import _get_user
-from models.account import Account, Tenant, TenantAccountJoin
+from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
 
@@ -45,6 +45,10 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                 raise NotFound()
 
             if not app_model.enable_api:
+                raise NotFound()
+
+            tenant = db.session.query(Tenant).filter(Tenant.id == app_model.tenant_id).first()
+            if tenant.status == TenantStatus.ARCHIVE:
                 raise NotFound()
 
             kwargs['app_model'] = app_model
@@ -92,13 +96,13 @@ def cloud_edition_billing_resource_check(resource: str,
                 documents_upload_quota = features.documents_upload_quota
 
                 if resource == 'members' and 0 < members.limit <= members.size:
-                    raise Unauthorized(error_msg)
+                    raise Forbidden(error_msg)
                 elif resource == 'apps' and 0 < apps.limit <= apps.size:
-                    raise Unauthorized(error_msg)
+                    raise Forbidden(error_msg)
                 elif resource == 'vector_space' and 0 < vector_space.limit <= vector_space.size:
-                    raise Unauthorized(error_msg)
+                    raise Forbidden(error_msg)
                 elif resource == 'documents' and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
-                    raise Unauthorized(error_msg)
+                    raise Forbidden(error_msg)
                 else:
                     return view(*args, **kwargs)
 
@@ -106,6 +110,27 @@ def cloud_edition_billing_resource_check(resource: str,
         return decorated
     return interceptor
 
+
+def cloud_edition_billing_knowledge_limit_check(resource: str,
+                                                api_token_type: str,
+                                                error_msg: str = "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."):
+    def interceptor(view):
+        @wraps(view)
+        def decorated(*args, **kwargs):
+            api_token = validate_and_get_api_token(api_token_type)
+            features = FeatureService.get_features(api_token.tenant_id)
+            if features.billing.enabled:
+                if resource == 'add_segment':
+                    if features.billing.subscription.plan == 'sandbox':
+                        raise Forbidden(error_msg)
+                else:
+                    return view(*args, **kwargs)
+
+            return view(*args, **kwargs)
+
+        return decorated
+
+    return interceptor
 
 def validate_dataset_token(view=None):
     def decorator(view):
@@ -116,6 +141,7 @@ def validate_dataset_token(view=None):
                 .filter(Tenant.id == api_token.tenant_id) \
                 .filter(TenantAccountJoin.tenant_id == Tenant.id) \
                 .filter(TenantAccountJoin.role.in_(['owner'])) \
+                .filter(Tenant.status == TenantStatus.NORMAL) \
                 .one_or_none() # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
                 tenant, ta = tenant_account_join
@@ -162,7 +188,7 @@ def validate_and_get_api_token(scope=None):
     if not api_token:
         raise Unauthorized("Access token is invalid")
 
-    api_token.last_used_at = datetime.utcnow()
+    api_token.last_used_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.session.commit()
 
     return api_token
