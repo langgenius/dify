@@ -78,7 +78,7 @@ class AppRunner:
             model_config.credentials,
             prompt_messages
         )
-        print(f'model_context_tokens:{model_context_tokens}, max_tokens: {max_tokens}, prompt_tokens: {prompt_tokens}')
+
         rest_tokens = model_context_tokens - max_tokens - prompt_tokens
         if rest_tokens < 0:
             raise InvokeBadRequestError("Query or prefix prompt is too long, you can reduce the prefix prompt, "

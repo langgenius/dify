@@ -588,7 +588,6 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         try:
             body_jsonstr=json.dumps(payload)
-            print(body_jsonstr)
             response = invoke(
                 modelId=model,
                 contentType="application/json",
