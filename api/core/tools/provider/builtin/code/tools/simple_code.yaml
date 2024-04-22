@@ -3,7 +3,7 @@ identity:
   author: Dify
   label:
     en_US: Code Interpreter
-    zh_Hans: 代码执行器
+    zh_Hans: 代码解释器
     pt_BR: Interpretador de Código
 description:
   human:
