@@ -106,7 +106,8 @@ class Config:
         # ------------------------
         self.CURRENT_VERSION = "0.6.4"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
-        self.EDITION = "SELF_HOSTED"
+        # self.EDITION = "SELF_HOSTED"
+        self.EDITION = get_env('EDITION')
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
         self.TESTING = False
         self.LOG_LEVEL = get_env('LOG_LEVEL')

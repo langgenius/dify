@@ -208,7 +208,10 @@ def register_blueprints(app):
          methods=['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'PATCH']
          )
     app.register_blueprint(files_bp)
-
+    CORS(inner_api_bp,
+         allow_headers=['Content-Type', 'Authorization', 'X-App-Code'],
+         methods=['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'PATCH']
+         )
     app.register_blueprint(inner_api_bp)
 
 

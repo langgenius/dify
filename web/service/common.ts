@@ -121,6 +121,11 @@ export const fetchCurrentWorkspace: Fetcher<ICurrentWorkspace, { url: string; pa
 export const updateCurrentWorkspace: Fetcher<ICurrentWorkspace, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post<ICurrentWorkspace>(url, { body })
 }
+// 写个调用创建工作空间的函数，api的的post参数有name和owner_email
+export const createWorkspaceNew: Fetcher<ICurrentWorkspace, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post<ICurrentWorkspace>(url, { body })
+}
+
 
 export const fetchWorkspaces: Fetcher<{ workspaces: IWorkspace[] }, { url: string; params: Record<string, any> }> = ({ url, params }) => {
   return get<{ workspaces: IWorkspace[] }>(url, { params })

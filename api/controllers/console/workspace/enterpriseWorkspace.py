@@ -1,21 +1,13 @@
 from flask_restful import Resource, reqparse
 
-from controllers.console.setup import setup_required
-from controllers.inner_api import api
-from controllers.inner_api.wraps import inner_api_only
+from controllers.console import api
 from events.tenant_event import tenant_was_created
 from models.account import Account
 from services.account_service import TenantService
 
-
-class EnterpriseWorkspace(Resource):
-
-    # @setup_required
-    # @inner_api_only
+class EnterpriseWorkspaceNew(Resource):
+    
     def post(self):
-        # 这里输出123
-        # 创建企业工作区    
-
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, location='json')
         parser.add_argument('owner_email', type=str, required=True, location='json')
@@ -36,4 +28,5 @@ class EnterpriseWorkspace(Resource):
         }
 
 
-api.add_resource(EnterpriseWorkspace, '/enterprise/workspace')
+api.add_resource(EnterpriseWorkspaceNew, '/enterprise/workspace')
+

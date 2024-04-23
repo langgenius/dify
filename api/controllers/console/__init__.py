@@ -54,4 +54,4 @@ from .explore import (
 )
 
 # Import workspace controllers
-from .workspace import account, members, model_providers, models, tool_providers, workspace
+from .workspace import account,enterpriseWorkspace, members, model_providers, models, tool_providers, workspace

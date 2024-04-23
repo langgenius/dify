@@ -11,12 +11,14 @@ import AccountAbout from '../account-about'
 import WorkplaceSelector from './workplace-selector'
 import I18n from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
+import { createWorkspaceNew } from '@/service/common'
 import { logout } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
 import { ArrowUpRight, ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n/language'
+import { ToastContext } from '@/app/components/base/toast'
 export type IAppSelecotr = {
   isMobile: boolean
 }
@@ -33,7 +35,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
   const { t } = useTranslation()
   const { userProfile, langeniusVersionInfo } = useAppContext()
   const { setShowAccountSettingModal } = useModalContext()
-
+  const { notify } = useContext(ToastContext)
   const handleLogout = async () => {
     await logout({
       url: '/logout',
@@ -45,7 +47,20 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
 
     router.push('/signin')
   }
+  
 
+  const createWorkspace = async (name: string, owner_email: string) => {
+    try {
+        await createWorkspaceNew({ url: '/enterprise/workspace', body: { name, owner_email} })
+        notify({ type: 'success', message: t('创建工作空间成功') })
+        location.assign(`${location.origin}`)
+    }
+    catch (e) {
+      // 打印错误 e
+      console.error('发生错误:', e)
+      notify({ type: 'error', message: t('创建工作空间失败') })
+    }
+  }
   return (
     <div className="">
       <Menu as="div" className="relative inline-block text-left">
@@ -97,6 +112,11 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                   <div className='px-1 py-1'>
                     <div className='mt-2 px-3 text-xs font-medium text-gray-500'>{t('common.userProfile.workspace')}</div>
                     <WorkplaceSelector />
+                    <Menu.Item>
+                       <div className={itemClassName} onClick={() => createWorkspace( 'qqlww','guorqrq@gmail.com')}>
+                        <div>{t('common.userProfile.createWorkspace')}</div>
+                      </div>
+                    </Menu.Item>
                   </div>
                   <div className="px-1 py-1">
                     <Menu.Item>
