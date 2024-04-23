@@ -324,18 +324,12 @@ export const useNodesInteractions = () => {
         return
     }
     const needDeleteEdges = edges.filter((edge) => {
-      if (edge.source === source) {
-        if (edge.sourceHandle)
-          return edge.sourceHandle === sourceHandle
-        else
-          return true
-      }
-      if (edge.target === target) {
-        if (edge.targetHandle)
-          return edge.targetHandle === targetHandle
-        else
-          return true
-      }
+      if (
+        (edge.source === source && edge.sourceHandle === sourceHandle)
+        || (edge.target === target && edge.targetHandle === targetHandle)
+      )
+        return true
+
       return false
     })
     const needDeleteEdgesIds = needDeleteEdges.map(edge => edge.id)
