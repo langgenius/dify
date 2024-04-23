@@ -8,6 +8,8 @@ To start the web frontend service, you will need [Node.js v18.x (LTS)](https://n
 First, install the dependencies:
 
 ```bash
+cd web
+
 npm install
 # or
 yarn install --frozen-lockfile

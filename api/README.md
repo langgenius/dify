@@ -11,6 +11,14 @@
    docker-compose -f docker-compose.middleware.yaml -p dify up -d
    cd ../api
    ```
+   
+   Notice: 
+
+   ```bash
+   # If you're using MacOS and the above command fails to execute, you can run the following command.
+   docker-compose -f docker-compose.middleware.mac.yaml -p dify up -d
+   ```
+
 2. Copy `.env.example` to `.env`
 3. Generate a `SECRET_KEY` in the `.env` file.
 

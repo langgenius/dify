@@ -1,0 +1,89 @@
+version: '3'
+services:
+  # The postgres database.
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      # The password for the default postgres user.
+      POSTGRES_PASSWORD: difyai123456
+      # The name of the default postgres database.
+      POSTGRES_DB: dify
+      # postgres data directory
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  # The redis cache.
+  redis:
+    image: redis:6-alpine
+    restart: always
+    volumes:
+      # Mount the redis data directory to the container.
+      - redis-data:/data
+    # Set the redis password when startup redis server.
+    command: redis-server --requirepass difyai123456
+    ports:
+      - "6379:6379"
+
+  # The Weaviate vector store.
+  weaviate:
+    image: semitechnologies/weaviate:1.19.0
+    restart: always
+    volumes:
+      # Mount the Weaviate data directory to the container.
+      - weaviate-data:/var/lib/weaviate
+    environment:
+      # The Weaviate configurations
+      # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'false'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      CLUSTER_HOSTNAME: 'node1'
+      AUTHENTICATION_APIKEY_ENABLED: 'true'
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih'
+      AUTHENTICATION_APIKEY_USERS: 'hello@dify.ai'
+      AUTHORIZATION_ADMINLIST_ENABLED: 'true'
+      AUTHORIZATION_ADMINLIST_USERS: 'hello@dify.ai'
+    ports:
+      - "8080:8080"
+
+  # The DifySandbox
+  sandbox:
+    image: langgenius/dify-sandbox:latest
+    restart: always
+    cap_add:
+      # Why is sys_admin permission needed?
+      # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-sys_admin-permission-needed
+      - SYS_ADMIN
+    environment:
+      # The DifySandbox configurations
+      API_KEY: dify-sandbox
+      GIN_MODE: 'release'
+      WORKER_TIMEOUT: 15
+    ports:
+      - "8194:8194"
+
+  # Qdrant vector store.
+  # uncomment to use qdrant as vector store.
+  # (if uncommented, you need to comment out the weaviate service above,
+  # and set VECTOR_STORE to qdrant in the api & worker service.)
+  # qdrant:
+  #   image: qdrant/qdrant:1.7.3
+  #   restart: always
+  #   volumes:
+  #     - ./volumes/qdrant:/qdrant/storage
+  #   environment:
+  #     QDRANT_API_KEY: 'difyai123456'
+  #   ports:
+  #     - "6333:6333"
+volumes:
+  db-data:
+    driver: local
+  redis-data:
+    driver: local
+  weaviate-data:
+    driver: local
