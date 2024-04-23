@@ -44,6 +44,10 @@
   display: none;
 }
 
+pre:hover .copyBtn {
+  display: block;
+}
+
 .answerWrapWrap,
 .questionWrapWrap {
   width: 0;
