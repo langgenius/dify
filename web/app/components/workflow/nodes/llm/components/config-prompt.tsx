@@ -3,12 +3,15 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
+import { ReactSortable } from 'react-sortablejs'
+import { v4 as uuid4 } from 'uuid'
 import type { PromptItem, ValueSelector, Var } from '../../../types'
 import { PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import ConfigPromptItem from './config-prompt-item'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
+
 const i18nPrefix = 'workflow.nodes.llm'
 
 type Props = {
@@ -39,6 +42,18 @@ const ConfigPrompt: FC<Props> = ({
   hasSetBlockStatus,
 }) => {
   const { t } = useTranslation()
+  const payloadWithIds = (isChatModel && Array.isArray(payload))
+    ? payload.map((item, i) => {
+      const id = uuid4()
+      return {
+        id: item.id || id,
+        p: {
+          ...item,
+          id: item.id || id,
+        },
+      }
+    })
+    : []
   const {
     availableVars,
     availableNodes,
@@ -102,29 +117,38 @@ const ConfigPrompt: FC<Props> = ({
         ? (
           <div>
             <div className='space-y-2'>
-              {
-                (payload as PromptItem[]).map((item, index) => {
-                  return (
-                    <ConfigPromptItem
-                      key={`${payload.length}-${index}`}
-                      canRemove={payload.length > 1}
-                      readOnly={readOnly}
-                      id={`${payload.length}-${index}`}
-                      handleChatModeMessageRoleChange={handleChatModeMessageRoleChange(index)}
-                      isChatModel={isChatModel}
-                      isChatApp={isChatApp}
-                      payload={item}
-                      onPromptChange={handleChatModePromptChange(index)}
-                      onRemove={handleRemove(index)}
-                      isShowContext={isShowContext}
-                      hasSetBlockStatus={hasSetBlockStatus}
-                      availableVars={availableVars}
-                      availableNodes={availableNodes}
-                    />
-                  )
-                })
+              <ReactSortable className="space-y-1"
+                list={payloadWithIds}
+                setList={list => onChange(list.map(item => item.p))}
+                handle='.handle'
+                ghostClass="opacity-50"
+                animation={150}
+              >
+                {
+                  (payload as PromptItem[]).map((item, index) => {
+                    return (
+                      <ConfigPromptItem
+                        className='handle'
+                        key={item.id}
+                        canRemove={payload.length > 1}
+                        readOnly={readOnly}
+                        id={`${payload.length}-${index}`}
+                        handleChatModeMessageRoleChange={handleChatModeMessageRoleChange(index)}
+                        isChatModel={isChatModel}
+                        isChatApp={isChatApp}
+                        payload={item}
+                        onPromptChange={handleChatModePromptChange(index)}
+                        onRemove={handleRemove(index)}
+                        isShowContext={isShowContext}
+                        hasSetBlockStatus={hasSetBlockStatus}
+                        availableVars={availableVars}
+                        availableNodes={availableNodes}
+                      />
+                    )
+                  })
 
-              }
+                }
+              </ReactSortable>
             </div>
             <AddButton
               className='mt-2'

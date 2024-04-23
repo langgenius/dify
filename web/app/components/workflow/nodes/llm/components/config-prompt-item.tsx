@@ -13,6 +13,7 @@ import { PromptRole } from '@/models/debug'
 const i18nPrefix = 'workflow.nodes.llm'
 
 type Props = {
+  className?: string
   readOnly: boolean
   id: string
   canRemove: boolean
@@ -48,6 +49,7 @@ const roleOptions = [
 ]
 
 const ConfigPromptItem: FC<Props> = ({
+  className,
   readOnly,
   id,
   canRemove,
@@ -68,8 +70,8 @@ const ConfigPromptItem: FC<Props> = ({
     setInstanceId(`${id}-${uniqueId()}`)
   }, [id])
   return (
-
     <Editor
+      className={className}
       instanceId={instanceId}
       key={instanceId}
       title={

@@ -22,6 +22,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type Props = {
+  className?: string
   instanceId?: string
   title: string | JSX.Element
   value: string
@@ -43,6 +44,7 @@ type Props = {
 }
 
 const Editor: FC<Props> = ({
+  className,
   instanceId,
   title,
   value,
@@ -102,7 +104,7 @@ const Editor: FC<Props> = ({
   }
 
   return (
-    <div className={cn(wrapClassName)} style={wrapStyle}>
+    <div className={cn(className, wrapClassName)} style={wrapStyle}>
       <div ref={ref} className={cn(isFocus ? s.gradientBorder : 'bg-gray-100', isExpand && 'h-full', '!rounded-[9px] p-0.5')}>
         <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg')}>
           <div className='pt-1 pl-3 pr-2 flex justify-between h-6 items-center'>
