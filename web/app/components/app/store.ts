@@ -7,6 +7,7 @@ type State = {
   appSidebarExpand: string
   currentLogItem?: IChatItem
   showPromptLogModal: boolean
+  showAgentLogModal: boolean
   showMessageLogModal: boolean
 }
 
@@ -15,6 +16,7 @@ type Action = {
   setAppSiderbarExpand: (state: string) => void
   setCurrentLogItem: (item?: IChatItem) => void
   setShowPromptLogModal: (showPromptLogModal: boolean) => void
+  setShowAgentLogModal: (showAgentLogModal: boolean) => void
   setShowMessageLogModal: (showMessageLogModal: boolean) => void
 }
 
@@ -27,6 +29,8 @@ export const useStore = create<State & Action>(set => ({
   setCurrentLogItem: currentLogItem => set(() => ({ currentLogItem })),
   showPromptLogModal: false,
   setShowPromptLogModal: showPromptLogModal => set(() => ({ showPromptLogModal })),
+  showAgentLogModal: false,
+  setShowAgentLogModal: showAgentLogModal => set(() => ({ showAgentLogModal })),
   showMessageLogModal: false,
   setShowMessageLogModal: showMessageLogModal => set(() => ({ showMessageLogModal })),
 }))

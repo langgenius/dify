@@ -25,7 +25,10 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
         'mistralai/mixtral-8x7b-instruct-v0.1': '',
         'google/gemma-7b': '',
         'google/codegemma-7b': '',
-        'meta/llama2-70b': ''
+        'meta/llama2-70b': '',
+        'meta/llama3-8b': '',
+        'meta/llama3-70b': ''
+        
     }
 
     def _invoke(self, model: str, credentials: dict,
@@ -131,7 +134,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 endpoint_url,
                 headers=headers,
                 json=data,
-                timeout=(10, 60)
+                timeout=(10, 300)
             )
 
             if response.status_code != 200:
@@ -232,7 +235,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
             endpoint_url,
             headers=headers,
             json=data,
-            timeout=(10, 60),
+            timeout=(10, 300),
             stream=stream
         )
 

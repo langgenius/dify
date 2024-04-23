@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 import requests
 
@@ -24,87 +24,43 @@ class TavilySearch:
     def __init__(self, api_key: str) -> None:
         self.api_key = api_key
 
-    def raw_results(
-        self,
-        query: str,
-        max_results: Optional[int] = 3,
-        search_depth: Optional[str] = "advanced",
-        include_domains: Optional[list[str]] = [],
-        exclude_domains: Optional[list[str]] = [],
-        include_answer: Optional[bool] = False,
-        include_raw_content: Optional[bool] = False,
-        include_images: Optional[bool] = False,
-    ) -> dict:
+    def raw_results(self, params: dict[str, Any]) -> dict:
         """
         Retrieves raw search results from the Tavily Search API.
 
         Args:
-            query (str): The search query.
-            max_results (int, optional): The maximum number of results to retrieve. Defaults to 3.
-            search_depth (str, optional): The search depth. Defaults to "advanced".
-            include_domains (List[str], optional): The domains to include in the search. Defaults to [].
-            exclude_domains (List[str], optional): The domains to exclude from the search. Defaults to [].
-            include_answer (bool, optional): Whether to include answer in the search results. Defaults to False.
-            include_raw_content (bool, optional): Whether to include raw content in the search results. Defaults to False.
-            include_images (bool, optional): Whether to include images in the search results. Defaults to False.
+            params (Dict[str, Any]): The search parameters.
 
         Returns:
             dict: The raw search results.
 
         """
-        params = {
-            "api_key": self.api_key,
-            "query": query,
-            "max_results": max_results,
-            "search_depth": search_depth,
-            "include_domains": include_domains,
-            "exclude_domains": exclude_domains,
-            "include_answer": include_answer,
-            "include_raw_content": include_raw_content,
-            "include_images": include_images,
-        }
+        params["api_key"] = self.api_key
+        if 'exclude_domains' in params and isinstance(params['exclude_domains'], str) and params['exclude_domains'] != 'None':
+            params['exclude_domains'] = params['exclude_domains'].split()
+        else:
+            params['exclude_domains'] = []
+        if 'include_domains' in params and isinstance(params['include_domains'], str) and params['include_domains'] != 'None':
+            params['include_domains'] = params['include_domains'].split()
+        else:
+            params['include_domains'] = []
+        
         response = requests.post(f"{TAVILY_API_URL}/search", json=params)
         response.raise_for_status()
         return response.json()
 
-    def results(
-        self,
-        query: str,
-        max_results: Optional[int] = 3,
-        search_depth: Optional[str] = "advanced",
-        include_domains: Optional[list[str]] = [],
-        exclude_domains: Optional[list[str]] = [],
-        include_answer: Optional[bool] = False,
-        include_raw_content: Optional[bool] = False,
-        include_images: Optional[bool] = False,
-    ) -> list[dict]:
+    def results(self, params: dict[str, Any]) -> list[dict]:
         """
         Retrieves cleaned search results from the Tavily Search API.
 
         Args:
-            query (str): The search query.
-            max_results (int, optional): The maximum number of results to retrieve. Defaults to 3.
-            search_depth (str, optional): The search depth. Defaults to "advanced".
-            include_domains (List[str], optional): The domains to include in the search. Defaults to [].
-            exclude_domains (List[str], optional): The domains to exclude from the search. Defaults to [].
-            include_answer (bool, optional): Whether to include answer in the search results. Defaults to False.
-            include_raw_content (bool, optional): Whether to include raw content in the search results. Defaults to False.
-            include_images (bool, optional): Whether to include images in the search results. Defaults to False.
+            params (Dict[str, Any]): The search parameters.
 
         Returns:
             list: The cleaned search results.
 
         """
-        raw_search_results = self.raw_results(
-            query,
-            max_results=max_results,
-            search_depth=search_depth,
-            include_domains=include_domains,
-            exclude_domains=exclude_domains,
-            include_answer=include_answer,
-            include_raw_content=include_raw_content,
-            include_images=include_images,
-        )
+        raw_search_results = self.raw_results(params)
         return self.clean_results(raw_search_results["results"])
 
     def clean_results(self, results: list[dict]) -> list[dict]:
@@ -149,11 +105,12 @@ class TavilySearchTool(BuiltinTool):
             ToolInvokeMessage | list[ToolInvokeMessage]: The result of the Tavily search tool invocation.
         """
         query = tool_parameters.get("query", "")
+
         api_key = self.runtime.credentials["tavily_api_key"]
         if not query:
             return self.create_text_message("Please input query")
         tavily_search = TavilySearch(api_key)
-        results = tavily_search.results(query)
+        results = tavily_search.results(tool_parameters)
         print(results)
         if not results:
             return self.create_text_message(f"No results found for '{query}' in Tavily")

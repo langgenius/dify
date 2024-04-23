@@ -112,7 +112,7 @@ class CodeNode(BaseNode):
             variables[variable] = value
         # Run code
         try:
-            result = CodeExecutor.execute_code(
+            result = CodeExecutor.execute_workflow_code_template(
                 language=code_language,
                 code=code,
                 inputs=variables

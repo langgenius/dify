@@ -8,6 +8,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
 
     env:
       OPENAI_API_KEY: sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii
@@ -37,10 +40,10 @@ jobs:
         with:
           packages: ffmpeg
 
-      - name: Set up Python
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: ${{ matrix.python-version }}
           cache: 'pip'
           cache-dependency-path: |
             ./api/requirements.txt
@@ -50,10 +53,10 @@ jobs:
         run: pip install -r ./api/requirements.txt -r ./api/requirements-dev.txt
 
       - name: Run ModelRuntime
-        run: pytest api/tests/integration_tests/model_runtime/anthropic api/tests/integration_tests/model_runtime/azure_openai api/tests/integration_tests/model_runtime/openai api/tests/integration_tests/model_runtime/chatglm api/tests/integration_tests/model_runtime/google api/tests/integration_tests/model_runtime/xinference api/tests/integration_tests/model_runtime/huggingface_hub/test_llm.py
+        run: dev/pytest/pytest_model_runtime.sh
 
       - name: Run Tool
-        run: pytest api/tests/integration_tests/tools/test_all_provider.py
+        run: dev/pytest/pytest_tools.sh
 
       - name: Run Workflow
-        run: pytest api/tests/integration_tests/workflow
+        run: dev/pytest/pytest_workflow.sh
