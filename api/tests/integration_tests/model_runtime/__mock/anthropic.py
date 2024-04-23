@@ -1,22 +1,32 @@
 import os
+from collections.abc import Iterable
 from time import sleep
-from typing import Any, Literal, Union, Iterable
-
-from anthropic.resources import Messages
-from anthropic.types.message_delta_event import Delta
+from typing import Any, Literal, Union
 
 import anthropic
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from anthropic import Anthropic, Stream
-from anthropic.types import MessageParam, Message, MessageStreamEvent, \
-    ContentBlock, MessageStartEvent, Usage, TextDelta, MessageDeltaEvent, MessageStopEvent, ContentBlockDeltaEvent, \
-    MessageDeltaUsage
+from anthropic.resources import Messages
+from anthropic.types import (
+    ContentBlock,
+    ContentBlockDeltaEvent,
+    Message,
+    MessageDeltaEvent,
+    MessageDeltaUsage,
+    MessageParam,
+    MessageStartEvent,
+    MessageStopEvent,
+    MessageStreamEvent,
+    TextDelta,
+    Usage,
+)
+from anthropic.types.message_delta_event import Delta
 
 MOCK = os.getenv('MOCK_SWITCH', 'false') == 'true'
 
 
-class MockAnthropicClass(object):
+class MockAnthropicClass:
     @staticmethod
     def mocked_anthropic_chat_create_sync(model: str) -> Message:
         return Message(

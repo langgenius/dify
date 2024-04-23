@@ -402,3 +402,5 @@ export const TOOL_OUTPUT_STRUCT: Var[] = [
     type: VarType.arrayFile,
   },
 ]
+
+export const WORKFLOW_DATA_UPDATE = 'WORKFLOW_DATA_UPDATE'

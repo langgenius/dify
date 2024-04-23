@@ -12,14 +12,14 @@ import {
 } from '../../../../types'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
-import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
 import s from '@/app/components/app/configuration/config-prompt/style.module.css'
 import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type Props = {
   instanceId?: string
@@ -66,12 +66,11 @@ const Editor: FC<Props> = ({
   const ref = useRef<HTMLDivElement>(null)
   const {
     wrapClassName,
+    wrapStyle,
     isExpand,
     setIsExpand,
     editorExpandHeight,
-  } = useToggleExpend({ ref })
-  const minHeight = 98
-  const [editorHeight, setEditorHeight] = React.useState(minHeight)
+  } = useToggleExpend({ ref, isInNode: true })
   const [isCopied, setIsCopied] = React.useState(false)
   const handleCopy = useCallback(() => {
     copy(value)
@@ -103,7 +102,7 @@ const Editor: FC<Props> = ({
   }
 
   return (
-    <div className={cn(wrapClassName)}>
+    <div className={cn(wrapClassName)} style={wrapStyle}>
       <div ref={ref} className={cn(isFocus ? s.gradientBorder : 'bg-gray-100', isExpand && 'h-full', '!rounded-[9px] p-0.5')}>
         <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg')}>
           <div className='pt-1 pl-3 pr-2 flex justify-between h-6 items-center'>
@@ -113,6 +112,13 @@ const Editor: FC<Props> = ({
               <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>
               {/* Operations */}
               <div className='flex items-center space-x-2'>
+                {!readOnly && (
+                  <TooltipPlus
+                    popupContent={`${t('workflow.common.insertVarTip')}`}
+                  >
+                    <Variable02 className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={handleInsertVariable} />
+                  </TooltipPlus>
+                )}
                 {showRemove && (
                   <Trash03 className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={onRemove} />
                 )}
@@ -129,32 +135,12 @@ const Editor: FC<Props> = ({
 
             </div>
           </div>
-          <PromptEditorHeightResizeWrap
-            className={cn(isExpand && 'h-0 grow', 'px-3 min-h-[102px] overflow-y-auto text-sm text-gray-700')}
-            height={isExpand ? editorExpandHeight : editorHeight}
-            minHeight={minHeight}
-            onHeightChange={setEditorHeight}
-            footer={(
-              <div className='pl-3 pb-2 flex'>
-                {(isFocus || isShowInsertToolTip)
-                  ? (
-                    <TooltipPlus
-                      popupContent={`${t('workflow.common.insertVarTip')}`}
-                    >
-                      <div
-                        className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500"
-                        onClick={handleInsertVariable}
-                      >{'{x} '}{t('workflow.nodes.common.insertVarTip')}</div>
-                    </TooltipPlus>)
-                  : <div className='h-[18px]'></div>}
-              </div>
-            )}
-            hideResize={isExpand}
-          >
-            <>
+
+          {/* Min: 80 Max: 560. Header: 24 */}
+          <div className={cn('pb-2', isExpand && 'flex flex-col grow')}>
+            <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'px-3 min-h-[56px]  overflow-y-auto')}>
               <PromptEditor
                 instanceId={instanceId}
-                className={cn('min-h-[84px]')}
                 compact
                 style={isExpand ? { height: editorExpandHeight - 5 } : {}}
                 value={value}
@@ -199,8 +185,9 @@ const Editor: FC<Props> = ({
               />
               {/* to patch Editor not support dynamic change editable status */}
               {readOnly && <div className='absolute inset-0 z-10'></div>}
-            </>
-          </PromptEditorHeightResizeWrap>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
