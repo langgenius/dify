@@ -1,5 +1,3 @@
-import json
-
 from flask_login import current_user
 from flask_restful import Resource, inputs, marshal_with, reqparse
 from werkzeug.exceptions import BadRequest, Forbidden
@@ -8,17 +6,12 @@ from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
-from core.agent.entities import AgentToolEntity
-from core.tools.tool_manager import ToolManager
-from core.tools.utils.configuration import ToolParameterConfigurationManager
-from extensions.ext_database import db
 from fields.app_fields import (
     app_detail_fields,
     app_detail_fields_with_site,
     app_pagination_fields,
 )
 from libs.login import login_required
-from models.model import App, AppMode, AppModelConfig
 from services.app_service import AppService
 
 ALLOW_CREATE_APP_MODES = ['chat', 'agent-chat', 'advanced-chat', 'workflow', 'completion']
@@ -108,43 +101,9 @@ class AppApi(Resource):
     @marshal_with(app_detail_fields_with_site)
     def get(self, app_model):
         """Get app detail"""
-        # get original app model config
-        if app_model.mode == AppMode.AGENT_CHAT.value or app_model.is_agent:
-            model_config: AppModelConfig = app_model.app_model_config
-            agent_mode = model_config.agent_mode_dict
-            # decrypt agent tool parameters if it's secret-input
-            for tool in agent_mode.get('tools') or []:
-                if not isinstance(tool, dict) or len(tool.keys()) <= 3:
-                    continue
-                agent_tool_entity = AgentToolEntity(**tool)
-                # get tool
-                try:
-                    tool_runtime = ToolManager.get_agent_tool_runtime(
-                        tenant_id=current_user.current_tenant_id,
-                        agent_tool=agent_tool_entity,
-                    )
-                    manager = ToolParameterConfigurationManager(
-                        tenant_id=current_user.current_tenant_id,
-                        tool_runtime=tool_runtime,
-                        provider_name=agent_tool_entity.provider_id,
-                        provider_type=agent_tool_entity.provider_type,
-                    )
+        app_service = AppService()
 
-                    # get decrypted parameters
-                    if agent_tool_entity.tool_parameters:
-                        parameters = manager.decrypt_tool_parameters(agent_tool_entity.tool_parameters or {})
-                        masked_parameter = manager.mask_tool_parameters(parameters or {})
-                    else:
-                        masked_parameter = {}
-
-                    # override tool parameters
-                    tool['tool_parameters'] = masked_parameter
-                except Exception as e:
-                    pass
-
-            # override agent mode
-            model_config.agent_mode = json.dumps(agent_mode)
-            db.session.commit()
+        app_model = app_service.get_app(app_model)
 
         return app_model
 

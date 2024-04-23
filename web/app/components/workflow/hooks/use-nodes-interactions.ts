@@ -406,6 +406,8 @@ export const useNodesInteractions = () => {
 
     const nodes = getNodes()
     const currentNodeIndex = nodes.findIndex(node => node.id === nodeId)
+    if (nodes[currentNodeIndex].data.type === BlockEnum.Start)
+      return
     const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges)
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(connectedEdges.map(edge => ({ type: 'remove', edge })), nodes)
     const newNodes = produce(nodes, (draft: Node[]) => {
@@ -732,7 +734,7 @@ export const useNodesInteractions = () => {
     } = store.getState()
 
     const nodes = getNodes()
-    const nodesToCopy = nodes.filter(node => node.data.selected)
+    const nodesToCopy = nodes.filter(node => node.data.selected && node.data.type !== BlockEnum.Start)
 
     setClipboardElements(nodesToCopy)
 
