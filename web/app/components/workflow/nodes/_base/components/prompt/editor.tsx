@@ -18,6 +18,8 @@ import s from '@/app/components/app/configuration/config-prompt/style.module.css
 import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type Props = {
   instanceId?: string
@@ -112,6 +114,13 @@ const Editor: FC<Props> = ({
               <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>
               {/* Operations */}
               <div className='flex items-center space-x-2'>
+                {!readOnly && (
+                  <TooltipPlus
+                    popupContent={`${t('workflow.common.insertVarTip')}`}
+                  >
+                    <Variable02 className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={handleInsertVariable} />
+                  </TooltipPlus>
+                )}
                 {showRemove && (
                   <Trash03 className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={onRemove} />
                 )}
