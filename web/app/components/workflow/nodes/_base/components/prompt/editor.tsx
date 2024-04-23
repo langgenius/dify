@@ -64,10 +64,11 @@ const Editor: FC<Props> = ({
   const ref = useRef<HTMLDivElement>(null)
   const {
     wrapClassName,
+    wrapStyle,
     isExpand,
     setIsExpand,
     editorExpandHeight,
-  } = useToggleExpend({ ref })
+  } = useToggleExpend({ ref, isInPromptEditor: true })
   const minHeight = 98
   const [editorHeight, setEditorHeight] = React.useState(minHeight)
   const [isCopied, setIsCopied] = React.useState(false)
@@ -101,7 +102,7 @@ const Editor: FC<Props> = ({
   }
 
   return (
-    <div className={cn(wrapClassName)}>
+    <div className={cn(wrapClassName)} style={wrapStyle}>
       <div ref={ref} className={cn(isFocus ? s.gradientBorder : 'bg-gray-100', isExpand && 'h-full', '!rounded-[9px] p-0.5')}>
         <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg')}>
           <div className='pt-1 pl-3 pr-2 flex justify-between h-6 items-center'>
