@@ -70,9 +70,7 @@ const Editor: FC<Props> = ({
     isExpand,
     setIsExpand,
     editorExpandHeight,
-  } = useToggleExpend({ ref, isInPromptEditor: true })
-  const minHeight = 98
-  const [editorHeight, setEditorHeight] = React.useState(minHeight)
+  } = useToggleExpend({ ref, isInNode: true })
   const [isCopied, setIsCopied] = React.useState(false)
   const handleCopy = useCallback(() => {
     copy(value)

@@ -3,10 +3,10 @@ import { useEffect, useState } from 'react'
 type Params = {
   ref: React.RefObject<HTMLDivElement>
   hasFooter?: boolean
-  isInPromptEditor?: boolean
+  isInNode?: boolean
 }
 
-const useToggleExpend = ({ ref, hasFooter = true, isInPromptEditor }: Params) => {
+const useToggleExpend = ({ ref, hasFooter = true, isInNode }: Params) => {
   const [isExpand, setIsExpand] = useState(false)
   const [wrapHeight, setWrapHeight] = useState(ref.current?.clientHeight)
   const editorExpandHeight = isExpand ? wrapHeight! - (hasFooter ? 56 : 29) : 0
@@ -19,7 +19,7 @@ const useToggleExpend = ({ ref, hasFooter = true, isInPromptEditor }: Params) =>
     if (!isExpand)
       return ''
 
-    if (isInPromptEditor)
+    if (isInNode)
       return 'fixed z-10  right-[9px] top-[166px] bottom-[8px] w-[419px] p-4 bg-white rounded-xl'
 
     return 'absolute z-10 left-4 right-6 top-[52px] bottom-0 pb-4 bg-white'
