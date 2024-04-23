@@ -10,3 +10,6 @@
 - cohere.command-text-v14
 - meta.llama2-13b-chat-v1
 - meta.llama2-70b-chat-v1
+- mistral.mistral-large-2402-v1:0
+- mistral.mixtral-8x7b-instruct-v0:1
+- mistral.mistral-7b-instruct-v0:2
