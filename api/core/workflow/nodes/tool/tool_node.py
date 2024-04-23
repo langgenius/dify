@@ -39,7 +39,8 @@ class ToolNode(BaseNode):
         parameters = self._generate_parameters(variable_pool, node_data)
         # get tool runtime
         try:
-            tool_runtime = ToolManager.get_workflow_tool_runtime(self.tenant_id, node_data)
+            self.app_id
+            tool_runtime = ToolManager.get_workflow_tool_runtime(self.tenant_id, self.app_id, self.node_id, node_data)
         except Exception as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
