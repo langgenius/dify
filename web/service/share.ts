@@ -11,6 +11,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { EnterpriseFeatures } from '@/types/enterprise'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -129,6 +130,18 @@ export const fetchChatList = async (conversationId: string, isInstalledApp: bool
 // init value. wait for server update
 export const fetchAppParams = async (isInstalledApp: boolean, installedAppId = '') => {
   return (getAction('get', isInstalledApp))(getUrl('parameters', isInstalledApp, installedAppId)) as Promise<ChatConfig>
+}
+
+export const fetchEnterpriseFeatures = async () => {
+  return (getAction('get', false))(getUrl('enterprise-features', false, '')) as Promise<EnterpriseFeatures>
+}
+
+export const fetchWebSAMLSSOUrl = async () => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/saml/login', false, '')) as Promise<{ url: string }>
+}
+
+export const fetchWebOIDCSSOUrl = async () => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/oidc/login', false, '')) as Promise<{ url: string; state: string }>
 }
 
 export const fetchAppMeta = async (isInstalledApp: boolean, installedAppId = '') => {

@@ -7,6 +7,8 @@ from services.enterprise.enterprise_service import EnterpriseService
 class EnterpriseFeatureModel(BaseModel):
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ''
+    sso_enforced_for_web: bool = False
+    sso_enforced_for_web_protocol: str = ''
 
 
 class EnterpriseFeatureService:
@@ -26,3 +28,5 @@ class EnterpriseFeatureService:
 
         features.sso_enforced_for_signin = enterprise_info['sso_enforced_for_signin']
         features.sso_enforced_for_signin_protocol = enterprise_info['sso_enforced_for_signin_protocol']
+        features.sso_enforced_for_web = enterprise_info['sso_enforced_for_web']
+        features.sso_enforced_for_web_protocol = enterprise_info['sso_enforced_for_web_protocol']

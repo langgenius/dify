@@ -4,9 +4,11 @@ from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
+from controllers.web.error import WebSSOTokenInvalidError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
+from services.enterprise.enterprise_feature_service import EnterpriseFeatureService
 
 
 def validate_jwt_token(view=None):
@@ -20,6 +22,32 @@ def validate_jwt_token(view=None):
     if view:
         return decorator(view)
     return decorator
+
+
+def validate_web_sso_token(view=None):
+    def decorator(view):
+        @wraps(view)
+        def decorated(*args, **kwargs):
+            enterprise_features = EnterpriseFeatureService.get_enterprise_features()
+
+            if not enterprise_features.sso_enforced_for_web:
+                return view(*args, **kwargs)
+
+            # check if token is present
+            web_sso_token = request.headers.get('X-Web-SSO-Token')
+            if not web_sso_token:
+                raise WebSSOTokenInvalidError()
+            try:
+                PassportService().verify(web_sso_token)
+            except Unauthorized:
+                raise WebSSOTokenInvalidError()
+
+            return view(*args, **kwargs)
+        return decorated
+    if view:
+        return decorator(view)
+    return decorator
+
 
 def decode_jwt_token():
     auth_header = request.headers.get('Authorization')
@@ -50,5 +78,6 @@ def decode_jwt_token():
 
     return app_model, end_user
 
+
 class WebApiResource(Resource):
-    method_decorators = [validate_jwt_token]
+    method_decorators = [validate_web_sso_token, validate_jwt_token]
