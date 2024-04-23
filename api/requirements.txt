@@ -80,3 +80,4 @@ lxml==5.1.0
 xlrd~=2.0.1
 pydantic~=1.10.0
 pgvecto-rs==0.1.4
+oss2==2.15.0
