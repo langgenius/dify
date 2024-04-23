@@ -83,6 +83,7 @@
     "sortablejs": "^1.15.0",
     "swr": "^2.1.0",
     "use-context-selector": "^1.4.1",
+    "uuid": "^9.0.1",
     "zustand": "^4.5.1"
   },
   "devDependencies": {
@@ -104,6 +105,7 @@
     "@types/react-window-infinite-loader": "^1.0.6",
     "@types/recordrtc": "^5.6.11",
     "@types/sortablejs": "^1.15.1",
+    "@types/uuid": "^9.0.8",
     "autoprefixer": "^10.4.14",
     "cross-env": "^7.0.3",
     "eslint": "^8.36.0",
