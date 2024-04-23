@@ -1,6 +1,6 @@
-model: mistral.mistral-7b-instruct-v0:2
+model: mistral.mixtral-8x7b-instruct-v0:1
 label:
-  en_US: Mistral 7B Instruct
+  en_US: Mixtral 8X7B Instruct
 model_type: llm
 model_properties:
   mode: completion
@@ -33,7 +33,7 @@ parameter_rules:
     min: 1
     max: 8192
 pricing:
-  input: '0.00015'
-  output: '0.0002'
+  input: '0.00045'
+  output: '0.0007'
   unit: '0.00001'
   currency: USD
