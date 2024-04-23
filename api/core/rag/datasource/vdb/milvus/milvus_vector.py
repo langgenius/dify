@@ -232,7 +232,7 @@ class MilvusVector(BaseVector):
 
                 # Create the collection
                 collection_name = self._collection_name
-                self._client.create_collection_with_schema(collection_name=collection_name,
+                self._client.create_collection(collection_name=collection_name,
                                                            schema=schema, index_param=index_params,
                                                            consistency_level=self._consistency_level)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
