@@ -49,6 +49,7 @@ from services.dataset_service import DatasetService, DocumentService
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
 
+logger = logging.getLogger(__name__)
 
 class DocumentResource(Resource):
     def get_document(self, dataset_id: str, document_id: str) -> Document:
@@ -101,6 +102,7 @@ class GetProcessRuleApi(Resource):
         # get default rules
         mode = DocumentService.DEFAULT_RULES['mode']
         rules = DocumentService.DEFAULT_RULES['rules']
+        logger.info("mode and rules: {mode}, {rules}")
         if document_id:
             # get the latest process rule
             document = Document.query.get_or_404(document_id)

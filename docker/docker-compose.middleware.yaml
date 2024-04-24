@@ -49,7 +49,7 @@ services:
       AUTHORIZATION_ADMINLIST_ENABLED: 'true'
       AUTHORIZATION_ADMINLIST_USERS: 'hello@dify.ai'
     ports:
-      - "8080:8080"
+      - "9080:8080"
 
   # The DifySandbox
   sandbox:

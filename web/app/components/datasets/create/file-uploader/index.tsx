@@ -55,6 +55,7 @@ const FileUploader = ({
       htm: 'html',
       xlsx: 'xlsx',
       docx: 'docx',
+      doc: 'doc',
     }
 
     return [...supportTypes]

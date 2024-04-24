@@ -2,11 +2,12 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.4
+    image: dify_local:latest
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
       MODE: api
+      DEBUG: true
       # The log level for the application. Supported values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
       LOG_LEVEL: INFO
       # A secret key that is used for securely signing the session cookie and encrypting sensitive information on the database. You can generate a strong key using `openssl rand -base64 42`.
@@ -144,22 +145,22 @@ services:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
     # uncomment to expose dify-api port to host
-    # ports:
-    #   - "5001:5001"
+    ports:
+      - "5001:5001"
 
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.4
+    image: dify_local:latest
     restart: always
     environment:
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
       MODE: worker
 
       # --- All the configurations below are the same as those in the 'api' service. ---
-
+      DEBUG: true
       # The log level for the application. Supported values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
       # A secret key that is used for securely signing the session cookie and encrypting sensitive information on the database. You can generate a strong key using `openssl rand -base64 42`.
       # same as the API service
       SECRET_KEY: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
@@ -271,8 +272,8 @@ services:
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     # uncomment to expose db(postgresql) port to host
-    # ports:
-    #   - "5432:5432"
+    ports:
+      - "5432:5432"
     healthcheck:
       test: [ "CMD", "pg_isready" ]
       interval: 1s
@@ -291,8 +292,8 @@ services:
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
     # uncomment to expose redis port to host
-    # ports:
-    #   - "6379:6379"
+    ports:
+      - "6379:6379"
 
   # The Weaviate vector store.
   weaviate:
@@ -315,8 +316,8 @@ services:
       AUTHORIZATION_ADMINLIST_ENABLED: 'true'
       AUTHORIZATION_ADMINLIST_USERS: 'hello@dify.ai'
     # uncomment to expose weaviate port to host
-    # ports:
-    #  - "8080:8080"
+    ports:
+    - "9080:8080"
 
   # The DifySandbox
   sandbox:

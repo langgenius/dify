@@ -2,6 +2,7 @@ import tempfile
 from pathlib import Path
 from typing import Union
 
+import aspose.words as aw
 import requests
 from flask import current_app
 
@@ -124,6 +125,14 @@ class ExtractProcessor:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension in ['.docx']:
                         extractor = WordExtractor(file_path)
+                    # TODO: need to correctly set
+                    elif file_extension == '.doc':
+                        print(file_path)
+                        new_pdf = aw.Document(file_path)
+                        new_file_path = file_path[:-3] + 'pdf'
+                        new_pdf.save(new_file_path)
+                        print(new_file_path)
+                        extractor = PdfExtractor(new_file_path)
                     elif file_extension == '.csv':
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == 'epub':

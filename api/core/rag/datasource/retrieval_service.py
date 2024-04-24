@@ -1,5 +1,6 @@
 import threading
 from typing import Optional
+import logging
 
 from flask import Flask, current_app
 
@@ -8,6 +9,8 @@ from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from extensions.ext_database import db
 from models.dataset import Dataset
+
+logger = logging.getLogger(__name__)
 
 default_retrieval_model = {
     'search_method': 'semantic_search',
@@ -85,6 +88,11 @@ class RetrievalService:
                 score_threshold=score_threshold,
                 top_n=top_k
             )
+
+        logger.info(f"Final retrieved results for dataset {dataset_id}: ")
+        for doc in all_documents:
+            logger.info(doc)
+
         return all_documents
 
     @classmethod
@@ -140,6 +148,11 @@ class RetrievalService:
                 else:
                     all_documents.extend(documents)
 
+        logger.info(f"Embedding search for dataset {dataset_id}: {len(documents)}")
+        for idx, document in enumerate(documents):
+            logging.info(f"Embedding search for dataset {dataset_id}, doc {idx}: {document.metadata['score']}, "
+                         f"{document.page_content}, {document.metadata['doc_id']}")
+
     @classmethod
     def full_text_index_search(cls, flask_app: Flask, dataset_id: str, query: str,
                                top_k: int, score_threshold: Optional[float], reranking_model: Optional[dict],
@@ -168,3 +181,6 @@ class RetrievalService:
                     ))
                 else:
                     all_documents.extend(documents)
+            logger.info(f"Text search for dataset {dataset_id}: {len(documents)}")
+            for idx, document in enumerate(documents):
+                logger.info(f"Text search for dataset {dataset_id}, doc {idx}: {document.page_content}, {document.metadata['doc_id']}")

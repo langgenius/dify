@@ -7,6 +7,7 @@ description:
 supported_model_types:
   - llm
   - text-embedding
+  - rerank
 configurate_methods:
   - customizable-model
 model_credential_schema:

@@ -37,7 +37,11 @@ class PdfExtractor(BaseExtractor):
                 pass
         documents = list(self.load())
         text_list = []
+        invalid_strings = ['Evaluation Only. Created with Aspose.Words. Copyright 2003-2024 Aspose Pty Ltd.',
+                           'Created with an evaluation copy of Aspose.Words. To discover the full versions of our \r\nAPIs please visit: https://products.aspose.com/words/\r\n', ]
         for document in documents:
+            for str in invalid_strings:
+                document.page_content = document.page_content.replace(str, "")
             text_list.append(document.page_content)
         text = "\n\n".join(text_list)
 
