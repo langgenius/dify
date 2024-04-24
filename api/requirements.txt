@@ -55,7 +55,7 @@ xinference-client==0.9.4
 safetensors~=0.4.3
 zhipuai==1.0.7
 werkzeug~=3.0.1
-pymilvus~=2.3.7
+pymilvus==2.3.1
 qdrant-client==1.7.3
 cohere~=5.2.4
 pyyaml~=6.0.1
