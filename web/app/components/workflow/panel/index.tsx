@@ -4,6 +4,7 @@ import {
   useMemo,
 } from 'react'
 import { useNodes } from 'reactflow'
+import { useShallow } from 'zustand/react/shallow'
 import type { CommonNodeType } from '../types'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
@@ -22,7 +23,12 @@ const Panel: FC = () => {
   const showInputsPanel = useStore(s => s.showInputsPanel)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal } = useAppStore()
+  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
+    currentLogItem: state.currentLogItem,
+    setCurrentLogItem: state.setCurrentLogItem,
+    showMessageLogModal: state.showMessageLogModal,
+    setShowMessageLogModal: state.setShowMessageLogModal,
+  })))
   const {
     showNodePanel,
     showDebugAndPreviewPanel,
