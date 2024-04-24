@@ -8,6 +8,7 @@ from models.dataset import Dataset
 from tests.unit_tests.core.rag.datasource.vdb.test_vector_store import (
     get_sample_document,
     get_sample_embedding,
+    get_sample_query_vector,
     setup_mock_redis,
 )
 
@@ -51,7 +52,7 @@ def test_milvus_vector(setup_mock_redis) -> None:
     )
 
     # search by vector
-    hits_by_vector = vector.search_by_vector(query_vector=_get_sample_query_vector())
+    hits_by_vector = vector.search_by_vector(query_vector=get_sample_query_vector())
     assert len(hits_by_vector) >= 1
 
     # milvus dos not support full text searching yet in < 2.3.x
