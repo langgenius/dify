@@ -22,7 +22,8 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { tagList, setTagList } = useTagStore()
+  const tagList = useTagStore(s => s.tagList)
+  const setTagList = useTagStore(s => s.setTagList)
 
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(tag.name)
@@ -52,11 +53,11 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       ])
       setIsEditing(false)
       await updateTag(tagID, name)
-      notify({ type: 'success', message: t('common.operation.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       setName(name)
     }
     catch (e: any) {
-      notify({ type: 'error', message: t('common.operation.modifiedUnsuccessfully') })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       setName(tag.name)
       const recoverList = tagList.map((tag) => {
         if (tag.id === tagID) {
@@ -81,7 +82,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
     try {
       setPending(true)
       await deleteTag(tagID)
-      notify({ type: 'success', message: t('common.tag.created') })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       const newList = tagList.filter(tag => tag.id !== tagID)
       setTagList([
         ...newList,
@@ -89,7 +90,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       setPending(false)
     }
     catch (e: any) {
-      notify({ type: 'error', message: t('common.tag.failed') })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       setPending(false)
     }
   }
@@ -99,7 +100,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
 
   return (
     <>
-      <div className={cn('shrink-0 flex items-center gap-0.5 pr-1 pl-2 rounded-lg border border-gray-200 text-sm leading-5 text-gray-700')}>
+      <div className={cn('shrink-0 flex items-center gap-0.5 pr-1 pl-2 py-1 rounded-lg border border-gray-200 text-sm leading-5 text-gray-700')}>
         {!isEditing && (
           <>
             <div className='text-sm leading-5 text-gray-700'>

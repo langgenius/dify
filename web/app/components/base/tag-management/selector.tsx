@@ -35,7 +35,9 @@ const Panel = (props: PanelProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { targetID, type, value, selectedTags, onCacheUpdate, onChange, onCreate } = props
-  const { tagList, setTagList, setShowTagManagementModal } = useTagStore()
+  const tagList = useTagStore(s => s.tagList)
+  const setTagList = useTagStore(s => s.setTagList)
+  const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
   const [selectedTagIDs, setSelectedTagIDs] = useState<string[]>(value)
   const [keywords, setKeywords] = useState('')
   const handleKeywordsChange = (value: string) => {
@@ -208,7 +210,7 @@ const TagSelector: FC<TagSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const { setTagList } = useTagStore()
+  const setTagList = useTagStore(s => s.setTagList)
 
   const getTagList = async () => {
     const res = await fetchTagList(type)
