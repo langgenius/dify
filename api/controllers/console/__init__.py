@@ -36,8 +36,6 @@ from .billing import billing
 
 # Import datasets controllers
 from .datasets import data_source, datasets, datasets_document, datasets_segments, file, hit_testing
-# Import tag controllers
-from .tag import tags
 
 # Import enterprise controllers
 from .enterprise import enterprise_sso
@@ -54,6 +52,9 @@ from .explore import (
     saved_message,
     workflow,
 )
+
+# Import tag controllers
+from .tag import tags
 
 # Import workspace controllers
 from .workspace import account, members, model_providers, models, tool_providers, workspace

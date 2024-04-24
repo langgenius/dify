@@ -31,7 +31,7 @@ from models.dataset import (
     Document,
     DocumentSegment,
 )
-from models.model import UploadFile, TagBinding, Tag
+from models.model import UploadFile
 from models.source import DataSourceBinding
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError

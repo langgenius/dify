@@ -2,23 +2,23 @@ import json
 import uuid
 
 from flask_login import current_user
-from flask_restful import Resource, inputs, marshal_with, reqparse, marshal
-from werkzeug.exceptions import Forbidden, BadRequest, abort
+from flask_restful import Resource, inputs, marshal, marshal_with, reqparse
+from werkzeug.exceptions import BadRequest, Forbidden, abort
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from core.tools.tool_manager import ToolManager
+from core.tools.utils.configuration import ToolParameterConfigurationManager
 from fields.app_fields import (
     app_detail_fields,
     app_detail_fields_with_site,
     app_pagination_fields,
 )
 from libs.login import login_required
+from models.model import App, AppMode, AppModelConfig
 from services.app_service import AppService
-from models.model import App, AppModelConfig, AppMode
-from core.tools.utils.configuration import ToolParameterConfigurationManager
-from core.tools.tool_manager import ToolManager
 from services.tag_service import TagService
 
 ALLOW_CREATE_APP_MODES = ['chat', 'agent-chat', 'advanced-chat', 'workflow', 'completion']
