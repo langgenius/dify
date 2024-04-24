@@ -125,7 +125,12 @@ const ConfigPrompt: FC<Props> = ({
             <div className='space-y-2'>
               <ReactSortable className="space-y-1"
                 list={payloadWithIds}
-                setList={list => onChange(list.map(item => item.p))}
+                setList={(list) => {
+                  if ((payload as PromptItem[])?.[0].role === PromptRole.system && list[0].p.role !== PromptRole.system)
+                    return
+
+                  onChange(list.map(item => item.p))
+                }}
                 handle='.handle'
                 ghostClass="opacity-50"
                 animation={150}
