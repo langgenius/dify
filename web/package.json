@@ -18,7 +18,7 @@
     "@babel/runtime": "^7.22.3",
     "@emoji-mart/data": "^1.1.2",
     "@floating-ui/react": "^0.25.2",
-    "@formatjs/intl-localematcher": "^0.2.32",
+    "@formatjs/intl-localematcher": "^0.5.4",
     "@headlessui/react": "^1.7.13",
     "@heroicons/react": "^2.0.16",
     "@lexical/react": "^0.12.2",
