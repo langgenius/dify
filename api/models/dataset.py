@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Account
-from models.model import App, UploadFile
+from models.model import App, Tag, TagBinding, UploadFile
 
 
 class Dataset(db.Model):
@@ -117,6 +117,20 @@ class Dataset(db.Model):
             'score_threshold_enabled': False
         }
         return self.retrieval_model if self.retrieval_model else default_retrieval_model
+
+    @property
+    def tags(self):
+        tags = db.session.query(Tag).join(
+            TagBinding,
+            Tag.id == TagBinding.tag_id
+        ).filter(
+            TagBinding.target_id == self.id,
+            TagBinding.tenant_id == self.tenant_id,
+            Tag.tenant_id == self.tenant_id,
+            Tag.type == 'knowledge'
+        ).all()
+
+        return tags if tags else []
 
     @staticmethod
     def gen_collection_name_by_id(dataset_id: str) -> str:
