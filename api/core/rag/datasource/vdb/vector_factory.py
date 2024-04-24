@@ -7,7 +7,6 @@ from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.entity.embedding import Embeddings
-from core.rag.datasource.vdb.pgvector.pgvecto_rs import PGVectoRS
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -140,13 +139,13 @@ class Vector:
                 dim=dim
             )
         elif vector_type == "pgvecto_rs":
-            from core.rag.datasource.vdb.pgvector.pgvecto_rs import PgvectorConfig, PGVector
+            from core.rag.datasource.vdb.pgvector.pgvecto_rs import PgvectoRSConfig, PGVectoRS
             if self._dataset.index_struct_dict:
                 class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
-                collection_name = class_prefix
+                collection_name = class_prefix.lower()
             else:
                 dataset_id = self._dataset.id
-                collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+                collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
                 index_struct_dict = {
                     "type": 'pgvecto_rs',
                     "vector_store": {"class_prefix": collection_name}
@@ -155,7 +154,7 @@ class Vector:
             dim = len(self._embeddings.embed_query("pgvecto_rs"))
             return PGVectoRS(
                 collection_name=collection_name,
-                config=PgvectorConfig(
+                config=PgvectoRSConfig(
                     host=config.get('POSTGRESQL_HOST'),
                     port=config.get('POSTGRESQL_PORT'),
                     user=config.get('POSTGRESQL_USER'),

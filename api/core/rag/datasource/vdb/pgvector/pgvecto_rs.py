@@ -18,7 +18,7 @@ from extensions.ext_redis import redis_client
 logger = logging.getLogger(__name__)
 
 
-class PgvectorConfig(BaseModel):
+class PgvectoRSConfig(BaseModel):
     host: str
     port: int
     user: str
@@ -42,15 +42,10 @@ class PgvectorConfig(BaseModel):
 
 class PGVectoRS(BaseVector):
 
-    def __init__(self, collection_name: str, config: PgvectorConfig, dim: int):
+    def __init__(self, collection_name: str, config: PgvectoRSConfig, dim: int):
         super().__init__(collection_name)
         self._client_config = config
         self._url = f"postgresql+psycopg2://{config.user}:{config.password}@{config.host}:{config.port}/{config.database}"
-        self._client = PGVectoRs(
-            db_url=self._url,
-            collection_name=self._collection_name,
-            dimension=dim
-        )
         self._client = create_engine(self._url)
         with Session(self._client) as session:
             session.execute(text("CREATE EXTENSION IF NOT EXISTS vectors"))
@@ -65,7 +60,7 @@ class PGVectoRS(BaseVector):
                 primary_key=True,
             )
             text: Mapped[str] = mapped_column(String)
-            metadata: Mapped[dict] = mapped_column(postgresql.JSONB)
+            meta: Mapped[dict] = mapped_column(postgresql.JSONB)
             vector: Mapped[ndarray] = mapped_column(Vector(dim))
 
         self._table = _Table
@@ -86,13 +81,11 @@ class PGVectoRS(BaseVector):
                 return
             index_name = f"{self._collection_name}_embedding_index"
             with Session(self._client) as session:
-                drop_statement = sql_text(f"DROP TABLE IF EXISTS {self._collection_name}")
-                session.execute(drop_statement)
                 create_statement = sql_text(f"""
                     CREATE TABLE IF NOT EXISTS {self._collection_name} (
                         id UUID PRIMARY KEY,
                         text TEXT NOT NULL,
-                        metadata JSONB NOT NULL,
+                        meta JSONB NOT NULL,
                         vector vector({dimension}) NOT NULL
                     ) using heap; 
                 """)
@@ -122,7 +115,7 @@ class PGVectoRS(BaseVector):
                     insert(self._table).values(
                         id=pk,
                         text=document.page_content,
-                        metadata=document.metadata,
+                        meta=document.metadata,
                         vector=embedding,
                     ),
                 )
@@ -206,8 +199,8 @@ class PGVectoRS(BaseVector):
         # Organize results.
         docs = []
         for record, dis in results:
-            metadata = record.metadata
-            metadata['score'] = dis
+            metadata = record.meta
+            metadata['score'] = 1 - dis
             score_threshold = kwargs.get('score_threshold') if kwargs.get('score_threshold') else 0.0
             if dis > score_threshold:
                 doc = Document(page_content=record.text,
@@ -216,5 +209,16 @@ class PGVectoRS(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        # pgvector doesn't support bm25 search
+        with Session(self._client) as session:
+            select_statement = sql_text(
+                f"SELECT text, meta FROM {self._collection_name} WHERE to_tsvector(text) @@ '{query}'::tsquery"
+            )
+            results = session.execute(select_statement).fetchall()
+        if results:
+            docs = []
+            for result in results:
+                doc = Document(page_content=result[0],
+                               metadata=result[1])
+                docs.append(doc)
+            return docs
         return []
