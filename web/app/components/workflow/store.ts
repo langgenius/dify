@@ -67,6 +67,8 @@ type Shape = {
   setClipboardElements: (clipboardElements: Node[]) => void
   shortcutsDisabled: boolean
   setShortcutsDisabled: (shortcutsDisabled: boolean) => void
+  showDebugAndPreviewPanel: boolean
+  setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
 }
 
 export const createWorkflowStore = () => {
@@ -115,6 +117,8 @@ export const createWorkflowStore = () => {
     setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
     shortcutsDisabled: false,
     setShortcutsDisabled: shortcutsDisabled => set(() => ({ shortcutsDisabled })),
+    showDebugAndPreviewPanel: false,
+    setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
   }))
 }
 
