@@ -1,16 +1,16 @@
 import uuid
 
 import pytest
-from pydantic.error_wrappers import ValidationError
-
-from core.rag.datasource.vdb.milvus.milvus_vector import MilvusConfig, MilvusVector
-from models.dataset import Dataset
-from tests.unit_tests.core.rag.datasource.vdb.test_vector_store import (
+from integration_tests.vdb.test_vector_store import (
     get_sample_document,
     get_sample_embedding,
     get_sample_query_vector,
     setup_mock_redis,
 )
+from pydantic.error_wrappers import ValidationError
+
+from core.rag.datasource.vdb.milvus.milvus_vector import MilvusConfig, MilvusVector
+from models.dataset import Dataset
 
 
 def test_default_value():
