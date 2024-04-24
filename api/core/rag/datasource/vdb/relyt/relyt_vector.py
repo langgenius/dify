@@ -48,6 +48,7 @@ class RelytVector(BaseVector):
 
     def __init__(self, collection_name: str, config: RelytConfig):
         super().__init__(collection_name)
+        self.embedding_dimension = 1536
         self._client_config = config
         self._url = f"postgresql+psycopg2://{config.user}:{config.password}@{config.host}:{config.port}/{config.database}"
         self.client = create_engine(self._url)
@@ -60,6 +61,7 @@ class RelytVector(BaseVector):
         index_params = {}
         metadatas = [d.metadata for d in texts]
         self.create_collection(len(embeddings[0]))
+        self.embedding_dimension = len(embeddings[0])
         self.add_texts(texts, embeddings)
 
     def create_collection(self, dimension: int):
@@ -183,7 +185,7 @@ class RelytVector(BaseVector):
         )
 
         try:
-            with self.engine.connect() as conn:
+            with self.client.connect() as conn:
                 with conn.begin():
                     delete_condition = chunks_table.c.id.in_(ids)
                     conn.execute(chunks_table.delete().where(delete_condition))
