@@ -138,7 +138,7 @@ const Editor: FC<Props> = ({
 
           {/* Min: 80 Max: 560. Header: 24 */}
           <div className={cn('pb-2', isExpand && 'flex flex-col grow')}>
-            <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'px-3 min-h-[56px]  overflow-y-auto')}>
+            <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto')}>
               <PromptEditor
                 instanceId={instanceId}
                 compact
