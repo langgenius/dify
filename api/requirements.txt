@@ -67,7 +67,7 @@ httpx[socks]~=0.24.1
 matplotlib~=3.8.2
 yfinance~=0.2.35
 pydub~=0.25.1
-gmpy2~=2.2.0a1
+gmpy2~=2.1.5
 numexpr~=2.9.0
 duckduckgo-search==5.2.2
 arxiv==2.1.0
