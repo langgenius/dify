@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react'
 import { createContext, useContext } from 'use-context-selector'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AccountSetting from '@/app/components/header/account-setting'
+import WorkSpaceSetting from '@/app/components/header/workspace-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
 import ModerationSettingModal from '@/app/components/app/configuration/toolbox/moderation/moderation-setting-modal'
 import ExternalDataToolModal from '@/app/components/app/configuration/tools/external-data-tool-modal'
@@ -36,6 +37,7 @@ export type ModelModalType = {
   currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields
 }
 const ModalContext = createContext<{
+  setShowCreateWorkSpaceModal: Dispatch<SetStateAction<ModalState<string> | null>>
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<string> | null>>
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
@@ -44,6 +46,7 @@ const ModalContext = createContext<{
   setShowAnnotationFullModal: () => void
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
 }>({
+      setShowCreateWorkSpaceModal: () => { },
       setShowAccountSettingModal: () => { },
       setShowApiBasedExtensionModal: () => { },
       setShowModerationSettingModal: () => { },
@@ -61,6 +64,7 @@ type ModalContextProviderProps = {
 export const ModalContextProvider = ({
   children,
 }: ModalContextProviderProps) => {
+  const [ShowCreateWorkSpaceModal, setShowCreateWorkSpaceModal] = useState<ModalState<string> | null>(null)
   const [showAccountSettingModal, setShowAccountSettingModal] = useState<ModalState<string> | null>(null)
   const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<ApiBasedExtension> | null>(null)
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
@@ -70,6 +74,13 @@ export const ModalContextProvider = ({
   const router = useRouter()
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
+  
+  const handleCancelCreateWorkSpaceModal = () => {
+    setShowCreateWorkSpaceModal(null)
+
+    if (ShowCreateWorkSpaceModal?.onCancelCallback)
+      ShowCreateWorkSpaceModal?.onCancelCallback()
+  }
   const handleCancelAccountSettingModal = () => {
     setShowAccountSettingModal(null)
 
@@ -135,6 +146,7 @@ export const ModalContextProvider = ({
 
   return (
     <ModalContext.Provider value={{
+      setShowCreateWorkSpaceModal,
       setShowAccountSettingModal,
       setShowApiBasedExtensionModal,
       setShowModerationSettingModal,
@@ -145,6 +157,13 @@ export const ModalContextProvider = ({
     }}>
       <>
         {children}
+        {
+          !!ShowCreateWorkSpaceModal && (
+            <WorkSpaceSetting
+               onCancel={handleCancelCreateWorkSpaceModal}
+            />
+          )
+        }
         {
           !!showAccountSettingModal && (
             <AccountSetting

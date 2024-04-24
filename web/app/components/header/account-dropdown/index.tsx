@@ -34,7 +34,9 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
   const { userProfile, langeniusVersionInfo } = useAppContext()
+  
   const { setShowAccountSettingModal } = useModalContext()
+  const { setShowCreateWorkSpaceModal } = useModalContext()
   const { notify } = useContext(ToastContext)
   const handleLogout = async () => {
     await logout({
@@ -113,7 +115,8 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                     <div className='mt-2 px-3 text-xs font-medium text-gray-500'>{t('common.userProfile.workspace')}</div>
                     <WorkplaceSelector />
                     <Menu.Item>
-                       <div className={itemClassName} onClick={() => createWorkspace( 'qqlww','guorqrq@gmail.com')}>
+                    <div className={itemClassName} onClick={() => setShowCreateWorkSpaceModal({ payload: 'account' })}>
+                       {/* <div className={itemClassName} onClick={() => createWorkspace( 'qqlww','guorqrq@gmail.com')}> */}
                         <div>{t('common.userProfile.createWorkspace')}</div>
                       </div>
                     </Menu.Item>

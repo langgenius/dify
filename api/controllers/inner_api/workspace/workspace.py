@@ -36,4 +36,4 @@ class EnterpriseWorkspace(Resource):
         }
 
 
-api.add_resource(EnterpriseWorkspace, '/enterprise/workspace')
+# api.add_resource(EnterpriseWorkspace, '/enterprise/workspace')
