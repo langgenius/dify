@@ -140,9 +140,9 @@ def validate_dataset_token(view=None):
             tenant_account_join = db.session.query(Tenant, TenantAccountJoin) \
                 .filter(Tenant.id == api_token.tenant_id) \
                 .filter(TenantAccountJoin.tenant_id == Tenant.id) \
-                .filter(TenantAccountJoin.role.in_(['owner'])) \
+                .filter(TenantAccountJoin.role.in_(['owner', 'admin'])) \
                 .filter(Tenant.status == TenantStatus.NORMAL) \
-                .one_or_none() # TODO: only owner information is required, so only one is returned.
+                .first()
             if tenant_account_join:
                 tenant, ta = tenant_account_join
                 account = Account.query.filter_by(id=ta.account_id).first()
