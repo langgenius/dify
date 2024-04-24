@@ -330,47 +330,47 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             </>
           )}
         </div>
-        {showEditModal && (
-          <EditAppModal
-            isEditModal
-            appIcon={app.icon}
-            appIconBackground={app.icon_background}
-            appName={app.name}
-            appDescription={app.description}
-            show={showEditModal}
-            onConfirm={onEdit}
-            onHide={() => setShowEditModal(false)}
-          />
-        )}
-        {showDuplicateModal && (
-          <DuplicateAppModal
-            appName={app.name}
-            icon={app.icon}
-            icon_background={app.icon_background}
-            show={showDuplicateModal}
-            onConfirm={onCopy}
-            onHide={() => setShowDuplicateModal(false)}
-          />
-        )}
-        {showSwitchModal && (
-          <SwitchAppModal
-            show={showSwitchModal}
-            appDetail={app}
-            onClose={() => setShowSwitchModal(false)}
-            onSuccess={onSwitch}
-          />
-        )}
-        {showConfirmDelete && (
-          <Confirm
-            title={t('app.deleteAppConfirmTitle')}
-            content={t('app.deleteAppConfirmContent')}
-            isShow={showConfirmDelete}
-            onClose={() => setShowConfirmDelete(false)}
-            onConfirm={onConfirmDelete}
-            onCancel={() => setShowConfirmDelete(false)}
-          />
-        )}
       </div>
+      {showEditModal && (
+        <EditAppModal
+          isEditModal
+          appIcon={app.icon}
+          appIconBackground={app.icon_background}
+          appName={app.name}
+          appDescription={app.description}
+          show={showEditModal}
+          onConfirm={onEdit}
+          onHide={() => setShowEditModal(false)}
+        />
+      )}
+      {showDuplicateModal && (
+        <DuplicateAppModal
+          appName={app.name}
+          icon={app.icon}
+          icon_background={app.icon_background}
+          show={showDuplicateModal}
+          onConfirm={onCopy}
+          onHide={() => setShowDuplicateModal(false)}
+        />
+      )}
+      {showSwitchModal && (
+        <SwitchAppModal
+          show={showSwitchModal}
+          appDetail={app}
+          onClose={() => setShowSwitchModal(false)}
+          onSuccess={onSwitch}
+        />
+      )}
+      {showConfirmDelete && (
+        <Confirm
+          title={t('app.deleteAppConfirmTitle')}
+          content={t('app.deleteAppConfirmContent')}
+          isShow={showConfirmDelete}
+          onClose={() => setShowConfirmDelete(false)}
+          onConfirm={onConfirmDelete}
+          onCancel={() => setShowConfirmDelete(false)}
+        />
+      )}
     </>
   )
 }
