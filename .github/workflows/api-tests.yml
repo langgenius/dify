@@ -70,6 +70,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r ./api/requirements.txt -r ./api/requirements-dev.txt
 
+      - name: Run Unit tests
+        run: dev/pytest/pytest_unit_tests.sh
+
       - name: Run ModelRuntime
         run: dev/pytest/pytest_model_runtime.sh
 
@@ -78,6 +81,3 @@ jobs:
 
       - name: Run Workflow
         run: dev/pytest/pytest_workflow.sh
-
-      - name: Run Unit tests
-        run: dev/pytest/pytest_unit_tests.sh
