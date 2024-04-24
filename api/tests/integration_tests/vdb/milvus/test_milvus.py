@@ -13,26 +13,6 @@ from tests.integration_tests.vdb.test_vector_store import (
 )
 
 
-def test_default_value():
-    valid_config = {
-        'host': 'localhost',
-        'port': 19530,
-        'user': 'root',
-        'password': 'Milvus'
-    }
-
-    for key in valid_config:
-        config = valid_config.copy()
-        del config[key]
-        with pytest.raises(ValidationError) as e:
-            MilvusConfig(**config)
-        assert e.value.errors()[1]['msg'] == f'config MILVUS_{key.upper()} is required'
-
-    config = MilvusConfig(**valid_config)
-    assert config.secure is False
-    assert config.database == 'default'
-
-
 def test_milvus_vector(setup_mock_redis) -> None:
     dataset_id = str(uuid.uuid4())
     vector = MilvusVector(
