@@ -15,7 +15,7 @@ class AccountStatus(str, enum.Enum):
     CLOSED = 'closed'
 
 
-class AccountRole(str,enum.Enum):
+class AccountRole(str, enum.Enum):
     OWNER = 'owner'
     ADMIN = 'admin'
     NORMAL = 'normal'
