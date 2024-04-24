@@ -21,7 +21,7 @@ class AccountRole(str,enum.Enum):
     NORMAL = 'normal'
 
     @staticmethod
-    def get_privilieged_roles() -> set[str]:
+    def get_privileged_roles() -> set[str]:
         return {AccountRole.ADMIN.value, AccountRole.OWNER.value}
 
 
