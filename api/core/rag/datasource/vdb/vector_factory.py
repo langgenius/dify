@@ -126,7 +126,6 @@ class Vector:
                     "vector_store": {"class_prefix": collection_name}
                 }
                 self._dataset.index_struct = json.dumps(index_struct_dict)
-            dim = len(self._embeddings.embed_query("hello relyt"))
             return RelytVector(
                 collection_name=collection_name,
                 config=RelytConfig(
@@ -135,8 +134,7 @@ class Vector:
                     user=config.get('RELYT_USER'),
                     password=config.get('RELYT_PASSWORD'),
                     database=config.get('RELYT_DATABASE'),
-                ),
-                dim=dim
+                )
             )
         else:
             raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
