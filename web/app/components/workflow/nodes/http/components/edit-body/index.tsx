@@ -59,18 +59,21 @@ const EditBody: FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onChange])
 
+  const isCurrentKeyValue = type === BodyType.formData || type === BodyType.xWwwFormUrlencoded
+
   const {
     list: body,
     setList: setBody,
     addItem: addBody,
   } = useKeyValueList(payload.data, (value) => {
+    if (!isCurrentKeyValue)
+      return
+
     const newBody = produce(payload, (draft: Body) => {
       draft.data = value
     })
     onChange(newBody)
   }, type === BodyType.json)
-
-  const isCurrentKeyValue = type === BodyType.formData || type === BodyType.xWwwFormUrlencoded
 
   useEffect(() => {
     if (!isCurrentKeyValue)

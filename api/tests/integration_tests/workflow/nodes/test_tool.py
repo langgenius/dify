@@ -1,8 +1,8 @@
 from core.app.entities.app_invoke_entities import InvokeFrom
-
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.tool.tool_node import ToolNode
 from models.workflow import WorkflowNodeExecutionStatus
+
 
 def test_tool_variable_invoke():
     pool = VariablePool(system_variables={}, user_inputs={})

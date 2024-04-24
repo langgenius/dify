@@ -98,6 +98,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         )
 
         self._stream_generate_routes = self._get_stream_generate_routes()
+        self._conversation_name_generate_thread = None
 
     def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
@@ -107,6 +108,12 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         db.session.refresh(self._workflow)
         db.session.refresh(self._user)
         db.session.close()
+
+        # start generate conversation name thread
+        self._conversation_name_generate_thread = self._generate_conversation_name(
+            self._conversation,
+            self._application_generate_entity.query
+        )
 
         generator = self._process_stream_response()
         if self._stream:
@@ -277,6 +284,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 yield self._ping_stream_response()
             else:
                 continue
+
+        if self._conversation_name_generate_thread:
+            self._conversation_name_generate_thread.join()
 
     def _save_message(self) -> None:
         """

@@ -248,16 +248,19 @@ class LLMNode(BaseNode):
                 context_str = ''
                 original_retriever_resource = []
                 for item in context_value:
-                    if 'content' not in item:
-                        raise ValueError(f'Invalid context structure: {item}')
+                    if isinstance(item, str):
+                        context_str += item + '\n'
+                    else:
+                        if 'content' not in item:
+                            raise ValueError(f'Invalid context structure: {item}')
 
-                    context_str += item['content'] + '\n'
+                        context_str += item['content'] + '\n'
 
-                    retriever_resource = self._convert_to_original_retriever_resource(item)
-                    if retriever_resource:
-                        original_retriever_resource.append(retriever_resource)
+                        retriever_resource = self._convert_to_original_retriever_resource(item)
+                        if retriever_resource:
+                            original_retriever_resource.append(retriever_resource)
 
-                if self.callbacks:
+                if self.callbacks and original_retriever_resource:
                     for callback in self.callbacks:
                         callback.on_event(
                             event=QueueRetrieverResourcesEvent(
@@ -435,7 +438,11 @@ class LLMNode(BaseNode):
         stop = model_config.stop
 
         vision_enabled = node_data.vision.enabled
+        filtered_prompt_messages = []
         for prompt_message in prompt_messages:
+            if prompt_message.is_empty():
+                continue
+
             if not isinstance(prompt_message.content, str):
                 prompt_message_content = []
                 for content_item in prompt_message.content:
@@ -450,7 +457,13 @@ class LLMNode(BaseNode):
                       and prompt_message_content[0].type == PromptMessageContentType.TEXT):
                     prompt_message.content = prompt_message_content[0].data
 
-        return prompt_messages, stop
+            filtered_prompt_messages.append(prompt_message)
+
+        if not filtered_prompt_messages:
+            raise ValueError("No prompt found in the LLM configuration. "
+                             "Please ensure a prompt is properly configured before proceeding.")
+
+        return filtered_prompt_messages, stop
 
     @classmethod
     def deduct_llm_quota(cls, tenant_id: str, model_instance: ModelInstance, usage: LLMUsage) -> None:

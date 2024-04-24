@@ -16,6 +16,7 @@ import type { ToolDefaultValue } from '../../../block-selector/types'
 import {
   useNodesExtraData,
   useNodesInteractions,
+  useNodesReadOnly,
 } from '../../../hooks'
 import { useStore } from '../../../store'
 
@@ -35,6 +36,7 @@ export const NodeTargetHandle = memo(({
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const nodesExtraData = useNodesExtraData()
+  const { getNodesReadOnly } = useNodesReadOnly()
   const connected = data._connectedTargetHandleIds?.includes(handleId)
   const availablePrevNodes = nodesExtraData[data.type].availablePrevNodes
   const isConnectable = !!availablePrevNodes.length
@@ -78,7 +80,7 @@ export const NodeTargetHandle = memo(({
         onClick={handleHandleClick}
       >
         {
-          !connected && isConnectable && !data._isInvalidConnection && (
+          !connected && isConnectable && !data._isInvalidConnection && !getNodesReadOnly() && (
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}
@@ -113,6 +115,7 @@ export const NodeSourceHandle = memo(({
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const nodesExtraData = useNodesExtraData()
+  const { getNodesReadOnly } = useNodesReadOnly()
   const availableNextNodes = nodesExtraData[data.type].availableNextNodes
   const isConnectable = !!availableNextNodes.length
   const connected = data._connectedSourceHandleIds?.includes(handleId)
@@ -159,7 +162,7 @@ export const NodeSourceHandle = memo(({
         onClick={handleHandleClick}
       >
         {
-          !connected && isConnectable && !data._isInvalidConnection && (
+          !connected && isConnectable && !data._isInvalidConnection && !getNodesReadOnly() && (
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}

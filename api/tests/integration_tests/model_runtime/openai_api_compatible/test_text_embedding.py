@@ -1,10 +1,12 @@
 import os
 
 import pytest
+
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.model_providers.openai_api_compatible.text_embedding.text_embedding import \
-    OAICompatEmbeddingModel
+from core.model_runtime.model_providers.openai_api_compatible.text_embedding.text_embedding import (
+    OAICompatEmbeddingModel,
+)
 
 """
 Using OpenAI's API as testing endpoint
