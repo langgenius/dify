@@ -25,7 +25,7 @@ import { useStore as useTagStore } from '@/app/components/base/tag-management/st
 
 const Container = () => {
   const { t } = useTranslation()
-  const { showTagManagementModal } = useTagStore()
+  const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
 
   const options = [
     { value: 'dataset', text: t('dataset.datasets') },

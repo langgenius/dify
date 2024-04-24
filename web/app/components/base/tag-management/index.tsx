@@ -21,7 +21,9 @@ type TagManagementModalProps = {
 const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { tagList, setTagList, setShowTagManagementModal } = useTagStore()
+  const tagList = useTagStore(s => s.tagList)
+  const setTagList = useTagStore(s => s.setTagList)
+  const setShowTagManagementModal = useTagStore(s => s.setShowTagManagementModal)
 
   const getTagList = async (type: 'knowledge' | 'app') => {
     const res = await fetchTagList(type)

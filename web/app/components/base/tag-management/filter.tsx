@@ -31,7 +31,8 @@ const TagFilter: FC<TagFilterProps> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const { tagList, setTagList } = useTagStore()
+  const tagList = useTagStore(s => s.tagList)
+  const setTagList = useTagStore(s => s.setTagList)
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')

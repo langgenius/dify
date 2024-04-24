@@ -22,7 +22,8 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { tagList, setTagList } = useTagStore()
+  const tagList = useTagStore(s => s.tagList)
+  const setTagList = useTagStore(s => s.setTagList)
 
   const [isEditing, setIsEditing] = useState(false)
   const [name, setName] = useState(tag.name)
