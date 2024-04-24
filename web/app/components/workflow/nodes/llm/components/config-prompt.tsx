@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
+import cn from 'classnames'
 import type { PromptItem, ValueSelector, Var } from '../../../types'
 import { PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
@@ -110,8 +111,12 @@ const ConfigPrompt: FC<Props> = ({
     onChange(newPrompt)
   }, [onChange, payload])
 
-  // console.log(getInputVars((payload as PromptItem).text))
+  const canChooseSystemRole = (() => {
+    if (isChatModel && Array.isArray(payload))
+      return !payload.find(item => item.role === PromptRole.system)
 
+    return false
+  })()
   return (
     <div>
       {(isChatModel && Array.isArray(payload))
@@ -127,15 +132,25 @@ const ConfigPrompt: FC<Props> = ({
               >
                 {
                   (payload as PromptItem[]).map((item, index) => {
+                    const canDrag = (() => {
+                      if (readOnly)
+                        return false
+
+                      if (index === 0 && item.role === PromptRole.system)
+                        return false
+
+                      return true
+                    })()
                     return (
                       <div key={item.id} className='relative group'>
-                        <DragHandle className='group-hover:block hidden absolute left-[-14px] top-2 w-3.5 h-3.5 text-gray-400' />
+                        {canDrag && <DragHandle className='group-hover:block hidden absolute left-[-14px] top-2 w-3.5 h-3.5 text-gray-400' />}
                         <ConfigPromptItem
-                          className='handle'
-                          headerClassName='cursor-grab'
-                          canRemove={payload.length > 1}
+                          className={cn(canDrag && 'handle')}
+                          headerClassName={cn(canDrag && 'cursor-grab')}
+                          canNotChooseSystemRole={!canChooseSystemRole}
+                          canRemove={payload.length > 1 && !(index === 0 && item.role === PromptRole.system)}
                           readOnly={readOnly}
-                          id={`${payload.length}-${index}`}
+                          id={item.id!}
                           handleChatModeMessageRoleChange={handleChatModeMessageRoleChange(index)}
                           isChatModel={isChatModel}
                           isChatApp={isChatApp}
