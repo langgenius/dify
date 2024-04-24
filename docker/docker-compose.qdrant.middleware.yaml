@@ -1,9 +1,6 @@
 version: '3'
 services:
   # Qdrant vector store.
-  # uncomment to use qdrant as vector store.
-  # (if uncommented, you need to comment out the weaviate service above,
-  # and set VECTOR_STORE to qdrant in the api & worker service.)
   qdrant:
     image: qdrant/qdrant:v1.7.3
     restart: always
