@@ -1,8 +1,5 @@
 import uuid
 
-import pytest
-from pydantic.error_wrappers import ValidationError
-
 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusConfig, MilvusVector
 from models.dataset import Dataset
 from tests.integration_tests.vdb.test_vector_store import (
