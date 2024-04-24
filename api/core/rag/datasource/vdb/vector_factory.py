@@ -164,6 +164,29 @@ class Vector:
                 ),
                 dim=dim
             )
+        elif vector_type == "pgvector":
+            from core.rag.datasource.vdb.pgvector.pgvector import PGVector, PGVectorConfig
+
+            if self._dataset.index_struct_dict:
+                class_prefix: str = self._dataset.index_struct_dict["vector_store"]["class_prefix"]
+                collection_name = class_prefix
+            else:
+                dataset_id = self._dataset.id
+                collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+                index_struct_dict = {"type": "relyt", "vector_store": {"class_prefix": collection_name}}
+                self._dataset.index_struct = json.dumps(index_struct_dict)
+            dim = len(self._embeddings.embed_query("hello relyt"))
+            return PGVector(
+                collection_name=collection_name,
+                config=PGVectorConfig(
+                    host=config.get("PGVECTOR_HOST"),
+                    port=config.get("PGVECTOR_PORT"),
+                    user=config.get("PGVECTOR_USER"),
+                    password=config.get("PGVECTOR_PASSWORD"),
+                    database=config.get("PGVECTOR_DATABASE"),
+                ),
+                dimension=dim,
+            )
         else:
             raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
 
