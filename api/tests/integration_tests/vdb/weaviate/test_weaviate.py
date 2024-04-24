@@ -1,15 +1,14 @@
 import uuid
 
-from integration_tests.vdb.test_vector_store import (
+from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
+from models.dataset import Dataset
+from tests.integration_tests.vdb.test_vector_store import (
     get_sample_document,
     get_sample_embedding,
     get_sample_query_vector,
     get_sample_text,
     setup_mock_redis,
 )
-
-from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
-from models.dataset import Dataset
 
 
 def test_weaviate_vector(setup_mock_redis) -> None:
