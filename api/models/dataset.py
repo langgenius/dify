@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Account
-from models.model import App, UploadFile, TagBinding, Tag
+from models.model import App, Tag, TagBinding, UploadFile
 
 
 class Dataset(db.Model):

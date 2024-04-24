@@ -40,7 +40,7 @@ const AppNav = () => {
   const { t } = useTranslation()
   const { appId } = useParams()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const { appDetail } = useAppStore()
+  const appDetail = useAppStore(state => state.appDetail)
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)

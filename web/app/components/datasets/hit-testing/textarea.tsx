@@ -124,22 +124,17 @@ const TextAreaWithButton = ({
                   200
                 </Tag>
               )}
-            <Tooltip
-              selector="hit-testing-submit"
-              disabled={indexingTechnique === 'high_quality'}
-              content={t('datasetHitTesting.input.indexWarning') as string}
-            >
-              <div>
-                <Button
-                  onClick={onSubmit}
-                  type="primary"
-                  loading={loading}
-                  disabled={(!text?.length || text?.length > 200)}
-                >
-                  {t('datasetHitTesting.input.testing')}
-                </Button>
-              </div>
-            </Tooltip>
+
+            <div>
+              <Button
+                onClick={onSubmit}
+                type="primary"
+                loading={loading}
+                disabled={(!text?.length || text?.length > 200)}
+              >
+                {t('datasetHitTesting.input.testing')}
+              </Button>
+            </div>
           </div>
         </div>
 

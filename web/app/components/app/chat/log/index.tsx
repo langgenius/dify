@@ -11,7 +11,10 @@ const Log: FC<LogProps> = ({
   logItem,
 }) => {
   const { t } = useTranslation()
-  const { setCurrentLogItem, setShowPromptLogModal, setShowAgentLogModal, setShowMessageLogModal } = useAppStore()
+  const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
+  const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
+  const setShowAgentLogModal = useAppStore(s => s.setShowAgentLogModal)
+  const setShowMessageLogModal = useAppStore(s => s.setShowMessageLogModal)
   const { workflow_run_id: runID, agent_thoughts } = logItem
   const isAgent = agent_thoughts && agent_thoughts.length > 0
 

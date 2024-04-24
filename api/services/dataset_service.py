@@ -31,7 +31,7 @@ from models.dataset import (
     Document,
     DocumentSegment,
 )
-from models.model import UploadFile, TagBinding, Tag
+from models.model import UploadFile
 from models.source import DataSourceBinding
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
@@ -616,7 +616,7 @@ class DocumentService:
                         "upload_file_id": file_id,
                     }
                     # check duplicate
-                    if document_data.get('duplicate', True):
+                    if document_data.get('duplicate', False):
                         document = Document.query.filter_by(
                             dataset_id=dataset.id,
                             tenant_id=current_user.current_tenant_id,

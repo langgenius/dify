@@ -230,7 +230,7 @@ export const NODE_WIDTH = 240
 export const X_OFFSET = 60
 export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
 export const Y_OFFSET = 39
-export const MAX_TREE_DEEPTH = 30
+export const MAX_TREE_DEEPTH = 50
 export const START_INITIAL_POSITION = { x: 80, y: 282 }
 export const AUTO_LAYOUT_OFFSET = {
   x: -42,
@@ -402,3 +402,5 @@ export const TOOL_OUTPUT_STRUCT: Var[] = [
     type: VarType.arrayFile,
   },
 ]
+
+export const WORKFLOW_DATA_UPDATE = 'WORKFLOW_DATA_UPDATE'
