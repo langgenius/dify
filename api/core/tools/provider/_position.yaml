@@ -1,8 +1,10 @@
 - google
 - bing
 - duckduckgo
+- searxng
 - dalle
 - azuredalle
+- stability
 - wikipedia
 - model.openai
 - model.google
@@ -12,9 +14,11 @@
 - pubmed
 - stablediffusion
 - webscraper
+- jina
 - model.zhipuai
 - aippt
 - youtube
+- code
 - wolframalpha
 - maths
 - github

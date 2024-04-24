@@ -1,0 +1,8 @@
+model: cohere.embed-english-v3
+model_type: text-embedding
+model_properties:
+  context_size: 512
+pricing:
+  input: '0.1'
+  unit: '0.000001'
+  currency: USD

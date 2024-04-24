@@ -33,7 +33,7 @@ const Header: FC = () => {
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
-  const appID = useAppStore(state => state.appDetail?.id)
+  const appID = appDetail?.id
   const {
     nodesReadOnly,
     getNodesReadOnly,
@@ -73,6 +73,7 @@ const Header: FC = () => {
 
   const handleRestore = useCallback(() => {
     workflowStore.setState({ isRestoring: false })
+    workflowStore.setState({ backupDraft: undefined })
     handleSyncWorkflowDraft(true)
   }, [handleSyncWorkflowDraft, workflowStore])
 

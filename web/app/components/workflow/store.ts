@@ -1,8 +1,8 @@
 import { useContext } from 'react'
 import {
-  create,
   useStore as useZustandStore,
 } from 'zustand'
+import { createStore } from 'zustand/vanilla'
 import { debounce } from 'lodash-es'
 import type { Viewport } from 'reactflow'
 import type {
@@ -63,12 +63,16 @@ type Shape = {
   setBuildInTools: (tools: ToolWithProvider[]) => void
   customTools: ToolWithProvider[]
   setCustomTools: (tools: ToolWithProvider[]) => void
+  clipboardElements: Node[]
+  setClipboardElements: (clipboardElements: Node[]) => void
+  shortcutsDisabled: boolean
+  setShortcutsDisabled: (shortcutsDisabled: boolean) => void
 }
 
 export const createWorkflowStore = () => {
-  return create<Shape>(set => ({
+  return createStore<Shape>(set => ({
     appId: '',
-    workflowData: undefined,
+    workflowRunningData: undefined,
     setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
     historyWorkflowData: undefined,
     setHistoryWorkflowData: historyWorkflowData => set(() => ({ historyWorkflowData })),
@@ -107,6 +111,10 @@ export const createWorkflowStore = () => {
     setBuildInTools: buildInTools => set(() => ({ buildInTools })),
     customTools: [],
     setCustomTools: customTools => set(() => ({ customTools })),
+    clipboardElements: [],
+    setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
+    shortcutsDisabled: false,
+    setShortcutsDisabled: shortcutsDisabled => set(() => ({ shortcutsDisabled })),
   }))
 }
 

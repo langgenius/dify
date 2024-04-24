@@ -1,7 +1,7 @@
 import json
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Union, cast
 
 from core.agent.entities import AgentEntity, AgentToolEntity
@@ -163,6 +163,7 @@ class BaseAgentRunner(AppRunner):
         """
         tool_entity = ToolManager.get_agent_tool_runtime(
             tenant_id=self.tenant_id,
+            app_id=self.app_config.app_id,
             agent_tool=tool,
         )
         tool_entity.load_variables(self.variables_pool)
@@ -440,7 +441,7 @@ class BaseAgentRunner(AppRunner):
             ToolConversationVariables.conversation_id == self.message.conversation_id,
         ).first()
 
-        db_variables.updated_at = datetime.utcnow()
+        db_variables.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db_variables.variables_str = json.dumps(jsonable_encoder(tool_variables.pool))
         db.session.commit()
         db.session.close()

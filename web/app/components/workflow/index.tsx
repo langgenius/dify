@@ -14,7 +14,10 @@ import {
 import ReactFlow, {
   Background,
   ReactFlowProvider,
+  useEdgesState,
+  useNodesState,
   useOnViewportChange,
+  useReactFlow,
 } from 'reactflow'
 import type { Viewport } from 'reactflow'
 import 'reactflow/dist/style.css'
@@ -46,9 +49,11 @@ import {
   initialEdges,
   initialNodes,
 } from './utils'
+import { WORKFLOW_DATA_UPDATE } from './constants'
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -63,10 +68,13 @@ type WorkflowProps = {
   viewport?: Viewport
 }
 const Workflow: FC<WorkflowProps> = memo(({
-  nodes,
-  edges,
+  nodes: originalNodes,
+  edges: originalEdges,
   viewport,
 }) => {
+  const reactflow = useReactFlow()
+  const [nodes, setNodes] = useNodesState(originalNodes)
+  const [edges, setEdges] = useEdgesState(originalEdges)
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const {
@@ -75,6 +83,26 @@ const Workflow: FC<WorkflowProps> = memo(({
   } = useNodesSyncDraft()
   const { workflowReadOnly } = useWorkflowReadOnly()
   const { nodesReadOnly } = useNodesReadOnly()
+
+  const { eventEmitter } = useEventEmitterContextContext()
+
+  eventEmitter?.useSubscription((v: any) => {
+    if (v.type === WORKFLOW_DATA_UPDATE) {
+      setNodes(v.payload.nodes)
+      setEdges(v.payload.edges)
+    }
+  })
+
+  useEffect(() => {
+    setNodes(originalNodes)
+  }, [originalNodes, setNodes])
+  useEffect(() => {
+    setEdges(originalEdges)
+  }, [originalEdges, setEdges])
+  useEffect(() => {
+    if (viewport)
+      reactflow.setViewport(viewport)
+  }, [reactflow, viewport])
 
   useEffect(() => {
     setAutoFreeze(false)
@@ -113,6 +141,11 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleNodeConnect,
     handleNodeConnectStart,
     handleNodeConnectEnd,
+    handleNodeDuplicateSelected,
+    handleNodeCopySelected,
+    handleNodeCut,
+    handleNodeDeleteSelected,
+    handleNodePaste,
   } = useNodesInteractions()
   const {
     handleEdgeEnter,
@@ -120,7 +153,11 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleEdgeDelete,
     handleEdgesChange,
   } = useEdgesInteractions()
-  const { isValidConnection } = useWorkflow()
+  const {
+    isValidConnection,
+    enableShortcuts,
+    disableShortcuts,
+  } = useWorkflow()
 
   useOnViewportChange({
     onEnd: () => {
@@ -128,7 +165,12 @@ const Workflow: FC<WorkflowProps> = memo(({
     },
   })
 
-  useKeyPress('Backspace', handleEdgeDelete)
+  useKeyPress(['delete', 'backspace'], handleNodeDeleteSelected)
+  useKeyPress(['delete', 'backspace'], handleEdgeDelete)
+  useKeyPress(['ctrl.c', 'meta.c'], handleNodeCopySelected)
+  useKeyPress(['ctrl.x', 'meta.x'], handleNodeCut)
+  useKeyPress(['ctrl.v', 'meta.v'], handleNodePaste)
+  useKeyPress(['ctrl.alt.d', 'meta.shift.d'], handleNodeDuplicateSelected)
 
   return (
     <div
@@ -151,6 +193,8 @@ const Workflow: FC<WorkflowProps> = memo(({
         edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
+        onPointerDown={enableShortcuts}
+        onMouseLeave={disableShortcuts}
         onNodeDragStart={handleNodeDragStart}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}

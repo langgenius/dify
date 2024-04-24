@@ -4,6 +4,7 @@ import type {
   Edge,
   Node,
 } from '@/app/components/workflow/types'
+
 // Log type contains key:string conversation_id:string created_at:string quesiton:string answer:string
 export type Conversation = {
   id: string
@@ -291,4 +292,58 @@ export type WorkflowRunDetailResponse = {
   created_by_end_user?: EndUserInfo
   created_at: number
   finished_at: number
+}
+
+export type AgentLogMeta = {
+  status: string
+  executor: string
+  start_time: string
+  elapsed_time: number
+  total_tokens: number
+  agent_mode: string
+  iterations: number
+  error?: string
+}
+
+export type ToolCall = {
+  status: string
+  error?: string | null
+  time_cost?: number
+  tool_icon: any
+  tool_input?: any
+  tool_output?: any
+  tool_name?: string
+  tool_label?: any
+  tool_parameters?: any
+}
+
+export type AgentIteration = {
+  created_at: string
+  files: string[]
+  thought: string
+  tokens: number
+  tool_calls: ToolCall[]
+  tool_raw: {
+    inputs: string
+    outputs: string
+  }
+}
+
+export type AgentLogFile = {
+  id: string
+  type: string
+  url: string
+  name: string
+  belongs_to: string
+}
+
+export type AgentLogDetailRequest = {
+  conversation_id: string
+  message_id: string
+}
+
+export type AgentLogDetailResponse = {
+  meta: AgentLogMeta
+  iterations: AgentIteration[]
+  files: AgentLogFile[]
 }
