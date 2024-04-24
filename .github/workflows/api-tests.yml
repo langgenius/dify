@@ -46,17 +46,17 @@ jobs:
       - name: Set up Qdrant
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
-          compose-file: docker/docker-compose.qdrant.middleware.yaml
+          compose-file: docker/docker-compose.qdrant.yaml
           services: qdrant
 
       - name: Set up Milvus
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
-          compose-file: docker/milvus-standalone-docker-compose.yml
+          compose-file: docker/docker-compose.milvus.yaml
           services: |
             etcd
             minio
-            standalone
+            milvus-standalone
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
