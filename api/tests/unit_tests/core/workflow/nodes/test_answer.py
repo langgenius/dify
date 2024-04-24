@@ -28,6 +28,7 @@ def test_execute_answer():
     # construct variable pool
     pool = VariablePool(system_variables={
         SystemVariable.FILES: [],
+        SystemVariable.USER_ID: 'aaa'
     }, user_inputs={})
     pool.append_variable(node_id='start', variable_key_list=['weather'], value='sunny')
     pool.append_variable(node_id='llm', variable_key_list=['text'], value='You are a helpful AI.')
