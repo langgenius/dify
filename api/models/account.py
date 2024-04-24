@@ -15,6 +15,16 @@ class AccountStatus(str, enum.Enum):
     CLOSED = 'closed'
 
 
+class AccountRole(str,enum.Enum):
+    OWNER = 'owner'
+    ADMIN = 'admin'
+    NORMAL = 'normal'
+
+
+def get_privilieged_roles() -> set[str]:
+    return {AccountRole.ADMIN.value, AccountRole.OWNER.value}
+
+
 class Account(UserMixin, db.Model):
     __tablename__ = 'accounts'
     __table_args__ = (
@@ -100,6 +110,7 @@ class Account(UserMixin, db.Model):
         return db.session.query(ai).filter(
             ai.account_id == self.id
         ).all()
+
     # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
     def is_admin_or_owner(self):
@@ -132,11 +143,11 @@ class Tenant(db.Model):
             Account.id == TenantAccountJoin.account_id,
             TenantAccountJoin.tenant_id == self.id
         ).all()
-    
+
     @property
     def custom_config_dict(self) -> dict:
         return json.loads(self.custom_config) if self.custom_config else {}
-    
+
     @custom_config_dict.setter
     def custom_config_dict(self, value: dict):
         self.custom_config = json.dumps(value)
