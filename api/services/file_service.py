@@ -65,6 +65,8 @@ class FileService:
             current_tenant_id = user.tenant_id
 
         config = current_app.config
+        # Check if the file has been uploaded.
+        # Unique check field：tenant_id + storage_type + name + hash
         uploaded_file = db.session.query(UploadFile) \
             .filter(UploadFile.tenant_id == current_tenant_id) \
             .filter(UploadFile.storage_type == config['STORAGE_TYPE']) \
