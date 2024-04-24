@@ -122,6 +122,7 @@ export enum PromptRole {
 }
 
 export type PromptItem = {
+  id?: string
   role?: PromptRole
   text: string
 }

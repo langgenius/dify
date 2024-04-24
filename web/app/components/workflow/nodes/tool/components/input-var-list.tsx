@@ -100,8 +100,17 @@ const InputVarList: FC<Props> = ({
     }
   }, [value, onChange])
 
-  const [isFocus, setIsFocus] = useState(false)
-
+  const [inputsIsFocus, setInputsIsFocus] = useState<Record<string, boolean>>({})
+  const handleInputFocus = useCallback((variable: string) => {
+    return (value: boolean) => {
+      setInputsIsFocus((prev) => {
+        return {
+          ...prev,
+          [variable]: value,
+        }
+      })
+    }
+  }, [])
   const handleOpen = useCallback((index: number) => {
     return () => onOpen(index)
   }, [onOpen])
@@ -126,13 +135,13 @@ const InputVarList: FC<Props> = ({
               </div>
               {isString
                 ? (<Input
-                  className={cn(isFocus ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'rounded-lg px-3 py-[6px] border')}
+                  className={cn(inputsIsFocus[variable] ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'rounded-lg px-3 py-[6px] border')}
                   value={varInput?.value as string || ''}
                   onChange={handleMixedTypeChange(variable)}
                   readOnly={readOnly}
                   nodesOutputVars={availableVars}
                   availableNodes={availableNodes}
-                  onFocusChange={setIsFocus}
+                  onFocusChange={handleInputFocus(variable)}
                   placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
                   placeholderClassName='!leading-[21px]'
                 />)
