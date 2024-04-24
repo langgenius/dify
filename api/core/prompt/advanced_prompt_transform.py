@@ -27,12 +27,12 @@ class AdvancedPromptTransform(PromptTransform):
     def get_prompt(self, prompt_template: Union[list[ChatModelMessage], CompletionModelPromptTemplate],
                    inputs: dict,
                    query: str,
-                   query_prompt_template: Optional[str],
                    files: list[FileVar],
                    context: Optional[str],
                    memory_config: Optional[MemoryConfig],
                    memory: Optional[TokenBufferMemory],
-                   model_config: ModelConfigWithCredentialsEntity) -> list[PromptMessage]:
+                   model_config: ModelConfigWithCredentialsEntity,
+                   query_prompt_template: Optional[str] = None) -> list[PromptMessage]:
         inputs = {key: str(value) for key, value in inputs.items()}
 
         prompt_messages = []
@@ -119,12 +119,12 @@ class AdvancedPromptTransform(PromptTransform):
                                         prompt_template: list[ChatModelMessage],
                                         inputs: dict,
                                         query: Optional[str],
-                                        query_prompt_template: Optional[str],
                                         files: list[FileVar],
                                         context: Optional[str],
                                         memory_config: Optional[MemoryConfig],
                                         memory: Optional[TokenBufferMemory],
-                                        model_config: ModelConfigWithCredentialsEntity) -> list[PromptMessage]:
+                                        model_config: ModelConfigWithCredentialsEntity,
+                                        query_prompt_template: Optional[str] = None) -> list[PromptMessage]:
         """
         Get chat model prompt messages.
         """
