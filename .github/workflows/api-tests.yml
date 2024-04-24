@@ -57,3 +57,6 @@ jobs:
 
       - name: Run Workflow
         run: dev/pytest/pytest_workflow.sh
+
+      - name: Run Unit tests
+        run: dev/pytest/pytest_unit_tests.sh
