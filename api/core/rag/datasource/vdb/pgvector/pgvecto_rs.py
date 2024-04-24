@@ -6,7 +6,7 @@ from numpy import ndarray
 from pgvecto_rs.sdk import PGVectoRs
 from pgvecto_rs.sqlalchemy import Vector
 from pydantic import BaseModel, root_validator
-from sqlalchemy import text as sql_text, create_engine, text, insert, delete, select, String
+from sqlalchemy import text as sql_text, create_engine, text, insert, delete, select, String, Float
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, mapped_column, Mapped
 
@@ -56,8 +56,9 @@ class PGVectoRS(BaseVector):
             session.execute(text("CREATE EXTENSION IF NOT EXISTS vectors"))
             session.commit()
         self._fields = []
+
         class _Table(CollectionORM):
-            __tablename__ = f"collection_{collection_name}"
+            __tablename__ = collection_name
             __table_args__ = {"extend_existing": True}  # noqa: RUF012
             id: Mapped[UUID] = mapped_column(
                 postgresql.UUID(as_uuid=True),
@@ -133,7 +134,6 @@ class PGVectoRS(BaseVector):
     def delete_by_document_id(self, document_id: str):
         ids = self.get_ids_by_metadata_field('document_id', document_id)
         if ids:
-
             with Session(self._client) as session:
                 select_statement = sql_text(f"DELETE FROM {self._collection_name} WHERE id = ANY(:ids)")
                 session.execute(select_statement, {'ids': ids})
@@ -189,27 +189,24 @@ class PGVectoRS(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from pgvecto_rs.sdk import filters
-        filter_condition = filters.meta_contains(kwargs.get('filter'))
         with Session(self._client) as session:
             stmt = (
                 select(
                     self._table,
-                    self._table.vector.op(distance_op, return_type=Float)(
-                        embedding,
+                    self._table.vector.op(self._distance_op, return_type=Float)(
+                        query_vector,
                     ).label("distance"),
                 )
-                .limit(top_k)
+                .limit(kwargs.get('top_k', 2))
                 .order_by("distance")
             )
-            if filter is not None:
-                stmt = stmt.where(filter(self._table))
             res = session.execute(stmt)
-            return [(Record.from_orm(row[0]), row[1]) for row in res]
+            results = [(row[0], row[1]) for row in res]
 
         # Organize results.
         docs = []
         for record, dis in results:
-            metadata = record.meta
+            metadata = record.metadata
             metadata['score'] = dis
             score_threshold = kwargs.get('score_threshold') if kwargs.get('score_threshold') else 0.0
             if dis > score_threshold:

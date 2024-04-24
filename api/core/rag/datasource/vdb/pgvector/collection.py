@@ -8,5 +8,5 @@ class CollectionORM(DeclarativeBase):
     __tablename__: str
     id: Mapped[UUID]
     text: Mapped[str]
-    meta: Mapped[dict]
-    embedding: Mapped[ndarray]
+    metadata: Mapped[dict]
+    vector: Mapped[ndarray]
