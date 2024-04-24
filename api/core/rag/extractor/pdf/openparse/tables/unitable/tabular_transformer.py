@@ -2,6 +2,7 @@ from functools import partial
 
 from torch import Tensor, nn, torch
 
+
 class TokenEmbedding(nn.Module):
     def __init__(
             self,
