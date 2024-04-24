@@ -41,16 +41,13 @@ jobs:
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
           compose-file: docker/docker-compose.middleware.yaml
-          services: |
-            redis
-            weaviate
+          services: weaviate
 
       - name: Set up Qdrant
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
           compose-file: docker/docker-compose.qdrant.middleware.yaml
-          services: |
-            qdrant
+          services: qdrant
 
       - name: Set up Milvus
         uses: hoverkraft-tech/compose-action@v2.0.0
