@@ -47,7 +47,7 @@ const Trigger: FC<TriggerProps> = ({
         'relative flex items-center px-2 h-8 rounded-lg  cursor-pointer',
         !isInWorkflow && 'border hover:border-[1.5px]',
         !isInWorkflow && (disabled ? 'border-[#F79009] bg-[#FFFAEB]' : 'border-[#444CE7] bg-primary-50'),
-        isInWorkflow && 'bg-gray-100 border border-gray-100  hover:border-gray-200',
+        isInWorkflow && 'pr-[30px] bg-gray-100 border border-gray-100  hover:border-gray-200',
       )}
     >
       {
@@ -103,7 +103,7 @@ const Trigger: FC<TriggerProps> = ({
             </TooltipPlus>
           )
           : (
-            <SlidersH className={cn(!isInWorkflow ? 'text-indigo-600' : 'text-gray-500', 'w-4 h-4')} />
+            <SlidersH className={cn(!isInWorkflow ? 'text-indigo-600' : 'text-gray-500', 'shrink-0 w-4 h-4')} />
           )
       }
       {isInWorkflow && (<ChevronDown className='absolute top-[9px] right-2 w-3.5 h-3.5 text-gray-500' />)}

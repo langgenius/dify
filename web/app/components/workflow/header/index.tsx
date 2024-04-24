@@ -73,6 +73,7 @@ const Header: FC = () => {
 
   const handleRestore = useCallback(() => {
     workflowStore.setState({ isRestoring: false })
+    workflowStore.setState({ backupDraft: undefined })
     handleSyncWorkflowDraft(true)
   }, [handleSyncWorkflowDraft, workflowStore])
 
