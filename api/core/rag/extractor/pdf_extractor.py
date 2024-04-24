@@ -1,9 +1,9 @@
 """Abstract interface for document loader implementations."""
-from collections.abc import Iterator
 from typing import Optional
 
-from core.rag.extractor.blod.blod import Blob
 from core.rag.extractor.extractor_base import BaseExtractor
+from core.rag.extractor.pdf.openparse import DocumentParser, processing
+from core.rag.extractor.pdf.openparse.schemas import ImageElement
 from core.rag.models.document import Document
 from extensions.ext_storage import storage
 
@@ -49,24 +49,47 @@ class PdfExtractor(BaseExtractor):
 
     def load(
             self,
-    ) -> Iterator[Document]:
+    ) -> list[Document]:
         """Lazy load given path as pages."""
-        blob = Blob.from_path(self._file_path)
-        yield from self.parse(blob)
+        # blob = Blob.from_path(self._file_path)
+        # yield from self.parse(blob)
+        documents = []
+        parser = DocumentParser(
+            processing_pipeline=processing.BasicIngestionPipeline(),
+            table_args={
+                "parsing_algorithm": "pymupdf",
+                "table_output_format": "markdown"
+            }
+        )
+        parsed_basic_doc = parser.parse(self._file_path)
+        documentContent = ''
+        for _index, node in enumerate(parsed_basic_doc.nodes):
+            metadata = {"source": self._file_path, "page": _index}
+            for element in node.elements:
+                if isinstance(element, ImageElement):
+                    # pdf images a
+                    pass
+                else:
+                    documentContent += element.text
+                if len(documentContent) > 1500:
+                    documents.append(Document(page_content=documentContent, metadata=metadata))
+                    documentContent = ''
+        documents.append(Document(page_content=documentContent, metadata=metadata))
+        return documents
 
-    def parse(self, blob: Blob) -> Iterator[Document]:
-        """Lazily parse the blob."""
-        import pypdfium2
-
-        with blob.as_bytes_io() as file_path:
-            pdf_reader = pypdfium2.PdfDocument(file_path, autoclose=True)
-            try:
-                for page_number, page in enumerate(pdf_reader):
-                    text_page = page.get_textpage()
-                    content = text_page.get_text_range()
-                    text_page.close()
-                    page.close()
-                    metadata = {"source": blob.source, "page": page_number}
-                    yield Document(page_content=content, metadata=metadata)
-            finally:
-                pdf_reader.close()
+    # def parse(self, blob: Blob) -> Iterator[Document]:
+    #     """Lazily parse the blob."""
+    #     import pypdfium2
+    #
+    #     with blob.as_bytes_io() as file_path:
+    #         pdf_reader = pypdfium2.PdfDocument(file_path, autoclose=True)
+    #         try:
+    #             for page_number, page in enumerate(pdf_reader):
+    #                 text_page = page.get_textpage()
+    #                 content = text_page.get_text_range()
+    #                 text_page.close()
+    #                 page.close()
+    #                 metadata = {"source": blob.source, "page": page_number}
+    #                 yield Document(page_content=content, metadata=metadata)
+    #         finally:
+    #             pdf_reader.close()
