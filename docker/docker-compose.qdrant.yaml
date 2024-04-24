@@ -2,7 +2,7 @@ version: '3'
 services:
   # Qdrant vector store.
   qdrant:
-    image: qdrant/qdrant:v1.7.3
+    image: langgenius/qdrant:v1.7.3
     restart: always
     volumes:
       - ./volumes/qdrant:/qdrant/storage
