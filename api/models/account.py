@@ -20,9 +20,9 @@ class AccountRole(str,enum.Enum):
     ADMIN = 'admin'
     NORMAL = 'normal'
 
-
-def get_privilieged_roles() -> set[str]:
-    return {AccountRole.ADMIN.value, AccountRole.OWNER.value}
+    @staticmethod
+    def get_privilieged_roles() -> set[str]:
+        return {AccountRole.ADMIN.value, AccountRole.OWNER.value}
 
 
 class Account(UserMixin, db.Model):
