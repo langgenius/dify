@@ -62,3 +62,6 @@ jobs:
 
       - name: Run Workflow
         run: dev/pytest/pytest_workflow.sh
+
+      - name: Run Unit tests
+        run: pytest api/tests/unit_tests/libs
