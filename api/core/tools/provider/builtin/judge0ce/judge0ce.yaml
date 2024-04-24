@@ -1,0 +1,29 @@
+identity:
+  author: Richards Tu
+  name: judge0ce
+  label:
+    en_US: Judge0 CE
+    zh_Hans: Judge0 CE
+    pt_BR: Judge0 CE
+  description:
+    en_US: Judge0 CE is an open-source code execution system. Support various languages, including C, C++, Java, Python, Ruby, etc.
+    zh_Hans: Judge0 CE 是一个开源的代码执行系统。支持多种语言，包括 C、C++、Java、Python、Ruby 等。
+    pt_BR: Judge0 CE é um sistema de execução de código de código aberto. Suporta várias linguagens, incluindo C, C++, Java, Python, Ruby, etc.
+  icon: icon.svg
+credentials_for_provider:
+  X-RapidAPI-Key:
+    type: secret-input
+    required: true
+    label:
+      en_US: RapidAPI Key
+      zh_Hans: RapidAPI Key
+      pt_BR: RapidAPI Key
+    help:
+      en_US: RapidAPI Key is required to access the Judge0 CE API.
+      zh_Hans: RapidAPI Key 是访问 Judge0 CE API 所必需的。
+      pt_BR: RapidAPI Key é necessário para acessar a API do Judge0 CE.
+    placeholder:
+      en_US: Enter your RapidAPI Key
+      zh_Hans: 输入你的 RapidAPI Key
+      pt_BR: Insira sua RapidAPI Key
+    url: https://rapidapi.com/judge0-official/api/judge0-ce

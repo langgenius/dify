@@ -38,6 +38,9 @@ DEFAULTS = {
     'QDRANT_CLIENT_TIMEOUT': 20,
     'CELERY_BACKEND': 'database',
     'LOG_LEVEL': 'INFO',
+    'LOG_FILE': '',
+    'LOG_FORMAT': '%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s',
+    'LOG_DATEFORMAT': '%Y-%m-%d %H:%M:%S',
     'HOSTED_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_OPENAI_TRIAL_ENABLED': 'False',
     'HOSTED_OPENAI_TRIAL_MODELS': 'gpt-3.5-turbo,gpt-3.5-turbo-1106,gpt-3.5-turbo-instruct,gpt-3.5-turbo-16k,gpt-3.5-turbo-16k-0613,gpt-3.5-turbo-0613,gpt-3.5-turbo-0125,text-davinci-003',
@@ -101,12 +104,15 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.6.3"
+        self.CURRENT_VERSION = "0.6.4"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
         self.TESTING = False
         self.LOG_LEVEL = get_env('LOG_LEVEL')
+        self.LOG_FILE = get_env('LOG_FILE')
+        self.LOG_FORMAT = get_env('LOG_FORMAT')
+        self.LOG_DATEFORMAT = get_env('LOG_DATEFORMAT')
 
         # The backend URL prefix of the console API.
         # used to concatenate the login authorization callback or notion integration callback.
