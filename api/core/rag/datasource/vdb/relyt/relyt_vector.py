@@ -70,10 +70,10 @@ class RelytVector(BaseVector):
                 return
             index_name = f"{self._collection_name}_embedding_index"
             with Session(self.client) as session:
-                drop_statement = sql_text(f"DROP TABLE IF EXISTS collection_{self._collection_name}")
+                drop_statement = sql_text(f"""DROP TABLE IF EXISTS "{self._collection_name}"; """)
                 session.execute(drop_statement)
                 create_statement = sql_text(f"""
-                    CREATE TABLE IF NOT EXISTS collection_{self._collection_name} (
+                    CREATE TABLE IF NOT EXISTS "{self._collection_name}" (
                         id TEXT PRIMARY KEY,
                         document TEXT NOT NULL,
                         metadata JSON NOT NULL,
@@ -83,7 +83,7 @@ class RelytVector(BaseVector):
                 session.execute(create_statement)
                 index_statement = sql_text(f"""
                         CREATE INDEX {index_name}
-                        ON collection_{self._collection_name} USING vectors(embedding vector_l2_ops)
+                        ON "{self._collection_name}" USING vectors(embedding vector_l2_ops)
                         WITH (options = $$
                                 optimizing.optimizing_threads = 30
                                 segment.max_growing_segment_size = 2000
@@ -104,9 +104,10 @@ class RelytVector(BaseVector):
         metadatas = [d.metadata for d in documents]
         texts = [d.page_content for d in documents]
 
+        logger.info(f"Adding {len(texts)} documents to collection {self._collection_name}")
         # Define the table schema
         chunks_table = Table(
-            self.collection_name,
+            self._collection_name,
             Base.metadata,
             Column("id", TEXT, primary_key=True),
             Column("embedding", Vector(len(embeddings[0]))),
@@ -151,7 +152,7 @@ class RelytVector(BaseVector):
         result = None
         with Session(self.client) as session:
             select_statement = sql_text(
-                f"SELECT id FROM collection_{self._collection_name} WHERE metadata->>'{key}' = '{value}'; "
+                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'{key}' = '{value}'; """
             )
             result = session.execute(select_statement).fetchall()
         if result:
@@ -172,7 +173,7 @@ class RelytVector(BaseVector):
 
         # Define the table schema
         chunks_table = Table(
-            self.collection_name,
+            self._collection_name,
             Base.metadata,
             Column("id", TEXT, primary_key=True),
             Column("embedding", Vector(self.embedding_dimension)),
@@ -198,9 +199,11 @@ class RelytVector(BaseVector):
             self.delete_by_uuids(ids)
 
     def delete_by_ids(self, doc_ids: list[str]) -> None:
+
         with Session(self.client) as session:
+            ids_str = ','.join(f"'{doc_id}'" for doc_id in doc_ids)
             select_statement = sql_text(
-                f"SELECT id FROM collection_{self._collection_name} WHERE meta->>'doc_id' in ('{doc_ids}'); "
+                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' in ({ids_str}); """
             )
             result = session.execute(select_statement).fetchall()
         if result:
@@ -209,13 +212,13 @@ class RelytVector(BaseVector):
 
     def delete(self) -> None:
         with Session(self.client) as session:
-            session.execute(sql_text(f"DROP TABLE IF EXISTS collection_{self._collection_name}"))
+            session.execute(sql_text(f"""DROP TABLE IF EXISTS "{self._collection_name}";"""))
             session.commit()
 
     def text_exists(self, id: str) -> bool:
         with Session(self.client) as session:
             select_statement = sql_text(
-                f"SELECT id FROM collection_{self._collection_name} WHERE meta->>'doc_id' = '{id}' limit 1; "
+                f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' = '{id}' limit 1; """
             )
             result = session.execute(select_statement).fetchall()
         return len(result) > 0
@@ -253,7 +256,9 @@ class RelytVector(BaseVector):
         filter_condition = ""
         if filter is not None:
             conditions = [
-                f"metadata->>{key!r} = {value!r}" for key, value in filter.items()
+                f"metadata->>{key!r} in ({', '.join(map(repr, value))})" if len(value) > 1
+                else f"metadata->>{key!r} = {value[0]!r}"
+                for key, value in filter.items()
             ]
             filter_condition = f"WHERE {' AND '.join(conditions)}"
 
@@ -262,7 +267,7 @@ class RelytVector(BaseVector):
             set vectors.enable_search_growing = on;
             set vectors.enable_search_write = on;
             SELECT document, metadata, embedding <-> :embedding as distance
-            FROM {self.collection_name}
+            FROM "{self._collection_name}"
             {filter_condition}
             ORDER BY embedding <-> :embedding
             LIMIT :k
