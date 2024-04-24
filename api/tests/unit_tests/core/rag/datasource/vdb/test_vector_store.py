@@ -39,10 +39,8 @@ def setup_mock_redis() -> None:
     # set
     ext_redis.redis_client.set = MagicMock(return_value=None)
 
-    # mock lock
+    # lock
     mock_redis_lock = MagicMock()
     mock_redis_lock.__enter__ = MagicMock()
     mock_redis_lock.__exit__ = MagicMock()
     ext_redis.redis_client.lock = mock_redis_lock
-
-
