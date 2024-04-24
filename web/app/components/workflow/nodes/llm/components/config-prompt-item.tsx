@@ -14,6 +14,7 @@ const i18nPrefix = 'workflow.nodes.llm'
 
 type Props = {
   className?: string
+  headerClassName?: string
   readOnly: boolean
   id: string
   canRemove: boolean
@@ -50,6 +51,7 @@ const roleOptions = [
 
 const ConfigPromptItem: FC<Props> = ({
   className,
+  headerClassName,
   readOnly,
   id,
   canRemove,
@@ -72,6 +74,7 @@ const ConfigPromptItem: FC<Props> = ({
   return (
     <Editor
       className={className}
+      headerClassName={headerClassName}
       instanceId={instanceId}
       key={instanceId}
       title={

@@ -11,6 +11,7 @@ import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import ConfigPromptItem from './config-prompt-item'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
+import { DragHandle } from '@/app/components/base/icons/src/vender/line/others'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
@@ -127,23 +128,27 @@ const ConfigPrompt: FC<Props> = ({
                 {
                   (payload as PromptItem[]).map((item, index) => {
                     return (
-                      <ConfigPromptItem
-                        className='handle'
-                        key={item.id}
-                        canRemove={payload.length > 1}
-                        readOnly={readOnly}
-                        id={`${payload.length}-${index}`}
-                        handleChatModeMessageRoleChange={handleChatModeMessageRoleChange(index)}
-                        isChatModel={isChatModel}
-                        isChatApp={isChatApp}
-                        payload={item}
-                        onPromptChange={handleChatModePromptChange(index)}
-                        onRemove={handleRemove(index)}
-                        isShowContext={isShowContext}
-                        hasSetBlockStatus={hasSetBlockStatus}
-                        availableVars={availableVars}
-                        availableNodes={availableNodes}
-                      />
+                      <div key={item.id} className='relative group'>
+                        <DragHandle className='group-hover:block hidden absolute left-[-14px] top-2 w-3.5 h-3.5 text-gray-400' />
+                        <ConfigPromptItem
+                          className='handle'
+                          headerClassName='cursor-grab'
+                          canRemove={payload.length > 1}
+                          readOnly={readOnly}
+                          id={`${payload.length}-${index}`}
+                          handleChatModeMessageRoleChange={handleChatModeMessageRoleChange(index)}
+                          isChatModel={isChatModel}
+                          isChatApp={isChatApp}
+                          payload={item}
+                          onPromptChange={handleChatModePromptChange(index)}
+                          onRemove={handleRemove(index)}
+                          isShowContext={isShowContext}
+                          hasSetBlockStatus={hasSetBlockStatus}
+                          availableVars={availableVars}
+                          availableNodes={availableNodes}
+                        />
+                      </div>
+
                     )
                   })
 
