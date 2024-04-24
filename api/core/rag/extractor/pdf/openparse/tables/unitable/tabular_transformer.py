@@ -1,14 +1,13 @@
-import torch
-from torch import Tensor, nn
 from functools import partial
 
+from torch import Tensor, nn, torch
 
 class TokenEmbedding(nn.Module):
     def __init__(
-        self,
-        vocab_size: int,
-        d_model: int,
-        padding_idx: int,
+            self,
+            vocab_size: int,
+            d_model: int,
+            padding_idx: int,
     ) -> None:
         super().__init__()
         assert vocab_size > 0
@@ -32,10 +31,10 @@ class PositionEmbedding(nn.Module):
 
 class ImgLinearBackbone(nn.Module):
     def __init__(
-        self,
-        d_model: int,
-        patch_size: int,
-        in_chan: int = 3,
+            self,
+            d_model: int,
+            patch_size: int,
+            in_chan: int = 3,
     ) -> None:
         super().__init__()
 
@@ -52,14 +51,14 @@ class ImgLinearBackbone(nn.Module):
 
 class Encoder(nn.Module):
     def __init__(
-        self,
-        d_model: int,
-        nhead: int,
-        dropout: float,
-        activation: str,
-        norm_first: bool,
-        nlayer: int,
-        ff_ratio: int = 4,
+            self,
+            d_model: int,
+            nhead: int,
+            dropout: float,
+            activation: str,
+            norm_first: bool,
+            nlayer: int,
+            ff_ratio: int = 4,
     ) -> None:
         super().__init__()
 
@@ -82,14 +81,14 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
     def __init__(
-        self,
-        d_model: int,
-        nhead: int,
-        dropout: float,
-        activation: str,
-        norm_first: bool,
-        nlayer: int,
-        ff_ratio: int = 4,
+            self,
+            d_model: int,
+            nhead: int,
+            dropout: float,
+            activation: str,
+            norm_first: bool,
+            nlayer: int,
+            ff_ratio: int = 4,
     ) -> None:
         super().__init__()
         decoder_layer = nn.TransformerDecoderLayer(
@@ -105,7 +104,7 @@ class Decoder(nn.Module):
         self.decoder = nn.TransformerDecoder(decoder_layer, nlayer)
 
     def forward(
-        self, x: Tensor, memory: Tensor, tgt_mask: Tensor, tgt_padding_mask: Tensor
+            self, x: Tensor, memory: Tensor, tgt_mask: Tensor, tgt_padding_mask: Tensor
     ) -> Tensor:
         x = self.decoder(
             x, memory, tgt_mask=tgt_mask, tgt_key_padding_mask=tgt_padding_mask
@@ -132,17 +131,17 @@ class EncoderDecoder(nn.Module):
     """
 
     def __init__(
-        self,
-        backbone: nn.Module,
-        encoder: nn.Module,
-        decoder: nn.Module,
-        vocab_size: int,
-        d_model: int,
-        padding_idx: int,
-        max_seq_len: int,
-        dropout: float,
-        norm_layer: nn.Module,
-        init_std: float = 0.02,
+            self,
+            backbone: nn.Module,
+            encoder: nn.Module,
+            decoder: nn.Module,
+            vocab_size: int,
+            d_model: int,
+            padding_idx: int,
+            max_seq_len: int,
+            dropout: float,
+            norm_layer: nn.Module,
+            init_std: float = 0.02,
     ):
         super().__init__()
 
@@ -192,7 +191,7 @@ class EncoderDecoder(nn.Module):
         return memory
 
     def decode(
-        self, memory: Tensor, tgt: Tensor, tgt_mask: Tensor, tgt_padding_mask: Tensor
+            self, memory: Tensor, tgt: Tensor, tgt_mask: Tensor, tgt_padding_mask: Tensor
     ) -> Tensor:
         tgt_feature = self.pos_embed(self.token_embed(tgt))
         tgt = self.decoder(tgt_feature, memory, tgt_mask, tgt_padding_mask)
@@ -200,7 +199,7 @@ class EncoderDecoder(nn.Module):
         return tgt
 
     def forward(
-        self, src: Tensor, tgt: Tensor, tgt_mask: Tensor, tgt_padding_mask: Tensor
+            self, src: Tensor, tgt: Tensor, tgt_mask: Tensor, tgt_padding_mask: Tensor
     ) -> Tensor:
         memory = self.encode(src)
         tgt = self.decode(memory, tgt, tgt_mask, tgt_padding_mask)

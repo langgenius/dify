@@ -87,3 +87,5 @@ pdfminer==20191125
 pdfminer.six==20201018
 pypdf==4.2.0
 PyMuPDF==1.24.0
+networkx==3.3
+torch==2.2.2

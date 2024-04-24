@@ -24,9 +24,9 @@ def output_to_markdown(headers: list[str], rows: list[list[str]]) -> str:
     markdown_result = []
     row_content = ''
     for row in rows:
-        processed_row = [" " if cell in [None, ""] else cell.replace("\n", "") for cell in row]
-        row_content += "| " + " | ".join(processed_row) + " |\n"
-        if (len(row_content) > 100):
+        processed_row = [" " if cell in [None, ""] else cell.replace("\n", '') for cell in row]
+        row_content += "| " + " | ".join(processed_row) + " | \n"
+        if (len(row_content) > 500):
             markdown_result.append(table_header + row_content)
             row_content = ''
     return "\n\n".join(markdown_result)

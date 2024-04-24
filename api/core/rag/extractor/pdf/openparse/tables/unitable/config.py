@@ -1,7 +1,9 @@
-from pydantic import BaseModel
-from pathlib import Path
 import sys
-from src.openparse import consts
+from pathlib import Path
+
+from pydantic import BaseModel
+
+from core.rag.extractor.pdf.openparse import consts
 
 root = Path(consts.__file__).parent
 

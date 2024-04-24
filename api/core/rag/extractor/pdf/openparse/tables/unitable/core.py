@@ -4,9 +4,10 @@ from typing import Optional
 
 import torch  # type: ignore
 from PIL import Image  # type: ignore
-from src.openparse.config import config
 from torch import Tensor  # type: ignore
 from torchvision import transforms  # type: ignore
+
+from core.rag.extractor.pdf.openparse.config import config
 
 from .tokens import INVALID_CELL_TOKEN, VALID_BBOX_TOKEN, VALID_HTML_TOKEN
 from .unitable_model import (
