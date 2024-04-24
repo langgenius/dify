@@ -25,8 +25,11 @@ class BaseAppGenerator:
             if value:
                 if variable_config.type != VariableEntity.Type.NUMBER and not isinstance(value, str):
                     raise ValueError(f"{variable} in input form must be a string")
-                elif variable_config.type == VariableEntity.Type.NUMBER and not isinstance(value, float | int):
-                    raise ValueError(f"{variable} in input form must be a number")
+                elif variable_config.type == VariableEntity.Type.NUMBER and isinstance(value, str):
+                    if '.' in value:
+                        value = float(value)
+                    else:
+                        value = int(value)
 
             if variable_config.type == VariableEntity.Type.SELECT:
                 options = variable_config.options if variable_config.options is not None else []
