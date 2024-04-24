@@ -12,6 +12,7 @@ import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
 import { createContext, useContext } from 'use-context-selector'
+import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import s from './style.module.css'
@@ -154,7 +155,16 @@ type IDetailPanel<T> = {
 
 function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionConversationFullDetailResponse>({ detail, onFeedback }: IDetailPanel<T>) {
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal, showMessageLogModal, setShowMessageLogModal } = useAppStore()
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal, showMessageLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
+    currentLogItem: state.currentLogItem,
+    setCurrentLogItem: state.setCurrentLogItem,
+    showPromptLogModal: state.showPromptLogModal,
+    setShowPromptLogModal: state.setShowPromptLogModal,
+    showAgentLogModal: state.showAgentLogModal,
+    setShowAgentLogModal: state.setShowAgentLogModal,
+    showMessageLogModal: state.showMessageLogModal,
+    setShowMessageLogModal: state.setShowMessageLogModal,
+  })))
   const { t } = useTranslation()
   const [items, setItems] = React.useState<IChatItem[]>([])
   const [hasMore, setHasMore] = useState(true)

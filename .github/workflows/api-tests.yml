@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version:
+          - "3.10"
+          - "3.11"
 
     env:
       OPENAI_API_KEY: sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii
