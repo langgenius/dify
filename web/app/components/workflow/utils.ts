@@ -4,6 +4,7 @@ import {
   getOutgoers,
 } from 'reactflow'
 import dagre from 'dagre'
+import { v4 as uuid4 } from 'uuid'
 import {
   cloneDeep,
   uniqBy,
@@ -330,4 +331,29 @@ export const getToolCheckParams = (
     toolSettingSchema,
     language,
   }
+}
+
+export const changeNodesAndEdgesId = (nodes: Node[], edges: Edge[]) => {
+  const idMap = nodes.reduce((acc, node) => {
+    acc[node.id] = uuid4()
+
+    return acc
+  }, {} as Record<string, string>)
+
+  const newNodes = nodes.map((node) => {
+    return {
+      ...node,
+      id: idMap[node.id],
+    }
+  })
+
+  const newEdges = edges.map((edge) => {
+    return {
+      ...edge,
+      source: idMap[edge.source],
+      target: idMap[edge.target],
+    }
+  })
+
+  return [newNodes, newEdges] as [Node[], Edge[]]
 }

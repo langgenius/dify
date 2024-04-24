@@ -19,6 +19,7 @@ import type {
   Viewport,
 } from 'reactflow'
 import {
+  changeNodesAndEdgesId,
   getLayoutByDagre,
   initialEdges,
   initialNodes,
@@ -39,6 +40,7 @@ import {
 import {
   AUTO_LAYOUT_OFFSET,
   SUPPORT_OUTPUT_VARS_NODE,
+  WORKFLOW_DATA_UPDATE,
 } from '../constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useNodesExtraData } from './use-nodes-data'
@@ -56,6 +58,8 @@ import {
   fetchAllCustomTools,
 } from '@/service/tools'
 import I18n from '@/context/i18n'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
 
@@ -69,6 +73,7 @@ export const useWorkflow = () => {
   const workflowStore = useWorkflowStore()
   const nodesExtraData = useNodesExtraData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { eventEmitter } = useEventEmitterContextContext()
 
   const handleLayout = useCallback(async () => {
     workflowStore.setState({ nodeAnimation: true })
@@ -314,15 +319,21 @@ export const useWorkflow = () => {
   }, [locale])
 
   const renderTreeFromRecord = useCallback((nodes: Node[], edges: Edge[], viewport?: Viewport) => {
-    const { setNodes } = store.getState()
-    const { setViewport, setEdges } = reactflow
+    const { setViewport } = reactflow
 
-    setNodes(initialNodes(nodes, edges))
-    setEdges(initialEdges(edges, nodes))
+    const [newNodes, newEdges] = changeNodesAndEdgesId(nodes, edges)
+
+    eventEmitter?.emit({
+      type: WORKFLOW_DATA_UPDATE,
+      payload: {
+        nodes: initialNodes(newNodes, newEdges),
+        edges: initialEdges(newEdges, newNodes),
+      },
+    } as any)
 
     if (viewport)
       setViewport(viewport)
-  }, [store, reactflow])
+  }, [reactflow, eventEmitter])
 
   const getNode = useCallback((nodeId?: string) => {
     const { getNodes } = store.getState()
