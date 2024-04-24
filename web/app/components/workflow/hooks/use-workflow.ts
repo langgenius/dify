@@ -19,7 +19,6 @@ import type {
   Viewport,
 } from 'reactflow'
 import {
-  changeNodesAndEdgesId,
   getLayoutByDagre,
   initialEdges,
   initialNodes,
@@ -321,13 +320,13 @@ export const useWorkflow = () => {
   const renderTreeFromRecord = useCallback((nodes: Node[], edges: Edge[], viewport?: Viewport) => {
     const { setViewport } = reactflow
 
-    const [newNodes, newEdges] = changeNodesAndEdgesId(nodes, edges)
+    const nodesMap = nodes.map(node => ({ ...node, data: { ...node.data, selected: false } }))
 
     eventEmitter?.emit({
       type: WORKFLOW_DATA_UPDATE,
       payload: {
-        nodes: initialNodes(newNodes, newEdges),
-        edges: initialEdges(newEdges, newNodes),
+        nodes: initialNodes(nodesMap, edges),
+        edges: initialEdges(edges, nodesMap),
       },
     } as any)
 

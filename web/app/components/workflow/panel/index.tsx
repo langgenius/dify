@@ -23,6 +23,7 @@ const Panel: FC = () => {
   const showInputsPanel = useStore(s => s.showInputsPanel)
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
+  const isRestoring = useStore(s => s.isRestoring)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -48,7 +49,7 @@ const Panel: FC = () => {
   ])
 
   return (
-    <div className='absolute top-14 right-0 bottom-2 flex z-10'>
+    <div className='absolute top-14 right-0 bottom-2 flex z-10' key={`${isRestoring}`}>
       {
         showMessageLogModal && (
           <MessageLogModal
