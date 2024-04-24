@@ -92,6 +92,13 @@ const Workflow: FC<WorkflowProps> = memo(({
   })
 
   useEffect(() => {
+    setNodes(originalNodes)
+  }, [originalNodes, setNodes])
+  useEffect(() => {
+    setEdges(originalEdges)
+  }, [originalEdges, setEdges])
+
+  useEffect(() => {
     setAutoFreeze(false)
 
     return () => {
