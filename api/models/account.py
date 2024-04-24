@@ -21,8 +21,8 @@ class AccountRole(str, enum.Enum):
     NORMAL = 'normal'
 
     @staticmethod
-    def get_privileged_roles() -> set[str]:
-        return {AccountRole.ADMIN.value, AccountRole.OWNER.value}
+    def is_privileged_role(role: str) -> bool:
+        return role and role in {AccountRole.ADMIN.value, AccountRole.OWNER.value}
 
 
 class Account(UserMixin, db.Model):

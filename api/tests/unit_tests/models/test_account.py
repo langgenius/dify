@@ -1,9 +1,7 @@
 from models.account import AccountRole
 
 
-def test_account_roles() -> None:
-    privileged_roles = AccountRole.get_privileged_roles()
-    assert privileged_roles == {'admin', 'owner'}
-    assert 'admin' in privileged_roles
-    assert 'owner' in privileged_roles
-    assert 'normal' not in privileged_roles
+def test_account_is_privileged_role() -> None:
+    assert AccountRole.is_privileged_role(AccountRole.ADMIN.value)
+    assert AccountRole.is_privileged_role(AccountRole.OWNER.value)
+    assert not AccountRole.is_privileged_role(AccountRole.NORMAL.value)
