@@ -15,7 +15,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Account
 from models.model import EndUser, UploadFile
-from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
+from services.errors.file import FileTooLargeError, UnsupportedFileTypeError, FileUploadedError
 
 IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
@@ -64,13 +64,23 @@ class FileService:
             # end_user
             current_tenant_id = user.tenant_id
 
+        config = current_app.config
+        uploaded_file = db.session.query(UploadFile) \
+            .filter(UploadFile.tenant_id == current_tenant_id) \
+            .filter(UploadFile.storage_type == config['STORAGE_TYPE']) \
+            .filter(UploadFile.name == file.filename) \
+            .filter(UploadFile.hash == hashlib.sha3_256(file_content).hexdigest())\
+            .first()
+        if uploaded_file:
+            message = f'File has uploaded. {file.filename}'
+            raise FileUploadedError(message)
+
         file_key = 'upload_files/' + current_tenant_id + '/' + file_uuid + '.' + extension
 
         # save file to storage
         storage.save(file_key, file_content)
 
         # save file to db
-        config = current_app.config
         upload_file = UploadFile(
             tenant_id=current_tenant_id,
             storage_type=config['STORAGE_TYPE'],

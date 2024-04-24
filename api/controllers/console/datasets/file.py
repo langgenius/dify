@@ -9,6 +9,7 @@ from controllers.console.datasets.error import (
     NoFileUploadedError,
     TooManyFilesError,
     UnsupportedFileTypeError,
+    FileIsUploadedError,
 )
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
@@ -57,6 +58,8 @@ class FileApi(Resource):
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
+        except services.errors.file.FileUploadedError as file_is_uploaded_error:
+            raise FileIsUploadedError(file_is_uploaded_error.description)
 
         return upload_file, 201
 

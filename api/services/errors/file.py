@@ -9,5 +9,9 @@ class FileTooLargeError(BaseServiceError):
     description = "{message}"
 
 
+class FileUploadedError(BaseServiceError):
+    description = "{message}"
+
+
 class UnsupportedFileTypeError(BaseServiceError):
     pass
