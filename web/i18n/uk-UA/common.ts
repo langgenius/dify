@@ -34,6 +34,8 @@ const translation = {
     log: 'Журнал',
     learnMore: 'Дізнатися більше',
     params: 'Параметри',
+    duplicate: 'дублікат',
+    rename: 'Перейменувати',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',
@@ -504,6 +506,21 @@ const translation = {
     pasteImageLinkInputPlaceholder: 'Вставте посилання на зображення тут',
     pasteImageLinkInvalid: 'Недійсне посилання на зображення',
     imageUpload: 'Завантаження зображення',
+  },
+  tag: {
+    placeholder: 'Усі теги',
+    addNew: 'Додати новий тег',
+    noTag: 'Без тегів',
+    noTagYet: 'Ще немає тегів',
+    addTag: 'додати тег',
+    editTag: 'Редагувати теги',
+    manageTags: 'Керувати тегами',
+    selectorPlaceholder: 'Введіть для пошуку або створення',
+    create: 'Створити',
+    delete: 'Видалити тег',
+    deleteTip: 'Тег використовується, видалити його?',
+    created: 'Тег створено успішно',
+    failed: 'Не вдалося створити тег',
   },
 }
 

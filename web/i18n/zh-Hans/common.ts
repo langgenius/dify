@@ -34,6 +34,8 @@ const translation = {
     log: '日志',
     learnMore: '了解更多',
     params: '参数设置',
+    duplicate: '复制',
+    rename: '重命名',
   },
   placeholder: {
     input: '请输入',
@@ -504,6 +506,21 @@ const translation = {
     pasteImageLinkInputPlaceholder: '将图像链接粘贴到此处',
     pasteImageLinkInvalid: '图片链接无效',
     imageUpload: '图片上传',
+  },
+  tag: {
+    placeholder: '全部标签',
+    addNew: '创建新标签',
+    noTag: '没有标签',
+    noTagYet: '还没有标签',
+    addTag: '添加标签',
+    editTag: '修改标签',
+    manageTags: '管理标签',
+    selectorPlaceholder: '搜索或者创建',
+    create: '创建',
+    delete: '删除标签',
+    deleteTip: '标签正在使用中，是否删除？',
+    created: '标签创建成功',
+    failed: '标签创建失败',
   },
 }
 
