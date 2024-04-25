@@ -210,6 +210,17 @@ class LLMNode(BaseNode):
 
             inputs[variable_selector.variable] = variable_value
 
+        memory = node_data.memory
+        if memory and memory.query_prompt_template:
+            query_variable_selectors = (VariableTemplateParser(template=memory.query_prompt_template)
+                                        .extract_variable_selectors())
+            for variable_selector in query_variable_selectors:
+                variable_value = variable_pool.get_variable_value(variable_selector.value_selector)
+                if variable_value is None:
+                    raise ValueError(f'Variable {variable_selector.variable} not found')
+
+                inputs[variable_selector.variable] = variable_value
+
         return inputs
 
     def _fetch_files(self, node_data: LLMNodeData, variable_pool: VariablePool) -> list[FileVar]:
@@ -303,7 +314,8 @@ class LLMNode(BaseNode):
 
         return None
 
-    def _fetch_model_config(self, node_data_model: ModelConfig) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
+    def _fetch_model_config(self, node_data_model: ModelConfig) -> tuple[
+        ModelInstance, ModelConfigWithCredentialsEntity]:
         """
         Fetch model config
         :param node_data_model: node data model
@@ -542,6 +554,13 @@ class LLMNode(BaseNode):
         variable_mapping = {}
         for variable_selector in variable_selectors:
             variable_mapping[variable_selector.variable] = variable_selector.value_selector
+
+        memory = node_data.memory
+        if memory and memory.query_prompt_template:
+            query_variable_selectors = (VariableTemplateParser(template=memory.query_prompt_template)
+                                        .extract_variable_selectors())
+            for variable_selector in query_variable_selectors:
+                variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
         if node_data.context.enabled:
             variable_mapping['#context#'] = node_data.context.variable_selector
