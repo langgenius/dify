@@ -30,6 +30,7 @@ class BuiltinToolProviderController(ToolProviderController):
         try:
             with open(yaml_path, 'rb') as f:
                 provider_yaml = load(f.read(), FullLoader)
+                # print(provider_yaml['identity'])
         except:
             raise ToolProviderNotFoundError(f'can not load provider yaml for {provider}')
 
@@ -40,6 +41,7 @@ class BuiltinToolProviderController(ToolProviderController):
 
         super().__init__(**{
             'identity': provider_yaml['identity'],
+             
             'credentials_schema': provider_yaml['credentials_for_provider'] if 'credentials_for_provider' in provider_yaml else None,
         })
 

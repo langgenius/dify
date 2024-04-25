@@ -1,4 +1,5 @@
 identity:
+  isUse: true
   author: Bowen Liang
   name: wecom
   label:

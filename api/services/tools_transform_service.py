@@ -78,6 +78,7 @@ class ToolTransformService:
                 en_US=provider_controller.identity.description.en_US,
                 zh_Hans=provider_controller.identity.description.zh_Hans,
             ),
+            isUse=provider_controller.identity.isUse,
             icon=provider_controller.identity.icon,
             label=I18nObject(
                 en_US=provider_controller.identity.label.en_US,

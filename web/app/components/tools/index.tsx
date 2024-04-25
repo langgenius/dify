@@ -46,6 +46,7 @@ const Tools: FC<Props> = ({
   const fetchCollectionList = async () => {
     const list = await doFetchCollectionList()
     setCollectionList(list)
+    console.log(list)
     if (list.length > 0 && currCollectionIndex === null) {
       let index = 0
       if (selectedProviderId)
@@ -88,12 +89,13 @@ const Tools: FC<Props> = ({
 
   const showCollectionList = (() => {
     let typeFilteredList: Collection[] = []
+    console.log(collectionList)
     if (collectionType === CollectionType.all)
-      typeFilteredList = collectionList.filter(item => item.type !== CollectionType.model)
+      typeFilteredList = collectionList.filter(item => item.type !== CollectionType.model && item.isUse==true)
     else if (collectionType === CollectionType.builtIn)
-      typeFilteredList = collectionList.filter(item => item.type === CollectionType.builtIn)
+      typeFilteredList = collectionList.filter(item => item.type === CollectionType.builtIn && item.isUse==true)
     else if (collectionType === CollectionType.custom)
-      typeFilteredList = collectionList.filter(item => item.type === CollectionType.custom)
+      typeFilteredList = collectionList.filter(item => item.type === CollectionType.custom )
     if (query)
       return typeFilteredList.filter(item => item.name.includes(query))
 

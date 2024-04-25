@@ -39,7 +39,6 @@ class ToolManageService:
         providers = ToolManager.user_list_providers(
             user_id, tenant_id
         )
-
         # add icon
         for provider in providers:
             ToolTransformService.repack_provider(provider)
@@ -496,6 +495,7 @@ class ToolManageService:
                 author=tool.identity.author,
                 name=tool.identity.name,
                 label=tool.identity.label,
+                isUse=tool.identity.isUse,
                 description=tool.description.human,
                 parameters=tool.parameters or []
             ) for tool in tools

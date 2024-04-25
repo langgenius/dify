@@ -344,9 +344,12 @@ class ToolManager:
                                             'provider', 'builtin', provider, f'{provider}.py'),
                         parent_type=BuiltinToolProviderController)
                     provider: BuiltinToolProviderController = provider_class()
+                    if provider.identity.name=="wecom":
+                        print(provider)
                     cls._builtin_providers[provider.identity.name] = provider
                     for tool in provider.get_tools():
                         cls._builtin_tools_labels[tool.identity.name] = tool.identity.label
+                
                     yield provider
 
                 except Exception as e:

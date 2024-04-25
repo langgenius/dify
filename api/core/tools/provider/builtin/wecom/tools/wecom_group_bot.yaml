@@ -1,4 +1,5 @@
 identity:
+  isUse: true
   name: wecom_group_bot
   author: Bowen Liang
   label:
