@@ -71,8 +71,12 @@ class AbstractTestVector:
     def delete_vector(self):
         self.vector.delete()
 
+    def delete_by_ids(self):
+        self.vector.delete_by_ids([self.dataset_id])
+
     def run_all_test(self):
         self.create_vector()
         self.search_by_vector()
         self.search_by_full_text()
+        self.delete_by_ids()
         self.delete_vector()
