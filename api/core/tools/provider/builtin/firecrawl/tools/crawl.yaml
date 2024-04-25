@@ -22,7 +22,7 @@ parameters:
     llm_description: The URL of the website that needs to be crawled. This is a required parameter.
     form: llm
   - name: crawlerOptions
-    type: object
+    type: string
     required: false
     label:
       en_US: Crawler Options
@@ -67,12 +67,10 @@ parameters:
             label:
               en_US: Yes
               zh_Hans: 是
-              pt_BR: Yes
           - value: false
             label:
               en_US: No
               zh_Hans: 否
-              pt_BR: No
         default: false
       - name: returnOnlyUrls
         type: boolean
@@ -89,12 +87,10 @@ parameters:
             label:
               en_US: Yes
               zh_Hans: 是
-              pt_BR: Yes
           - value: false
             label:
               en_US: No
               zh_Hans: 否
-              pt_BR: No
         default: false
       - name: limit
         type: number
@@ -110,7 +106,7 @@ parameters:
         max: 20
         default: 5
   - name: pageOptions
-    type: object
+    type: string
     required: false
     label:
       en_US: Page Options
@@ -136,10 +132,8 @@ parameters:
             label:
               en_US: Yes
               zh_Hans: 是
-              pt_BR: Yes
           - value: false
             label:
               en_US: No
               zh_Hans: 否
-              pt_BR: No
         default: false
