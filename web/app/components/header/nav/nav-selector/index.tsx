@@ -153,10 +153,11 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                               <FilePlus01 className='shrink-0 mr-2 w-4 h-4 text-gray-600' />
                               {t('app.newApp.startFromBlank')}
                             </div>
-                            <div className={cn('flex items-center px-3 py-[6px] rounded-lg cursor-pointer hover:bg-gray-100 text-gray-700 font-normal')} onClick={() => onCreate('template')}>
+                            {/* guorq 先屏蔽对应的从模板生成 */}
+                            {/* <div className={cn('flex items-center px-3 py-[6px] rounded-lg cursor-pointer hover:bg-gray-100 text-gray-700 font-normal')} onClick={() => onCreate('template')}>
                               <FilePlus02 className='shrink-0 mr-2 w-4 h-4 text-gray-600' />
                               {t('app.newApp.startFromTemplate')}
-                            </div>
+                            </div> */}
                           </div>
                           <div className='p-1 border-t border-gray-100'>
                             <div className={cn('flex items-center px-3 py-[6px] rounded-lg cursor-pointer hover:bg-gray-100 text-gray-700 font-normal')} onClick={() => onCreate('dsl')}>

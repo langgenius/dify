@@ -25,7 +25,7 @@ const translation = {
   roadmap: '产品路线图',
   newApp: {
     startFromBlank: '创建空白应用',
-    startFromTemplate: '从应用模版创建',
+    startFromTemplate: '从应用模版创建(开发中)',
     captionAppType: '想要哪种应用类型？',
     chatbotDescription: '使用大型语言模型构建基于聊天的助手',
     completionDescription: '构建一个根据提示生成高质量文本的应用程序，例如生成文章、摘要、翻译等。',
