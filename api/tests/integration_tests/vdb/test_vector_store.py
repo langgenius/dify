@@ -89,11 +89,16 @@ class AbstractTestVector:
     def text_exists(self):
         self.vector.text_exists(self.dataset_id)
 
-    def run_all_test(self):
+    def delete_document_by_id(self):
+        with pytest.raises(NotImplementedError):
+            self.vector.delete_by_document_id(self.dataset_id)
+
+    def run_all_tests(self):
         self.create_vector()
         self.search_by_vector()
         self.search_by_full_text()
         self.text_exists()
         self.add_texts()
+        self.delete_document_by_id()
         self.delete_by_ids()
         self.delete_vector()
