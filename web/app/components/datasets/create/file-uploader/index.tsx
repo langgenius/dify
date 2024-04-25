@@ -129,7 +129,10 @@ const FileUploader = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        notify({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
+        // Add delay for each file error.
+        setTimeout(() => {
+          notify ({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
+        }, 500 * fileListRef.current.findIndex(item => item.fileID === fileItem.fileID))
         onFileUpdate(fileItem, -2, fileListRef.current)
         return Promise.resolve({ ...fileItem })
       })

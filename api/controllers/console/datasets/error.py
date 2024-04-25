@@ -25,12 +25,6 @@ class UnsupportedFileTypeError(BaseHTTPException):
     code = 415
 
 
-class FileIsUploadedError(BaseHTTPException):
-    error_code = 'file_was_uploaded'
-    description = "File has uploaded. {message}"
-    code = 400
-
-
 class HighQualityDatasetOnlyError(BaseHTTPException):
     error_code = 'high_quality_dataset_only'
     description = "Current operation only supports 'high-quality' datasets."
