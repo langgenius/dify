@@ -93,11 +93,16 @@ class AbstractTestVector:
         with pytest.raises(NotImplementedError):
             self.vector.delete_by_document_id(self.dataset_id)
 
+    def get_ids_by_metadata_field(self):
+        with pytest.raises(NotImplementedError):
+            self.vector.get_ids_by_metadata_field('key', 'value')
+
     def run_all_tests(self):
         self.create_vector()
         self.search_by_vector()
         self.search_by_full_text()
         self.text_exists()
+        self.get_ids_by_metadata_field()
         self.add_texts()
         self.delete_document_by_id()
         self.delete_by_ids()

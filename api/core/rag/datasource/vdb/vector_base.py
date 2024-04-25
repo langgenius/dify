@@ -30,6 +30,9 @@ class BaseVector(ABC):
     def delete_by_document_id(self, document_id: str):
         raise NotImplementedError
 
+    def get_ids_by_metadata_field(self, key: str, value: str):
+        raise NotImplementedError
+
     @abstractmethod
     def delete_by_metadata_field(self, key: str, value: str) -> None:
         raise NotImplementedError

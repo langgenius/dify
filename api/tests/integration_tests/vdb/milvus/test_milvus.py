@@ -27,6 +27,10 @@ class TestMilvusVector(AbstractTestVector):
     def delete_document_by_id(self):
         self.vector.delete_by_document_id(self.dataset_id)
 
+    def get_ids_by_metadata_field(self):
+        ids = self.vector.get_ids_by_metadata_field('document_id', self.dataset_id)
+        assert len(ids) >= 1
+
 
 def test_milvus_vector(setup_mock_redis):
     TestMilvusVector().run_all_tests()
