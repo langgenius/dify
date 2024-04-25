@@ -1,7 +1,8 @@
 import pytest
-from extensions.ext_redis import redis_client
+
 from core.rag.datasource.vdb.tencent.tencent_vector import TencentConfig, TencentVector
 from core.rag.models.document import Document
+from extensions.ext_redis import redis_client
 
 
 def _create_tencent_vector() -> TencentVector:
