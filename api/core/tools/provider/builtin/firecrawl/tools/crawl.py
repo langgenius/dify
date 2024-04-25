@@ -1,5 +1,4 @@
-import requests
-import time
+from firecrawl import FirecrawlApp
 from typing import Any, Union
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -9,29 +8,21 @@ from core.tools.tool.builtin_tool import BuiltinTool
 class CrawlTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         url = "https://api.firecrawl.dev/v0/crawl"
-        headers = {
-            "Authorization": f"Bearer {self.runtime.credentials['firecrawl_api_key']}",
-            "Content-Type": "application/json"
-        }
-        response = requests.post(url, json=tool_parameters, headers=headers)
-        job_id = response.json().get("jobId")
-        
-        # Wait for a short period of time before requesting the status
-        time.sleep(5)  # Adjust this value as needed
 
-        # Request crawl status using the job_id
-        status_url = f"https://api.firecrawl.dev/v0/crawl/status/{job_id}"
+        # innitialize the app object with the api key
+        app = FirecrawlApp(api_key=self.runtime.credentials['firecrawl_api_key'])
+
+        # crawl the url
+        crawl_result = app.crawl_url(url, params=tool_parameters, wait_until_done=True, timeout=5)
         
-        # Poll the status endpoint until the job is done or a timeout is reached
-        timeout = time.time() + 60*10  # 10 minutes from now
-        while True:
-            status_response = requests.get(status_url, headers=headers)
-            status = status_response.json().get('status')
-            
-            if status == 'done' or time.time() > timeout:
-                break
-            
-            # Wait for a short period of time before the next status check
-            time.sleep(5)  # Adjust this value as needed
-        
-        return self.create_text_message(status_response.text)
+        # reformat crawl result
+        crawl_output = f"**Crawl Result**\n\n"
+        for result in crawl_result:
+            crawl_output += f"**Title:** {result['metadata']['title']}\n"
+            crawl_output += f"**Description:** {result['metadata']['description']}\n"
+            crawl_output += f"**URL:** {result['metadata']['ogUrl']}\n\n"
+            crawl_output += f"**Web Content:**\n{result['markdown']}\n\n"
+            crawl_output += f"---\n\n"
+
+
+        return self.create_text_message(crawl_output)
