@@ -30,11 +30,10 @@ parameters:
     human_description:
       en_US: Additional options to configure the web crawler behavior.
       zh_Hans: 用于配置网页爬虫行为的附加选项。
-    llm_description: Optional configuration options for the web crawler. These options allow specifying URL patterns to include or exclude, generating alt text for images using LLMs (paid plan required), limiting the maximum number of pages to crawl, and returning only the URLs instead of full documents.
     form: form
     children:
       - name: includes
-        type: array
+        type: string
         required: false
         label:
           en_US: URL patterns to include
@@ -44,7 +43,7 @@ parameters:
           zh_Hans: 指定爬取过程中要包含的URL模式。只有与这些模式匹配的页面才会被爬取。
         form: form
       - name: excludes
-        type: array
+        type: string
         required: false
         label:
           en_US: URL patterns to exclude
@@ -56,7 +55,6 @@ parameters:
       - name: generateImgAltText
         type: boolean
         required: false
-        default: false
         label:
           en_US: Generate alt text for images using LLMs (paid plan required)
           zh_Hans: 使用LLMs为图像生成alt文本（需要付费计划）
@@ -64,10 +62,21 @@ parameters:
           en_US: If enabled, the crawler will generate alt text for images using LLMs. This feature requires a paid plan.
           zh_Hans: 如果启用，爬虫将使用LLMs为图像生成alt文本。此功能需要付费计划。
         form: form
+        options:
+          - value: true
+            label:
+              en_US: Yes
+              zh_Hans: 是
+              pt_BR: Yes
+          - value: false
+            label:
+              en_US: No
+              zh_Hans: 否
+              pt_BR: No
+        default: false
       - name: returnOnlyUrls
         type: boolean
         required: false
-        default: false
         label:
           en_US: Return only the URLs as a list
           zh_Hans: 仅返回URL列表
@@ -75,6 +84,18 @@ parameters:
           en_US: If enabled, the crawler will return only the URLs as a list instead of full documents. Note that the response will be a list of URLs inside the data field.
           zh_Hans: 如果启用，爬虫将仅返回URL列表，而不是完整的文档。请注意，响应将是数据字段中的URL列表。
         form: form
+        options:
+          - value: true
+            label:
+              en_US: Yes
+              zh_Hans: 是
+              pt_BR: Yes
+          - value: false
+            label:
+              en_US: No
+              zh_Hans: 否
+              pt_BR: No
+        default: false
       - name: limit
         type: number
         required: false

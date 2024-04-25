@@ -30,7 +30,6 @@ parameters:
     human_description:
       en_US: Additional options to configure the page scraping behavior.
       zh_Hans: 用于配置页面抓取行为的附加选项。
-    llm_description: Optional configuration options for scraping the web page. These options allow specifying whether to return only the main content of the page, excluding headers, navigation, footers, etc.
     form: form
     children:
       - name: onlyMainContent

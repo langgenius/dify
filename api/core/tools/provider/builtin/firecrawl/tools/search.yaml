@@ -30,21 +30,30 @@ parameters:
     human_description:
       en_US: Additional options to configure the page extraction behavior for the search results.
       zh_Hans: 用于配置搜索结果的页面提取行为的附加选项。
-    llm_description: Optional configuration options for extracting content from the search result pages. These options allow specifying whether to return only the main content of the pages, excluding headers, navigation, footers, etc., and whether to fetch the content of each page or use a basic fast SERP API.
     form: form
     children:
       - name: onlyMainContent
         type: boolean
         required: false
-        default: false
         label:
           en_US: Only return the main content of the page
           zh_Hans: 仅返回页面的主要内容
         human_description:
           en_US: If enabled, the search will only return the main content of the result pages, excluding headers, navigation, footers, etc.
           zh_Hans: 如果启用，搜索将仅返回结果页面的主要内容，不包括标题、导航、页脚等。
-        llm_description: An optional boolean flag indicating whether to return only the main content of the search result pages, excluding headers, navigation, footers, etc. If set to true, the search will extract and return only the main content of each result page.
         form: form
+        options:
+          - value: true
+            label:
+              en_US: Yes
+              zh_Hans: 是
+              pt_BR: Yes
+          - value: false
+            label:
+              en_US: No
+              zh_Hans: 否
+              pt_BR: No
+        default: false
       - name: fetchPageContent
         type: boolean
         required: false
