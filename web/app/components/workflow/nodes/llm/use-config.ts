@@ -349,8 +349,10 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   const allVarStrArr = (() => {
     const arr = isChatModel ? (inputs.prompt_template as PromptItem[]).map(item => item.text) : [(inputs.prompt_template as PromptItem).text]
-    if (isChatMode && isChatModel && !!inputs.memory)
+    if (isChatMode && isChatModel && !!inputs.memory) {
       arr.push('{{#sys.query#}}')
+      arr.push(inputs.memory.query_prompt_template)
+    }
 
     return arr
   })()
