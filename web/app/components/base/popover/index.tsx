@@ -13,7 +13,7 @@ type IPopover = {
   htmlContent: React.ReactElement<HtmlContentProps>
   popupClassName?: string
   trigger?: 'click' | 'hover'
-  position?: 'bottom' | 'br'
+  position?: 'bottom' | 'br' | 'bl'
   btnElement?: string | React.ReactNode
   btnClassName?: string | ((open: boolean) => string)
   manualClose?: boolean
@@ -71,7 +71,13 @@ export default function CustomPopover({
               </Popover.Button>
               <Transition as={Fragment}>
                 <Popover.Panel
-                  className={`${s.popupPanel} ${position === 'br' ? 'right-0' : 'translate-x-1/2 left-1/2'} ${className}`}
+                  className={cn(
+                    s.popupPanel,
+                    position === 'bottom' && '-translate-x-1/2 left-1/2',
+                    position === 'bl' && 'left-0',
+                    position === 'br' && 'right-0',
+                    className,
+                  )}
                   {...(trigger !== 'hover'
                     ? {}
                     : {

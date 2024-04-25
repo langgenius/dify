@@ -163,6 +163,7 @@ class BaseAgentRunner(AppRunner):
         """
         tool_entity = ToolManager.get_agent_tool_runtime(
             tenant_id=self.tenant_id,
+            app_id=self.app_config.app_id,
             agent_tool=tool,
         )
         tool_entity.load_variables(self.variables_pool)

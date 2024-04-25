@@ -5,6 +5,7 @@ import {
 import cn from 'classnames'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
+import { useShallow } from 'zustand/react/shallow'
 import {
   useIsChatMode,
   useWorkflow,
@@ -40,7 +41,11 @@ const ViewHistory = () => {
   const [open, setOpen] = useState(false)
   const { formatTimeFromNow } = useWorkflow()
   const workflowStore = useWorkflowStore()
-  const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore()
+  const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
+    appDetail: state.appDetail,
+    setCurrentLogItem: state.setCurrentLogItem,
+    setShowMessageLogModal: state.setShowMessageLogModal,
+  })))
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { handleBackupDraft } = useWorkflowRun()
   const { data: runList, isLoading: runListLoading } = useSWR((appDetail && !isChatMode && open) ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)

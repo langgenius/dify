@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { debounce } from 'lodash-es'
 import classNames from 'classnames'
+import { useShallow } from 'zustand/react/shallow'
 import type {
   ChatConfig,
   ChatItem,
@@ -79,7 +80,14 @@ const Chat: FC<ChatProps> = ({
   chatAnswerContainerInner,
 }) => {
   const { t } = useTranslation()
-  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore()
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
+    currentLogItem: state.currentLogItem,
+    setCurrentLogItem: state.setCurrentLogItem,
+    showPromptLogModal: state.showPromptLogModal,
+    setShowPromptLogModal: state.setShowPromptLogModal,
+    showAgentLogModal: state.showAgentLogModal,
+    setShowAgentLogModal: state.setShowAgentLogModal,
+  })))
   const [width, setWidth] = useState(0)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const chatContainerInnerRef = useRef<HTMLDivElement>(null)

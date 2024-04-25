@@ -58,7 +58,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         `}
       >
         {
-          data.type !== BlockEnum.VariableAssigner && !data._runningStatus && !nodesReadOnly && (
+          data.type !== BlockEnum.VariableAssigner && !data._runningStatus && (
             <NodeTargetHandle
               id={id}
               data={data}
@@ -68,7 +68,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && !data._runningStatus && !nodesReadOnly && (
+          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && !data._runningStatus && (
             <NodeSourceHandle
               id={id}
               data={data}
