@@ -1,12 +1,12 @@
-from models.account import AccountRole
+from models.account import TenantAccountRole
 
 
 def test_account_is_privileged_role() -> None:
-    assert AccountRole.ADMIN == 'admin'
-    assert AccountRole.OWNER == 'owner'
-    assert AccountRole.NORMAL == 'normal'
+    assert TenantAccountRole.ADMIN == 'admin'
+    assert TenantAccountRole.OWNER == 'owner'
+    assert TenantAccountRole.NORMAL == 'normal'
 
-    assert AccountRole.is_privileged_role(AccountRole.ADMIN)
-    assert AccountRole.is_privileged_role(AccountRole.OWNER)
-    assert not AccountRole.is_privileged_role(AccountRole.NORMAL)
-    assert not AccountRole.is_privileged_role('')
+    assert TenantAccountRole.is_privileged_role(TenantAccountRole.ADMIN)
+    assert TenantAccountRole.is_privileged_role(TenantAccountRole.OWNER)
+    assert not TenantAccountRole.is_privileged_role(TenantAccountRole.NORMAL)
+    assert not TenantAccountRole.is_privileged_role('')

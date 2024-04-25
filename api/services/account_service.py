@@ -344,9 +344,9 @@ class TenantService:
     def check_member_permission(tenant: Tenant, operator: Account, member: Account, action: str) -> None:
         """Check member permission"""
         perms = {
-            'add': [AccountRole.OWNER, AccountRole.ADMIN],
-            'remove': [AccountRole.OWNER],
-            'update': [AccountRole.OWNER]
+            'add': [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
+            'remove': [TenantAccountRole.OWNER],
+            'update': [TenantAccountRole.OWNER]
         }
         if action not in ['add', 'remove', 'update']:
             raise InvalidActionError("Invalid action.")

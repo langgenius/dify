@@ -15,16 +15,6 @@ class AccountStatus(str, enum.Enum):
     CLOSED = 'closed'
 
 
-class AccountRole(str, enum.Enum):
-    OWNER = 'owner'
-    ADMIN = 'admin'
-    NORMAL = 'normal'
-
-    @staticmethod
-    def is_privileged_role(role: str) -> bool:
-        return role and role in {AccountRole.ADMIN, AccountRole.OWNER}
-
-
 class Account(UserMixin, db.Model):
     __tablename__ = 'accounts'
     __table_args__ = (
@@ -114,12 +104,22 @@ class Account(UserMixin, db.Model):
     # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
     def is_admin_or_owner(self):
-        return AccountRole.is_privileged_role(self._current_tenant.current_role)
+        return TenantAccountRole.is_privileged_role(self._current_tenant.current_role)
 
 
 class TenantStatus(str, enum.Enum):
     NORMAL = 'normal'
     ARCHIVE = 'archive'
+
+
+class TenantAccountRole(str, enum.Enum):
+    OWNER = 'owner'
+    ADMIN = 'admin'
+    NORMAL = 'normal'
+
+    @staticmethod
+    def is_privileged_role(role: str) -> bool:
+        return role and role in {TenantAccountRole.ADMIN, TenantAccountRole.OWNER}
 
 
 class Tenant(db.Model):
