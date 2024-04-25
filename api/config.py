@@ -106,7 +106,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.6.4"
+        self.CURRENT_VERSION = "0.6.5"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -210,6 +210,10 @@ class Config:
         self.AZURE_BLOB_ACCOUNT_KEY = get_env('AZURE_BLOB_ACCOUNT_KEY')
         self.AZURE_BLOB_CONTAINER_NAME = get_env('AZURE_BLOB_CONTAINER_NAME')
         self.AZURE_BLOB_ACCOUNT_URL = get_env('AZURE_BLOB_ACCOUNT_URL')
+        self.ALIYUN_OSS_BUCKET_NAME=get_env('ALIYUN_OSS_BUCKET_NAME')
+        self.ALIYUN_OSS_ACCESS_KEY=get_env('ALIYUN_OSS_ACCESS_KEY')
+        self.ALIYUN_OSS_SECRET_KEY=get_env('ALIYUN_OSS_SECRET_KEY')
+        self.ALIYUN_OSS_ENDPOINT=get_env('ALIYUN_OSS_ENDPOINT')
 
         # ------------------------
         # Vector Store Configurations.
@@ -242,6 +246,13 @@ class Config:
         self.RELYT_USER = get_env('RELYT_USER')
         self.RELYT_PASSWORD = get_env('RELYT_PASSWORD')
         self.RELYT_DATABASE = get_env('RELYT_DATABASE')
+
+        # pgvecto rs settings
+        self.PGVECTO_RS_HOST = get_env('PGVECTO_RS_HOST')
+        self.PGVECTO_RS_PORT = get_env('PGVECTO_RS_PORT')
+        self.PGVECTO_RS_USER = get_env('PGVECTO_RS_USER')
+        self.PGVECTO_RS_PASSWORD = get_env('PGVECTO_RS_PASSWORD')
+        self.PGVECTO_RS_DATABASE = get_env('PGVECTO_RS_DATABASE')
 
         # ------------------------
         # Mail Configurations.
