@@ -118,6 +118,7 @@ def test_execute_if_else_result_true():
     # construct variable pool
     pool = VariablePool(system_variables={
         SystemVariable.FILES: [],
+        SystemVariable.USER_ID: 'aaa'
     }, user_inputs={})
     pool.append_variable(node_id='start', variable_key_list=['array_contains'], value=['ab', 'def'])
     pool.append_variable(node_id='start', variable_key_list=['array_not_contains'], value=['ac', 'def'])
@@ -179,6 +180,7 @@ def test_execute_if_else_result_false():
     # construct variable pool
     pool = VariablePool(system_variables={
         SystemVariable.FILES: [],
+        SystemVariable.USER_ID: 'aaa'
     }, user_inputs={})
     pool.append_variable(node_id='start', variable_key_list=['array_contains'], value=['1ab', 'def'])
     pool.append_variable(node_id='start', variable_key_list=['array_not_contains'], value=['ab', 'def'])
