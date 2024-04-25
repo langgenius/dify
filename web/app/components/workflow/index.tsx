@@ -17,6 +17,7 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
   useOnViewportChange,
+  useReactFlow,
 } from 'reactflow'
 import type { Viewport } from 'reactflow'
 import 'reactflow/dist/style.css'
@@ -71,6 +72,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   edges: originalEdges,
   viewport,
 }) => {
+  const reactflow = useReactFlow()
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
@@ -90,6 +92,17 @@ const Workflow: FC<WorkflowProps> = memo(({
       setEdges(v.payload.edges)
     }
   })
+
+  useEffect(() => {
+    setNodes(originalNodes)
+  }, [originalNodes, setNodes])
+  useEffect(() => {
+    setEdges(originalEdges)
+  }, [originalEdges, setEdges])
+  useEffect(() => {
+    if (viewport)
+      reactflow.setViewport(viewport)
+  }, [reactflow, viewport])
 
   useEffect(() => {
     setAutoFreeze(false)

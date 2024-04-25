@@ -1,7 +1,7 @@
 const translation = {
   knowledge: '知識',
   documentCount: ' ドキュメント',
-  wordCount: 'k 単語',
+  wordCount: ' k 単語',
   appCount: ' リンクされたアプリ',
   createDataset: '知識を作成',
   createDatasetIntro: '独自のテキストデータをインポートするか、LLMコンテキストの強化のためにWebhookを介してリアルタイムでデータを書き込むことができます。',
@@ -42,6 +42,8 @@ const translation = {
     change: '変更',
     changeRetrievalMethod: '検索方法の変更',
   },
+  docsFailedNotice: 'ドキュメントのインデックスに失敗しました',
+  retry: '再試行',
 }
 
 export default translation
