@@ -59,6 +59,7 @@ export type WorkflowProcess = {
 export type ChatItem = IChatItem & {
   isError?: boolean
   workflowProcess?: WorkflowProcess
+  conversationId?: string
 }
 
 export type OnSend = (message: string, files?: VisionFile[]) => void

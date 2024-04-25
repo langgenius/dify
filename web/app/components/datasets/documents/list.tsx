@@ -2,6 +2,7 @@
 'use client'
 import type { FC, SVGProps } from 'react'
 import React, { useEffect, useState } from 'react'
+import { useDebounceFn } from 'ahooks'
 import { ArrowDownIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid'
 import dayjs from 'dayjs'
@@ -154,6 +155,14 @@ export const OperationAction: FC<{
     onUpdate(operationName)
   }
 
+  const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
+    if (operationName === 'enable' && enabled)
+      return
+    if (operationName === 'disable' && !enabled)
+      return
+    onOperate(operationName)
+  }, { wait: 500 })
+
   return <div className='flex items-center' onClick={e => e.stopPropagation()}>
     {isListScene && !embeddingAvailable && (
       <Switch defaultValue={false} onChange={() => { }} disabled={true} size='md' />
@@ -166,7 +175,7 @@ export const OperationAction: FC<{
               <Switch defaultValue={false} onChange={() => { }} disabled={true} size='md' />
             </div>
           </Tooltip>
-          : <Switch defaultValue={enabled} onChange={v => onOperate(v ? 'enable' : 'disable')} size='md' />
+          : <Switch defaultValue={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size='md' />
         }
         <Divider className='!ml-4 !mr-2 !h-3' type='vertical' />
       </>
@@ -189,7 +198,7 @@ export const OperationAction: FC<{
                   <div>
                     <Switch
                       defaultValue={archived ? false : enabled}
-                      onChange={v => !archived && onOperate(v ? 'enable' : 'disable')}
+                      onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
                       disabled={archived}
                       size='md'
                     />
@@ -323,7 +332,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
             <td className='w-12'>#</td>
             <td>{t('datasetDocuments.list.table.header.fileName')}</td>
             <td className='w-24'>{t('datasetDocuments.list.table.header.words')}</td>
-            <td className='w-24'>{t('datasetDocuments.list.table.header.hitCount')}</td>
+            <td className='w-44'>{t('datasetDocuments.list.table.header.hitCount')}</td>
             <td className='w-44'>
               <div className='flex justify-between items-center'>
                 {t('datasetDocuments.list.table.header.uploadTime')}

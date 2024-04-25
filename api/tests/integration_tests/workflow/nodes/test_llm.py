@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.entities.provider_configuration import ProviderModelBundle, ProviderConfiguration
-from core.entities.provider_entities import SystemConfiguration, CustomConfiguration, CustomProviderConfiguration
+from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
+from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers import ModelProviderFactory
@@ -65,7 +65,8 @@ def test_execute_llm(setup_openai_mock):
     pool = VariablePool(system_variables={
         SystemVariable.QUERY: 'what\'s the weather today?',
         SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION: 'abababa'
+        SystemVariable.CONVERSATION_ID: 'abababa',
+        SystemVariable.USER_ID: 'aaa'
     }, user_inputs={})
     pool.append_variable(node_id='abc', variable_key_list=['output'], value='sunny')
 

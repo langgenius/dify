@@ -1,31 +1,44 @@
 import re
+from collections.abc import Generator
 from json import dumps, loads
 from time import sleep, time
+
 # import monkeypatch
-from typing import Any, Generator, List, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 import openai.types.chat.completion_create_params as completion_create_params
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from openai import AzureOpenAI, OpenAI
 from openai._types import NOT_GIVEN, NotGiven
 from openai.resources.chat.completions import Completions
 from openai.types import Completion as CompletionMessage
-from openai.types.chat import (ChatCompletion, ChatCompletionChunk, ChatCompletionMessageParam,
-                               ChatCompletionMessageToolCall, ChatCompletionToolChoiceOptionParam,
-                               ChatCompletionToolParam)
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionChunk,
+    ChatCompletionMessageParam,
+    ChatCompletionMessageToolCall,
+    ChatCompletionToolChoiceOptionParam,
+    ChatCompletionToolParam,
+)
 from openai.types.chat.chat_completion import ChatCompletion as _ChatCompletion
 from openai.types.chat.chat_completion import Choice as _ChatCompletionChoice
-from openai.types.chat.chat_completion_chunk import (Choice, ChoiceDelta, ChoiceDeltaFunctionCall, ChoiceDeltaToolCall,
-                                                     ChoiceDeltaToolCallFunction)
+from openai.types.chat.chat_completion_chunk import (
+    Choice,
+    ChoiceDelta,
+    ChoiceDeltaFunctionCall,
+    ChoiceDeltaToolCall,
+    ChoiceDeltaToolCallFunction,
+)
 from openai.types.chat.chat_completion_message import ChatCompletionMessage, FunctionCall
 from openai.types.chat.chat_completion_message_tool_call import Function
 from openai.types.completion_usage import CompletionUsage
 
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 
-class MockChatClass(object):
+
+class MockChatClass:
     @staticmethod
     def generate_function_call(
-        functions: List[completion_create_params.Function] | NotGiven = NOT_GIVEN,
+        functions: list[completion_create_params.Function] | NotGiven = NOT_GIVEN,
     ) -> Optional[FunctionCall]:
         if not functions or len(functions) == 0:
             return None
@@ -61,8 +74,8 @@ class MockChatClass(object):
         
     @staticmethod
     def generate_tool_calls(
-        tools: List[ChatCompletionToolParam] | NotGiven = NOT_GIVEN,
-    ) -> Optional[List[ChatCompletionMessageToolCall]]:
+        tools: list[ChatCompletionToolParam] | NotGiven = NOT_GIVEN,
+    ) -> Optional[list[ChatCompletionMessageToolCall]]:
         list_tool_calls = []
         if not tools or len(tools) == 0:
             return None
@@ -91,8 +104,8 @@ class MockChatClass(object):
     @staticmethod
     def mocked_openai_chat_create_sync(
         model: str,
-        functions: List[completion_create_params.Function] | NotGiven = NOT_GIVEN,
-        tools: List[ChatCompletionToolParam] | NotGiven = NOT_GIVEN,
+        functions: list[completion_create_params.Function] | NotGiven = NOT_GIVEN,
+        tools: list[ChatCompletionToolParam] | NotGiven = NOT_GIVEN,
     ) -> CompletionMessage:
         tool_calls = []
         function_call = MockChatClass.generate_function_call(functions=functions)
@@ -128,8 +141,8 @@ class MockChatClass(object):
     @staticmethod
     def mocked_openai_chat_create_stream(
         model: str,
-        functions: List[completion_create_params.Function] | NotGiven = NOT_GIVEN,
-        tools: List[ChatCompletionToolParam] | NotGiven = NOT_GIVEN,
+        functions: list[completion_create_params.Function] | NotGiven = NOT_GIVEN,
+        tools: list[ChatCompletionToolParam] | NotGiven = NOT_GIVEN,
     ) -> Generator[ChatCompletionChunk, None, None]:
         tool_calls = []
         function_call = MockChatClass.generate_function_call(functions=functions)
@@ -197,17 +210,17 @@ class MockChatClass(object):
                 )
 
     def chat_create(self: Completions, *,
-        messages: List[ChatCompletionMessageParam],
+        messages: list[ChatCompletionMessageParam],
         model: Union[str,Literal[
             "gpt-4-1106-preview", "gpt-4-vision-preview", "gpt-4", "gpt-4-0314", "gpt-4-0613",
             "gpt-4-32k", "gpt-4-32k-0314", "gpt-4-32k-0613",
             "gpt-3.5-turbo-1106", "gpt-3.5-turbo", "gpt-3.5-turbo-16k", "gpt-3.5-turbo-0301",
             "gpt-3.5-turbo-0613", "gpt-3.5-turbo-16k-0613"],
         ],
-        functions: List[completion_create_params.Function] | NotGiven = NOT_GIVEN,
+        functions: list[completion_create_params.Function] | NotGiven = NOT_GIVEN,
         response_format: completion_create_params.ResponseFormat | NotGiven = NOT_GIVEN,
         stream: Optional[Literal[False]] | NotGiven = NOT_GIVEN,
-        tools: List[ChatCompletionToolParam] | NotGiven = NOT_GIVEN,
+        tools: list[ChatCompletionToolParam] | NotGiven = NOT_GIVEN,
         **kwargs: Any,
     ):
         openai_models = [
