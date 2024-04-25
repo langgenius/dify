@@ -9,3 +9,6 @@ dev/pytest/pytest_tools.sh
 
 # Workflow
 dev/pytest/pytest_workflow.sh
+
+# Unit tests
+dev/pytest/pytest_unit_tests.sh

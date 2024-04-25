@@ -1,7 +1,7 @@
 const translation = {
   knowledge: 'Knowledge',
   documentCount: ' docs',
-  wordCount: 'k words',
+  wordCount: ' k words',
   appCount: ' linked apps',
   createDataset: 'Create Knowledge',
   createDatasetIntro: 'Import your own text data or write data in real-time via Webhook for LLM context enhancement.',
@@ -20,7 +20,7 @@ const translation = {
   unavailable: 'Unavailable',
   unavailableTip: 'Embedding model is not available, the default embedding model needs to be configured',
   datasets: 'KNOWLEDGE',
-  datasetsApi: 'API',
+  datasetsApi: 'API ACCESS',
   retrieval: {
     semantic_search: {
       title: 'Vector Search',
@@ -42,6 +42,8 @@ const translation = {
     change: 'Change',
     changeRetrievalMethod: 'Change retrieval method',
   },
+  docsFailedNotice: 'documents failed to be indexed',
+  retry: 'Retry',
 }
 
 export default translation

@@ -18,6 +18,7 @@ type Props = {
   readOnly?: boolean
   isJSONStringifyBeauty?: boolean
   height?: number
+  isInNode?: boolean
 }
 
 const languageMap = {
@@ -35,6 +36,7 @@ const CodeEditor: FC<Props> = ({
   readOnly,
   isJSONStringifyBeauty,
   height,
+  isInNode,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
 
@@ -90,6 +92,7 @@ const CodeEditor: FC<Props> = ({
         headerRight={headerRight}
         isFocus={isFocus && !readOnly}
         minHeight={height || 200}
+        isInNode={isInNode}
       >
         <>
           {/* https://www.npmjs.com/package/@monaco-editor/react */}

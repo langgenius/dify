@@ -89,7 +89,7 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
         )
     ]
 
-    nodes = workflow_converter._convert_to_http_request_node(
+    nodes, _ = workflow_converter._convert_to_http_request_node(
         app_model=app_model,
         variables=default_variables,
         external_data_variables=external_data_variables
@@ -159,7 +159,7 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
         )
     ]
 
-    nodes = workflow_converter._convert_to_http_request_node(
+    nodes, _ = workflow_converter._convert_to_http_request_node(
         app_model=app_model,
         variables=default_variables,
         external_data_variables=external_data_variables

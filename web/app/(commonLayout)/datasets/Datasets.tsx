@@ -10,21 +10,46 @@ import type { DataSetListResponse } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import { useAppContext } from '@/context/app-context'
 
-const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
-  if (!pageIndex || previousPageData.has_more)
-    return { url: 'datasets', params: { page: pageIndex + 1, limit: 30 } }
+const getKey = (
+  pageIndex: number,
+  previousPageData: DataSetListResponse,
+  tags: string[],
+  keyword: string,
+) => {
+  if (!pageIndex || previousPageData.has_more) {
+    const params: any = {
+      url: 'datasets',
+      params: {
+        page: pageIndex + 1,
+        limit: 30,
+      },
+    }
+    if (tags.length)
+      params.params.tag_ids = tags
+    if (keyword)
+      params.params.keyword = keyword
+    return params
+  }
   return null
 }
 
 type Props = {
   containerRef: React.RefObject<HTMLDivElement>
+  tags: string[]
+  keywords: string
 }
 
 const Datasets = ({
   containerRef,
+  tags,
+  keywords,
 }: Props) => {
   const { isCurrentWorkspaceManager } = useAppContext()
-  const { data, isLoading, setSize, mutate } = useSWRInfinite(getKey, fetchDatasets, { revalidateFirstPage: false, revalidateAll: true })
+  const { data, isLoading, setSize, mutate } = useSWRInfinite(
+    (pageIndex: number, previousPageData: DataSetListResponse) => getKey(pageIndex, previousPageData, tags, keywords),
+    fetchDatasets,
+    { revalidateFirstPage: false, revalidateAll: true },
+  )
   const loadingStateRef = useRef(false)
   const anchorRef = useRef<HTMLAnchorElement>(null)
 
@@ -53,7 +78,7 @@ const Datasets = ({
     <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
       { isCurrentWorkspaceManager && <NewDatasetCard ref={anchorRef} /> }
       {data?.map(({ data: datasets }) => datasets.map(dataset => (
-        <DatasetCard key={dataset.id} dataset={dataset} onDelete={mutate} />),
+        <DatasetCard key={dataset.id} dataset={dataset} onSuccess={mutate} />),
       ))}
     </nav>
   )

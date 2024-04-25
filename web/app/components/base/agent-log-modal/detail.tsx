@@ -30,7 +30,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
-  const { appDetail } = useAppStore()
+  const appDetail = useAppStore(s => s.appDetail)
   const [loading, setLoading] = useState<boolean>(true)
   const [runDetail, setRunDetail] = useState<AgentLogDetailResponse>()
   const [list, setList] = useState<AgentIteration[]>([])
