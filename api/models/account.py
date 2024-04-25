@@ -100,15 +100,26 @@ class Account(UserMixin, db.Model):
         return db.session.query(ai).filter(
             ai.account_id == self.id
         ).all()
+
     # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
     def is_admin_or_owner(self):
-        return self._current_tenant.current_role in ['admin', 'owner']
+        return TenantAccountRole.is_privileged_role(self._current_tenant.current_role)
 
 
 class TenantStatus(str, enum.Enum):
     NORMAL = 'normal'
     ARCHIVE = 'archive'
+
+
+class TenantAccountRole(str, enum.Enum):
+    OWNER = 'owner'
+    ADMIN = 'admin'
+    NORMAL = 'normal'
+
+    @staticmethod
+    def is_privileged_role(role: str) -> bool:
+        return role and role in {TenantAccountRole.ADMIN, TenantAccountRole.OWNER}
 
 
 class Tenant(db.Model):
@@ -132,11 +143,11 @@ class Tenant(db.Model):
             Account.id == TenantAccountJoin.account_id,
             TenantAccountJoin.tenant_id == self.id
         ).all()
-    
+
     @property
     def custom_config_dict(self) -> dict:
         return json.loads(self.custom_config) if self.custom_config else {}
-    
+
     @custom_config_dict.setter
     def custom_config_dict(self, value: dict):
         self.custom_config = json.dumps(value)

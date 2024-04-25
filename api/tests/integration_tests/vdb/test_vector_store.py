@@ -1,9 +1,11 @@
+import uuid
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.rag.models.document import Document
 from extensions import ext_redis
+from models.dataset import Dataset
 
 
 def get_sample_text() -> str:
@@ -44,3 +46,33 @@ def setup_mock_redis() -> None:
     mock_redis_lock.__enter__ = MagicMock()
     mock_redis_lock.__exit__ = MagicMock()
     ext_redis.redis_client.lock = mock_redis_lock
+
+
+class AbstractTestVector:
+    def __init__(self):
+        self.vector = None
+        self.dataset_id = str(uuid.uuid4())
+        self.collection_name = Dataset.gen_collection_name_by_id(self.dataset_id)
+
+    def create_vector(self) -> None:
+        self.vector.create(
+            texts=[get_sample_document(self.dataset_id)],
+            embeddings=[get_sample_embedding()],
+        )
+
+    def search_by_vector(self):
+        hits_by_vector = self.vector.search_by_vector(query_vector=get_sample_query_vector())
+        assert len(hits_by_vector) >= 1
+
+    def search_by_full_text(self):
+        hits_by_full_text = self.vector.search_by_full_text(query=get_sample_text())
+        assert len(hits_by_full_text) >= 1
+
+    def delete_vector(self):
+        self.vector.delete()
+
+    def run_all_test(self):
+        self.create_vector()
+        self.search_by_vector()
+        self.search_by_full_text()
+        self.delete_vector()
