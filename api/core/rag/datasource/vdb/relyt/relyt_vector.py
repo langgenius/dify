@@ -1,9 +1,8 @@
-import logging
 import uuid
-from typing import Any, Optional, List, Tuple
+from typing import Any, Optional
 
 from pydantic import BaseModel, root_validator
-from sqlalchemy import Column, String, Table, create_engine, insert, Sequence
+from sqlalchemy import Column, Sequence, String, Table, create_engine, insert
 from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import JSON, TEXT
 from sqlalchemy.orm import Session
@@ -16,8 +15,6 @@ except ImportError:
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
-
-logger = logging.getLogger(__name__)
 
 Base = declarative_base()  # type: Any
 
@@ -46,13 +43,14 @@ class RelytConfig(BaseModel):
 
 class RelytVector(BaseVector):
 
-    def __init__(self, collection_name: str, config: RelytConfig):
+    def __init__(self, collection_name: str, config: RelytConfig, group_id: str):
         super().__init__(collection_name)
         self.embedding_dimension = 1536
         self._client_config = config
         self._url = f"postgresql+psycopg2://{config.user}:{config.password}@{config.host}:{config.port}/{config.database}"
         self.client = create_engine(self._url)
         self._fields = []
+        self._group_id = group_id
 
     def get_type(self) -> str:
         return 'relyt'
@@ -104,9 +102,10 @@ class RelytVector(BaseVector):
 
         ids = [str(uuid.uuid1()) for _ in documents]
         metadatas = [d.metadata for d in documents]
+        for metadata in metadatas:
+            metadata['group_id'] = self._group_id
         texts = [d.page_content for d in documents]
 
-        logger.info(f"Adding {len(texts)} documents to collection {self._collection_name}")
         # Define the table schema
         chunks_table = Table(
             self._collection_name,
@@ -242,10 +241,10 @@ class RelytVector(BaseVector):
 
     def similarity_search_with_score_by_vector(
         self,
-        embedding: List[float],
+        embedding: list[float],
         k: int = 4,
         filter: Optional[dict] = None,
-    ) -> List[Tuple[Document, float]]:
+    ) -> list[tuple[Document, float]]:
         # Add the filter if provided
         try:
             from sqlalchemy.engine import Row

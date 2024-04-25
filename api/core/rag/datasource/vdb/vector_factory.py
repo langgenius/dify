@@ -134,7 +134,8 @@ class Vector:
                     user=config.get('RELYT_USER'),
                     password=config.get('RELYT_PASSWORD'),
                     database=config.get('RELYT_DATABASE'),
-                )
+                ),
+                group_id=self._dataset.id
             )
         else:
             raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
