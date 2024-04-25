@@ -51,6 +51,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     filterInputVar,
     filterVar,
     handlePromptChange,
+    handleSyeQueryChange,
     handleMemoryChange,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
@@ -204,12 +205,20 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                     <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
                   </TooltipPlus>
                 </div>}
-                value={'{{#sys.query#}}'}
-                onChange={() => { }}
-                readOnly
+                value={inputs.memory.query_prompt_template || '{{#sys.query#}}'}
+                onChange={handleSyeQueryChange}
+                readOnly={readOnly}
                 isShowContext={false}
                 isChatApp
                 isChatModel={false}
+                justVar
+                // workflowVariableBlock={{
+                //   show: true,
+                //   variables: [{
+                //     nodeId: startNode?.id!,
+
+                //   }]
+                // }}
                 hasSetBlockStatus={{
                   query: false,
                   history: true,

@@ -206,6 +206,24 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleSyeQueryChange = useCallback((newQuery: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      if (!draft.memory) {
+        draft.memory = {
+          window: {
+            enabled: false,
+            size: 10,
+          },
+          query_prompt_template: newQuery,
+        }
+      }
+      else {
+        draft.memory.query_prompt_template = newQuery
+      }
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const handleVisionResolutionEnabledChange = useCallback((enabled: boolean) => {
     const newInputs = produce(inputs, (draft) => {
       if (!draft.vision) {
@@ -348,6 +366,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     filterVar,
     handlePromptChange,
     handleMemoryChange,
+    handleSyeQueryChange,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
     isShowSingleRun,
