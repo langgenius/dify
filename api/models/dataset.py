@@ -3,8 +3,8 @@ import logging
 import pickle
 from json import JSONDecodeError
 
-from sqlalchemy import func, TypeDecorator, CHAR, String
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import func
+from sqlalchemy.dialects.postgresql import JSONB
 
 from extensions.ext_database import db
 from extensions.ext_storage import storage

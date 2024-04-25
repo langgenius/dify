@@ -1,14 +1,14 @@
 import logging
 from typing import Any
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
 
 from numpy import ndarray
-from pgvecto_rs.sdk import PGVectoRs
 from pgvecto_rs.sqlalchemy import Vector
 from pydantic import BaseModel, root_validator
-from sqlalchemy import text as sql_text, create_engine, text, insert, delete, select, String, Float
+from sqlalchemy import Float, String, create_engine, insert, select, text
+from sqlalchemy import text as sql_text
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.orm import Session, mapped_column, Mapped
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from core.rag.datasource.vdb.pgvecto_rs.collection import CollectionORM
 from core.rag.datasource.vdb.vector_base import BaseVector

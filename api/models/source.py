@@ -1,4 +1,4 @@
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB
 
 from extensions.ext_database import db
 from models import StringUUID

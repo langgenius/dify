@@ -2,8 +2,6 @@ import json
 from enum import Enum
 from typing import Optional, Union
 
-from sqlalchemy.dialects.postgresql import UUID
-
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from models import StringUUID

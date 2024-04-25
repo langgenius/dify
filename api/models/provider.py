@@ -1,7 +1,5 @@
 from enum import Enum
 
-from sqlalchemy.dialects.postgresql import UUID
-
 from extensions.ext_database import db
 from models import StringUUID
 

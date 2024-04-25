@@ -139,7 +139,7 @@ class Vector:
                 dim=dim
             )
         elif vector_type == "pgvecto_rs":
-            from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PgvectoRSConfig, PGVectoRS
+            from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRS, PgvectoRSConfig
             if self._dataset.index_struct_dict:
                 class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
                 collection_name = class_prefix.lower()

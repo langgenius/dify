@@ -1,7 +1,6 @@
 import json
 
 from sqlalchemy import ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
