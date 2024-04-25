@@ -1,6 +1,6 @@
 import json
-import requests
 from typing import Any, Union
+import requests
 
 from httpx import post
 
