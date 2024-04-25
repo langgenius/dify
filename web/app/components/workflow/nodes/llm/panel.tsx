@@ -217,6 +217,10 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 nodesOutputVars={availableVars}
                 availableNodes={availableNodes}
               />
+
+              {inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
+                <div className='leading-[18px] text-xs font-normal text-[#DC6803]'>{t(`${i18nPrefix}.sysQueryInUser`)}</div>
+              )}
             </div>
           </div>
         )}
