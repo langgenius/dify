@@ -1,6 +1,7 @@
 from enum import Enum
-from sqlalchemy import TypeDecorator, CHAR
+from sqlalchemy import CHAR, TypeDecorator
 from sqlalchemy.dialects.postgresql import UUID
+
 
 class CreatedByRole(Enum):
     """
