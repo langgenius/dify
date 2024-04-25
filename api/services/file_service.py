@@ -66,10 +66,9 @@ class FileService:
 
         config = current_app.config
         # Check if the file has been uploaded.
-        # Unique check field：tenant_id + storage_type + name + hash
+        # Unique check field：tenant_id + name + hash
         uploaded_file = db.session.query(UploadFile) \
             .filter(UploadFile.tenant_id == current_tenant_id) \
-            .filter(UploadFile.storage_type == config['STORAGE_TYPE']) \
             .filter(UploadFile.name == file.filename) \
             .filter(UploadFile.hash == hashlib.sha3_256(file_content).hexdigest())\
             .first()
