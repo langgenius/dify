@@ -213,7 +213,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       document.title = `${datasetRes.name || 'Dataset'} - Dify`
   }, [datasetRes])
 
-  const { setAppSiderbarExpand } = useStore()
+  const setAppSiderbarExpand = useStore(state => state.setAppSiderbarExpand)
 
   useEffect(() => {
     const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'

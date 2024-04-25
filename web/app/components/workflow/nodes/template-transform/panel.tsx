@@ -62,6 +62,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
         </Field>
         <Split />
         <CodeEditor
+          isInNode
           readOnly={readOnly}
           language={CodeLanguage.python3}
           title={

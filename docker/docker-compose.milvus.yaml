@@ -36,7 +36,7 @@ services:
       timeout: 20s
       retries: 3
 
-  standalone:
+  milvus-standalone:
     container_name: milvus-standalone
     image: milvusdb/milvus:v2.3.1
     command: ["milvus", "run", "standalone"]

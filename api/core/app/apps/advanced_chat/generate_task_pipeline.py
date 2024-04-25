@@ -84,13 +84,19 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         """
         super().__init__(application_generate_entity, queue_manager, user, stream)
 
+        if isinstance(self._user, EndUser):
+            user_id = self._user.session_id
+        else:
+            user_id = self._user.id
+
         self._workflow = workflow
         self._conversation = conversation
         self._message = message
         self._workflow_system_variables = {
             SystemVariable.QUERY: message.query,
             SystemVariable.FILES: application_generate_entity.files,
-            SystemVariable.CONVERSATION: conversation.id,
+            SystemVariable.CONVERSATION_ID: conversation.id,
+            SystemVariable.USER_ID: user_id
         }
 
         self._task_state = AdvancedChatTaskState(

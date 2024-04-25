@@ -159,18 +159,6 @@
   background-image: url("./apps/assets/completion-solid.svg");
 }
 
-.docIcon {
-  background-image: url("./datasets/assets/doc.svg");
-}
-
-.textIcon {
-  background-image: url("./datasets/assets/text.svg");
-}
-
-.applicationIcon {
-  background-image: url("./datasets/assets/application.svg");
-}
-
 .newItemCardHeading {
   @apply transition-colors duration-200 ease-in-out;
 }
