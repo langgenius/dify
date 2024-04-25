@@ -204,6 +204,7 @@ const translation = {
       singleRun: {
         variable: 'Variable',
       },
+      sysQueryInUser: 'sys.query in user message is required',
     },
     knowledgeRetrieval: {
       queryVariable: 'Query Variable',
