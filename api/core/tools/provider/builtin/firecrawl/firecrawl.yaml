@@ -21,4 +21,4 @@ credentials_for_provider:
     help:
       en_US: Get your Firecrawl API key from your Firecrawl account settings.
       zh_CN: 从您的 Firecrawl 账户设置中获取 Firecrawl API 密钥。
-    url: https://api.firecrawl.dev/account
+    url: https://www.firecrawl.dev/account
