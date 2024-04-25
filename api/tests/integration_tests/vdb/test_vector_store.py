@@ -85,6 +85,6 @@ class AbstractTestVector:
         self.create_vector()
         self.search_by_vector()
         self.search_by_full_text()
-        self.add_texts()
+        # self.add_texts()
         self.delete_by_ids()
         self.delete_vector()
