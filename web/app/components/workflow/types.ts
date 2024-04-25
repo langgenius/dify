@@ -143,6 +143,7 @@ export type Memory = {
     enabled: boolean
     size: number | string | null
   }
+  query_prompt_template: string
 }
 
 export enum VarType {
