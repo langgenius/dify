@@ -131,6 +131,8 @@ services:
     # uncomment to expose dify-api port to host
     # ports:
     #   - "5001:5001"
+    networks:
+      - llm
 
   # worker service
   # The Celery worker for processing the queue.
@@ -203,6 +205,8 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+    networks:
+        - llm
 
   # Frontend web application.
   web:
@@ -223,6 +227,9 @@ services:
     # uncomment to expose dify-web port to host
     # ports:
     #   - "3000:3000"
+    networks:
+        - llm
+
 
   # The postgres database.
   db:
@@ -246,6 +253,8 @@ services:
       interval: 1s
       timeout: 3s
       retries: 30
+    networks:
+      - llm
 
   # The redis cache.
   redis:
@@ -261,6 +270,8 @@ services:
     # uncomment to expose redis port to host
     # ports:
     #   - "6379:6379"
+    networks:
+      - llm
 
   # The Weaviate vector store.
   weaviate:
@@ -285,6 +296,8 @@ services:
     # uncomment to expose weaviate port to host
     # ports:
     #  - "8080:8080"
+    networks:
+      - llm
 
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.
@@ -304,6 +317,7 @@ services:
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
   nginx:
+    hostname: dify-nginx
     image: nginx:latest
     restart: always
     volumes:
@@ -314,4 +328,12 @@ services:
       - api
       - web
     ports:
-      - "80:80"
+      - "127.0.0.1:8080:80"
+    networks:
+      - llm
+
+
+networks:
+  llm:
+    name: llm
+    external: true
