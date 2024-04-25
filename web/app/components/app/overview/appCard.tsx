@@ -25,7 +25,6 @@ import CopyFeedback from '@/app/components/base/copy-feedback'
 import ShareQRCode from '@/app/components/base/qrcode'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import type { AppDetailResponse } from '@/models/app'
-import { AppType } from '@/types/app'
 import { useAppContext } from '@/context/app-context'
 
 export type IAppCardProps = {
@@ -69,7 +68,7 @@ function AppCard({
       api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: DocumentTextIcon }],
       app: [],
     }
-    if (appInfo.mode === AppType.chat)
+    if (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow')
       operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon })
 
     if (isCurrentWorkspaceManager)
@@ -84,7 +83,8 @@ function AppCard({
     : t('appOverview.overview.apiInfo.title')
   const runningStatus = isApp ? appInfo.enable_site : appInfo.enable_api
   const { app_base_url, access_token } = appInfo.site ?? {}
-  const appUrl = `${app_base_url}/${appInfo.mode}/${access_token}`
+  const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
+  const appUrl = `${app_base_url}/${appMode}/${access_token}`
   const apiUrl = appInfo?.api_base_url
 
   let bgColor = 'bg-primary-50 bg-opacity-40'

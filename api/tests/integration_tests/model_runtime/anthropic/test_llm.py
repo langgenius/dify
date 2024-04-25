@@ -1,7 +1,8 @@
 import os
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, SystemPromptMessage, UserPromptMessage
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -15,14 +16,14 @@ def test_validate_credentials(setup_anthropic_mock):
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='claude-instant-1',
+            model='claude-instant-1.2',
             credentials={
                 'anthropic_api_key': 'invalid_key'
             }
         )
 
     model.validate_credentials(
-        model='claude-instant-1',
+        model='claude-instant-1.2',
         credentials={
             'anthropic_api_key': os.environ.get('ANTHROPIC_API_KEY')
         }
@@ -33,7 +34,7 @@ def test_invoke_model(setup_anthropic_mock):
     model = AnthropicLargeLanguageModel()
 
     response = model.invoke(
-        model='claude-instant-1',
+        model='claude-instant-1.2',
         credentials={
             'anthropic_api_key': os.environ.get('ANTHROPIC_API_KEY'),
             'anthropic_api_url': os.environ.get('ANTHROPIC_API_URL')
@@ -49,7 +50,7 @@ def test_invoke_model(setup_anthropic_mock):
         model_parameters={
             'temperature': 0.0,
             'top_p': 1.0,
-            'max_tokens_to_sample': 10
+            'max_tokens': 10
         },
         stop=['How'],
         stream=False,
@@ -64,7 +65,7 @@ def test_invoke_stream_model(setup_anthropic_mock):
     model = AnthropicLargeLanguageModel()
 
     response = model.invoke(
-        model='claude-instant-1',
+        model='claude-instant-1.2',
         credentials={
             'anthropic_api_key': os.environ.get('ANTHROPIC_API_KEY')
         },
@@ -78,7 +79,7 @@ def test_invoke_stream_model(setup_anthropic_mock):
         ],
         model_parameters={
             'temperature': 0.0,
-            'max_tokens_to_sample': 100
+            'max_tokens': 100
         },
         stream=True,
         user="abc-123"
@@ -97,7 +98,7 @@ def test_get_num_tokens():
     model = AnthropicLargeLanguageModel()
 
     num_tokens = model.get_num_tokens(
-        model='claude-instant-1',
+        model='claude-instant-1.2',
         credentials={
             'anthropic_api_key': os.environ.get('ANTHROPIC_API_KEY')
         },

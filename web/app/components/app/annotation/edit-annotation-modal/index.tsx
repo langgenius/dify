@@ -117,7 +117,7 @@ const EditAnnotationModal: FC<Props> = ({
                       <MessageCheckRemove />
                       <div>{t('appAnnotation.editModal.removeThisCache')}</div>
                     </div>
-                    {createdAt && <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{dayjs(createdAt * 1000).format('YYYY-MM-DD hh:mm')}</div>}
+                    {createdAt && <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{dayjs(createdAt * 1000).format('YYYY-MM-DD HH:mm')}</div>}
                   </div>
                 )
                 : undefined

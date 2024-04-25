@@ -4,10 +4,10 @@ import time
 
 import click
 from celery import shared_task
-from langchain.schema import Document
 from werkzeug.exceptions import NotFound
 
-from core.index.index import IndexBuilder
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Document as DatasetDocument
@@ -60,15 +60,9 @@ def add_document_to_index_task(dataset_document_id: str):
         if not dataset:
             raise Exception('Document has no dataset')
 
-        # save vector index
-        index = IndexBuilder.get_index(dataset, 'high_quality')
-        if index:
-            index.add_texts(documents)
-
-        # save keyword index
-        index = IndexBuilder.get_index(dataset, 'economy')
-        if index:
-            index.add_texts(documents)
+        index_type = dataset.doc_form
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        index_processor.load(dataset, documents)
 
         end_at = time.perf_counter()
         logging.info(
@@ -76,7 +70,7 @@ def add_document_to_index_task(dataset_document_id: str):
     except Exception as e:
         logging.exception("add document to index failed")
         dataset_document.enabled = False
-        dataset_document.disabled_at = datetime.datetime.utcnow()
+        dataset_document.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         dataset_document.status = 'error'
         dataset_document.error = str(e)
         db.session.commit()

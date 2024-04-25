@@ -7,23 +7,14 @@ import subprocess
 import tempfile
 import unicodedata
 from contextlib import contextmanager
-from typing import Any
 
 import requests
 from bs4 import BeautifulSoup, CData, Comment, NavigableString
-from langchain.chains import RefineDocumentsChain
-from langchain.chains.summarize import refine_prompts
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.tools.base import BaseTool
 from newspaper import Article
-from pydantic import BaseModel, Field
 from regex import regex
 
-from core.chain.llm_chain import LLMChain
-from core.data_loader import file_extractor
-from core.data_loader.file_extractor import FileExtractor
-from core.entities.application_entities import ModelConfigEntity
+from core.rag.extractor import extract_processor
+from core.rag.extractor.extract_processor import ExtractProcessor
 
 FULL_TEMPLATE = """
 TITLE: {title}
@@ -34,106 +25,6 @@ TEXT:
 
 {text}
 """
-
-
-class WebReaderToolInput(BaseModel):
-    url: str = Field(..., description="URL of the website to read")
-    summary: bool = Field(
-        default=False,
-        description="When the user's question requires extracting the summarizing content of the webpage, "
-                    "set it to true."
-    )
-    cursor: int = Field(
-        default=0,
-        description="Start reading from this character."
-        "Use when the first response was truncated"
-        "and you want to continue reading the page."
-        "The value cannot exceed 24000.",
-    )
-
-
-class WebReaderTool(BaseTool):
-    """Reader tool for getting website title and contents. Gives more control than SimpleReaderTool."""
-
-    name: str = "web_reader"
-    args_schema: type[BaseModel] = WebReaderToolInput
-    description: str = "use this to read a website. " \
-                       "If you can answer the question based on the information provided, " \
-                       "there is no need to use."
-    page_contents: str = None
-    url: str = None
-    max_chunk_length: int = 4000
-    summary_chunk_tokens: int = 4000
-    summary_chunk_overlap: int = 0
-    summary_separators: list[str] = ["\n\n", "。", ".", " ", ""]
-    continue_reading: bool = True
-    model_config: ModelConfigEntity
-    model_parameters: dict[str, Any]
-
-    def _run(self, url: str, summary: bool = False, cursor: int = 0) -> str:
-        try:
-            if not self.page_contents or self.url != url:
-                page_contents = get_url(url)
-                self.page_contents = page_contents
-                self.url = url
-            else:
-                page_contents = self.page_contents
-        except Exception as e:
-            return f'Read this website failed, caused by: {str(e)}.'
-
-        if summary:
-            character_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-                chunk_size=self.summary_chunk_tokens,
-                chunk_overlap=self.summary_chunk_overlap,
-                separators=self.summary_separators
-            )
-
-            texts = character_splitter.split_text(page_contents)
-            docs = [Document(page_content=t) for t in texts]
-
-            if len(docs) == 0 or docs[0].page_content.endswith('TEXT:'):
-                return "No content found."
-
-            # only use first 5 docs
-            if len(docs) > 5:
-                docs = docs[:5]
-
-            chain = self.get_summary_chain()
-            try:
-                page_contents = chain.run(docs)
-            except Exception as e:
-                return f'Read this website failed, caused by: {str(e)}.'
-        else:
-            page_contents = page_result(page_contents, cursor, self.max_chunk_length)
-
-            if self.continue_reading and len(page_contents) >= self.max_chunk_length:
-                page_contents += f"\nPAGE WAS TRUNCATED. IF YOU FIND INFORMATION THAT CAN ANSWER QUESTION " \
-                                 f"THEN DIRECT ANSWER AND STOP INVOKING web_reader TOOL, OTHERWISE USE " \
-                                 f"CURSOR={cursor+len(page_contents)} TO CONTINUE READING."
-
-        return page_contents
-
-    async def _arun(self, url: str) -> str:
-        raise NotImplementedError
-
-    def get_summary_chain(self) -> RefineDocumentsChain:
-        initial_chain = LLMChain(
-            model_config=self.model_config,
-            prompt=refine_prompts.PROMPT,
-            parameters=self.model_parameters
-        )
-        refine_chain = LLMChain(
-            model_config=self.model_config,
-            prompt=refine_prompts.REFINE_PROMPT,
-            parameters=self.model_parameters
-        )
-        return RefineDocumentsChain(
-            initial_llm_chain=initial_chain,
-            refine_llm_chain=refine_chain,
-            document_variable_name="text",
-            initial_response_name="existing_answer",
-            callbacks=self.callbacks
-        )
 
 
 def page_result(text: str, cursor: int, max_length: int) -> str:
@@ -149,7 +40,7 @@ def get_url(url: str, user_agent: str = None) -> str:
     if user_agent:
         headers["User-Agent"] = user_agent
     
-    supported_content_types = file_extractor.SUPPORT_URL_CONTENT_TYPES + ["text/html"]
+    supported_content_types = extract_processor.SUPPORT_URL_CONTENT_TYPES + ["text/html"]
 
     head_response = requests.head(url, headers=headers, allow_redirects=True, timeout=(5, 10))
 
@@ -161,8 +52,8 @@ def get_url(url: str, user_agent: str = None) -> str:
     if main_content_type not in supported_content_types:
         return "Unsupported content-type [{}] of URL.".format(main_content_type)
 
-    if main_content_type in file_extractor.SUPPORT_URL_CONTENT_TYPES:
-        return FileExtractor.load_from_url(url, return_text=True)
+    if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
+        return ExtractProcessor.load_from_url(url, return_text=True)
 
     response = requests.get(url, headers=headers, allow_redirects=True, timeout=(5, 30))
     a = extract_using_readabilipy(response.text)

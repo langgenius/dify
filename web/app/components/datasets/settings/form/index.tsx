@@ -24,6 +24,7 @@ import {
   useModelList,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const rowClass = `
   flex justify-between py-4 flex-wrap gap-y-2
@@ -58,13 +59,23 @@ const Form = () => {
   const [permission, setPermission] = useState(currentDataset?.permission)
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
-
+  const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
+    currentDataset?.embedding_model
+      ? {
+        provider: currentDataset.embedding_model_provider,
+        model: currentDataset.embedding_model,
+      }
+      : {
+        provider: '',
+        model: '',
+      },
+  )
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
     currentModel: isRerankDefaultModelVaild,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(3)
-  const { data: embeddingModelList } = useModelList(2)
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
 
   const handleSave = async () => {
     if (loading)
@@ -100,6 +111,8 @@ const Form = () => {
           permission,
           indexing_technique: indexMethod,
           retrieval_model: postRetrievalConfig,
+          embedding_model: embeddingModel.model,
+          embedding_model_provider: embeddingModel.provider,
         },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -188,18 +201,13 @@ const Form = () => {
           </div>
           <div className='w-[480px]'>
             <ModelSelector
-              readonly
-              triggerClassName='!h-9 !cursor-not-allowed opacity-60'
-              defaultModel={{
-                provider: currentDataset.embedding_model_provider,
-                model: currentDataset.embedding_model,
-              }}
+              triggerClassName=''
+              defaultModel={embeddingModel}
               modelList={embeddingModelList}
+              onSelect={(model: DefaultModel) => {
+                setEmbeddingModel(model)
+              }}
             />
-            <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
-              {t('datasetSettings.form.embeddingModelTip')}
-              <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
-            </div>
           </div>
         </div>
       )}

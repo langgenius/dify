@@ -11,7 +11,7 @@ from controllers.console.datasets.error import (
     UnsupportedFileTypeError,
 )
 from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
 from services.file_service import ALLOWED_EXTENSIONS, UNSTRUSTURED_ALLOWED_EXTENSIONS, FileService
@@ -39,6 +39,7 @@ class FileApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(file_fields)
+    @cloud_edition_billing_resource_check(resource='documents')
     def post(self):
 
         # get file from request

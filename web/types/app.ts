@@ -1,6 +1,8 @@
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 import type { CollectionType } from '@/app/components/tools/types'
-import type { LanguagesSupported } from '@/utils/language'
+import type { LanguagesSupported } from '@/i18n/language'
+import type { Tag } from '@/app/components/base/tag-management/constant'
+
 export enum ProviderType {
   openai = 'openai',
   anthropic = 'anthropic',
@@ -33,6 +35,7 @@ export enum RETRIEVE_METHOD {
   fullText = 'full_text_search',
   hybrid = 'hybrid_search',
   invertedIndex = 'invertedIndex',
+  keywordSearch = 'keyword_search',
 }
 
 export type VariableInput = {
@@ -44,7 +47,7 @@ export type VariableInput = {
 /**
  * App modes
  */
-export const AppModes = ['completion', 'chat'] as const
+export const AppModes = ['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow'] as const
 export type AppMode = typeof AppModes[number]
 
 /**
@@ -228,6 +231,7 @@ export type ModelConfig = {
     image: VisionSettings
   }
   files?: VisionFile[]
+  created_at?: number
 }
 
 export type Language = typeof LanguagesSupported[number]
@@ -278,6 +282,8 @@ export type App = {
   id: string
   /** Name */
   name: string
+  /** Description */
+  description: string
 
   /** Icon */
   icon: string
@@ -286,7 +292,6 @@ export type App = {
 
   /** Mode */
   mode: AppMode
-  is_agent: boolean
   /** Enable web app */
   enable_site: boolean
   /** Enable web API */
@@ -306,6 +311,7 @@ export type App = {
   site: SiteConfig
   /** api site url */
   api_base_url: string
+  tags: Tag[]
 }
 
 /**

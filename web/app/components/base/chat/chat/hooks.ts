@@ -19,6 +19,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import { ssePost } from '@/service/base'
 import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { Annotation } from '@/models/log'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -80,8 +81,8 @@ export const useChat = (
   const { notify } = useToastContext()
   const connversationId = useRef('')
   const hasStopResponded = useRef(false)
-  const [isResponsing, setIsResponsing] = useState(false)
-  const isResponsingRef = useRef(false)
+  const [isResponding, setIsResponding] = useState(false)
+  const isRespondingRef = useRef(false)
   const [chatList, setChatList] = useState<ChatItem[]>(prevChatList || [])
   const chatListRef = useRef<ChatItem[]>(prevChatList || [])
   const taskIdRef = useRef('')
@@ -101,9 +102,9 @@ export const useChat = (
     setChatList(newChatList)
     chatListRef.current = newChatList
   }, [])
-  const handleResponsing = useCallback((isResponsing: boolean) => {
-    setIsResponsing(isResponsing)
-    isResponsingRef.current = isResponsing
+  const handleResponding = useCallback((isResponding: boolean) => {
+    setIsResponding(isResponding)
+    isRespondingRef.current = isResponding
   }, [])
 
   const getIntroduction = useCallback((str: string) => {
@@ -136,14 +137,14 @@ export const useChat = (
 
   const handleStop = useCallback(() => {
     hasStopResponded.current = true
-    handleResponsing(false)
+    handleResponding(false)
     if (stopChat && taskIdRef.current)
       stopChat(taskIdRef.current)
     if (conversationMessagesAbortControllerRef.current)
       conversationMessagesAbortControllerRef.current.abort()
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
-  }, [stopChat, handleResponsing])
+  }, [stopChat, handleResponding])
 
   const handleRestart = useCallback(() => {
     connversationId.current = ''
@@ -200,7 +201,7 @@ export const useChat = (
   ) => {
     setSuggestQuestions([])
 
-    if (isResponsingRef.current) {
+    if (isRespondingRef.current) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
     }
@@ -228,14 +229,14 @@ export const useChat = (
 
     // answer
     const responseItem: ChatItem = {
-      id: `${Date.now()}`,
+      id: placeholderAnswerId,
       content: '',
       agent_thoughts: [],
       message_files: [],
       isAnswer: true,
     }
 
-    handleResponsing(true)
+    handleResponding(true)
     hasStopResponded.current = false
 
     const bodyParams = {
@@ -295,7 +296,7 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean) {
-          handleResponsing(false)
+          handleResponding(false)
 
           if (hasError)
             return
@@ -318,14 +319,32 @@ export const useChat = (
                 const requestion = draft[index - 1]
                 draft[index - 1] = {
                   ...requestion,
-                  log: newResponseItem.message,
                 }
                 draft[index] = {
                   ...draft[index],
+                  content: newResponseItem.answer,
+                  log: [
+                    ...newResponseItem.message,
+                    ...(newResponseItem.message[newResponseItem.message.length - 1].role !== 'assistant'
+                      ? [
+                        {
+                          role: 'assistant',
+                          text: newResponseItem.answer,
+                          files: newResponseItem.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+                        },
+                      ]
+                      : []),
+                  ],
                   more: {
                     time: dayjs.unix(newResponseItem.created_at).format('hh:mm A'),
                     tokens: newResponseItem.answer_tokens + newResponseItem.message_tokens,
                     latency: newResponseItem.provider_response_latency.toFixed(2),
+                  },
+                  // for agent log
+                  conversationId: connversationId.current,
+                  input: {
+                    inputs: newResponseItem.inputs,
+                    query: newResponseItem.query,
                   },
                 }
               }
@@ -416,11 +435,57 @@ export const useChat = (
           responseItem.content = messageReplace.answer
         },
         onError() {
-          handleResponsing(false)
+          handleResponding(false)
           const newChatList = produce(chatListRef.current, (draft) => {
             draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
           })
           handleUpdateChatList(newChatList)
+        },
+        onWorkflowStarted: ({ workflow_run_id, task_id }) => {
+          taskIdRef.current = task_id
+          responseItem.workflow_run_id = workflow_run_id
+          responseItem.workflowProcess = {
+            status: WorkflowRunningStatus.Running,
+            tracing: [],
+          }
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
+        },
+        onWorkflowFinished: ({ data }) => {
+          responseItem.workflowProcess!.status = data.status as WorkflowRunningStatus
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
+        },
+        onNodeStarted: ({ data }) => {
+          responseItem.workflowProcess!.tracing!.push(data as any)
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
+        },
+        onNodeFinished: ({ data }) => {
+          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+          responseItem.workflowProcess!.tracing[currentIndex] = data as any
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
         },
       })
     return true
@@ -432,7 +497,7 @@ export const useChat = (
     notify,
     promptVariablesConfig,
     handleUpdateChatList,
-    handleResponsing,
+    handleResponding,
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
@@ -506,8 +571,8 @@ export const useChat = (
     chatList,
     setChatList,
     conversationId: connversationId.current,
-    isResponsing,
-    setIsResponsing,
+    isResponding,
+    setIsResponding,
     handleSend,
     suggestedQuestions,
     handleRestart,

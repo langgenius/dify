@@ -7,12 +7,10 @@ import { useModalContext } from '@/context/modal-context'
 import ConfigContext from '@/context/debug-configuration'
 import { fetchCodeBasedExtensionList } from '@/service/common'
 import I18n from '@/context/i18n'
-import { getModelRuntimeSupported } from '@/utils/language'
 const Moderation = () => {
   const { t } = useTranslation()
   const { setShowModerationSettingModal } = useModalContext()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
   const {
     moderationConfig,
     setModerationConfig,
@@ -39,7 +37,7 @@ const Moderation = () => {
     else if (moderationConfig.type === 'api')
       prefix = t('common.apiBasedExtension.selector.title')
     else
-      prefix = codeBasedExtensionList?.data.find(item => item.name === moderationConfig.type)?.label[language] || ''
+      prefix = codeBasedExtensionList?.data.find(item => item.name === moderationConfig.type)?.label[locale] || ''
 
     if (moderationConfig.config?.inputs_config?.enabled && moderationConfig.config?.outputs_config?.enabled)
       suffix = t('appDebug.feature.moderation.allEnabled')

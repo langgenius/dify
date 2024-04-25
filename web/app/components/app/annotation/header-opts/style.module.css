@@ -19,7 +19,7 @@
 }
 
 .actionItem {
-  @apply h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-gray-100 rounded-lg cursor-pointer;
+  @apply h-9 py-2 px-3 mx-1 flex items-center space-x-2 hover:bg-gray-100 rounded-lg cursor-pointer disabled:opacity-50;
   width: calc(100% - 0.5rem);
 }
 

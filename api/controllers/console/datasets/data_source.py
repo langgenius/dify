@@ -9,8 +9,9 @@ from werkzeug.exceptions import NotFound
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.data_loader.loader.notion import NotionLoader
 from core.indexing_runner import IndexingRunner
+from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
 from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
 from libs.login import login_required
@@ -79,7 +80,7 @@ class DataSourceApi(Resource):
         if action == 'enable':
             if data_source_binding.disabled:
                 data_source_binding.disabled = False
-                data_source_binding.updated_at = datetime.datetime.utcnow()
+                data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 db.session.add(data_source_binding)
                 db.session.commit()
             else:
@@ -88,7 +89,7 @@ class DataSourceApi(Resource):
         if action == 'disable':
             if not data_source_binding.disabled:
                 data_source_binding.disabled = True
-                data_source_binding.updated_at = datetime.datetime.utcnow()
+                data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 db.session.add(data_source_binding)
                 db.session.commit()
             else:
@@ -173,14 +174,15 @@ class DataSourceNotionApi(Resource):
         if not data_source_binding:
             raise NotFound('Data source binding not found.')
 
-        loader = NotionLoader(
-            notion_access_token=data_source_binding.access_token,
+        extractor = NotionExtractor(
             notion_workspace_id=workspace_id,
             notion_obj_id=page_id,
-            notion_page_type=page_type
+            notion_page_type=page_type,
+            notion_access_token=data_source_binding.access_token,
+            tenant_id=current_user.current_tenant_id
         )
 
-        text_docs = loader.load()
+        text_docs = extractor.extract()
         return {
             'content': "\n".join([doc.page_content for doc in text_docs])
         }, 200
@@ -192,11 +194,31 @@ class DataSourceNotionApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('notion_info_list', type=list, required=True, nullable=True, location='json')
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
+        parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
+        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False, location='json')
         args = parser.parse_args()
         # validate args
         DocumentService.estimate_args_validate(args)
+        notion_info_list = args['notion_info_list']
+        extract_settings = []
+        for notion_info in notion_info_list:
+            workspace_id = notion_info['workspace_id']
+            for page in notion_info['pages']:
+                extract_setting = ExtractSetting(
+                    datasource_type="notion_import",
+                    notion_info={
+                        "notion_workspace_id": workspace_id,
+                        "notion_obj_id": page['page_id'],
+                        "notion_page_type": page['type'],
+                        "tenant_id": current_user.current_tenant_id
+                    },
+                    document_model=args['doc_form']
+                )
+                extract_settings.append(extract_setting)
         indexing_runner = IndexingRunner()
-        response = indexing_runner.notion_indexing_estimate(current_user.current_tenant_id, args['notion_info_list'], args['process_rule'])
+        response = indexing_runner.indexing_estimate(current_user.current_tenant_id, extract_settings,
+                                                     args['process_rule'], args['doc_form'],
+                                                     args['doc_language'])
         return response, 200
 
 

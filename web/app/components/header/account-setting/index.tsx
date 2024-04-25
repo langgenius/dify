@@ -138,16 +138,12 @@ export default function AccountSetting({
   ]
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
-  const scrollHandle = (e: Event) => {
-    if ((e.target as HTMLDivElement).scrollTop > 0)
-      setScrolled(true)
-
-    else
-      setScrolled(false)
-  }
   useEffect(() => {
     const targetElement = scrollRef.current
-
+    const scrollHandle = (e: Event) => {
+      const userScrolled = (e.target as HTMLDivElement).scrollTop > 0
+      setScrolled(userScrolled)
+    }
     targetElement?.addEventListener('scroll', scrollHandle)
     return () => {
       targetElement?.removeEventListener('scroll', scrollHandle)

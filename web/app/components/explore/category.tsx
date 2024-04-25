@@ -3,8 +3,9 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import exploreI18n from '@/i18n/lang/explore.en'
+import exploreI18n from '@/i18n/en-US/explore'
 import type { AppCategory } from '@/models/explore'
+import { ThumbsUp } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 
 const categoryI18n = exploreI18n.category
 
@@ -12,7 +13,11 @@ export type ICategoryProps = {
   className?: string
   list: AppCategory[]
   value: string
-  onChange: (value: AppCategory | '') => void
+  onChange: (value: AppCategory | string) => void
+  /**
+   * default value for searchparam 'category' in en
+   */
+  allCategoriesEn: string
 }
 
 const Category: FC<ICategoryProps> = ({
@@ -20,25 +25,29 @@ const Category: FC<ICategoryProps> = ({
   list,
   value,
   onChange,
+  allCategoriesEn,
 }) => {
   const { t } = useTranslation()
+  const isAllCategories = !list.includes(value)
 
-  const itemClassName = (isSelected: boolean) => cn(isSelected ? 'bg-white text-primary-600 border-gray-200 font-semibold' : 'border-transparent font-medium', 'flex items-center h-7 px-3 border cursor-pointer rounded-lg')
-  const itemStyle = (isSelected: boolean) => isSelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}
+  const itemClassName = (isSelected: boolean) => cn(
+    'flex items-center px-3 py-[7px] h-[32px] rounded-lg border-[0.5px] border-transparent text-gray-700 font-medium leading-[18px] cursor-pointer hover:bg-gray-200',
+    isSelected && 'bg-white border-gray-200 shadow-xs text-primary-600 hover:bg-white',
+  )
+
   return (
     <div className={cn(className, 'flex space-x-1 text-[13px] flex-wrap')}>
       <div
-        className={itemClassName(value === '')}
-        style={itemStyle(value === '')}
-        onClick={() => onChange('')}
+        className={itemClassName(isAllCategories)}
+        onClick={() => onChange(allCategoriesEn)}
       >
+        <ThumbsUp className='mr-1 w-3.5 h-3.5'/>
         {t('explore.apps.allCategories')}
       </div>
       {list.map(name => (
         <div
           key={name}
           className={itemClassName(name === value)}
-          style={itemStyle(name === value)}
           onClick={() => onChange(name)}
         >
           {categoryI18n[name] ? t(`explore.category.${name}`) : name}
@@ -47,4 +56,5 @@ const Category: FC<ICategoryProps> = ({
     </div>
   )
 }
+
 export default React.memo(Category)

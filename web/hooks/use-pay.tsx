@@ -122,7 +122,7 @@ export const useCheckNotion = () => {
   const notionCode = searchParams.get('code')
   const notionError = searchParams.get('error')
   const { data } = useSWR(
-    canBinding
+    (canBinding && notionCode)
       ? `/oauth/data-source/binding/notion?code=${notionCode}`
       : null,
     fetchDataSourceNotionBinding,

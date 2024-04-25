@@ -16,8 +16,6 @@ import {
   updateCurrentWorkspace,
 } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
-import { API_PREFIX } from '@/config'
-import { getPurifyHref } from '@/utils'
 
 const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
 
@@ -123,7 +121,7 @@ const CustomWebAppBrand = () => {
                 POWERED BY
                 {
                   webappLogo
-                    ? <img key={webappLogo} src={`${getPurifyHref(API_PREFIX.slice(0, -12))}/files/workspaces/${currentWorkspace.id}/webapp-logo`} alt='logo' className='ml-2 block w-auto h-5' />
+                    ? <img key={webappLogo} src={webappLogo} alt='logo' className='ml-2 block w-auto h-5' />
                     : <LogoSite className='ml-2 !h-5' />
                 }
               </div>

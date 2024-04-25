@@ -10,7 +10,7 @@ import { updateUserProfile } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
 import I18n from '@/context/i18n'
 import { timezones } from '@/utils/timezone'
-import { languages } from '@/utils/language'
+import { languages } from '@/i18n/language'
 
 const titleClassName = `
   mb-2 text-sm font-medium text-gray-900
@@ -53,7 +53,7 @@ export default function LanguagePage() {
         <div className={titleClassName}>{t('common.language.displayLanguage')}</div>
         <SimpleSelect
           defaultValue={locale || userProfile.interface_language}
-          items={languages}
+          items={languages.filter(item => item.supported)}
           onSelect={item => handleSelect('language', item)}
           disabled={editing}
         />

@@ -3,10 +3,10 @@ import time
 
 import click
 from celery import shared_task
-from langchain.schema import Document
 from werkzeug.exceptions import NotFound
 
-from core.index.index import IndexBuilder
+from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -79,9 +79,8 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                     collection_binding_id=dataset_collection_binding.id
                 )
 
-                index = IndexBuilder.get_index(dataset, 'high_quality')
-                if index:
-                    index.add_texts(documents)
+                vector = Vector(dataset, attributes=['doc_id', 'annotation_id', 'app_id'])
+                vector.create(documents, duplicate_check=True)
 
             db.session.commit()
             redis_client.setex(indexing_cache_key, 600, 'completed')

@@ -1,0 +1,342 @@
+import { CodeGroup } from '../code.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
+
+# Workflow 应用 API
+
+Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等等。
+
+<div>
+  ### Base URL
+  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url}>
+    ```javascript
+    ```
+  </CodeGroup>
+
+  ### Authentication
+
+  Dify Service API 使用 `API-Key` 进行鉴权。
+  <i>**强烈建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。**</i>
+  所有 API 请求都应在 **`Authorization`** HTTP Header 中包含您的 `API-Key`，如下所示：
+
+  <CodeGroup title="Code">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
+    ```
+  </CodeGroup>
+</div>
+
+---
+
+<Heading
+  url='/workflows/run'
+  method='POST'
+  title='执行 workflow'
+  name='#Execute-Workflow'
+/>
+<Row>
+  <Col>
+    执行 workflow，没有已发布的 workflow，不可执行。
+
+    ### Request Body
+      - `inputs` (object) Required
+        允许传入 App 定义的各变量值。
+        inputs 参数包含了多组键值对（Key/Value pairs），每组的键对应一个特定变量，每组的值则是该变量的具体值。
+      - `response_mode` (string) Required
+        返回响应模式，支持：
+        - `streaming` 流式模式（推荐）。基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现类似打字机输出方式的流式返回。
+        - `blocking` 阻塞模式，等待执行完毕后返回结果。（请求若流程较长可能会被中断）。
+        <i>由于 Cloudflare 限制，请求会在 100 秒超时无返回后中断。</i>
+      - `user` (string) Required
+        用户标识，用于定义终端用户的身份，方便检索、统计。
+        由开发者定义规则，需保证用户标识在应用内唯一。
+      - `files` (array[object]) Optional
+          文件列表，适用于传入文件（图片）结合文本理解并回答问题，仅当模型支持 Vision 能力时可用。
+          - `type` (string) 支持类型：图片 `image`（目前仅支持图片格式）。
+          - `transfer_method` (string) 传递方式，`remote_url` 图片地址 / `local_file` 上传文件
+          - `url` (string) 图片地址（仅当传递方式为 `remote_url` 时）
+          - `upload_file_id` (string) (string) 上传文件 ID（仅当传递方式为 `local_file` 时）
+
+    ### Response
+    当 `response_mode` 为 `blocking` 时，返回 CompletionResponse object。
+    当 `response_mode` 为 `streaming`时，返回 ChunkCompletionResponse object 流式序列。
+
+    ### CompletionResponse
+    返回完整的 App 结果，`Content-Type` 为 `application/json` 。
+    - `workflow_run_id` (string) workflow 执行 ID
+    - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+    - `data` (object) 详细内容
+      - `id` (string) workflow 执行 ID
+      - `workflow_id` (string) 关联 Workflow ID
+      - `status` (string) 执行状态, `running` / `succeeded` / `failed` / `stopped`
+      - `outputs` (json) Optional 输出内容
+      - `error` (string) Optional 错误原因
+      - `elapsed_time` (float) Optional 耗时(s)
+      - `total_tokens` (int) Optional 总使用 tokens
+      - `total_steps` (int) 总步数（冗余），默认 0
+      - `created_at` (timestamp) 开始时间
+      - `finished_at` (timestamp) 结束时间
+
+    ### ChunkCompletionResponse
+    返回 App 输出的流式块，`Content-Type` 为 `text/event-stream`。
+    每个流式块均为 data: 开头，块之间以 `\n\n` 即两个换行符分隔，如下所示：
+    <CodeGroup>
+    ```streaming {{ title: 'Response' }}
+    data: {"event": "message", "task_id": "900bbd43-dc0b-4383-a372-aa6e6c414227", "id": "663c5084-a254-4040-8ad3-51f2a3c1a77c", "answer": "Hi", "created_at": 1705398420}\n\n
+    ```
+    </CodeGroup>
+    流式块中根据 `event` 不同，结构也不同，包含以下类型：
+    - `event: workflow_started` workflow 开始执行
+      - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+      - `workflow_run_id` (string) workflow 执行 ID
+      - `event` (string) 固定为 `workflow_started`
+      - `data` (object) 详细内容
+        - `id` (string) workflow 执行 ID
+        - `workflow_id` (string) 关联 Workflow ID
+        - `sequence_number` (int) 自增序号，App 内自增，从 1 开始
+        - `created_at` (timestamp) 开始时间
+    - `event: node_started` node 开始执行
+      - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+      - `workflow_run_id` (string) workflow 执行 ID
+      - `event` (string) 固定为 `node_started`
+      - `data` (object) 详细内容
+        - `id` (string) workflow 执行 ID
+        - `node_id` (string) 节点 ID
+        - `node_type` (string) 节点类型
+        - `title` (string) 节点名称
+        - `index` (int) 执行序号，用于展示 Tracing Node 顺序
+        - `predecessor_node_id` (string) 前置节点 ID，用于画布展示执行路径
+        - `inputs` (array[object]) 节点中所有使用到的前置节点变量内容
+        - `created_at` (timestamp) 开始时间
+    - `event: node_finished` node 执行结束，成功失败同一事件中不同状态
+      - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+      - `workflow_run_id` (string) workflow 执行 ID
+      - `event` (string) 固定为 `node_finished`
+      - `data` (object) 详细内容
+        - `id` (string) node 执行 ID
+        - `node_id` (string) 节点 ID
+        - `index` (int) 执行序号，用于展示 Tracing Node 顺序
+        - `predecessor_node_id` (string) optional 前置节点 ID，用于画布展示执行路径
+        - `inputs` (array[object]) 节点中所有使用到的前置节点变量内容
+        - `process_data` (json) Optional 节点过程数据
+        - `outputs` (json) Optional 输出内容
+        - `status` (string) 执行状态 `running` / `succeeded` / `failed` / `stopped`
+        - `error` (string) Optional 错误原因
+        - `elapsed_time` (float) Optional 耗时(s)
+        - `execution_metadata` (json) 元数据
+          - `total_tokens` (int) optional 总使用 tokens
+          - `total_price` (decimal) optional 总费用
+          - `currency` (string) optional 货币，如 `USD` / `RMB`
+        - `created_at` (timestamp) 开始时间
+    - `event: workflow_finished` workflow 执行结束，成功失败同一事件中不同状态
+      - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+      - `workflow_run_id` (string) workflow 执行 ID
+      - `event` (string) 固定为 `workflow_finished`
+      - `data` (object) 详细内容
+        - `id` (string) workflow 执行 ID
+        - `workflow_id` (string) 关联 Workflow ID
+        - `status` (string)  执行状态 `running` / `succeeded` / `failed` / `stopped`
+        - `outputs` (json) Optional 输出内容
+        - `error` (string) Optional 错误原因
+        - `elapsed_time` (float) Optional 耗时(s)
+        - `total_tokens` (int) Optional 总使用 tokens
+        - `total_steps` (int) 总步数（冗余），默认 0
+        - `created_at` (timestamp) 开始时间
+        - `finished_at` (timestamp) 结束时间
+    - `event: ping` 每 10s 一次的 ping 事件，保持连接存活。
+
+    ### Errors
+    - 400，`invalid_param`，传入参数异常
+    - 400，`app_unavailable`，App 配置不可用
+    - 400，`provider_not_initialize`，无可用模型凭据配置
+    - 400，`provider_quota_exceeded`，模型调用额度不足
+    - 400，`model_currently_not_support`，当前模型不可用
+    - 400，`workflow_request_error`，workflow 执行失败
+    - 500，服务内部异常
+
+  </Col>
+  <Col sticky>
+     <CodeGroup title="Request" tag="POST" label="/workflows/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/workflows/run' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "inputs": {},
+        "response_mode": "streaming",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+    ### Blocking Mode
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "workflow_run_id": "djflajgkldjgd",
+        "task_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+        "data": {
+            "id": "fdlsjfjejkghjda",
+            "workflow_id": "fldjaslkfjlsda",
+            "status": "succeeded",
+            "outputs": {
+              "text": "Nice to meet you."
+            },
+            "error": null,
+            "elapsed_time": 0.875,
+            "total_tokens": 3562,
+            "total_steps": 8,
+            "created_at": 1705407629,
+            "finished_at": 1727807631
+        }
+    }
+    ```
+    </CodeGroup>
+    ### Streaming Mode
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "sequence_number": 1, "created_at": 1679586595}}
+      data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
+      data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
+      data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
+    ```
+    </CodeGroup>
+
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflows/:task_id/stop'
+  method='POST'
+  title='停止响应'
+  name='#stop-generatebacks'
+/>
+<Row>
+  <Col>
+    仅支持流式模式。
+    ### Path
+    - `task_id` (string) 任务 ID，可在流式返回 Chunk 中获取
+    ### Request Body
+    - `user` (string) Required
+      用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+    ### Response
+    - `result` (string) 固定返回 "success"
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup title="Request" tag="POST" label="/workflows/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X POST '${props.appDetail.api_base_url}/workflows/:task_id/stop' \
+      -H 'Authorization: Bearer {api_key}' \
+      -H 'Content-Type: application/json' \
+      --data-raw '{
+          "user": "abc-123"
+      }'
+      ```
+    </CodeGroup>
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='获取应用配置信息'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    用于进入页面一开始，获取功能开关、输入参数名称、类型及默认值等使用。
+
+    ### Query
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+
+    ### Response
+    - `user_input_form` (array[object]) 用户输入表单配置
+      - `text-input` (object) 文本输入控件
+        - `label` (string) 控件展示标签名
+        - `variable` (string) 控件 ID
+        - `required` (bool) 是否必填
+        - `default` (string) 默认值
+      - `paragraph` (object) 段落文本输入控件
+        - `label` (string) 控件展示标签名
+        - `variable` (string) 控件 ID
+        - `required` (bool) 是否必填
+        - `default` (string) 默认值
+      - `select` (object) 下拉控件
+        - `label` (string) 控件展示标签名
+        - `variable` (string) 控件 ID
+        - `required` (bool) 是否必填
+        - `default` (string) 默认值
+        - `options` (array[string]) 选项值
+    - `file_upload` (object) 文件上传配置
+      - `image` (object) 图片设置
+        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`
+        - `enabled` (bool) 是否开启
+        - `number_limits` (int) 图片数量限制，默认 3
+        - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个
+    - `system_parameters` (object) 系统参数
+      - `image_file_size_limit` (string) 图片文件上传大小限制（MB）
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "user_input_form": [
+          {
+              "paragraph": {
+                  "label": "Query",
+                  "variable": "query",
+                  "required": true,
+                  "default": ""
+              }
+          }
+      ],
+      "file_upload": {
+          "image": {
+              "enabled": false,
+              "number_limits": 3,
+              "detail": "high",
+              "transfer_methods": [
+                  "remote_url",
+                  "local_file"
+              ]
+          }
+      },
+      "system_parameters": {
+          "image_file_size_limit": "10"
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>

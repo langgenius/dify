@@ -10,8 +10,7 @@ import { CollectionType } from '../types'
 import TooltipPlus from '../../base/tooltip-plus'
 import I18n from '@/context/i18n'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
-import { getModelRuntimeSupported } from '@/utils/language'
-
+import { getLanguage } from '@/i18n/language'
 type Props = {
   collection: Collection
   icon: JSX.Element
@@ -33,11 +32,14 @@ const Item: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
+  const language = getLanguage(locale)
+
   const isBuiltIn = collection.type === CollectionType.builtIn
-  const canShowDetail = !isBuiltIn || (isBuiltIn && isInToolsPage)
+  const isModel = collection.type === CollectionType.model
+  const canShowDetail = isInToolsPage
   const [showDetail, setShowDetail] = useState(false)
   const addBtn = <Button className='shrink-0 flex items-center h-7 !px-3 !text-xs !font-medium !text-gray-700' disabled={added || !collection.is_team_authorization} onClick={() => onAdd?.(payload)}>{t(`common.operation.${added ? 'added' : 'add'}`)}</Button>
+
   return (
     <>
       <div
@@ -63,7 +65,7 @@ const Item: FC<Props> = ({
           )}
         </div>
       </div>
-      {showDetail && isBuiltIn && (
+      {showDetail && (
         <SettingBuiltInTool
           collection={collection}
           toolName={payload.name}
@@ -71,6 +73,8 @@ const Item: FC<Props> = ({
           onHide={() => {
             setShowDetail(false)
           }}
+          isBuiltIn={isBuiltIn}
+          isModel={isModel}
         />
       )}
     </>

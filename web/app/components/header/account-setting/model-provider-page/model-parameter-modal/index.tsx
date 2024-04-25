@@ -5,6 +5,7 @@ import type {
 import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import type {
   DefaultModel,
   FormValue,
@@ -33,6 +34,8 @@ import { TONE_LIST } from '@/config'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type ModelParameterModalProps = {
+  popupClassName?: string
+  portalToFollowElemContentClassName?: string
   isAdvancedMode: boolean
   mode: string
   modelId: string
@@ -40,9 +43,12 @@ export type ModelParameterModalProps = {
   setModel: (model: { modelId: string; provider: string; mode?: string; features?: string[] }) => void
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
-  debugWithMultipleModel: boolean
-  onDebugWithMultipleModelChange: () => void
+  hideDebugWithMultipleModel?: boolean
+  debugWithMultipleModel?: boolean
+  onDebugWithMultipleModelChange?: () => void
   renderTrigger?: (v: TriggerProps) => ReactNode
+  readonly?: boolean
+  isInWorkflow?: boolean
 }
 const stopParameerRule: ModelParameterRule = {
   default: [],
@@ -65,15 +71,20 @@ const stopParameerRule: ModelParameterRule = {
 
 const PROVIDER_WITH_PRESET_TONE = ['openai', 'azure_openai']
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
+  popupClassName,
+  portalToFollowElemContentClassName,
   isAdvancedMode,
   modelId,
   provider,
   setModel,
   completionParams,
   onCompletionParamsChange,
+  hideDebugWithMultipleModel,
   debugWithMultipleModel,
   onDebugWithMultipleModelChange,
   renderTrigger,
+  readonly,
+  isInWorkflow,
 }) => {
   const { t } = useTranslation()
   const { hasSettedApiKey } = useProviderContext()
@@ -82,7 +93,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const {
     currentProvider,
     currentModel,
-    textGenerationModelList,
+    activeTextGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(
     { provider, model: modelId },
   )
@@ -103,7 +114,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   }
 
   const handleChangeModel = ({ provider, model }: DefaultModel) => {
-    const targetProvider = textGenerationModelList.find(modelItem => modelItem.provider === provider)
+    const targetProvider = activeTextGenerationModelList.find(modelItem => modelItem.provider === provider)
     const targetModelItem = targetProvider?.models.find(modelItem => modelItem.model === model)
     setModel({
       modelId: model,
@@ -167,7 +178,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     >
       <div className='relative'>
         <PortalToFollowElemTrigger
-          onClick={() => setOpen(v => !v)}
+          onClick={() => {
+            if (readonly)
+              return
+            setOpen(v => !v)
+          }}
           className='block'
         >
           {
@@ -185,6 +200,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               : (
                 <Trigger
                   disabled={disabled}
+                  isInWorkflow={isInWorkflow}
                   modelDisabled={modelDisabled}
                   hasDeprecated={hasDeprecated}
                   currentProvider={currentProvider}
@@ -195,17 +211,21 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[60]'>
-          <div className='w-[496px] rounded-xl border border-gray-100 bg-white shadow-xl'>
-            <div className='max-h-[480px] px-10 pt-6 pb-8 overflow-y-auto'>
+        <PortalToFollowElemContent className={cn(portalToFollowElemContentClassName, 'z-[60]')}>
+          <div className={cn(popupClassName, 'w-[496px] rounded-xl border border-gray-100 bg-white shadow-xl')}>
+            <div className={cn(
+              'max-h-[480px]  overflow-y-auto',
+              !isInWorkflow && 'px-10 pt-6 pb-8',
+              isInWorkflow && 'p-4')}>
               <div className='flex items-center justify-between h-8'>
-                <div className='font-semibold text-gray-900'>
+                <div className={cn('font-semibold text-gray-900 shrink-0', isInWorkflow && 'text-[13px]')}>
                   {t('common.modelProvider.model').toLocaleUpperCase()}
                 </div>
                 <ModelSelector
                   defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
-                  modelList={textGenerationModelList}
+                  modelList={activeTextGenerationModelList}
                   onSelect={handleChangeModel}
+                  triggerClassName='max-w-[295px]'
                 />
               </div>
               {
@@ -221,7 +241,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               {
                 !isLoading && !!parameterRules.length && (
                   <div className='flex items-center justify-between mb-4'>
-                    <div className='text-gray-900 font-semibold'>{t('common.modelProvider.parameters')}</div>
+                    <div className={cn('font-semibold text-gray-900', isInWorkflow && 'text-[13px]')}>{t('common.modelProvider.parameters')}</div>
                     {
                       PROVIDER_WITH_PRESET_TONE.includes(provider) && (
                         <PresetsParameter onSelect={handleSelectPresetParameter} />
@@ -243,22 +263,25 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                       value={completionParams[parameter.name]}
                       onChange={v => handleParamChange(parameter.name, v)}
                       onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
+                      isInWorkflow={isInWorkflow}
                     />
                   ))
                 )
               }
             </div>
-            <div
-              className='flex items-center justify-between px-6 h-[50px] bg-gray-50 border-t border-t-gray-100 text-xs font-medium text-primary-600 cursor-pointer rounded-b-xl'
-              onClick={() => onDebugWithMultipleModelChange()}
-            >
-              {
-                debugWithMultipleModel
-                  ? t('appDebug.debugAsSingleModel')
-                  : t('appDebug.debugAsMultipleModel')
-              }
-              <ArrowNarrowLeft className='w-3 h-3 rotate-180' />
-            </div>
+            {!hideDebugWithMultipleModel && (
+              <div
+                className='flex items-center justify-between px-6 h-[50px] bg-gray-50 border-t border-t-gray-100 text-xs font-medium text-primary-600 cursor-pointer rounded-b-xl'
+                onClick={() => onDebugWithMultipleModelChange?.()}
+              >
+                {
+                  debugWithMultipleModel
+                    ? t('appDebug.debugAsSingleModel')
+                    : t('appDebug.debugAsMultipleModel')
+                }
+                <ArrowNarrowLeft className='w-3 h-3 rotate-180' />
+              </div>
+            )}
           </div>
         </PortalToFollowElemContent>
       </div>

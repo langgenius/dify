@@ -6,8 +6,8 @@ import click
 from celery import shared_task
 from werkzeug.exceptions import NotFound
 
-from core.index.index import IndexBuilder
 from core.indexing_runner import DocumentIsPausedException, IndexingRunner
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
@@ -33,7 +33,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         raise NotFound('Document not found')
 
     document.indexing_status = 'parsing'
-    document.processing_started_at = datetime.datetime.utcnow()
+    document.processing_started_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
     db.session.commit()
 
     # delete all document segment and index
@@ -42,19 +42,14 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         if not dataset:
             raise Exception('Dataset not found')
 
-        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
-        kw_index = IndexBuilder.get_index(dataset, 'economy')
+        index_type = document.doc_form
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
         index_node_ids = [segment.index_node_id for segment in segments]
 
         # delete from vector index
-        if vector_index:
-            vector_index.delete_by_ids(index_node_ids)
-
-        # delete from keyword index
-        if index_node_ids:
-            kw_index.delete_by_ids(index_node_ids)
+        index_processor.clean(dataset, index_node_ids)
 
         for segment in segments:
             db.session.delete(segment)

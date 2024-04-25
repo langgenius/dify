@@ -71,10 +71,14 @@ export default function AccountPage() {
       showErrorMessage(t('login.error.passwordEmpty'))
       return false
     }
-    if (!validPassword.test(password))
+    if (!validPassword.test(password)) {
       showErrorMessage(t('login.error.passwordInvalid'))
-    if (password !== confirmPassword)
+      return false
+    }
+    if (password !== confirmPassword) {
       showErrorMessage(t('common.account.notEqual'))
+      return false
+    }
 
     return true
   }

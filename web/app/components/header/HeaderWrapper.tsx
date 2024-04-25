@@ -11,7 +11,7 @@ const HeaderWrapper = ({
   children,
 }: HeaderWrapperProps) => {
   const pathname = usePathname()
-  const isBordered = ['/apps', '/datasets'].includes(pathname)
+  const isBordered = ['/apps', '/datasets', '/datasets/create'].includes(pathname)
 
   return (
     <div className={classNames(

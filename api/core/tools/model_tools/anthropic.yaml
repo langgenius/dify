@@ -1,0 +1,20 @@
+provider: anthropic
+label:
+  en_US: Anthropic Model Tools
+  zh_Hans: Anthropic 模型能力
+  pt_BR: Anthropic Model Tools
+models:
+  - type: llm
+    model: claude-3-sonnet-20240229
+    label:
+      zh_Hans: Claude3 Sonnet 视觉
+      en_US: Claude3 Sonnet Vision
+    properties:
+      image_parameter_name: image_id
+  - type: llm
+    model: claude-3-opus-20240229
+    label:
+      zh_Hans: Claude3 Opus 视觉
+      en_US: Claude3 Opus Vision
+    properties:
+      image_parameter_name: image_id

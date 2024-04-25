@@ -105,6 +105,12 @@ class Account(UserMixin, db.Model):
     def is_admin_or_owner(self):
         return self._current_tenant.current_role in ['admin', 'owner']
 
+
+class TenantStatus(str, enum.Enum):
+    NORMAL = 'normal'
+    ARCHIVE = 'archive'
+
+
 class Tenant(db.Model):
     __tablename__ = 'tenants'
     __table_args__ = (

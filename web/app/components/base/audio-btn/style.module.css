@@ -8,9 +8,3 @@
   background-position: center;
   background-repeat: no-repeat;
 }
-
-.stopIcon {
-  background-position: center;
-  background-repeat: no-repeat;
-  background-image: url(~@/app/components/develop/secret-key/assets/stop.svg);
-}

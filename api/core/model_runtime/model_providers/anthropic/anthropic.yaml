@@ -2,8 +2,8 @@ provider: anthropic
 label:
   en_US: Anthropic
 description:
-  en_US: Anthropic’s powerful models, such as Claude 2 and Claude Instant.
-  zh_Hans: Anthropic 的强大模型，例如 Claude 2 和 Claude Instant。
+  en_US: Anthropic’s powerful models, such as Claude 3.
+  zh_Hans: Anthropic 的强大模型，例如 Claude 3。
 icon_small:
   en_US: icon_s_en.svg
 icon_large:

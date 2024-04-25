@@ -1,6 +1,6 @@
 import json
 
-from langchain.schema import OutputParserException
+from core.llm_generator.output_parser.errors import OutputParserException
 
 
 def parse_json_markdown(json_string: str) -> dict:

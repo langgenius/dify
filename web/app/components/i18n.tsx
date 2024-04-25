@@ -5,7 +5,7 @@ import React, { useEffect } from 'react'
 import { changeLanguage } from '@/i18n/i18next-config'
 import I18NContext from '@/context/i18n'
 import type { Locale } from '@/i18n'
-import { setLocaleOnClient } from '@/i18n/client'
+import { setLocaleOnClient } from '@/i18n'
 
 export type II18nProps = {
   locale: Locale

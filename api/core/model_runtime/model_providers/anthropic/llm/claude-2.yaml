@@ -27,8 +27,11 @@ parameter_rules:
     default: 4096
     min: 1
     max: 4096
+  - name: response_format
+    use_template: response_format
 pricing:
   input: '8.00'
   output: '24.00'
   unit: '0.000001'
   currency: USD
+deprecated: true

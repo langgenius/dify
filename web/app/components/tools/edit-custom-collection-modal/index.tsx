@@ -2,13 +2,12 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
 import { useDebounce, useGetState } from 'ahooks'
-import { clone } from 'lodash-es'
 import cn from 'classnames'
+import produce from 'immer'
 import { LinkExternal02, Settings01 } from '../../base/icons/src/vender/line/general'
 import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
-import { AuthType } from '../types'
+import { AuthHeaderPrefix, AuthType } from '../types'
 import GetSchema from './get-schema'
 import ConfigCredentials from './config-credentials'
 import TestApi from './test-api'
@@ -37,6 +36,7 @@ const EditCustomCollectionModal: FC<Props> = ({
   const { t } = useTranslation()
   const isAdd = !payload
   const isEdit = !!payload
+
   const [editFirst, setEditFirst] = useState(!isAdd)
   const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>(payload?.tools || [])
   const [customCollection, setCustomCollection, getCustomCollection] = useGetState<CustomCollectionBackend>(isAdd
@@ -44,6 +44,8 @@ const EditCustomCollectionModal: FC<Props> = ({
       provider: '',
       credentials: {
         auth_type: AuthType.none,
+        api_key_header: 'Authorization',
+        api_key_header_prefix: AuthHeaderPrefix.basic,
       },
       icon: {
         content: '🕵️',
@@ -113,8 +115,17 @@ const EditCustomCollectionModal: FC<Props> = ({
   const [isShowTestApi, setIsShowTestApi] = useState(false)
 
   const handleSave = () => {
-    const postData = clone(customCollection)
-    delete postData.tools
+    // const postData = clone(customCollection)
+    const postData = produce(customCollection, (draft) => {
+      delete draft.tools
+
+      if (draft.credentials.auth_type === AuthType.none) {
+        delete draft.credentials.api_key_header
+        delete draft.credentials.api_key_header_prefix
+        delete draft.credentials.api_key_value
+      }
+    })
+
     if (isAdd) {
       onAdd?.(postData)
       return

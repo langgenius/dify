@@ -44,9 +44,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         用户输入/提问内容。
       </Property>
       <Property name='inputs' type='object' key='inputs'>
-        (选填)允许传入 App 定义的各变量值。
+        允许传入 App 定义的各变量值。
         inputs 参数包含了多组键值对（Key/Value pairs），每组的键对应一个特定变量，每组的值则是该变量的具体值。
-
+        默认 `{}`
       </Property>
       <Property name='response_mode' type='string' key='response_mode'>
         - `streaming` 流式模式（推荐）。基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现类似打字机输出方式的流式返回。
@@ -71,7 +71,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
           - `upload_file_id` 上传文件 ID。（仅当传递方式为 `local_file `时）。
       </Property>
       <Property name='auto_generate_name' type='bool' key='auto_generate_name'>
-      （选填）自动生成标题，默认 `false`。 可通过调用会话重命名接口并设置 `auto_generate` 为 `true` 实现异步生成标题。
+      （选填）自动生成标题，默认 `true`。 若设置为 `false`，则可通过调用会话重命名接口并设置 `auto_generate` 为 `true` 实现异步生成标题。
       </Property>
     </Properties>
 
@@ -360,9 +360,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   - `result` (string) 固定返回 success
   </Col>
   <Col sticky>
-  <CodeGroup title="Request" tag="POST" label="/chat-messages/:task_id/stop" targetCode={`curl -X POST 'https://cloud.dify.ai/v1/chat-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{ "user": "abc-123"}'`}>
+  <CodeGroup title="Request" tag="POST" label="/chat-messages/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{ "user": "abc-123"}'`}>
     ```bash {{ title: 'cURL' }}
-    curl -X POST 'https://cloud.dify.ai/v1/chat-messages/:task_id/stop' \
+    curl -X POST '${props.appDetail.api_base_url}/chat-messages/:task_id/stop' \
     -H 'Authorization: Bearer {api_key}' \
     -H 'Content-Type: application/json' \
     --data-raw '{
@@ -439,6 +439,62 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     </CodeGroup>
   </Col>
 </Row>
+
+---
+
+<Heading
+  url='/messages/{message_id}/suggested'
+  method='GET'
+  title='获取下一轮建议问题列表'
+  name='#suggested'
+/>
+<Row>
+  <Col>
+    获取下一轮建议问题列表。
+
+    ### Path Params
+
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+        Message ID
+      </Property>
+    </Properties>
+
+    ### Query
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/messages/{message_id}/suggested" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested?user=abc-123 \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Content-Type: application/json' \
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success",
+      "data": [
+            "a",
+            "b",
+            "c"
+        ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
 
 ---
 
@@ -1022,9 +1078,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - (string) 图标URL
   </Col>
   <Col>
-  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET 'https://cloud.dify.ai/v1/meta?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+  <CodeGroup title="Request" tag="POST" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
     ```bash {{ title: 'cURL' }}
-    curl -X GET 'https://cloud.dify.ai/v1/meta?user=abc-123' \
+    curl -X GET '${props.appDetail.api_base_url}/meta?user=abc-123' \
     -H 'Authorization: Bearer {api_key}'
     ```
 

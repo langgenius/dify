@@ -5,7 +5,7 @@
   @apply truncate text-gray-700 text-sm font-normal;
 }
 .iconWrapper {
-  @apply relative w-6 h-6 bg-[#D5F5F6] rounded-md;
+  @apply relative w-6 h-6 rounded-lg;
 }
 .statusPoint {
   @apply flex justify-center items-center absolute -right-0.5 -bottom-0.5 w-2.5 h-2.5 bg-white rounded;

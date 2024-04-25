@@ -1,4 +1,3 @@
-import importlib
 from abc import abstractmethod
 from os import listdir, path
 from typing import Any
@@ -16,6 +15,7 @@ from core.tools.errors import (
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
+from core.utils.module_import_helper import load_single_subclass_from_source
 
 
 class BuiltinToolProviderController(ToolProviderController):
@@ -63,16 +63,12 @@ class BuiltinToolProviderController(ToolProviderController):
                 tool_name = tool_file.split(".")[0]
                 tool = load(f.read(), FullLoader)
                 # get tool class, import the module
-                py_path = path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, 'tools', f'{tool_name}.py')
-                spec = importlib.util.spec_from_file_location(f'core.tools.provider.builtin.{provider}.tools.{tool_name}', py_path)
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-
-                # get all the classes in the module
-                classes = [x for _, x in vars(mod).items() 
-                    if isinstance(x, type) and x not in [BuiltinTool, Tool] and issubclass(x, BuiltinTool)
-                ]
-                assistant_tool_class = classes[0]
+                assistant_tool_class = load_single_subclass_from_source(
+                    module_name=f'core.tools.provider.builtin.{provider}.tools.{tool_name}',
+                    script_path=path.join(path.dirname(path.realpath(__file__)),
+                                           'builtin', provider, 'tools', f'{tool_name}.py'),
+                    parent_type=BuiltinTool)
+                tool["identity"]["provider"] = provider
                 tools.append(assistant_tool_class(**tool))
 
         self.tools = tools
@@ -131,7 +127,8 @@ class BuiltinToolProviderController(ToolProviderController):
 
             :return: whether the provider needs credentials
         """
-        return self.credentials_schema is not None and len(self.credentials_schema) != 0
+        return self.credentials_schema is not None and \
+            len(self.credentials_schema) != 0
 
     @property
     def app_type(self) -> ToolProviderType:
@@ -246,8 +243,27 @@ class BuiltinToolProviderController(ToolProviderController):
                 
                 if credentials[credential_name] not in [x.value for x in options]:
                     raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be one of {options}')
-            
-            if credentials[credential_name]:
+            elif credential_schema.type == ToolProviderCredentials.CredentialsType.BOOLEAN:
+                if isinstance(credentials[credential_name], bool):
+                    pass
+                elif isinstance(credentials[credential_name], str):
+                    if credentials[credential_name].lower() == 'true':
+                        credentials[credential_name] = True
+                    elif credentials[credential_name].lower() == 'false':
+                        credentials[credential_name] = False
+                    else:
+                        raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be boolean')
+                elif isinstance(credentials[credential_name], int):
+                    if credentials[credential_name] == 1:
+                        credentials[credential_name] = True
+                    elif credentials[credential_name] == 0:
+                        credentials[credential_name] = False
+                    else:
+                        raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be boolean')
+                else:
+                    raise ToolProviderCredentialValidationError(f'credential {credential_schema.label.en_US} should be boolean')
+
+            if credentials[credential_name] or credentials[credential_name] == False:
                 credentials_need_to_validate.pop(credential_name)
 
         for credential_name in credentials_need_to_validate:

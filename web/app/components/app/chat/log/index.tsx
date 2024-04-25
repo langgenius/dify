@@ -1,74 +1,41 @@
-import type { Dispatch, FC, ReactNode, RefObject, SetStateAction } from 'react'
-import { useEffect, useState } from 'react'
+import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { uniqueId } from 'lodash-es'
 import { File02 } from '@/app/components/base/icons/src/vender/line/files'
-import PromptLogModal from '@/app/components/base/prompt-log-modal'
-import Tooltip from '@/app/components/base/tooltip'
-
-export type LogData = {
-  role: string
-  text: string
-}
+import type { IChatItem } from '@/app/components/app/chat/type'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type LogProps = {
-  containerRef: RefObject<HTMLElement>
-  log: LogData[]
-  children?: (v: Dispatch<SetStateAction<boolean>>) => ReactNode
+  logItem: IChatItem
 }
 const Log: FC<LogProps> = ({
-  containerRef,
-  children,
-  log,
+  logItem,
 }) => {
   const { t } = useTranslation()
-  const [showModal, setShowModal] = useState(false)
-  const [width, setWidth] = useState(0)
-
-  const adjustModalWidth = () => {
-    if (containerRef.current)
-      setWidth(document.body.clientWidth - (containerRef.current?.clientWidth + 56 + 16))
-  }
-
-  useEffect(() => {
-    adjustModalWidth()
-  }, [])
+  const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
+  const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
+  const setShowAgentLogModal = useAppStore(s => s.setShowAgentLogModal)
+  const setShowMessageLogModal = useAppStore(s => s.setShowMessageLogModal)
+  const { workflow_run_id: runID, agent_thoughts } = logItem
+  const isAgent = agent_thoughts && agent_thoughts.length > 0
 
   return (
-    <>
-      {
-        children
-          ? children(setShowModal)
-          : (
-            <Tooltip selector={`prompt-log-modal-trigger-${uniqueId()}`} content={t('common.operation.log') || ''}>
-              <div className={`
-                hidden absolute -left-[14px] -top-[14px] group-hover:block w-7 h-7
-                p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-md cursor-pointer
-              `}>
-                <div
-                  className='flex items-center justify-center rounded-md w-full h-full hover:bg-gray-100'
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setShowModal(true)
-                  }
-                  }
-                >
-                  <File02 className='w-4 h-4 text-gray-500' />
-                </div>
-              </div>
-            </Tooltip>
-          )
-      }
-      {
-        showModal && (
-          <PromptLogModal
-            width={width}
-            log={log}
-            onCancel={() => setShowModal(false)}
-          />
-        )
-      }
-    </>
+    <div
+      className='shrink-0 p-1 flex items-center justify-center rounded-[6px] font-medium text-gray-500 hover:bg-gray-50 cursor-pointer hover:text-gray-700'
+      onClick={(e) => {
+        e.stopPropagation()
+        e.nativeEvent.stopImmediatePropagation()
+        setCurrentLogItem(logItem)
+        if (runID)
+          setShowMessageLogModal(true)
+        else if (isAgent)
+          setShowAgentLogModal(true)
+        else
+          setShowPromptLogModal(true)
+      }}
+    >
+      <File02 className='mr-1 w-4 h-4' />
+      <div className='text-xs leading-4'>{runID ? t('appLog.viewLog') : isAgent ? t('appLog.agentLog') : t('appLog.promptLog')}</div>
+    </div>
   )
 }
 

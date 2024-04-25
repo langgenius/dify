@@ -113,7 +113,7 @@ const BatchModal: FC<IBatchModalProps> = ({
           type="primary"
           onClick={handleSend}
           disabled={isAnnotationFull || !currentCSV}
-          loading={importStatus === ProcessStatus.PROCESSING}
+          loading={importStatus === ProcessStatus.PROCESSING || importStatus === ProcessStatus.WAITING}
         >
           {t('appAnnotation.batchModal.run')}
         </Button>

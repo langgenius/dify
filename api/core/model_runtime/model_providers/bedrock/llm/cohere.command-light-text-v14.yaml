@@ -22,7 +22,7 @@ parameter_rules:
     min: 0
     max: 500
     default: 0
-  - name: max_tokens_to_sample
+  - name: max_tokens
     use_template: max_tokens
     required: true
     default: 4096

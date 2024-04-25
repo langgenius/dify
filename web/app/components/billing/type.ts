@@ -17,6 +17,7 @@ export type PlanInfo = {
   teamMembers: number
   buildApps: number
   vectorSpace: number
+  documentsUploadQuota: number
   documentProcessingPriority: Priority
   logHistory: number
   customTools: string | number

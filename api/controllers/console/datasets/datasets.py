@@ -15,6 +15,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
+from core.rag.extractor.entity.extract_setting import ExtractSetting
 from extensions.ext_database import db
 from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
@@ -47,11 +48,14 @@ class DatasetListApi(Resource):
         limit = request.args.get('limit', default=20, type=int)
         ids = request.args.getlist('ids')
         provider = request.args.get('provider', default="vendor")
+        search = request.args.get('keyword', default=None, type=str)
+        tag_ids = request.args.getlist('tag_ids')
+
         if ids:
             datasets, total = DatasetService.get_datasets_by_ids(ids, current_user.current_tenant_id)
         else:
             datasets, total = DatasetService.get_datasets(page, limit, provider,
-                                                          current_user.current_tenant_id, current_user)
+                                                          current_user.current_tenant_id, current_user, search, tag_ids)
 
         # check embedding setting
         provider_manager = ProviderManager()
@@ -178,11 +182,15 @@ class DatasetApi(Resource):
                             location='json', store_missing=False,
                             type=_validate_description_length)
         parser.add_argument('indexing_technique', type=str, location='json',
-                    choices=Dataset.INDEXING_TECHNIQUE_LIST,
-                    nullable=True,
-                    help='Invalid indexing technique.')
+                            choices=Dataset.INDEXING_TECHNIQUE_LIST,
+                            nullable=True,
+                            help='Invalid indexing technique.')
         parser.add_argument('permission', type=str, location='json', choices=(
             'only_me', 'all_team_members'), help='Invalid permission.')
+        parser.add_argument('embedding_model', type=str,
+                            location='json', help='Invalid embedding model.')
+        parser.add_argument('embedding_model_provider', type=str,
+                            location='json', help='Invalid embedding model provider.')
         parser.add_argument('retrieval_model', type=dict, location='json', help='Invalid retrieval model.')
         args = parser.parse_args()
 
@@ -258,7 +266,7 @@ class DatasetIndexingEstimateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('info_list', type=dict, required=True, nullable=True, location='json')
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
-        parser.add_argument('indexing_technique', type=str, required=True, 
+        parser.add_argument('indexing_technique', type=str, required=True,
                             choices=Dataset.INDEXING_TECHNIQUE_LIST,
                             nullable=True, location='json')
         parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
@@ -268,6 +276,7 @@ class DatasetIndexingEstimateApi(Resource):
         args = parser.parse_args()
         # validate args
         DocumentService.estimate_args_validate(args)
+        extract_settings = []
         if args['info_list']['data_source_type'] == 'upload_file':
             file_ids = args['info_list']['file_info_list']['file_ids']
             file_details = db.session.query(UploadFile).filter(
@@ -278,37 +287,45 @@ class DatasetIndexingEstimateApi(Resource):
             if file_details is None:
                 raise NotFound("File not found.")
 
-            indexing_runner = IndexingRunner()
-
-            try:
-                response = indexing_runner.file_indexing_estimate(current_user.current_tenant_id, file_details,
-                                                                  args['process_rule'], args['doc_form'],
-                                                                  args['doc_language'], args['dataset_id'],
-                                                                  args['indexing_technique'])
-            except LLMBadRequestError:
-                raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider.")
-            except ProviderTokenNotInitError as ex:
-                raise ProviderNotInitializeError(ex.description)
+            if file_details:
+                for file_detail in file_details:
+                    extract_setting = ExtractSetting(
+                        datasource_type="upload_file",
+                        upload_file=file_detail,
+                        document_model=args['doc_form']
+                    )
+                    extract_settings.append(extract_setting)
         elif args['info_list']['data_source_type'] == 'notion_import':
-
-            indexing_runner = IndexingRunner()
-
-            try:
-                response = indexing_runner.notion_indexing_estimate(current_user.current_tenant_id,
-                                                                    args['info_list']['notion_info_list'],
-                                                                    args['process_rule'], args['doc_form'],
-                                                                    args['doc_language'], args['dataset_id'],
-                                                                    args['indexing_technique'])
-            except LLMBadRequestError:
-                raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider.")
-            except ProviderTokenNotInitError as ex:
-                raise ProviderNotInitializeError(ex.description)
+            notion_info_list = args['info_list']['notion_info_list']
+            for notion_info in notion_info_list:
+                workspace_id = notion_info['workspace_id']
+                for page in notion_info['pages']:
+                    extract_setting = ExtractSetting(
+                        datasource_type="notion_import",
+                        notion_info={
+                            "notion_workspace_id": workspace_id,
+                            "notion_obj_id": page['page_id'],
+                            "notion_page_type": page['type'],
+                            "tenant_id": current_user.current_tenant_id
+                        },
+                        document_model=args['doc_form']
+                    )
+                    extract_settings.append(extract_setting)
         else:
             raise ValueError('Data source type not support')
+        indexing_runner = IndexingRunner()
+        try:
+            response = indexing_runner.indexing_estimate(current_user.current_tenant_id, extract_settings,
+                                                         args['process_rule'], args['doc_form'],
+                                                         args['doc_language'], args['dataset_id'],
+                                                         args['indexing_technique'])
+        except LLMBadRequestError:
+            raise ProviderNotInitializeError(
+                "No Embedding Model available. Please configure a valid provider "
+                "in the Settings -> Model Provider.")
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+
         return response, 200
 
 
@@ -496,10 +513,27 @@ class DatasetRetrievalSettingMockApi(Resource):
         else:
             raise ValueError("Unsupported vector db type.")
 
+class DatasetErrorDocs(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id):
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        results = DocumentService.get_error_documents_by_dataset_id(dataset_id_str)
+
+        return {
+            'data': [marshal(item, document_status_fields) for item in results],
+            'total': len(results)
+        }, 200
+
 
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
+api.add_resource(DatasetErrorDocs, '/datasets/<uuid:dataset_id>/error-docs')
 api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
 api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/related-apps')
 api.add_resource(DatasetIndexingStatusApi, '/datasets/<uuid:dataset_id>/indexing-status')
@@ -508,4 +542,3 @@ api.add_resource(DatasetApiDeleteApi, '/datasets/api-keys/<uuid:api_key_id>')
 api.add_resource(DatasetApiBaseUrlApi, '/datasets/api-base-info')
 api.add_resource(DatasetRetrievalSettingApi, '/datasets/retrieval-setting')
 api.add_resource(DatasetRetrievalSettingMockApi, '/datasets/retrieval-setting/<string:vector_type>')
-

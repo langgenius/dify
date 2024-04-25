@@ -28,6 +28,7 @@ class DocumentAddByTextApi(DatasetApiResource):
     """Resource for documents."""
 
     @cloud_edition_billing_resource_check('vector_space', 'dataset')
+    @cloud_edition_billing_resource_check('documents', 'dataset')
     def post(self, tenant_id, dataset_id):
         """Create document by text."""
         parser = reqparse.RequestParser()
@@ -153,6 +154,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
 class DocumentAddByFileApi(DatasetApiResource):
     """Resource for documents."""
     @cloud_edition_billing_resource_check('vector_space', 'dataset')
+    @cloud_edition_billing_resource_check('documents', 'dataset')
     def post(self, tenant_id, dataset_id):
         """Create document by upload file."""
         args = {}
@@ -172,7 +174,7 @@ class DocumentAddByFileApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError('Dataset is not exist.')
-        if not dataset.indexing_technique and not args['indexing_technique']:
+        if not dataset.indexing_technique and not args.get('indexing_technique'):
             raise ValueError('indexing_technique is required.')
 
         # save file info

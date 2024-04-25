@@ -8,14 +8,18 @@ import Drawer from '@/app/components/base/drawer-plus'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import type { Collection, Tool } from '@/app/components/tools/types'
-import { fetchBuiltInToolList } from '@/service/tools'
+import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList } from '@/service/tools'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { DiagonalDividingLine } from '@/app/components/base/icons/src/public/common'
-import { getModelRuntimeSupported } from '@/utils/language'
+import { getLanguage } from '@/i18n/language'
+import AppIcon from '@/app/components/base/app-icon'
+
 type Props = {
   collection: Collection
+  isBuiltIn?: boolean
+  isModel?: boolean
   toolName: string
   setting?: Record<string, any>
   readonly?: boolean
@@ -25,6 +29,8 @@ type Props = {
 
 const SettingBuiltInTool: FC<Props> = ({
   collection,
+  isBuiltIn = true,
+  isModel = true,
   toolName,
   setting = {},
   readonly,
@@ -32,7 +38,7 @@ const SettingBuiltInTool: FC<Props> = ({
   onSave,
 }) => {
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
+  const language = getLanguage(locale)
   const { t } = useTranslation()
 
   const [isLoading, setIsLoading] = useState(true)
@@ -52,7 +58,16 @@ const SettingBuiltInTool: FC<Props> = ({
     (async () => {
       setIsLoading(true)
       try {
-        const list = await fetchBuiltInToolList(collection.name)
+        const list = await new Promise<Tool[]>((resolve) => {
+          (async function () {
+            if (isModel)
+              resolve(await fetchModelToolList(collection.name))
+            else if (isBuiltIn)
+              resolve(await fetchBuiltInToolList(collection.name))
+            else
+              resolve(await fetchCustomToolList(collection.name))
+          }())
+        })
         setTools(list)
         const currTool = list.find(tool => tool.name === toolName)
         if (currTool) {
@@ -116,7 +131,7 @@ const SettingBuiltInTool: FC<Props> = ({
     </div>
   )
 
-  const setttingUI = (
+  const settingUI = (
     <Form
       value={tempSetting}
       onChange={setTempSetting}
@@ -135,12 +150,24 @@ const SettingBuiltInTool: FC<Props> = ({
       onHide={onHide}
       title={(
         <div className='flex'>
-          <div
-            className='w-6 h-6 bg-cover bg-center rounded-md'
-            style={{
-              backgroundImage: `url(${collection.icon})`,
-            }}
-          ></div>
+          {collection.icon === 'string'
+            ? (
+              <div
+                className='w-6 h-6 bg-cover bg-center rounded-md'
+                style={{
+                  backgroundImage: `url(${collection.icon})`,
+                }}
+              ></div>
+            )
+            : (
+              <AppIcon
+                className='rounded-md'
+                size='tiny'
+                icon={(collection.icon as any)?.content}
+                background={(collection.icon as any)?.background}
+              />
+            )}
+
           <div className='ml-2 leading-6 text-base font-semibold text-gray-900'>{currTool?.label[language]}</div>
           {(hasSetting && !readonly) && (<>
             <DiagonalDividingLine className='mx-4' />
@@ -174,7 +201,7 @@ const SettingBuiltInTool: FC<Props> = ({
             </div>
             : (<div className='flex flex-col h-full'>
               <div className='grow h-0 overflow-y-auto  px-6'>
-                {isInfoActive ? infoUI : setttingUI}
+                {isInfoActive ? infoUI : settingUI}
               </div>
               {!readonly && !isInfoActive && (
                 <div className='mt-2 shrink-0 flex justify-end py-4 px-6  space-x-2 rounded-b-[10px] bg-gray-50 border-t border-black/5'>

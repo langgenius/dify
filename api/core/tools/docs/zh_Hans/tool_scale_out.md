@@ -119,7 +119,7 @@ parameters: # 参数列表
 - `identity` 字段是必须的，它包含了工具的基本信息，包括名称、作者、标签、描述等
 - `parameters` 参数列表
     - `name` 参数名称，唯一，不允许和其他参数重名
-    - `type` 参数类型，目前支持`string`、`number`、`boolean`、`select` 四种类型，分别对应字符串、数字、布尔值、下拉框
+    - `type` 参数类型，目前支持`string`、`number`、`boolean`、`select`、`secret-input` 五种类型，分别对应字符串、数字、布尔值、下拉框、加密输入框，对于敏感信息，我们建议使用`secret-input`类型
     - `required` 是否必填
         - 在`llm`模式下，如果参数为必填，则会要求Agent必须要推理出这个参数
         - 在`form`模式下，如果参数为必填，则会要求用户在对话开始前在前端填写这个参数

@@ -16,7 +16,7 @@ import { useAppContext } from '@/context/app-context'
 import { ArrowUpRight, ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
-import { LanguagesSupportedUnderscore, getModelRuntimeSupported } from '@/utils/language'
+import { LanguagesSupported } from '@/i18n/language'
 export type IAppSelecotr = {
   isMobile: boolean
 }
@@ -30,7 +30,6 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
   const [aboutVisible, setAboutVisible] = useState(false)
 
   const { locale } = useContext(I18n)
-  const language = getModelRuntimeSupported(locale)
   const { t } = useTranslation()
   const { userProfile, langeniusVersionInfo } = useAppContext()
   const { setShowAccountSettingModal } = useModalContext()
@@ -40,6 +39,10 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
       url: '/logout',
       params: {},
     })
+
+    if (localStorage?.getItem('console_token'))
+      localStorage.removeItem('console_token')
+
     router.push('/signin')
   }
 
@@ -104,7 +107,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                     <Menu.Item>
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
-                        href='https://feedback.dify.ai/'
+                        href='https://github.com/langgenius/dify/discussions/categories/feedbacks'
                         target='_blank' rel='noopener noreferrer'>
                         <div>{t('common.userProfile.roadmapAndFeedback')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
@@ -123,7 +126,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
                         href={
-                          language !== LanguagesSupportedUnderscore[1] ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
+                          locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
                         }
                         target='_blank' rel='noopener noreferrer'>
                         <div>{t('common.userProfile.helpCenter')}</div>

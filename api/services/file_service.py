@@ -9,8 +9,8 @@ from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
-from core.data_loader.file_extractor import FileExtractor
 from core.file.upload_file_parser import UploadFileParser
+from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Account
@@ -20,9 +20,10 @@ from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
 
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv'] + IMAGE_EXTENSIONS
-UNSTRUSTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx',
-                                   'docx', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml'] + IMAGE_EXTENSIONS
+ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'xls', 'docx', 'csv']
+UNSTRUSTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'xls',
+                                   'docx', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml', 'epub']
+
 PREVIEW_WORDS_LIMIT = 3000
 
 
@@ -32,7 +33,8 @@ class FileService:
     def upload_file(file: FileStorage, user: Union[Account, EndUser], only_image: bool = False) -> UploadFile:
         extension = file.filename.split('.')[-1]
         etl_type = current_app.config['ETL_TYPE']
-        allowed_extensions = UNSTRUSTURED_ALLOWED_EXTENSIONS if etl_type == 'Unstructured' else ALLOWED_EXTENSIONS
+        allowed_extensions = UNSTRUSTURED_ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS if etl_type == 'Unstructured' \
+            else ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS
         if extension.lower() not in allowed_extensions:
             raise UnsupportedFileTypeError()
         elif only_image and extension.lower() not in IMAGE_EXTENSIONS:
@@ -79,7 +81,7 @@ class FileService:
             mime_type=file.mimetype,
             created_by_role=('account' if isinstance(user, Account) else 'end_user'),
             created_by=user.id,
-            created_at=datetime.datetime.utcnow(),
+            created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
             used=False,
             hash=hashlib.sha3_256(file_content).hexdigest()
         )
@@ -109,10 +111,10 @@ class FileService:
             extension='txt',
             mime_type='text/plain',
             created_by=current_user.id,
-            created_at=datetime.datetime.utcnow(),
+            created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
             used=True,
             used_by=current_user.id,
-            used_at=datetime.datetime.utcnow()
+            used_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         )
 
         db.session.add(upload_file)
@@ -136,7 +138,7 @@ class FileService:
         if extension.lower() not in allowed_extensions:
             raise UnsupportedFileTypeError()
 
-        text = FileExtractor.load(upload_file, return_text=True)
+        text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
         text = text[0:PREVIEW_WORDS_LIMIT] if text else ''
 
         return text
@@ -164,7 +166,7 @@ class FileService:
         return generator, upload_file.mime_type
 
     @staticmethod
-    def get_public_image_preview(file_id: str) -> str:
+    def get_public_image_preview(file_id: str) -> tuple[Generator, str]:
         upload_file = db.session.query(UploadFile) \
             .filter(UploadFile.id == file_id) \
             .first()

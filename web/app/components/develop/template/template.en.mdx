@@ -42,13 +42,13 @@ The text generation application offers non-session support and is ideal for tran
     ### Request Body
 
     <Properties>
-      <Property name='query' type='string' key='query'>
-        User Input/Question content
-      </Property>
+      
       <Property name='inputs' type='object' key='inputs'>
           Allows the entry of various variable values defined by the App.
           The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
           The text generation application requires at least one key/value pair to be inputted.
+          - `query` (string) Required
+            The input text, the content to be processed.
       </Property>
       <Property name='response_mode' type='string' key='response_mode'>
         The mode of response return, supporting:
@@ -138,14 +138,16 @@ The text generation application offers non-session support and is ideal for tran
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming"\n    "user": "abc-123"\n}'\n`}>
+    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": {"query": "Hello, world!"},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/completion-messages' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
-        "inputs": {},
+        "inputs": {
+          "query": "Hello, world!"
+        },
         "response_mode": "streaming",
         "user": "abc-123"
     }'
@@ -289,9 +291,9 @@ The text generation application offers non-session support and is ideal for tran
   </Col>
   <Col sticky>
   ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/completion-messages/:task_id/stop" targetCode={`curl -X POST 'https://cloud.dify.ai/v1/completion-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{ "user": "abc-123"}'`}>
+  <CodeGroup title="Request" tag="POST" label="/completion-messages/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{ "user": "abc-123"}'`}>
     ```bash {{ title: 'cURL' }}
-    curl -X POST 'https://cloud.dify.ai/v1/completion-messages/:task_id/stop' \
+    curl -X POST '${props.appDetail.api_base_url}/completion-messages/:task_id/stop' \
     -H 'Authorization: Bearer {api_key}' \
     -H 'Content-Type: application/json' \
     --data-raw '{

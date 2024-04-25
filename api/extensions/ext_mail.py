@@ -32,8 +32,6 @@ class Mail:
                 from libs.smtp import SMTPClient
                 if not app.config.get('SMTP_SERVER') or not app.config.get('SMTP_PORT'):
                     raise ValueError('SMTP_SERVER and SMTP_PORT are required for smtp mail type')
-                if not app.config.get('SMTP_USERNAME') or not app.config.get('SMTP_PASSWORD'):
-                    raise ValueError('SMTP_USERNAME and SMTP_PASSWORD are required for smtp mail type')
                 self._client = SMTPClient(
                     server=app.config.get('SMTP_SERVER'),
                     port=app.config.get('SMTP_PORT'),

@@ -1,12 +1,12 @@
 from collections.abc import Sequence
 from typing import Any, Optional, cast
 
-from langchain.schema import Document
 from sqlalchemy import func
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment
 
@@ -84,7 +84,7 @@ class DatasetDocumentStore:
             if not isinstance(doc, Document):
                 raise ValueError("doc must be a Document")
 
-            segment_document = self.get_document(doc_id=doc.metadata['doc_id'], raise_error=False)
+            segment_document = self.get_document_segment(doc_id=doc.metadata['doc_id'])
 
             # NOTE: doc could already exist in the store, but we overwrite it
             if not allow_update and segment_document:

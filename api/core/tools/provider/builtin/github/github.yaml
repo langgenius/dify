@@ -9,7 +9,7 @@ identity:
     en_US: GitHub is an online software source code hosting service.
     zh_Hans: GitHub是一个在线软件源代码托管服务平台。
     pt_BR: GitHub é uma plataforma online para serviços de hospedagem de código fonte de software.
-  icon: icon.png
+  icon: icon.svg
 credentials_for_provider:
   access_tokens:
     type: secret-input

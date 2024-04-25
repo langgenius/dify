@@ -24,10 +24,13 @@ jobs:
           python-version: '3.10'
 
       - name: Python dependencies
-        run: pip install ruff
+        run: pip install ruff dotenv-linter
 
       - name: Ruff check
         run: ruff check ./api
+
+      - name: Dotenv check
+        run: dotenv-linter ./api/.env.example ./web/.env.example
 
       - name: Lint hints
         if: failure()
@@ -41,6 +44,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup NodeJS
         uses: actions/setup-node@v4
@@ -60,11 +65,10 @@ jobs:
           yarn run lint
 
       - name: Super-linter
-        uses: super-linter/super-linter/slim@v5
+        uses: super-linter/super-linter/slim@v6
         env:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: main
-          ERROR_ON_MISSING_EXEC_BIT: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IGNORE_GENERATED_FILES: true
           IGNORE_GITIGNORED_FILES: true

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import {
   HandThumbDownIcon,
@@ -12,6 +12,7 @@ import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
 import { createContext, useContext } from 'use-context-selector'
+import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import s from './style.module.css'
@@ -35,10 +36,14 @@ import ModelName from '@/app/components/header/account-setting/model-provider-pa
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
+import AgentLogModal from '@/app/components/base/agent-log-modal'
+import PromptLogModal from '@/app/components/base/prompt-log-modal'
+import MessageLogModal from '@/app/components/base/message-log-modal'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
-  appDetail?: App
+  appDetail: App
   onRefresh: () => void
 }
 
@@ -73,14 +78,13 @@ const PARAM_MAP = {
 }
 
 // Format interface data for easy display
-const getFormattedChatList = (messages: ChatMessage[]) => {
+const getFormattedChatList = (messages: ChatMessage[], conversationId: string) => {
   const newChatList: IChatItem[] = []
   messages.forEach((item: ChatMessage) => {
     newChatList.push({
       id: `question-${item.id}`,
       content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
       isAnswer: false,
-      log: item.message as any,
       message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
     })
     newChatList.push({
@@ -92,6 +96,24 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
       feedbackDisabled: false,
       isAnswer: true,
       message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+      log: [
+        ...item.message,
+        ...(item.message[item.message.length - 1]?.role !== 'assistant'
+          ? [
+            {
+              role: 'assistant',
+              text: item.answer,
+              files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+            },
+          ]
+          : []),
+      ],
+      workflow_run_id: item.workflow_run_id,
+      conversationId,
+      input: {
+        inputs: item.inputs,
+        query: item.query,
+      },
       more: {
         time: dayjs.unix(item.created_at).format('hh:mm A'),
         tokens: item.answer_tokens + item.message_tokens,
@@ -133,6 +155,16 @@ type IDetailPanel<T> = {
 
 function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionConversationFullDetailResponse>({ detail, onFeedback }: IDetailPanel<T>) {
   const { onClose, appDetail } = useContext(DrawerContext)
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal, showMessageLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
+    currentLogItem: state.currentLogItem,
+    setCurrentLogItem: state.setCurrentLogItem,
+    showPromptLogModal: state.showPromptLogModal,
+    setShowPromptLogModal: state.setShowPromptLogModal,
+    showAgentLogModal: state.showAgentLogModal,
+    setShowAgentLogModal: state.setShowAgentLogModal,
+    showMessageLogModal: state.showMessageLogModal,
+    setShowMessageLogModal: state.setShowMessageLogModal,
+  })))
   const { t } = useTranslation()
   const [items, setItems] = React.useState<IChatItem[]>([])
   const [hasMore, setHasMore] = useState(true)
@@ -156,7 +188,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         const varValues = messageRes.data[0].inputs
         setVarValues(varValues)
       }
-      const newItems = [...getFormattedChatList(messageRes.data), ...items]
+      const newItems = [...getFormattedChatList(messageRes.data, detail.id), ...items]
       if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
         newItems.unshift({
           id: 'introduction',
@@ -175,11 +207,12 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   }
 
   useEffect(() => {
-    if (appDetail?.id && detail.id && appDetail?.mode === 'chat')
+    if (appDetail?.id && detail.id && appDetail?.mode !== 'completion')
       fetchData()
   }, [appDetail?.id, detail.id, appDetail?.mode])
 
-  const isChatMode = appDetail?.mode === 'chat'
+  const isChatMode = appDetail?.mode !== 'completion'
+  const isAdvanced = appDetail?.mode === 'advanced-chat'
 
   const targetTone = TONE_LIST.find((item: any) => {
     let res = true
@@ -189,21 +222,21 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     return res
   })?.name ?? 'custom'
 
-  const modelName = (detail.model_config as any).model.name
-  const provideName = (detail.model_config as any).model.provider as any
+  const modelName = (detail.model_config as any).model?.name
+  const provideName = (detail.model_config as any).model?.provider as any
   const {
     currentModel,
     currentProvider,
   } = useTextGenerationCurrentProviderAndModelAndModelList(
     { provider: provideName, model: modelName },
   )
-  const varList = (detail.model_config as any).user_input_form.map((item: any) => {
+  const varList = (detail.model_config as any).user_input_form?.map((item: any) => {
     const itemContent = item[Object.keys(item)[0]]
     return {
       label: itemContent.variable,
       value: varValues[itemContent.variable] || detail.message?.inputs?.[itemContent.variable],
     }
-  })
+  }) || []
   const message_files = (!isChatMode && detail.message.message_files && detail.message.message_files.length > 0)
     ? detail.message.message_files.map((item: any) => item.url)
     : []
@@ -220,144 +253,192 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     return value
   }
 
-  return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
-    {/* Panel Header */}
-    <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
-      <div>
-        <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
-        <div className='text-gray-700 text-[13px] leading-[18px]'>{isChatMode ? detail.id?.split('-').slice(-1)[0] : dayjs.unix(detail.created_at).format(t('appLog.dateTimeFormat') as string)}</div>
-      </div>
-      <div className='flex items-center flex-wrap gap-y-1 justify-end'>
-        <div
-          className={cn('mr-2 flex items-center border h-8 px-2 space-x-2 rounded-lg bg-indigo-25 border-[#2A87F5]')}
-        >
-          <ModelIcon
-            className='!w-5 !h-5'
-            provider={currentProvider}
-            modelName={currentModel?.model}
-          />
-          <ModelName
-            modelItem={currentModel!}
-            showMode
-          />
+  const [width, setWidth] = useState(0)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const adjustModalWidth = () => {
+    if (ref.current)
+      setWidth(document.body.clientWidth - (ref.current?.clientWidth + 16) - 8)
+  }
+
+  useEffect(() => {
+    adjustModalWidth()
+  }, [])
+
+  return (
+    <div ref={ref} className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
+      {/* Panel Header */}
+      <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
+        <div>
+          <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
+          <div className='text-gray-700 text-[13px] leading-[18px]'>{isChatMode ? detail.id?.split('-').slice(-1)[0] : dayjs.unix(detail.created_at).format(t('appLog.dateTimeFormat') as string)}</div>
         </div>
-        <Popover
-          position='br'
-          className='!w-[280px]'
-          btnClassName='mr-4 !bg-gray-50 !py-1.5 !px-2.5 border-none font-normal'
-          btnElement={<>
-            <span className='text-[13px]'>{targetTone}</span>
-            <InformationCircleIcon className='h-4 w-4 text-gray-800 ml-1.5' />
-          </>}
-          htmlContent={<div className='w-[280px]'>
-            <div className='flex justify-between py-2 px-4 font-medium text-sm text-gray-700'>
-              <span>Tone of responses</span>
-              <div>{targetTone}</div>
-            </div>
-            {['temperature', 'top_p', 'presence_penalty', 'max_tokens', 'stop'].map((param: string, index: number) => {
-              return <div className='flex justify-between py-2 px-4 bg-gray-50' key={index}>
-                <span className='text-xs text-gray-700'>{PARAM_MAP[param as keyof typeof PARAM_MAP]}</span>
-                <span className='text-gray-800 font-medium text-xs'>{getParamValue(param)}</span>
+        <div className='flex items-center flex-wrap gap-y-1 justify-end'>
+          {!isAdvanced && (
+            <>
+              <div
+                className={cn('mr-2 flex items-center border h-8 px-2 space-x-2 rounded-lg bg-indigo-25 border-[#2A87F5]')}
+              >
+                <ModelIcon
+                  className='!w-5 !h-5'
+                  provider={currentProvider}
+                  modelName={currentModel?.model}
+                />
+                <ModelName
+                  modelItem={currentModel!}
+                  showMode
+                />
               </div>
-            })}
-          </div>}
-        />
-        <div className='w-6 h-6 rounded-lg flex items-center justify-center hover:cursor-pointer hover:bg-gray-100'>
-          <XMarkIcon className='w-4 h-4 text-gray-500' onClick={onClose} />
+              <Popover
+                position='br'
+                className='!w-[280px]'
+                btnClassName='mr-4 !bg-gray-50 !py-1.5 !px-2.5 border-none font-normal'
+                btnElement={<>
+                  <span className='text-[13px]'>{targetTone}</span>
+                  <InformationCircleIcon className='h-4 w-4 text-gray-800 ml-1.5' />
+                </>}
+                htmlContent={<div className='w-[280px]'>
+                  <div className='flex justify-between py-2 px-4 font-medium text-sm text-gray-700'>
+                    <span>Tone of responses</span>
+                    <div>{targetTone}</div>
+                  </div>
+                  {['temperature', 'top_p', 'presence_penalty', 'max_tokens', 'stop'].map((param: string, index: number) => {
+                    return <div className='flex justify-between py-2 px-4 bg-gray-50' key={index}>
+                      <span className='text-xs text-gray-700'>{PARAM_MAP[param as keyof typeof PARAM_MAP]}</span>
+                      <span className='text-gray-800 font-medium text-xs'>{getParamValue(param)}</span>
+                    </div>
+                  })}
+                </div>}
+              />
+            </>
+          )}
+          <div className='w-6 h-6 rounded-lg flex items-center justify-center hover:cursor-pointer hover:bg-gray-100'>
+            <XMarkIcon className='w-4 h-4 text-gray-500' onClick={onClose} />
+          </div>
         </div>
-      </div>
 
-    </div>
-    {/* Panel Body */}
-    {(varList.length > 0 || (!isChatMode && message_files.length > 0)) && (
-      <div className='px-6 pt-4 pb-2'>
-        <VarPanel
-          varList={varList}
-          message_files={message_files}
-        />
       </div>
-    )}
-
-    {!isChatMode
-      ? <div className="px-6 py-4">
-        <div className='flex h-[18px] items-center space-x-3'>
-          <div className='leading-[18px] text-xs font-semibold text-gray-500 uppercase'>{t('appLog.table.header.output')}</div>
-          <div className='grow h-[1px]' style={{
-            background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
-          }}></div>
+      {/* Panel Body */}
+      {(varList.length > 0 || (!isChatMode && message_files.length > 0)) && (
+        <div className='px-6 pt-4 pb-2'>
+          <VarPanel
+            varList={varList}
+            message_files={message_files}
+          />
         </div>
-        <TextGeneration
-          className='mt-2'
-          content={detail.message.answer}
-          messageId={detail.message.id}
-          isError={false}
-          onRetry={() => { }}
-          isInstalledApp={false}
-          supportFeedback
-          feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
-          onFeedback={feedback => onFeedback(detail.message.id, feedback)}
-          supportAnnotation
-          isShowTextToSpeech
-          appId={appDetail?.id}
-          varList={varList}
-        />
-      </div>
-      : items.length < 8
-        ? <div className="px-2.5 pt-4 mb-4">
-          <Chat
-            chatList={items}
-            isHideSendInput={true}
-            onFeedback={onFeedback}
-            displayScene='console'
-            isShowPromptLog
+      )}
+
+      {!isChatMode
+        ? <div className="px-6 py-4">
+          <div className='flex h-[18px] items-center space-x-3'>
+            <div className='leading-[18px] text-xs font-semibold text-gray-500 uppercase'>{t('appLog.table.header.output')}</div>
+            <div className='grow h-[1px]' style={{
+              background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
+            }}></div>
+          </div>
+          <TextGeneration
+            className='mt-2'
+            content={detail.message.answer}
+            messageId={detail.message.id}
+            isError={false}
+            onRetry={() => { }}
+            isInstalledApp={false}
+            supportFeedback
+            feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
+            onFeedback={feedback => onFeedback(detail.message.id, feedback)}
             supportAnnotation
             isShowTextToSpeech
             appId={appDetail?.id}
-            onChatListChange={setItems}
+            varList={varList}
           />
         </div>
-        : <div
-          className="px-2.5 py-4"
-          id="scrollableDiv"
-          style={{
-            height: 1000, // Specify a value
-            overflow: 'auto',
-            display: 'flex',
-            flexDirection: 'column-reverse',
-          }}>
-          {/* Put the scroll bar always on the bottom */}
-          <InfiniteScroll
-            scrollableTarget="scrollableDiv"
-            dataLength={items.length}
-            next={fetchData}
-            hasMore={hasMore}
-            loader={<div className='text-center text-gray-400 text-xs'>{t('appLog.detail.loading')}...</div>}
-            // endMessage={<div className='text-center'>Nothing more to show</div>}
-            // below props only if you need pull down functionality
-            refreshFunction={fetchData}
-            pullDownToRefresh
-            pullDownToRefreshThreshold={50}
-            // pullDownToRefreshContent={
-            //   <div className='text-center'>Pull down to refresh</div>
-            // }
-            // releaseToRefreshContent={
-            //   <div className='text-center'>Release to refresh</div>
-            // }
-            // To put endMessage and loader to the top.
-            style={{ display: 'flex', flexDirection: 'column-reverse' }}
-            inverse={true}
-          >
+        : items.length < 8
+          ? <div className="px-2.5 pt-4 mb-4">
             <Chat
               chatList={items}
               isHideSendInput={true}
               onFeedback={onFeedback}
               displayScene='console'
               isShowPromptLog
+              supportAnnotation
+              isShowTextToSpeech
+              appId={appDetail?.id}
+              onChatListChange={setItems}
             />
-          </InfiniteScroll>
-        </div>
-    }
-  </div>)
+          </div>
+          : <div
+            className="px-2.5 py-4"
+            id="scrollableDiv"
+            style={{
+              height: 1000, // Specify a value
+              overflow: 'auto',
+              display: 'flex',
+              flexDirection: 'column-reverse',
+            }}>
+            {/* Put the scroll bar always on the bottom */}
+            <InfiniteScroll
+              scrollableTarget="scrollableDiv"
+              dataLength={items.length}
+              next={fetchData}
+              hasMore={hasMore}
+              loader={<div className='text-center text-gray-400 text-xs'>{t('appLog.detail.loading')}...</div>}
+              // endMessage={<div className='text-center'>Nothing more to show</div>}
+              // below props only if you need pull down functionality
+              refreshFunction={fetchData}
+              pullDownToRefresh
+              pullDownToRefreshThreshold={50}
+              // pullDownToRefreshContent={
+              //   <div className='text-center'>Pull down to refresh</div>
+              // }
+              // releaseToRefreshContent={
+              //   <div className='text-center'>Release to refresh</div>
+              // }
+              // To put endMessage and loader to the top.
+              style={{ display: 'flex', flexDirection: 'column-reverse' }}
+              inverse={true}
+            >
+              <Chat
+                chatList={items}
+                isHideSendInput={true}
+                onFeedback={onFeedback}
+                displayScene='console'
+                isShowPromptLog
+              />
+            </InfiniteScroll>
+          </div>
+      }
+      {showPromptLogModal && (
+        <PromptLogModal
+          width={width}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowPromptLogModal(false)
+          }}
+        />
+      )}
+      {showAgentLogModal && (
+        <AgentLogModal
+          width={width}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowAgentLogModal(false)
+          }}
+        />
+      )}
+      {showMessageLogModal && (
+        <MessageLogModal
+          width={width}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowMessageLogModal(false)
+          }}
+        />
+      )}
+    </div>
+  )
 }
 
 /**
@@ -460,7 +541,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
   const [currentConversation, setCurrentConversation] = useState<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>() // Currently selected conversation
-  const isChatMode = appDetail?.mode === 'chat' // Whether the app is a chat app
+  const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
 
   // Annotated data needs to be highlighted
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
@@ -552,15 +633,15 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'
+        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl'
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,
           appDetail,
         }}>
           {isChatMode
-            ? <ChatConversationDetailComp appId={appDetail?.id} conversationId={currentConversation?.id} />
-            : <CompletionConversationDetailComp appId={appDetail?.id} conversationId={currentConversation?.id} />
+            ? <ChatConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />
+            : <CompletionConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />
           }
         </DrawerContext.Provider>
       </Drawer>

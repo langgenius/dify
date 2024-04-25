@@ -1,14 +1,15 @@
-import React, { useCallback, useState } from 'react'
+import React, { useEffect } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import NavLink from './navLink'
 import type { NavIcon } from './navLink'
 import AppBasic from './basic'
+import AppInfo from './app-info'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import {
   AlignLeft01,
   AlignRight01,
 } from '@/app/components/base/icons/src/vender/line/layout'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { APP_SIDEBAR_SHOULD_COLLAPSE } from '@/app/components/app/configuration/debug/types'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 export type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset' | 'notion'
@@ -26,28 +27,24 @@ export type IAppDetailNavProps = {
 }
 
 const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInfo, iconType = 'app' }: IAppDetailNavProps) => {
-  const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
+  const { appSidebarExpand, setAppSiderbarExpand } = useAppStore(useShallow(state => ({
+    appSidebarExpand: state.appSidebarExpand,
+    setAppSiderbarExpand: state.setAppSiderbarExpand,
+  })))
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const mode = isMobile ? 'collapse' : 'expand'
-  const [modeState, setModeState] = useState(isMobile ? mode : localeMode)
-  const expand = modeState === 'expand'
+  const expand = appSidebarExpand === 'expand'
 
-  const handleToggle = useCallback(() => {
-    setModeState((prev) => {
-      const next = prev === 'expand' ? 'collapse' : 'expand'
-      localStorage.setItem('app-detail-collapse-or-expand', next)
-      return next
-    })
-  }, [])
+  const handleToggle = (state: string) => {
+    setAppSiderbarExpand(state === 'expand' ? 'collapse' : 'expand')
+  }
 
-  const { eventEmitter } = useEventEmitterContextContext()
-  eventEmitter?.useSubscription((v: any) => {
-    if (v.type === APP_SIDEBAR_SHOULD_COLLAPSE) {
-      setModeState('collapse')
-      localStorage.setItem('app-detail-collapse-or-expand', 'collapse')
+  useEffect(() => {
+    if (appSidebarExpand) {
+      localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
+      setAppSiderbarExpand(appSidebarExpand)
     }
-  })
+  }, [appSidebarExpand, setAppSiderbarExpand])
 
   return (
     <div
@@ -59,18 +56,26 @@ const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInf
       <div
         className={`
           shrink-0
-          ${expand ? 'p-4' : 'p-2'}
+          ${expand ? 'p-3' : 'p-2'}
         `}
       >
-        <AppBasic
-          mode={modeState}
-          iconType={iconType}
-          icon={icon}
-          icon_background={icon_background}
-          name={title}
-          type={desc}
-        />
+        {iconType === 'app' && (
+          <AppInfo expand={expand}/>
+        )}
+        {iconType !== 'app' && (
+          <AppBasic
+            mode={appSidebarExpand}
+            iconType={iconType}
+            icon={icon}
+            icon_background={icon_background}
+            name={title}
+            type={desc}
+          />
+        )}
       </div>
+      {!expand && (
+        <div className='mt-1 mx-auto w-6 h-[1px] bg-gray-100'/>
+      )}
       <nav
         className={`
           grow space-y-1 bg-white
@@ -79,10 +84,10 @@ const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInf
       >
         {navigation.map((item, index) => {
           return (
-            <NavLink key={index} mode={modeState} iconMap={{ selected: item.selectedIcon, normal: item.icon }} name={item.name} href={item.href} />
+            <NavLink key={index} mode={appSidebarExpand} iconMap={{ selected: item.selectedIcon, normal: item.icon }} name={item.name} href={item.href} />
           )
         })}
-        {extraInfo && extraInfo(modeState)}
+        {extraInfo && extraInfo(appSidebarExpand)}
       </nav>
       {
         !isMobile && (
@@ -94,7 +99,7 @@ const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInf
           >
             <div
               className='flex items-center justify-center w-6 h-6 text-gray-500 cursor-pointer'
-              onClick={handleToggle}
+              onClick={() => handleToggle(appSidebarExpand)}
             >
               {
                 expand

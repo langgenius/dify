@@ -2,10 +2,11 @@
 import type { FC } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { setAutoFreeze } from 'immer'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
+import { useShallow } from 'zustand/react/shallow'
 import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
@@ -31,11 +32,13 @@ import { IS_CE_EDITION } from '@/config'
 import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
+import PromptLogModal from '@/app/components/base/prompt-log-modal'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type IDebug = {
   hasSetAPIKEY: boolean
@@ -84,7 +87,7 @@ const Debug: FC<IDebug> = ({
     setVisionConfig,
   } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
-  const { data: text2speechDefaultModel } = useDefaultModel(5)
+  const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
   useEffect(() => {
     setAutoFreeze(false)
@@ -93,7 +96,7 @@ const Debug: FC<IDebug> = ({
     }
   }, [])
 
-  const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
+  const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
   const [isShowFormattingChangeConfirm, setIsShowFormattingChangeConfirm] = useState(false)
   const [isShowCannotQueryDataset, setShowCannotQueryDataset] = useState(false)
 
@@ -130,12 +133,12 @@ const Debug: FC<IDebug> = ({
 
   const { notify } = useContext(ToastContext)
   const logError = useCallback((message: string) => {
-    notify({ type: 'error', message })
+    notify({ type: 'error', message, duration: 3000 })
   }, [notify])
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
 
   const checkCanSend = useCallback(() => {
-    if (isAdvancedMode && mode === AppType.chat) {
+    if (isAdvancedMode && mode !== AppType.completion) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
           notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })
@@ -191,7 +194,7 @@ const Debug: FC<IDebug> = ({
   const [messageId, setMessageId] = useState<string | null>(null)
 
   const sendTextCompletion = async () => {
-    if (isResponsing) {
+    if (isResponding) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
     }
@@ -277,7 +280,7 @@ const Debug: FC<IDebug> = ({
     setMessageId('')
     let res: string[] = []
 
-    setResponsingTrue()
+    setRespondingTrue()
     sendCompletionMessage(appId, data, {
       onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
         res.push(data)
@@ -289,10 +292,10 @@ const Debug: FC<IDebug> = ({
         setCompletionRes(res.join(''))
       },
       onCompleted() {
-        setResponsingFalse()
+        setRespondingFalse()
       },
       onError() {
-        setResponsingFalse()
+        setRespondingFalse()
       },
     })
   }
@@ -365,6 +368,24 @@ const Debug: FC<IDebug> = ({
     handleVisionConfigInMultipleModel()
   }, [multipleModelConfigs, mode])
 
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal } = useAppStore(useShallow(state => ({
+    currentLogItem: state.currentLogItem,
+    setCurrentLogItem: state.setCurrentLogItem,
+    showPromptLogModal: state.showPromptLogModal,
+    setShowPromptLogModal: state.setShowPromptLogModal,
+  })))
+  const [width, setWidth] = useState(0)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const adjustModalWidth = () => {
+    if (ref.current)
+      setWidth(document.body.clientWidth - (ref.current?.clientWidth + 16) - 8)
+  }
+
+  useEffect(() => {
+    adjustModalWidth()
+  }, [])
+
   return (
     <>
       <div className="shrink-0 pt-4 px-6">
@@ -391,7 +412,7 @@ const Debug: FC<IDebug> = ({
                 )
                 : null
             }
-            {mode === 'chat' && (
+            {mode !== AppType.completion && (
               <Button className='flex items-center gap-1 !h-8 !bg-white' onClick={clearConversation}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M2.66663 2.66629V5.99963H3.05463M3.05463 5.99963C3.49719 4.90505 4.29041 3.98823 5.30998 3.39287C6.32954 2.7975 7.51783 2.55724 8.68861 2.70972C9.85938 2.8622 10.9465 3.39882 11.7795 4.23548C12.6126 5.07213 13.1445 6.16154 13.292 7.33296M3.05463 5.99963H5.99996M13.3333 13.333V9.99963H12.946M12.946 9.99963C12.5028 11.0936 11.7093 12.0097 10.6898 12.6045C9.67038 13.1993 8.48245 13.4393 7.31203 13.2869C6.1416 13.1344 5.05476 12.5982 4.22165 11.7621C3.38854 10.926 2.8562 9.83726 2.70796 8.66629M12.946 9.99963H9.99996" stroke="#1C64F2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -426,9 +447,9 @@ const Debug: FC<IDebug> = ({
       }
       {
         !debugWithMultipleModel && (
-          <div className="flex flex-col grow">
+          <div className="flex flex-col grow" ref={ref}>
             {/* Chat */}
-            {mode === AppType.chat && (
+            {mode !== AppType.completion && (
               <div className='grow h-0 overflow-hidden'>
                 <DebugWithSingleModel
                   ref={debugWithSingleModelRef}
@@ -440,13 +461,13 @@ const Debug: FC<IDebug> = ({
             {mode === AppType.completion && (
               <div className="mt-6 px-6 pb-4">
                 <GroupName name={t('appDebug.result')} />
-                {(completionRes || isResponsing) && (
+                {(completionRes || isResponding) && (
                   <TextGeneration
                     className="mt-2"
                     content={completionRes}
-                    isLoading={!completionRes && isResponsing}
+                    isLoading={!completionRes && isResponding}
                     isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
-                    isResponsing={isResponsing}
+                    isResponding={isResponding}
                     isInstalledApp={false}
                     messageId={messageId}
                     isError={false}
@@ -457,6 +478,16 @@ const Debug: FC<IDebug> = ({
                   />
                 )}
               </div>
+            )}
+            {mode === AppType.completion && showPromptLogModal && (
+              <PromptLogModal
+                width={width}
+                currentLogItem={currentLogItem}
+                onCancel={() => {
+                  setCurrentLogItem()
+                  setShowPromptLogModal(false)
+                }}
+              />
             )}
             {isShowCannotQueryDataset && (
               <CannotQueryDataset

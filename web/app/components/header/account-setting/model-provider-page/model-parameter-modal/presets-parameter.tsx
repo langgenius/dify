@@ -57,7 +57,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
       renderTrigger={renderTrigger}
       items={options}
       onSelect={item => onSelect(item.value as number)}
-      popupClassName='z-[70]'
+      popupClassName='z-[1003]'
     />
   )
 }

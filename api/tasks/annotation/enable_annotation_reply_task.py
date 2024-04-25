@@ -4,10 +4,10 @@ import time
 
 import click
 from celery import shared_task
-from langchain.schema import Document
 from werkzeug.exceptions import NotFound
 
-from core.index.index import IndexBuilder
+from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -50,7 +50,7 @@ def enable_annotation_reply_task(job_id: str, app_id: str, user_id: str, tenant_
             annotation_setting.score_threshold = score_threshold
             annotation_setting.collection_binding_id = dataset_collection_binding.id
             annotation_setting.updated_user_id = user_id
-            annotation_setting.updated_at = datetime.datetime.utcnow()
+            annotation_setting.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.add(annotation_setting)
         else:
             new_app_annotation_setting = AppAnnotationSetting(
@@ -81,15 +81,15 @@ def enable_annotation_reply_task(job_id: str, app_id: str, user_id: str, tenant_
                     }
                 )
                 documents.append(document)
-            index = IndexBuilder.get_index(dataset, 'high_quality')
-            if index:
-                try:
-                    index.delete_by_metadata_field('app_id', app_id)
-                except Exception as e:
-                    logging.info(
-                        click.style('Delete annotation index error: {}'.format(str(e)),
-                                    fg='red'))
-                index.add_texts(documents)
+
+            vector = Vector(dataset, attributes=['doc_id', 'annotation_id', 'app_id'])
+            try:
+                vector.delete_by_metadata_field('app_id', app_id)
+            except Exception as e:
+                logging.info(
+                    click.style('Delete annotation index error: {}'.format(str(e)),
+                                fg='red'))
+            vector.create(documents)
         db.session.commit()
         redis_client.setex(enable_app_annotation_job_key, 600, 'completed')
         end_at = time.perf_counter()
