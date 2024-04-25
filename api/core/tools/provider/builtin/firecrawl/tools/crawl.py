@@ -1,5 +1,6 @@
-from firecrawl import FirecrawlApp
 from typing import Any, Union
+
+from firecrawl import FirecrawlApp
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -16,13 +17,13 @@ class CrawlTool(BuiltinTool):
         crawl_result = app.crawl_url(url, params=tool_parameters, wait_until_done=True, timeout=5)
         
         # reformat crawl result
-        crawl_output = f"**Crawl Result**\n\n"
+        crawl_output = "**Crawl Result**\n\n"
         for result in crawl_result:
             crawl_output += f"**Title:** {result['metadata']['title']}\n"
             crawl_output += f"**Description:** {result['metadata']['description']}\n"
             crawl_output += f"**URL:** {result['metadata']['ogUrl']}\n\n"
             crawl_output += f"**Web Content:**\n{result['markdown']}\n\n"
-            crawl_output += f"---\n\n"
+            crawl_output += "---\n\n"
 
 
         return self.create_text_message(crawl_output)
