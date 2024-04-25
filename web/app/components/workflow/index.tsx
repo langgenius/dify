@@ -142,8 +142,6 @@ const Workflow: FC<WorkflowProps> = memo(({
   } = useEdgesInteractions()
   const {
     isValidConnection,
-    enableShortcuts,
-    disableShortcuts,
   } = useWorkflow()
 
   useOnViewportChange({
@@ -152,7 +150,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     },
   })
 
-  useKeyPress(['delete'], handleNodeDeleteSelected)
+  useKeyPress(['delete', 'backspace'], handleNodeDeleteSelected)
   useKeyPress(['delete', 'backspace'], handleEdgeDelete)
   useKeyPress(['ctrl.c', 'meta.c'], handleNodeCopySelected)
   useKeyPress(['ctrl.x', 'meta.x'], handleNodeCut)
@@ -180,8 +178,6 @@ const Workflow: FC<WorkflowProps> = memo(({
         edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
-        onPointerDown={enableShortcuts}
-        onMouseLeave={disableShortcuts}
         onNodeDragStart={handleNodeDragStart}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
