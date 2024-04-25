@@ -50,6 +50,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleContextVarChange,
     filterInputVar,
     filterVar,
+    availableVars,
+    availableNodes,
     handlePromptChange,
     handleSyeQueryChange,
     handleMemoryChange,
@@ -210,21 +212,10 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 readOnly={readOnly}
                 isShowContext={false}
                 isChatApp
-                isChatModel={false}
-                justVar
-                // workflowVariableBlock={{
-                //   show: true,
-                //   variables: [{
-                //     nodeId: startNode?.id!,
-
-                //   }]
-                // }}
-                hasSetBlockStatus={{
-                  query: false,
-                  history: true,
-                  context: true,
-                }}
-                availableNodes={[startNode!]}
+                isChatModel
+                hasSetBlockStatus={hasSetBlockStatus}
+                nodesOutputVars={availableVars}
+                availableNodes={availableNodes}
               />
             </div>
           </div>

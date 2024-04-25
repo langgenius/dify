@@ -8,6 +8,7 @@ import {
   useIsChatMode,
   useNodesReadOnly,
 } from '../../hooks'
+import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import type { LLMNodeType } from './types'
 import { Resolution } from '@/types/app'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -266,6 +267,14 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     return [VarType.arrayObject, VarType.array, VarType.string].includes(varPayload.type)
   }, [])
 
+  const {
+    availableVars,
+    availableNodes,
+  } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar,
+  })
+
   // single run
   const {
     isShowSingleRun,
@@ -364,6 +373,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleContextVarChange,
     filterInputVar,
     filterVar,
+    availableVars,
+    availableNodes,
     handlePromptChange,
     handleMemoryChange,
     handleSyeQueryChange,
