@@ -86,10 +86,14 @@ class AbstractTestVector:
             ],
         )
 
+    def text_exists(self):
+        self.vector.text_exists(self.dataset_id)
+
     def run_all_test(self):
         self.create_vector()
         self.search_by_vector()
         self.search_by_full_text()
+        self.text_exists()
         self.add_texts()
         self.delete_by_ids()
         self.delete_vector()
