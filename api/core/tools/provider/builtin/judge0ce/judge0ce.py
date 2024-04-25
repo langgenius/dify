@@ -1,7 +1,7 @@
 from typing import Any
 
 from core.tools.errors import ToolProviderCredentialValidationError
-from core.tools.provider.builtin.judge0ce.tools.submitCodeExecutionTask import ExecuteCodeTool
+from core.tools.provider.builtin.judge0ce.tools.executeCode import ExecuteCodeTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
