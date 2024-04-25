@@ -232,7 +232,6 @@ const TagSelector: FC<TagSelectorProps> = ({
         <div className='grow text-xs text-start leading-[18px] font-normal truncate'>
           {!triggerContent ? t('common.tag.addTag') : triggerContent}
         </div>
-        <span className='hidden absolute top-[-21px] left-[50%] translate-x-[-50%] px-2 py-[3px] border-[0.5px] border-black/5 rounded-md bg-gray-25 text-gray-700 text-xs font-medium leading-[18px] group-hover/tip:block'>{t('common.tag.editTag')}</span>
       </div>
     )
   }
