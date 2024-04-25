@@ -2,7 +2,6 @@ import json
 from typing import Any, Union
 
 import requests
-
 from httpx import post
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
