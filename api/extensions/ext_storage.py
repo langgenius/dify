@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Union
 
 import boto3
+import oss2 as aliyun_s3
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
 from botocore.client import Config
 from botocore.exceptions import ClientError
@@ -42,7 +43,14 @@ class Storage:
             )
             self.client = BlobServiceClient(account_url=app.config.get('AZURE_BLOB_ACCOUNT_URL'),
                                             credential=sas_token)
-
+        elif self.storage_type == 'aliyun-oss':
+            self.bucket_name = app.config.get('ALIYUN_OSS_BUCKET_NAME')
+            self.client = aliyun_s3.Bucket(
+                aliyun_s3.Auth(app.config.get('ALIYUN_OSS_ACCESS_KEY'), app.config.get('ALIYUN_OSS_SECRET_KEY')),
+                app.config.get('ALIYUN_OSS_ENDPOINT'),
+                self.bucket_name,
+                connect_timeout=30
+            )
         else:
             self.folder = app.config.get('STORAGE_LOCAL_PATH')
             if not os.path.isabs(self.folder):
@@ -54,6 +62,8 @@ class Storage:
         elif self.storage_type == 'azure-blob':
             blob_container = self.client.get_container_client(container=self.bucket_name)
             blob_container.upload_blob(filename, data)
+        elif self.storage_type == 'aliyun-oss':
+            self.client.put_object(filename, data)
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
@@ -86,6 +96,9 @@ class Storage:
             blob = self.client.get_container_client(container=self.bucket_name)
             blob = blob.get_blob_client(blob=filename)
             data = blob.download_blob().readall()
+        elif self.storage_type == 'aliyun-oss':
+            with closing(self.client.get_object(filename)) as obj:
+                data = obj.read()
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
@@ -118,6 +131,10 @@ class Storage:
                 with closing(blob.download_blob()) as blob_stream:
                     while chunk := blob_stream.readall(4096):
                         yield chunk
+            elif self.storage_type == 'aliyun-oss':
+                with closing(self.client.get_object(filename)) as obj:
+                    while chunk := obj.read(4096):
+                        yield chunk
             else:
                 if not self.folder or self.folder.endswith('/'):
                     filename = self.folder + filename
@@ -142,6 +159,8 @@ class Storage:
             with open(target_filepath, "wb") as my_blob:
                 blob_data = blob.download_blob()
                 blob_data.readinto(my_blob)
+        elif self.storage_type == 'aliyun-oss':
+            self.client.get_object_to_file(filename, target_filepath)
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
@@ -164,6 +183,8 @@ class Storage:
         elif self.storage_type == 'azure-blob':
             blob = self.client.get_blob_client(container=self.bucket_name, blob=filename)
             return blob.exists()
+        elif self.storage_type == 'aliyun-oss':
+            return self.client.object_exists(filename)
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
@@ -178,6 +199,8 @@ class Storage:
         elif self.storage_type == 'azure-blob':
             blob_container = self.client.get_container_client(container=self.bucket_name)
             blob_container.delete_blob(filename)
+        elif self.storage_type == 'aliyun-oss':
+            self.client.delete_object(filename)
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
