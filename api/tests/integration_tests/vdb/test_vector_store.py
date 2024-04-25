@@ -74,9 +74,17 @@ class AbstractTestVector:
     def delete_by_ids(self):
         self.vector.delete_by_ids([self.dataset_id])
 
+    def add_texts(self):
+        self.vector.add_texts([
+            get_sample_document(str(uuid.uuid4())),
+            get_sample_document(str(uuid.uuid4())),
+        ])
+
+
     def run_all_test(self):
         self.create_vector()
         self.search_by_vector()
         self.search_by_full_text()
+        self.add_texts()
         self.delete_by_ids()
         self.delete_vector()
