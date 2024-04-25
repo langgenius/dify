@@ -48,11 +48,14 @@ class DatasetListApi(Resource):
         limit = request.args.get('limit', default=20, type=int)
         ids = request.args.getlist('ids')
         provider = request.args.get('provider', default="vendor")
+        search = request.args.get('keyword', default=None, type=str)
+        tag_ids = request.args.getlist('tag_ids')
+
         if ids:
             datasets, total = DatasetService.get_datasets_by_ids(ids, current_user.current_tenant_id)
         else:
             datasets, total = DatasetService.get_datasets(page, limit, provider,
-                                                          current_user.current_tenant_id, current_user)
+                                                          current_user.current_tenant_id, current_user, search, tag_ids)
 
         # check embedding setting
         provider_manager = ProviderManager()
@@ -184,6 +187,10 @@ class DatasetApi(Resource):
                             help='Invalid indexing technique.')
         parser.add_argument('permission', type=str, location='json', choices=(
             'only_me', 'all_team_members'), help='Invalid permission.')
+        parser.add_argument('embedding_model', type=str,
+                            location='json', help='Invalid embedding model.')
+        parser.add_argument('embedding_model_provider', type=str,
+                            location='json', help='Invalid embedding model provider.')
         parser.add_argument('retrieval_model', type=dict, location='json', help='Invalid retrieval model.')
         args = parser.parse_args()
 
@@ -506,10 +513,27 @@ class DatasetRetrievalSettingMockApi(Resource):
         else:
             raise ValueError("Unsupported vector db type.")
 
+class DatasetErrorDocs(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id):
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        results = DocumentService.get_error_documents_by_dataset_id(dataset_id_str)
+
+        return {
+            'data': [marshal(item, document_status_fields) for item in results],
+            'total': len(results)
+        }, 200
+
 
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
+api.add_resource(DatasetErrorDocs, '/datasets/<uuid:dataset_id>/error-docs')
 api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
 api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/related-apps')
 api.add_resource(DatasetIndexingStatusApi, '/datasets/<uuid:dataset_id>/indexing-status')

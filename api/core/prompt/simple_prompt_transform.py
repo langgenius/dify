@@ -55,6 +55,8 @@ class SimplePromptTransform(PromptTransform):
                    memory: Optional[TokenBufferMemory],
                    model_config: ModelConfigWithCredentialsEntity) -> \
             tuple[list[PromptMessage], Optional[list[str]]]:
+        inputs = {key: str(value) for key, value in inputs.items()}
+
         model_mode = ModelMode.value_of(model_config.mode)
         if model_mode == ModelMode.CHAT:
             prompt_messages, stops = self._get_chat_model_prompt_messages(

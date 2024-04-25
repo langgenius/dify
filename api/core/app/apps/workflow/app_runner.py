@@ -14,7 +14,7 @@ from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
-from models.model import App
+from models.model import App, EndUser
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -35,6 +35,14 @@ class WorkflowAppRunner:
         """
         app_config = application_generate_entity.app_config
         app_config = cast(WorkflowAppConfig, app_config)
+
+        user_id = None
+        if application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
+            end_user = db.session.query(EndUser).filter(EndUser.id == application_generate_entity.user_id).first()
+            if end_user:
+                user_id = end_user.session_id
+        else:
+            user_id = application_generate_entity.user_id
 
         app_record = db.session.query(App).filter(App.id == app_config.app_id).first()
         if not app_record:
@@ -67,7 +75,8 @@ class WorkflowAppRunner:
             else UserFrom.END_USER,
             user_inputs=inputs,
             system_inputs={
-                SystemVariable.FILES: files
+                SystemVariable.FILES: files,
+                SystemVariable.USER_ID: user_id
             },
             callbacks=workflow_callbacks
         )

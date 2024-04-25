@@ -121,18 +121,20 @@ class WeaviateVector(BaseVector):
         return ids
 
     def delete_by_metadata_field(self, key: str, value: str):
+        # check whether the index already exists
+        schema = self._default_schema(self._collection_name)
+        if self._client.schema.contains(schema):
+            where_filter = {
+                "operator": "Equal",
+                "path": [key],
+                "valueText": value
+            }
 
-        where_filter = {
-            "operator": "Equal",
-            "path": [key],
-            "valueText": value
-        }
-
-        self._client.batch.delete_objects(
-            class_name=self._collection_name,
-            where=where_filter,
-            output='minimal'
-        )
+            self._client.batch.delete_objects(
+                class_name=self._collection_name,
+                where=where_filter,
+                output='minimal'
+            )
 
     def delete(self):
         # check whether the index already exists
@@ -163,11 +165,14 @@ class WeaviateVector(BaseVector):
         return True
 
     def delete_by_ids(self, ids: list[str]) -> None:
-        for uuid in ids:
-            self._client.data_object.delete(
-                class_name=self._collection_name,
-                uuid=uuid,
-            )
+        # check whether the index already exists
+        schema = self._default_schema(self._collection_name)
+        if self._client.schema.contains(schema):
+            for uuid in ids:
+                self._client.data_object.delete(
+                    class_name=self._collection_name,
+                    uuid=uuid,
+                )
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """Look up similar documents by embedding vector in Weaviate."""

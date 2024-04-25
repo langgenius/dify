@@ -1,4 +1,6 @@
 import os
+import sys
+from logging.handlers import RotatingFileHandler
 
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     from gevent import monkey
@@ -17,10 +19,13 @@ import warnings
 
 from flask import Flask, Response, request
 from flask_cors import CORS
-
 from werkzeug.exceptions import Unauthorized
+
 from commands import register_commands
 from config import CloudEditionConfig, Config
+
+# DO NOT REMOVE BELOW
+from events import event_handlers
 from extensions import (
     ext_celery,
     ext_code_based_extension,
@@ -37,11 +42,8 @@ from extensions import (
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 from libs.passport import PassportService
-from services.account_service import AccountService
-
-# DO NOT REMOVE BELOW
-from events import event_handlers
 from models import account, dataset, model, source, task, tool, tools, web
+from services.account_service import AccountService
 
 # DO NOT REMOVE ABOVE
 
@@ -86,7 +88,25 @@ def create_app(test_config=None) -> Flask:
 
     app.secret_key = app.config['SECRET_KEY']
 
-    logging.basicConfig(level=app.config.get('LOG_LEVEL', 'INFO'))
+    log_handlers = None
+    log_file = app.config.get('LOG_FILE')
+    if log_file:
+        log_dir = os.path.dirname(log_file)
+        os.makedirs(log_dir, exist_ok=True)
+        log_handlers = [
+            RotatingFileHandler(
+                filename=log_file,
+                maxBytes=1024 * 1024 * 1024,
+                backupCount=5
+            ),
+            logging.StreamHandler(sys.stdout)
+        ]
+    logging.basicConfig(
+        level=app.config.get('LOG_LEVEL'),
+        format=app.config.get('LOG_FORMAT'),
+        datefmt=app.config.get('LOG_DATEFORMAT'),
+        handlers=log_handlers
+    )
 
     initialize_extensions(app)
     register_blueprints(app)
@@ -115,7 +135,7 @@ def initialize_extensions(app):
 @login_manager.request_loader
 def load_user_from_request(request_from_flask_login):
     """Load user based on the request."""
-    if request.blueprint == 'console':
+    if request.blueprint in ['console', 'inner_api']:
         # Check if the user_id contains a dot, indicating the old format
         auth_header = request.headers.get('Authorization', '')
         if not auth_header:
@@ -151,6 +171,7 @@ def unauthorized_handler():
 def register_blueprints(app):
     from controllers.console import bp as console_app_bp
     from controllers.files import bp as files_bp
+    from controllers.inner_api import bp as inner_api_bp
     from controllers.service_api import bp as service_api_bp
     from controllers.web import bp as web_bp
 
@@ -187,6 +208,8 @@ def register_blueprints(app):
          methods=['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'PATCH']
          )
     app.register_blueprint(files_bp)
+
+    app.register_blueprint(inner_api_bp)
 
 
 # create app

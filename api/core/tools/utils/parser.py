@@ -81,7 +81,7 @@ class ApiBasedToolSchemaParser:
                     for content_type, content in request_body['content'].items():
                         # if there is a reference, get the reference and overwrite the content
                         if 'schema' not in content:
-                            content
+                            continue
 
                         if '$ref' in content['schema']:
                             # get the reference

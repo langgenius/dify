@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from core.app.app_config.entities import ModelConfigEntity
 from core.entities.provider_configuration import ProviderModelBundle
 from core.model_runtime.entities.message_entities import UserPromptMessage
-from core.model_runtime.entities.model_entities import ModelPropertyKey, AIModelEntity, ParameterRule
+from core.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ParameterRule
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.prompt_transform import PromptTransform
 

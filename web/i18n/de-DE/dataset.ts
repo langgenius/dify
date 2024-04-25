@@ -1,7 +1,7 @@
 const translation = {
   knowledge: 'Wissen',
   documentCount: ' Dokumente',
-  wordCount: 'k Wörter',
+  wordCount: ' k Wörter',
   appCount: ' verknüpfte Apps',
   createDataset: 'Wissen erstellen',
   createDatasetIntro: 'Importiere deine eigenen Textdaten oder schreibe Daten in Echtzeit über Webhook für die LLM-Kontextverbesserung.',
@@ -42,6 +42,8 @@ const translation = {
     change: 'Ändern',
     changeRetrievalMethod: 'Abfragemethode ändern',
   },
+  docsFailedNotice: 'Dokumente konnten nicht indiziert werden',
+  retry: 'Wiederholen',
 }
 
 export default translation

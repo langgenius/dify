@@ -7,10 +7,10 @@ identity:
     pt_BR: Interpretador de Código
 description:
   human:
-    en_US: Run code and get the result back, when you're using a lower quality model, please make sure there are some tips help LLM to understand how to write the code.
-    zh_Hans: 运行一段代码并返回结果，当您使用较低质量的模型时，请确保有一些提示帮助LLM理解如何编写代码。
-    pt_BR: Execute um trecho de código e obtenha o resultado de volta, quando você estiver usando um modelo de qualidade inferior, certifique-se de que existam algumas dicas para ajudar o LLM a entender como escrever o código.
-  llm: A tool for running code and getting the result back, but only native packages are allowed, network/IO operations are disabled. and you must use print() or console.log() to output the result or result will be empty.
+    en_US: Run code and get the result back. When you're using a lower quality model, please make sure there are some tips help LLM to understand how to write the code.
+    zh_Hans: 运行一段代码并返回结果。当您使用较低质量的模型时，请确保有一些提示帮助LLM理解如何编写代码。
+    pt_BR: Execute um trecho de código e obtenha o resultado de volta. quando você estiver usando um modelo de qualidade inferior, certifique-se de que existam algumas dicas para ajudar o LLM a entender como escrever o código.
+  llm: A tool for running code and getting the result back. Only native packages are allowed, network/IO operations are disabled. and you must use print() or console.log() to output the result or result will be empty.
 parameters:
   - name: language
     type: string
