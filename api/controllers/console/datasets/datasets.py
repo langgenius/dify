@@ -498,7 +498,7 @@ class DatasetRetrievalSettingMockApi(Resource):
     @account_initialization_required
     def get(self, vector_type):
 
-        if vector_type == 'milvus':
+        if vector_type == 'milvus' or vector_type == 'relyt':
             return {
                 'retrieval_method': [
                     'semantic_search'
