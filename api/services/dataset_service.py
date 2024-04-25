@@ -207,9 +207,19 @@ class DatasetService:
 
         DatasetService.check_dataset_permission(dataset, user)
 
+        uploaded_files_id = []
+        documents = DocumentService.get_document_by_dataset_id_and_data_source_type(dataset_id, 'upload_file')
+        for document in documents:
+            document_was_deleted.send(document.id, dataset_id=document.dataset_id, doc_form=document.doc_form)
+            db.session.delete(document)
+            uploaded_files_id.append(json.loads(document.data_source_info)['upload_file_id'])
+
         dataset_was_deleted.send(dataset)
 
         db.session.delete(dataset)
+
+        db.session.query(UploadFile).filter(UploadFile.id.in_(uploaded_files_id)).delete(synchronize_session=False)
+
         db.session.commit()
         return True
 
@@ -375,6 +385,14 @@ class DocumentService:
         ).all()
 
         return documents
+
+    @staticmethod
+    def get_document_by_dataset_id_and_data_source_type(dataset_id: str, data_source_type: str) -> list[Document]:
+        document = db.session.query(Document).filter(
+            Document.dataset_id == dataset_id,
+            Document.data_source_type == data_source_type
+        ).all()
+        return document
 
     @staticmethod
     def get_batch_documents(dataset_id: str, batch: str) -> list[Document]:

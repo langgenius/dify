@@ -3,7 +3,7 @@ import logging
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import Unauthorized, Forbidden
 
 import services
 from controllers.console import api
@@ -201,7 +201,9 @@ class WebappLogoWorkspaceApi(Resource):
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
-        
+        except services.errors.file.FileUploadedError as file_is_uploaded_error:
+            raise Forbidden(file_is_uploaded_error.description)
+
         return { 'id': upload_file.id }, 201
 
 
