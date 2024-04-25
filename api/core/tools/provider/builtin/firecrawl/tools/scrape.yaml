@@ -1,0 +1,57 @@
+identity:
+  name: scrape
+  author: Richards Tu
+  label:
+    en_US: Scrape
+    zh_Hans: 网页抓取
+  description:
+    human:
+      en_US: Scrapes a web page and extracts its content.
+      zh_Hans: 抓取网页并提取其内容。
+    llm: This tool scrapes a specified web page and extracts its content. It requires the URL of the page as a parameter and allows optional configuration to control the extraction behavior, such as returning only the main content of the page excluding headers, navigation, footers, etc.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: URL to scrape
+      zh_Hans: 要抓取的URL
+    human_description:
+      en_US: The URL of the web page to scrape and extract content from.
+      zh_Hans: 要抓取并提取内容的网页URL。
+    llm_description: The URL is a required string parameter that specifies the web page to be scraped. The tool will extract the content from this URL.
+    form: llm
+  - name: pageOptions
+    type: object
+    required: false
+    label:
+      en_US: Page Options
+      zh_Hans: 页面选项
+    human_description:
+      en_US: Additional options to configure the page scraping behavior.
+      zh_Hans: 用于配置页面抓取行为的附加选项。
+    llm_description: Optional configuration options for scraping the web page. These options allow specifying whether to return only the main content of the page, excluding headers, navigation, footers, etc.
+    form: form
+    children:
+      - name: onlyMainContent
+        type: boolean
+        required: false
+        label:
+          en_US: Only return the main content of the page
+          zh_Hans: 仅返回页面的主要内容
+        human_description:
+          en_US: If enabled, the scraper will only return the main content of the page, excluding headers, navigation, footers, etc.
+          zh_Hans: 如果启用，抓取器将仅返回页面的主要内容，不包括标题、导航、页脚等。
+        form: form
+        options:
+          - value: true
+            label:
+              en_US: Yes
+              zh_Hans: 是
+              pt_BR: Yes
+          - value: false
+            label:
+              en_US: No
+              zh_Hans: 否
+              pt_BR: No
+        default: false

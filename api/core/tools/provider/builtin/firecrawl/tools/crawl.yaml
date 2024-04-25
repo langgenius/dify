@@ -1,0 +1,124 @@
+identity:
+  name: crawl
+  author: Richards Tu
+  label:
+    en_US: Crawl
+    zh_Hans: 爬取
+  description:
+    human:
+      en_US: Initiates a web crawl to extract data from a website.
+      zh_Hans: 启动一个网页爬取，从网站中提取数据。
+    llm: This tool initiates a web crawl to extract data from a specified URL. It allows configuring crawler options such as including or excluding URL patterns, generating alt text for images using LLMs (paid plan required), limiting the maximum number of pages to crawl, and returning only the main content of the page. The tool can return either a list of crawled documents or a list of URLs based on the provided options.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: URL to crawl
+      zh_Hans: 要爬取的URL
+    human_description:
+      en_US: The URL of the website to crawl and extract data from.
+      zh_Hans: 要爬取并提取数据的网站URL。
+    llm_description: The URL of the website that needs to be crawled. This is a required parameter.
+    form: llm
+  - name: crawlerOptions
+    type: object
+    required: false
+    label:
+      en_US: Crawler Options
+      zh_Hans: 爬虫选项
+    human_description:
+      en_US: Additional options to configure the web crawler behavior.
+      zh_Hans: 用于配置网页爬虫行为的附加选项。
+    llm_description: Optional configuration options for the web crawler. These options allow specifying URL patterns to include or exclude, generating alt text for images using LLMs (paid plan required), limiting the maximum number of pages to crawl, and returning only the URLs instead of full documents.
+    form: form
+    children:
+      - name: includes
+        type: array
+        required: false
+        label:
+          en_US: URL patterns to include
+          zh_Hans: 要包含的URL模式
+        human_description:
+          en_US: Specify URL patterns to include during the crawl. Only pages matching these patterns will be crawled.
+          zh_Hans: 指定爬取过程中要包含的URL模式。只有与这些模式匹配的页面才会被爬取。
+        form: form
+      - name: excludes
+        type: array
+        required: false
+        label:
+          en_US: URL patterns to exclude
+          zh_Hans: 要排除的URL模式
+        human_description:
+          en_US: Specify URL patterns to exclude during the crawl. Pages matching these patterns will be skipped.
+          zh_Hans: 指定爬取过程中要排除的URL模式。匹配这些模式的页面将被跳过。
+        form: form
+      - name: generateImgAltText
+        type: boolean
+        required: false
+        default: false
+        label:
+          en_US: Generate alt text for images using LLMs (paid plan required)
+          zh_Hans: 使用LLMs为图像生成alt文本（需要付费计划）
+        human_description:
+          en_US: If enabled, the crawler will generate alt text for images using LLMs. This feature requires a paid plan.
+          zh_Hans: 如果启用，爬虫将使用LLMs为图像生成alt文本。此功能需要付费计划。
+        form: form
+      - name: returnOnlyUrls
+        type: boolean
+        required: false
+        default: false
+        label:
+          en_US: Return only the URLs as a list
+          zh_Hans: 仅返回URL列表
+        human_description:
+          en_US: If enabled, the crawler will return only the URLs as a list instead of full documents. Note that the response will be a list of URLs inside the data field.
+          zh_Hans: 如果启用，爬虫将仅返回URL列表，而不是完整的文档。请注意，响应将是数据字段中的URL列表。
+        form: form
+      - name: limit
+        type: number
+        required: false
+        label:
+          en_US: Maximum number of pages to crawl
+          zh_Hans: 最大爬取页面数
+        human_description:
+          en_US: Specify the maximum number of pages to crawl. The crawler will stop after reaching this limit.
+          zh_Hans: 指定要爬取的最大页面数。爬虫将在达到此限制后停止。
+        form: form
+        min: 1
+        max: 20
+        default: 5
+  - name: pageOptions
+    type: object
+    required: false
+    label:
+      en_US: Page Options
+      zh_Hans: 页面选项
+    human_description:
+      en_US: Additional options to configure the page extraction behavior.
+      zh_Hans: 用于配置页面提取行为的附加选项。
+    llm_description: Optional configuration options for extracting content from crawled pages. These options allow specifying whether to return only the main content of the page, excluding headers, navigation, footers, etc.
+    form: form
+    children:
+      - name: onlyMainContent
+        type: boolean
+        required: false
+        label:
+          en_US: Only return the main content of the page
+          zh_Hans: 仅返回页面的主要内容
+        human_description:
+          en_US: If enabled, the crawler will only return the main content of the page, excluding headers, navigation, footers, etc.
+          zh_Hans: 如果启用，爬虫将仅返回页面的主要内容，不包括标题、导航、页脚等。
+        form: form
+        options:
+          - value: true
+            label:
+              en_US: Yes
+              zh_Hans: 是
+              pt_BR: Yes
+          - value: false
+            label:
+              en_US: No
+              zh_Hans: 否
+              pt_BR: No
+        default: false
