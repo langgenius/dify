@@ -65,7 +65,8 @@ def test_execute_llm(setup_openai_mock):
     pool = VariablePool(system_variables={
         SystemVariable.QUERY: 'what\'s the weather today?',
         SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION: 'abababa'
+        SystemVariable.CONVERSATION_ID: 'abababa',
+        SystemVariable.USER_ID: 'aaa'
     }, user_inputs={})
     pool.append_variable(node_id='abc', variable_key_list=['output'], value='sunny')
 

@@ -385,7 +385,7 @@ class LLMNode(BaseNode):
             return None
 
         # get conversation id
-        conversation_id = variable_pool.get_variable_value(['sys', SystemVariable.CONVERSATION.value])
+        conversation_id = variable_pool.get_variable_value(['sys', SystemVariable.CONVERSATION_ID.value])
         if conversation_id is None:
             return None
 
@@ -544,6 +544,9 @@ class LLMNode(BaseNode):
 
         if node_data.vision.enabled:
             variable_mapping['#files#'] = ['sys', SystemVariable.FILES.value]
+
+        if node_data.memory:
+            variable_mapping['#sys.query#'] = ['sys', SystemVariable.QUERY.value]
 
         return variable_mapping
 
