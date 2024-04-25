@@ -32,6 +32,8 @@ class AdvancedPromptTransform(PromptTransform):
                    memory_config: Optional[MemoryConfig],
                    memory: Optional[TokenBufferMemory],
                    model_config: ModelConfigWithCredentialsEntity) -> list[PromptMessage]:
+        inputs = {key: str(value) for key, value in inputs.items()}
+
         prompt_messages = []
 
         model_mode = ModelMode.value_of(model_config.mode)
