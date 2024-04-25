@@ -422,7 +422,9 @@ class DocumentService:
     def delete_document(document):
         # trigger document_was_deleted signal
         document_was_deleted.send(document.id, dataset_id=document.dataset_id, doc_form=document.doc_form)
-
+        if document.data_source_type == 'upload_file':
+            file_id = json.loads(document.data_source_info)['upload_file_id']
+            db.session.query(UploadFile).filter(UploadFile.id == file_id).delete(synchronize_session=False)
         db.session.delete(document)
         db.session.commit()
 
