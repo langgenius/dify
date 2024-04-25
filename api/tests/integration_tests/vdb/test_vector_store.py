@@ -71,8 +71,39 @@ class AbstractTestVector:
     def delete_vector(self):
         self.vector.delete()
 
-    def run_all_test(self):
+    def delete_by_ids(self):
+        self.vector.delete_by_ids([self.dataset_id])
+
+    def add_texts(self):
+        self.vector.add_texts(
+            documents=[
+                get_sample_document(str(uuid.uuid4())),
+                get_sample_document(str(uuid.uuid4())),
+            ],
+            embeddings=[
+                get_sample_embedding(),
+                get_sample_embedding(),
+            ],
+        )
+
+    def text_exists(self):
+        self.vector.text_exists(self.dataset_id)
+
+    def delete_document_by_id(self):
+        with pytest.raises(NotImplementedError):
+            self.vector.delete_by_document_id(self.dataset_id)
+
+    def get_ids_by_metadata_field(self):
+        with pytest.raises(NotImplementedError):
+            self.vector.get_ids_by_metadata_field('key', 'value')
+
+    def run_all_tests(self):
         self.create_vector()
         self.search_by_vector()
         self.search_by_full_text()
+        self.text_exists()
+        self.get_ids_by_metadata_field()
+        self.add_texts()
+        self.delete_document_by_id()
+        self.delete_by_ids()
         self.delete_vector()
