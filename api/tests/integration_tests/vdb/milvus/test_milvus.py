@@ -1,38 +1,29 @@
-import uuid
-
 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusConfig, MilvusVector
-from models.dataset import Dataset
 from tests.integration_tests.vdb.test_vector_store import (
-    get_sample_document,
-    get_sample_embedding,
-    get_sample_query_vector,
+    AbstractTestVector,
+    get_sample_text,
     setup_mock_redis,
 )
 
 
-def test_milvus_vector(setup_mock_redis) -> None:
-    dataset_id = str(uuid.uuid4())
-    vector = MilvusVector(
-        collection_name=Dataset.gen_collection_name_by_id(dataset_id),
-        config=MilvusConfig(
-            host='localhost',
-            port=19530,
-            user='root',
-            password='Milvus',
+class TestMilvusVector(AbstractTestVector):
+    def __init__(self):
+        super().__init__()
+        self.vector = MilvusVector(
+            collection_name=self.collection_name,
+            config=MilvusConfig(
+                host='localhost',
+                port=19530,
+                user='root',
+                password='Milvus',
+            )
         )
-    )
 
-    # create vector
-    vector.create(
-        texts=[get_sample_document(dataset_id)],
-        embeddings=[get_sample_embedding()],
-    )
+    def search_by_full_text(self):
+        # milvus dos not support full text searching yet in < 2.3.x
+        hits_by_full_text = self.vector.search_by_full_text(query=get_sample_text())
+        assert len(hits_by_full_text) == 0
 
-    # search by vector
-    hits_by_vector = vector.search_by_vector(query_vector=get_sample_query_vector())
-    assert len(hits_by_vector) >= 1
 
-    # milvus dos not support full text searching yet in < 2.3.x
-
-    # delete vector
-    vector.delete()
+def test_milvus_vector(setup_mock_redis):
+    TestMilvusVector().run_all_test()
