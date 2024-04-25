@@ -80,7 +80,15 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
           variable: 'sys.query',
           type: VarType.string,
         })
+        res.vars.push({
+          variable: 'sys.conversation_id',
+          type: VarType.string,
+        })
       }
+      res.vars.push({
+        variable: 'sys.user_id',
+        type: VarType.string,
+      })
       res.vars.push({
         variable: 'sys.files',
         type: VarType.arrayFile,

@@ -332,7 +332,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
             <td className='w-12'>#</td>
             <td>{t('datasetDocuments.list.table.header.fileName')}</td>
             <td className='w-24'>{t('datasetDocuments.list.table.header.words')}</td>
-            <td className='w-24'>{t('datasetDocuments.list.table.header.hitCount')}</td>
+            <td className='w-44'>{t('datasetDocuments.list.table.header.hitCount')}</td>
             <td className='w-44'>
               <div className='flex justify-between items-center'>
                 {t('datasetDocuments.list.table.header.uploadTime')}

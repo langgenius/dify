@@ -2,7 +2,7 @@
 
 import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import s from './style.module.css'
@@ -22,9 +22,12 @@ import { useProviderContext } from '@/context/provider-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
+import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import EditAppModal from '@/app/components/explore/create-app-modal'
 import SwitchAppModal from '@/app/components/app/switch-app-modal'
+import type { Tag } from '@/app/components/base/tag-management/constant'
+import TagSelector from '@/app/components/base/tag-management/selector'
 
 export type AppCardProps = {
   app: App
@@ -142,6 +145,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   }
 
   const Operations = (props: HtmlContentProps) => {
+    const onMouseLeave = async () => {
+      props.onClose?.()
+    }
     const onClickSettings = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
@@ -173,7 +179,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       setShowConfirmDelete(true)
     }
     return (
-      <div className="relative w-full py-1">
+      <div className="relative w-full py-1" onMouseLeave={onMouseLeave}>
         <button className={s.actionItem} onClick={onClickSettings}>
           <span className={s.actionName}>{t('app.editApp')}</span>
         </button>
@@ -207,6 +213,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       </div>
     )
   }
+
+  const [tags, setTags] = useState<Tag[]>(app.tags)
+  useEffect(() => {
+    setTags(app.tags)
+  }, [app.tags])
 
   return (
     <>
@@ -254,68 +265,112 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               {app.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
             </div>
           </div>
-          {isCurrentWorkspaceManager && <CustomPopover
-            htmlContent={<Operations />}
-            position="br"
-            trigger="click"
-            btnElement={<div className={cn(s.actionIcon, s.commonIcon)} />}
-            btnClassName={open =>
-              cn(
-                open ? '!bg-gray-100 !shadow-none' : '!bg-transparent',
-                '!hidden h-8 w-8 !p-2 rounded-md border-none hover:!bg-gray-100 group-hover:!inline-flex',
-              )
-            }
-            className={'!w-[128px] h-fit !z-20'}
-            popupClassName={
-              (app.mode === 'completion' || app.mode === 'chat')
-                ? '!w-[238px] translate-x-[-110px]'
-                : ''
-            }
-            manualClose
-          />}
         </div>
-        <div className='mb-1 px-[14px] text-xs leading-normal text-gray-500 line-clamp-4'>{app.description}</div>
-        {showEditModal && (
-          <EditAppModal
-            isEditModal
-            appIcon={app.icon}
-            appIconBackground={app.icon_background}
-            appName={app.name}
-            appDescription={app.description}
-            show={showEditModal}
-            onConfirm={onEdit}
-            onHide={() => setShowEditModal(false)}
-          />
-        )}
-        {showDuplicateModal && (
-          <DuplicateAppModal
-            appName={app.name}
-            icon={app.icon}
-            icon_background={app.icon_background}
-            show={showDuplicateModal}
-            onConfirm={onCopy}
-            onHide={() => setShowDuplicateModal(false)}
-          />
-        )}
-        {showSwitchModal && (
-          <SwitchAppModal
-            show={showSwitchModal}
-            appDetail={app}
-            onClose={() => setShowSwitchModal(false)}
-            onSuccess={onSwitch}
-          />
-        )}
-        {showConfirmDelete && (
-          <Confirm
-            title={t('app.deleteAppConfirmTitle')}
-            content={t('app.deleteAppConfirmContent')}
-            isShow={showConfirmDelete}
-            onClose={() => setShowConfirmDelete(false)}
-            onConfirm={onConfirmDelete}
-            onCancel={() => setShowConfirmDelete(false)}
-          />
-        )}
+        <div
+          className={cn(
+            'grow mb-2 px-[14px] max-h-[72px] text-xs leading-normal text-gray-500 group-hover:line-clamp-2 group-hover:max-h-[36px]',
+            tags.length ? 'line-clamp-2' : 'line-clamp-4',
+          )}
+          title={app.description}
+        >
+          {app.description}
+        </div>
+        <div className={cn(
+          'items-center shrink-0 mt-1 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
+          tags.length ? 'flex' : '!hidden group-hover:!flex',
+        )}>
+          <div className={cn('grow flex items-center gap-1 w-0')} onClick={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+          }}>
+            <div className={cn(
+              'group-hover:!block group-hover:!mr-0 mr-[41px] grow w-full',
+              tags.length ? '!block' : '!hidden',
+            )}>
+              <TagSelector
+                position='bl'
+                type='app'
+                targetID={app.id}
+                value={tags.map(tag => tag.id)}
+                selectedTags={tags}
+                onCacheUpdate={setTags}
+                onChange={onRefresh}
+              />
+            </div>
+          </div>
+          {isCurrentWorkspaceManager && (
+            <>
+              <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200'/>
+              <div className='!hidden group-hover:!flex shrink-0'>
+                <CustomPopover
+                  htmlContent={<Operations />}
+                  position="br"
+                  trigger="click"
+                  btnElement={
+                    <div
+                      className='flex items-center justify-center w-8 h-8 cursor-pointer rounded-md'
+                    >
+                      <DotsHorizontal className='w-4 h-4 text-gray-700' />
+                    </div>
+                  }
+                  btnClassName={open =>
+                    cn(
+                      open ? '!bg-black/5 !shadow-none' : '!bg-transparent',
+                      'h-8 w-8 !p-2 rounded-md border-none hover:!bg-black/5',
+                    )
+                  }
+                  popupClassName={
+                    (app.mode === 'completion' || app.mode === 'chat')
+                      ? '!w-[238px] translate-x-[-110px]'
+                      : ''
+                  }
+                  className={'!w-[128px] h-fit !z-20'}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </div>
+      {showEditModal && (
+        <EditAppModal
+          isEditModal
+          appIcon={app.icon}
+          appIconBackground={app.icon_background}
+          appName={app.name}
+          appDescription={app.description}
+          show={showEditModal}
+          onConfirm={onEdit}
+          onHide={() => setShowEditModal(false)}
+        />
+      )}
+      {showDuplicateModal && (
+        <DuplicateAppModal
+          appName={app.name}
+          icon={app.icon}
+          icon_background={app.icon_background}
+          show={showDuplicateModal}
+          onConfirm={onCopy}
+          onHide={() => setShowDuplicateModal(false)}
+        />
+      )}
+      {showSwitchModal && (
+        <SwitchAppModal
+          show={showSwitchModal}
+          appDetail={app}
+          onClose={() => setShowSwitchModal(false)}
+          onSuccess={onSwitch}
+        />
+      )}
+      {showConfirmDelete && (
+        <Confirm
+          title={t('app.deleteAppConfirmTitle')}
+          content={t('app.deleteAppConfirmContent')}
+          isShow={showConfirmDelete}
+          onClose={() => setShowConfirmDelete(false)}
+          onConfirm={onConfirmDelete}
+          onCancel={() => setShowConfirmDelete(false)}
+        />
+      )}
     </>
   )
 }

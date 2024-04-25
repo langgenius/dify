@@ -73,3 +73,22 @@ model_credential_schema:
           value: llm
       default: "4096"
       type: text-input
+    - variable: vision_support
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: 是否支持 Vision
+        en_US: Vision Support
+      type: radio
+      required: false
+      default: 'no_support'
+      options:
+        - value: 'support'
+          label:
+            en_US: 'Yes'
+            zh_Hans: 是
+        - value: 'no_support'
+          label:
+            en_US: 'No'
+            zh_Hans: 否
