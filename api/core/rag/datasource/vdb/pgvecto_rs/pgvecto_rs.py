@@ -28,15 +28,15 @@ class PgvectoRSConfig(BaseModel):
     @root_validator()
     def validate_config(cls, values: dict) -> dict:
         if not values['host']:
-            raise ValueError("config POSTGRESQL_HOST is required")
+            raise ValueError("config PGVECTO_RS_HOST is required")
         if not values['port']:
-            raise ValueError("config POSTGRESQL_PORT is required")
+            raise ValueError("config PGVECTO_RS_PORT is required")
         if not values['user']:
-            raise ValueError("config POSTGRESQL_USER is required")
+            raise ValueError("config PGVECTO_RS_USER is required")
         if not values['password']:
-            raise ValueError("config POSTGRESQL_PASSWORD is required")
+            raise ValueError("config PGVECTO_RS_PASSWORD is required")
         if not values['database']:
-            raise ValueError("config POSTGRESQL_DATABASE is required")
+            raise ValueError("config PGVECTO_RS_DATABASE is required")
         return values
 
 

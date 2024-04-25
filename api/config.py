@@ -228,12 +228,12 @@ class Config:
         self.RELYT_PASSWORD = get_env('RELYT_PASSWORD')
         self.RELYT_DATABASE = get_env('RELYT_DATABASE')
 
-        # relyt settings
-        self.POSTGRESQL_HOST = get_env('POSTGRESQL_HOST')
-        self.POSTGRESQL_PORT = get_env('POSTGRESQL_PORT')
-        self.POSTGRESQL_USER = get_env('POSTGRESQL_USER')
-        self.POSTGRESQL_PASSWORD = get_env('POSTGRESQL_PASSWORD')
-        self.POSTGRESQL_DATABASE = get_env('POSTGRESQL_DATABASE')
+        # pgvecto rs settings
+        self.PGVECTO_RS_HOST = get_env('PGVECTO_RS_HOST')
+        self.PGVECTO_RS_PORT = get_env('PGVECTO_RS_PORT')
+        self.PGVECTO_RS_USER = get_env('PGVECTO_RS_USER')
+        self.PGVECTO_RS_PASSWORD = get_env('PGVECTO_RS_PASSWORD')
+        self.PGVECTO_RS_DATABASE = get_env('PGVECTO_RS_DATABASE')
 
         # ------------------------
         # Mail Configurations.

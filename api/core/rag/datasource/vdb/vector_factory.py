@@ -155,11 +155,11 @@ class Vector:
             return PGVectoRS(
                 collection_name=collection_name,
                 config=PgvectoRSConfig(
-                    host=config.get('POSTGRESQL_HOST'),
-                    port=config.get('POSTGRESQL_PORT'),
-                    user=config.get('POSTGRESQL_USER'),
-                    password=config.get('POSTGRESQL_PASSWORD'),
-                    database=config.get('POSTGRESQL_DATABASE'),
+                    host=config.get('PGVECTO_RS_HOST'),
+                    port=config.get('PGVECTO_RS_PORT'),
+                    user=config.get('PGVECTO_RS_USER'),
+                    password=config.get('PGVECTO_RS_PASSWORD'),
+                    database=config.get('PGVECTO_RS_DATABASE'),
                 ),
                 dim=dim
             )
