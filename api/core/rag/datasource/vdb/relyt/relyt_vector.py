@@ -144,19 +144,17 @@ class RelytVector(BaseVector):
         return len(result) > 0
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        from pgvecto_rs.sdk import filters
-        filter_condition = filters.meta_contains(kwargs.get('filter'))
         results = self._client.search(
             top_k=int(kwargs.get('top_k')),
             embedding=query_vector,
-            filter=filter_condition
+            distance_op='<=>'
         )
 
         # Organize results.
         docs = []
         for record, dis in results:
             metadata = record.meta
-            metadata['score'] = dis
+            metadata['score'] = 1 - dis
             score_threshold = kwargs.get('score_threshold') if kwargs.get('score_threshold') else 0.0
             if dis > score_threshold:
                 doc = Document(page_content=record.text,

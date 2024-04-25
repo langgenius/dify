@@ -10,7 +10,7 @@ from sqlalchemy import text as sql_text, create_engine, text, insert, delete, se
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, mapped_column, Mapped
 
-from core.rag.datasource.vdb.pgvector.collection import CollectionORM
+from core.rag.datasource.vdb.pgvecto_rs.collection import CollectionORM
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
@@ -156,9 +156,9 @@ class PGVectoRS(BaseVector):
     def delete_by_ids(self, doc_ids: list[str]) -> None:
         with Session(self._client) as session:
             select_statement = sql_text(
-                f"SELECT id FROM {self._collection_name} WHERE meta->>'doc_id' in ('{doc_ids}'); "
+                f"SELECT id FROM {self._collection_name} WHERE meta->>'doc_id' = ANY (:doc_ids); "
             )
-            result = session.execute(select_statement).fetchall()
+            result = session.execute(select_statement, {'doc_ids': doc_ids}).fetchall()
         if result:
             ids = [item[0] for item in result]
             if ids:
@@ -181,7 +181,6 @@ class PGVectoRS(BaseVector):
         return len(result) > 0
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        from pgvecto_rs.sdk import filters
         with Session(self._client) as session:
             stmt = (
                 select(
@@ -209,16 +208,16 @@ class PGVectoRS(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        with Session(self._client) as session:
-            select_statement = sql_text(
-                f"SELECT text, meta FROM {self._collection_name} WHERE to_tsvector(text) @@ '{query}'::tsquery"
-            )
-            results = session.execute(select_statement).fetchall()
-        if results:
-            docs = []
-            for result in results:
-                doc = Document(page_content=result[0],
-                               metadata=result[1])
-                docs.append(doc)
-            return docs
+        # with Session(self._client) as session:
+        #     select_statement = sql_text(
+        #         f"SELECT text, meta FROM {self._collection_name} WHERE to_tsvector(text) @@ '{query}'::tsquery"
+        #     )
+        #     results = session.execute(select_statement).fetchall()
+        # if results:
+        #     docs = []
+        #     for result in results:
+        #         doc = Document(page_content=result[0],
+        #                        metadata=result[1])
+        #         docs.append(doc)
+        #     return docs
         return []

@@ -469,13 +469,13 @@ class DatasetRetrievalSettingApi(Resource):
     @account_initialization_required
     def get(self):
         vector_type = current_app.config['VECTOR_STORE']
-        if vector_type == 'milvus' or vector_type == 'pgvector' or vector_type == 'relyt':
+        if vector_type == 'milvus' or vector_type == 'pgvecto_rs' or vector_type == 'relyt':
             return {
                 'retrieval_method': [
                     'semantic_search'
                 ]
             }
-        elif vector_type == 'qdrant' or vector_type == 'weaviate' or vector_type == 'pgvecto_rs':
+        elif vector_type == 'qdrant' or vector_type == 'weaviate':
             return {
                 'retrieval_method': [
                     'semantic_search', 'full_text_search', 'hybrid_search'
