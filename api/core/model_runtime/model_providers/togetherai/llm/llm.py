@@ -12,7 +12,6 @@ from core.model_runtime.entities.model_entities import (
     AIModelEntity,
     DefaultParameterName,
     FetchFrom,
-    ModelFeature,
     ModelPropertyKey,
     ModelType,
     ParameterRule,
