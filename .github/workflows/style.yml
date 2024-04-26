@@ -31,19 +31,19 @@ jobs:
 
       - name: Ruff hints
         if: failure()
-        uses: thollander/actions-comment-pull-request@v2
-        with:
-          message: |
-            Please run 'dev/reformat' to fix the fixable linting errors.
-#        uses: actions/github-script@v7
+#        uses: thollander/actions-comment-pull-request@v2
 #        with:
-#          script: |
-#            github.rest.issues.createComment({
-#              issue_number: context.issue.number,
-#              owner: context.repo.owner,
-#              repo: context.repo.repo,
-#              body: "Please run 'dev/reformat' to fix the fixable linting errors."
-#            })
+#          message: |
+#            Please run 'dev/reformat' to fix the fixable linting errors.
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "Please run 'dev/reformat' to fix the fixable linting errors."
+            })
 
       - name: Dotenv check
         run: dotenv-linter ./api/.env.example ./web/.env.example
