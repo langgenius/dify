@@ -5,6 +5,7 @@ import {
 } from 'reactflow'
 import produce from 'immer'
 import { useWorkflowStore } from '../store'
+import { useNodesSyncDraft } from '../hooks'
 import {
   NodeRunningStatus,
   WorkflowRunningStatus,
@@ -24,6 +25,7 @@ export const useWorkflowRun = () => {
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { renderTreeFromRecord } = useWorkflow()
 
   const handleBackupDraft = useCallback(() => {
@@ -120,10 +122,22 @@ export const useWorkflowRun = () => {
     }
   }, [store, handleLoadBackupDraft, handleBackupDraft, workflowStore])
 
-  const handleRun = useCallback((
+  const handleRun = useCallback(async (
     params: any,
     callback?: IOtherOptions,
   ) => {
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+    const newNodes = produce(getNodes(), (draft) => {
+      draft.forEach((node) => {
+        node.data.selected = false
+      })
+    })
+    setNodes(newNodes)
+    await doSyncWorkflowDraft()
+
     const {
       onWorkflowStarted,
       onWorkflowFinished,
@@ -151,15 +165,14 @@ export const useWorkflowRun = () => {
     let prevNodeId = ''
 
     const {
-      workflowRunningData,
       setWorkflowRunningData,
     } = workflowStore.getState()
-    setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-      draft.result = {
-        ...draft?.result,
+    setWorkflowRunningData({
+      result: {
         status: WorkflowRunningStatus.Running,
-      }
-    }))
+      },
+      tracing: [],
+    })
 
     ssePost(
       url,
@@ -174,8 +187,6 @@ export const useWorkflowRun = () => {
             setWorkflowRunningData,
           } = workflowStore.getState()
           const {
-            getNodes,
-            setNodes,
             edges,
             setEdges,
           } = store.getState()
@@ -188,12 +199,6 @@ export const useWorkflowRun = () => {
             }
           }))
 
-          const newNodes = produce(getNodes(), (draft) => {
-            draft.forEach((node) => {
-              node.data._runningStatus = NodeRunningStatus.Waiting
-            })
-          })
-          setNodes(newNodes)
           const newEdges = produce(edges, (draft) => {
             draft.forEach((edge) => {
               edge.data = {
@@ -329,7 +334,7 @@ export const useWorkflowRun = () => {
         ...restCallback,
       },
     )
-  }, [store, reactflow, workflowStore])
+  }, [store, reactflow, workflowStore, doSyncWorkflowDraft])
 
   const handleStopRun = useCallback((taskId: string) => {
     const appId = useAppStore.getState().appDetail?.id

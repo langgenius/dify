@@ -22,9 +22,9 @@ import { WorkflowContext } from './context'
 type Shape = {
   appId: string
   workflowRunningData?: WorkflowRunningData
-  setWorkflowRunningData: (workflowData: WorkflowRunningData) => void
+  setWorkflowRunningData: (workflowData?: WorkflowRunningData) => void
   historyWorkflowData?: HistoryWorkflowData
-  setHistoryWorkflowData: (historyWorkflowData: HistoryWorkflowData) => void
+  setHistoryWorkflowData: (historyWorkflowData?: HistoryWorkflowData) => void
   showRunHistory: boolean
   setShowRunHistory: (showRunHistory: boolean) => void
   showFeaturesPanel: boolean

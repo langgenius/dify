@@ -56,6 +56,11 @@ const Panel: FC = () => {
         )
       }
       {
+        !!selectedNode && (
+          <NodePanel {...selectedNode!} />
+        )
+      }
+      {
         historyWorkflowData && !isChatMode && (
           <Record />
         )
@@ -63,11 +68,6 @@ const Panel: FC = () => {
       {
         historyWorkflowData && isChatMode && (
           <ChatRecord />
-        )
-      }
-      {
-        !!selectedNode && (
-          <NodePanel {...selectedNode!} />
         )
       }
       {
