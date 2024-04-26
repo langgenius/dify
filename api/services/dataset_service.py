@@ -418,9 +418,8 @@ class DocumentService:
     def get_error_documents_by_dataset_id(dataset_id: str) -> list[Document]:
         documents = db.session.query(Document).filter(
             Document.dataset_id == dataset_id,
-            Document.indexing_status == 'error' or Document.indexing_status == 'paused'
+            Document.indexing_status.in_(['error', 'paused'])
         ).all()
-
         return documents
 
     @staticmethod
