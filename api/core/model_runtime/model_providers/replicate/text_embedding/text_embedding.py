@@ -17,9 +17,16 @@ class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
                 user: Optional[str] = None) -> TextEmbeddingResult:
 
         client = ReplicateClient(api_token=credentials['replicate_api_token'], timeout=30)
-        replicate_model_version = f'{model}:{credentials["model_version"]}'
 
-        text_input_key = self._get_text_input_key(model, credentials['model_version'], client)
+        if 'model_version' in credentials:
+            model_version = credentials['model_version']
+        else:
+            model_info = client.models.get(model)
+            model_version = model_info.latest_version.id
+
+        replicate_model_version = f'{model}:{model_version}'
+
+        text_input_key = self._get_text_input_key(model, model_version, client)
 
         embeddings = self._generate_embeddings_by_text_input_key(client, replicate_model_version, text_input_key,
                                                                  texts)
@@ -43,14 +50,18 @@ class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
         if 'replicate_api_token' not in credentials:
             raise CredentialsValidateFailedError('Replicate Access Token must be provided.')
 
-        if 'model_version' not in credentials:
-            raise CredentialsValidateFailedError('Replicate Model Version must be provided.')
-
         try:
             client = ReplicateClient(api_token=credentials['replicate_api_token'], timeout=30)
-            replicate_model_version = f'{model}:{credentials["model_version"]}'
 
-            text_input_key = self._get_text_input_key(model, credentials['model_version'], client)
+            if 'model_version' in credentials:
+                model_version = credentials['model_version']
+            else:
+                model_info = client.models.get(model)
+                model_version = model_info.latest_version.id
+
+            replicate_model_version = f'{model}:{model_version}'
+
+            text_input_key = self._get_text_input_key(model, model_version, client)
 
             self._generate_embeddings_by_text_input_key(client, replicate_model_version, text_input_key,
                                                         ['Hello worlds!'])
