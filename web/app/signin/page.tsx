@@ -56,7 +56,8 @@ gtag('config', 'AW-11217955271"');
             'space-between',
           )
         }>
-          <Header />
+          {/*这个先不要多语言 */}
+          {/* <Header /> */}
 
           {loading && (
             <div className={
@@ -73,9 +74,9 @@ gtag('config', 'AW-11217955271"');
           {!loading && !enterpriseFeatures.sso_enforced_for_signin && (
             <>
               <Forms />
-              <div className='px-8 py-6 text-sm font-normal text-gray-500'>
+              {/* <div className='px-8 py-6 text-sm font-normal text-gray-500'>
                 © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
-              </div>
+              </div> */}
             </>
           )}
 

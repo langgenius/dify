@@ -121,18 +121,18 @@ export default function AccountSetting({
           icon: <User01 className={iconClassName} />,
           activeIcon: <User01Solid className={iconClassName} />,
         },
-        {
-          key: 'integrations',
-          name: t('common.settings.integrations'),
-          icon: <AtSign className={iconClassName} />,
-          activeIcon: <AtSign className={iconClassName} />,
-        },
-        {
-          key: 'language',
-          name: t('common.settings.language'),
-          icon: <Globe01 className={iconClassName} />,
-          activeIcon: <Globe01 className={iconClassName} />,
-        },
+        // {
+        //   key: 'integrations',
+        //   name: t('common.settings.integrations'),
+        //   icon: <AtSign className={iconClassName} />,
+        //   activeIcon: <AtSign className={iconClassName} />,
+        // },
+        // {
+        //   key: 'language',
+        //   name: t('common.settings.language'),
+        //   icon: <Globe01 className={iconClassName} />,
+        //   activeIcon: <Globe01 className={iconClassName} />,
+        // },
       ],
     },
   ]
@@ -208,8 +208,9 @@ export default function AccountSetting({
             {activeMenu === 'account' && <AccountPage />}
             {activeMenu === 'members' && <MembersPage />}
             {activeMenu === 'billing' && <BillingPage />}
-            {activeMenu === 'integrations' && <IntegrationsPage />}
-            {activeMenu === 'language' && <LanguagePage />}
+            {/* {activeMenu === 'integrations' && <IntegrationsPage />} */}
+            {/* 屏蔽多语言 */}
+            {/* {activeMenu === 'language' && <LanguagePage />} */}
             {activeMenu === 'provider' && <ModelProviderPage />}
             {activeMenu === 'data-source' && <DataSourcePage />}
             {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}

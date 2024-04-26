@@ -46,8 +46,9 @@ class AppService:
             filters.append(App.mode == AppMode.AGENT_CHAT.value)
         elif args['mode'] == 'channel':
             filters.append(App.mode == AppMode.CHANNEL.value)
-
+        print(args['name'])
         if 'name' in args and args['name']:
+            print(args['name'])
             name = args['name'][:30]
             filters.append(App.name.ilike(f'%{name}%'))
         if 'tag_ids' in args and args['tag_ids']:

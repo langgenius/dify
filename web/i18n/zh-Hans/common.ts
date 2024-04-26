@@ -34,8 +34,6 @@ const translation = {
     log: '日志',
     learnMore: '了解更多',
     params: '参数设置',
-    duplicate: '复制',
-    rename: '重命名',
   },
   placeholder: {
     input: '请输入',
@@ -149,8 +147,8 @@ const translation = {
     newPassword: '新密码',
     notEqual: '两个密码不相同',
     confirmPassword: '确认密码',
-    langGeniusAccount: 'Dify 账号',
-    langGeniusAccountTip: '您的 Dify 账号和相关的用户数据。',
+    langGeniusAccount: '账号信息',
+    langGeniusAccountTip: '您的账号和相关的用户数据。',
     editName: '编辑名字',
     showAppLength: '显示 {{length}} 个应用',
   },
@@ -394,8 +392,8 @@ const translation = {
   about: {
     changeLog: '更新日志',
     updateNow: '现在更新',
-    nowAvailable: 'Dify {{version}} 现已可用。',
-    latestAvailable: 'Dify {{version}} 已是最新版本。',
+    nowAvailable: '{{version}} 现已可用。',
+    latestAvailable: '{{version}} 已是最新版本。',
   },
   appMenus: {
     overview: '概览',
@@ -506,21 +504,6 @@ const translation = {
     pasteImageLinkInputPlaceholder: '将图像链接粘贴到此处',
     pasteImageLinkInvalid: '图片链接无效',
     imageUpload: '图片上传',
-  },
-  tag: {
-    placeholder: '全部标签',
-    addNew: '创建新标签',
-    noTag: '没有标签',
-    noTagYet: '还没有标签',
-    addTag: '添加标签',
-    editTag: '修改标签',
-    manageTags: '管理标签',
-    selectorPlaceholder: '搜索或者创建',
-    create: '创建',
-    delete: '删除标签',
-    deleteTip: '标签正在使用中，是否删除？',
-    created: '标签创建成功',
-    failed: '标签创建失败',
   },
 }
 

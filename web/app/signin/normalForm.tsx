@@ -283,8 +283,8 @@ const NormalForm = () => {
               </form>
             </>
           }
-          {/*  agree to our Terms and Privacy Policy. */}
-          <div className="w-hull text-center block mt-2 text-xs text-gray-600">
+          {/*  agree to our Terms and Privacy Policy. 这个先屏蔽掉 guorq */}
+          {/* <div className="w-hull text-center block mt-2 text-xs text-gray-600">
             {t('login.tosDesc')}
             &nbsp;
             <Link
@@ -298,7 +298,7 @@ const NormalForm = () => {
               target='_blank' rel='noopener noreferrer'
               href='https://dify.ai/privacy'
             >{t('login.pp')}</Link>
-          </div>
+          </div> */}
 
         </div>
       </div>
