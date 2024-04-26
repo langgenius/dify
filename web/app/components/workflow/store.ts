@@ -1,8 +1,8 @@
 import { useContext } from 'react'
 import {
-  create,
   useStore as useZustandStore,
 } from 'zustand'
+import { createStore } from 'zustand/vanilla'
 import { debounce } from 'lodash-es'
 import type { Viewport } from 'reactflow'
 import type {
@@ -70,9 +70,9 @@ type Shape = {
 }
 
 export const createWorkflowStore = () => {
-  return create<Shape>(set => ({
+  return createStore<Shape>(set => ({
     appId: '',
-    workflowData: undefined,
+    workflowRunningData: undefined,
     setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
     historyWorkflowData: undefined,
     setHistoryWorkflowData: historyWorkflowData => set(() => ({ historyWorkflowData })),

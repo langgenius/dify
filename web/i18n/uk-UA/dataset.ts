@@ -42,6 +42,8 @@ const translation = {
     change: 'Змінити',
     changeRetrievalMethod: 'Змінити метод пошуку',
   },
+  docsFailedNotice: 'документи не вдалося проіндексувати',
+  retry: 'Повторити спробу',
 }
 
 export default translation

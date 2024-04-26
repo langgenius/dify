@@ -80,7 +80,15 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
           variable: 'sys.query',
           type: VarType.string,
         })
+        res.vars.push({
+          variable: 'sys.conversation_id',
+          type: VarType.string,
+        })
       }
+      res.vars.push({
+        variable: 'sys.user_id',
+        type: VarType.string,
+      })
       res.vars.push({
         variable: 'sys.files',
         type: VarType.arrayFile,
@@ -264,10 +272,12 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       const payload = (data as LLMNodeType)
       const isChatModel = payload.model?.mode === 'chat'
       let prompts: string[] = []
-      if (isChatModel)
+      if (isChatModel) {
         prompts = (payload.prompt_template as PromptItem[])?.map(p => p.text) || []
-      else
-        prompts = [(payload.prompt_template as PromptItem).text]
+        if (payload.memory?.query_prompt_template)
+          prompts.push(payload.memory.query_prompt_template)
+      }
+      else { prompts = [(payload.prompt_template as PromptItem).text] }
 
       const inputVars: ValueSelector[] = matchNotSystemVars(prompts)
       const contextVar = (data as LLMNodeType).context?.variable_selector ? [(data as LLMNodeType).context?.variable_selector] : []
@@ -367,6 +377,8 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
               text: replaceOldVarInText(prompt.text, oldVarSelector, newVarSelector),
             }
           })
+          if (payload.memory?.query_prompt_template)
+            payload.memory.query_prompt_template = replaceOldVarInText(payload.memory.query_prompt_template, oldVarSelector, newVarSelector)
         }
         else {
           payload.prompt_template = {

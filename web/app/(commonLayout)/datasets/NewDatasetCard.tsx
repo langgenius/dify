@@ -1,27 +1,22 @@
 'use client'
 
 import { forwardRef } from 'react'
-import classNames from 'classnames'
 import { useTranslation } from 'react-i18next'
-import Link from 'next/link'
-import style from '../list.module.css'
+import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
 const CreateAppCard = forwardRef<HTMLAnchorElement>((_, ref) => {
   const { t } = useTranslation()
 
   return (
-    <Link ref={ref} className={classNames(style.listItem, style.newItemCard)} href='/datasets/create'>
-      <div className={style.listItemTitle}>
-        <span className={style.newItemIcon}>
-          <span className={classNames(style.newItemIconImage, style.newItemIconAdd)} />
-        </span>
-        <div className={classNames(style.listItemHeading, style.newItemCardHeading)}>
-          {t('dataset.createDataset')}
+    <a ref={ref} className='group flex flex-col col-span-1 bg-gray-200 border-[0.5px] border-black/5 rounded-xl min-h-[160px] transition-all duration-200 ease-in-out cursor-pointer hover:bg-white hover:shadow-lg' href='/datasets/create'>
+      <div className='shrnik-0 flex items-center p-4 pb-3'>
+        <div className='w-10 h-10 flex items-center justify-center border border-gray-200 bg-gray-100 rounded-lg'>
+          <Plus className='w-4 h-4 text-gray-500'/>
         </div>
+        <div className='ml-3 text-sm font-semibold leading-5 text-gray-800 group-hover:text-primary-600'>{t('dataset.createDataset')}</div>
       </div>
-      <div className={style.listItemDescription}>{t('dataset.createDatasetIntro')}</div>
-      {/* <div className='text-xs text-gray-500'>{t('app.createFromConfigFile')}</div> */}
-    </Link>
+      <div className='mb-1 px-4 text-xs leading-normal text-gray-500 line-clamp-4'>{t('dataset.createDatasetIntro')}</div>
+    </a>
   )
 })
 

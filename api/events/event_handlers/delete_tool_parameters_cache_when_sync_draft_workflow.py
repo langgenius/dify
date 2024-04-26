@@ -22,5 +22,6 @@ def handle(sender, **kwargs):
                 tool_runtime=tool_runtime,
                 provider_name=tool_entity.provider_name,
                 provider_type=tool_entity.provider_type,
+                identity_id=f'WORKFLOW.{app.id}.{node_data.get("id")}'
             )
             manager.delete_tool_parameters_cache()
