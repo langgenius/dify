@@ -72,7 +72,7 @@ const ViewHistory = ({
         placement={withText ? 'bottom-start' : 'bottom-end'}
         offset={{
           mainAxis: 4,
-          crossAxis: withText ? 0 : 131,
+          crossAxis: withText ? -8 : 10,
         }}
         open={open}
         onOpenChange={setOpen}

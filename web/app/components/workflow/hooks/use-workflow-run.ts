@@ -258,6 +258,7 @@ export const useWorkflowRun = () => {
             setNodes,
             edges,
             setEdges,
+            transform,
           } = store.getState()
           const nodes = getNodes()
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
@@ -273,12 +274,12 @@ export const useWorkflowRun = () => {
           const currentNodeIndex = nodes.findIndex(node => node.id === data.node_id)
           const currentNode = nodes[currentNodeIndex]
           const position = currentNode.position
-          const zoom = 1
+          const zoom = transform[2]
 
           setViewport({
-            x: (clientWidth - 400 - currentNode.width!) / 2 - position.x,
-            y: (clientHeight - currentNode.height!) / 2 - position.y,
-            zoom,
+            x: (clientWidth - 400 - currentNode.width! * zoom) / 2 - position.x * zoom,
+            y: (clientHeight - currentNode.height! * zoom) / 2 - position.y * zoom,
+            zoom: transform[2],
           })
           const newNodes = produce(nodes, (draft) => {
             draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Running
