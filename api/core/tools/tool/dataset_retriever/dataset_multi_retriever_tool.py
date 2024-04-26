@@ -1,5 +1,7 @@
-import time
+
 import threading
+import time
+
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
 
@@ -36,7 +38,6 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
     dataset_ids: list[str]
     reranking_provider_name: str
     reranking_model_name: str
-
 
     @classmethod
     def from_dataset(cls, dataset_ids: list[str], tenant_id: str, **kwargs):

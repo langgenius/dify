@@ -1,5 +1,5 @@
-import time
 import threading
+import time
 from typing import Optional, cast
 
 from flask import Flask, current_app

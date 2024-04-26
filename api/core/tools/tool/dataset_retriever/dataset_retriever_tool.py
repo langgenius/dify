@@ -1,4 +1,6 @@
+
 import time
+
 from pydantic import BaseModel, Field
 
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -28,7 +30,6 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
     args_schema: type[BaseModel] = DatasetRetrieverToolInput
     description: str = "use this to retrieve a dataset. "
     dataset_id: str
-
 
     @classmethod
     def from_dataset(cls, dataset: Dataset, **kwargs):
