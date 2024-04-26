@@ -58,7 +58,7 @@ class DatasetIndexToolCallbackHandler:
 
             db.session.commit()
 
-    def return_retriever_resource_info(self, resource: list):
+    def return_retriever_resource_info(self, resource: list, elapsed_time: float):
         """Handle return_retriever_resource_info."""
         if resource and len(resource) > 0:
             for item in resource:
@@ -78,6 +78,7 @@ class DatasetIndexToolCallbackHandler:
                     index_node_hash=item.get('index_node_hash') if 'index_node_hash' in item else None,
                     content=item.get('content'),
                     retriever_from=item.get('retriever_from'),
+                    elapsed_time=elapsed_time,
                     created_by=self._user_id
                 )
                 db.session.add(dataset_retriever_resource)
