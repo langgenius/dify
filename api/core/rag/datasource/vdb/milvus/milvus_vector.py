@@ -1,6 +1,6 @@
 import logging
-from typing import Any, Optional
 from uuid import uuid4
+from typing import Any, Optional
 
 from pydantic import BaseModel, root_validator
 from pymilvus import MilvusClient, MilvusException, connections
