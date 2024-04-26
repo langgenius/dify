@@ -125,7 +125,6 @@ class Vector:
                     "vector_store": {"class_prefix": collection_name}
                 }
                 self._dataset.index_struct = json.dumps(index_struct_dict)
-            dim = len(self._embeddings.embed_query("hello relyt"))
             return RelytVector(
                 collection_name=collection_name,
                 config=RelytConfig(
@@ -135,7 +134,7 @@ class Vector:
                     password=config.get('RELYT_PASSWORD'),
                     database=config.get('RELYT_DATABASE'),
                 ),
-                dim=dim
+                group_id=self._dataset.id
             )
         elif vector_type == "tencent":
             from core.rag.datasource.vdb.tencent.tencent_vector import TencentConfig, TencentVector
