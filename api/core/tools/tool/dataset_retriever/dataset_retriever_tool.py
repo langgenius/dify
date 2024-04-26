@@ -1,4 +1,4 @@
-
+import time
 from pydantic import BaseModel, Field
 
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -68,6 +68,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                                   )
             return str("\n".join([document.page_content for document in documents]))
         else:
+            start = time.perf_counter()
             if self.top_k > 0:
                 # retrieval source
                 documents = RetrievalService.retrieve(retrival_method=retrieval_model['search_method'],
@@ -81,6 +82,8 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                                       )
             else:
                 documents = []
+            end = time.perf_counter()
+            elapsed_time = float(f'{end - start:0.4f}')
 
             for hit_callback in self.hit_callbacks:
                 hit_callback.on_tool_end(documents)
@@ -143,6 +146,6 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                         resource_number += 1
 
                     for hit_callback in self.hit_callbacks:
-                        hit_callback.return_retriever_resource_info(context_list)
+                        hit_callback.return_retriever_resource_info(context_list, elapsed_time)
 
             return str("\n".join(document_context_list))
