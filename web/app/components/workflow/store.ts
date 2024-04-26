@@ -21,6 +21,7 @@ import { WorkflowContext } from './context'
 
 type Shape = {
   appId: string
+  panelWidth: number
   workflowRunningData?: WorkflowRunningData
   setWorkflowRunningData: (workflowData: WorkflowRunningData) => void
   historyWorkflowData?: HistoryWorkflowData
@@ -72,6 +73,7 @@ type Shape = {
 export const createWorkflowStore = () => {
   return createStore<Shape>(set => ({
     appId: '',
+    panelWidth: localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
     workflowRunningData: undefined,
     setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
     historyWorkflowData: undefined,

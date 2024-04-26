@@ -71,8 +71,6 @@ DEFAULTS = {
     'CODE_EXECUTION_ENDPOINT': 'http://sandbox:8194',
     'CODE_EXECUTION_API_KEY': 'dify-sandbox',
     'TOOL_ICON_CACHE_MAX_AGE': 3600,
-    'INNER_API': 'False',
-    'ENTERPRISE_ENABLED': 'False',
     'MILVUS_DATABASE': 'default',
     'KEYWORD_DATA_SOURCE_TYPE': 'database',
     'INNER_API': 'False',
@@ -358,8 +356,6 @@ class Config:
 
         self.API_COMPRESSION_ENABLED = get_bool_env('API_COMPRESSION_ENABLED')
         self.TOOL_ICON_CACHE_MAX_AGE = get_env('TOOL_ICON_CACHE_MAX_AGE')
-
-        self.ENTERPRISE_ENABLED = get_bool_env('ENTERPRISE_ENABLED')
 
         self.KEYWORD_DATA_SOURCE_TYPE = get_env('KEYWORD_DATA_SOURCE_TYPE')
         self.ENTERPRISE_ENABLED = get_bool_env('ENTERPRISE_ENABLED')
