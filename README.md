@@ -183,6 +183,39 @@ After running, you can access the Dify dashboard in your browser at [http://loca
 
 > If you'd like to contribute to Dify or do additional development, refer to our [guide to deploying from source code](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
 
+
+##  Upgrade steps
+- 1. Stop the service，Command, please execute in the docker directory
+```bash
+docker-compose down
+```
+
+- 2. Back up Docker image ID
+```bash
+docker images | awk -F '[ ]+' '(NR>1 && $2 !~ /none/) {print "docker tag " $3" " $1":"$2}' > image.bak-$(date +%s).txt
+```
+
+- 3. Back up database files
+```bash
+tar -cvf volumes-$(date +%s).tgz volumes
+```
+
+- 4. Back up the docker-compose YAML file
+```bash
+  cp docker-compose.yaml docker-compose.yaml-$(date +%s).txt
+  mv docker-compose.yaml docker-compose.yaml-bak
+  ```
+
+- 5. Download the new version of the docker-compose YAML file，using version 0.6.5 as an example
+```bash
+wget -O docker-compose.yaml https://github.com/langgenius/dify/raw/0.6.5/docker/docker-compose.yaml
+```
+
+- 6. Upgrade completed
+```bash
+ docker-compose up -d
+ ```
+ 
 ## Next steps
 
 If you need to customize the configuration, please refer to the comments in our [docker-compose.yml](docker/docker-compose.yaml) file and manually set the environment configuration. After making the changes, please run `docker-compose up -d` again. You can see the full list of environment variables [here](https://docs.dify.ai/getting-started/install-self-hosted/environments).
