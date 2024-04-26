@@ -12,10 +12,10 @@ class TestPgvectoRSVector(AbstractTestVector):
             collection_name=self.collection_name,
             config=PgvectoRSConfig(
                 host='localhost',
-                port=5432,
+                port=5431,
                 user='postgres',
-                password='dify123456',
-                database='postgres',
+                password='difyai123456',
+                database='dify',
             ),
             dim=3
         )

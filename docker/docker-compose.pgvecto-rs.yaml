@@ -15,8 +15,8 @@ services:
     volumes:
       - ./volumes/pgvectors/data:/var/lib/postgresql/data
     # uncomment to expose db(postgresql) port to host
-    # ports:
-    #   - "5432:5432"
+    ports:
+      - "5431:5432"
     healthcheck:
       test: [ "CMD", "pg_isready" ]
       interval: 1s
