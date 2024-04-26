@@ -51,7 +51,8 @@ class TogetherAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
         cred_with_endpoint = self._update_endpoint_url(credentials=credentials)
-
+        REPETITION_PENALTY = "repetition_penalty"
+        TOP_K = "top_k"
         features = []
         function_calling_type = cred_with_endpoint.get('function_calling_type', 'no_call')
         if function_calling_type in ['function_call']:
@@ -97,20 +98,22 @@ class TogetherAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
                     precision=2
                 ),
                 ParameterRule(
-                    name=DefaultParameterName.TOP_K.value,
+                    name=TOP_K,
                     label=I18nObject(en_US="Top K"),
                     type=ParameterType.INT,
                     default=int(cred_with_endpoint.get('top_k', 50)),
                     min=-2147483647,
-                    max=2147483647
+                    max=2147483647,
+                    precision=0
                 ),
                 ParameterRule(
-                    name=DefaultParameterName.REPETITION_PENALTY.value,
+                    name=REPETITION_PENALTY,
                     label=I18nObject(en_US="Repetition Penalty"),
                     type=ParameterType.FLOAT,
                     default=float(cred_with_endpoint.get('repetition_penalty', 1)),
                     min=-3.4,
-                    max=3.4
+                    max=3.4,
+                    precision=1
                 ),
                 ParameterRule(
                     name=DefaultParameterName.MAX_TOKENS.value,

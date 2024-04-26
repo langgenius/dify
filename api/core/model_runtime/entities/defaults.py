@@ -94,37 +94,5 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         },
         'required': False,
         'options': ['JSON', 'XML'],
-    },
-    DefaultParameterName.TOP_K: {
-        'label': {
-            'en_US': 'Top K',
-            'zh_Hans': 'Top K',
-        },
-        'type': 'int',
-        'help': {
-            'en_US': 'The top_k parameter is used to limit the number of choices for the next predicted word or token.',
-            'zh_Hans': '用于限制下一个预测单词或标记的选择数量',
-        },
-        'required': False,
-        'default': 50,
-        'min': -2147483647,
-        'max': 2147483647,
-        'precision': 0,
-    },
-    DefaultParameterName.REPETITION_PENALTY: {
-        'label': {
-            'en_US': 'Repetition Penalty',
-            'zh_Hans': 'Repetition Penalty',
-        },
-        'type': 'float',
-        'help': {
-            'en_US': 'A number that controls the diversity of generated text by reducing the likelihood of repeated sequences. Higher values decrease repetition.',
-            'zh_Hans': '通过减少重复序列的可能性来控制生成文本多样性的数字,较高的值会减少重复次数',
-        },
-        'required': False,
-        'default': 1,
-        'min': -3.4,
-        'max': 3.4,
-        'precision': 1,
     }
 }
