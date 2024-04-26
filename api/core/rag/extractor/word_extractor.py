@@ -29,8 +29,7 @@ class WordExtractor(BaseExtractor):
 
             if r.status_code != 200:
                 raise ValueError(
-                    "Check the url of your file; returned status code %s"
-                    % r.status_code
+                    f"Check the url of your file; returned status code {r.status_code}"
                 )
 
             self.web_path = self.file_path
@@ -38,7 +37,7 @@ class WordExtractor(BaseExtractor):
             self.temp_file.write(r.content)
             self.file_path = self.temp_file.name
         elif not os.path.isfile(self.file_path):
-            raise ValueError("File path %s is not a valid file or url" % self.file_path)
+            raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
     def __del__(self) -> None:
         if hasattr(self, "temp_file"):

@@ -1,28 +1,28 @@
 import os
-import sys
-from logging.handlers import RotatingFileHandler
 
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     from gevent import monkey
 
     monkey.patch_all()
-    # if os.environ.get("VECTOR_STORE") == 'milvus':
+
     import grpc.experimental.gevent
 
     grpc.experimental.gevent.init_gevent()
 
 import json
 import logging
+import sys
 import threading
 import time
 import warnings
+from logging.handlers import RotatingFileHandler
 
 from flask import Flask, Response, request
 from flask_cors import CORS
 from werkzeug.exceptions import Unauthorized
 
 from commands import register_commands
-from config import CloudEditionConfig, Config
+from config import Config
 
 # DO NOT REMOVE BELOW
 from events import event_handlers
@@ -75,16 +75,9 @@ config_type = os.getenv('EDITION', default='SELF_HOSTED')  # ce edition first
 # ----------------------------
 
 
-def create_app(test_config=None) -> Flask:
+def create_app() -> Flask:
     app = DifyApp(__name__)
-
-    if test_config:
-        app.config.from_object(test_config)
-    else:
-        if config_type == "CLOUD":
-            app.config.from_object(CloudEditionConfig())
-        else:
-            app.config.from_object(Config())
+    app.config.from_object(Config())
 
     app.secret_key = app.config['SECRET_KEY']
 
@@ -101,6 +94,7 @@ def create_app(test_config=None) -> Flask:
             ),
             logging.StreamHandler(sys.stdout)
         ]
+
     logging.basicConfig(
         level=app.config.get('LOG_LEVEL'),
         format=app.config.get('LOG_FORMAT'),

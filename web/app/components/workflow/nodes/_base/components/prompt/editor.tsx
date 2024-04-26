@@ -146,6 +146,7 @@ const Editor: FC<Props> = ({
               <PromptEditor
                 instanceId={instanceId}
                 compact
+                className='min-h-[56px]'
                 style={isExpand ? { height: editorExpandHeight - 5 } : {}}
                 value={value}
                 contextBlock={{
