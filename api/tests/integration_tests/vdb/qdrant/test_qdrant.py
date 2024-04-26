@@ -20,4 +20,4 @@ class TestQdrantVector(AbstractTestVector):
 
 
 def test_qdrant_vector(setup_mock_redis):
-    TestQdrantVector().run_all_test()
+    TestQdrantVector().run_all_tests()

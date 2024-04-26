@@ -74,5 +74,5 @@ class BillingService:
             TenantAccountJoin.account_id == current_user.id
         ).first()
 
-        if TenantAccountRole.is_privileged_role(join.role):
+        if not TenantAccountRole.is_privileged_role(join.role):
             raise ValueError('Only team owner or team admin can perform this action')
