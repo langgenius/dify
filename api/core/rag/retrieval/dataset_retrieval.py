@@ -1,3 +1,4 @@
+import time
 import threading
 from typing import Optional, cast
 
@@ -110,6 +111,7 @@ class DatasetRetrieval:
 
             available_datasets.append(dataset)
         all_documents = []
+        start = time.perf_counter()
         user_from = 'account' if invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else 'end_user'
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             all_documents = self.single_retrieve(app_id, tenant_id, user_id, user_from, available_datasets, query,
@@ -122,6 +124,8 @@ class DatasetRetrieval:
                                                    retrieve_config.reranking_model.get('reranking_provider_name'),
                                                    retrieve_config.reranking_model.get('reranking_model_name'))
 
+        end = time.perf_counter()
+        elapsed_time = float(f'{end - start:0.4f}')
         document_score_list = {}
         for item in all_documents:
             if 'score' in item.metadata and item.metadata['score']:
@@ -183,7 +187,7 @@ class DatasetRetrieval:
                         context_list.append(source)
                     resource_number += 1
                 if hit_callback:
-                    hit_callback.return_retriever_resource_info(context_list)
+                    hit_callback.return_retriever_resource_info(context_list, elapsed_time)
 
             return str("\n".join(document_context_list))
         return ''

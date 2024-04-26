@@ -400,13 +400,15 @@ class TokensPerSecondStatistic(Resource):
         parser.add_argument('end', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
         args = parser.parse_args()
 
-        sql_query = '''SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
-    CASE 
-        WHEN SUM(provider_response_latency) = 0 THEN 0
-        ELSE (SUM(answer_tokens) / SUM(provider_response_latency))
-    END as tokens_per_second
-FROM messages
-WHERE app_id = :app_id'''
+        sql_query = '''
+        SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
+            CASE 
+                WHEN SUM(provider_response_latency) = 0 THEN 0
+                ELSE (SUM(answer_tokens) / SUM(provider_response_latency))
+            END as tokens_per_second
+        FROM messages
+        WHERE app_id = :app_id
+        '''
         arg_dict = {'tz': account.timezone, 'app_id': app_model.id}
 
         timezone = pytz.timezone(account.timezone)
@@ -449,6 +451,70 @@ WHERE app_id = :app_id'''
         })
 
 
+class AverageRAGDelayTimeStatistic(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.COMPLETION, AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    def get(self, app_model):
+        account = current_user
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('start', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
+        parser.add_argument('end', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
+        args = parser.parse_args()
+
+        sql_query = '''
+                SELECT 
+                    date(DATE_TRUNC('day', rag.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
+                    CASE WHEN avg(rag.elapsed_time) IS NULL THEN 0 ELSE avg(rag.elapsed_time) END as elapsed
+                FROM dataset_retriever_resources as rag
+                JOIN messages AS msg ON msg.id = rag.message_id
+                WHERE msg.app_id = :app_id
+                '''
+        arg_dict = {'tz': account.timezone, 'app_id': app_model.id}
+
+        timezone = pytz.timezone(account.timezone)
+        utc_timezone = pytz.utc
+
+        if args['start']:
+            start_datetime = datetime.strptime(args['start'], '%Y-%m-%d %H:%M')
+            start_datetime = start_datetime.replace(second=0)
+
+            start_datetime_timezone = timezone.localize(start_datetime)
+            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
+
+            sql_query += ' and rag.created_at >= :start'
+            arg_dict['start'] = start_datetime_utc
+
+        if args['end']:
+            end_datetime = datetime.strptime(args['end'], '%Y-%m-%d %H:%M')
+            end_datetime = end_datetime.replace(second=0)
+
+            end_datetime_timezone = timezone.localize(end_datetime)
+            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
+
+            sql_query += ' and rag.created_at < :end'
+            arg_dict['end'] = end_datetime_utc
+
+        sql_query += ' GROUP BY date order by date'
+
+        response_data = []
+
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)
+            for i in rs:
+                response_data.append({
+                    'date': str(i.date),
+                    'delay': float(round(i.elapsed, 4))
+                })
+
+        return jsonify({
+            'data': response_data
+        })
+
+
+api.add_resource(AverageRAGDelayTimeStatistic, '/apps/<uuid:app_id>/statistics/average-rag-delay-time')
 api.add_resource(DailyConversationStatistic, '/apps/<uuid:app_id>/statistics/daily-conversations')
 api.add_resource(DailyTerminalsStatistic, '/apps/<uuid:app_id>/statistics/daily-end-users')
 api.add_resource(DailyTokenCostStatistic, '/apps/<uuid:app_id>/statistics/token-costs')

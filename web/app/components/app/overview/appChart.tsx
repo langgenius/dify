@@ -11,7 +11,7 @@ import { formatNumber } from '@/utils/format'
 import Basic from '@/app/components/app-sidebar/basic'
 import Loading from '@/app/components/base/loading'
 import type { AppDailyConversationsResponse, AppDailyEndUsersResponse, AppTokenCostsResponse } from '@/models/app'
-import { getAppDailyConversations, getAppDailyEndUsers, getAppStatistics, getAppTokenCosts, getWorkflowDailyConversations } from '@/service/apps'
+import { getAppDailyConversations, getAppDailyEndUsers, getAppStatistics, getAppTokenCosts, getWorkflowDailyConversations, getAppRAGDelay } from '@/service/apps'
 const valueFormatter = (v: string | number) => v
 
 const COLOR_TYPE_MAP = {
@@ -36,7 +36,7 @@ const COMMON_COLOR_MAP = {
 }
 
 type IColorType = 'green' | 'orange' | 'blue'
-type IChartType = 'conversations' | 'endUsers' | 'costs' | 'workflowCosts'
+type IChartType = 'conversations' | 'endUsers' | 'costs' | 'workflowCosts' | 'ragDelay'
 type IChartConfigType = { colorType: IColorType; showTokens?: boolean }
 
 const commonDateFormat = 'MMM D, YYYY'
@@ -54,6 +54,9 @@ const CHART_TYPE_CONFIG: Record<string, IChartConfigType> = {
   },
   workflowCosts: {
     colorType: 'blue',
+  },
+  ragDelay: {
+    colorType: 'orange',
   },
 }
 
@@ -427,6 +430,23 @@ export const AvgUserInteractions: FC<IBizChartProps> = ({ id, period }) => {
     valueKey='interactions'
     isAvg
     {...(noDataFlag && { yMax: 500 })}
+  />
+}
+
+export const AvgRAGDelayTime: FC<IBizChartProps> = ({ id, period }) => {
+  const { t } = useTranslation()
+  const { data: response } = useSWR({ url: `/apps/${id}/statistics/average-rag-delay-time`, params: period.query }, getAppRAGDelay)
+  if (!response)
+    return <Loading />
+  const noDataFlag = !response.data || response.data.length === 0
+  return <Chart
+    basicInfo={{ title: t('appOverview.analysis.avgRAGDelayTime.title'), explanation: t('appOverview.analysis.avgRAGDelayTime.explanation'), timePeriod: period.name }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'delay' }) } as any}
+    valueKey='delay'
+    chartType='ragDelay'
+    isAvg
+    unit={t('appOverview.analysis.s') as string}
+    {...(noDataFlag && { yMax: 100 })}
   />
 }
 

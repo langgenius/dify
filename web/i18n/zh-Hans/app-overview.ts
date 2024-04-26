@@ -103,6 +103,7 @@ const translation = {
   analysis: {
     title: '分析',
     ms: '毫秒',
+    s: '秒',
     tokenPS: 'Token/秒',
     totalMessages: {
       title: '全部消息数',
@@ -136,6 +137,10 @@ const translation = {
     tps: {
       title: 'Token 输出速度',
       explanation: '衡量 LLM 的性能。统计 LLM 从请求开始到输出完毕这段期间的 Tokens 输出速度。',
+    },
+    avgRAGDelayTime: {
+      title: 'RAG平均召回延迟',
+      explanation: '衡量RAG召回所花费的平均时间，单位为秒，反应RAG召回的性能和基于知识库的生成体验。',
     },
   },
 }

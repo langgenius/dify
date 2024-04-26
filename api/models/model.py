@@ -1289,6 +1289,7 @@ class DatasetRetrieverResource(db.Model):
     segment_position = db.Column(db.Integer, nullable=True)
     index_node_hash = db.Column(db.Text, nullable=True)
     retriever_from = db.Column(db.Text, nullable=False)
+    elapsed_time = db.Column(db.Numeric(10, 4), nullable=True)
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 

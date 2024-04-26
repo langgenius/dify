@@ -1,5 +1,5 @@
+import time
 import threading
-
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
 
@@ -50,6 +50,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
     def _run(self, query: str) -> str:
         threads = []
         all_documents = []
+        start = time.perf_counter()
         for dataset_id in self.dataset_ids:
             retrieval_thread = threading.Thread(target=self._retriever, kwargs={
                 'flask_app': current_app._get_current_object(),
@@ -62,6 +63,10 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             retrieval_thread.start()
         for thread in threads:
             thread.join()
+
+        end = time.perf_counter()
+        elapsed_time = float(f'{end - start:0.4f}')
+
         # do rerank for searched documents
         model_manager = ModelManager()
         rerank_model_instance = model_manager.get_model_instance(
@@ -139,7 +144,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                     resource_number += 1
 
                 for hit_callback in self.hit_callbacks:
-                    hit_callback.return_retriever_resource_info(context_list)
+                    hit_callback.return_retriever_resource_info(context_list, elapsed_time)
 
             return str("\n".join(document_context_list))
 

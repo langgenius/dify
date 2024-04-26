@@ -14,6 +14,7 @@ import Textarea from './textarea'
 import s from './style.module.css'
 import HitDetail from './hit-detail'
 import ModifyRetrievalModal from './modify-retrieval-modal'
+import { HitTestingSpeed } from '@/app/components/base/icons/src/vender/line/speed'
 import type { HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
@@ -62,6 +63,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
   const total = recordsRes?.total || 0
 
   const points = useMemo(() => (hitResult?.records.map(v => [v.tsne_position.x, v.tsne_position.y]) || []), [hitResult?.records])
+  const elapsed_time = useMemo(() => (hitResult?.elapsed_time || 0), [hitResult?.elapsed_time])
 
   const onClickCard = (detail: HitTestingType) => {
     setCurrParagraph({ paraInfo: detail, showModal: true })
@@ -171,7 +173,10 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
               )
               : (
                 <>
-                  <div className='text-gray-600 font-semibold mb-4'>{t('datasetHitTesting.hit.title')}</div>
+                  <div className='text-gray-600 font-semibold mb-4 flex items-center justify-between'>
+                    <span>{t('datasetHitTesting.hit.title')}</span>
+                    <div className='flex items-center h-[18px] px-3 text-xs text-red-600'><HitTestingSpeed className='w-3 h-[18px] mr-1' />{t('datasetHitTesting.hit.elapsed_time')} {elapsed_time}s</div>
+                  </div>
                   <div className='overflow-auto flex-1'>
                     <div className={s.cardWrapper}>
                       {hitResult?.records.map((record, idx) => {

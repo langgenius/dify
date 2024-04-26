@@ -103,6 +103,7 @@ const translation = {
   analysis: {
     title: 'Analysis',
     ms: 'ms',
+    s: 's',
     tokenPS: 'Token/s',
     totalMessages: {
       title: 'Total Messages',
@@ -136,6 +137,10 @@ const translation = {
     tps: {
       title: 'Token Output Speed',
       explanation: 'Measure the performance of the LLM. Count the Tokens output speed of LLM from the beginning of the request to the completion of the output.',
+    },
+    avgRAGDelayTime: {
+      title: 'Avg. RAG Delay Time',
+      explanation: 'Measure the average time spent on RAG recalls, in seconds, reflecting the performance of RAG recalls and the knowledge-based generation experience.',
     },
   },
 }
