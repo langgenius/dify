@@ -32,8 +32,8 @@
 			]
 		}
 	},
-	"postStartCommand": "chmod +x ./.devcontainer/post_start_command.sh; ./.devcontainer/post_start_command.sh",
-	"postCreateCommand": "chmod +x ./.devcontainer/post_create_command.sh; ./.devcontainer/post_create_command.sh"
+	"postStartCommand": "./.devcontainer/post_start_command.sh",
+	"postCreateCommand": "./.devcontainer/post_create_command.sh"
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
