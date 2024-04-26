@@ -29,12 +29,21 @@ jobs:
       - name: Ruff check
         run: ruff check ./api
 
+      - name: Ruff hints
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: "Please run 'dev/reformat' to fix the fixable linting errors."
+            })
+
       - name: Dotenv check
         run: dotenv-linter ./api/.env.example ./web/.env.example
 
-      - name: Lint hints
-        if: failure()
-        run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
 
   test:
     name: ESLint and SuperLinter
