@@ -199,10 +199,10 @@ class RelytVector(BaseVector):
         if ids:
             self.delete_by_uuids(ids)
 
-    def delete_by_ids(self, doc_ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]) -> None:
 
         with Session(self.client) as session:
-            ids_str = ','.join(f"'{doc_id}'" for doc_id in doc_ids)
+            ids_str = ','.join(f"'{doc_id}'" for doc_id in ids)
             select_statement = sql_text(
                 f"""SELECT id FROM "{self._collection_name}" WHERE metadata->>'doc_id' in ({ids_str}); """
             )

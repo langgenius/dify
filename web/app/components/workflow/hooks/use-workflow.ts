@@ -75,6 +75,11 @@ export const useWorkflow = () => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { eventEmitter } = useEventEmitterContextContext()
 
+  const setPanelWidth = useCallback((width: number) => {
+    localStorage.setItem('workflow-node-panel-width', `${width}`)
+    workflowStore.setState({ panelWidth: width })
+  }, [workflowStore])
+
   const handleLayout = useCallback(async () => {
     workflowStore.setState({ nodeAnimation: true })
     const {
@@ -353,6 +358,7 @@ export const useWorkflow = () => {
   }, [workflowStore])
 
   return {
+    setPanelWidth,
     handleLayout,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
