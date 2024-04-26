@@ -1,5 +1,5 @@
 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusConfig, MilvusVector
-from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PgvectoRSConfig
+from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PgvectoRSConfig, PGVectoRS
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractTestVector,
     get_sample_text,
@@ -7,19 +7,19 @@ from tests.integration_tests.vdb.test_vector_store import (
 )
 
 
-class TestMilvusVector(AbstractTestVector):
+class TestPgvectoRSVector(AbstractTestVector):
     def __init__(self):
         super().__init__()
-        self.vector = MilvusVector(
+        self.vector = PGVectoRS(
             collection_name=self.collection_name,
             config=PgvectoRSConfig(
-                host=config.get('PGVECTO_RS_HOST'),
-                port=config.get('PGVECTO_RS_PORT'),
-                user=config.get('PGVECTO_RS_USER'),
-                password=config.get('PGVECTO_RS_PASSWORD'),
-                database=config.get('PGVECTO_RS_DATABASE'),
+                host='localhost',
+                port=5432,
+                user='postgres',
+                password='dify123456',
+                database='postgres',
             ),
-            dim=dim
+            dim=3
         )
 
     def search_by_full_text(self):
@@ -29,4 +29,4 @@ class TestMilvusVector(AbstractTestVector):
 
 
 def test_milvus_vector(setup_mock_redis):
-    TestMilvusVector().run_all_test()
+    TestPgvectoRSVector().run_all_test()
