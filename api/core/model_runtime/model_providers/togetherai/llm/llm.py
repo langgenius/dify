@@ -54,19 +54,6 @@ class TogetherAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
         REPETITION_PENALTY = "repetition_penalty"
         TOP_K = "top_k"
         features = []
-        function_calling_type = cred_with_endpoint.get('function_calling_type', 'no_call')
-        if function_calling_type in ['function_call']:
-            features.append(ModelFeature.TOOL_CALL)
-        elif function_calling_type in ['tool_call']:
-            features.append(ModelFeature.MULTI_TOOL_CALL)
-
-        stream_function_calling = cred_with_endpoint.get('stream_function_calling', 'supported')
-        if stream_function_calling == 'supported':
-            features.append(ModelFeature.STREAM_TOOL_CALL)
-
-        vision_support = cred_with_endpoint.get('vision_support', 'not_support')
-        if vision_support == 'support':
-            features.append(ModelFeature.VISION)
 
         entity = AIModelEntity(
             model=model,
