@@ -7,4 +7,4 @@ echo 'alias start-worker="cd /workspaces/dify/api && celery -A app.celery worker
 echo 'alias start-web="cd /workspaces/dify/web && npm run dev"' >> ~/.bashrc
 echo 'alias start-containers="cd /workspaces/dify/docker && docker-compose -f docker-compose.middleware.yaml -p dify up -d"' >> ~/.bashrc
 
-source ~/.bashrc
+source /home/vscode/.bashrc
