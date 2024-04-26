@@ -153,23 +153,23 @@ class TencentVector(BaseVector):
                                                                 limit=kwargs.get('top_k', 4),
                                                                 timeout=self._client_config.timeout,
                                                                 )
-        return self._get_search_res(res, **kwargs)
+        score_threshold = kwargs.get("score_threshold", .0) if kwargs.get('score_threshold', .0) else 0.0
+        return self._get_search_res(res, score_threshold)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return []
 
-    def _get_search_res(self, res, **kwargs):
+    def _get_search_res(self, res, score_threshold):
         docs = []
         if res is None or len(res) == 0:
             return docs
 
         for result in res[0]:
-            score_threshold = kwargs.get("score_threshold", .0) if kwargs.get('score_threshold', .0) else 0.0
-            score = result.get("score", 0.0)
+            meta = result.get(self.field_metadata)
+            if meta is not None:
+                meta = json.loads(meta)
+            score = 1 - result.get("score", 0.0)
             if score > score_threshold:
-                meta = result.get(self.field_metadata)
-                if meta is not None:
-                    meta = json.loads(meta)
                 meta["score"] = score
                 doc = Document(page_content=result.get(self.field_text), metadata=meta)
                 docs.append(doc)
