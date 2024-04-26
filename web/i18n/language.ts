@@ -36,7 +36,7 @@ export const languages = [
   },
   {
     value: 'zh-Hant',
-    name: '繁體中文 (台灣)',
+    name: '繁體中文',
     example: '你好，Dify！',
     supported: true,
   },
