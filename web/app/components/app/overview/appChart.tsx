@@ -11,7 +11,7 @@ import { formatNumber } from '@/utils/format'
 import Basic from '@/app/components/app-sidebar/basic'
 import Loading from '@/app/components/base/loading'
 import type { AppDailyConversationsResponse, AppDailyEndUsersResponse, AppTokenCostsResponse } from '@/models/app'
-import { getAppDailyConversations, getAppDailyEndUsers, getAppStatistics, getAppTokenCosts, getWorkflowDailyConversations, getAppRAGDelay } from '@/service/apps'
+import { getAppDailyConversations, getAppDailyEndUsers, getAppRAGDelay, getAppStatistics, getAppTokenCosts, getWorkflowDailyConversations } from '@/service/apps'
 const valueFormatter = (v: string | number) => v
 
 const COLOR_TYPE_MAP = {
