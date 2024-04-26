@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import * as monaco from 'monaco-editor'
 import Base from '../base'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -56,22 +56,13 @@ const CodeEditor: FC<Props> = ({
 
   const editorRef = useRef(null)
   const popupRef = useRef(null)
+  const [showPopup, setShowPopup] = useState(false)
+  const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 })
+  // console.log(showPopup, popupPosition)
   const [isEditorMounted, setEditorMounted] = React.useState(false)
 
-  // Create a content widget for the popup
-  const popupWidget = {
-    getId: () => 'custom-popup',
-    getDomNode: () => popupRef.current,
-    getPosition: () => ({
-      position: (editorRef.current as any)?.getPosition(),
-      preference: [monaco.editor.ContentWidgetPositionPreference.BELOW, monaco.editor.ContentWidgetPositionPreference.EXACT],
-    }),
-    allowEditorOverflow: true,
-  }
-
   const hidePopup = () => {
-    const editor: any = editorRef.current
-    editor?.removeContentWidget(popupWidget)
+    setShowPopup(false)
   }
   useEffect(() => {
     if (!isEditorMounted)
@@ -82,28 +73,39 @@ const CodeEditor: FC<Props> = ({
 
       // Show the popup when the user types "/"
       const showPopup = () => {
-        editor.addContentWidget(popupWidget)
+        setShowPopup(true)
       }
 
       // Hide the popup when the user types any other character or moves the cursor
 
       // Listen for cursor position changes
-      editor.onDidChangeCursorPosition((event: any) => {
+      const handleCursorPositionChange = (event: any) => {
         const { position } = event
         const text = editor.getModel().getLineContent(position.lineNumber)
         const charBefore = text[position.column - 2]
-        if (charBefore === '/')
+        if (charBefore === '/') {
+          const editorRect = editor.getDomNode().getBoundingClientRect()
+          const cursorCoords = editor.getScrolledVisiblePosition(position)
+          const popupX = editorRect.left + cursorCoords.left
+          const popupY = editorRect.top + cursorCoords.top + 20 // Adjust the vertical position as needed
+
+          setPopupPosition({ x: popupX, y: popupY })
           showPopup()
-        else
+        }
+        else {
           hidePopup()
-      })
+        }
+      }
+      editor.onDidChangeCursorPosition(handleCursorPositionChange)
 
       // Hide the popup when the component unmounts
       return () => {
-        hidePopup()
+        editor.onDidChangeCursorPosition(handleCursorPositionChange)
       }
     }
   }, [isEditorMounted])
+
+  // useEffect(())
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor
@@ -180,17 +182,40 @@ const CodeEditor: FC<Props> = ({
           />
         </>
       </Base>
-      <div ref={popupRef} style={{ display: 'none', width: 200, background: '#fff' }}>
-        <VarReferenceVars
-          hideSearch
-          vars={availableVars}
-          onChange={(variables: string[]) => {
-            // handleSelectWorkflowVariable(variables)
-            console.log(variables)
-            hidePopup()
+      {showPopup && (
+        <div
+          ref={popupRef}
+          className='bg-white border border-gray-200 w-[300px]'
+          style={{
+            position: 'fixed',
+            top: popupPosition.y,
+            left: popupPosition.x,
+            zIndex: 100,
           }}
-        />
-      </div>
+        >
+          <VarReferenceVars
+            hideSearch
+            vars={availableVars}
+            onChange={(variables: string[]) => {
+              // handleSelectWorkflowVariable(variables)
+              console.log(variables)
+              const editor: any = editorRef.current
+              const position = editor?.getPosition()
+
+              // Insert the content at the cursor position
+              editor?.executeEdits('', [
+                {
+                  // position.column - 1 to remove the text before the cursor
+                  range: new monaco.Range(position.lineNumber, position.column - 1, position.lineNumber, position.column),
+                  text: `{{ ${variables.slice(-1)[0]} }}`,
+                },
+              ])
+              hidePopup()
+            }}
+          />
+        </div>
+      )}
+
     </div>
   )
 }
