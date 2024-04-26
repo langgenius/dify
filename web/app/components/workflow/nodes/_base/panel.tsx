@@ -26,6 +26,7 @@ import {
   useNodesReadOnly,
   useNodesSyncDraft,
   useToolIcon,
+  useWorkflow,
 } from '@/app/components/workflow/hooks'
 import { canRunBySingle } from '@/app/components/workflow/utils'
 import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
@@ -42,7 +43,10 @@ const BasePanel: FC<BasePanelProps> = ({
   children,
 }) => {
   const { t } = useTranslation()
-  const initPanelWidth = localStorage.getItem('workflow-node-panel-width') || 420
+  const panelWidth = localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420
+  const {
+    setPanelWidth,
+  } = useWorkflow()
   const { handleNodeSelect } = useNodesInteractions()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { nodesReadOnly } = useNodesReadOnly()
@@ -50,9 +54,9 @@ const BasePanel: FC<BasePanelProps> = ({
   const availableNextNodes = nodesExtraData[data.type].availableNextNodes
   const toolIcon = useToolIcon(data)
 
-  const handleResized = useCallback((width: number) => {
-    localStorage.setItem('workflow-node-panel-width', `${width}`)
-  }, [])
+  const handleResize = useCallback((width: number) => {
+    setPanelWidth(width)
+  }, [setPanelWidth])
 
   const {
     triggerRef,
@@ -62,7 +66,7 @@ const BasePanel: FC<BasePanelProps> = ({
     triggerDirection: 'left',
     minWidth: 420,
     maxWidth: 720,
-    onResized: handleResized,
+    onResize: handleResize,
   })
 
   const {
@@ -88,7 +92,7 @@ const BasePanel: FC<BasePanelProps> = ({
         ref={containerRef}
         className='relative h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl overflow-y-auto'
         style={{
-          width: `${initPanelWidth}px`,
+          width: `${panelWidth}px`,
         }}
       >
         <div className='sticky top-0 bg-white border-b-[0.5px] border-black/5 z-10'>
