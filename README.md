@@ -193,6 +193,39 @@ If you'd like to configure a highly-available setup, there are community-contrib
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 
 
+##  Upgrade steps
+- 1. Stop the service，Command, please execute in the docker directory
+```bash
+docker-compose down
+```
+
+- 2. Back up Docker image ID
+```bash
+docker images | awk -F '[ ]+' '(NR>1 && $2 !~ /none/) {print "docker tag " $3" " $1":"$2}' > image.bak-$(date +%s).txt
+```
+
+- 3. Back up database files
+```bash
+tar -cvf volumes-$(date +%s).tgz volumes
+```
+
+- 4. Back up the docker-compose YAML file
+```bash
+  cp docker-compose.yaml docker-compose.yaml-$(date +%s).txt
+  mv docker-compose.yaml docker-compose.yaml-bak
+  ```
+
+- 5. Download the new version of the docker-compose YAML file，using version 0.6.5 as an example
+```bash
+wget -O docker-compose.yaml https://github.com/langgenius/dify/raw/0.6.5/docker/docker-compose.yaml
+```
+
+- 6. Upgrade completed
+```bash
+ docker-compose up -d
+ ```
+
+
 ## Contributing
 
 For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). 
