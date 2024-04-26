@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -33,7 +33,7 @@ class BaichuanProvider(ModelProvider,ModelClientProvider):
             raise ex
 
     @staticmethod
-    def get_service_client(credentials: dict = None, **kwargs: Any) -> BaichuanModel:
+    def get_service_client(credentials: Optional[dict] = None, **kwargs: Any) -> BaichuanModel:
         client = BaichuanModel(
             api_key=credentials.get('api_key'),
             secret_key=credentials.get('secret_key', '')

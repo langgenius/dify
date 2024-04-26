@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Optional
 
 import google.generativeai.client as GoogleGenerativeAiClient
 
@@ -35,7 +35,7 @@ class GoogleProvider(ModelProvider, ModelClientProvider):
             raise ex
 
     @staticmethod
-    def get_service_client(credentials: dict = None, **kwargs: Any) -> Any:
+    def get_service_client(credentials: Optional[dict] = None, **kwargs: Any) -> Any:
         new_client_manager = GoogleGenerativeAiClient._ClientManager()
         new_client_manager.configure(
             api_key=credentials["google_api_key"],

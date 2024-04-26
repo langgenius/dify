@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Optional
 
 import cohere
 
@@ -35,7 +35,7 @@ class CohereProvider(ModelProvider, ModelClientProvider):
             raise ex
 
     @staticmethod
-    def get_service_client(credentials: dict = None, **kwargs: Any) -> cohere.Client:
+    def get_service_client(credentials: Optional[dict] = None, **kwargs: Any) -> cohere.Client:
         client = cohere.Client(
             api_key=credentials.get('api_key'),
         )

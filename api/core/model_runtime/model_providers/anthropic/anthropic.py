@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from anthropic import Anthropic
 
@@ -35,6 +35,6 @@ class AnthropicProvider(ModelProvider, ModelClientProvider):
             raise ex
 
     @staticmethod
-    def get_service_client(credentials: dict = None, **kwargs: Any) -> Anthropic:
+    def get_service_client(credentials: Optional[dict] = None, **kwargs: Any) -> Anthropic:
         client = Anthropic(**kwargs)
         return client

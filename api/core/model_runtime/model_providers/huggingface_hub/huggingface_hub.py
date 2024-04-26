@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from huggingface_hub import InferenceClient
 
@@ -15,7 +15,7 @@ class HuggingfaceHubProvider(ModelProvider, ModelClientProvider):
         pass
 
     @staticmethod
-    def get_service_client(credentials: dict = None, **kwargs: Any) -> InferenceClient:
+    def get_service_client(credentials: Optional[dict] = None, **kwargs: Any) -> InferenceClient:
         client = InferenceClient(
             token=credentials['huggingfacehub_api_token'],
         )
