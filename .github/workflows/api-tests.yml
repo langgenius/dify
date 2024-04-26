@@ -37,27 +37,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Weaviate
-        uses: hoverkraft-tech/compose-action@v2.0.0
-        with:
-          compose-file: docker/docker-compose.middleware.yaml
-          services: weaviate
-
-      - name: Set up Qdrant
-        uses: hoverkraft-tech/compose-action@v2.0.0
-        with:
-          compose-file: docker/docker-compose.qdrant.yaml
-          services: qdrant
-
-      - name: Set up Milvus
-        uses: hoverkraft-tech/compose-action@v2.0.0
-        with:
-          compose-file: docker/docker-compose.milvus.yaml
-          services: |
-            etcd
-            minio
-            milvus-standalone
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -82,5 +61,19 @@ jobs:
       - name: Run Workflow
         run: dev/pytest/pytest_workflow.sh
 
-      - name: Run Vector Stores
+      - name: Set up Vector Stores (Weaviate, Qdrant and Milvus)
+        uses: hoverkraft-tech/compose-action@v2.0.0
+        with:
+          compose-file: |
+            docker/docker-compose.middleware.yaml
+            docker/docker-compose.qdrant.yaml
+            docker/docker-compose.milvus.yaml
+          services: |
+            weaviate
+            qdrant
+            etcd
+            minio
+            milvus-standalone
+
+      - name: Test Vector Stores
         run: dev/pytest/pytest_vdb.sh
