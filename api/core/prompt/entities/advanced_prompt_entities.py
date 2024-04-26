@@ -40,3 +40,4 @@ class MemoryConfig(BaseModel):
 
     role_prefix: Optional[RolePrefix] = None
     window: WindowConfig
+    query_prompt_template: Optional[str] = None

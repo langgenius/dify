@@ -50,7 +50,8 @@ class QdrantConfig(BaseModel):
             return {
                 'url': self.endpoint,
                 'api_key': self.api_key,
-                'timeout': self.timeout
+                'timeout': self.timeout,
+                'verify': self.endpoint.startswith('https')
             }
 
 
