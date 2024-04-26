@@ -82,3 +82,4 @@ pydantic~=1.10.0
 pgvecto-rs==0.1.4
 aspose-words==24.4.0
 BCEmbedding==0.1.4
+oss2==2.15.0
