@@ -497,14 +497,13 @@ class DatasetRetrievalSettingMockApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, vector_type):
-
-        if vector_type == 'milvus' or vector_type == 'relyt':
+        if vector_type in {'milvus', 'relyt', 'pgvector'}:
             return {
                 'retrieval_method': [
                     'semantic_search'
                 ]
             }
-        elif vector_type == 'qdrant' or vector_type == 'weaviate':
+        elif vector_type in {'qdrant', 'weaviate'}:
             return {
                 'retrieval_method': [
                     'semantic_search', 'full_text_search', 'hybrid_search'
