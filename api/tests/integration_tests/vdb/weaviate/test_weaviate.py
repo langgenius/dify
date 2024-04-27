@@ -1,11 +1,11 @@
 from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
 from tests.integration_tests.vdb.test_vector_store import (
-    AbstractTestVector,
+    AbstractVectorTest,
     setup_mock_redis,
 )
 
 
-class TestWeaviateVector(AbstractTestVector):
+class WeaviateVectorTest(AbstractVectorTest):
     def __init__(self):
         super().__init__()
         self.attributes = ['doc_id', 'dataset_id', 'document_id', 'doc_hash']
@@ -20,4 +20,4 @@ class TestWeaviateVector(AbstractTestVector):
 
 
 def test_weaviate_vector(setup_mock_redis):
-    TestWeaviateVector().run_all_tests()
+    WeaviateVectorTest().run_all_tests()
