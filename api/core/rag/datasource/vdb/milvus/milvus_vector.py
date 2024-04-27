@@ -124,7 +124,7 @@ class MilvusVector(BaseVector):
             if ids:
                 self._client.delete(collection_name=self._collection_name, pks=ids)
 
-    def delete_by_ids(self, doc_ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]) -> None:
         alias = uuid4().hex
         if self._client_config.secure:
             uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
@@ -136,7 +136,7 @@ class MilvusVector(BaseVector):
         if utility.has_collection(self._collection_name, using=alias):
 
             result = self._client.query(collection_name=self._collection_name,
-                                        filter=f'metadata["doc_id"] in {doc_ids}',
+                                        filter=f'metadata["doc_id"] in {ids}',
                                         output_fields=["id"])
             if result:
                 ids = [item["id"] for item in result]

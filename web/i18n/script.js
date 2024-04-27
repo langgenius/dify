@@ -4,7 +4,7 @@ const path = require('node:path')
 const transpile = require('typescript').transpile
 
 const targetLanguage = 'en-US'
-const languages = ['zh-Hans', 'fr-FR', 'ja-JP', 'pt-BR', 'uk-UA', 'vi-VN']
+const languages = ['zh-Hans', 'fr-FR', 'ja-JP', 'pt-BR', 'uk-UA', 'vi-VN', 'zh-Hant']
 
 async function getKeysFromLanuage(language) {
   return new Promise((resolve, reject) => {
