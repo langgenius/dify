@@ -2,10 +2,9 @@ import base64
 from collections.abc import Generator
 from contextlib import closing
 
-from botocore.exceptions import ClientError
+from google.cloud import storage as GoogleCloudStorage
 
 from extensions.storage.base_storage import BaseStorage
-from google.cloud import storage as GoogleCloudStorage
 
 
 class GoogleStorage(BaseStorage):

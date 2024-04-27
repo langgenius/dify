@@ -1,19 +1,12 @@
 from collections.abc import Generator
 from contextlib import closing
 
+import boto3
+from botocore.client import Config
 from botocore.exceptions import ClientError
 
 from extensions.storage.base_storage import BaseStorage
-import base64
-import os
-from collections.abc import Generator
-from datetime import datetime, timedelta, timezone
-from typing import Union
 
-import boto3
-import oss2 as aliyun_s3
-from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
-from botocore.client import Config
 
 class S3Storage(BaseStorage):
     """Implementation for s3 storage.
