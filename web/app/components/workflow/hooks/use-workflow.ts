@@ -2,11 +2,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useState,
 } from 'react'
 import dayjs from 'dayjs'
 import { uniqBy } from 'lodash-es'
 import { useContext } from 'use-context-selector'
-import useSWR from 'swr'
 import produce from 'immer'
 import {
   getIncomers,
@@ -52,6 +52,7 @@ import {
   fetchWorkflowDraft,
   syncWorkflowDraft,
 } from '@/service/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import {
   fetchAllBuiltInTools,
   fetchAllCustomTools,
@@ -73,6 +74,11 @@ export const useWorkflow = () => {
   const nodesExtraData = useNodesExtraData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { eventEmitter } = useEventEmitterContextContext()
+
+  const setPanelWidth = useCallback((width: number) => {
+    localStorage.setItem('workflow-node-panel-width', `${width}`)
+    workflowStore.setState({ panelWidth: width })
+  }, [workflowStore])
 
   const handleLayout = useCallback(async () => {
     workflowStore.setState({ nodeAnimation: true })
@@ -352,6 +358,7 @@ export const useWorkflow = () => {
   }, [workflowStore])
 
   return {
+    setPanelWidth,
     handleLayout,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
@@ -403,8 +410,44 @@ export const useWorkflowInit = () => {
   } = useWorkflowTemplate()
   const { handleFetchAllTools } = useFetchToolsData()
   const appDetail = useAppStore(state => state.appDetail)!
-  const { data, isLoading, error, mutate } = useSWR(`/apps/${appDetail.id}/workflows/draft`, fetchWorkflowDraft)
+  const [data, setData] = useState<FetchWorkflowDraftResponse>()
+  const [isLoading, setIsLoading] = useState(true)
   workflowStore.setState({ appId: appDetail.id })
+
+  const handleGetInitialWorkflowData = useCallback(async () => {
+    try {
+      const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
+
+      setData(res)
+      setIsLoading(false)
+    }
+    catch (error: any) {
+      if (error && error.json && !error.bodyUsed && appDetail) {
+        error.json().then((err: any) => {
+          if (err.code === 'draft_workflow_not_exist') {
+            workflowStore.setState({ notInitialWorkflow: true })
+            syncWorkflowDraft({
+              url: `/apps/${appDetail.id}/workflows/draft`,
+              params: {
+                graph: {
+                  nodes: nodesTemplate,
+                  edges: edgesTemplate,
+                },
+                features: {},
+              },
+            }).then((res) => {
+              workflowStore.getState().setDraftUpdatedAt(res.updated_at)
+              handleGetInitialWorkflowData()
+            })
+          }
+        })
+      }
+    }
+  }, [appDetail, nodesTemplate, edgesTemplate, workflowStore])
+
+  useEffect(() => {
+    handleGetInitialWorkflowData()
+  }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
     try {
@@ -434,27 +477,6 @@ export const useWorkflowInit = () => {
     if (data)
       workflowStore.getState().setDraftUpdatedAt(data.updated_at)
   }, [data, workflowStore])
-
-  if (error && error.json && !error.bodyUsed && appDetail) {
-    error.json().then((err: any) => {
-      if (err.code === 'draft_workflow_not_exist') {
-        workflowStore.setState({ notInitialWorkflow: true })
-        syncWorkflowDraft({
-          url: `/apps/${appDetail.id}/workflows/draft`,
-          params: {
-            graph: {
-              nodes: nodesTemplate,
-              edges: edgesTemplate,
-            },
-            features: {},
-          },
-        }).then((res) => {
-          workflowStore.getState().setDraftUpdatedAt(res.updated_at)
-          mutate()
-        })
-      }
-    })
-  }
 
   return {
     data,

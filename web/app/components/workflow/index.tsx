@@ -142,8 +142,6 @@ const Workflow: FC<WorkflowProps> = memo(({
   } = useEdgesInteractions()
   const {
     isValidConnection,
-    enableShortcuts,
-    disableShortcuts,
   } = useWorkflow()
 
   useOnViewportChange({
@@ -180,8 +178,6 @@ const Workflow: FC<WorkflowProps> = memo(({
         edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
-        onPointerDown={enableShortcuts}
-        onMouseLeave={disableShortcuts}
         onNodeDragStart={handleNodeDragStart}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}

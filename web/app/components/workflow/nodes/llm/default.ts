@@ -50,6 +50,13 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
       if (isPromptyEmpty)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.llm.prompt') })
     }
+
+    if (!errorMessages && !!payload.memory) {
+      const isChatModel = payload.model.mode === 'chat'
+      // payload.memory.query_prompt_template not pass is default: {{#sys.query#}}
+      if (isChatModel && !!payload.memory.query_prompt_template && !payload.memory.query_prompt_template.includes('{{#sys.query#}}'))
+        errorMessages = t('workflow.nodes.llm.sysQueryInUser')
+    }
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

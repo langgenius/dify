@@ -1,18 +1,25 @@
+import json
+import uuid
+
 from flask_login import current_user
-from flask_restful import Resource, inputs, marshal_with, reqparse
-from werkzeug.exceptions import BadRequest, Forbidden
+from flask_restful import Resource, inputs, marshal, marshal_with, reqparse
+from werkzeug.exceptions import BadRequest, Forbidden, abort
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from core.tools.tool_manager import ToolManager
+from core.tools.utils.configuration import ToolParameterConfigurationManager
 from fields.app_fields import (
     app_detail_fields,
     app_detail_fields_with_site,
     app_pagination_fields,
 )
 from libs.login import login_required
+from models.model import App, AppMode, AppModelConfig
 from services.app_service import AppService
+from services.tag_service import TagService
 
 ALLOW_CREATE_APP_MODES = ['chat', 'agent-chat', 'advanced-chat', 'workflow', 'completion']
 
@@ -22,21 +29,29 @@ class AppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(app_pagination_fields)
     def get(self):
         """Get app list"""
+        def uuid_list(value):
+            try:
+                return [str(uuid.UUID(v)) for v in value.split(',')]
+            except ValueError:
+                abort(400, message="Invalid UUID format in tag_ids.")
         parser = reqparse.RequestParser()
         parser.add_argument('page', type=inputs.int_range(1, 99999), required=False, default=1, location='args')
         parser.add_argument('limit', type=inputs.int_range(1, 100), required=False, default=20, location='args')
         parser.add_argument('mode', type=str, choices=['chat', 'workflow', 'agent-chat', 'channel', 'all'], default='all', location='args', required=False)
         parser.add_argument('name', type=str, location='args', required=False)
+        parser.add_argument('tag_ids', type=uuid_list, location='args', required=False)
+
         args = parser.parse_args()
 
         # get app list
         app_service = AppService()
         app_pagination = app_service.get_paginate_apps(current_user.current_tenant_id, args)
+        if not app_pagination:
+            return {'data': [], 'total': 0, 'page': 1, 'limit': 20, 'has_more': False}
 
-        return app_pagination
+        return marshal(app_pagination, app_pagination_fields)
 
     @setup_required
     @login_required

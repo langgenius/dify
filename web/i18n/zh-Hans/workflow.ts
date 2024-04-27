@@ -204,6 +204,7 @@ const translation = {
       singleRun: {
         variable: '变量',
       },
+      sysQueryInUser: 'user message 中必须包含 sys.query',
     },
     knowledgeRetrieval: {
       queryVariable: '查询变量',

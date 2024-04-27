@@ -21,11 +21,12 @@ from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig
 from models.tools import ApiToolProvider
+from services.tag_service import TagService
 from services.workflow_service import WorkflowService
 
 
 class AppService:
-    def get_paginate_apps(self, tenant_id: str, args: dict) -> Pagination:
+    def get_paginate_apps(self, tenant_id: str, args: dict) -> Pagination | None:
         """
         Get app list with pagination
         :param tenant_id: tenant id
@@ -49,6 +50,14 @@ class AppService:
         if 'name' in args and args['name']:
             name = args['name'][:30]
             filters.append(App.name.ilike(f'%{name}%'))
+        if 'tag_ids' in args and args['tag_ids']:
+            target_ids = TagService.get_target_ids_by_tag_ids('app',
+                                                              tenant_id,
+                                                              args['tag_ids'])
+            if target_ids:
+                filters.append(App.id.in_(target_ids))
+            else:
+                return None
 
         app_models = db.paginate(
             db.select(App).where(*filters).order_by(App.created_at.desc()),

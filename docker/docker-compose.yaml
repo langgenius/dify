@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.4
+    image: langgenius/dify-api:0.6.5
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -70,7 +70,7 @@ services:
       # If you want to enable cross-origin support,
       # you must use the HTTPS protocol and set the configuration to `SameSite=None, Secure=true, HttpOnly=true`.
       #
-      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob`, Default: `local`
+      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage`, Default: `local`
       STORAGE_TYPE: local
       # The path to the local storage directory, the directory relative the root path of API service codes or absolute path. Default: `storage` or `/home/john/storage`.
       # only available when STORAGE_TYPE is `local`.
@@ -86,7 +86,10 @@ services:
       AZURE_BLOB_ACCOUNT_KEY: 'difyai'
       AZURE_BLOB_CONTAINER_NAME: 'difyai-container'
       AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
-      # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`.
+      # The Google storage configurations, only available when STORAGE_TYPE is `google-storage`.
+      GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
+      GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
+      # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
       WEAVIATE_ENDPOINT: http://weaviate:8080
@@ -109,6 +112,12 @@ services:
       MILVUS_PASSWORD: Milvus
       # The milvus tls switch.
       MILVUS_SECURE: 'false'
+      # relyt configurations
+      RELYT_HOST: db
+      RELYT_PORT: 5432
+      RELYT_USER: postgres
+      RELYT_PASSWORD: difyai123456
+      RELYT_DATABASE: postgres
       # Mail configuration, support: resend, smtp
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -150,7 +159,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.4
+    image: langgenius/dify-api:0.6.5
     restart: always
     environment:
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
@@ -193,7 +202,7 @@ services:
       AZURE_BLOB_ACCOUNT_KEY: 'difyai'
       AZURE_BLOB_CONTAINER_NAME: 'difyai-container'
       AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
-      # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`.
+      # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
       WEAVIATE_ENDPOINT: http://weaviate:8080
@@ -238,10 +247,9 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.6.4
+    image: langgenius/dify-web:0.6.5
     restart: always
     environment:
-      EDITION: SELF_HOSTED
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
       # different from api or web app domain.
       # example: http://cloud.dify.ai

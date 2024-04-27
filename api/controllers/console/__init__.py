@@ -53,5 +53,8 @@ from .explore import (
     workflow,
 )
 
+# Import tag controllers
+from .tag import tags
+
 # Import workspace controllers
 from .workspace import account, members, model_providers, models, tool_providers, workspace
