@@ -1,13 +1,41 @@
-"""Abstract interface for file storage implementations."""
 from collections.abc import Generator
 from contextlib import closing
 
+from azure.storage.blob import generate_account_sas, ResourceTypes, AccountSasPermissions
+
 from extensions.storage.base_storage import BaseStorage
+import base64
+import os
+from collections.abc import Generator
+from datetime import datetime, timedelta, timezone
+from typing import Union
+
+import boto3
+import oss2 as aliyun_s3
+from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
+from botocore.client import Config
+from flask import Flask
+from google.cloud import storage as GoogleStorage
+
+from extensions.storage.aliyun_storage import AliyunStorage
+from extensions.storage.local_storage import LocalStorage
+from extensions.storage.s3_storage import S3Storage
 
 
 class AzureStorage(BaseStorage):
-    """Interface for file storage.
+    """Implementation for azure storage.
     """
+    def __init__(self, storage_type, app_config):
+        super().__init__(storage_type, app_config)
+        self.bucket_name = app_config.get('AZURE_STORAGE_CONTAINER_NAME')
+        sas_token = generate_account_sas(
+            account_name=app_config.get('AZURE_BLOB_ACCOUNT_NAME'),
+            account_key=app_config.get('AZURE_BLOB_ACCOUNT_KEY'),
+            resource_types=ResourceTypes(service=True, container=True, object=True),
+            permission=AccountSasPermissions(read=True, write=True, delete=True, list=True, add=True, create=True),
+            expiry=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1)
+        )
+        self.client = BlobServiceClient.from_connection_string(app_config.get('AZURE_STORAGE_CONNECTION_STRING'))
 
     def save(self, filename, data):
         blob_container = self.client.get_container_client(container=self.bucket_name)

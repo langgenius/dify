@@ -7,14 +7,12 @@ class BaseStorage(ABC):
     """Interface for file storage.
     """
     storage_type = None
-    bucket_name = None
-    client = None
+    app_config = None
     folder = None
 
-    def __init__(self, storage_type, bucket_name, client, folder):
+    def __init__(self, storage_type, app_config, folder=None):
         self.storage_type = storage_type
-        self.bucket_name = bucket_name
-        self.client = client
+        self.app_config = app_config
         self.folder = folder
 
     @abstractmethod

@@ -1,15 +1,34 @@
-"""Abstract interface for file storage implementations."""
 from collections.abc import Generator
 from contextlib import closing
 
 from botocore.exceptions import ClientError
 
 from extensions.storage.base_storage import BaseStorage
+import base64
+import os
+from collections.abc import Generator
+from datetime import datetime, timedelta, timezone
+from typing import Union
 
+import boto3
+import oss2 as aliyun_s3
+from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
+from botocore.client import Config
 
 class S3Storage(BaseStorage):
-    """Interface for file storage.
+    """Implementation for s3 storage.
     """
+    def __init__(self, storage_type, app_config):
+        super().__init__(storage_type, app_config)
+        self.bucket_name = app_config.get('S3_BUCKET_NAME')
+        self.client = boto3.client(
+                    's3',
+                    aws_secret_access_key=app_config.get('S3_SECRET_KEY'),
+                    aws_access_key_id=app_config.get('S3_ACCESS_KEY'),
+                    endpoint_url=app_config.get('S3_ENDPOINT'),
+                    region_name=app_config.get('S3_REGION'),
+                    config=Config(s3={'addressing_style': app_config.get('S3_ADDRESS_STYLE')})
+                )
 
     def save(self, filename, data):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
@@ -30,8 +49,7 @@ class S3Storage(BaseStorage):
             try:
                 with closing(self.client) as client:
                     response = client.get_object(Bucket=self.bucket_name, Key=filename)
-                    for chunk in response['Body'].iter_chunks():
-                        yield chunk
+                    yield from response['Body'].iter_chunks()
             except ClientError as ex:
                 if ex.response['Error']['Code'] == 'NoSuchKey':
                     raise FileNotFoundError("File not found")

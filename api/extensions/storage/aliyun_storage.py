@@ -5,6 +5,8 @@ from extensions.storage.base_storage import BaseStorage
 
 
 class AliyunStorage(BaseStorage):
+    """Implementation for aliyun storage.
+    """
 
     def save(self, filename, data):
         self.client.put_object(filename, data)
