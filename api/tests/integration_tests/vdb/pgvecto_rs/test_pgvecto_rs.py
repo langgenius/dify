@@ -5,6 +5,7 @@ from tests.integration_tests.vdb.test_vector_store import (
     setup_mock_redis,
 )
 
+
 class TestPgvectoRSVector(AbstractTestVector):
     def __init__(self):
         super().__init__()
@@ -17,7 +18,7 @@ class TestPgvectoRSVector(AbstractTestVector):
                 password='difyai123456',
                 database='dify',
             ),
-            dim=3
+            dim=128
         )
 
     def search_by_full_text(self):
