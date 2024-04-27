@@ -1,3 +1,4 @@
+import base64
 import os
 from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
@@ -8,6 +9,7 @@ import oss2 as aliyun_s3
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
 from botocore.client import Config
 from flask import Flask
+from google.cloud import storage as GoogleStorage
 
 from extensions.storage.aliyun_storage import AliyunStorage
 from extensions.storage.azure_storage import AzureStorage
@@ -62,6 +64,10 @@ class Storage:
                 ),
                 folder=None
             )
+        elif self.storage_type == 'google-storage':
+            self.bucket_name = app.config.get('GOOGLE_STORAGE_BUCKET_NAME')
+            service_account_json = base64.b64decode(app.config.get('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')).decode('utf-8')
+            self.client = GoogleStorage.Client().from_service_account_json(service_account_json)
         else:
             folder = app.config.get('STORAGE_LOCAL_PATH')
             if not os.path.isabs(folder):
@@ -69,7 +75,28 @@ class Storage:
             self.storage_runner = LocalStorage(storage_type='local', folder=folder, bucket_name=None, client=None)
 
     def save(self, filename, data):
-        self.storage_runner.save(filename, data)
+        if self.storage_type == 's3':
+            self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
+        elif self.storage_type == 'azure-blob':
+            blob_container = self.client.get_container_client(container=self.bucket_name)
+            blob_container.upload_blob(filename, data)
+        elif self.storage_type == 'aliyun-oss':
+            self.client.put_object(filename, data)
+        elif self.storage_type == 'google-storage':
+            bucket = self.client.get_bucket(self.bucket_name)
+            blob = bucket.blob(filename)
+            blob.upload_from_file(data)
+        else:
+            if not self.folder or self.folder.endswith('/'):
+                filename = self.folder + filename
+            else:
+                filename = self.folder + '/' + filename
+
+            folder = os.path.dirname(filename)
+            os.makedirs(folder, exist_ok=True)
+
+            with open(os.path.join(os.getcwd(), filename), "wb") as f:
+                f.write(data)
 
     def load(self, filename: str, stream: bool = False) -> Union[bytes, Generator]:
         if stream:
@@ -78,19 +105,154 @@ class Storage:
             return self.load_once(filename)
 
     def load_once(self, filename: str) -> bytes:
-        return self.storage_runner.load_once(filename)
+        if self.storage_type == 's3':
+            try:
+                with closing(self.client) as client:
+                    data = client.get_object(Bucket=self.bucket_name, Key=filename)['Body'].read()
+            except ClientError as ex:
+                if ex.response['Error']['Code'] == 'NoSuchKey':
+                    raise FileNotFoundError("File not found")
+                else:
+                    raise
+        elif self.storage_type == 'azure-blob':
+            blob = self.client.get_container_client(container=self.bucket_name)
+            blob = blob.get_blob_client(blob=filename)
+            data = blob.download_blob().readall()
+        elif self.storage_type == 'aliyun-oss':
+            with closing(self.client.get_object(filename)) as obj:
+                data = obj.read()
+        elif self.storage_type == 'google-storage':
+            bucket = self.client.get_bucket(self.bucket_name)
+            blob = bucket.get_blob(filename)
+            data = blob.download_as_bytes()
+        else:
+            if not self.folder or self.folder.endswith('/'):
+                filename = self.folder + filename
+            else:
+                filename = self.folder + '/' + filename
+
+            if not os.path.exists(filename):
+                raise FileNotFoundError("File not found")
+
+            with open(filename, "rb") as f:
+                data = f.read()
+
+        return data
 
     def load_stream(self, filename: str) -> Generator:
-        return self.storage_runner.load_stream(filename)
+        def generate(filename: str = filename) -> Generator:
+            if self.storage_type == 's3':
+                try:
+                    with closing(self.client) as client:
+                        response = client.get_object(Bucket=self.bucket_name, Key=filename)
+                        for chunk in response['Body'].iter_chunks():
+                            yield chunk
+                except ClientError as ex:
+                    if ex.response['Error']['Code'] == 'NoSuchKey':
+                        raise FileNotFoundError("File not found")
+                    else:
+                        raise
+            elif self.storage_type == 'azure-blob':
+                blob = self.client.get_blob_client(container=self.bucket_name, blob=filename)
+                with closing(blob.download_blob()) as blob_stream:
+                    while chunk := blob_stream.readall(4096):
+                        yield chunk
+            elif self.storage_type == 'aliyun-oss':
+                with closing(self.client.get_object(filename)) as obj:
+                    while chunk := obj.read(4096):
+                        yield chunk
+            elif self.storage_type == 'google-storage':
+                bucket = self.client.get_bucket(self.bucket_name)
+                blob = bucket.get_blob(filename)
+                with closing(blob.open(mode='rb')) as blob_stream:
+                    while chunk := blob_stream.read(4096):
+                        yield chunk
+            else:
+                if not self.folder or self.folder.endswith('/'):
+                    filename = self.folder + filename
+                else:
+                    filename = self.folder + '/' + filename
+
+                if not os.path.exists(filename):
+                    raise FileNotFoundError("File not found")
+
+                with open(filename, "rb") as f:
+                    while chunk := f.read(4096):  # Read in chunks of 4KB
+                        yield chunk
+
+        return generate()
 
     def download(self, filename, target_filepath):
-        self.storage_runner.download(filename, target_filepath)
+        if self.storage_type == 's3':
+            with closing(self.client) as client:
+                client.download_file(self.bucket_name, filename, target_filepath)
+        elif self.storage_type == 'azure-blob':
+            blob = self.client.get_blob_client(container=self.bucket_name, blob=filename)
+            with open(target_filepath, "wb") as my_blob:
+                blob_data = blob.download_blob()
+                blob_data.readinto(my_blob)
+        elif self.storage_type == 'aliyun-oss':
+            self.client.get_object_to_file(filename, target_filepath)
+        elif self.storage_type == 'google-storage':
+            bucket = self.client.get_bucket(self.bucket_name)
+            blob = bucket.get_blob(filename)
+            with open(target_filepath, "wb") as my_blob:
+                blob_data = blob.download_blob()
+                blob_data.readinto(my_blob)
+        else:
+            if not self.folder or self.folder.endswith('/'):
+                filename = self.folder + filename
+            else:
+                filename = self.folder + '/' + filename
+
+            if not os.path.exists(filename):
+                raise FileNotFoundError("File not found")
+
+            shutil.copyfile(filename, target_filepath)
 
     def exists(self, filename):
-        return self.storage_runner.exists(filename)
+        if self.storage_type == 's3':
+            with closing(self.client) as client:
+                try:
+                    client.head_object(Bucket=self.bucket_name, Key=filename)
+                    return True
+                except:
+                    return False
+        elif self.storage_type == 'azure-blob':
+            blob = self.client.get_blob_client(container=self.bucket_name, blob=filename)
+            return blob.exists()
+        elif self.storage_type == 'aliyun-oss':
+            return self.client.object_exists(filename)
+        elif self.storage_type == 'google-storage':
+            bucket = self.client.get_bucket(self.bucket_name)
+            blob = bucket.blob(filename)
+            return blob.exists()
+        else:
+            if not self.folder or self.folder.endswith('/'):
+                filename = self.folder + filename
+            else:
+                filename = self.folder + '/' + filename
+
+            return os.path.exists(filename)
 
     def delete(self, filename):
-        self.storage_runner.delete(filename)
+        if self.storage_type == 's3':
+            self.client.delete_object(Bucket=self.bucket_name, Key=filename)
+        elif self.storage_type == 'azure-blob':
+            blob_container = self.client.get_container_client(container=self.bucket_name)
+            blob_container.delete_blob(filename)
+        elif self.storage_type == 'aliyun-oss':
+            self.client.delete_object(filename)
+        elif self.storage_type == 'google-storage':
+            bucket = self.client.get_bucket(self.bucket_name)
+            bucket.delete_blob(filename)
+        else:
+            if not self.folder or self.folder.endswith('/'):
+                filename = self.folder + filename
+            else:
+                filename = self.folder + '/' + filename
+            if os.path.exists(filename):
+                os.remove(filename)
 
 
 storage = Storage()
