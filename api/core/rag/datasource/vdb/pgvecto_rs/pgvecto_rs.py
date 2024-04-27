@@ -91,7 +91,7 @@ class PGVectoRS(BaseVector):
                 """)
                 session.execute(create_statement)
                 index_statement = sql_text(f"""
-                        CREATE INDEX {index_name}
+                        CREATE INDEX IF NOT EXISTS {index_name}
                         ON {self._collection_name} USING vectors(vector vector_l2_ops)
                         WITH (options = $$
                                 optimizing.optimizing_threads = 30

@@ -10,7 +10,7 @@ class TestPgvectoRSVector(AbstractVectorTest):
     def __init__(self):
         super().__init__()
         self.vector = PGVectoRS(
-            collection_name=self.collection_name,
+            collection_name=self.collection_name.lower(),
             config=PgvectoRSConfig(
                 host='localhost',
                 port=5431,
