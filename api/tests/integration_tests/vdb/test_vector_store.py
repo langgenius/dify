@@ -1,8 +1,8 @@
 import random
 import uuid
-from unittest.mock import MagicMock
 
 import pytest
+from unt.mock import MagicMock
 
 from core.rag.models.document import Document
 from extensions import ext_redis
