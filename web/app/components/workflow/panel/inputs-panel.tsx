@@ -34,7 +34,6 @@ const InputsPanel = ({ onRun }: Props) => {
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const {
     handleRun,
-    handleRunSetting,
   } = useWorkflowRun()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
@@ -72,7 +71,6 @@ const InputsPanel = ({ onRun }: Props) => {
 
   const doRun = () => {
     onRun()
-    handleRunSetting()
     handleRun({ inputs, files })
   }
 

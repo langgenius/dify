@@ -32,12 +32,10 @@ const RunMode = memo(() => {
   const featuresStore = useFeaturesStore()
   const {
     handleStopRun,
-    handleRunSetting,
     handleRun,
   } = useWorkflowRun()
   const {
     doSyncWorkflowDraft,
-    handleSyncWorkflowDraft,
   } = useNodesSyncDraft()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const showInputsPanel = useStore(s => s.showInputsPanel)
@@ -56,23 +54,21 @@ const RunMode = memo(() => {
     const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
     const startVariables = startNode?.data.variables || []
     const fileSettings = featuresStore!.getState().features.file
+    const {
+      showDebugAndPreviewPanel,
+      setShowDebugAndPreviewPanel,
+    } = workflowStore.getState()
 
     if (!startVariables.length && !fileSettings?.image?.enabled) {
       await doSyncWorkflowDraft()
-      handleRunSetting()
       handleRun({ inputs: {}, files: [] })
+      setShowDebugAndPreviewPanel(true)
     }
     else {
-      workflowStore.setState({
-        historyWorkflowData: undefined,
-        showInputsPanel: true,
-      })
-      handleSyncWorkflowDraft(true)
+      setShowDebugAndPreviewPanel(!showDebugAndPreviewPanel)
     }
   }, [
     workflowStore,
-    handleSyncWorkflowDraft,
-    handleRunSetting,
     handleRun,
     doSyncWorkflowDraft,
     store,

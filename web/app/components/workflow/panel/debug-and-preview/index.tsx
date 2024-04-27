@@ -1,14 +1,13 @@
 import {
   memo,
-  useCallback,
   useRef,
 } from 'react'
 import { useKeyPress } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import { useWorkflowStore } from '../../store'
 import {
   useEdgesInteractions,
   useNodesInteractions,
+  useWorkflowInteractions,
 } from '../../hooks'
 import ChatWrapper from './chat-wrapper'
 import Button from '@/app/components/base/button'
@@ -21,17 +20,9 @@ export type ChatWrapperRefType = {
 const DebugAndPreview = () => {
   const { t } = useTranslation()
   const chatRef = useRef({ handleRestart: () => {} })
-  const workflowStore = useWorkflowStore()
+  const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { handleNodeCancelRunningStatus } = useNodesInteractions()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractions()
-
-  const handleCancelDebugAndPreviewPanel = useCallback(() => {
-    workflowStore.setState({
-      showDebugAndPreviewPanel: false,
-    })
-    handleNodeCancelRunningStatus()
-    handleEdgeCancelRunningStatus()
-  }, [workflowStore, handleNodeCancelRunningStatus, handleEdgeCancelRunningStatus])
 
   const handleRestartChat = () => {
     handleNodeCancelRunningStatus()
