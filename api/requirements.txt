@@ -6,6 +6,7 @@ Flask-Compress~=1.14
 flask-login~=0.6.3
 flask-migrate~=4.0.5
 flask-restful~=0.3.10
+flask-restx~=1.3.0
 flask-cors~=4.0.0
 gunicorn~=22.0.0
 gevent~=23.9.1

@@ -1,13 +1,13 @@
 import json
 
 from flask import request
-from flask_restful import marshal, reqparse
+from flask_restx import marshal, reqparse
 from sqlalchemy import desc
 from werkzeug.exceptions import NotFound
 
 import services.dataset_service
-from controllers.service_api import api
 from controllers.service_api.app.error import ProviderNotInitializeError
+from controllers.service_api.dataset import api
 from controllers.service_api.dataset.error import (
     ArchivedDocumentImmutableError,
     DocumentIndexingError,

@@ -1,11 +1,11 @@
 import logging
 
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.service_api import api
+from controllers.service_api.app import api
 from controllers.service_api.app.error import (
     AppUnavailableError,
     AudioTooLargeError,

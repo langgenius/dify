@@ -1,9 +1,9 @@
 import logging
 
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 from werkzeug.exceptions import InternalServerError
 
-from controllers.service_api import api
+from controllers.service_api.app import api
 from controllers.service_api.app.error import (
     CompletionRequestError,
     NotWorkflowAppError,

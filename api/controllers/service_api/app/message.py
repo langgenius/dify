@@ -1,11 +1,11 @@
 import logging
 
-from flask_restful import Resource, fields, marshal_with, reqparse
-from flask_restful.inputs import int_range
+from flask_restx import Resource, fields, marshal_with, reqparse
+from flask_restx.inputs import int_range
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.service_api import api
+from controllers.service_api.app import api
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom

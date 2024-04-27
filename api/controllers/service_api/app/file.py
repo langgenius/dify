@@ -1,8 +1,8 @@
 from flask import request
-from flask_restful import Resource, marshal_with
+from flask_restx import Resource, marshal_with
 
 import services
-from controllers.service_api import api
+from controllers.service_api.app import api
 from controllers.service_api.app.error import (
     FileTooLargeError,
     NoFileUploadedError,

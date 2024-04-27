@@ -1,8 +1,8 @@
 from flask import request
-from flask_restful import marshal, reqparse
+from flask_restx import marshal, reqparse
 
 import services.dataset_service
-from controllers.service_api import api
+from controllers.service_api.dataset import api
 from controllers.service_api.dataset.error import DatasetNameDuplicateError
 from controllers.service_api.wraps import DatasetApiResource
 from core.model_runtime.entities.model_entities import ModelType

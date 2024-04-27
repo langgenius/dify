@@ -1,8 +1,8 @@
 
 from flask import current_app
-from flask_restful import Resource, fields, marshal_with
+from flask_restx import Resource, fields, marshal_with
 
-from controllers.service_api import api
+from controllers.service_api.app import api
 from controllers.service_api.app.error import AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
 from models.model import App, AppMode
@@ -96,7 +96,7 @@ class AppInfoApi(Resource):
         return {
             'name':app_model.name,
             'description':app_model.description
-        } 
+        }
 
 
 api.add_resource(AppParameterApi, '/parameters')
