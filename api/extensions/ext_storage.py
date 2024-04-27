@@ -1,3 +1,4 @@
+import base64
 import os
 import shutil
 from collections.abc import Generator
@@ -54,7 +55,7 @@ class Storage:
             )
         elif self.storage_type == 'google-storage':
             self.bucket_name = app.config.get('GOOGLE_STORAGE_BUCKET_NAME')
-            service_account_json = app.config.get('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON')
+            service_account_json = base64.b64decode(app.config.get('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')).decode('utf-8')
             self.client = GoogleStorage.Client().from_service_account_json(service_account_json)
         else:
             self.folder = app.config.get('STORAGE_LOCAL_PATH')
