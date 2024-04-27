@@ -5,10 +5,10 @@ export const getEnterpriseFeatures = () => {
   return get<EnterpriseFeatures>('/enterprise-features')
 }
 
-export const getSAMLSSOUrl = () => {
+export const getUserSAMLSSOUrl = () => {
   return get<{ url: string }>('/enterprise/sso/saml/login')
 }
 
-export const getOIDCSSOUrl = () => {
+export const getUserOIDCSSOUrl = () => {
   return get<{ url: string; state: string }>('/enterprise/sso/oidc/login')
 }

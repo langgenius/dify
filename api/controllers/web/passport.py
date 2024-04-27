@@ -5,14 +5,29 @@ from flask_restful import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from controllers.web import api
+from controllers.web.error import WebSSOTokenInvalidError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
+from services.enterprise.enterprise_feature_service import EnterpriseFeatureService
 
 
 class PassportResource(Resource):
     """Base resource for passport."""
     def get(self):
+        # Enterprise feature: SSO enforced for web
+        end_user_session_id = ''
+        enterprise_features = EnterpriseFeatureService.get_enterprise_features()
+        if enterprise_features.sso_enforced_for_web:
+            web_sso_token = request.headers.get('X-Web-SSO-Token')
+            if not web_sso_token:
+                raise WebSSOTokenInvalidError()
+            try:
+                web_sso_token_decode = PassportService().verify(web_sso_token)
+                end_user_session_id = web_sso_token_decode.get('end_user_session_id')
+            except Unauthorized:
+                raise WebSSOTokenInvalidError()
+
         app_code = request.headers.get('X-App-Code')
         if app_code is None:
             raise Unauthorized('X-App-Code header is missing.')
@@ -36,6 +51,10 @@ class PassportResource(Resource):
             is_anonymous=True,
             session_id=generate_session_id(),
         )
+
+        if enterprise_features.sso_enforced_for_web:
+            end_user.session_id = end_user_session_id
+
         db.session.add(end_user)
         db.session.commit()
 
@@ -53,7 +72,9 @@ class PassportResource(Resource):
             'access_token': tk,
         }
 
+
 api.add_resource(PassportResource, '/passport')
+
 
 def generate_session_id():
     """

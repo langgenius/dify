@@ -243,6 +243,7 @@ const baseFetch = <T>(
   if (isPublicAPI) {
     const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
     const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
+    const webSSOToken = localStorage.getItem('web_sso_token') || ''
     let accessTokenJson = { [sharedToken]: '' }
     try {
       accessTokenJson = JSON.parse(accessToken)
@@ -251,6 +252,7 @@ const baseFetch = <T>(
 
     }
     options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
+    options.headers.set('X-Web-SSO-Token', webSSOToken)
   }
   else {
     const accessToken = localStorage.getItem('console_token') || ''
@@ -308,6 +310,12 @@ const baseFetch = <T>(
                   return bodyJson.then((data: ResponseError) => {
                     if (!silent)
                       Toast.notify({ type: 'error', message: data.message })
+
+                    if (data.code === 'web_sso_token_invalid') {
+                      localStorage.removeItem('web_sso_token')
+                      globalThis.location.reload()
+                    }
+
                     return Promise.reject(data)
                   })
                 }
@@ -467,6 +475,11 @@ export const ssePost = (
       if (!/^(2|3)\d{2}$/.test(String(res.status))) {
         res.json().then((data: any) => {
           Toast.notify({ type: 'error', message: data.message || 'Server Error' })
+
+          if (data.code === 'web_sso_token_invalid') {
+            localStorage.removeItem('web_sso_token')
+            globalThis.location.reload()
+          }
         })
         onError?.('Server Error')
         return
