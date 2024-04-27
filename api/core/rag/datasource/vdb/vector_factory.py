@@ -173,9 +173,10 @@ class Vector:
             else:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                index_struct_dict = {"type": "relyt", "vector_store": {"class_prefix": collection_name}}
+                index_struct_dict = {
+                    "type": "pgvector",
+                    "vector_store": {"class_prefix": collection_name}}
                 self._dataset.index_struct = json.dumps(index_struct_dict)
-            dim = len(self._embeddings.embed_query("hello relyt"))
             return PGVector(
                 collection_name=collection_name,
                 config=PGVectorConfig(
@@ -185,7 +186,6 @@ class Vector:
                     password=config.get("PGVECTOR_PASSWORD"),
                     database=config.get("PGVECTOR_DATABASE"),
                 ),
-                dimension=dim,
             )
         else:
             raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
