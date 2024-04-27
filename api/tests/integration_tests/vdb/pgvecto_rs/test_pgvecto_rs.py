@@ -1,12 +1,12 @@
 from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRS, PgvectoRSConfig
 from tests.integration_tests.vdb.test_vector_store import (
-    AbstractTestVector,
+    AbstractVectorTest,
     get_example_text,
     setup_mock_redis,
 )
 
 
-class TestPgvectoRSVector(AbstractTestVector):
+class TestPgvectoRSVector(AbstractVectorTest):
     def __init__(self):
         super().__init__()
         self.vector = PGVectoRS(
