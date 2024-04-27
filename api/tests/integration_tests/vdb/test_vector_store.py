@@ -41,7 +41,7 @@ def setup_mock_redis() -> None:
     ext_redis.redis_client.lock = mock_redis_lock
 
 
-class AbstractTestVector:
+class AbstractVectorTest:
     def __init__(self):
         self.vector = None
         self.dataset_id = str(uuid.uuid4())
