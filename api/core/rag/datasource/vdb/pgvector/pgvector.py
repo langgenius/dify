@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 
 
 class PGVector(BaseVector):
-    def __init__(self, collection_name: str, config: PGVectorConfig, dimension: int):
+    def __init__(self, collection_name: str, config: PGVectorConfig):
         super().__init__(collection_name)
         self.pool = self._create_connection_pool(config)
         self.table_name = f"embedding_{collection_name}"

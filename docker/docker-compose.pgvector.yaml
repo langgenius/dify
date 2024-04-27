@@ -1,7 +1,7 @@
 version: '3'
 services:
   # Qdrant vector store.
-  qdrant:
+  pgvector:
     image: pgvector/pgvector:pg16
     restart: always
     environment:
