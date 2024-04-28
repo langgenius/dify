@@ -153,23 +153,12 @@ class NotionOAuth(OAuthDataSource):
         # get page detail
         for page_result in page_results:
             page_id = page_result['id']
-            if 'Name' in page_result['properties']:
-                if len(page_result['properties']['Name']['title']) > 0:
-                    page_name = page_result['properties']['Name']['title'][0]['plain_text']
-                else:
-                    page_name = 'Untitled'
-            elif 'title' in page_result['properties']:
-                if len(page_result['properties']['title']['title']) > 0:
-                    page_name = page_result['properties']['title']['title'][0]['plain_text']
-                else:
-                    page_name = 'Untitled'
-            elif 'Title' in page_result['properties']:
-                if len(page_result['properties']['Title']['title']) > 0:
-                    page_name = page_result['properties']['Title']['title'][0]['plain_text']
-                else:
-                    page_name = 'Untitled'
-            else:
-                page_name = 'Untitled'
+            page_name = 'Untitled'
+            for key in ['Name', 'title', 'Title', 'Page']:
+                if key in page_result['properties']:
+                    if len(page_result['properties'][key].get('title', [])) > 0:
+                        page_name = page_result['properties'][key]['title'][0]['plain_text']
+                        break
             page_icon = page_result['icon']
             if page_icon:
                 icon_type = page_icon['type']
