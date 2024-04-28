@@ -1,4 +1,4 @@
-import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnNodeFinished, IOnNodeStarted, IOnThought, IOnWorkflowFinished, IOnWorkflowStarted } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnNodeFinished, IOnNodeStarted, IOnTextChunk, IOnTextReplace, IOnThought, IOnWorkflowFinished, IOnWorkflowStarted } from './base'
 import {
   del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
@@ -73,11 +73,15 @@ export const sendWorkflowMessage = async (
     onNodeStarted,
     onNodeFinished,
     onWorkflowFinished,
+    onTextChunk,
+    onTextReplace,
   }: {
     onWorkflowStarted: IOnWorkflowStarted
     onNodeStarted: IOnNodeStarted
     onNodeFinished: IOnNodeFinished
     onWorkflowFinished: IOnWorkflowFinished
+    onTextChunk: IOnTextChunk
+    onTextReplace: IOnTextReplace
   },
   isInstalledApp: boolean,
   installedAppId = '',
@@ -87,7 +91,7 @@ export const sendWorkflowMessage = async (
       ...body,
       response_mode: 'streaming',
     },
-  }, { onNodeStarted, onWorkflowStarted, onWorkflowFinished, isPublicAPI: !isInstalledApp, onNodeFinished })
+  }, { onNodeStarted, onWorkflowStarted, onWorkflowFinished, isPublicAPI: !isInstalledApp, onNodeFinished, onTextChunk, onTextReplace })
 }
 
 export const fetchAppInfo = async () => {
