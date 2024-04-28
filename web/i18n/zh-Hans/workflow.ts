@@ -50,6 +50,8 @@ const translation = {
     input: '输入',
     output: '输出',
     jinjaEditorPlaceholder: '输入 “/” 或 “{” 插入变量',
+    viewOnly: '只读',
+    showRunHistory: '显示运行历史',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',

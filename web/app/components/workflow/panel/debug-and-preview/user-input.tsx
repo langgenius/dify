@@ -56,12 +56,13 @@ const UserInput = () => {
           expanded && (
             <div className='py-2 text-[13px] text-gray-900'>
               {
-                variables.map(variable => (
+                variables.map((variable, index) => (
                   <div
                     key={variable.variable}
                     className='mb-2 last-of-type:mb-0'
                   >
                     <FormItem
+                      autoFocus={index === 0}
                       payload={variable}
                       value={inputs[variable.variable]}
                       onChange={v => handleValueChange(variable.variable, v)}
