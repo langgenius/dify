@@ -3,29 +3,14 @@ import type { FC } from 'react'
 import React, { useRef, useState } from 'react'
 import * as monaco from 'monaco-editor'
 import { useBoolean } from 'ahooks'
+import type { Props as EditorProps } from '.'
 import Editor from '.'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 
 type Props = {
   nodeId: string
-  value?: string | object
-  onChange?: (value: string) => void
-  title: JSX.Element
-  language: CodeLanguage
-  headerRight?: JSX.Element
-  readOnly?: boolean
-  isJSONStringifyBeauty?: boolean
-  height?: number
-  isInNode?: boolean
-}
-
-const languageMap = {
-  [CodeLanguage.javascript]: 'javascript',
-  [CodeLanguage.python3]: 'python',
-  [CodeLanguage.json]: 'json',
-}
+} & EditorProps
 
 const CodeEditor: FC<Props> = ({
   nodeId,
@@ -38,9 +23,9 @@ const CodeEditor: FC<Props> = ({
 
   const editorRef = useRef(null)
   const popupRef = useRef(null)
-  const [isShowPopup, {
-    setTrue: showPopup,
-    setFalse: hidePopup,
+  const [isShowVarPicker, {
+    setTrue: showVarPicker,
+    setFalse: hideVarPicker,
   }] = useBoolean(false)
 
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 })
@@ -58,10 +43,10 @@ const CodeEditor: FC<Props> = ({
       const popupY = editorRect.top + cursorCoords.top + 20 // Adjust the vertical position as needed
 
       setPopupPosition({ x: popupX, y: popupY })
-      showPopup()
+      showVarPicker()
     }
     else {
-      hidePopup()
+      hideVarPicker()
     }
   }
 
@@ -76,7 +61,7 @@ const CodeEditor: FC<Props> = ({
         {...editorProps}
         onMount={onEditorMounted}
       />
-      {isShowPopup && (
+      {isShowVarPicker && (
         <div
           ref={popupRef}
           className='bg-white border border-gray-200 w-[300px]'
@@ -104,12 +89,11 @@ const CodeEditor: FC<Props> = ({
                   text: `{{ ${variables.slice(-1)[0]} }}`,
                 },
               ])
-              hidePopup()
+              hideVarPicker()
             }}
           />
         </div>
       )}
-
     </div>
   )
 }

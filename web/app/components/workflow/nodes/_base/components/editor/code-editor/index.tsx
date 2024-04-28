@@ -9,7 +9,7 @@ import './style.css'
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
 loader.config({ paths: { vs: '/vs' } })
 
-type Props = {
+export type Props = {
   value?: string | object
   onChange?: (value: string) => void
   title: JSX.Element
