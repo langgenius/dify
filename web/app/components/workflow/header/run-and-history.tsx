@@ -38,6 +38,7 @@ const RunMode = memo(() => {
   const {
     doSyncWorkflowDraft,
   } = useNodesSyncDraft()
+  const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
 
@@ -55,9 +56,15 @@ const RunMode = memo(() => {
     const startVariables = startNode?.data.variables || []
     const fileSettings = featuresStore!.getState().features.file
     const {
+      showDebugAndPreviewPanel,
       setShowDebugAndPreviewPanel,
       setShowInputsPanel,
     } = workflowStore.getState()
+
+    if (showDebugAndPreviewPanel) {
+      handleCancelDebugAndPreviewPanel()
+      return
+    }
 
     if (!startVariables.length && !fileSettings?.image?.enabled) {
       await doSyncWorkflowDraft()
@@ -75,6 +82,7 @@ const RunMode = memo(() => {
     doSyncWorkflowDraft,
     store,
     featuresStore,
+    handleCancelDebugAndPreviewPanel,
   ])
 
   return (
