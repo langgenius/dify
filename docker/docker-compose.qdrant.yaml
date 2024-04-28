@@ -10,3 +10,4 @@ services:
       QDRANT_API_KEY: 'difyai123456'
     ports:
       - "6333:6333"
+      - "6334:6334"

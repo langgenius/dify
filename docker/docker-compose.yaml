@@ -99,8 +99,12 @@ services:
       QDRANT_URL: http://qdrant:6333
       # The Qdrant API key.
       QDRANT_API_KEY: difyai123456
-      # The Qdrant clinet timeout setting.
+      # The Qdrant client timeout setting.
       QDRANT_CLIENT_TIMEOUT: 20
+      # The Qdrant client enable gRPC mode.
+      QDRANT_GRPC_ENABLED: 'false'
+      # The Qdrant server gRPC mode PORT.
+      QDRANT_GRPC_PORT: 6334
       # Milvus configuration Only available when VECTOR_STORE is `milvus`.
       # The milvus host.
       MILVUS_HOST: 127.0.0.1
@@ -214,6 +218,10 @@ services:
       QDRANT_API_KEY: difyai123456
       # The Qdrant clinet timeout setting.
       QDRANT_CLIENT_TIMEOUT: 20
+      # The Qdrant client enable gRPC mode.
+      QDRANT_GRPC_ENABLED: 'false'
+      # The Qdrant server gRPC mode PORT.
+      QDRANT_GRPC_PORT: 6334
       # Milvus configuration Only available when VECTOR_STORE is `milvus`.
       # The milvus host.
       MILVUS_HOST: 127.0.0.1
@@ -354,6 +362,7 @@ services:
   #   # uncomment to expose qdrant port to host
   #   # ports:
   #   #  - "6333:6333"
+  #   #  - "6334:6334"
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
