@@ -1,5 +1,5 @@
 coverage~=7.5.0
-pytest~=8.1.1
+pytest~=8.2.0
 pytest-benchmark~=4.0.0
 pytest-env~=1.1.3
 pytest-mock~=3.14.0
