@@ -25,6 +25,7 @@ const WorkflowPreview = () => {
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const showInputsPanel = useStore(s => s.showInputsPanel)
+  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const [currentTab, setCurrentTab] = useState<string>(showInputsPanel ? 'INPUT' : 'TRACING')
 
   const switchTab = async (tab: string) => {
@@ -33,6 +34,11 @@ const WorkflowPreview = () => {
 
   const [height, setHieght] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (showDebugAndPreviewPanel && showInputsPanel)
+      setCurrentTab('INPUT')
+  }, [showDebugAndPreviewPanel, showInputsPanel])
 
   const adjustResultHeight = () => {
     if (ref.current)
@@ -105,7 +111,7 @@ const WorkflowPreview = () => {
           'grow bg-white h-0 overflow-y-auto rounded-b-2xl',
           (currentTab === 'RESULT' || currentTab === 'TRACING') && '!bg-gray-50',
         )}>
-          {currentTab === 'INPUT' && (
+          {currentTab === 'INPUT' && showInputsPanel && (
             <InputsPanel onRun={() => switchTab('RESULT')} />
           )}
           {currentTab === 'RESULT' && (

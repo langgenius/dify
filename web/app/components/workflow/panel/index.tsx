@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import { useNodes } from 'reactflow'
+import cn from 'classnames'
 import { useShallow } from 'zustand/react/shallow'
 import type { CommonNodeType } from '../types'
 import { Panel as NodePanel } from '../nodes'
@@ -37,7 +38,9 @@ const Panel: FC = () => {
   return (
     <div
       tabIndex={-1}
-      className='absolute top-14 right-0 bottom-2 flex z-10 outline-none'
+      className={cn(
+        'absolute top-14 right-0 bottom-2 flex z-10 outline-none',
+      )}
       onFocus={disableShortcuts}
       onBlur={enableShortcuts}
       key={`${isRestoring}`}
