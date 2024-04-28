@@ -7,19 +7,26 @@ import type { Props as EditorProps } from '.'
 import Editor from '.'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import type { Variable } from '@/app/components/workflow/types'
 
 type Props = {
   nodeId: string
+  varList: Variable[]
+  onAddVar: (payload: Variable) => void
 } & EditorProps
 
 const CodeEditor: FC<Props> = ({
   nodeId,
+  varList,
+  onAddVar,
   ...editorProps
 }) => {
   const { availableVars } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: () => true,
   })
+
+  const isLeftBraceRef = useRef(false)
 
   const editorRef = useRef(null)
   const popupRef = useRef(null)
@@ -36,7 +43,8 @@ const CodeEditor: FC<Props> = ({
     const { position } = event
     const text = editor.getModel().getLineContent(position.lineNumber)
     const charBefore = text[position.column - 2]
-    if (charBefore === '/') {
+    if (['/', '{'].includes(charBefore)) {
+      isLeftBraceRef.current = charBefore === '{'
       const editorRect = editor.getDomNode().getBoundingClientRect()
       const cursorCoords = editor.getScrolledVisiblePosition(position)
       const popupX = editorRect.left + cursorCoords.left
@@ -53,6 +61,61 @@ const CodeEditor: FC<Props> = ({
   const onEditorMounted = (editor: any) => {
     editorRef.current = editor
     editor.onDidChangeCursorPosition(handleCursorPositionChange)
+  }
+
+  const getUniqVarName = (varName: string) => {
+    if (varList.find(v => v.variable === varName)) {
+      const match = varName.match(/_([0-9]+)$/)
+
+      const index = (() => {
+        if (match)
+          return parseInt(match[1]!) + 1
+
+        return 1
+      })()
+      return getUniqVarName(`${varName.replace(/_([0-9]+)$/, '')}_${index}`)
+    }
+    return varName
+  }
+
+  const getVarName = (varValue: string[]) => {
+    const existVar = varList.find(v => v.value_selector.join('@@@') === varValue.join('@@@'))
+    if (existVar) {
+      return {
+        name: existVar.variable,
+        isExist: true,
+      }
+    }
+    const varName = varValue.slice(-1)[0]
+    return {
+      name: getUniqVarName(varName),
+      isExist: false,
+    }
+  }
+
+  const handleSelectVar = (varValue: string[]) => {
+    const { name, isExist } = getVarName(varValue)
+    if (!isExist) {
+      const newVar: Variable = {
+        variable: name,
+        value_selector: varValue,
+      }
+
+      onAddVar(newVar)
+    }
+    const editor: any = editorRef.current
+    const position = editor?.getPosition()
+
+    // Insert the content at the cursor position
+    editor?.executeEdits('', [
+      {
+        // position.column - 1 to remove the text before the cursor
+        range: new monaco.Range(position.lineNumber, position.column - 1, position.lineNumber, position.column),
+        text: `{{ ${name} }${!isLeftBraceRef.current ? '}' : ''}`, // left brace would auto add one right brace
+      },
+    ])
+
+    hideVarPicker()
   }
 
   return (
@@ -75,22 +138,7 @@ const CodeEditor: FC<Props> = ({
           <VarReferenceVars
             hideSearch
             vars={availableVars}
-            onChange={(variables: string[]) => {
-              // handleSelectWorkflowVariable(variables)
-              console.log(variables)
-              const editor: any = editorRef.current
-              const position = editor?.getPosition()
-
-              // Insert the content at the cursor position
-              editor?.executeEdits('', [
-                {
-                  // position.column - 1 to remove the text before the cursor
-                  range: new monaco.Range(position.lineNumber, position.column - 1, position.lineNumber, position.column),
-                  text: `{{ ${variables.slice(-1)[0]} }}`,
-                },
-              ])
-              hideVarPicker()
-            }}
+            onChange={handleSelectVar}
           />
         </div>
       )}

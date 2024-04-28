@@ -10,7 +10,7 @@ import OutputVarList from '@/app/components/workflow/nodes/_base/components/vari
 import AddButton from '@/app/components/base/button/add-button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
@@ -80,7 +80,6 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         </Field>
         <Split />
         <CodeEditor
-          nodeId={id}
           isInNode
           readOnly={readOnly}
           title={
