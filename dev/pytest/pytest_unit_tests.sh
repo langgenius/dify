@@ -2,4 +2,4 @@
 set -x
 
 # libs
-coverage run -m pytest api/tests/unit_tests
+coverage run -a -m pytest api/tests/unit_tests
