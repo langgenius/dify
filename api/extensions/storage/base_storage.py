@@ -6,12 +6,10 @@ from collections.abc import Generator
 class BaseStorage(ABC):
     """Interface for file storage.
     """
-    storage_type = None
     app_config = None
     folder = None
 
-    def __init__(self, storage_type, app_config, folder=None):
-        self.storage_type = storage_type
+    def __init__(self, app_config, folder=None):
         self.app_config = app_config
         self.folder = folder
 

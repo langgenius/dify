@@ -8,8 +8,8 @@ from extensions.storage.base_storage import BaseStorage
 class LocalStorage(BaseStorage):
     """Implementation for local storage.
     """
-    def __init__(self, storage_type, app_config, folder=None):
-        super().__init__(storage_type, app_config, folder=folder)
+    def __init__(self, app_config, folder=None):
+        super().__init__(app_config, folder=folder)
 
     def save(self, filename, data):
         if not self.folder or self.folder.endswith('/'):

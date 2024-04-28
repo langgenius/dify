@@ -1,12 +1,24 @@
 from collections.abc import Generator
 from contextlib import closing
 
+import oss2 as aliyun_s3
+
 from extensions.storage.base_storage import BaseStorage
 
 
 class AliyunStorage(BaseStorage):
     """Implementation for aliyun storage.
     """
+
+    def __init__(self, app_config):
+        super().__init__(app_config)
+        self.bucket_name = app_config.get('ALIYUN_OSS_BUCKET_NAME')
+        self.client = aliyun_s3.Bucket(
+            aliyun_s3.Auth(self.app_config.get('ALIYUN_OSS_ACCESS_KEY'), self.app_config.get('ALIYUN_OSS_SECRET_KEY')),
+            self.app_config.get('ALIYUN_OSS_ENDPOINT'),
+            self.bucket_name,
+            connect_timeout=30
+        )
 
     def save(self, filename, data):
         self.client.put_object(filename, data)

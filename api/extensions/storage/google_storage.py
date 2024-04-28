@@ -10,8 +10,8 @@ from extensions.storage.base_storage import BaseStorage
 class GoogleStorage(BaseStorage):
     """Implementation for google storage.
     """
-    def __init__(self, storage_type, app_config):
-        super().__init__(storage_type, app_config)
+    def __init__(self, app_config):
+        super().__init__(app_config)
         self.bucket_name = app_config.get('GOOGLE_STORAGE_BUCKET_NAME')
         service_account_json = base64.b64decode(app_config.get('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')).decode(
             'utf-8')
