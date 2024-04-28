@@ -49,6 +49,7 @@ const translation = {
     processData: '数据处理',
     input: '输入',
     output: '输出',
+    jinjaEditorPlaceholder: '输入 “/” 或 “{” 插入变量',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',

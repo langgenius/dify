@@ -49,6 +49,7 @@ const translation = {
     processData: 'Process Data',
     input: 'Input',
     output: 'Output',
+    jinjaEditorPlaceholder: 'Type \'/\' or \'{\' to insert variable',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

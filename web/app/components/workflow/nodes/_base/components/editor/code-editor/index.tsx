@@ -11,6 +11,7 @@ loader.config({ paths: { vs: '/vs' } })
 
 export type Props = {
   value?: string | object
+  placeholder?: string
   onChange?: (value: string) => void
   title: JSX.Element
   language: CodeLanguage
@@ -30,6 +31,7 @@ const languageMap = {
 
 const CodeEditor: FC<Props> = ({
   value = '',
+  placeholder = '',
   onChange = () => { },
   title,
   headerRight,
@@ -49,6 +51,7 @@ const CodeEditor: FC<Props> = ({
   const editorRef = useRef(null)
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor
+
     editor.onDidFocusEditorText(() => {
       setIsFocus(true)
     })
@@ -91,6 +94,7 @@ const CodeEditor: FC<Props> = ({
   return (
     <div>
       <Base
+        className='relative'
         title={title}
         value={outPutValue}
         headerRight={headerRight}
@@ -121,6 +125,7 @@ const CodeEditor: FC<Props> = ({
             }}
             onMount={handleEditorDidMount}
           />
+          {!outPutValue && <div className='pointer-events-none absolute left-[36px] top-0 leading-[18px] text-[13px] font-normal text-gray-300'>{placeholder}</div>}
         </>
       </Base>
     </div>

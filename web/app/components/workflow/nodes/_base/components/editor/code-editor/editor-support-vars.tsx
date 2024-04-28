@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import * as monaco from 'monaco-editor'
 import { useBoolean } from 'ahooks'
+import { useTranslation } from 'react-i18next'
 import type { Props as EditorProps } from '.'
 import Editor from '.'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
@@ -23,6 +24,8 @@ const CodeEditor: FC<Props> = ({
   onAddVar,
   ...editorProps
 }) => {
+  const { t } = useTranslation()
+
   const { availableVars } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: () => true,
@@ -141,6 +144,7 @@ const CodeEditor: FC<Props> = ({
       <Editor
         {...editorProps}
         onMount={onEditorMounted}
+        placeholder={t('workflow.common.jinjaEditorPlaceholder')!}
       />
       {isShowVarPicker && (
         <div
