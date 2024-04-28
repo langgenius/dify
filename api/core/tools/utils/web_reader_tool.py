@@ -42,20 +42,19 @@ def get_url(url: str, user_agent: str = None) -> str:
     
     supported_content_types = extract_processor.SUPPORT_URL_CONTENT_TYPES + ["text/html"]
 
-    head_response = requests.head(url, headers=headers, allow_redirects=True, timeout=(5, 10))
+    response = requests.get(url, headers=headers, allow_redirects=True, timeout=(5, 10))
 
-    if head_response.status_code != 200:
-        return "URL returned status code {}.".format(head_response.status_code)
+    if response.status_code != 200:
+        return "URL returned status code {}.".format(response.status_code)
 
     # check content-type
-    main_content_type = head_response.headers.get('Content-Type').split(';')[0].strip()
+    main_content_type = response.headers.get('Content-Type').split(';')[0].strip()
     if main_content_type not in supported_content_types:
         return "Unsupported content-type [{}] of URL.".format(main_content_type)
 
     if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
         return ExtractProcessor.load_from_url(url, return_text=True)
 
-    response = requests.get(url, headers=headers, allow_redirects=True, timeout=(5, 30))
     a = extract_using_readabilipy(response.text)
 
     if not a['plain_text'] or not a['plain_text'].strip():

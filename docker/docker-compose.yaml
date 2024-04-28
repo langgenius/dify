@@ -70,7 +70,7 @@ services:
       # If you want to enable cross-origin support,
       # you must use the HTTPS protocol and set the configuration to `SameSite=None, Secure=true, HttpOnly=true`.
       #
-      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob`, Default: `local`
+      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage`, Default: `local`
       STORAGE_TYPE: local
       # The path to the local storage directory, the directory relative the root path of API service codes or absolute path. Default: `storage` or `/home/john/storage`.
       # only available when STORAGE_TYPE is `local`.
@@ -86,6 +86,9 @@ services:
       AZURE_BLOB_ACCOUNT_KEY: 'difyai'
       AZURE_BLOB_CONTAINER_NAME: 'difyai-container'
       AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
+      # The Google storage configurations, only available when STORAGE_TYPE is `google-storage`.
+      GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
+      GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
       # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.

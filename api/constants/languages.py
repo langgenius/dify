@@ -1,10 +1,11 @@
 
 
-languages = ['en-US', 'zh-Hans', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'uk-UA', 'vi-VN']
+languages = ['en-US', 'zh-Hans', 'zh-Hant', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'uk-UA', 'vi-VN']
 
 language_timezone_mapping = {
     'en-US': 'America/New_York',
     'zh-Hans': 'Asia/Shanghai',
+    'zh-Hant': 'Asia/Taipei',
     'pt-BR': 'America/Sao_Paulo',
     'es-ES': 'Europe/Madrid',
     'fr-FR': 'Europe/Paris',

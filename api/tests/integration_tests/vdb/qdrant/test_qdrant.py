@@ -1,11 +1,11 @@
 from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig, QdrantVector
 from tests.integration_tests.vdb.test_vector_store import (
-    AbstractTestVector,
+    AbstractVectorTest,
     setup_mock_redis,
 )
 
 
-class TestQdrantVector(AbstractTestVector):
+class QdrantVectorTest(AbstractVectorTest):
     def __init__(self):
         super().__init__()
         self.attributes = ['doc_id', 'dataset_id', 'document_id', 'doc_hash']
@@ -20,4 +20,4 @@ class TestQdrantVector(AbstractTestVector):
 
 
 def test_qdrant_vector(setup_mock_redis):
-    TestQdrantVector().run_all_tests()
+    QdrantVectorTest().run_all_tests()
