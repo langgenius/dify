@@ -47,26 +47,28 @@ const DebugAndPreview = () => {
     >
       <div className='shrink-0 flex items-center justify-between pl-4 pr-3 pt-3 pb-2 font-semibold text-gray-900'>
         {t('workflow.common.debugAndPreview').toLocaleUpperCase()}
-        <Button
-          className='px-2 h-8 bg-white border-[0.5px] border-gray-200 shadow-xs rounded-lg text-xs text-gray-700 font-medium'
-          onClick={() => handleRestartChat()}
-        >
-          <RefreshCcw01 className='shrink-0 mr-1 w-3 h-3 text-gray-500' />
-          <div
-            className='grow truncate uppercase'
-            title={t('common.operation.refresh') || ''}
+        <div className='flex items-center'>
+          <Button
+            className='px-2 h-8 bg-white border-[0.5px] border-gray-200 shadow-xs rounded-lg text-xs text-gray-700 font-medium'
+            onClick={() => handleRestartChat()}
           >
-            {t('common.operation.refresh')}
+            <RefreshCcw01 className='shrink-0 mr-1 w-3 h-3 text-gray-500' />
+            <div
+              className='grow truncate uppercase'
+              title={t('common.operation.refresh') || ''}
+            >
+              {t('common.operation.refresh')}
+            </div>
+            <div className='shrink-0 ml-1 px-1 leading-[18px] rounded-md border border-gray-200 bg-gray-50 text-[11px] text-gray-500 font-medium'>Shift</div>
+            <div className='shrink-0 ml-0.5 px-1 leading-[18px] rounded-md border border-gray-200 bg-gray-50 text-[11px] text-gray-500 font-medium'>R</div>
+          </Button>
+          <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
+          <div
+            className='flex items-center justify-center w-6 h-6 cursor-pointer'
+            onClick={handleCancelDebugAndPreviewPanel}
+          >
+            <XClose className='w-4 h-4 text-gray-500' />
           </div>
-          <div className='shrink-0 ml-1 px-1 leading-[18px] rounded-md border border-gray-200 bg-gray-50 text-[11px] text-gray-500 font-medium'>Shift</div>
-          <div className='shrink-0 ml-0.5 px-1 leading-[18px] rounded-md border border-gray-200 bg-gray-50 text-[11px] text-gray-500 font-medium'>R</div>
-        </Button>
-        <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
-        <div
-          className='flex items-center justify-center w-6 h-6 cursor-pointer'
-          onClick={handleCancelDebugAndPreviewPanel}
-        >
-          <XClose className='w-4 h-4 text-gray-500' />
         </div>
       </div>
       <div className='grow rounded-b-2xl overflow-y-auto'>
