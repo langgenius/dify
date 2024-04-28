@@ -21,6 +21,7 @@ export const useWorkflowInteractions = () => {
   const handleCancelDebugAndPreviewPanel = useCallback(() => {
     workflowStore.setState({
       showDebugAndPreviewPanel: false,
+      workflowRunningData: undefined,
     })
     handleNodeCancelRunningStatus()
     handleEdgeCancelRunningStatus()
