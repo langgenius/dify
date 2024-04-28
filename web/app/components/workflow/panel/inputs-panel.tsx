@@ -85,12 +85,13 @@ const InputsPanel = ({ onRun }: Props) => {
     <>
       <div className='px-4 pb-2'>
         {
-          variables.map(variable => (
+          variables.map((variable, index) => (
             <div
               key={variable.variable}
               className='mb-2 last-of-type:mb-0'
             >
               <FormItem
+                autoFocus={index === 0}
                 className='!block'
                 payload={variable}
                 value={inputs[variable.variable]}
