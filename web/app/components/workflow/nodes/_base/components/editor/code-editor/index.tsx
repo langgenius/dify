@@ -19,6 +19,7 @@ type Props = {
   isJSONStringifyBeauty?: boolean
   height?: number
   isInNode?: boolean
+  onMount?: (editor: any) => void
 }
 
 const languageMap = {
@@ -37,6 +38,7 @@ const CodeEditor: FC<Props> = ({
   isJSONStringifyBeauty,
   height,
   isInNode,
+  onMount,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
 
@@ -71,6 +73,8 @@ const CodeEditor: FC<Props> = ({
         'editor.background': '#ffffff',
       },
     })
+
+    onMount?.(editor)
   }
 
   const outPutValue = (() => {
