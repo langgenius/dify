@@ -84,6 +84,7 @@ jobs:
           coverage xml -o coverage.xml
 
       - name: Send Coverage Report
+        if: ${{ matrix.python-version == '3.10'}}
         uses: orgoro/coverage@v3.1
         with:
           coverageFile: coverage.xml
