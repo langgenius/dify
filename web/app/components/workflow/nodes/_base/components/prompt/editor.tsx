@@ -10,6 +10,7 @@ import {
   type Node,
   type NodeOutPutVar,
 } from '../../../../types'
+import Wrap from '../editor/wrap'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -20,7 +21,6 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-
 type Props = {
   className?: string
   headerClassName?: string
@@ -106,7 +106,7 @@ const Editor: FC<Props> = ({
   }
 
   return (
-    <div className={cn(className, wrapClassName)} style={wrapStyle}>
+    <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
       <div ref={ref} className={cn(isFocus ? s.gradientBorder : 'bg-gray-100', isExpand && 'h-full', '!rounded-[9px] p-0.5')}>
         <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg')}>
           <div className={cn(headerClassName, 'pt-1 pl-3 pr-2 flex justify-between h-6 items-center')}>
@@ -195,7 +195,7 @@ const Editor: FC<Props> = ({
 
         </div>
       </div>
-    </div>
+    </Wrap>
 
   )
 }
