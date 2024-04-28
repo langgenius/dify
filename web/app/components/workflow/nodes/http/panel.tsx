@@ -8,6 +8,7 @@ import KeyValue from './components/key-value'
 import EditBody from './components/edit-body'
 import AuthorizationModal from './components/authorization'
 import type { HttpNodeType } from './types'
+import Timeout from './components/timeout'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
@@ -40,6 +41,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     showAuthorization,
     hideAuthorization,
     setAuthorization,
+    setTimeout,
     // single run
     isShowSingleRun,
     hideSingleRun,
@@ -109,6 +111,16 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             readonly={readOnly}
             payload={inputs.body}
             onChange={setBody}
+          />
+        </Field>
+        <Field
+          title={t(`${i18nPrefix}.timeout.title`)}
+        >
+          <Timeout
+            nodeId={id}
+            readonly={readOnly}
+            payload={inputs.timeout}
+            onChange={setTimeout}
           />
         </Field>
       </div>
