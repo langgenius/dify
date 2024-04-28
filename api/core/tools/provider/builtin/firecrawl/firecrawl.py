@@ -13,8 +13,10 @@ class FirecrawlProvider(BuiltinToolProviderController):
                 user_id='',
                 tool_parameters={
                     "url": "https://example.com",
-                    "crawlerOptions": {"includes": [], "excludes": [], "limit": 1},
-                    "pageOptions": {"onlyMainContent": True}
+                    "includes": '', 
+                    "excludes": '', 
+                    "limit": 1,
+                    "onlyMainContent": True,
                 }
             )
         except Exception as e:
