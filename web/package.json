@@ -107,6 +107,7 @@
     "@types/sortablejs": "^1.15.1",
     "@types/uuid": "^9.0.8",
     "autoprefixer": "^10.4.14",
+    "code-inspector-plugin": "^0.13.0",
     "cross-env": "^7.0.3",
     "eslint": "^8.36.0",
     "eslint-config-next": "^14.0.4",
