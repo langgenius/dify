@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import * as monaco from 'monaco-editor'
 import { useBoolean } from 'ahooks'
 import type { Props as EditorProps } from '.'
@@ -8,6 +8,8 @@ import Editor from '.'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import type { Variable } from '@/app/components/workflow/types'
+
+const TO_WINDOW_OFFSET = 8
 
 type Props = {
   nodeId: string
@@ -29,7 +31,7 @@ const CodeEditor: FC<Props> = ({
   const isLeftBraceRef = useRef(false)
 
   const editorRef = useRef(null)
-  const popupRef = useRef(null)
+  const popupRef = useRef<HTMLDivElement>(null)
   const [isShowVarPicker, {
     setTrue: showVarPicker,
     setFalse: hideVarPicker,
@@ -47,6 +49,7 @@ const CodeEditor: FC<Props> = ({
       isLeftBraceRef.current = charBefore === '{'
       const editorRect = editor.getDomNode().getBoundingClientRect()
       const cursorCoords = editor.getScrolledVisiblePosition(position)
+
       const popupX = editorRect.left + cursorCoords.left
       const popupY = editorRect.top + cursorCoords.top + 20 // Adjust the vertical position as needed
 
@@ -57,6 +60,21 @@ const CodeEditor: FC<Props> = ({
       hideVarPicker()
     }
   }
+
+  useEffect(() => {
+    if (isShowVarPicker && popupRef.current) {
+      const windowWidth = window.innerWidth
+      const { width, height } = popupRef.current!.getBoundingClientRect()
+      const newPopupPosition = { ...popupPosition }
+      if (popupPosition.x + width > windowWidth - TO_WINDOW_OFFSET)
+        newPopupPosition.x = windowWidth - width - TO_WINDOW_OFFSET
+
+      if (popupPosition.y + height > window.innerHeight - TO_WINDOW_OFFSET)
+        newPopupPosition.y = window.innerHeight - height - TO_WINDOW_OFFSET
+
+      setPopupPosition(newPopupPosition)
+    }
+  }, [isShowVarPicker, popupPosition])
 
   const onEditorMounted = (editor: any) => {
     editorRef.current = editor
