@@ -19,11 +19,16 @@ import type {
 } from './types'
 import { WorkflowContext } from './context'
 
+type PreviewRunningData = WorkflowRunningData & {
+  resultTabActive?: boolean
+  resultText?: string
+}
+
 type Shape = {
   appId: string
   panelWidth: number
-  workflowRunningData?: WorkflowRunningData
-  setWorkflowRunningData: (workflowData?: WorkflowRunningData) => void
+  workflowRunningData?: PreviewRunningData
+  setWorkflowRunningData: (workflowData: PreviewRunningData) => void
   historyWorkflowData?: HistoryWorkflowData
   setHistoryWorkflowData: (historyWorkflowData?: HistoryWorkflowData) => void
   showRunHistory: boolean

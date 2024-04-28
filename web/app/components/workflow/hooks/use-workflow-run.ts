@@ -124,6 +124,7 @@ export const useWorkflowRun = () => {
         status: WorkflowRunningStatus.Running,
       },
       tracing: [],
+      resultText: '',
     })
 
     ssePost(
@@ -283,6 +284,27 @@ export const useWorkflowRun = () => {
 
           if (onNodeFinished)
             onNodeFinished(params)
+        },
+        onTextChunk: (params) => {
+          const { data: { text } } = params
+          const {
+            workflowRunningData,
+            setWorkflowRunningData,
+          } = workflowStore.getState()
+          setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+            draft.resultTabActive = true
+            draft.resultText += text
+          }))
+        },
+        onTextReplace: (params) => {
+          const { data: { text } } = params
+          const {
+            workflowRunningData,
+            setWorkflowRunningData,
+          } = workflowStore.getState()
+          setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+            draft.resultText = text
+          }))
         },
         ...restCallback,
       },
