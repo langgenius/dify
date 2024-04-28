@@ -79,7 +79,7 @@ const CodeEditor: FC<Props> = ({
   }
 
   const getVarName = (varValue: string[]) => {
-    const existVar = varList.find(v => v.value_selector.join('@@@') === varValue.join('@@@'))
+    const existVar = varList.find(v => Array.isArray(v.value_selector) && v.value_selector.join('@@@') === varValue.join('@@@'))
     if (existVar) {
       return {
         name: existVar.variable,
