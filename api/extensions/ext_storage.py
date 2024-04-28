@@ -1,3 +1,4 @@
+import base64
 import os
 import shutil
 from collections.abc import Generator
@@ -11,6 +12,7 @@ from azure.storage.blob import AccountSasPermissions, BlobServiceClient, Resourc
 from botocore.client import Config
 from botocore.exceptions import ClientError
 from flask import Flask
+from google.cloud import storage as GoogleStorage
 
 
 class Storage:
@@ -51,6 +53,10 @@ class Storage:
                 self.bucket_name,
                 connect_timeout=30
             )
+        elif self.storage_type == 'google-storage':
+            self.bucket_name = app.config.get('GOOGLE_STORAGE_BUCKET_NAME')
+            service_account_json = base64.b64decode(app.config.get('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')).decode('utf-8')
+            self.client = GoogleStorage.Client().from_service_account_json(service_account_json)
         else:
             self.folder = app.config.get('STORAGE_LOCAL_PATH')
             if not os.path.isabs(self.folder):
@@ -64,6 +70,10 @@ class Storage:
             blob_container.upload_blob(filename, data)
         elif self.storage_type == 'aliyun-oss':
             self.client.put_object(filename, data)
+        elif self.storage_type == 'google-storage':
+            bucket = self.client.get_bucket(self.bucket_name)
+            blob = bucket.blob(filename)
+            blob.upload_from_file(data)
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
@@ -99,6 +109,10 @@ class Storage:
         elif self.storage_type == 'aliyun-oss':
             with closing(self.client.get_object(filename)) as obj:
                 data = obj.read()
+        elif self.storage_type == 'google-storage':
+            bucket = self.client.get_bucket(self.bucket_name)
+            blob = bucket.get_blob(filename)
+            data = blob.download_as_bytes()
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
@@ -135,6 +149,12 @@ class Storage:
                 with closing(self.client.get_object(filename)) as obj:
                     while chunk := obj.read(4096):
                         yield chunk
+            elif self.storage_type == 'google-storage':
+                bucket = self.client.get_bucket(self.bucket_name)
+                blob = bucket.get_blob(filename)
+                with closing(blob.open(mode='rb')) as blob_stream:
+                    while chunk := blob_stream.read(4096):
+                        yield chunk
             else:
                 if not self.folder or self.folder.endswith('/'):
                     filename = self.folder + filename
@@ -161,6 +181,12 @@ class Storage:
                 blob_data.readinto(my_blob)
         elif self.storage_type == 'aliyun-oss':
             self.client.get_object_to_file(filename, target_filepath)
+        elif self.storage_type == 'google-storage':
+            bucket = self.client.get_bucket(self.bucket_name)
+            blob = bucket.get_blob(filename)
+            with open(target_filepath, "wb") as my_blob:
+                blob_data = blob.download_blob()
+                blob_data.readinto(my_blob)
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
@@ -185,6 +211,10 @@ class Storage:
             return blob.exists()
         elif self.storage_type == 'aliyun-oss':
             return self.client.object_exists(filename)
+        elif self.storage_type == 'google-storage':
+            bucket = self.client.get_bucket(self.bucket_name)
+            blob = bucket.blob(filename)
+            return blob.exists()
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename
@@ -201,6 +231,9 @@ class Storage:
             blob_container.delete_blob(filename)
         elif self.storage_type == 'aliyun-oss':
             self.client.delete_object(filename)
+        elif self.storage_type == 'google-storage':
+            bucket = self.client.get_bucket(self.bucket_name)
+            bucket.delete_blob(filename)
         else:
             if not self.folder or self.folder.endswith('/'):
                 filename = self.folder + filename

@@ -86,7 +86,9 @@ class Vector:
                     endpoint=config.get('QDRANT_URL'),
                     api_key=config.get('QDRANT_API_KEY'),
                     root_path=current_app.root_path,
-                    timeout=config.get('QDRANT_CLIENT_TIMEOUT')
+                    timeout=config.get('QDRANT_CLIENT_TIMEOUT'),
+                    grpc_port=config.get('QDRANT_GRPC_PORT'),
+                    prefer_grpc=config.get('QDRANT_GRPC_ENABLED')
                 )
             )
         elif vector_type == "milvus":
