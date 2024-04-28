@@ -49,6 +49,8 @@ const translation = {
     processData: '数据处理',
     input: '输入',
     output: '输出',
+    viewOnly: '只读',
+    showRunHistory: '显示运行历史',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',

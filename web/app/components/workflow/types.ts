@@ -1,6 +1,7 @@
 import type {
   Edge as ReactFlowEdge,
   Node as ReactFlowNode,
+  Viewport,
 } from 'reactflow'
 import type { TransferMethod } from '@/types/app'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
@@ -59,6 +60,12 @@ export type NodePanelProps<T> = {
   data: CommonNodeType<T>
 }
 export type Edge = ReactFlowEdge<CommonEdgeType>
+
+export type WorkflowDataUpdator = {
+  nodes: Node[]
+  edges: Edge[]
+  viewport: Viewport
+}
 
 export type ValueSelector = string[] // [nodeId, key | obj key path]
 

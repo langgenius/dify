@@ -49,6 +49,8 @@ const translation = {
     processData: 'Process Data',
     input: 'Input',
     output: 'Output',
+    viewOnly: 'View Only',
+    showRunHistory: 'Show Run History',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
