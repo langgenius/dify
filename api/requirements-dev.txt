@@ -1,4 +1,4 @@
-coverage~=7.2.4
+coverage~=7.5.0
 pytest~=8.1.1
 pytest-benchmark~=4.0.0
 pytest-env~=1.1.3
