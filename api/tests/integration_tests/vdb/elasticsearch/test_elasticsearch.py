@@ -1,11 +1,11 @@
 from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import ElasticSearchConfig, ElasticSearchVector
 from tests.integration_tests.vdb.test_vector_store import (
-    AbstractTestVector,
+    AbstractVectorTest,
     setup_mock_redis,
 )
 
 
-class TestElasticSearchVector(AbstractTestVector):
+class TestElasticSearchVector(AbstractVectorTest):
     def __init__(self):
         super().__init__()
         self.vector = ElasticSearchVector(
