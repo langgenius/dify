@@ -55,17 +55,19 @@ const RunMode = memo(() => {
     const startVariables = startNode?.data.variables || []
     const fileSettings = featuresStore!.getState().features.file
     const {
-      showDebugAndPreviewPanel,
       setShowDebugAndPreviewPanel,
+      setShowInputsPanel,
     } = workflowStore.getState()
 
     if (!startVariables.length && !fileSettings?.image?.enabled) {
       await doSyncWorkflowDraft()
       handleRun({ inputs: {}, files: [] })
       setShowDebugAndPreviewPanel(true)
+      setShowInputsPanel(false)
     }
     else {
-      setShowDebugAndPreviewPanel(!showDebugAndPreviewPanel)
+      setShowDebugAndPreviewPanel(true)
+      setShowInputsPanel(true)
     }
   }, [
     workflowStore,

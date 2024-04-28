@@ -7,10 +7,10 @@ import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import {
-  useEdgesInteractions,
   useIsChatMode,
   useNodesInteractions,
   useWorkflow,
+  useWorkflowInteractions,
   useWorkflowRun,
 } from '../hooks'
 import { WorkflowRunningStatus } from '../types'
@@ -48,10 +48,11 @@ const ViewHistory = ({
   const [open, setOpen] = useState(false)
   const { formatTimeFromNow } = useWorkflow()
   const {
-    handleNodeCancelRunningStatus,
     handleNodesCancelSelected,
   } = useNodesInteractions()
-  const { handleEdgeCancelRunningStatus } = useEdgesInteractions()
+  const {
+    handleCancelDebugAndPreviewPanel,
+  } = useWorkflowInteractions()
   const workflowStore = useWorkflowStore()
   const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
@@ -165,13 +166,11 @@ const ViewHistory = ({
                           workflowStore.setState({
                             historyWorkflowData: item,
                             showInputsPanel: false,
-                            showDebugAndPreviewPanel: false,
                           })
                           handleBackupDraft()
                           setOpen(false)
                           handleNodesCancelSelected()
-                          handleNodeCancelRunningStatus()
-                          handleEdgeCancelRunningStatus()
+                          handleCancelDebugAndPreviewPanel()
                         }}
                       >
                         {

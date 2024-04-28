@@ -243,9 +243,6 @@ export const useNodesInteractions = () => {
   }, [store, getNodesReadOnly])
 
   const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean) => {
-    if (getNodesReadOnly() && !workflowStore.getState().isRestoring)
-      return
-
     const {
       getNodes,
       setNodes,
@@ -289,14 +286,11 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
 
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft, getNodesReadOnly, workflowStore])
+  }, [store, handleSyncWorkflowDraft])
 
   const handleNodeClick = useCallback<NodeMouseHandler>((_, node) => {
-    if (getNodesReadOnly() && !workflowStore.getState().isRestoring)
-      return
-
     handleNodeSelect(node.id)
-  }, [handleNodeSelect, getNodesReadOnly, workflowStore])
+  }, [handleNodeSelect])
 
   const handleNodeConnect = useCallback<OnConnect>(({
     source,

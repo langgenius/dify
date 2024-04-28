@@ -104,8 +104,9 @@ const Header: FC = () => {
   }, [handleSyncWorkflowDraft])
 
   const handleGoBackToEdit = useCallback(() => {
+    handleLoadBackupDraft()
     workflowStore.setState({ historyWorkflowData: undefined })
-  }, [workflowStore])
+  }, [workflowStore, handleLoadBackupDraft])
 
   return (
     <div

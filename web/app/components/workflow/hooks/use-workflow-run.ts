@@ -10,7 +10,7 @@ import {
   NodeRunningStatus,
   WorkflowRunningStatus,
 } from '../types'
-import { useWorkflow } from './use-workflow'
+import { useWorkflowInteractions } from './use-workflow-interactions'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { IOtherOptions } from '@/service/base'
 import { ssePost } from '@/service/base'
@@ -26,7 +26,7 @@ export const useWorkflowRun = () => {
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
-  const { renderTreeFromRecord } = useWorkflow()
+  const { handleUpdateWorkflowCanvas } = useWorkflowInteractions()
 
   const handleBackupDraft = useCallback(() => {
     const {
@@ -47,15 +47,11 @@ export const useWorkflowRun = () => {
         viewport: getViewport(),
         features,
       })
+      doSyncWorkflowDraft()
     }
-  }, [reactflow, workflowStore, store, featuresStore])
+  }, [reactflow, workflowStore, store, featuresStore, doSyncWorkflowDraft])
 
   const handleLoadBackupDraft = useCallback(() => {
-    const {
-      setNodes,
-      setEdges,
-    } = store.getState()
-    const { setViewport } = reactflow
     const {
       backupDraft,
       setBackupDraft,
@@ -68,59 +64,15 @@ export const useWorkflowRun = () => {
         viewport,
         features,
       } = backupDraft
-      setNodes(nodes)
-      setEdges(edges)
-      setViewport(viewport)
+      handleUpdateWorkflowCanvas({
+        nodes,
+        edges,
+        viewport,
+      })
       featuresStore!.setState({ features })
       setBackupDraft(undefined)
     }
-  }, [store, reactflow, workflowStore, featuresStore])
-
-  const handleRunSetting = useCallback((shouldClear?: boolean) => {
-    if (shouldClear) {
-      workflowStore.setState({
-        workflowRunningData: undefined,
-        historyWorkflowData: undefined,
-        showInputsPanel: false,
-      })
-    }
-    else {
-      workflowStore.setState({
-        workflowRunningData: {
-          result: {
-            status: shouldClear ? '' : WorkflowRunningStatus.Waiting,
-          },
-          tracing: [],
-        },
-      })
-    }
-
-    const {
-      setNodes,
-      getNodes,
-      edges,
-      setEdges,
-    } = store.getState()
-
-    if (shouldClear) {
-      handleLoadBackupDraft()
-    }
-    else {
-      handleBackupDraft()
-      const newNodes = produce(getNodes(), (draft) => {
-        draft.forEach((node) => {
-          node.data._runningStatus = NodeRunningStatus.Waiting
-        })
-      })
-      setNodes(newNodes)
-      const newEdges = produce(edges, (draft) => {
-        draft.forEach((edge) => {
-          edge.data._runned = false
-        })
-      })
-      setEdges(newEdges)
-    }
-  }, [store, handleLoadBackupDraft, handleBackupDraft, workflowStore])
+  }, [handleUpdateWorkflowCanvas, workflowStore, featuresStore])
 
   const handleRun = useCallback(async (
     params: any,
@@ -350,18 +302,21 @@ export const useWorkflowRun = () => {
     if (publishedWorkflow) {
       const nodes = publishedWorkflow.graph.nodes
       const edges = publishedWorkflow.graph.edges
-      const viewport = publishedWorkflow.graph.viewport
+      const viewport = publishedWorkflow.graph.viewport!
 
-      renderTreeFromRecord(nodes, edges, viewport)
+      handleUpdateWorkflowCanvas({
+        nodes,
+        edges,
+        viewport,
+      })
       featuresStore?.setState({ features: publishedWorkflow.features })
       workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
     }
-  }, [featuresStore, workflowStore, renderTreeFromRecord])
+  }, [featuresStore, handleUpdateWorkflowCanvas, workflowStore])
 
   return {
     handleBackupDraft,
     handleLoadBackupDraft,
-    handleRunSetting,
     handleRun,
     handleStopRun,
     handleRestoreFromPublishedWorkflow,
