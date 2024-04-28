@@ -9,6 +9,7 @@ import {
   useStore,
   useWorkflowStore,
 } from '../../store'
+import { useWorkflowRun } from '../../hooks'
 import UserInput from './user-input'
 import Chat from '@/app/components/base/chat/chat'
 import type { ChatItem } from '@/app/components/base/chat/types'
@@ -22,6 +23,7 @@ const ChatRecord = () => {
   const [chatList, setChatList] = useState([])
   const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
+  const { handleLoadBackupDraft } = useWorkflowRun()
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const currentConversationID = historyWorkflowData?.conversation_id
 
@@ -86,7 +88,10 @@ const ChatRecord = () => {
             {`TEST CHAT#${historyWorkflowData?.sequence_number}`}
             <div
               className='flex justify-center items-center w-6 h-6 cursor-pointer'
-              onClick={() => workflowStore.setState({ historyWorkflowData: undefined })}
+              onClick={() => {
+                handleLoadBackupDraft()
+                workflowStore.setState({ historyWorkflowData: undefined })
+              }}
             >
               <XClose className='w-4 h-4 text-gray-500' />
             </div>
