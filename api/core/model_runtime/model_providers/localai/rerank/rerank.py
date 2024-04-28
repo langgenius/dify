@@ -1,9 +1,9 @@
+from json import dumps
 from typing import Optional
-from json import JSONDecodeError, dumps
-from requests import post
-from yarl import URL
 
 import httpx
+from requests import post
+from yarl import URL
 
 from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from core.model_runtime.errors.invoke import (

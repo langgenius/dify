@@ -1,7 +1,7 @@
 import os
-import pytest
 from collections.abc import Generator
 
+import pytest
 from api.core.model_runtime.entities.rerank_entities import RerankResult
 
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
