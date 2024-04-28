@@ -38,7 +38,6 @@ const RunMode = memo(() => {
     doSyncWorkflowDraft,
   } = useNodesSyncDraft()
   const workflowRunningData = useStore(s => s.workflowRunningData)
-  const showInputsPanel = useStore(s => s.showInputsPanel)
   const isRunning = workflowRunningData?.result.status === WorkflowRunningStatus.Running
 
   const handleClick = useCallback(async () => {
@@ -83,7 +82,6 @@ const RunMode = memo(() => {
         className={cn(
           'flex items-center px-1.5 h-7 rounded-md text-[13px] font-medium text-primary-600',
           'hover:bg-primary-50 cursor-pointer',
-          showInputsPanel && 'bg-primary-50',
           isRunning && 'bg-primary-50 !cursor-not-allowed',
         )}
         onClick={handleClick}
