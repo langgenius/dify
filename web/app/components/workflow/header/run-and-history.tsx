@@ -10,6 +10,7 @@ import {
 import {
   useIsChatMode,
   useNodesSyncDraft,
+  useWorkflowInteractions,
   useWorkflowRun,
 } from '../hooks'
 import {
@@ -120,6 +121,7 @@ RunMode.displayName = 'RunMode'
 const PreviewMode = memo(() => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
+  const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
 
   const handleClick = () => {
     const {
@@ -128,7 +130,11 @@ const PreviewMode = memo(() => {
       setHistoryWorkflowData,
     } = workflowStore.getState()
 
-    setShowDebugAndPreviewPanel(!showDebugAndPreviewPanel)
+    if (showDebugAndPreviewPanel)
+      handleCancelDebugAndPreviewPanel()
+    else
+      setShowDebugAndPreviewPanel(true)
+
     setHistoryWorkflowData(undefined)
   }
 
