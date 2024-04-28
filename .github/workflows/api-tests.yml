@@ -86,5 +86,5 @@ jobs:
       - name: Send Coverage Report
         uses: orgoro/coverage@v3.1
         with:
-          coverageFile: path/to/coverage.xml
+          coverageFile: coverage.xml
           token: ${{ secrets.GITHUB_TOKEN }}
