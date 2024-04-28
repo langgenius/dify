@@ -10,7 +10,7 @@ import OutputPanel from '../run/output-panel'
 import ResultPanel from '../run/result-panel'
 import TracingPanel from '../run/tracing-panel'
 import {
-  useWorkflowRun,
+  useWorkflowInteractions,
 } from '../hooks'
 import { useStore } from '../store'
 import {
@@ -22,9 +22,9 @@ import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()
-  const { handleRunSetting } = useWorkflowRun()
-  const showInputsPanel = useStore(s => s.showInputsPanel)
+  const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore(s => s.workflowRunningData)
+  const showInputsPanel = useStore(s => s.showInputsPanel)
   const [currentTab, setCurrentTab] = useState<string>(showInputsPanel ? 'INPUT' : 'TRACING')
 
   const switchTab = async (tab: string) => {
@@ -49,11 +49,9 @@ const WorkflowPreview = () => {
     `}>
       <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
         {`Test Run${!workflowRunningData?.result.sequence_number ? '' : `#${workflowRunningData?.result.sequence_number}`}`}
-        {showInputsPanel && workflowRunningData?.result?.status !== WorkflowRunningStatus.Running && (
-          <div className='p-1 cursor-pointer' onClick={() => handleRunSetting(true)}>
-            <XClose className='w-4 h-4 text-gray-500' />
-          </div>
-        )}
+        <div className='p-1 cursor-pointer' onClick={() => handleCancelDebugAndPreviewPanel()}>
+          <XClose className='w-4 h-4 text-gray-500' />
+        </div>
       </div>
       <div className='grow relative flex flex-col'>
         <div className='shrink-0 flex items-center px-4 border-b-[0.5px] border-[rgba(0,0,0,0.05)]'>
