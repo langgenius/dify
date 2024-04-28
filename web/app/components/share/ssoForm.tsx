@@ -20,7 +20,12 @@ const SSOForm: FC<{
       fetchEnterpriseFeatures().then((res) => {
         if (res.sso_enforced_for_web) {
           localStorage.setItem('web_app_redirect_url', pathname)
-          router.push(`/webapp-sso?protocal=${res.sso_enforced_for_web_protocol}`)
+
+          // If the user is on the chatbot page, open the SSO login page in a new window
+          if (pathname.includes('/chatbot/'))
+            window.open(`/webapp-sso?protocal=${res.sso_enforced_for_web_protocol}`, 'newWindow', 'width=800,height=600,resizable=yes')
+          else
+            router.push(`/webapp-sso?protocal=${res.sso_enforced_for_web_protocol}`)
         }
         else {
           setLoading(false)
