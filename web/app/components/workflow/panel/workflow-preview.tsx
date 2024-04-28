@@ -1,12 +1,12 @@
 import {
   memo,
   useEffect,
-  useRef,
+  // useRef,
   useState,
 } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
-import OutputPanel from '../run/output-panel'
+import ResultText from '../run/result-text'
 import ResultPanel from '../run/result-panel'
 import TracingPanel from '../run/tracing-panel'
 import {
@@ -32,22 +32,15 @@ const WorkflowPreview = () => {
     setCurrentTab(tab)
   }
 
-  const [height, setHieght] = useState(0)
-  const ref = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     if (showDebugAndPreviewPanel && showInputsPanel)
       setCurrentTab('INPUT')
   }, [showDebugAndPreviewPanel, showInputsPanel])
 
-  const adjustResultHeight = () => {
-    if (ref.current)
-      setHieght(ref.current?.clientHeight - 16 - 16 - 2 - 1)
-  }
-
   useEffect(() => {
-    adjustResultHeight()
-  }, [])
+    if ((workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded || workflowRunningData?.result.status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText)
+      switchTab('DETAIL')
+  }, [workflowRunningData])
 
   return (
     <div className={`
@@ -107,7 +100,7 @@ const WorkflowPreview = () => {
             }}
           >{t('runLog.tracing')}</div>
         </div>
-        <div ref={ref} className={cn(
+        <div className={cn(
           'grow bg-white h-0 overflow-y-auto rounded-b-2xl',
           (currentTab === 'RESULT' || currentTab === 'TRACING') && '!bg-gray-50',
         )}>
@@ -115,11 +108,11 @@ const WorkflowPreview = () => {
             <InputsPanel onRun={() => switchTab('RESULT')} />
           )}
           {currentTab === 'RESULT' && (
-            <OutputPanel
+            <ResultText
               isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
-              outputs={workflowRunningData?.result?.outputs}
+              outputs={workflowRunningData?.resultText}
               error={workflowRunningData?.result?.error}
-              height={height}
+              onClick={() => switchTab('DETAIL')}
             />
           )}
           {currentTab === 'DETAIL' && (

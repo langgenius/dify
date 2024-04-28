@@ -18,6 +18,12 @@ const translation = {
     tokens: '總 token 數',
     steps: '執行步數',
   },
+  resultEmpty: {
+    title: '本運行僅輸出JSON格式，',
+    tipLeft: '請到',
+    link: '詳細資訊面板',
+    tipRight: '查看它。',
+  },
 }
 
 export default translation
