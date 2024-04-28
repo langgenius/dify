@@ -149,7 +149,7 @@ const CodeEditor: FC<Props> = ({
       {isShowVarPicker && (
         <div
           ref={popupRef}
-          className='bg-white border border-gray-200 w-[300px]'
+          className='w-[228px] p-1 bg-white rounded-lg border border-gray-200 shadow-lg space-y-1'
           style={{
             position: 'fixed',
             top: popupPosition.y,
