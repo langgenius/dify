@@ -77,3 +77,15 @@ jobs:
 
       - name: Test Vector Stores
         run: dev/pytest/pytest_vdb.sh
+
+      - name: Coverage Reporting
+        run: |
+          coverage combine
+          coverage report -m
+          coverage xml -o coverage.xml
+
+      - name: Send Coverage Report
+        uses: orgoro/coverage@v3.1
+        with:
+          coverageFile: path/to/coverage.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
