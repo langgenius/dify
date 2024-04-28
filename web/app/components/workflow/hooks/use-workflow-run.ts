@@ -159,6 +159,7 @@ export const useWorkflowRun = () => {
         ...draft?.result,
         status: WorkflowRunningStatus.Running,
       }
+      draft.resultText = ''
     }))
 
     ssePost(
@@ -325,6 +326,27 @@ export const useWorkflowRun = () => {
 
           if (onNodeFinished)
             onNodeFinished(params)
+        },
+        onTextChunk: (params) => {
+          const { data: { text } } = params
+          const {
+            workflowRunningData,
+            setWorkflowRunningData,
+          } = workflowStore.getState()
+          setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+            draft.resultTabActive = true
+            draft.resultText += text
+          }))
+        },
+        onTextReplace: (params) => {
+          const { data: { text } } = params
+          const {
+            workflowRunningData,
+            setWorkflowRunningData,
+          } = workflowStore.getState()
+          setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+            draft.resultText = text
+          }))
         },
         ...restCallback,
       },
