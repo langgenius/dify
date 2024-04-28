@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
-import * as monaco from 'monaco-editor'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import type { Props as EditorProps } from '.'
@@ -34,6 +33,8 @@ const CodeEditor: FC<Props> = ({
   const isLeftBraceRef = useRef(false)
 
   const editorRef = useRef(null)
+  const monacoRef = useRef(null)
+
   const popupRef = useRef<HTMLDivElement>(null)
   const [isShowVarPicker, {
     setTrue: showVarPicker,
@@ -79,8 +80,9 @@ const CodeEditor: FC<Props> = ({
     }
   }, [isShowVarPicker, popupPosition])
 
-  const onEditorMounted = (editor: any) => {
+  const onEditorMounted = (editor: any, monaco: any) => {
     editorRef.current = editor
+    monacoRef.current = monaco
     editor.onDidChangeCursorPosition(handleCursorPositionChange)
   }
 
@@ -125,6 +127,7 @@ const CodeEditor: FC<Props> = ({
       onAddVar(newVar)
     }
     const editor: any = editorRef.current
+    const monaco: any = monacoRef.current
     const position = editor?.getPosition()
 
     // Insert the content at the cursor position

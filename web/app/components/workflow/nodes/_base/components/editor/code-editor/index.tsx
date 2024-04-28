@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
+
 import React, { useRef } from 'react'
 import Base from '../base'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -20,7 +21,7 @@ export type Props = {
   isJSONStringifyBeauty?: boolean
   height?: number
   isInNode?: boolean
-  onMount?: (editor: any) => void
+  onMount?: (editor: any, monaco: any) => void
 }
 
 const languageMap = {
@@ -77,7 +78,7 @@ const CodeEditor: FC<Props> = ({
       },
     })
 
-    onMount?.(editor)
+    onMount?.(editor, monaco)
   }
 
   const outPutValue = (() => {
