@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useStore } from '@/app/components/workflow/store'
 
 type Params = {
   ref: React.RefObject<HTMLDivElement>
@@ -10,7 +9,6 @@ type Params = {
 const useToggleExpend = ({ ref, hasFooter = true, isInNode }: Params) => {
   const [isExpand, setIsExpand] = useState(false)
   const [wrapHeight, setWrapHeight] = useState(ref.current?.clientHeight)
-  const panelWidth = useStore(state => state.panelWidth)
   const editorExpandHeight = isExpand ? wrapHeight! - (hasFooter ? 56 : 29) : 0
   useEffect(() => {
     setWrapHeight(ref.current?.clientHeight)
@@ -29,7 +27,6 @@ const useToggleExpend = ({ ref, hasFooter = true, isInNode }: Params) => {
   const wrapStyle = isExpand
     ? {
       boxShadow: '0px 0px 12px -4px rgba(16, 24, 40, 0.05), 0px -3px 6px -2px rgba(16, 24, 40, 0.03)',
-      width: panelWidth - 1,
     }
     : {}
   return {
