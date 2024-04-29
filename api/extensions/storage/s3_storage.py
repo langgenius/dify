@@ -4,6 +4,7 @@ from contextlib import closing
 import boto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
+from flask import Flask
 
 from extensions.storage.base_storage import BaseStorage
 
@@ -11,8 +12,9 @@ from extensions.storage.base_storage import BaseStorage
 class S3Storage(BaseStorage):
     """Implementation for s3 storage.
     """
-    def __init__(self, app_config):
-        super().__init__(app_config)
+    def __init__(self, app: Flask):
+        super().__init__(app)
+        app_config = self.app.config
         self.bucket_name = app_config.get('S3_BUCKET_NAME')
         self.client = boto3.client(
                     's3',

@@ -2,16 +2,16 @@
 from abc import ABC, abstractmethod
 from collections.abc import Generator
 
+from flask import Flask
+
 
 class BaseStorage(ABC):
     """Interface for file storage.
     """
-    app_config = None
-    folder = None
+    app = None
 
-    def __init__(self, app_config, folder=None):
-        self.app_config = app_config
-        self.folder = folder
+    def __init__(self, app: Flask):
+        self.app = app
 
     @abstractmethod
     def save(self, filename, data):

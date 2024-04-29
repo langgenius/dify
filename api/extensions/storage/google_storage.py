@@ -2,6 +2,7 @@ import base64
 from collections.abc import Generator
 from contextlib import closing
 
+from flask import Flask
 from google.cloud import storage as GoogleCloudStorage
 
 from extensions.storage.base_storage import BaseStorage
@@ -10,8 +11,9 @@ from extensions.storage.base_storage import BaseStorage
 class GoogleStorage(BaseStorage):
     """Implementation for google storage.
     """
-    def __init__(self, app_config):
-        super().__init__(app_config)
+    def __init__(self, app: Flask):
+        super().__init__(app)
+        app_config = self.app.config
         self.bucket_name = app_config.get('GOOGLE_STORAGE_BUCKET_NAME')
         service_account_json = base64.b64decode(app_config.get('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')).decode(
             'utf-8')

@@ -19,25 +19,22 @@ class Storage:
         storage_type = app.config.get('STORAGE_TYPE')
         if storage_type == 's3':
             self.storage_runner = S3Storage(
-                app_config=app.config
+                app=app
             )
         elif storage_type == 'azure-blob':
             self.storage_runner = AzureStorage(
-                app_config=app.config
+                app=app
             )
         elif storage_type == 'aliyun-oss':
             self.storage_runner = AliyunStorage(
-                app_config=app.config
+                app=app
             )
         elif storage_type == 'google-storage':
             self.storage_runner = GoogleStorage(
-                app_config=app.config
+                app=app
             )
         else:
-            folder = app.config.get('STORAGE_LOCAL_PATH')
-            if not os.path.isabs(folder):
-                folder = os.path.join(app.root_path, folder)
-            self.storage_runner = LocalStorage(app_config=app.config, folder=folder)
+            self.storage_runner = LocalStorage(app=app)
 
     def save(self, filename, data):
         self.storage_runner.save(filename, data)

@@ -3,6 +3,7 @@ from contextlib import closing
 from datetime import datetime, timedelta, timezone
 
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
+from flask import Flask
 
 from extensions.storage.base_storage import BaseStorage
 
@@ -10,17 +11,18 @@ from extensions.storage.base_storage import BaseStorage
 class AzureStorage(BaseStorage):
     """Implementation for azure storage.
     """
-    def __init__(self, app_config):
-        super().__init__(app_config)
-        self.bucket_name = self.app_config.get('AZURE_STORAGE_CONTAINER_NAME')
+    def __init__(self, app: Flask):
+        super().__init__(app)
+        app_config = self.app.config
+        self.bucket_name = app_config.get('AZURE_STORAGE_CONTAINER_NAME')
         sas_token = generate_account_sas(
-            account_name=self.app_config.get('AZURE_BLOB_ACCOUNT_NAME'),
-            account_key=self.app_config.get('AZURE_BLOB_ACCOUNT_KEY'),
+            account_name=app_config.get('AZURE_BLOB_ACCOUNT_NAME'),
+            account_key=app_config.get('AZURE_BLOB_ACCOUNT_KEY'),
             resource_types=ResourceTypes(service=True, container=True, object=True),
             permission=AccountSasPermissions(read=True, write=True, delete=True, list=True, add=True, create=True),
             expiry=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1)
         )
-        self.client = BlobServiceClient(account_url=self.app_config.get('AZURE_BLOB_ACCOUNT_URL'),
+        self.client = BlobServiceClient(account_url=app_config.get('AZURE_BLOB_ACCOUNT_URL'),
                                         credential=sas_token)
     def save(self, filename, data):
         blob_container = self.client.get_container_client(container=self.bucket_name)
