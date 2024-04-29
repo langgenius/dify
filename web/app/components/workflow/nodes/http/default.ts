@@ -18,6 +18,11 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
       type: BodyType.none,
       data: '',
     },
+    timeout: {
+      max_connect_timeout: 0,
+      max_read_timeout: 0,
+      max_write_timeout: 0,
+    },
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode
