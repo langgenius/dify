@@ -115,6 +115,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
         </Field>
         <Field
           title={t(`${i18nPrefix}.timeout.title`)}
+          supportFold
         >
           <Timeout
             nodeId={id}
