@@ -2,6 +2,7 @@ from typing import Optional, Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file.file_obj import FileVar
+from core.helper.code_executor.jinja2_formatter import Jinja2Formatter
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -135,14 +136,22 @@ class AdvancedPromptTransform(PromptTransform):
         for prompt_item in raw_prompt_list:
             raw_prompt = prompt_item.text
 
-            prompt_template = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
-            prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
+            if prompt_item.edition_type == 'basic' or not prompt_item.edition_type:
+                prompt_template = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
+                prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
 
-            prompt_inputs = self._set_context_variable(context, prompt_template, prompt_inputs)
+                prompt_inputs = self._set_context_variable(context, prompt_template, prompt_inputs)
 
-            prompt = prompt_template.format(
-                prompt_inputs
-            )
+                prompt = prompt_template.format(
+                    prompt_inputs
+                )
+            elif prompt_item.edition_type == 'jinja2':
+                prompt = raw_prompt
+                prompt_inputs = inputs
+
+                prompt = Jinja2Formatter.format(prompt, prompt_inputs)
+            else:
+                raise ValueError(f'Invalid edition type: {prompt_item.edition_type}')
 
             if prompt_item.role == PromptMessageRole.USER:
                 prompt_messages.append(UserPromptMessage(content=prompt))

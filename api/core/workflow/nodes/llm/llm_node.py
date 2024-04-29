@@ -49,6 +49,12 @@ class LLMNode(BaseNode):
             # fetch variables and fetch values from variable pool
             inputs = self._fetch_inputs(node_data, variable_pool)
 
+            # fetch jinja2 inputs
+            jinja_inputs = self._fetch_jinja_inputs(node_data, variable_pool)
+
+            # merge inputs
+            inputs.update(jinja_inputs)
+
             node_inputs = {}
 
             # fetch files
@@ -183,6 +189,28 @@ class LLMNode(BaseNode):
             usage = LLMUsage.empty_usage()
 
         return full_text, usage
+
+    def _fetch_jinja_inputs(self, node_data: LLMNodeData, variable_pool: VariablePool) -> dict[str, str]:
+        """
+        Fetch jinja inputs
+        :param node_data: node data
+        :param variable_pool: variable pool
+        :return:
+        """
+        variables = {}
+
+        if not node_data.prompt_config:
+            return variables
+
+        for variable_selector in node_data.prompt_config.jinja2_variables or []:
+            variable = variable_selector.variable
+            value = variable_pool.get_variable_value(
+                variable_selector=variable_selector.value_selector
+            )
+
+            variables[variable] = value
+
+        return variables
 
     def _fetch_inputs(self, node_data: LLMNodeData, variable_pool: VariablePool) -> dict[str, str]:
         """
