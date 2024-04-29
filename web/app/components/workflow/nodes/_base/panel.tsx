@@ -7,6 +7,8 @@ import {
   memo,
   useCallback,
 } from 'react'
+import cn from 'classnames'
+import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import NextStep from './components/next-step'
 import PanelOperator from './components/panel-operator'
@@ -32,6 +34,7 @@ import { canRunBySingle } from '@/app/components/workflow/utils'
 import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import type { Node } from '@/app/components/workflow/types'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type BasePanelProps = {
   children: ReactElement
@@ -43,6 +46,9 @@ const BasePanel: FC<BasePanelProps> = ({
   children,
 }) => {
   const { t } = useTranslation()
+  const { showMessageLogModal } = useAppStore(useShallow(state => ({
+    showMessageLogModal: state.showMessageLogModal,
+  })))
   const panelWidth = localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420
   const {
     setPanelWidth,
@@ -82,7 +88,10 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
   return (
-    <div className='relative mr-2 h-full'>
+    <div className={cn(
+      'relative mr-2 h-full',
+      showMessageLogModal && '!absolute !mr-0 w-[384px] overflow-hidden -top-[5px] right-[416px] z-0 shadow-lg border-[0.5px] border-gray-200 rounded-2xl transition-all',
+    )}>
       <div
         ref={triggerRef}
         className='absolute top-1/2 -translate-y-1/2 -left-2 w-3 h-6 cursor-col-resize resize-x'>
