@@ -29,6 +29,9 @@ class MockTcvectordbClass:
                 name='dify',
             )]
 
+    def list_collections(self, timeout: Optional[float] = None) -> list[Collection]:
+        return []
+
     def drop_collection(self, name: str, timeout: Optional[float] = None):
         return {
             "code": 0,
@@ -109,13 +112,13 @@ class MockTcvectordbClass:
 
 MOCK = os.getenv('MOCK_SWITCH', 'false').lower() == 'true'
 
-
 @pytest.fixture
 def setup_tcvectordb_mock(request, monkeypatch: MonkeyPatch):
     if MOCK:
         monkeypatch.setattr(VectorDBClient, '__init__', MockTcvectordbClass.VectorDBClient)
         monkeypatch.setattr(VectorDBClient, 'list_databases', MockTcvectordbClass.list_databases)
         monkeypatch.setattr(Database, 'collection', MockTcvectordbClass.describe_collection)
+        monkeypatch.setattr(Database, 'list_collections', MockTcvectordbClass.list_collections)
         monkeypatch.setattr(Database, 'drop_collection', MockTcvectordbClass.drop_collection)
         monkeypatch.setattr(Database, 'create_collection', MockTcvectordbClass.create_collection)
         monkeypatch.setattr(Collection, 'upsert', MockTcvectordbClass.collection_upsert)
