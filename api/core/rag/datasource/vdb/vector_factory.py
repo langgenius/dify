@@ -163,6 +163,7 @@ class Vector:
                     shard=config.get('TENCENT_VECTOR_DB_SHARD'),
                     replicas=config.get('TENCENT_VECTOR_DB_REPLICAS'),
                 )
+            )
 
         elif vector_type == "pgvecto_rs":
             from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRS, PgvectoRSConfig
