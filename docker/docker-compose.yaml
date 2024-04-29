@@ -124,7 +124,7 @@ services:
       RELYT_DATABASE: postgres
       # pgvector configurations
       PGVECTOR_HOST: pgvector
-      PGVECTOR_PORT: 5433
+      PGVECTOR_PORT: 5432
       PGVECTOR_USER: postgres
       PGVECTOR_PASSWORD: difyai123456
       PGVECTOR_DATABASE: dify
@@ -259,7 +259,7 @@ services:
       RELYT_DATABASE: postgres
       # pgvector configurations
       PGVECTOR_HOST: pgvector
-      PGVECTOR_PORT: 5433
+      PGVECTOR_PORT: 5432
       PGVECTOR_USER: postgres
       PGVECTOR_PASSWORD: difyai123456
       PGVECTOR_DATABASE: dify
@@ -403,7 +403,7 @@ services:
   #     - ./volumes/pgvector/data:/var/lib/postgresql/data
   #   # uncomment to expose db(postgresql) port to host
   #   # ports:
-  #   #   - "5432:5432"
+  #   #   - "5433:5432"
   #   healthcheck:
   #     test: [ "CMD", "pg_isready" ]
   #     interval: 1s
