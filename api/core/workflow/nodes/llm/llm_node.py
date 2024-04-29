@@ -616,7 +616,8 @@ class LLMNode(BaseNode):
                         "prompts": [
                             {
                                 "role": "system",
-                                "text": "You are a helpful AI assistant."
+                                "text": "You are a helpful AI assistant.",
+                                "edition_type": "basic"
                             }
                         ]
                     },
@@ -628,7 +629,8 @@ class LLMNode(BaseNode):
                         "prompt": {
                             "text": "Here is the chat histories between human and assistant, inside "
                                     "<histories></histories> XML tags.\n\n<histories>\n{{"
-                                    "#histories#}}\n</histories>\n\n\nHuman: {{#sys.query#}}\n\nAssistant:"
+                                    "#histories#}}\n</histories>\n\n\nHuman: {{#sys.query#}}\n\nAssistant:",
+                            "edition_type": "basic"
                         },
                         "stop": ["Human:"]
                     }

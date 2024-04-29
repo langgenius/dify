@@ -14,4 +14,4 @@ class Jinja2Formatter:
             language='jinja2', code=template, inputs=inputs
         )
 
-        return result['str']
+        return result['result']

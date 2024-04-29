@@ -81,29 +81,35 @@ class AdvancedPromptTransform(PromptTransform):
 
         prompt_messages = []
 
-        prompt_template = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
-        prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
+        if prompt_template.edition_type == 'basic' or not prompt_template.edition_type:
+            prompt_template = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
+            prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
 
-        prompt_inputs = self._set_context_variable(context, prompt_template, prompt_inputs)
+            prompt_inputs = self._set_context_variable(context, prompt_template, prompt_inputs)
 
-        if memory and memory_config:
-            role_prefix = memory_config.role_prefix
-            prompt_inputs = self._set_histories_variable(
-                memory=memory,
-                memory_config=memory_config,
-                raw_prompt=raw_prompt,
-                role_prefix=role_prefix,
-                prompt_template=prompt_template,
-                prompt_inputs=prompt_inputs,
-                model_config=model_config
+            if memory and memory_config:
+                role_prefix = memory_config.role_prefix
+                prompt_inputs = self._set_histories_variable(
+                    memory=memory,
+                    memory_config=memory_config,
+                    raw_prompt=raw_prompt,
+                    role_prefix=role_prefix,
+                    prompt_template=prompt_template,
+                    prompt_inputs=prompt_inputs,
+                    model_config=model_config
+                )
+
+            if query:
+                prompt_inputs = self._set_query_variable(query, prompt_template, prompt_inputs)
+
+            prompt = prompt_template.format(
+                prompt_inputs
             )
+        else:
+            prompt = raw_prompt
+            prompt_inputs = inputs
 
-        if query:
-            prompt_inputs = self._set_query_variable(query, prompt_template, prompt_inputs)
-
-        prompt = prompt_template.format(
-            prompt_inputs
-        )
+            prompt = Jinja2Formatter.format(prompt, prompt_inputs)
 
         if files:
             prompt_message_contents = [TextPromptMessageContent(data=prompt)]
