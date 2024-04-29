@@ -51,9 +51,10 @@ class LocalAISpeech2text(Speech2TextModel):
         :return:
         """
         try:
-            if credentials['server_url'].endswith('/'):
-                credentials['server_url'] = credentials['server_url'][:-1]
+            audio_file_path = self._get_demo_file_path()
 
+            with open(audio_file_path, 'rb') as audio_file:
+                self._invoke(model, credentials, audio_file)
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
