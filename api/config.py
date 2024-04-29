@@ -251,6 +251,13 @@ class Config:
         self.RELYT_PASSWORD = get_env('RELYT_PASSWORD')
         self.RELYT_DATABASE = get_env('RELYT_DATABASE')
 
+        # pgvecto rs settings
+        self.PGVECTO_RS_HOST = get_env('PGVECTO_RS_HOST')
+        self.PGVECTO_RS_PORT = get_env('PGVECTO_RS_PORT')
+        self.PGVECTO_RS_USER = get_env('PGVECTO_RS_USER')
+        self.PGVECTO_RS_PASSWORD = get_env('PGVECTO_RS_PASSWORD')
+        self.PGVECTO_RS_DATABASE = get_env('PGVECTO_RS_DATABASE')
+
         # ------------------------
         # Mail Configurations.
         # ------------------------

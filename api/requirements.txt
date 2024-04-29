@@ -1,7 +1,7 @@
 beautifulsoup4==4.12.2
 flask~=3.0.1
 Flask-SQLAlchemy~=3.0.5
-SQLAlchemy~=1.4.28
+SQLAlchemy~=2.0.29
 Flask-Compress~=1.14
 flask-login~=0.6.3
 flask-migrate~=4.0.5
