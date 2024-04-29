@@ -163,6 +163,9 @@ class Vector:
                     port=config.get('ELASTICSEARCH_PORT'),
                     api_key_id=config.get('ELASTICSEARCH_API_KEY_ID'),
                     api_key=config.get('ELASTICSEARCH_API_KEY'),
+                ),
+                dim=dim
+            )
         elif vector_type == "pgvecto_rs":
             from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRS, PgvectoRSConfig
             if self._dataset.index_struct_dict:
