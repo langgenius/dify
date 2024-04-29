@@ -113,17 +113,15 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             onChange={setBody}
           />
         </Field>
-        <Field
-          title={t(`${i18nPrefix}.timeout.title`)}
-          supportFold
-        >
-          <Timeout
-            nodeId={id}
-            readonly={readOnly}
-            payload={inputs.timeout}
-            onChange={setTimeout}
-          />
-        </Field>
+      </div>
+      <Split />
+      <div className='px-4 pt-4 pb-4'>
+        <Timeout
+          nodeId={id}
+          readonly={readOnly}
+          payload={inputs.timeout}
+          onChange={setTimeout}
+        />
       </div>
       {(isShowAuthorization && !readOnly) && (
         <AuthorizationModal
