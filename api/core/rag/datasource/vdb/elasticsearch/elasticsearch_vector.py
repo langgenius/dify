@@ -38,6 +38,9 @@ class ElasticSearchVector(BaseVector):
             client = Elasticsearch(
                 hosts=f'{config.host}:{config.port}',
                 api_key=(config.api_key_id, config.api_key),
+                request_timeout=30,
+                retry_on_timeout=True,
+                max_retries=5,
             )
         except requests.exceptions.ConnectionError:
             raise ConnectionError("Vector database connection error")
