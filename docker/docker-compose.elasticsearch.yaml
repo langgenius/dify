@@ -2,7 +2,7 @@ version: '3.5'
 
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.2
     container_name: elasticsearch
     environment:
       - node.name=elasticsearch
@@ -26,12 +26,12 @@ services:
     ports:
       - "9200:9200"
     networks:
-      - elasticsearch
+      - elastic
 
 volumes:
   data:
     driver: local
 
 networks:
-  elasticsearch:
+  elastic:
     driver: bridge

@@ -82,4 +82,4 @@ xlrd~=2.0.1
 pydantic~=1.10.0
 pgvecto-rs==0.1.4
 oss2==2.15.0
-elasticsearch==7.15.2
+elasticsearch==8.13.0

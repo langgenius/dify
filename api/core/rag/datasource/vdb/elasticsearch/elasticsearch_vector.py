@@ -37,7 +37,7 @@ class ElasticSearchVector(BaseVector):
         try:
             client = Elasticsearch(
                 hosts=f'{config.host}:{config.port}',
-                api_key=(config.api_key_id, config.api_key)
+                api_key=(config.api_key_id, config.api_key),
             )
         except requests.exceptions.ConnectionError:
             raise ConnectionError("Vector database connection error")
@@ -67,13 +67,14 @@ class ElasticSearchVector(BaseVector):
                     },
                 }
             }
-            self._client.indices.create(index=self._collection_name, body={"mappings": mapping}, ignore=400)
+            self._client.indices.create(index=self._collection_name, body={"mappings": mapping},
+                                        wait_for_active_shards=all, ignore=400)
 
         added_ids = []
         for i, text in enumerate(texts):
             self._client.index(index=self._collection_name,
                                id=uuids[i],
-                               body={
+                               document={
                                    "text": text,
                                    "vector": embeddings[i] if embeddings[i] else None,
                                    "metadata": metadatas[i] if metadatas[i] else {},
@@ -104,7 +105,7 @@ class ElasticSearchVector(BaseVector):
             self.delete_by_ids(ids)
 
     def delete(self) -> None:
-        self._client.indices.delete(self._collection_name)
+        self._client.indices.delete(index=self._collection_name)
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         query_str = {
@@ -140,10 +141,8 @@ class ElasticSearchVector(BaseVector):
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         query_str = {
-            'match': {
-                'name': {
-                    'query': query
-                }
+            "match": {
+                "text": query
             }
         }
         results = self._client.search(index=self._collection_name, query=query_str)
