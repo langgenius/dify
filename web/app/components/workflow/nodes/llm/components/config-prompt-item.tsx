@@ -118,6 +118,8 @@ const ConfigPromptItem: FC<Props> = ({
       hasSetBlockStatus={hasSetBlockStatus}
       nodesOutputVars={availableVars}
       availableNodes={availableNodes}
+      isSupportJinja
+      isJinja
     />
   )
 }
