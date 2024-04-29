@@ -26,8 +26,8 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
         'google/gemma-7b': '',
         'google/codegemma-7b': '',
         'meta/llama2-70b': '',
-        'meta/llama3-8b': '',
-        'meta/llama3-70b': ''
+        'meta/llama3-8b-instruct': '',
+        'meta/llama3-70b-instruct': ''
         
     }
 

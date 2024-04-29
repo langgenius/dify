@@ -81,6 +81,8 @@ export const useNodesSyncDraft = () => {
   }, [store, featuresStore, workflowStore])
 
   const syncWorkflowDraftWhenPageClose = useCallback(() => {
+    if (getNodesReadOnly())
+      return
     const postParams = getPostParams()
 
     if (postParams) {
@@ -89,16 +91,18 @@ export const useNodesSyncDraft = () => {
         JSON.stringify(postParams.params),
       )
     }
-  }, [getPostParams, params.appId])
+  }, [getPostParams, params.appId, getNodesReadOnly])
 
   const doSyncWorkflowDraft = useCallback(async (appId?: string) => {
+    if (getNodesReadOnly())
+      return
     const postParams = getPostParams(appId)
 
     if (postParams) {
       const res = await syncWorkflowDraft(postParams)
       workflowStore.getState().setDraftUpdatedAt(res.updated_at)
     }
-  }, [workflowStore, getPostParams])
+  }, [workflowStore, getPostParams, getNodesReadOnly])
 
   const handleSyncWorkflowDraft = useCallback((sync?: boolean, appId?: string) => {
     if (getNodesReadOnly())

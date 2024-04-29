@@ -19,13 +19,18 @@ import type {
 } from './types'
 import { WorkflowContext } from './context'
 
+type PreviewRunningData = WorkflowRunningData & {
+  resultTabActive?: boolean
+  resultText?: string
+}
+
 type Shape = {
   appId: string
   panelWidth: number
-  workflowRunningData?: WorkflowRunningData
-  setWorkflowRunningData: (workflowData: WorkflowRunningData) => void
+  workflowRunningData?: PreviewRunningData
+  setWorkflowRunningData: (workflowData: PreviewRunningData) => void
   historyWorkflowData?: HistoryWorkflowData
-  setHistoryWorkflowData: (historyWorkflowData: HistoryWorkflowData) => void
+  setHistoryWorkflowData: (historyWorkflowData?: HistoryWorkflowData) => void
   showRunHistory: boolean
   setShowRunHistory: (showRunHistory: boolean) => void
   showFeaturesPanel: boolean
@@ -68,6 +73,8 @@ type Shape = {
   setClipboardElements: (clipboardElements: Node[]) => void
   shortcutsDisabled: boolean
   setShortcutsDisabled: (shortcutsDisabled: boolean) => void
+  showDebugAndPreviewPanel: boolean
+  setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
 }
 
 export const createWorkflowStore = () => {
@@ -117,6 +124,8 @@ export const createWorkflowStore = () => {
     setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
     shortcutsDisabled: false,
     setShortcutsDisabled: shortcutsDisabled => set(() => ({ shortcutsDisabled })),
+    showDebugAndPreviewPanel: false,
+    setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
   }))
 }
 
