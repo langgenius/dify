@@ -37,7 +37,7 @@ import { LanguagesSupported } from '@/i18n/language'
 import { useStore } from '@/app/components/app/store'
 import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
-import { getLocaleOnServer } from '@/i18n/server'
+import { getLocaleOnClient } from '@/i18n'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -119,7 +119,7 @@ type IExtraInfoProps = {
 }
 
 const ExtraInfo = ({ isMobile, relatedApps }: IExtraInfoProps) => {
-  const locale = getLocaleOnServer()
+  const locale = getLocaleOnClient()
   const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
   const { t } = useTranslation()
 
