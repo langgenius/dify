@@ -45,7 +45,7 @@ const ConfigPrompt: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const payloadWithIds = (isChatModel && Array.isArray(payload))
-    ? payload.map((item, i) => {
+    ? payload.map((item) => {
       const id = uuid4()
       return {
         id: item.id || id,

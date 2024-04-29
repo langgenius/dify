@@ -45,6 +45,7 @@ type Props = {
   }
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  // for jinja
   isSupportJinja?: boolean
   isJinja?: boolean
   onIsJinjaChange?: (isJinja: boolean) => void
@@ -207,29 +208,15 @@ const Editor: FC<Props> = ({
               : (
                 <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto')}>
                   <CodeEditor
-                    nodeId={''}
+                    availableVars={nodesOutputVars || []}
                     varList={[]}
                     onAddVar={() => { }}
                     isInNode
                     readOnly={readOnly}
                     language={CodeLanguage.python3}
-                    title={
-                      <div className='uppercase'>1</div>
-                    }
-                    // headerRight={
-                    //   <div className='flex items-center'>
-                    //     <a
-                    //       className='flex items-center space-x-0.5 h-[18px] text-xs font-normal text-gray-500'
-                    //       href="https://jinja.palletsprojects.com/en/3.1.x/templates/"
-                    //       target='_blank'>
-                    //       <span>{t(`${i18nPrefix}.codeSupportTip`)}</span>
-                    //       <HelpCircle className='w-3 h-3' />
-                    //     </a>
-                    //     <div className='mx-1.5 w-px h-3 bg-gray-200'></div>
-                    //   </div>
-                    // }
                     value={value}
                     onChange={onChange}
+                    noWrapper
                   />
                 </div>
               )}
