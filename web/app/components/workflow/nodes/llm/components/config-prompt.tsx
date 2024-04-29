@@ -7,7 +7,7 @@ import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
 import cn from 'classnames'
 import type { PromptItem, ValueSelector, Var } from '../../../types'
-import { PromptRole } from '../../../types'
+import { EditionType, PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import ConfigPromptItem from './config-prompt-item'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
@@ -67,7 +67,16 @@ const ConfigPrompt: FC<Props> = ({
   const handleChatModePromptChange = useCallback((index: number) => {
     return (prompt: string) => {
       const newPrompt = produce(payload as PromptItem[], (draft) => {
-        draft[index].text = prompt
+        draft[index][draft[index].edition_type === EditionType.jinja2 ? 'jinja2_text' : 'text'] = prompt
+      })
+      onChange(newPrompt)
+    }
+  }, [onChange, payload])
+
+  const handleChatModeEditionTypeChange = useCallback((index: number) => {
+    return (editionType: EditionType) => {
+      const newPrompt = produce(payload as PromptItem[], (draft) => {
+        draft[index].edition_type = editionType
       })
       onChange(newPrompt)
     }
@@ -106,7 +115,14 @@ const ConfigPrompt: FC<Props> = ({
 
   const handleCompletionPromptChange = useCallback((prompt: string) => {
     const newPrompt = produce(payload as PromptItem, (draft) => {
-      draft.text = prompt
+      draft[draft.edition_type === EditionType.jinja2 ? 'jinja2_text' : 'text'] = prompt
+    })
+    onChange(newPrompt)
+  }, [onChange, payload])
+
+  const handleCompletionEditionTypeChange = useCallback((editionType: EditionType) => {
+    const newPrompt = produce(payload as PromptItem, (draft) => {
+      draft.edition_type = editionType
     })
     onChange(newPrompt)
   }, [onChange, payload])
@@ -161,6 +177,7 @@ const ConfigPrompt: FC<Props> = ({
                           isChatApp={isChatApp}
                           payload={item}
                           onPromptChange={handleChatModePromptChange(index)}
+                          onEditionTypeChange={handleChatModeEditionTypeChange(index)}
                           onRemove={handleRemove(index)}
                           isShowContext={isShowContext}
                           hasSetBlockStatus={hasSetBlockStatus}
@@ -189,6 +206,7 @@ const ConfigPrompt: FC<Props> = ({
               title={<span className='capitalize'>{t(`${i18nPrefix}.prompt`)}</span>}
               value={(payload as PromptItem).text}
               onChange={handleCompletionPromptChange}
+              onEditionTypeChange={handleCompletionEditionTypeChange}
               readOnly={readOnly}
               isChatModel={isChatModel}
               isChatApp={isChatApp}

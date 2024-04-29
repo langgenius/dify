@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { uniqueId } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
-import type { PromptItem } from '../../../types'
+import type { EditionType, PromptItem } from '../../../types'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
@@ -24,6 +24,7 @@ type Props = {
   payload: PromptItem
   handleChatModeMessageRoleChange: (role: PromptRole) => void
   onPromptChange: (p: string) => void
+  onEditionTypeChange: (editionType: EditionType) => void
   onRemove: () => void
   isShowContext: boolean
   hasSetBlockStatus: {
@@ -64,6 +65,7 @@ const ConfigPromptItem: FC<Props> = ({
   isChatApp,
   payload,
   onPromptChange,
+  onEditionTypeChange,
   onRemove,
   isShowContext,
   hasSetBlockStatus,
@@ -75,6 +77,7 @@ const ConfigPromptItem: FC<Props> = ({
   useEffect(() => {
     setInstanceId(`${id}-${uniqueId()}`)
   }, [id])
+
   return (
     <Editor
       className={className}
@@ -107,7 +110,7 @@ const ConfigPromptItem: FC<Props> = ({
           </TooltipPlus>
         </div>
       }
-      value={payload.text}
+      value={payload.jinja2_text || ''}
       onChange={onPromptChange}
       readOnly={readOnly}
       showRemove={canRemove}
@@ -119,7 +122,8 @@ const ConfigPromptItem: FC<Props> = ({
       nodesOutputVars={availableVars}
       availableNodes={availableNodes}
       isSupportJinja
-      isJinja
+      editionType={payload.edition_type}
+      onEditionTypeChange={onEditionTypeChange}
     />
   )
 }

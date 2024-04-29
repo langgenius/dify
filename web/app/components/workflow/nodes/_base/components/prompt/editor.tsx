@@ -5,11 +5,12 @@ import cn from 'classnames'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import {
-  BlockEnum,
-  type Node,
-  type NodeOutPutVar,
+import { BlockEnum, EditionType } from '../../../../types'
+import type {
+  Node,
+  NodeOutPutVar,
 } from '../../../../types'
+
 import Wrap from '../editor/wrap'
 import { CodeLanguage } from '../../../code/types'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
@@ -23,6 +24,7 @@ import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-edito
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
+import Switch from '@/app/components/base/switch'
 
 type Props = {
   className?: string
@@ -47,8 +49,8 @@ type Props = {
   availableNodes?: Node[]
   // for jinja
   isSupportJinja?: boolean
-  isJinja?: boolean
-  onIsJinjaChange?: (isJinja: boolean) => void
+  editionType?: EditionType
+  onEditionTypeChange?: (editionType: EditionType) => void
   handleAddVariable?: (payload: any) => void
 }
 
@@ -70,7 +72,8 @@ const Editor: FC<Props> = ({
   nodesOutputVars,
   availableNodes = [],
   isSupportJinja,
-  isJinja,
+  editionType,
+  onEditionTypeChange,
   handleAddVariable,
 }) => {
   const { t } = useTranslation()
@@ -127,6 +130,20 @@ const Editor: FC<Props> = ({
               <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>
               {/* Operations */}
               <div className='flex items-center space-x-2'>
+                {isSupportJinja && (
+                  <div className='flex items-center space-x-0.5'>
+                    {/* TODO icon */}
+                    <div className='text-gray-300'>Jinja2</div>
+                    {/* TODO small icon */}
+                    <Switch
+                      size='md'
+                      defaultValue={editionType === EditionType.jinja2}
+                      onChange={(checked) => {
+                        onEditionTypeChange?.(checked ? EditionType.jinja2 : EditionType.basic)
+                      }}
+                    />
+                  </div>
+                )}
                 {!readOnly && (
                   <TooltipPlus
                     popupContent={`${t('workflow.common.insertVarTip')}`}
@@ -153,7 +170,7 @@ const Editor: FC<Props> = ({
 
           {/* Min: 80 Max: 560. Header: 24 */}
           <div className={cn('pb-2', isExpand && 'flex flex-col grow')}>
-            {!(isSupportJinja && isJinja)
+            {!(isSupportJinja && editionType === EditionType.jinja2)
               ? (
                 <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto')}>
                   <PromptEditor
