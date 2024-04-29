@@ -22,14 +22,29 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
     inputsRef.current = newPayload
   }, [doSetInputs])
 
-  const { handleVarListChange, handleAddVariable: handleAddEmptyVariable } = useVarList<TemplateTransformNodeType>({
+  const { handleAddVariable: handleAddEmptyVariable } = useVarList<TemplateTransformNodeType>({
     inputs,
     setInputs,
   })
 
+  const handleVarListChange = useCallback((newList: Variable[]) => {
+    const newInputs = produce(inputsRef.current, (draft: any) => {
+      draft.variables = newList
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
   const handleAddVariable = useCallback((payload: Variable) => {
     const newInputs = produce(inputsRef.current, (draft: any) => {
       draft.variables.push(payload)
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  // rename var in code
+  const handleVarNameChange = useCallback((oldName: string, newName: string) => {
+    const newInputs = produce(inputsRef.current, (draft: any) => {
+      draft.template = draft.template.replaceAll(`{{ ${oldName} }}`, `{{ ${newName} }}`)
     })
     setInputs(newInputs)
   }, [setInputs])
@@ -94,6 +109,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
     readOnly,
     inputs,
     handleVarListChange,
+    handleVarNameChange,
     handleAddVariable,
     handleAddEmptyVariable,
     handleCodeChange,

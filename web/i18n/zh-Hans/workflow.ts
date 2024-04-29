@@ -252,6 +252,15 @@ const translation = {
         'header': 'Header',
       },
       insertVarPlaceholder: '键入 \'/\' 键快速插入变量',
+      timeout: {
+        title: '超时设置',
+        connectLabel: '连接超时',
+        connectPlaceholder: '输入连接超时（以秒为单位）',
+        readLabel: '读取超时',
+        readPlaceholder: '输入读取超时（以秒为单位）',
+        writeLabel: '写入超时',
+        writePlaceholder: '输入写入超时（以秒为单位）',
+      },
     },
     code: {
       inputVars: '输入变量',
