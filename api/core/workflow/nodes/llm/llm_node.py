@@ -1,3 +1,4 @@
+import json
 from collections.abc import Generator
 from typing import Optional, cast
 
@@ -189,7 +190,7 @@ class LLMNode(BaseNode):
             usage = LLMUsage.empty_usage()
 
         return full_text, usage
-
+    
     def _fetch_jinja_inputs(self, node_data: LLMNodeData, variable_pool: VariablePool) -> dict[str, str]:
         """
         Fetch jinja inputs
@@ -207,6 +208,42 @@ class LLMNode(BaseNode):
             value = variable_pool.get_variable_value(
                 variable_selector=variable_selector.value_selector
             )
+
+            def parse_dict(d: dict) -> str:
+                """
+                Parse dict into string
+                """
+                # check if it's a context structure
+                if 'metadata' in d and '_source' in d['metadata'] and 'content' in d:
+                    return d['content']
+                
+                # else, parse the dict
+                try:
+                    return json.dumps(d, ensure_ascii=False)
+                except Exception:
+                    return str(d)
+                
+            if isinstance(value, str):
+                value = value
+            elif isinstance(value, list):
+                result = ''
+                for item in value:
+                    if isinstance(item, dict):
+                        result += parse_dict(item)
+                    elif isinstance(item, str):
+                        result += item
+                    elif isinstance(item, int | float):
+                        result += str(item)
+                    else:
+                        result += str(item)
+                    result += '\n'
+                value = result.strip()
+            elif isinstance(value, dict):
+                value = parse_dict(value)
+            elif isinstance(value, int | float):
+                value = str(value)
+            else:
+                value = str(value)
 
             variables[variable] = value
 
