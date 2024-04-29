@@ -9,6 +9,7 @@ from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.excel_extractor import ExcelExtractor
+from core.rag.extractor.firecrawl.web_extractor import FirecrawlWebExtractor
 from core.rag.extractor.html_extractor import HtmlExtractor
 from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
@@ -140,6 +141,13 @@ class ExtractProcessor:
                 document_model=extract_setting.notion_info.document,
                 tenant_id=extract_setting.notion_info.tenant_id,
             )
+            return extractor.extract()
+        elif extract_setting.datasource_type == DatasourceType.URL.value:
+            # [Review] Not sure if api key and base url belong here.
+            extractor = FirecrawlWebExtractor(
+                api_key=extract_setting.firecrawl_info.firecrawl_api_key,
+                base_url=extract_setting.firecrawl_info.firecrawl_base_url,
+                url=extract_setting.firecrawl_info.url, mode=extract_setting.firecrawl_info.mode)
             return extractor.extract()
         else:
             raise ValueError(f"Unsupported datasource type: {extract_setting.datasource_type}")
