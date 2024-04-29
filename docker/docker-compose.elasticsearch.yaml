@@ -26,6 +26,11 @@ services:
         target: /usr/share/elasticsearch/data
     ports:
       - "9200:9200"
+    healthcheck:
+      test: curl -s http://localhost:9200 >/dev/null || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 50
 volumes:
   data:
     driver: local
