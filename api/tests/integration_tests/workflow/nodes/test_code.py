@@ -114,7 +114,7 @@ def test_execute_code_output_validator(setup_code_executor_mock):
     result = node.run(pool)
 
     assert result.status == WorkflowNodeExecutionStatus.FAILED
-    assert result.error == 'result in output form must be a string'
+    assert result.error == 'Output variable `result` must be a string'
 
 def test_execute_code_output_validator_depth():
     code = '''
