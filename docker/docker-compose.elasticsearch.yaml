@@ -12,6 +12,7 @@ services:
       - bootstrap.memory_lock=true
       - xpack.security.enabled=false
       - "ES_JAVA_OPTS=-Xms4g -Xmx4g"
+      - cluster.routing.allocation.disk.threshold_enabled=false
     ulimits:
       memlock:
         soft: -1
@@ -25,13 +26,6 @@ services:
         target: /usr/share/elasticsearch/data
     ports:
       - "9200:9200"
-    networks:
-      - elastic
-
 volumes:
   data:
     driver: local
-
-networks:
-  elastic:
-    driver: bridge
