@@ -1,6 +1,7 @@
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB
 
 from extensions.ext_database import db
+from models import StringUUID
 
 
 class DataSourceBinding(db.Model):
@@ -11,8 +12,8 @@ class DataSourceBinding(db.Model):
         db.Index('source_info_idx', "source_info", postgresql_using='gin')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
     access_token = db.Column(db.String(255), nullable=False)
     provider = db.Column(db.String(255), nullable=False)
     source_info = db.Column(JSONB, nullable=False)
