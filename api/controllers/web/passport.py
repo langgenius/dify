@@ -46,13 +46,12 @@ class PassportResource(Resource):
 
         if enterprise_features.sso_enforced_for_web:
             end_user = db.session.query(EndUser) \
-                .filter(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                type='browser',
-                is_anonymous=False,
-                session_id=end_user_session_id
-            ).first()
+                .filter(EndUser.tenant_id == app_model.tenant_id,
+                        EndUser.app_id == app_model.id,
+                        EndUser.type == 'browser',
+                        EndUser.is_anonymous == False,
+                        EndUser.session_id == end_user_session_id)\
+                .first()
 
             if not end_user:
                 end_user = EndUser(
