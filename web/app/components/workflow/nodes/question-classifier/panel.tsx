@@ -11,6 +11,8 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
@@ -44,8 +46,8 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
   const model = inputs.model
 
   return (
-    <div>
-      <div className='mt-2 px-4 space-y-4'>
+    <div className='mt-2'>
+      <div className='px-4 pb-4 space-y-4'>
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
         >
@@ -99,6 +101,18 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             readonly={readOnly}
           />
         </Field>
+      </div>
+      <Split />
+      <div className='px-4 pt-4 pb-2'>
+        <OutputVars>
+          <>
+            <VarItem
+              name='class_name'
+              type='string'
+              description={t(`${i18nPrefix}.outputVars.className`)}
+            />
+          </>
+        </OutputVars>
       </div>
       {isShowSingleRun && (
         <BeforeRunForm
