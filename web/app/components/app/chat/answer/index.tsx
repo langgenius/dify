@@ -362,7 +362,7 @@ const Answer: FC<IAnswerProps> = ({
                 {!item.isOpeningStatement && (
                   <CopyBtn
                     value={content}
-                    className={cn(s.copyBtn, 'mr-1')}
+                    className='mr-1'
                   />
                 )}
                 {((isShowPromptLog && !isResponding) || (!item.isOpeningStatement && isShowTextToSpeech)) && (
