@@ -354,6 +354,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     runInputData,
     setRunInputData,
     runResult,
+    toVarInputs,
   } = useOneStepRun<LLMNodeType>({
     id,
     data: inputs,
@@ -399,7 +400,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }, [runInputData, setRunInputData])
 
   const allVarStrArr = (() => {
-    const arr = isChatModel ? (inputs.prompt_template as PromptItem[]).map(item => item.text) : [(inputs.prompt_template as PromptItem).text]
+    const arr = isChatModel ? (inputs.prompt_template as PromptItem[]).filter(item => item.edition_type !== EditionType.jinja2).map(item => item.text) : [(inputs.prompt_template as PromptItem).text]
     if (isChatMode && isChatModel && !!inputs.memory) {
       arr.push('{{#sys.query#}}')
       arr.push(inputs.memory.query_prompt_template)
@@ -408,7 +409,13 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     return arr
   })()
 
-  const varInputs = getInputVars(allVarStrArr)
+  const varInputs = (() => {
+    const vars = getInputVars(allVarStrArr)
+    if (isShowVars)
+      return [...vars, ...toVarInputs(inputs.prompt_config?.jinja2_variables || [])]
+
+    return vars
+  })()
 
   return {
     readOnly,
