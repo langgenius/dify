@@ -417,6 +417,7 @@ class IndexingRunner:
             separator = segmentation["separator"]
             if separator:
                 separator = separator.replace('\\n', '\n')
+                separator = separator.replace('\\r', '\r')
 
             if 'chunk_overlap' in segmentation and segmentation['chunk_overlap']:
                 chunk_overlap = segmentation['chunk_overlap']
@@ -435,7 +436,7 @@ class IndexingRunner:
             character_splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
                 chunk_size=DatasetProcessRule.AUTOMATIC_RULES['segmentation']['max_tokens'],
                 chunk_overlap=DatasetProcessRule.AUTOMATIC_RULES['segmentation']['chunk_overlap'],
-                separators=["\n\n", "。", ".", " ", ""],
+                separators=["。\r\n", "。\n", "\n\n", "。", ".", ""], # on windows: \r\n, on linux or macos: \n
                 embedding_model_instance=embedding_model_instance
             )
 

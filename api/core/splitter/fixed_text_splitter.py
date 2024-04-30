@@ -53,7 +53,7 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
             }
             kwargs = {**kwargs, **extra_kwargs}
 
-        return cls(length_function=_token_encoder, **kwargs)
+        return cls(length_function=len, **kwargs)
 
 
 class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter):

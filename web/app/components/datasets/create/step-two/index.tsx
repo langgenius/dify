@@ -42,7 +42,6 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Tooltip from '@/app/components/base/tooltip'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { LanguagesSupported } from '@/i18n/language'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type ValueOf<T> = T[keyof T]
@@ -114,7 +113,7 @@ const StepTwo = ({
   const [docForm, setDocForm] = useState<DocForm | string>(
     (datasetId && documentDetail) ? documentDetail.doc_form : DocForm.TEXT,
   )
-  const [docLanguage, setDocLanguage] = useState<string>(locale !== LanguagesSupported[1] ? 'English' : 'Chinese')
+  const [docLanguage, setDocLanguage] = useState<string>('Chinese') // Set to Chinese regardless of the system language
   const [QATipHide, setQATipHide] = useState(false)
   const [previewSwitched, setPreviewSwitched] = useState(false)
   const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
@@ -498,7 +497,7 @@ const StepTwo = ({
   }, [segmentationType, indexType])
 
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
-    search_method: RETRIEVE_METHOD.semantic,
+    search_method: RETRIEVE_METHOD.hybrid,
     reranking_enable: false,
     reranking_model: {
       reranking_provider_name: rerankDefaultModel?.provider.provider,
@@ -717,7 +716,7 @@ const StepTwo = ({
                   </div>
                   <div className='shrink-0'>
                     <Switch
-                      defaultValue={docForm === DocForm.QA}
+                      defaultValue={true} // Default on switch
                       onChange={handleSwitch}
                       size='md'
                     />

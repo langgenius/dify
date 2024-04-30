@@ -1,5 +1,5 @@
-import threading
 import logging
+import threading
 
 from flask import Flask, current_app
 from pydantic import BaseModel, Field

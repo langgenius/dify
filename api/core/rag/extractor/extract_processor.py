@@ -1,3 +1,5 @@
+import logging
+import sys
 import tempfile
 from pathlib import Path
 from typing import Union
@@ -13,6 +15,7 @@ from core.rag.extractor.excel_extractor import ExcelExtractor
 from core.rag.extractor.html_extractor import HtmlExtractor
 from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
+from core.rag.extractor.ocr_pdf_extractor import OCRPdfExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
 from core.rag.extractor.text_extractor import TextExtractor
 from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
@@ -26,12 +29,16 @@ from core.rag.extractor.unstructured.unstructured_text_extractor import Unstruct
 from core.rag.extractor.unstructured.unstructured_xml_extractor import UnstructuredXmlExtractor
 from core.rag.extractor.word_extractor import WordExtractor
 from core.rag.models.document import Document
+from core.tools.utils.check_platform import PlatformUtil
 from extensions.ext_storage import storage
 from models.model import UploadFile
 
 SUPPORT_URL_CONTENT_TYPES = ['application/pdf', 'text/plain']
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
+
+logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+logger = logging.getLogger(__name__)
 
 class ExtractProcessor:
     @classmethod
@@ -88,7 +95,10 @@ class ExtractProcessor:
                     if file_extension == '.xlsx' or file_extension == '.xls':
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == '.pdf':
-                        extractor = PdfExtractor(file_path)
+                        if PlatformUtil.is_text_based_pdf(file_path):
+                            extractor = PdfExtractor(file_path)
+                        else:
+                            extractor = OCRPdfExtractor(file_path)
                     elif file_extension in ['.md', '.markdown']:
                         extractor = UnstructuredMarkdownExtractor(file_path, unstructured_api_url) if is_automatic \
                             else MarkdownExtractor(file_path, autodetect_encoding=True)
@@ -96,6 +106,14 @@ class ExtractProcessor:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension in ['.docx']:
                         extractor = UnstructuredWordExtractor(file_path, unstructured_api_url)
+                    elif file_extension == '.doc':
+                        if PlatformUtil.isMac():
+                            new_pdf = aw.Document(file_path)
+                            new_file_path = file_path[:-3] + 'pdf'
+                            new_pdf.save(new_file_path)
+                            extractor = PdfExtractor(new_file_path)
+                        else:
+                            extractor = UnstructuredWordExtractor(file_path, unstructured_api_url)
                     elif file_extension == '.csv':
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == '.msg':
@@ -118,21 +136,25 @@ class ExtractProcessor:
                     if file_extension == '.xlsx' or file_extension == '.xls':
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == '.pdf':
-                        extractor = PdfExtractor(file_path)
+                        if PlatformUtil.is_text_based_pdf(file_path):
+                            extractor = PdfExtractor(file_path)
+                        else:
+                            extractor = OCRPdfExtractor(file_path)
                     elif file_extension in ['.md', '.markdown']:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
                     elif file_extension in ['.htm', '.html']:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension in ['.docx']:
                         extractor = WordExtractor(file_path)
-                    # TODO: need to correctly set
                     elif file_extension == '.doc':
-                        print(file_path)
-                        new_pdf = aw.Document(file_path)
-                        new_file_path = file_path[:-3] + 'pdf'
-                        new_pdf.save(new_file_path)
-                        print(new_file_path)
-                        extractor = PdfExtractor(new_file_path)
+                        # Only compatible with macOS and Linux
+                        if PlatformUtil.isMac():
+                            new_pdf = aw.Document(file_path)
+                            new_file_path = file_path[:-3] + 'pdf'
+                            new_pdf.save(new_file_path)
+                            extractor = PdfExtractor(new_file_path)
+                        else:
+                            extractor = UnstructuredWordExtractor(file_path, unstructured_api_url)
                     elif file_extension == '.csv':
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == 'epub':

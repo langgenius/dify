@@ -1,6 +1,6 @@
+import logging
 import threading
 from typing import Optional
-import logging
 
 from flask import Flask, current_app
 
