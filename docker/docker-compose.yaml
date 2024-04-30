@@ -140,6 +140,11 @@ services:
       SENTRY_TRACES_SAMPLE_RATE: 1.0
       # The sample rate for Sentry profiles. Default: `1.0`
       SENTRY_PROFILES_SAMPLE_RATE: 1.0
+      # Notion import configuration, support public and internal
+      NOTION_INTEGRATION_TYPE: public
+      NOTION_CLIENT_SECRET: you-client-secret
+      NOTION_CLIENT_ID: you-client-id
+      NOTION_INTERNAL_SECRET: you-internal-secret
       # The sandbox service endpoint.
       CODE_EXECUTION_ENDPOINT: "http://sandbox:8194"
       CODE_EXECUTION_API_KEY: dify-sandbox
@@ -246,6 +251,11 @@ services:
       RELYT_USER: postgres
       RELYT_PASSWORD: difyai123456
       RELYT_DATABASE: postgres
+      # Notion import configuration, support public and internal
+      NOTION_INTEGRATION_TYPE: public
+      NOTION_CLIENT_SECRET: you-client-secret
+      NOTION_CLIENT_ID: you-client-id
+      NOTION_INTERNAL_SECRET: you-internal-secret
     depends_on:
       - db
       - redis
