@@ -5,3 +5,8 @@
 .workflow-node-animation .react-flow__node {
   transition: transform 0.2s ease-in-out;
 }
+
+#workflow-conatiner .react-flow__nodesselection-rect, .react-flow__selection {
+  border: 1px solid #528BFF;
+  background: rgba(21, 94, 239, 0.05);
+}

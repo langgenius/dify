@@ -75,6 +75,14 @@ type Shape = {
   setShortcutsDisabled: (shortcutsDisabled: boolean) => void
   showDebugAndPreviewPanel: boolean
   setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
+  selection: null | { x1: number; y1: number; x2: number; y2: number }
+  setSelection: (selection: Shape['selection']) => void
+  bundleNodeSize: { width: number; height: number } | null
+  setBundleNodeSize: (bundleNodeSize: Shape['bundleNodeSize']) => void
+  controlMode: 'pointer' | 'hand'
+  setControlMode: (controlMode: Shape['controlMode']) => void
+  candidateNode?: Node
+  setCandidateNode: (candidateNode?: Node) => void
 }
 
 export const createWorkflowStore = () => {
@@ -126,6 +134,14 @@ export const createWorkflowStore = () => {
     setShortcutsDisabled: shortcutsDisabled => set(() => ({ shortcutsDisabled })),
     showDebugAndPreviewPanel: false,
     setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
+    selection: null,
+    setSelection: selection => set(() => ({ selection })),
+    bundleNodeSize: null,
+    setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
+    controlMode: 'pointer',
+    setControlMode: controlMode => set(() => ({ controlMode })),
+    candidateNode: undefined,
+    setCandidateNode: candidateNode => set(() => ({ candidateNode })),
   }))
 }
 

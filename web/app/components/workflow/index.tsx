@@ -6,19 +6,24 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
 } from 'react'
 import { setAutoFreeze } from 'immer'
 import {
   useKeyPress,
+  useMouse,
 } from 'ahooks'
 import ReactFlow, {
   Background,
   ReactFlowProvider,
+  SelectionMode,
   useEdgesState,
   useNodesState,
   useOnViewportChange,
 } from 'reactflow'
-import type { Viewport } from 'reactflow'
+import type {
+  Viewport,
+} from 'reactflow'
 import 'reactflow/dist/style.css'
 import './style.css'
 import type {
@@ -43,6 +48,7 @@ import CustomConnectionLine from './custom-connection-line'
 import Panel from './panel'
 import Features from './features'
 import HelpLine from './help-line'
+import CandidateNode from './candidate-node'
 import { useStore } from './store'
 import {
   initialEdges,
@@ -71,9 +77,12 @@ const Workflow: FC<WorkflowProps> = memo(({
   edges: originalEdges,
   viewport,
 }) => {
+  const workflowContainerRef = useRef(null)
+  const mouse = useMouse(workflowContainerRef.current)
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
+  const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const {
     handleSyncWorkflowDraft,
@@ -165,7 +174,9 @@ const Workflow: FC<WorkflowProps> = memo(({
         ${workflowReadOnly && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
       `}
+      ref={workflowContainerRef}
     >
+      <CandidateNode mouse={mouse} />
       <Header />
       <Panel />
       <Operator />
@@ -198,11 +209,14 @@ const Workflow: FC<WorkflowProps> = memo(({
         nodesConnectable={!nodesReadOnly}
         nodesFocusable={!nodesReadOnly}
         edgesFocusable={!nodesReadOnly}
-        panOnDrag={!workflowReadOnly}
+        panOnDrag={controlMode === 'hand' && !workflowReadOnly}
         zoomOnPinch={!workflowReadOnly}
         zoomOnScroll={!workflowReadOnly}
         zoomOnDoubleClick={!workflowReadOnly}
         isValidConnection={isValidConnection}
+        selectionKeyCode={null}
+        selectionMode={SelectionMode.Partial}
+        selectionOnDrag={controlMode === 'pointer' && !workflowReadOnly}
       >
         <Background
           gap={[14, 14]}
