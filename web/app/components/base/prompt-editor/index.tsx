@@ -115,7 +115,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       WorkflowVariableBlockNode,
       VariableValueBlockNode,
     ],
-    editorState: value ? textToEditorState(value as string) : null,
+    editorState: value ? textToEditorState(value as string) : textToEditorState(''),
     onError: (error: Error) => {
       throw error
     },
