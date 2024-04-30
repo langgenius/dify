@@ -238,7 +238,7 @@ const Editor: FC<Props> = ({
                   <CodeEditor
                     availableVars={nodesOutputVars || []}
                     varList={[]}
-                    onAddVar={() => { }}
+                    onAddVar={handleAddVariable}
                     isInNode
                     readOnly={readOnly}
                     language={CodeLanguage.python3}

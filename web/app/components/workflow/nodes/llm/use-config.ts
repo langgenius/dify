@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import produce from 'immer'
-import useVarList from '../_base/hooks/use-var-list'
-import { VarType } from '../../types'
-import type { Memory, ValueSelector, Var } from '../../types'
+import { EditionType, VarType } from '../../types'
+import type { Memory, PromptItem, ValueSelector, Var, Variable } from '../../types'
 import { useStore } from '../../store'
 import {
   useIsChatMode,
@@ -18,7 +17,6 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
-import type { PromptItem } from '@/models/debug'
 import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 
@@ -178,11 +176,80 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isShowVisionConfig, modelChanged])
+
   // variables
-  const { handleVarListChange, handleAddVariable } = useVarList<LLMNodeType>({
-    inputs,
-    setInputs,
-  })
+  const isShowVars = (() => {
+    if (isChatModel)
+      return (inputs.prompt_template as PromptItem[]).some(item => item.edition_type === EditionType.jinja2)
+
+    return (inputs.prompt_template as PromptItem).edition_type === EditionType.jinja2
+  })()
+  const handleAddEmptyVariable = useCallback(() => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      if (!draft.prompt_config) {
+        draft.prompt_config = {
+          jinja2_variables: [],
+        }
+      }
+      if (!draft.prompt_config.jinja2_variables)
+        draft.prompt_config.jinja2_variables = []
+
+      draft.prompt_config.jinja2_variables.push({
+        variable: '',
+        value_selector: [],
+      })
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleAddVariable = useCallback((payload: Variable) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      if (!draft.prompt_config) {
+        draft.prompt_config = {
+          jinja2_variables: [],
+        }
+      }
+      if (!draft.prompt_config.jinja2_variables)
+        draft.prompt_config.jinja2_variables = []
+
+      draft.prompt_config.jinja2_variables.push(payload)
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleVarListChange = useCallback((newList: Variable[]) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      if (!draft.prompt_config) {
+        draft.prompt_config = {
+          jinja2_variables: [],
+        }
+      }
+      if (!draft.prompt_config.jinja2_variables)
+        draft.prompt_config.jinja2_variables = []
+
+      draft.prompt_config.jinja2_variables = newList
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleVarNameChange = useCallback((oldName: string, newName: string) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      if (isChatModel) {
+        const promptTemplate = draft.prompt_template as PromptItem[]
+        promptTemplate.filter(item => item.edition_type === EditionType.jinja2).forEach((item) => {
+          item.text = item.text.replaceAll(`{{ ${oldName} }}`, `{{ ${newName} }}`)
+        })
+      }
+      else {
+        if ((draft.prompt_template as PromptItem).edition_type !== EditionType.jinja2)
+          return
+
+        const promptTemplate = draft.prompt_template as PromptItem
+        promptTemplate.text = promptTemplate.text.replaceAll(`{{ ${oldName} }}`, `{{ ${newName} }}`)
+      }
+    })
+    setInputs(newInputs)
+  }, [isChatModel, setInputs])
 
   // context
   const handleContextVarChange = useCallback((newVar: ValueSelector | string) => {
@@ -194,11 +261,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }, [inputs, setInputs])
 
   const handlePromptChange = useCallback((newPrompt: PromptItem[] | PromptItem) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       draft.prompt_template = newPrompt
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [setInputs])
 
   const handleMemoryChange = useCallback((newMemory?: Memory) => {
     const newInputs = produce(inputs, (draft) => {
@@ -370,8 +437,11 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     isShowVisionConfig,
     handleModelChanged,
     handleCompletionParamsChange,
+    isShowVars,
     handleVarListChange,
+    handleVarNameChange,
     handleAddVariable,
+    handleAddEmptyVariable,
     handleContextVarChange,
     filterInputVar,
     filterVar,

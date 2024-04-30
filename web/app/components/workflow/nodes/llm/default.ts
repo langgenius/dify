@@ -16,7 +16,6 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
         temperature: 0.7,
       },
     },
-    variables: [],
     prompt_template: [{
       role: PromptRole.system,
       text: '',

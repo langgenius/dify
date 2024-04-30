@@ -13,7 +13,7 @@ const TO_WINDOW_OFFSET = 8
 type Props = {
   availableVars: NodeOutPutVar[]
   varList: Variable[]
-  onAddVar: (payload: Variable) => void
+  onAddVar?: (payload: Variable) => void
 } & EditorProps
 
 const CodeEditor: FC<Props> = ({
@@ -119,7 +119,7 @@ const CodeEditor: FC<Props> = ({
         value_selector: varValue,
       }
 
-      onAddVar(newVar)
+      onAddVar?.(newVar)
     }
     const editor: any = editorRef.current
     const monaco: any = monacoRef.current

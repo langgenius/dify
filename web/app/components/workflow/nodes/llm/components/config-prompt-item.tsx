@@ -35,6 +35,7 @@ type Props = {
   }
   availableVars: any
   availableNodes: any
+  handleAddVariable: (payload: any) => void
 }
 
 const roleOptions = [
@@ -72,6 +73,7 @@ const ConfigPromptItem: FC<Props> = ({
   hasSetBlockStatus,
   availableVars,
   availableNodes,
+  handleAddVariable,
 }) => {
   const { t } = useTranslation()
   const [instanceId, setInstanceId] = useState(uniqueId())
@@ -125,6 +127,7 @@ const ConfigPromptItem: FC<Props> = ({
       isSupportJinja
       editionType={payload.edition_type}
       onEditionTypeChange={onEditionTypeChange}
+      handleAddVariable={handleAddVariable}
     />
   )
 }

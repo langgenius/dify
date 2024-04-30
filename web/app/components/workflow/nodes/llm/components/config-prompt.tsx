@@ -30,6 +30,7 @@ type Props = {
     history: boolean
     query: boolean
   }
+  handleAddVariable: (payload: any) => void
 }
 
 const ConfigPrompt: FC<Props> = ({
@@ -42,6 +43,7 @@ const ConfigPrompt: FC<Props> = ({
   onChange,
   isShowContext,
   hasSetBlockStatus,
+  handleAddVariable,
 }) => {
   const { t } = useTranslation()
   const payloadWithIds = (isChatModel && Array.isArray(payload))
@@ -183,6 +185,7 @@ const ConfigPrompt: FC<Props> = ({
                           hasSetBlockStatus={hasSetBlockStatus}
                           availableVars={availableVars}
                           availableNodes={availableNodes}
+                          handleAddVariable={handleAddVariable}
                         />
                       </div>
 
@@ -204,9 +207,8 @@ const ConfigPrompt: FC<Props> = ({
             <Editor
               instanceId={`${nodeId}-chat-workflow-llm-prompt-editor`}
               title={<span className='capitalize'>{t(`${i18nPrefix}.prompt`)}</span>}
-              value={(payload as PromptItem).text}
+              value={(payload as PromptItem).edition_type === EditionType.basic ? (payload as PromptItem).text : ((payload as PromptItem).jinja2_text || '')}
               onChange={handleCompletionPromptChange}
-              onEditionTypeChange={handleCompletionEditionTypeChange}
               readOnly={readOnly}
               isChatModel={isChatModel}
               isChatApp={isChatApp}
@@ -214,6 +216,10 @@ const ConfigPrompt: FC<Props> = ({
               hasSetBlockStatus={hasSetBlockStatus}
               nodesOutputVars={availableVars}
               availableNodes={availableNodes}
+              isSupportJinja
+              editionType={(payload as PromptItem).edition_type}
+              onEditionTypeChange={handleCompletionEditionTypeChange}
+              handleAddVariable={handleAddVariable}
             />
           </div>
         )}
