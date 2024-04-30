@@ -79,7 +79,6 @@ class QuestionClassifierNode(LLMNode):
                     prompt_messages=prompt_messages
                 ),
                 'usage': jsonable_encoder(usage),
-                'topics': categories[0] if categories else ''
             }
             outputs = {
                 'class_name': categories[0] if categories else ''
