@@ -86,7 +86,8 @@ BCEmbedding==0.1.4
 firecrawl-py==0.0.5
 oss2==2.15.0
 PyPDF2~=3.0.1
-fitz
 frontend
-paddleocr~=2.7.3
+PyMuPDF==1.21.0
+paddleocr==2.7.3
 paddlepaddle==2.6.1
+# paddlepaddle-gpu==2.6.1
