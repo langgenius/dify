@@ -15,7 +15,6 @@ const EnterpriseWebSSOForm: FC = () => {
   const protocal = searchParams.get('protocal')
   const webSSOTokenFromUrl = searchParams.get('web_sso_token')
   const message = searchParams.get('message')
-  const [isChatbotApp, setIsChatbotApp] = useState(false)
 
   const router = useRouter()
   const { t } = useTranslation()
@@ -27,13 +26,8 @@ const EnterpriseWebSSOForm: FC = () => {
       localStorage.setItem('web_sso_token', webSSOTokenFromUrl)
 
       const redirectUrl = localStorage.getItem('web_app_redirect_url')
-      if (redirectUrl) {
-        if (redirectUrl.includes('/chatbot/'))
-          setIsChatbotApp(true)
-
-        else
-          router.push(redirectUrl)
-      }
+      if (redirectUrl)
+        router.push(redirectUrl)
     }
 
     if (message) {
@@ -93,43 +87,21 @@ const EnterpriseWebSSOForm: FC = () => {
             'md:px-[108px]',
           )
         }>
-          {!isChatbotApp
-            ? (
-              <div className='flex flex-col md:w-[400px]'>
-                <div className="w-full mx-auto">
-                  <h2 className="text-[32px] font-bold text-gray-900">{t('login.pageTitle')}</h2>
-                </div>
-                <div className="w-full mx-auto mt-10">
-                  <Button
-                    tabIndex={0}
-                    type='primary'
-                    onClick={() => { handleSSOLogin() }}
-                    disabled={isLoading}
-                    className="w-full !fone-medium !text-sm"
-                  >{t('login.sso')}
-                  </Button>
-                </div>
-              </div>
-            )
-            : (
-              <div className='flex flex-col md:w-[400px]'>
-                <div className="w-full mx-auto">
-                  <h2 className="text-[20px] font-bold text-gray-900">SSO login successfully.</h2>
-                  <div>Please close this window and refresh the page.</div>
-                </div>
-                <div className="w-full mx-auto mt-10">
-                  <Button
-                    tabIndex={0}
-                    type='primary'
-                    disabled={isLoading}
-                    className="w-full !fone-medium !text-sm"
-                    onClick={() => {
-                      window.close()
-                    }}>
-                    Close
-                  </Button>
-                </div>
-              </div>)}
+          <div className='flex flex-col md:w-[400px]'>
+            <div className="w-full mx-auto">
+              <h2 className="text-[32px] font-bold text-gray-900">{t('login.pageTitle')}</h2>
+            </div>
+            <div className="w-full mx-auto mt-10">
+              <Button
+                tabIndex={0}
+                type='primary'
+                onClick={() => { handleSSOLogin() }}
+                disabled={isLoading}
+                className="w-full !fone-medium !text-sm"
+              >{t('login.sso')}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

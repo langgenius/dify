@@ -5,36 +5,38 @@ import { usePathname, useRouter } from 'next/navigation'
 import cn from 'classnames'
 import { fetchEnterpriseFeatures } from '@/service/share'
 import Loading from '@/app/components/base/loading'
+import LogoSite from '@/app/components/base/logo/logo-site'
 
-const SSOForm: FC<{
+type SSOFormProps = {
   children: React.ReactNode
-}> = ({ children }) => {
+  isChatbot?: boolean
+}
+
+const SSOForm: FC<SSOFormProps> = ({ children, isChatbot }) => {
   const router = useRouter()
   const pathname = usePathname()
+
+  const [isSSOEnforced, setIsSSOEnforced] = React.useState(true)
   const [loading, setLoading] = React.useState(true)
 
   useEffect(() => {
-    const webSSOToken = localStorage.getItem('web_sso_token')
+    fetchEnterpriseFeatures().then((res) => {
+      setIsSSOEnforced(res.sso_enforced_for_web)
 
-    if (!webSSOToken) {
-      fetchEnterpriseFeatures().then((res) => {
-        if (res.sso_enforced_for_web) {
-          localStorage.setItem('web_app_redirect_url', pathname)
-
-          // If the user is on the chatbot page, open the SSO login page in a new window
-          if (pathname.includes('/chatbot/'))
-            window.open(`/webapp-sso?protocal=${res.sso_enforced_for_web_protocol}`, '_blank')
-          else
-            router.push(`/webapp-sso?protocal=${res.sso_enforced_for_web_protocol}`)
-        }
-        else {
+      if (res.sso_enforced_for_web && !isChatbot) {
+        const webSSOToken = localStorage.getItem('web_sso_token')
+        if (webSSOToken) {
           setLoading(false)
+          return
         }
-      })
-    }
-    else {
-      setLoading(false)
-    }
+
+        localStorage.setItem('web_app_redirect_url', pathname)
+        router.push(`/webapp-sso?protocal=${res.sso_enforced_for_web_protocol}`)
+      }
+      else {
+        setLoading(false)
+      }
+    })
   }, [])
 
   return (
@@ -52,9 +54,57 @@ const SSOForm: FC<{
               <Loading type='area' />
             </div>
           </div>
-
         )
-        : children}
+        : (
+          <>
+            {isChatbot && (
+              <>
+                {isSSOEnforced
+                  ? (
+                    <div className={cn(
+                      'flex w-full min-h-screen',
+                      'sm:p-4 lg:p-8',
+                      'gap-x-20',
+                      'justify-center lg:justify-start',
+                    )}>
+                      <div className={
+                        cn(
+                          'flex w-full flex-col bg-white shadow rounded-2xl shrink-0',
+                          'space-between',
+                        )
+                      }>
+                        <div className='flex items-center justify-between p-6 w-full'>
+                          <LogoSite />
+                        </div>
+
+                        <div className={
+                          cn(
+                            'flex flex-col items-center w-full grow items-center justify-center',
+                            'px-6',
+                            'md:px-[108px]',
+                          )
+                        }>
+                          <div className='flex flex-col md:w-[400px]'>
+                            <div className="w-full mx-auto">
+                              <h2 className="text-[16px] font-bold text-gray-900">
+                                Warning: Chatbot is not available
+                              </h2>
+                              <p className="text-[16px] text-gray-600 mt-2">
+                                Because SSO is enforced. Please contact your administrator.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                  : children}
+              </>
+            )}
+
+            {!isChatbot && !loading && (children)}
+          </>
+        )}
     </>
   )
 }

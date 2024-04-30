@@ -7,7 +7,7 @@ import SSOForm from '@/app/components/share/ssoForm'
 
 const Chatbot: FC<IMainProps> = () => {
   return (
-    <SSOForm>
+    <SSOForm isChatbot={true}>
       <Main />
     </SSOForm>
   )
