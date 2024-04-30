@@ -30,7 +30,6 @@ class ExcelExtractor(BaseExtractor):
         """Load from file path using Pandas."""
         data = []
 
-        # 使用 Pandas 读取 Excel 文件的每个工作表
         xls = pd.ExcelFile(self._file_path)
         for sheet_name in xls.sheet_names:
             df = pd.read_excel(xls, sheet_name=sheet_name)
