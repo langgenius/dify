@@ -235,6 +235,8 @@ const matchNotSystemVars = (prompts: string[]) => {
   const allVars: string[] = []
   prompts.forEach((prompt) => {
     VAR_REGEX.lastIndex = 0
+    if (typeof prompt !== 'string')
+      return
     allVars.push(...(prompt.match(VAR_REGEX) || []))
   })
   const uniqVars = uniq(allVars).map(v => v.replaceAll('{{#', '').replace('#}}', '').split('.'))
