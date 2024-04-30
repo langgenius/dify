@@ -235,7 +235,7 @@ class RelytVector(BaseVector):
         docs = []
         for document, score in results:
             score_threshold = kwargs.get('score_threshold') if kwargs.get('score_threshold') else 0.0
-            if score > score_threshold:
+            if 1 - score > score_threshold:
                 docs.append(document)
         return docs
 

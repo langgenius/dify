@@ -35,9 +35,15 @@ class HttpRequestNodeData(BaseNodeData):
         type: Literal['none', 'form-data', 'x-www-form-urlencoded', 'raw-text', 'json']
         data: Union[None, str]
 
+    class Timeout(BaseModel):
+        connect: int
+        read:  int
+        write:  int
+
     method: Literal['get', 'post', 'put', 'patch', 'delete', 'head']
     url: str
     authorization: Authorization
     headers: str
     params: str
     body: Optional[Body]
+    timeout: Optional[Timeout]

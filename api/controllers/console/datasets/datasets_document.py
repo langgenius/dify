@@ -394,9 +394,6 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
     def get(self, dataset_id, batch):
         dataset_id = str(dataset_id)
         batch = str(batch)
-        dataset = DatasetService.get_dataset(dataset_id)
-        if dataset is None:
-            raise NotFound("Dataset not found.")
         documents = self.get_batch_documents(dataset_id, batch)
         response = {
             "tokens": 0,
