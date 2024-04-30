@@ -42,7 +42,9 @@ class Extensible:
 
         # get the path of the current class
         current_path = os.path.abspath(cls.__module__.replace(".", os.path.sep) + '.py')
-        current_dir_path = os.path.dirname(current_path)
+        # TODO: dev
+        # current_dir_path = os.path.dirname(current_path)
+        current_dir_path = '/Users/liangzhu/Documents/dev/ai/project/dify/api/core/moderation'
 
         # traverse subdirectories
         for subdir_name in os.listdir(current_dir_path):

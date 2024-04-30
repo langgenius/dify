@@ -85,3 +85,8 @@ aspose-words==24.4.0
 BCEmbedding==0.1.4
 firecrawl-py==0.0.5
 oss2==2.15.0
+PyPDF2~=3.0.1
+fitz
+frontend
+paddleocr~=2.7.3
+paddlepaddle==2.6.1
