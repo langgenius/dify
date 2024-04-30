@@ -145,7 +145,7 @@ const CodeEditor: FC<Props> = ({
   return (
     <div>
       {noWrapper
-        ? <div className='relative' style={{
+        ? <div className='relative no-wrapper' style={{
           // minHeight,
           height: minHeight,
         }}>{main}</div>
