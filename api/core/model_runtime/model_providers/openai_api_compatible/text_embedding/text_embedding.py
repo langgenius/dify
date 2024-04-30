@@ -101,6 +101,8 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
                 data=json.dumps(payload),
                 timeout=(10, 300)
             )
+            if response.status_code != 200:
+                print("payload with failed text embedding request: ", payload)
 
             response.raise_for_status()  # Raise an exception for HTTP errors
             response_data = response.json()
@@ -173,6 +175,7 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
             )
 
             if response.status_code != 200:
+                print("call text embedding model failed with payload ", payload)
                 raise CredentialsValidateFailedError(
                     f'Credentials validation failed with status code {response.status_code}')
 

@@ -1,3 +1,4 @@
+import logging
 import threading
 
 from flask import Flask, current_app
@@ -11,6 +12,8 @@ from core.rerank.rerank import RerankRunner
 from core.tools.tool.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
+
+logger = logging.getLogger(__name__)
 
 default_retrieval_model = {
     'search_method': 'semantic_search',
@@ -50,6 +53,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
     def _run(self, query: str) -> str:
         threads = []
         all_documents = []
+        logger.info(f"datasets: {len(self.dataset_ids)}, {self.dataset_ids}")
         for dataset_id in self.dataset_ids:
             retrieval_thread = threading.Thread(target=self._retriever, kwargs={
                 'flask_app': current_app._get_current_object(),
@@ -72,7 +76,10 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
         )
 
         rerank_runner = RerankRunner(rerank_model_instance)
+        logger.info(f"Rerank parameters for multi-retriever merging: {self.score_threshold}, {self.top_k}")
+        logger.info(f"All retrieved docs before reranking: {all_documents}\n")
         all_documents = rerank_runner.run(query, all_documents, self.score_threshold, self.top_k)
+        logger.info(f"All retrieved docs after reranking: {all_documents}\n")
 
         for hit_callback in self.hit_callbacks:
             hit_callback.on_tool_end(all_documents)

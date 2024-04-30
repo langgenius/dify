@@ -22,7 +22,7 @@ IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
 
 ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'xls', 'docx', 'doc', 'csv']
 UNSTRUSTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'xls',
-                                   'docx','doc', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml', 'epub']
+                                   'docx', 'doc', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml', 'epub']
 
 PREVIEW_WORDS_LIMIT = 3000
 

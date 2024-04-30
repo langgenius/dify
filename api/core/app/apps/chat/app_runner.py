@@ -154,6 +154,7 @@ class ChatAppRunner(AppRunner):
                 application_generate_entity.invoke_from
             )
 
+            logger.info("Start retrieving related docs...")
             dataset_retrieval = DatasetRetrieval()
             context = dataset_retrieval.retrieve(
                 app_id=app_record.id,
@@ -167,6 +168,8 @@ class ChatAppRunner(AppRunner):
                 hit_callback=hit_callback,
                 memory=memory
             )
+            logger.info(f"Context text: {context}")
+            logger.info("End retrieving related docs...")
 
         # reorganize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
@@ -181,6 +184,7 @@ class ChatAppRunner(AppRunner):
             context=context,
             memory=memory
         )
+        logger.info(f"Prompt messages for llm: {prompt_messages}")
 
         # check hosting moderation
         hosting_moderation_result = self.check_hosting_moderation(
