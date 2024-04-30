@@ -235,7 +235,7 @@ const matchNotSystemVars = (prompts: string[]) => {
   const allVars: string[] = []
   prompts.forEach((prompt) => {
     VAR_REGEX.lastIndex = 0
-    if (!prompt)
+    if (typeof prompt !== 'string')
       return
     allVars.push(...(prompt.match(VAR_REGEX) || []))
   })
