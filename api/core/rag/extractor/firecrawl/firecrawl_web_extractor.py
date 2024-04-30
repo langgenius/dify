@@ -1,7 +1,8 @@
 """Abstract interface for document loader implementations."""
+import os
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
-from api.core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
+from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
 
 
 class FirecrawlWebExtractor(BaseExtractor):
@@ -33,15 +34,23 @@ class FirecrawlWebExtractor(BaseExtractor):
         self._firecrawl_app = FirecrawlApp(api_key=self._api_key, base_url=self._base_url)
 
     def extract(self) -> list[Document]:
+        documents = []
         if self._mode == 'scrape':
             content = self._scrape_url()
-            return [Document(page_content=content.get('markdown', ''))]
-        elif self._mode == 'crawl':
-            pages = self._crawl_url()
-            return [Document(page_content=page.get('markdown', '')) for page in pages]
-        elif self._mode == 'crawl_return_urls':
-            urls = self._crawl_url(return_only_urls=True)
-            return [Document(page_content=url) for url in urls]
+            if content:
+                documents.append(self._create_document(content))
+        elif self._mode in ['crawl', 'crawl_return_urls']:
+            items = self._crawl_url(return_only_urls=(self._mode == 'crawl_return_urls'))
+            for item in items:
+                if item:
+                    documents.append(self._create_document(item, is_url=(self._mode == 'crawl_return_urls')))
+        return documents
+
+    def _create_document(self, content, is_url=False):
+        if is_url:
+            return Document(page_content=content.get('url', ''))
+        else:
+            return Document(page_content=content.get('markdown', ''))
     
     def _scrape_url(self):
         return self._firecrawl_app.scrape_url(self._url)

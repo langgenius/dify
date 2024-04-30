@@ -20,15 +20,18 @@ class NotionInfo(BaseModel):
     def __init__(self, **data) -> None:
         super().__init__(**data)
 
+import os
+
 class FirecrawlInfo(BaseModel):
     """
     Firecrawl import info.
     """
     url: str
     mode: str
-    # [Review] Not sure if api key and base url belong here.
-    firecrawl_api_key: str # should this even be here?
-    firecrawl_base_url: str = 'https://api.firecrawl.dev' # should this even be here?
+    ## [Review] Not sure if these belong here
+    firecrawl_api_key: str
+    firecrawl_base_url: str
+    ## ---
     document: Document = None
     tenant_id: str
 
