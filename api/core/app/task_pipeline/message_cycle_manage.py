@@ -118,7 +118,8 @@ class MessageCycleManage:
         :param event: event
         :return:
         """
-        self._task_state.metadata['retriever_resources'] = event.retriever_resources
+        if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
+            self._task_state.metadata['retriever_resources'] = event.retriever_resources
 
     def _get_response_metadata(self) -> dict:
         """

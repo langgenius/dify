@@ -243,9 +243,6 @@ export const useNodesInteractions = () => {
   }, [store, getNodesReadOnly])
 
   const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean) => {
-    if (getNodesReadOnly() && !workflowStore.getState().isRestoring)
-      return
-
     const {
       getNodes,
       setNodes,
@@ -289,14 +286,11 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
 
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft, getNodesReadOnly, workflowStore])
+  }, [store, handleSyncWorkflowDraft])
 
   const handleNodeClick = useCallback<NodeMouseHandler>((_, node) => {
-    if (getNodesReadOnly() && !workflowStore.getState().isRestoring)
-      return
-
     handleNodeSelect(node.id)
-  }, [handleNodeSelect, getNodesReadOnly, workflowStore])
+  }, [handleNodeSelect])
 
   const handleNodeConnect = useCallback<OnConnect>(({
     source,
@@ -834,6 +828,36 @@ export const useNodesInteractions = () => {
       handleNodeDelete(node.id)
   }, [getNodesReadOnly, handleNodeDelete, store, workflowStore])
 
+  const handleNodeCancelRunningStatus = useCallback(() => {
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+
+    const nodes = getNodes()
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        node.data._runningStatus = undefined
+      })
+    })
+    setNodes(newNodes)
+  }, [store])
+
+  const handleNodesCancelSelected = useCallback(() => {
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+
+    const nodes = getNodes()
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        node.data.selected = false
+      })
+    })
+    setNodes(newNodes)
+  }, [store])
+
   return {
     handleNodeDragStart,
     handleNodeDrag,
@@ -853,5 +877,7 @@ export const useNodesInteractions = () => {
     handleNodeCut,
     handleNodeDeleteSelected,
     handleNodePaste,
+    handleNodeCancelRunningStatus,
+    handleNodesCancelSelected,
   }
 }
