@@ -20,8 +20,6 @@ class NotionInfo(BaseModel):
     def __init__(self, **data) -> None:
         super().__init__(**data)
 
-import os
-
 class FirecrawlInfo(BaseModel):
     """
     Firecrawl import info.
