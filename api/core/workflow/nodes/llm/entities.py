@@ -50,7 +50,7 @@ class LLMNodeChatModelMessage(ChatModelMessage):
     """
     jinja2_text: Optional[str] = None
 
-class LLMNodeChatModelPromptTemplate(CompletionModelPromptTemplate):
+class LLMNodeCompletionModelPromptTemplate(CompletionModelPromptTemplate):
     """
     LLM Node Chat Model Prompt Template.
     """
@@ -61,7 +61,7 @@ class LLMNodeData(BaseNodeData):
     LLM Node Data.
     """
     model: ModelConfig
-    prompt_template: Union[list[LLMNodeChatModelMessage], LLMNodeChatModelPromptTemplate]
+    prompt_template: Union[list[LLMNodeChatModelMessage], LLMNodeCompletionModelPromptTemplate]
     prompt_config: Optional[PromptConfig] = None
     memory: Optional[MemoryConfig] = None
     context: ContextConfig

@@ -154,7 +154,7 @@ def test_execute_llm_with_jinja2(setup_code_executor_mock, setup_openai_mock):
                 'prompt_template': [
                     {
                         'role': 'system',
-                        'text': 'you are a helpful assistant.\ntoday\'s weather is {{output}}.',
+                        'text': 'you are a helpful assistant.\ntoday\'s weather is {{#abc.output#}}',
                         'jinja2_text': 'you are a helpful assistant.\ntoday\'s weather is {{output}}.',
                         'edition_type': 'jinja2'
                     },

@@ -1,4 +1,6 @@
+import json
 from collections.abc import Generator
+from copy import deepcopy
 from typing import Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
@@ -21,7 +23,12 @@ from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.llm.entities import LLMNodeData, ModelConfig
+from core.workflow.nodes.llm.entities import (
+    LLMNodeChatModelMessage,
+    LLMNodeCompletionModelPromptTemplate,
+    LLMNodeData,
+    ModelConfig,
+)
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from models.model import Conversation
@@ -39,13 +46,15 @@ class LLMNode(BaseNode):
         :param variable_pool: variable pool
         :return:
         """
-        node_data = self.node_data
-        node_data = cast(self._node_data_cls, node_data)
+        node_data = cast(LLMNodeData, deepcopy(self.node_data))
 
         node_inputs = None
         process_data = None
 
         try:
+            # init messages template
+            node_data.prompt_template = self._transform_chat_messages(node_data.prompt_template)
+
             # fetch variables and fetch values from variable pool
             inputs = self._fetch_inputs(node_data, variable_pool)
 
@@ -189,6 +198,28 @@ class LLMNode(BaseNode):
             usage = LLMUsage.empty_usage()
 
         return full_text, usage
+    
+    def _transform_chat_messages(self, 
+        messages: list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
+    ) -> list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate:
+        """
+        Transform chat messages
+
+        :param messages: chat messages
+        :return:
+        """
+
+        if isinstance(messages, LLMNodeCompletionModelPromptTemplate):
+            if messages.edition_type == 'jinja2':
+                messages.text = messages.jinja2_text
+
+            return messages
+
+        for message in messages:
+            if message.edition_type == 'jinja2':
+                message.text = message.jinja2_text
+
+        return messages
 
     def _fetch_jinja_inputs(self, node_data: LLMNodeData, variable_pool: VariablePool) -> dict[str, str]:
         """
@@ -207,6 +238,42 @@ class LLMNode(BaseNode):
             value = variable_pool.get_variable_value(
                 variable_selector=variable_selector.value_selector
             )
+
+            def parse_dict(d: dict) -> str:
+                """
+                Parse dict into string
+                """
+                # check if it's a context structure
+                if 'metadata' in d and '_source' in d['metadata'] and 'content' in d:
+                    return d['content']
+                
+                # else, parse the dict
+                try:
+                    return json.dumps(d, ensure_ascii=False)
+                except Exception:
+                    return str(d)
+                
+            if isinstance(value, str):
+                value = value
+            elif isinstance(value, list):
+                result = ''
+                for item in value:
+                    if isinstance(item, dict):
+                        result += parse_dict(item)
+                    elif isinstance(item, str):
+                        result += item
+                    elif isinstance(item, int | float):
+                        result += str(item)
+                    else:
+                        result += str(item)
+                    result += '\n'
+                value = result.strip()
+            elif isinstance(value, dict):
+                value = parse_dict(value)
+            elif isinstance(value, int | float):
+                value = str(value)
+            else:
+                value = str(value)
 
             variables[variable] = value
 
