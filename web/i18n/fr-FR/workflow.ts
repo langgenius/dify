@@ -248,6 +248,15 @@ const translation = {
         'header': 'En-tête',
       },
       insertVarPlaceholder: 'tapez \'/\' pour insérer une variable',
+      timeout: {
+        title: 'Délai d\'expiration',
+        connectLabel: 'Délai de connexion',
+        connectPlaceholder: 'Entrez le délai de connexion en secondes',
+        readLabel: 'Délai de lecture',
+        readPlaceholder: 'Entrez le délai de lecture en secondes',
+        writeLabel: 'Délai d\'écriture',
+        writePlaceholder: 'Entrez le délai d\'écriture en secondes',
+      },
     },
     code: {
       inputVars: 'Variables d\'entrée',
