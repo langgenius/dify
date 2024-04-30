@@ -1,6 +1,8 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
+from flask import current_app
+
 from libs.passport import PassportService
 from services.enterprise.base import EnterpriseRequest
 
@@ -41,7 +43,7 @@ class EnterpriseWebSSOService:
     def generate_web_sso_token(cls, end_user_session_id: str) -> str:
         payload = {
             'end_user_session_id': end_user_session_id,
-            "exp": (datetime.now(timezone.utc) + timedelta(days=7)).timestamp(),
+            "exp": (datetime.now(timezone.utc) + timedelta(days=current_app.config.get('WEB_SSO_TOKEN_EXPIRED_DAYS'))).timestamp(),
         }
 
         token = PassportService().issue(payload)

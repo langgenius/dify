@@ -77,6 +77,7 @@ DEFAULTS = {
     'KEYWORD_DATA_SOURCE_TYPE': 'database',
     'INNER_API': 'False',
     'ENTERPRISE_ENABLED': 'False',
+    'WEB_SSO_TOKEN_EXPIRED_DAYS': 7,
 }
 
 
@@ -365,3 +366,4 @@ class Config:
 
         self.KEYWORD_DATA_SOURCE_TYPE = get_env('KEYWORD_DATA_SOURCE_TYPE')
         self.ENTERPRISE_ENABLED = get_bool_env('ENTERPRISE_ENABLED')
+        self.WEB_SSO_TOKEN_EXPIRED_DAYS = int(get_env('WEB_SSO_TOKEN_EXPIRED_DAYS'))
