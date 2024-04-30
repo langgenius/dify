@@ -10,6 +10,7 @@ import type {
   WorkflowFinishedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
+import { CONVERSATION_ID_INFO } from '@/app/components/base/chat/constants'
 const TIME_OUT = 100000
 
 const ContentType = {
@@ -95,6 +96,15 @@ function unicodeToChar(text: string) {
   return text.replace(/\\u[0-9a-f]{4}/g, (_match, p1) => {
     return String.fromCharCode(parseInt(p1, 16))
   })
+}
+
+function removeInvalidWebSSOTokenAndRelogin() {
+  localStorage.removeItem('web_sso_token')
+
+  localStorage.removeItem('token')
+  localStorage.removeItem(CONVERSATION_ID_INFO)
+
+  globalThis.location.reload()
 }
 
 export function format(text: string) {
@@ -311,10 +321,8 @@ const baseFetch = <T>(
                     if (!silent)
                       Toast.notify({ type: 'error', message: data.message })
 
-                    if (data.code === 'web_sso_token_invalid') {
-                      localStorage.removeItem('web_sso_token')
-                      globalThis.location.reload()
-                    }
+                    if (data.code === 'web_sso_token_invalid')
+                      removeInvalidWebSSOTokenAndRelogin()
 
                     return Promise.reject(data)
                   })
@@ -476,10 +484,8 @@ export const ssePost = (
         res.json().then((data: any) => {
           Toast.notify({ type: 'error', message: data.message || 'Server Error' })
 
-          if (data.code === 'web_sso_token_invalid') {
-            localStorage.removeItem('web_sso_token')
-            globalThis.location.reload()
-          }
+          if (data.code === 'web_sso_token_invalid')
+            removeInvalidWebSSOTokenAndRelogin()
         })
         onError?.('Server Error')
         return
