@@ -25,6 +25,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import Switch from '@/app/components/base/switch'
+import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
 
 type Props = {
   className?: string
@@ -130,19 +131,29 @@ const Editor: FC<Props> = ({
               <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>
               {/* Operations */}
               <div className='flex items-center space-x-2'>
+
                 {isSupportJinja && (
-                  <div className='flex items-center space-x-0.5'>
-                    {/* TODO icon */}
-                    <div className='text-gray-300'>Jinja2</div>
-                    {/* TODO small icon */}
-                    <Switch
-                      size='md'
-                      defaultValue={editionType === EditionType.jinja2}
-                      onChange={(checked) => {
-                        onEditionTypeChange?.(checked ? EditionType.jinja2 : EditionType.basic)
-                      }}
-                    />
-                  </div>
+                  <TooltipPlus
+                    popupContent={
+                      <div>
+                        <div>{t('workflow.common.enableJinja')}</div>
+                        <a className='text-[#155EEF]' target='_blank' href='https://jinja.palletsprojects.com/en/2.10.x/'>{t('workflow.common.learnMore')}</a>
+                      </div>
+                    }
+                    hideArrow
+                  >
+                    <div className={cn(editionType === EditionType.jinja2 && 'border-black/5 bg-white', 'mb-1 flex h-[22px] items-center px-1.5 rounded-[5px] border border-transparent hover:border-black/5 space-x-0.5')}>
+                      <Jinja className='w-6 h-3 text-gray-300' />
+                      <Switch
+                        size='sm'
+                        defaultValue={editionType === EditionType.jinja2}
+                        onChange={(checked) => {
+                          onEditionTypeChange?.(checked ? EditionType.jinja2 : EditionType.basic)
+                        }}
+                      />
+                    </div>
+                  </TooltipPlus>
+
                 )}
                 {!readOnly && (
                   <TooltipPlus
