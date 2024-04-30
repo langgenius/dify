@@ -3,7 +3,8 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { uniqueId } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
-import type { EditionType, PromptItem } from '../../../types'
+import type { PromptItem } from '../../../types'
+import { EditionType } from '../../../types'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
@@ -110,7 +111,7 @@ const ConfigPromptItem: FC<Props> = ({
           </TooltipPlus>
         </div>
       }
-      value={payload.jinja2_text || ''}
+      value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}
       onChange={onPromptChange}
       readOnly={readOnly}
       showRemove={canRemove}
