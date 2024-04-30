@@ -1,5 +1,3 @@
-"""Abstract interface for document loader implementations."""
-import os
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
@@ -8,7 +6,7 @@ from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
 class FirecrawlWebExtractor(BaseExtractor):
 
     """
-    Load html files.
+    Crawl and scrape websites and return content in clean llm-ready markdown. 
 
 
     Args:
