@@ -44,6 +44,7 @@ const translation = {
   voice: {
     language: {
       zhHans: '中国語',
+      zhHant: '繁体字中国語',
       enUS: '英語',
       deDE: 'ドイツ語',
       frFR: 'フランス語',
@@ -56,6 +57,7 @@ const translation = {
       ptBR: 'ポルトガル語',
       ruRU: 'ロシア語',
       ukUA: 'ウクライナ語',
+      viVN: 'ベトナム語',
     },
   },
   unit: {

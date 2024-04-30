@@ -248,6 +248,15 @@ const translation = {
         'header': 'Tiêu đề',
       },
       insertVarPlaceholder: 'nhập \'/\' để chèn biến',
+      timeout: {
+        title: 'Hết thời gian',
+        connectLabel: 'Hết thời gian kết nối',
+        connectPlaceholder: 'Nhập thời gian kết nối bằng giây',
+        readLabel: 'Hết thời gian đọc',
+        readPlaceholder: 'Nhập thời gian đọc bằng giây',
+        writeLabel: 'Hết thời gian ghi',
+        writePlaceholder: 'Nhập thời gian ghi bằng giây',
+      },
     },
     code: {
       inputVars: 'Biến đầu vào',

@@ -1,12 +1,6 @@
 import random
-import tempfile
-from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, Literal, Optional, Union
-
-from pdfminer.high_level import extract_pages
-from pdfminer.layout import LAParams, LTPage
-from pypdf import PdfReader, PdfWriter
 
 from core.rag.extractor.pdf.openparse.schemas import Bbox, Node
 
@@ -64,39 +58,17 @@ class Pdf:
     Simple utility class for working with PDF files. This class wraps the PdfReader and PdfWriter classes from pypdf.
     """
 
-    def __init__(self, file: Union[str, Path, PdfReader]):
+    def __init__(self, file: Union[str, Path]):
         self.file_path = str(file) if isinstance(file, str | Path) else None
-        self.reader = PdfReader(file) if isinstance(file, str | Path) else file
-        self.writer = PdfWriter()
-        for page in self.reader.pages:
-            self.writer.add_page(page)
-
-        self.num_pages = len(self.reader.pages)
-
-    def extract_layout_pages(self) -> Iterator[LTPage]:
-        """
-        Yields layout objects for each page in the PDF using pdfminer.six.
-        """
-        assert (
-                self.file_path is not None
-        ), "PDF file path is required for this method for now."
-
-        laparams = LAParams(all_texts=True, detect_vertical=True)
-        yield from extract_pages(self.file_path, laparams=laparams)
+        self.num_pages = 0
 
     def save(self, output_pdf: Union[str, Path]) -> None:
         """
         Saves the content from the PdfWriter to a new PDF file.
         """
-        with open(str(output_pdf), "wb") as out_pdf:
-            self.writer.write(out_pdf)
-
-    def extract_pages(self, start_page: int, end_page: int) -> None:
-        """
-        Extracts a range of pages from the PDF and adds them to the PdfWriter.
-        """
-        for page_num in range(start_page - 1, end_page):
-            self.writer.add_page(self.reader.pages[page_num])
+        # with open(str(output_pdf), "wb") as out_pdf:
+        #     self.writer.write(out_pdf)
+        pass
 
     def to_pymupdf_doc(self):
         """
@@ -110,13 +82,13 @@ class Pdf:
             raise ImportError(
                 "PyMuPDF (fitz) is not installed. This method requires PyMuPDF."
             )
+        documents = fitz.open(self.file_path)
+        self.num_pages = documents.page_count
+        return documents
 
-        if not self.writer.pages:
-            return fitz.open(self.file_path)
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
-            self.writer.write(tmpfile.name)
-            return fitz.open(tmpfile.name)
+        # with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
+        #     self.writer.write(tmpfile.name)
+        #     return fitz.open(tmpfile.name)
 
     def _draw_bboxes(
             self,

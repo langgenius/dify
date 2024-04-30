@@ -63,8 +63,10 @@ class PdfExtractor(BaseExtractor):
         )
         parsed_basic_doc = parser.parse(self._file_path)
         documentContent = ''
+        last_index = 0
         for _index, node in enumerate(parsed_basic_doc.nodes):
             metadata = {"source": self._file_path, "page": _index}
+            last_index = _index
             for element in node.elements:
                 if isinstance(element, ImageElement):
                     # pdf images a
@@ -74,22 +76,6 @@ class PdfExtractor(BaseExtractor):
                 if len(documentContent) > 1500:
                     documents.append(Document(page_content=documentContent, metadata=metadata))
                     documentContent = ''
-        documents.append(Document(page_content=documentContent, metadata=metadata))
+        documents.append(
+            Document(page_content=documentContent, metadata={"source": self._file_path, "page": last_index}))
         return documents
-
-    # def parse(self, blob: Blob) -> Iterator[Document]:
-    #     """Lazily parse the blob."""
-    #     import pypdfium2
-    #
-    #     with blob.as_bytes_io() as file_path:
-    #         pdf_reader = pypdfium2.PdfDocument(file_path, autoclose=True)
-    #         try:
-    #             for page_number, page in enumerate(pdf_reader):
-    #                 text_page = page.get_textpage()
-    #                 content = text_page.get_text_range()
-    #                 text_page.close()
-    #                 page.close()
-    #                 metadata = {"source": blob.source, "page": page_number}
-    #                 yield Document(page_content=content, metadata=metadata)
-    #         finally:
-    #             pdf_reader.close()
