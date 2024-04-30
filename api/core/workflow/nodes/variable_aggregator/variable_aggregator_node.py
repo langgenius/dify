@@ -4,13 +4,13 @@ from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.variable_assigner.entities import VariableAssignerNodeData
+from core.workflow.nodes.variable_aggregator.entities import VariableAssignerNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 
 
-class VariableAssignerNode(BaseNode):
+class VariableAggregatorNode(BaseNode):
     _node_data_cls = VariableAssignerNodeData
-    _node_type = NodeType.VARIABLE_ASSIGNER
+    _node_type = NodeType.VARIABLE_AGGREGATOR
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         node_data: VariableAssignerNodeData = cast(self._node_data_cls, self.node_data)

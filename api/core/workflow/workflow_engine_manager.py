@@ -16,14 +16,16 @@ from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
+from core.workflow.nodes.iteration.iteration_node import IterationNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.llm.llm_node import LLMNode
+from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 from core.workflow.nodes.start.start_node import StartNode
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from core.workflow.nodes.tool.tool_node import ToolNode
-from core.workflow.nodes.variable_assigner.variable_assigner_node import VariableAssignerNode
+from core.workflow.nodes.variable_aggregator.variable_aggregator_node import VariableAggregatorNode
 from extensions.ext_database import db
 from models.workflow import (
     Workflow,
@@ -42,7 +44,9 @@ node_classes = {
     NodeType.QUESTION_CLASSIFIER: QuestionClassifierNode,
     NodeType.HTTP_REQUEST: HttpRequestNode,
     NodeType.TOOL: ToolNode,
-    NodeType.VARIABLE_ASSIGNER: VariableAssignerNode,
+    NodeType.VARIABLE_AGGREGATOR: VariableAggregatorNode,
+    NodeType.ITERATION: IterationNode,
+    NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode
 }
 
 logger = logging.getLogger(__name__)
