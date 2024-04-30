@@ -38,6 +38,7 @@ DEFAULTS = {
     'WEAVIATE_BATCH_SIZE': 100,
     'QDRANT_CLIENT_TIMEOUT': 20,
     'QDRANT_GRPC_ENABLED': 'False',
+    'QDRANT_GRPC_PORT': '6334',
     'CELERY_BACKEND': 'database',
     'LOG_LEVEL': 'INFO',
     'LOG_FILE': '',

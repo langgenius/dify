@@ -712,9 +712,10 @@ export const useNodesInteractions = () => {
     const {
       setClipboardElements,
       shortcutsDisabled,
+      showFeaturesPanel,
     } = workflowStore.getState()
 
-    if (shortcutsDisabled)
+    if (shortcutsDisabled || showFeaturesPanel)
       return
 
     const {
@@ -736,9 +737,10 @@ export const useNodesInteractions = () => {
     const {
       clipboardElements,
       shortcutsDisabled,
+      showFeaturesPanel,
     } = workflowStore.getState()
 
-    if (shortcutsDisabled)
+    if (shortcutsDisabled || showFeaturesPanel)
       return
 
     const {
@@ -803,9 +805,10 @@ export const useNodesInteractions = () => {
 
     const {
       shortcutsDisabled,
+      showFeaturesPanel,
     } = workflowStore.getState()
 
-    if (shortcutsDisabled)
+    if (shortcutsDisabled || showFeaturesPanel)
       return
 
     const {

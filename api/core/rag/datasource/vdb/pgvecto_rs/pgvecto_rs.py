@@ -91,7 +91,7 @@ class PGVectoRS(BaseVector):
                 """)
                 session.execute(create_statement)
                 index_statement = sql_text(f"""
-                        CREATE INDEX {index_name}
+                        CREATE INDEX IF NOT EXISTS {index_name}
                         ON {self._collection_name} USING vectors(vector vector_l2_ops)
                         WITH (options = $$
                                 optimizing.optimizing_threads = 30
@@ -153,12 +153,12 @@ class PGVectoRS(BaseVector):
                 session.execute(select_statement, {'ids': ids})
                 session.commit()
 
-    def delete_by_ids(self, doc_ids: list[str]) -> None:
+    def delete_by_ids(self, ids: list[str]) -> None:
         with Session(self._client) as session:
             select_statement = sql_text(
                 f"SELECT id FROM {self._collection_name} WHERE meta->>'doc_id' = ANY (:doc_ids); "
             )
-            result = session.execute(select_statement, {'doc_ids': doc_ids}).fetchall()
+            result = session.execute(select_statement, {'doc_ids': ids}).fetchall()
         if result:
             ids = [item[0] for item in result]
             if ids:
@@ -199,9 +199,10 @@ class PGVectoRS(BaseVector):
         docs = []
         for record, dis in results:
             metadata = record.meta
-            metadata['score'] = 1 - dis
+            score = 1 - dis
+            metadata['score'] = score
             score_threshold = kwargs.get('score_threshold') if kwargs.get('score_threshold') else 0.0
-            if dis > score_threshold:
+            if score > score_threshold:
                 doc = Document(page_content=record.text,
                                metadata=metadata)
                 docs.append(doc)

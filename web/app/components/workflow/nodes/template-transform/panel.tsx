@@ -27,6 +27,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
     readOnly,
     inputs,
     handleVarListChange,
+    handleVarNameChange,
     handleAddVariable,
     handleAddEmptyVariable,
     handleCodeChange,
@@ -58,6 +59,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
             readonly={readOnly}
             list={inputs.variables}
             onChange={handleVarListChange}
+            onVarNameChange={handleVarNameChange}
             filterVar={filterVar}
           />
         </Field>

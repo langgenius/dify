@@ -2,14 +2,21 @@ import os
 import shutil
 from collections.abc import Generator
 
+from flask import Flask
+
 from extensions.storage.base_storage import BaseStorage
 
 
 class LocalStorage(BaseStorage):
     """Implementation for local storage.
     """
-    def __init__(self, storage_type, app_config, folder=None):
-        super().__init__(storage_type, app_config, folder=folder)
+
+    def __init__(self, app: Flask):
+        super().__init__(app)
+        folder = self.app.config.get('STORAGE_LOCAL_PATH')
+        if not os.path.isabs(folder):
+            folder = os.path.join(app.root_path, folder)
+        self.folder = folder
 
     def save(self, filename, data):
         if not self.folder or self.folder.endswith('/'):

@@ -56,6 +56,7 @@ const translation = {
       ptBR: 'Tiếng Bồ Đào Nha',
       ruRU: 'Tiếng Nga',
       ukUA: 'Tiếng Ukraina',
+      viVN: 'Tiếng Việt',
     },
   },
   unit: {

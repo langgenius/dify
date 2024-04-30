@@ -61,19 +61,21 @@ jobs:
       - name: Run Workflow
         run: dev/pytest/pytest_workflow.sh
 
-      - name: Set up Vector Stores (Weaviate, Qdrant and Milvus)
+      - name: Set up Vector Stores (Weaviate, Qdrant, Milvus, PgVecto-RS)
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml
             docker/docker-compose.qdrant.yaml
             docker/docker-compose.milvus.yaml
+            docker/docker-compose.pgvecto-rs.yaml
           services: |
             weaviate
             qdrant
             etcd
             minio
             milvus-standalone
+            pgvecto-rs
 
       - name: Test Vector Stores
         run: dev/pytest/pytest_vdb.sh
