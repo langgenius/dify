@@ -27,20 +27,21 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
   const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
+  const inputRef = useRef(inputs)
+
   const setInputs = useCallback((newInputs: LLMNodeType) => {
     if (newInputs.memory && !newInputs.memory.role_prefix) {
       const newPayload = produce(newInputs, (draft) => {
         draft.memory!.role_prefix = defaultRolePrefix
       })
       doSetInputs(newPayload)
+      inputRef.current = newPayload
       return
     }
     doSetInputs(newInputs)
+    inputRef.current = newInputs
   }, [doSetInputs, defaultRolePrefix])
-  const inputRef = useRef(inputs)
-  useEffect(() => {
-    inputRef.current = inputs
-  }, [inputs])
+
   // model
   const model = inputs.model
   const modelMode = inputs.model?.mode
@@ -237,7 +238,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       if (isChatModel) {
         const promptTemplate = draft.prompt_template as PromptItem[]
         promptTemplate.filter(item => item.edition_type === EditionType.jinja2).forEach((item) => {
-          item.text = item.text.replaceAll(`{{ ${oldName} }}`, `{{ ${newName} }}`)
+          item.jinja2_text = (item.jinja2_text || '').replaceAll(`{{ ${oldName} }}`, `{{ ${newName} }}`)
         })
       }
       else {
@@ -245,7 +246,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
           return
 
         const promptTemplate = draft.prompt_template as PromptItem
-        promptTemplate.text = promptTemplate.text.replaceAll(`{{ ${oldName} }}`, `{{ ${newName} }}`)
+        promptTemplate.jinja2_text = (promptTemplate.jinja2_text || '').replaceAll(`{{ ${oldName} }}`, `{{ ${newName} }}`)
       }
     })
     setInputs(newInputs)
@@ -361,23 +362,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       '#files#': [],
     },
   })
-
-  // const handleRun = (submitData: Record<string, any>) => {
-  //   console.log(submitData)
-  //   const res = produce(submitData, (draft) => {
-  //     debugger
-  //     if (draft.contexts) {
-  //       draft['#context#'] = draft.contexts
-  //       delete draft.contexts
-  //     }
-  //     if (draft.visionFiles) {
-  //       draft['#files#'] = draft.visionFiles
-  //       delete draft.visionFiles
-  //     }
-  //   })
-
-  //   doHandleRun(res)
-  // }
 
   const inputVarValues = (() => {
     const vars: Record<string, any> = {}
