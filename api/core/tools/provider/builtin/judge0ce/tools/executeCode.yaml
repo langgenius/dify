@@ -1,5 +1,5 @@
 identity:
-  name: executeCode
+  name: submitCodeExecutionTask
   author: Richards Tu
   label:
     en_US: Submit Code Execution Task to Judge0 CE and get execution result.
