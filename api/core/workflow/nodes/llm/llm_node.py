@@ -19,7 +19,6 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
@@ -626,14 +625,12 @@ class LLMNode(BaseNode):
             db.session.commit()
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: LLMNodeData) -> dict[str, list[str]]:
         """
         Extract variable selector to variable mapping
         :param node_data: node data
         :return:
         """
-        node_data = node_data
-        node_data = cast(cls._node_data_cls, node_data)
 
         prompt_template = node_data.prompt_template
 
@@ -665,6 +662,22 @@ class LLMNode(BaseNode):
 
         if node_data.memory:
             variable_mapping['#sys.query#'] = ['sys', SystemVariable.QUERY.value]
+
+        if node_data.prompt_config:
+            enable_jinja = False
+
+            if isinstance(prompt_template, list):
+                for prompt in prompt_template:
+                    if prompt.edition_type == 'jinja2':
+                        enable_jinja = True
+                        break
+            else:
+                if prompt_template.edition_type == 'jinja2':
+                    enable_jinja = True
+
+            if enable_jinja:
+                for variable_selector in node_data.prompt_config.jinja2_variables or []:
+                    variable_mapping[variable_selector.variable] = variable_selector.value_selector
 
         return variable_mapping
 
