@@ -6,7 +6,7 @@ import produce from 'immer'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
 import cn from 'classnames'
-import type { PromptItem, ValueSelector, Var } from '../../../types'
+import type { PromptItem, ValueSelector, Var, Variable } from '../../../types'
 import { EditionType, PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import ConfigPromptItem from './config-prompt-item'
@@ -30,6 +30,7 @@ type Props = {
     history: boolean
     query: boolean
   }
+  varList?: Variable[]
   handleAddVariable: (payload: any) => void
 }
 
@@ -43,6 +44,7 @@ const ConfigPrompt: FC<Props> = ({
   onChange,
   isShowContext,
   hasSetBlockStatus,
+  varList = [],
   handleAddVariable,
 }) => {
   const { t } = useTranslation()
@@ -185,6 +187,7 @@ const ConfigPrompt: FC<Props> = ({
                           hasSetBlockStatus={hasSetBlockStatus}
                           availableVars={availableVars}
                           availableNodes={availableNodes}
+                          varList={varList}
                           handleAddVariable={handleAddVariable}
                         />
                       </div>
@@ -218,6 +221,7 @@ const ConfigPrompt: FC<Props> = ({
               availableNodes={availableNodes}
               isSupportJinja
               editionType={(payload as PromptItem).edition_type}
+              varList={varList}
               onEditionTypeChange={handleCompletionEditionTypeChange}
               handleAddVariable={handleAddVariable}
             />

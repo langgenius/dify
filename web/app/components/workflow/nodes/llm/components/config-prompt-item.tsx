@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { uniqueId } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
-import type { PromptItem } from '../../../types'
+import type { PromptItem, Variable } from '../../../types'
 import { EditionType } from '../../../types'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
@@ -35,6 +35,7 @@ type Props = {
   }
   availableVars: any
   availableNodes: any
+  varList: Variable[]
   handleAddVariable: (payload: any) => void
 }
 
@@ -73,6 +74,7 @@ const ConfigPromptItem: FC<Props> = ({
   hasSetBlockStatus,
   availableVars,
   availableNodes,
+  varList,
   handleAddVariable,
 }) => {
   const { t } = useTranslation()
@@ -127,6 +129,7 @@ const ConfigPromptItem: FC<Props> = ({
       isSupportJinja
       editionType={payload.edition_type}
       onEditionTypeChange={onEditionTypeChange}
+      varList={varList}
       handleAddVariable={handleAddVariable}
     />
   )

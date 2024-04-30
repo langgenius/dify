@@ -176,6 +176,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             payload={inputs.prompt_template}
             onChange={handlePromptChange}
             hasSetBlockStatus={hasSetBlockStatus}
+            varList={inputs.prompt_config?.jinja2_variables || []}
             handleAddVariable={handleAddVariable}
           />
         )}

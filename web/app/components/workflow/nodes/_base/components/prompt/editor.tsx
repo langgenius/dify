@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useRef } from 'react'
 import cn from 'classnames'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +9,7 @@ import { BlockEnum, EditionType } from '../../../../types'
 import type {
   Node,
   NodeOutPutVar,
+  Variable,
 } from '../../../../types'
 
 import Wrap from '../editor/wrap'
@@ -52,6 +53,7 @@ type Props = {
   isSupportJinja?: boolean
   editionType?: EditionType
   onEditionTypeChange?: (editionType: EditionType) => void
+  varList?: Variable[]
   handleAddVariable?: (payload: any) => void
 }
 
@@ -75,6 +77,7 @@ const Editor: FC<Props> = ({
   isSupportJinja,
   editionType,
   onEditionTypeChange,
+  varList = [],
   handleAddVariable,
 }) => {
   const { t } = useTranslation()
@@ -100,20 +103,6 @@ const Editor: FC<Props> = ({
     setTrue: setFocus,
     setFalse: setBlur,
   }] = useBoolean(false)
-  const hideTooltipRunId = useRef(0)
-
-  const [isShowInsertToolTip, setIsShowInsertTooltip] = useState(false)
-  useEffect(() => {
-    if (isFocus) {
-      clearTimeout(hideTooltipRunId.current)
-      setIsShowInsertTooltip(true)
-    }
-    else {
-      hideTooltipRunId.current = setTimeout(() => {
-        setIsShowInsertTooltip(false)
-      }, 100) as any
-    }
-  }, [isFocus])
 
   const handleInsertVariable = () => {
     setFocus()
@@ -131,7 +120,6 @@ const Editor: FC<Props> = ({
               <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>
               {/* Operations */}
               <div className='flex items-center space-x-2'>
-
                 {isSupportJinja && (
                   <TooltipPlus
                     popupContent={
@@ -237,7 +225,7 @@ const Editor: FC<Props> = ({
                 <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto')}>
                   <CodeEditor
                     availableVars={nodesOutputVars || []}
-                    varList={[]}
+                    varList={varList}
                     onAddVar={handleAddVariable}
                     isInNode
                     readOnly={readOnly}
