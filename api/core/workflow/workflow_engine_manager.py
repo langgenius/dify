@@ -45,6 +45,7 @@ node_classes = {
     NodeType.HTTP_REQUEST: HttpRequestNode,
     NodeType.TOOL: ToolNode,
     NodeType.VARIABLE_AGGREGATOR: VariableAggregatorNode,
+    NodeType.VARIABLE_ASSIGNER: VariableAggregatorNode,
     NodeType.ITERATION: IterationNode,
     NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode
 }
