@@ -61,7 +61,8 @@ class FirecrawlApp:
         else:
             raise Exception(f'Failed to search. Status code: {response.status_code}')
 
-    def crawl_url(self, url, params=None, wait_until_done=True, timeout=2):
+    def crawl_url(self, url, params=None, wait_until_done=True, polling_interval=2, timeout=500):
+        start_time = time.time()
         headers = self._prepare_headers()
         json_data = {'url': url}
         if params:
@@ -70,11 +71,18 @@ class FirecrawlApp:
         if response.status_code == 200:
             job_id = response.json().get('jobId')
             if wait_until_done:
-                return self._monitor_job_status(job_id, headers, timeout)
+                while True:
+                    elapsed_time = time.time() - start_time
+                    if elapsed_time > timeout:
+                        raise Exception('Firecrawl: Crawl job timed out.')
+                    result = self._monitor_job_status(job_id, headers, polling_interval)
+                    if result is not None:
+                        return result
             else:
                 return {'jobId': job_id}
         else:
             self._handle_error(response, 'start crawl job')
+
 
     def check_crawl_status(self, job_id):
         headers = self._prepare_headers()
@@ -107,26 +115,22 @@ class FirecrawlApp:
             else:
                 return response
         return response
-
-    def _monitor_job_status(self, job_id, headers, timeout):
-        import time
-        while True:
-            status_response = self._get_request(f'{self.base_url}/v0/crawl/status/{job_id}', headers)
-            if status_response.status_code == 200:
-                status_data = status_response.json()
-                if status_data['status'] == 'completed':
-                    if 'data' in status_data:
-                        return status_data['data']
-                    else:
-                        raise Exception('Crawl job completed but no data was returned')
-                elif status_data['status'] in ['active', 'paused', 'pending', 'queued']:
-                    if timeout < 2:
-                        timeout = 2
-                    time.sleep(timeout)  # Wait for the specified timeout before checking again
+    
+    def _monitor_job_status(self, job_id, headers, polling_interval):
+        status_response = self._get_request(f'{self.base_url}/v0/crawl/status/{job_id}', headers)
+        if status_response.status_code == 200:
+            status_data = status_response.json()
+            if status_data['status'] == 'completed':
+                if 'data' in status_data:
+                    return status_data['data']
                 else:
-                    raise Exception(f'Crawl job failed or was stopped. Status: {status_data["status"]}')
+                    raise Exception('Crawl job completed but no data was returned')
+            elif status_data['status'] in ['active', 'paused', 'pending', 'queued']:
+                time.sleep(max(polling_interval, 2))  # Wait for the specified polling_interval before checking again
             else:
-                self._handle_error(status_response, 'check crawl status')
+                raise Exception(f'Crawl job failed or was stopped. Status: {status_data["status"]}')
+        else:
+            self._handle_error(status_response, 'check crawl status')
 
     def _handle_error(self, response, action):
         if response.status_code in [402, 409, 500]:
