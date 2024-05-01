@@ -29,6 +29,7 @@ class ParameterExtractorNodeData(BaseNodeData):
     """
     Parameter Extractor Node Data.
     """
+    model: ModelConfig
     query: list[str]
     parameters: list[ParameterConfig]
     instruction: Optional[str]
