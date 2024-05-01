@@ -380,6 +380,8 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                     self._task_state.answer += text
                     yield self._text_chunk_to_stream_response(text)
 
+            db.session.close()
+
     def _is_stream_out_support(self, event: QueueTextChunkEvent) -> bool:
         """
         Is stream out support

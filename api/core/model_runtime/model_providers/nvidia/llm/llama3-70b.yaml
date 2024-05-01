@@ -1,7 +1,7 @@
-model: meta/llama3-70b
+model: meta/llama3-70b-instruct
 label:
-  zh_Hans: meta/llama3-70b
-  en_US: meta/llama3-70b
+  zh_Hans: meta/llama3-70b-instruct
+  en_US: meta/llama3-70b-instruct
 model_type: llm
 features:
   - agent-thought

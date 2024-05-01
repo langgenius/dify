@@ -117,8 +117,7 @@ class QdrantVector(BaseVector):
 
                 # create payload index
                 self._client.create_payload_index(collection_name, Field.GROUP_KEY.value,
-                                                  field_schema=PayloadSchemaType.KEYWORD,
-                                                  field_type=PayloadSchemaType.KEYWORD)
+                                                  field_schema=PayloadSchemaType.KEYWORD)
                 # creat full text index
                 text_index_params = TextIndexParams(
                     type=TextIndexType.TEXT,

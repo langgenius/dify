@@ -38,6 +38,7 @@ DEFAULTS = {
     'WEAVIATE_BATCH_SIZE': 100,
     'QDRANT_CLIENT_TIMEOUT': 20,
     'QDRANT_GRPC_ENABLED': 'False',
+    'QDRANT_GRPC_PORT': '6334',
     'CELERY_BACKEND': 'database',
     'LOG_LEVEL': 'INFO',
     'LOG_FILE': '',
@@ -250,6 +251,13 @@ class Config:
         self.RELYT_USER = get_env('RELYT_USER')
         self.RELYT_PASSWORD = get_env('RELYT_PASSWORD')
         self.RELYT_DATABASE = get_env('RELYT_DATABASE')
+
+        # pgvecto rs settings
+        self.PGVECTO_RS_HOST = get_env('PGVECTO_RS_HOST')
+        self.PGVECTO_RS_PORT = get_env('PGVECTO_RS_PORT')
+        self.PGVECTO_RS_USER = get_env('PGVECTO_RS_USER')
+        self.PGVECTO_RS_PASSWORD = get_env('PGVECTO_RS_PASSWORD')
+        self.PGVECTO_RS_DATABASE = get_env('PGVECTO_RS_DATABASE')
 
         # ------------------------
         # Mail Configurations.
