@@ -14,7 +14,7 @@ export type Props = {
   value?: string | object
   placeholder?: string
   onChange?: (value: string) => void
-  title: JSX.Element
+  title?: JSX.Element
   language: CodeLanguage
   headerRight?: JSX.Element
   readOnly?: boolean
@@ -22,6 +22,7 @@ export type Props = {
   height?: number
   isInNode?: boolean
   onMount?: (editor: any, monaco: any) => void
+  noWrapper?: boolean
 }
 
 const languageMap = {
@@ -30,11 +31,20 @@ const languageMap = {
   [CodeLanguage.json]: 'json',
 }
 
+const DEFAULT_THEME = {
+  base: 'vs',
+  inherit: true,
+  rules: [],
+  colors: {
+    'editor.background': '#F2F4F7', // #00000000 transparent. But it will has a blue border
+  },
+}
+
 const CodeEditor: FC<Props> = ({
   value = '',
   placeholder = '',
   onChange = () => { },
-  title,
+  title = '',
   headerRight,
   language,
   readOnly,
@@ -42,9 +52,11 @@ const CodeEditor: FC<Props> = ({
   height,
   isInNode,
   onMount,
+  noWrapper,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
-
+  const [isMounted, setIsMounted] = React.useState(false)
+  const minHeight = height || 200
   const handleEditorChange = (value: string | undefined) => {
     onChange(value || '')
   }
@@ -59,6 +71,8 @@ const CodeEditor: FC<Props> = ({
     editor.onDidBlurEditorText(() => {
       setIsFocus(false)
     })
+
+    monaco.editor.defineTheme('default-theme', DEFAULT_THEME)
 
     monaco.editor.defineTheme('blur-theme', {
       base: 'vs',
@@ -79,6 +93,7 @@ const CodeEditor: FC<Props> = ({
     })
 
     onMount?.(editor, monaco)
+    setIsMounted(true)
   }
 
   const outPutValue = (() => {
@@ -92,43 +107,61 @@ const CodeEditor: FC<Props> = ({
     }
   })()
 
+  const theme = (() => {
+    if (noWrapper)
+      return 'default-theme'
+
+    return isFocus ? 'focus-theme' : 'blur-theme'
+  })()
+
+  const main = (
+    <>
+      {/* https://www.npmjs.com/package/@monaco-editor/react */}
+      <Editor
+        className='h-full'
+        // language={language === CodeLanguage.javascript ? 'javascript' : 'python'}
+        language={languageMap[language] || 'javascript'}
+        theme={isMounted ? theme : 'default-theme'} // sometimes not load the default theme
+        value={outPutValue}
+        onChange={handleEditorChange}
+        // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
+        options={{
+          readOnly,
+          domReadOnly: true,
+          quickSuggestions: false,
+          minimap: { enabled: false },
+          lineNumbersMinChars: 1, // would change line num width
+          wordWrap: 'on', // auto line wrap
+          // lineNumbers: (num) => {
+          //   return <div>{num}</div>
+          // }
+        }}
+        onMount={handleEditorDidMount}
+      />
+      {!outPutValue && <div className='pointer-events-none absolute left-[36px] top-0 leading-[18px] text-[13px] font-normal text-gray-300'>{placeholder}</div>}
+    </>
+  )
+
   return (
     <div>
-      <Base
-        className='relative'
-        title={title}
-        value={outPutValue}
-        headerRight={headerRight}
-        isFocus={isFocus && !readOnly}
-        minHeight={height || 200}
-        isInNode={isInNode}
-      >
-        <>
-          {/* https://www.npmjs.com/package/@monaco-editor/react */}
-          <Editor
-            className='h-full'
-            // language={language === CodeLanguage.javascript ? 'javascript' : 'python'}
-            language={languageMap[language] || 'javascript'}
-            theme={isFocus ? 'focus-theme' : 'blur-theme'}
+      {noWrapper
+        ? <div className='relative no-wrapper' style={{
+          // minHeight,
+          height: minHeight,
+        }}>{main}</div>
+        : (
+          <Base
+            className='relative'
+            title={title}
             value={outPutValue}
-            onChange={handleEditorChange}
-            // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
-            options={{
-              readOnly,
-              domReadOnly: true,
-              quickSuggestions: false,
-              minimap: { enabled: false },
-              lineNumbersMinChars: 1, // would change line num width
-              wordWrap: 'on', // auto line wrap
-              // lineNumbers: (num) => {
-              //   return <div>{num}</div>
-              // }
-            }}
-            onMount={handleEditorDidMount}
-          />
-          {!outPutValue && <div className='pointer-events-none absolute left-[36px] top-0 leading-[18px] text-[13px] font-normal text-gray-300'>{placeholder}</div>}
-        </>
-      </Base>
+            headerRight={headerRight}
+            isFocus={isFocus && !readOnly}
+            minHeight={minHeight}
+            isInNode={isInNode}
+          >
+            {main}
+          </Base>
+        )}
     </div>
   )
 }
