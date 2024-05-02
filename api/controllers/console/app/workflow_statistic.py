@@ -227,7 +227,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
                     {{start}}
                     {{end}}
                 GROUP BY date, c.created_by) sub
-            GROUP BY sub.created_by, sub.date
+            GROUP BY sub.date
             """
         arg_dict = {'tz': account.timezone, 'app_id': app_model.id, 'triggered_from': WorkflowRunTriggeredFrom.APP_RUN.value}
 
