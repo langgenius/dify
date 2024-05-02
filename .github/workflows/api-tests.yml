@@ -42,6 +42,9 @@ jobs:
       - name: Run Workflow
         run: dev/pytest/pytest_workflow.sh
 
+      - name: Set env for ES
+        run: dev/pytest/pytest_vdb_pre_set_evn.sh
+
       - name: Set up Vector Stores (Weaviate, Qdrant, Milvus, ElasticSearch, PgVecto-RS)
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
