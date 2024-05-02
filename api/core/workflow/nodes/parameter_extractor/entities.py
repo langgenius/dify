@@ -25,7 +25,7 @@ class ParameterConfig(BaseModel):
     description: str
     required: bool
 
-    @validator
+    @validator('name', pre=True, always=True)
     def validate_name(cls, value):
         if not value:
             raise ValueError('Parameter name is required')

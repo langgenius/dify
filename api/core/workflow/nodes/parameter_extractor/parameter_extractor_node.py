@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 from typing import Optional, cast
 
@@ -350,16 +351,100 @@ class ParameterExtractorNode(LLMNode):
         """
         Validate result.
         """
+        if len(data.parameters) != len(result):
+            raise ValueError("Invalid number of parameters")
+        
+        for parameter in data.parameters:
+            if parameter.required and parameter.name not in result:
+                raise ValueError(f"Parameter {parameter.name} is required")
+            
+            if parameter.type == 'select' and parameter.options and result.get(parameter.name) not in parameter.options:
+                raise ValueError(f"Invalid value for parameter {parameter.name}")
+            
+            if parameter.type == 'number' and not isinstance(result.get(parameter.name), int | float):
+                raise ValueError(f"Invalid value for parameter {parameter.name}")
+            
+            if parameter.type == 'bool' and not isinstance(result.get(parameter.name), bool):
+                raise ValueError(f"Invalid value for parameter {parameter.name}")
+            
+            if parameter.type == 'string' and not isinstance(result.get(parameter.name), str):
+                raise ValueError(f"Invalid value for parameter {parameter.name}")
+            
+        return result
 
     def _transform_result(self, data: ParameterExtractorNodeData, result: dict) -> dict:
         """
         Transform result into standard format.
         """
+        transformed_result = {}
+        for parameter in data.parameters:
+            if parameter.name in result:
+                # transform value
+                if parameter.type == 'number':
+                    if isinstance(result[parameter.name], int | float):
+                        transformed_result[parameter.name] = result[parameter.name]
+                    elif isinstance(result[parameter.name], str):
+                        try:
+                            if '.' in result[parameter.name]:
+                                result[parameter.name] = float(result[parameter.name])
+                            else:
+                                result[parameter.name] = int(result[parameter.name])
+                        except ValueError:
+                            pass
+                    else:
+                        pass
+                elif parameter.type == 'bool':
+                    if isinstance(result[parameter.name], bool):
+                        transformed_result[parameter.name] = result[parameter.name]
+                    elif isinstance(result[parameter.name], str):
+                        if result[parameter.name].lower() in ['true', 'false']:
+                            transformed_result[parameter.name] = result[parameter.name].lower() == 'true'
+                    elif isinstance(result[parameter.name], int):
+                        transformed_result[parameter.name] = bool(result[parameter.name])
+                elif parameter.type == ['string', 'select']:
+                    if isinstance(result[parameter.name], str):
+                        transformed_result[parameter.name] = result[parameter.name]
+
+            if parameter not in transformed_result:
+                if parameter.type == 'number':
+                    transformed_result[parameter.name] = 0
+                elif parameter.type == 'bool':
+                    transformed_result[parameter.name] = False
+                elif parameter.type in ['string', 'select']:
+                    transformed_result[parameter.name] = ''
+
+        return transformed_result
 
     def _extract_complete_json_response(self, result: str) -> Optional[dict]:
         """
         Extract complete json response.
         """
+        def find_json_end(text, start):
+            stack = []
+            for i, char in enumerate(text[start:]):
+                if char in ['{', '[']:
+                    stack.append(char)
+                elif char in ['}', ']']:
+                    if stack and ((char == '}' and stack[-1] == '{') or (char == ']' and stack[-1] == '[')):
+                        stack.pop()
+                        if not stack:
+                            return start + i
+            return -1
+        
+        json_patterns = r'\b(?:json\s*[:=]|{\s*["\w])'
+        matches = re.finditer(json_patterns, result, re.DOTALL | re.IGNORECASE)
+        
+        for match in matches:
+            start = match.start()
+            end = find_json_end(result, start)
+            if end != -1:
+                try:
+                    json_str = result[start:end+1]
+                    return json.loads(json_str)
+                except json.JSONDecodeError:
+                    continue
+        
+        return None
 
     def _extract_json_from_tool_call(self, tool_call: AssistantPromptMessage.ToolCall) -> Optional[dict]:
         """
@@ -374,6 +459,16 @@ class ParameterExtractorNode(LLMNode):
         """
         Generate default result.
         """
+        result = {}
+        for parameter in data.parameters:
+            if parameter.type == 'number':
+                result[parameter.name] = 0
+            elif parameter.type == 'bool':
+                result[parameter.name] = False
+            elif parameter.type in ['string', 'select']:
+                result[parameter.name] = ''
+        
+        return result
 
     def _get_function_calling_prompt_template(self, node_data: ParameterExtractorNodeData, query: str,
                              memory: Optional[TokenBufferMemory],
