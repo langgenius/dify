@@ -108,3 +108,5 @@ def test_function_calling_parameter_extractor(setup_openai_mock):
     result = node.run(pool)
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs.get('location') == 'kawaii'
+    assert result.outputs.get('__error__') == ''

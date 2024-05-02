@@ -407,7 +407,7 @@ class ParameterExtractorNode(LLMNode):
                             transformed_result[parameter.name] = result[parameter.name].lower() == 'true'
                     elif isinstance(result[parameter.name], int):
                         transformed_result[parameter.name] = bool(result[parameter.name])
-                elif parameter.type == ['string', 'select']:
+                elif parameter.type in ['string', 'select']:
                     if isinstance(result[parameter.name], str):
                         transformed_result[parameter.name] = result[parameter.name]
 
