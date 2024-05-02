@@ -1,5 +1,6 @@
 from typing import Optional
 
+from core.workflow.entities.base_node_data_entities import BaseIterationState
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode, UserFrom
@@ -30,6 +31,8 @@ class WorkflowRunState:
 
     workflow_nodes_and_results: list[WorkflowNodeAndResult]
 
+    current_iteration_state: Optional[BaseIterationState]
+
     def __init__(self, workflow: Workflow,
                  start_at: float,
                  variable_pool: VariablePool,
@@ -47,3 +50,5 @@ class WorkflowRunState:
 
         self.total_tokens = 0
         self.workflow_nodes_and_results = []
+
+        self.current_iteration_state = None

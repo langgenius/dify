@@ -11,7 +11,7 @@ from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_entities import WorkflowNodeAndResult, WorkflowRunState
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.nodes.answer.answer_node import AnswerNode
-from core.workflow.nodes.base_node import BaseNode, UserFrom
+from core.workflow.nodes.base_node import BaseIterationNode, BaseNode, UserFrom
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
@@ -131,17 +131,43 @@ class WorkflowEngineManager:
         )
 
         try:
-            predecessor_node = None
+            predecessor_node: BaseNode = None
+            current_iteration_node: BaseIterationNode = None
             has_entry_node = False
             while True:
                 # get next node, multiple target nodes in the future
-                next_node = self._get_next_node(
+                next_node = self._get_next_overall_node(
                     workflow_run_state=workflow_run_state,
                     graph=graph,
                     predecessor_node=predecessor_node,
                     callbacks=callbacks
                 )
 
+                if not next_node:
+                    # reached loop/iteration end or overall end
+                    if current_iteration_node and workflow_run_state.current_iteration_state:
+                        # reached loop/iteration end
+                        # get next iteration
+                        next_iteration = current_iteration_node.get_next_iteration_start_id(
+                            variable_pool=workflow_run_state.variable_pool,
+                            state=workflow_run_state.current_iteration_state
+                        )
+                        if isinstance(next_iteration, NodeRunResult):
+                            # iteration has ended
+                            current_iteration_node = None
+                            workflow_run_state.current_iteration_state = None
+                            iteration_node_id = current_iteration_node.node_id
+                            # get next id
+                            outgoing_edges = [edge for edge in graph.get('edges') if edge.get('source') == iteration_node_id]
+                            if outgoing_edges:
+                                # continue overall process
+                                next_node = self._get_node(graph, outgoing_edges[0].get('target'))
+                        elif isinstance(next_iteration, str):
+                            # move to next iteration
+                            next_node_id = next_iteration
+                            # get next id
+                            next_node = self._get_node(graph, next_node_id)
+                
                 if not next_node:
                     break
 
@@ -337,7 +363,7 @@ class WorkflowEngineManager:
                     error=error
                 )
 
-    def _get_next_node(self, workflow_run_state: WorkflowRunState,
+    def _get_next_overall_node(self, workflow_run_state: WorkflowRunState,
                        graph: dict,
                        predecessor_node: Optional[BaseNode] = None,
                        callbacks: list[BaseWorkflowCallback] = None) -> Optional[BaseNode]:
@@ -413,6 +439,29 @@ class WorkflowEngineManager:
                 config=target_node_config,
                 callbacks=callbacks
             )
+        
+    def _get_node(self, graph: dict, node_id) -> Optional[BaseNode]:
+        """
+        Get node from graph by node id
+        """
+        nodes = graph.get('nodes')
+        if not nodes:
+            return None
+
+        for node_config in nodes:
+            if node_config.get('id') == node_id:
+                node_type = NodeType.value_of(node_config.get('data', {}).get('type'))
+                node_cls = node_classes.get(node_type)
+                return node_cls(
+                    tenant_id=None,
+                    app_id=None,
+                    workflow_id=None,
+                    user_id=None,
+                    user_from=UserFrom.ACCOUNT,
+                    config=node_config
+                )
+
+        return None
 
     def _is_timed_out(self, start_at: float, max_execution_time: int) -> bool:
         """

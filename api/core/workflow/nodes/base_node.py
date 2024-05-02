@@ -2,8 +2,10 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional
 
+from sympy import Union
+
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
-from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 
@@ -140,3 +142,38 @@ class BaseNode(ABC):
         :return:
         """
         return self._node_type
+
+class BaseIterationNode(BaseNode):
+    @abstractmethod
+    def _run(self, variable_pool: VariablePool) -> BaseIterationState:
+        """
+        Run node
+        :param variable_pool: variable pool
+        :return:
+        """
+        raise NotImplementedError
+
+    def run(self, variable_pool: VariablePool) -> BaseIterationState:
+        """
+        Run node entry
+        :param variable_pool: variable pool
+        :return:
+        """
+        return self._run(variable_pool=variable_pool)
+
+    def get_next_iteration_start_id(self, variable_pool: VariablePool, state: BaseIterationState) -> Union[NodeRunResult, str]:
+        """
+        Get next iteration start node id based on the graph.
+        :param graph: graph
+        :return: next node id
+        """
+        return self._get_next_iteration_start_id(variable_pool, state)
+    
+    @abstractmethod
+    def _get_next_iteration_start_id(self, variable_pool: VariablePool, state: BaseIterationState) -> Union[NodeRunResult, str]:
+        """
+        Get next iteration start node id based on the graph.
+        :param graph: graph
+        :return: next node id
+        """
+        raise NotImplementedError

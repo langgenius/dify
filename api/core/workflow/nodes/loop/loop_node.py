@@ -1,10 +1,12 @@
+from sympy import Union
+
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base_node import BaseIterationNode
 from core.workflow.nodes.loop.entities import LoopNodeData
 
 
-class LoopNode(BaseNode):
+class LoopNode(BaseIterationNode):
     """
     Loop Node.
     """
@@ -14,4 +16,9 @@ class LoopNode(BaseNode):
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
         Run the node.
+        """
+
+    def _get_next_iteration_start_id(self, variable_loop: VariablePool) -> Union[NodeRunResult, str]:
+        """
+        Get next iteration start node id based on the graph.
         """
