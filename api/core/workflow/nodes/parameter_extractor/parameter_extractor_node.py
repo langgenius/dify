@@ -1,12 +1,24 @@
 import json
+import uuid
 from typing import Optional, cast
 
+from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, PromptMessageTool
-from core.model_runtime.entities.model_entities import ModelFeature
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    PromptMessage,
+    PromptMessageRole,
+    PromptMessageTool,
+    ToolPromptMessage,
+    UserPromptMessage,
+)
+from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
+from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
@@ -14,6 +26,14 @@ from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.llm.entities import ModelConfig
 from core.workflow.nodes.llm.llm_node import LLMNode
 from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from core.workflow.nodes.parameter_extractor.prompts import (
+    CHAT_EXAMPLE,
+    CHAT_GENERATE_JSON_USER_MESSAGE_TEMPLATE,
+    COMPLETION_GENERATE_JSON_PROMPT,
+    FUNCTION_CALLING_EXTRACTOR_EXAMPLE,
+    FUNCTION_CALLING_EXTRACTOR_NAME,
+    FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT,
+)
 from extensions.ext_database import db
 from models.workflow import WorkflowNodeExecutionStatus
 
@@ -35,6 +55,12 @@ class ParameterExtractorNode(LLMNode):
         if not query:
             raise ValueError("Query not found")
         
+        inputs={
+            'query': query,
+            'parameters': node_data.parameters,
+            'instruction': node_data.instruction,
+        }
+        
         model_instance, model_config = self._fetch_model_config(node_data.model)
         if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
             raise ValueError("Model is not a Large Language Model")
@@ -44,20 +70,48 @@ class ParameterExtractorNode(LLMNode):
         if not model_schema:
             raise ValueError("Model schema not found")
         
+        # fetch memory
+        memory = self._fetch_memory(node_data.memory, variable_pool, model_instance)
+        
         if set(model_schema.features or []) & set([ModelFeature.MULTI_TOOL_CALL, ModelFeature.MULTI_TOOL_CALL]):
             # use function call 
-            prompt_messages, prompt_message_tools, stop = self._generate_function_call_prompt(node_data)
+            prompt_messages, prompt_message_tools = self._generate_function_call_prompt(
+                node_data, query, model_config, memory
+            )
         else:
             # use prompt engineering
-            prompt_messages, stop = self._generate_prompt_engineering_prompt(node_data)
+            prompt_messages = self._generate_prompt_engineering_prompt(node_data, query)
             prompt_message_tools = []
 
-        text, usage, tool_call = self._invoke_llm(
-            node_data_model=node_data.model,
-            model_instance=model_instance,
-            prompt_messages=prompt_messages,
-            stop=stop,
-        )
+        process_data = {
+            'model_mode': model_config.mode,
+            'prompts': PromptMessageUtil.prompt_messages_to_prompt_for_saving(
+                model_mode=model_config.mode,
+                prompt_messages=prompt_messages
+            ),
+            'usage': None,
+            'function': {} if not prompt_message_tools else jsonable_encoder(prompt_message_tools[0]),
+            'tool_call': None,
+        }
+
+        try:
+            text, usage, tool_call = self._invoke_llm(
+                node_data_model=node_data.model,
+                model_instance=model_instance,
+                prompt_messages=prompt_messages,
+                stop=model_config.stop,
+            )
+            process_data['usage'] = jsonable_encoder(usage)
+            process_data['tool_call'] = jsonable_encoder(tool_call)
+        except Exception as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs=inputs,
+                process_data={},
+                outputs={'__error__': str(e)},
+                error=str(e),
+                metadata={}
+            )
 
         error = ''
 
@@ -77,27 +131,13 @@ class ParameterExtractorNode(LLMNode):
         # transform result into standard format
         result = self._transform_result(node_data, result)
 
-        process_data = {
-            'model_mode': model_config.mode,
-            'prompts': PromptMessageUtil.prompt_messages_to_prompt_for_saving(
-                model_mode=model_config.mode,
-                prompt_messages=prompt_messages
-            ),
-            'usage': jsonable_encoder(usage),
-            'function': {} if not prompt_message_tools else jsonable_encoder(prompt_message_tools[0]),
-        }
-
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs={
-                'query': query,
-                'parameters': node_data.parameters,
-                'instruction': node_data.instruction,
-            },
+            inputs=inputs,
             process_data=process_data,
             outputs={
-                'error': error,
-                'result': result,
+                '__error__': error,
+                **result,
             },
             metadata={
                 NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
@@ -142,40 +182,169 @@ class ParameterExtractorNode(LLMNode):
         return text, usage, tool_call
 
     def _generate_function_call_prompt(self, 
-        data: ParameterExtractorNodeData
-    ) -> tuple[list[PromptMessage], list[PromptMessageTool], list[str]]:
+        node_data: ParameterExtractorNodeData,
+        query: str,
+        model_config: ModelConfigWithCredentialsEntity,
+        memory: Optional[TokenBufferMemory],
+    ) -> tuple[list[PromptMessage], list[PromptMessageTool]]:
         """
         Generate function call prompt.
         """
+        prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
+        rest_token = self._calculate_rest_token(node_data, query, model_config, '')
+        prompt_template = self._get_function_calling_prompt_template(node_data, query, memory, rest_token)
+        prompt_messages = prompt_transform.get_prompt(
+            prompt_template=prompt_template,
+            inputs={},
+            query='',
+            files=[],
+            context='',
+            memory_config=node_data.memory,
+            memory=None,
+            model_config=model_config
+        )
+
+        # find last user message
+        last_user_message_idx = -1
+        for i, prompt_message in enumerate(prompt_messages):
+            if prompt_message.role == PromptMessageRole.USER:
+                last_user_message_idx = i
+
+        # add function call messages before last user message
+        example_messages = []
+        for example in FUNCTION_CALLING_EXTRACTOR_EXAMPLE:
+            id = uuid.uuid4().hex
+            example_messages.extend([
+                UserPromptMessage(content=example['user']['query']),
+                AssistantPromptMessage(
+                    content=example['assistant']['text'],
+                    tool_calls=[
+                        AssistantPromptMessage.ToolCall(
+                            id=id,
+                            type='function',
+                            function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                name=example['assistant']['function_call']['name'],
+                                arguments=json.dumps(example['assistant']['function_call']['parameters']
+                            )
+                        ))
+                    ]
+                ),
+                ToolPromptMessage(
+                    content='Great! You have called the function with the correct parameters.',
+                    tool_call_id=id
+                )
+            ])
+
+        prompt_messages = prompt_messages[:last_user_message_idx] + \
+            example_messages + prompt_messages[last_user_message_idx:]
+        
+        # generate tool
+        tool = PromptMessageTool(
+            name=FUNCTION_CALLING_EXTRACTOR_NAME,
+            description='Extract parameters from the natural language text',
+            parameters=node_data.get_parameter_json_schema(),
+        )
+
+        return prompt_messages, [tool]
 
     def _generate_prompt_engineering_prompt(self, 
-        data: ParameterExtractorNodeData
-    ) -> tuple[list[PromptMessage], list[str]]:
+        data: ParameterExtractorNodeData,
+        query: str,
+        model_config: ModelConfigWithCredentialsEntity,
+        memory: Optional[TokenBufferMemory],
+    ) -> list[PromptMessage]:
         """
         Generate prompt engineering prompt.
         """
         model_mode = ModelMode.value_of(data.model.mode)
 
         if model_mode == ModelMode.COMPLETION:
-            return self._generate_prompt_engineering_completion_prompt(data)
+            return self._generate_prompt_engineering_completion_prompt(
+                data, query, model_config, memory
+            )
         elif model_mode == ModelMode.CHAT:
-            return self._generate_prompt_engineering_chat_prompt(data)
+            return self._generate_prompt_engineering_chat_prompt(
+                data, query, model_config, memory
+            )
         else:
             raise ValueError(f"Invalid model mode: {model_mode}")
 
     def _generate_prompt_engineering_completion_prompt(self,
-        data: ParameterExtractorNodeData
-    ) -> tuple[list[PromptMessage], list[str]]:
+        node_data: ParameterExtractorNodeData,
+        query: str,
+        model_config: ModelConfigWithCredentialsEntity,
+        memory: Optional[TokenBufferMemory],
+    ) -> list[PromptMessage]:
         """
         Generate completion prompt.
         """
+        prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
+        rest_token = self._calculate_rest_token(node_data, query, model_config, '')
+        prompt_template = self._get_prompt_engineering_prompt_template(node_data, query, memory, rest_token)
+        prompt_messages = prompt_transform.get_prompt(
+            prompt_template=prompt_template,
+            inputs={
+                'structure': json.dumps(node_data.get_parameter_json_schema())
+            },
+            query='',
+            files=[],
+            context='',
+            memory_config=node_data.memory,
+            memory=memory,
+            model_config=model_config
+        )
+
+        return prompt_messages
 
     def _generate_prompt_engineering_chat_prompt(self,
-        data: ParameterExtractorNodeData
-    ) -> tuple[list[PromptMessage], list[str]]:
+        node_data: ParameterExtractorNodeData,
+        query: str,
+        model_config: ModelConfigWithCredentialsEntity,
+        memory: Optional[TokenBufferMemory],
+    ) -> list[PromptMessage]:
         """
         Generate chat prompt.
         """
+        prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
+        rest_token = self._calculate_rest_token(node_data, query, model_config, '')
+        prompt_template = self._get_prompt_engineering_prompt_template(node_data, query, memory, rest_token)
+        prompt_messages = prompt_transform.get_prompt(
+            prompt_template=prompt_template,
+            inputs={},
+            query=CHAT_GENERATE_JSON_USER_MESSAGE_TEMPLATE.format(
+                structure=json.dumps(node_data.get_parameter_json_schema()),
+                text=query,
+            ),
+            files=[],
+            context='',
+            memory_config=node_data.memory,
+            memory=memory,
+            model_config=model_config
+        )
+
+        # find last user message
+        last_user_message_idx = -1
+        for i, prompt_message in enumerate(prompt_messages):
+            if prompt_message.role == PromptMessageRole.USER:
+                last_user_message_idx = i
+
+        # add example messages before last user message
+        example_messages = []
+        for example in CHAT_EXAMPLE:
+            example_messages.extend([
+                UserPromptMessage(content=CHAT_GENERATE_JSON_USER_MESSAGE_TEMPLATE.format(
+                    structure=json.dumps(example['user']['json']),
+                    text=example['user']['query'],
+                )),
+                AssistantPromptMessage(
+                    content=json.dumps(example['assistant']['json']),
+                )
+            ])
+
+        prompt_messages = prompt_messages[:last_user_message_idx] + \
+            example_messages + prompt_messages[last_user_message_idx:]
+
+        return prompt_messages
 
     def _validate_result(self, data: ParameterExtractorNodeData, result: dict) -> dict:
         """
@@ -187,18 +356,116 @@ class ParameterExtractorNode(LLMNode):
         Transform result into standard format.
         """
 
-    def _extract_complete_json_response(self, result: str) -> dict:
+    def _extract_complete_json_response(self, result: str) -> Optional[dict]:
         """
         Extract complete json response.
         """
 
-    def _extract_json_from_tool_call(self, tool_call: AssistantPromptMessage.ToolCall) -> dict:
+    def _extract_json_from_tool_call(self, tool_call: AssistantPromptMessage.ToolCall) -> Optional[dict]:
         """
         Extract json from tool call.
         """
+        if not tool_call or not tool_call.function.arguments:
+            return None
+        
         return json.loads(tool_call.function.arguments)
     
     def _generate_default_result(self, data: ParameterExtractorNodeData) -> dict:
         """
         Generate default result.
         """
+
+    def _get_function_calling_prompt_template(self, node_data: ParameterExtractorNodeData, query: str,
+                             memory: Optional[TokenBufferMemory],
+                             max_token_limit: int = 2000) \
+            -> list[ChatModelMessage]:
+        model_mode = ModelMode.value_of(node_data.model.mode)
+        input_text = query
+        memory_str = ''
+        instruction = node_data.instruction or ''
+        if memory:
+            memory_str = memory.get_history_prompt_text(max_token_limit=max_token_limit,
+                                                        message_limit=node_data.memory.window.size)
+        if model_mode == ModelMode.CHAT:
+            system_prompt_messages = ChatModelMessage(
+                role=PromptMessageRole.SYSTEM,
+                text=FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT.format(histories=memory_str, instruction=instruction)
+            )
+            user_prompt_message = ChatModelMessage(
+                role=PromptMessageRole.USER,
+                text=input_text
+            )
+            return [system_prompt_messages, user_prompt_message]
+        else:
+            raise ValueError(f"Model mode {model_mode} not support.")
+        
+    def _get_prompt_engineering_prompt_template(self, node_data: ParameterExtractorNodeData, query: str,
+                                                memory: Optional[TokenBufferMemory],
+                                                max_token_limit: int = 2000) \
+        -> list[ChatModelMessage]:
+
+        model_mode = ModelMode.value_of(node_data.model.mode)
+        input_text = query
+        memory_str = ''
+        instruction = node_data.instruction or ''
+        if memory:
+            memory_str = memory.get_history_prompt_text(max_token_limit=max_token_limit,
+                                                        message_limit=node_data.memory.window.size)
+        if model_mode == ModelMode.CHAT:
+            system_prompt_messages = ChatModelMessage(
+                role=PromptMessageRole.SYSTEM,
+                text=FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT.format(histories=memory_str, instruction=instruction)
+            )
+            user_prompt_message = ChatModelMessage(
+                role=PromptMessageRole.USER,
+                text=input_text
+            )
+            return [system_prompt_messages, user_prompt_message]
+        elif model_mode == ModelMode.COMPLETION:
+            return CompletionModelPromptTemplate(
+                text=COMPLETION_GENERATE_JSON_PROMPT.format(histories=memory_str,
+                                                            text=input_text,
+                                                            instruction=instruction)
+            )
+        else:
+            raise ValueError(f"Model mode {model_mode} not support.")
+
+    def _calculate_rest_token(self, node_data: ParameterExtractorNodeData, query: str,
+                              model_config: ModelConfigWithCredentialsEntity,
+                              context: Optional[str]) -> int:
+        prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
+        prompt_template = self._get_function_calling_prompt_template(node_data, query, None, 2000)
+        prompt_messages = prompt_transform.get_prompt(
+            prompt_template=prompt_template,
+            inputs={},
+            query='',
+            files=[],
+            context=context,
+            memory_config=node_data.memory,
+            memory=None,
+            model_config=model_config
+        )
+        rest_tokens = 2000
+
+        model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
+        if model_context_tokens:
+            model_type_instance = model_config.provider_model_bundle.model_type_instance
+            model_type_instance = cast(LargeLanguageModel, model_type_instance)
+
+            curr_message_tokens = model_type_instance.get_num_tokens(
+                model_config.model,
+                model_config.credentials,
+                prompt_messages
+            ) + 1000 # add 1000 to ensure tool call messages
+
+            max_tokens = 0
+            for parameter_rule in model_config.model_schema.parameter_rules:
+                if (parameter_rule.name == 'max_tokens'
+                        or (parameter_rule.use_template and parameter_rule.use_template == 'max_tokens')):
+                    max_tokens = (model_config.parameters.get(parameter_rule.name)
+                                  or model_config.parameters.get(parameter_rule.use_template)) or 0
+
+            rest_tokens = model_context_tokens - max_tokens - curr_message_tokens
+            rest_tokens = max(rest_tokens, 0)
+
+        return rest_tokens
