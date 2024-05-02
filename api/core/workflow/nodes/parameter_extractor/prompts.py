@@ -77,8 +77,7 @@ FUNCTION_CALLING_EXTRACTOR_EXAMPLE = [{
 }]
 
 COMPLETION_GENERATE_JSON_PROMPT = """I need always follow the instructions and output a valid JSON object.
-The structure of the JSON object I can found in the instructions, use {"result": "$answer"} as the default structure
-if I are not sure about the structure.
+The structure of the JSON object I can found in the instructions.
 
 ### Memory
 Here is the chat histories between human and assistant, inside <histories></histories> XML tags.
@@ -110,8 +109,7 @@ I should always output a valid JSON object.
 """
 
 CHAT_GENERATE_JSON_PROMPT = """You should always follow the instructions and output a valid JSON object.
-The structure of the JSON object you can found in the instructions, use {"result": "$answer"} as the default structure
-if you are not sure about the structure.
+The structure of the JSON object you can found in the instructions.
 
 ### Memory
 Here is the chat histories between human and assistant, inside <histories></histories> XML tags.

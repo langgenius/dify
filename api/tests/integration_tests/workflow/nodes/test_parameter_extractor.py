@@ -1,3 +1,4 @@
+import json
 import os
 from unittest.mock import MagicMock
 
@@ -18,15 +19,15 @@ from models.provider import ProviderType
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
 from models.workflow import WorkflowNodeExecutionStatus
+from tests.integration_tests.model_runtime.__mock.anthropic import setup_anthropic_mock
 from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
 
 
-def get_mocked_fetch_model_config():
-    credentials = {
-        'openai_api_key': os.environ.get('OPENAI_API_KEY')
-    }
-
-    provider_instance = ModelProviderFactory().get_provider_instance('openai')
+def get_mocked_fetch_model_config(
+    provider: str, model: str, mode: str,
+    credentials: dict,
+):
+    provider_instance = ModelProviderFactory().get_provider_instance(provider)
     model_type_instance = provider_instance.get_model_instance(ModelType.LLM)
     provider_model_bundle = ProviderModelBundle(
         configuration=ProviderConfiguration(
@@ -46,14 +47,14 @@ def get_mocked_fetch_model_config():
         provider_instance=provider_instance,
         model_type_instance=model_type_instance
     )
-    model_instance = ModelInstance(provider_model_bundle=provider_model_bundle, model='gpt-3.5-turbo')
+    model_instance = ModelInstance(provider_model_bundle=provider_model_bundle, model=model)
     model_config = ModelConfigWithCredentialsEntity(
-        model='gpt-3.5-turbo',
-        provider='openai',
-        mode='chat',
+        model=model,
+        provider=provider,
+        mode=mode,
         credentials=credentials,
         parameters={},
-        model_schema=model_type_instance.get_model_schema('gpt-3.5-turbo'),
+        model_schema=model_type_instance.get_model_schema(model),
         provider_model_bundle=provider_model_bundle
     )
 
@@ -94,7 +95,11 @@ def test_function_calling_parameter_extractor(setup_openai_mock):
         }
     )
 
-    node._fetch_model_config = get_mocked_fetch_model_config()
+    node._fetch_model_config = get_mocked_fetch_model_config(
+        provider='openai', model='gpt-3.5-turbo', mode='chat', credentials={
+            'openai_api_key': os.environ.get('OPENAI_API_KEY')
+        }
+    )
     db.session.close = MagicMock()
 
     # construct variable pool
@@ -110,3 +115,232 @@ def test_function_calling_parameter_extractor(setup_openai_mock):
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs.get('location') == 'kawaii'
     assert result.outputs.get('__error__') == ''
+
+@pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
+def test_instructions(setup_openai_mock):
+    """
+    Test chat parameter extractor.
+    """
+    node = ParameterExtractorNode(
+        tenant_id='1',
+        app_id='1',
+        workflow_id='1',
+        user_id='1',
+        user_from=UserFrom.ACCOUNT,
+        config={
+            'id': 'llm',
+            'data': {
+                'title': '123',
+                'type': 'parameter-extractor',
+                'model': {
+                    'provider': 'openai',
+                    'name': 'gpt-3.5-turbo',
+                    'mode': 'chat',
+                    'completion_params': {}
+                },
+                'query': ['sys', 'query'],
+                'parameters': [{
+                    'name': 'location',
+                    'type': 'string',
+                    'description': 'location',
+                    'required': True
+                }],
+                'instruction': '{{#sys.query#}}',
+                'memory': None,
+            }
+        }
+    )
+
+    node._fetch_model_config = get_mocked_fetch_model_config(
+        provider='openai', model='gpt-3.5-turbo', mode='chat', credentials={
+            'openai_api_key': os.environ.get('OPENAI_API_KEY')
+        }
+    )
+    db.session.close = MagicMock()
+
+    # construct variable pool
+    pool = VariablePool(system_variables={
+        SystemVariable.QUERY: 'what\'s the weather in SF',
+        SystemVariable.FILES: [],
+        SystemVariable.CONVERSATION_ID: 'abababa',
+        SystemVariable.USER_ID: 'aaa'
+    }, user_inputs={})
+
+    result = node.run(pool)
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs.get('location') == 'kawaii'
+    assert result.outputs.get('__error__') == ''
+
+    process_data = result.process_data
+
+    process_data.get('prompts')
+
+    for prompt in process_data.get('prompts'):
+        if prompt.get('role') == 'system':
+            assert 'what\'s the weather in SF' in prompt.get('text')
+
+@pytest.mark.parametrize('setup_anthropic_mock', [['none']], indirect=True)
+def test_chat_parameter_extractor(setup_anthropic_mock):
+    """
+    Test chat parameter extractor.
+    """
+    node = ParameterExtractorNode(
+        tenant_id='1',
+        app_id='1',
+        workflow_id='1',
+        user_id='1',
+        user_from=UserFrom.ACCOUNT,
+        config={
+            'id': 'llm',
+            'data': {
+                'title': '123',
+                'type': 'parameter-extractor',
+                'model': {
+                    'provider': 'anthropic',
+                    'name': 'claude-2',
+                    'mode': 'chat',
+                    'completion_params': {}
+                },
+                'query': ['sys', 'query'],
+                'parameters': [{
+                    'name': 'location',
+                    'type': 'string',
+                    'description': 'location',
+                    'required': True
+                }],
+                'instruction': '',
+                'memory': None,
+            }
+        }
+    )
+
+    node._fetch_model_config = get_mocked_fetch_model_config(
+        provider='anthropic', model='claude-2', mode='chat', credentials={
+            'anthropic_api_key': os.environ.get('ANTHROPIC_API_KEY')
+        }
+    )
+    db.session.close = MagicMock()
+
+    # construct variable pool
+    pool = VariablePool(system_variables={
+        SystemVariable.QUERY: 'what\'s the weather in SF',
+        SystemVariable.FILES: [],
+        SystemVariable.CONVERSATION_ID: 'abababa',
+        SystemVariable.USER_ID: 'aaa'
+    }, user_inputs={})
+
+    result = node.run(pool)
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs.get('location') == ''
+    assert result.outputs.get('__error__') == 'Failed to extract result from function call or text response, using empty result.'
+    prompts = result.process_data.get('prompts')
+
+    for prompt in prompts:
+        if prompt.get('role') == 'user':
+            if '<structure>' in prompt.get('text'):
+                assert '<structure>\n{"type": "object"' in prompt.get('text')
+
+@pytest.mark.parametrize('setup_openai_mock', [['completion']], indirect=True)
+def test_completion_parameter_extractor(setup_openai_mock):
+    """
+    Test completion parameter extractor.
+    """
+    node = ParameterExtractorNode(
+        tenant_id='1',
+        app_id='1',
+        workflow_id='1',
+        user_id='1',
+        user_from=UserFrom.ACCOUNT,
+        config={
+            'id': 'llm',
+            'data': {
+                'title': '123',
+                'type': 'parameter-extractor',
+                'model': {
+                    'provider': 'openai',
+                    'name': 'gpt-3.5-turbo-instruct',
+                    'mode': 'completion',
+                    'completion_params': {}
+                },
+                'query': ['sys', 'query'],
+                'parameters': [{
+                    'name': 'location',
+                    'type': 'string',
+                    'description': 'location',
+                    'required': True
+                }],
+                'instruction': '{{#sys.query#}}',
+                'memory': None,
+            }
+        }
+    )
+
+    node._fetch_model_config = get_mocked_fetch_model_config(
+        provider='openai', model='gpt-3.5-turbo-instruct', mode='completion', credentials={
+            'openai_api_key': os.environ.get('OPENAI_API_KEY')
+        }
+    )
+    db.session.close = MagicMock()
+
+    # construct variable pool
+    pool = VariablePool(system_variables={
+        SystemVariable.QUERY: 'what\'s the weather in SF',
+        SystemVariable.FILES: [],
+        SystemVariable.CONVERSATION_ID: 'abababa',
+        SystemVariable.USER_ID: 'aaa'
+    }, user_inputs={})
+
+    result = node.run(pool)
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs.get('location') == ''
+    assert result.outputs.get('__error__') == 'Failed to extract result from function call or text response, using empty result.'
+    assert len(result.process_data.get('prompts')) == 1
+    assert 'SF' in result.process_data.get('prompts')[0].get('text')
+
+def test_extract_json_response():
+    """
+    Test extract json response.
+    """
+
+    node = ParameterExtractorNode(
+        tenant_id='1',
+        app_id='1',
+        workflow_id='1',
+        user_id='1',
+        user_from=UserFrom.ACCOUNT,
+        config={
+            'id': 'llm',
+            'data': {
+                'title': '123',
+                'type': 'parameter-extractor',
+                'model': {
+                    'provider': 'openai',
+                    'name': 'gpt-3.5-turbo-instruct',
+                    'mode': 'completion',
+                    'completion_params': {}
+                },
+                'query': ['sys', 'query'],
+                'parameters': [{
+                    'name': 'location',
+                    'type': 'string',
+                    'description': 'location',
+                    'required': True
+                }],
+                'instruction': '{{#sys.query#}}',
+                'memory': None,
+            }
+        }
+    )
+
+    result = node._extract_complete_json_response("""
+        uwu{ovo}
+        {
+            "location": "kawaii"
+        }
+        hello world.                          
+    """)
+
+    assert result['location'] == 'kawaii'
