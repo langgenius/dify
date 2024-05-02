@@ -344,6 +344,8 @@ services:
       API_KEY: dify-sandbox
       GIN_MODE: release
       WORKER_TIMEOUT: 15
+    networks:
+      - llm
 
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.
