@@ -13,6 +13,7 @@ export type UseResizePanelPrarams = {
   minHeight?: number
   maxHeight?: number
   onResized?: (width: number, height: number) => void
+  onResize?: (width: number, height: number) => void
 }
 export const useResizePanel = (params?: UseResizePanelPrarams) => {
   const {
@@ -23,6 +24,7 @@ export const useResizePanel = (params?: UseResizePanelPrarams) => {
     minHeight = -Infinity,
     maxHeight = Infinity,
     onResized,
+    onResize,
   } = params || {}
   const triggerRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -63,6 +65,7 @@ export const useResizePanel = (params?: UseResizePanelPrarams) => {
       if (width > maxWidth)
         width = maxWidth
       containerRef.current.style.width = `${width}px`
+      onResize?.(width, 0)
     }
 
     if (direction === 'vertical' || direction === 'both') {
@@ -79,6 +82,7 @@ export const useResizePanel = (params?: UseResizePanelPrarams) => {
         height = maxHeight
 
       containerRef.current.style.height = `${height}px`
+      onResize?.(0, height)
     }
   }, [
     direction,
@@ -87,6 +91,7 @@ export const useResizePanel = (params?: UseResizePanelPrarams) => {
     maxWidth,
     minHeight,
     maxHeight,
+    onResize,
   ])
 
   const handleStopResize = useCallback(() => {

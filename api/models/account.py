@@ -2,9 +2,9 @@ import enum
 import json
 
 from flask_login import UserMixin
-from sqlalchemy.dialects.postgresql import UUID
 
 from extensions.ext_database import db
+from models import StringUUID
 
 
 class AccountStatus(str, enum.Enum):
@@ -22,7 +22,7 @@ class Account(UserMixin, db.Model):
         db.Index('account_email_idx', 'email')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     name = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(255), nullable=False)
     password = db.Column(db.String(255), nullable=True)
@@ -100,15 +100,26 @@ class Account(UserMixin, db.Model):
         return db.session.query(ai).filter(
             ai.account_id == self.id
         ).all()
+
     # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
     def is_admin_or_owner(self):
-        return self._current_tenant.current_role in ['admin', 'owner']
+        return TenantAccountRole.is_privileged_role(self._current_tenant.current_role)
 
 
 class TenantStatus(str, enum.Enum):
     NORMAL = 'normal'
     ARCHIVE = 'archive'
+
+
+class TenantAccountRole(str, enum.Enum):
+    OWNER = 'owner'
+    ADMIN = 'admin'
+    NORMAL = 'normal'
+
+    @staticmethod
+    def is_privileged_role(role: str) -> bool:
+        return role and role in {TenantAccountRole.ADMIN, TenantAccountRole.OWNER}
 
 
 class Tenant(db.Model):
@@ -117,7 +128,7 @@ class Tenant(db.Model):
         db.PrimaryKeyConstraint('id', name='tenant_pkey'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     name = db.Column(db.String(255), nullable=False)
     encrypt_public_key = db.Column(db.Text)
     plan = db.Column(db.String(255), nullable=False, server_default=db.text("'basic'::character varying"))
@@ -132,11 +143,11 @@ class Tenant(db.Model):
             Account.id == TenantAccountJoin.account_id,
             TenantAccountJoin.tenant_id == self.id
         ).all()
-    
+
     @property
     def custom_config_dict(self) -> dict:
         return json.loads(self.custom_config) if self.custom_config else {}
-    
+
     @custom_config_dict.setter
     def custom_config_dict(self, value: dict):
         self.custom_config = json.dumps(value)
@@ -157,12 +168,12 @@ class TenantAccountJoin(db.Model):
         db.UniqueConstraint('tenant_id', 'account_id', name='unique_tenant_account_join')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
-    account_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    account_id = db.Column(StringUUID, nullable=False)
     current = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     role = db.Column(db.String(16), nullable=False, server_default='normal')
-    invited_by = db.Column(UUID, nullable=True)
+    invited_by = db.Column(StringUUID, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
@@ -175,8 +186,8 @@ class AccountIntegrate(db.Model):
         db.UniqueConstraint('provider', 'open_id', name='unique_provider_open_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    account_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    account_id = db.Column(StringUUID, nullable=False)
     provider = db.Column(db.String(16), nullable=False)
     open_id = db.Column(db.String(255), nullable=False)
     encrypted_token = db.Column(db.String(255), nullable=False)
@@ -197,7 +208,7 @@ class InvitationCode(db.Model):
     code = db.Column(db.String(32), nullable=False)
     status = db.Column(db.String(16), nullable=False, server_default=db.text("'unused'::character varying"))
     used_at = db.Column(db.DateTime)
-    used_by_tenant_id = db.Column(UUID)
-    used_by_account_id = db.Column(UUID)
+    used_by_tenant_id = db.Column(StringUUID)
+    used_by_account_id = db.Column(StringUUID)
     deprecated_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))

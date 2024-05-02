@@ -2,13 +2,13 @@ identity:
   name: submitCodeExecutionTask
   author: Richards Tu
   label:
-    en_US: Submit Code Execution Task
-    zh_Hans: 提交代码执行任务
+    en_US: Submit Code Execution Task to Judge0 CE and get execution result.
+    zh_Hans: 提交代码执行任务到 Judge0 CE 并获取执行结果。
 description:
   human:
-    en_US: A tool for submitting code execution task to Judge0 CE.
-    zh_Hans: 一个用于向 Judge0 CE 提交代码执行任务的工具。
-  llm: A tool for submitting a new code execution task to Judge0 CE. It takes in the source code, language ID, standard input (optional), expected output (optional), and additional files (optional) as parameters; and returns a unique token representing the submission.
+    en_US: A tool for executing code and getting the result.
+    zh_Hans: 一个用于执行代码并获取结果的工具。
+  llm: This tool is used for executing code and getting the result.
 parameters:
   - name: source_code
     type: string

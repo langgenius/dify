@@ -30,6 +30,7 @@ const translation = {
   tos: 'Điều khoản dịch vụ',
   pp: 'Chính sách bảo mật',
   tosDesc: 'Bằng cách đăng ký, bạn đồng ý với',
+  goToInit: 'Nếu bạn chưa khởi tạo tài khoản, vui lòng đi đến trang khởi tạo',
   donthave: 'Chưa có?',
   invalidInvitationCode: 'Mã mời không hợp lệ',
   accountAlreadyInited: 'Tài khoản đã được khởi tạo',

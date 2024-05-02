@@ -65,6 +65,12 @@ const RunOnce: FC<IRunOnceProps> = ({
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                     value={inputs[item.key]}
                     onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        onSend()
+                      }
+                    }}
                     maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
                   />
                 )}

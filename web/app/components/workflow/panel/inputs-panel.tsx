@@ -34,7 +34,6 @@ const InputsPanel = ({ onRun }: Props) => {
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const {
     handleRun,
-    handleRunSetting,
   } = useWorkflowRun()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
@@ -72,7 +71,6 @@ const InputsPanel = ({ onRun }: Props) => {
 
   const doRun = () => {
     onRun()
-    handleRunSetting()
     handleRun({ inputs, files })
   }
 
@@ -87,12 +85,13 @@ const InputsPanel = ({ onRun }: Props) => {
     <>
       <div className='px-4 pb-2'>
         {
-          variables.map(variable => (
+          variables.map((variable, index) => (
             <div
               key={variable.variable}
               className='mb-2 last-of-type:mb-0'
             >
               <FormItem
+                autoFocus={index === 0}
                 className='!block'
                 payload={variable}
                 value={inputs[variable.variable]}

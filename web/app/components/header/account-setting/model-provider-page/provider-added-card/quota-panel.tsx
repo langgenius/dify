@@ -69,16 +69,6 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
         )
       }
       {
-        !currentQuota && provider.provider === 'anthropic' && (
-          <Button
-            className='h-6 bg-white text-xs font-medium rounded-md'
-            onClick={handlePay}
-          >
-            {t('common.modelProvider.buyQuota')}
-          </Button>
-        )
-      }
-      {
         !currentQuota && MODEL_PROVIDER_QUOTA_GET_FREE.includes(provider.provider) && (
           <Button
             className='h-6 bg-white text-xs font-medium rounded-md'
@@ -86,20 +76,6 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
           >
             {t('common.modelProvider.getFreeTokens')}
           </Button>
-        )
-      }
-      {
-        provider.provider === 'anthropic' && systemConfig.enabled && (
-          <div
-            className={`
-              absolute left-0 bottom-0 hidden group-hover:flex items-center justify-center 
-              w-full h-[30px] backdrop-blur-[2px] bg-gradient-to-r from-[rgba(238,244,255,0.80)] to-[rgba(237,237,240,0.70)]
-              text-xs font-medium text-primary-600 cursor-pointer rounded-b-lg
-            `}
-            onClick={handlePay}
-          >
-            {t('common.modelProvider.buyQuota')}
-          </div>
         )
       }
       {

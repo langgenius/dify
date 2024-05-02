@@ -1,8 +1,6 @@
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
-import { useStoreApi } from 'reactflow'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { BlockEnum } from '../../types'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
@@ -29,12 +27,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const store = useStoreApi()
-
-  const startNode = useMemo(() => {
-    const nodes = store.getState().getNodes()
-    return nodes.find(node => node.data.type === BlockEnum.Start)
-  }, [store])
 
   const {
     readOnly,
@@ -50,7 +42,10 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleContextVarChange,
     filterInputVar,
     filterVar,
+    availableVars,
+    availableNodes,
     handlePromptChange,
+    handleSyeQueryChange,
     handleMemoryChange,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
@@ -204,19 +199,20 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                     <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
                   </TooltipPlus>
                 </div>}
-                value={'{{#sys.query#}}'}
-                onChange={() => { }}
-                readOnly
+                value={inputs.memory.query_prompt_template || '{{#sys.query#}}'}
+                onChange={handleSyeQueryChange}
+                readOnly={readOnly}
                 isShowContext={false}
                 isChatApp
-                isChatModel={false}
-                hasSetBlockStatus={{
-                  query: false,
-                  history: true,
-                  context: true,
-                }}
-                availableNodes={[startNode!]}
+                isChatModel
+                hasSetBlockStatus={hasSetBlockStatus}
+                nodesOutputVars={availableVars}
+                availableNodes={availableNodes}
               />
+
+              {inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
+                <div className='leading-[18px] text-xs font-normal text-[#DC6803]'>{t(`${i18nPrefix}.sysQueryInUser`)}</div>
+              )}
             </div>
           </div>
         )}
