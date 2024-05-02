@@ -100,6 +100,7 @@ class ParameterExtractorNode(LLMNode):
                 node_data_model=node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
+                tools=prompt_message_tools,
                 stop=model_config.stop,
             )
             process_data['usage'] = jsonable_encoder(usage)
@@ -150,6 +151,7 @@ class ParameterExtractorNode(LLMNode):
     def _invoke_llm(self, node_data_model: ModelConfig,
                     model_instance: ModelInstance,
                     prompt_messages: list[PromptMessage],
+                    tools: list[PromptMessageTool],
                     stop: list[str]) -> tuple[str, LLMUsage, Optional[AssistantPromptMessage.ToolCall]]:
         """
         Invoke large language model
@@ -164,6 +166,7 @@ class ParameterExtractorNode(LLMNode):
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             model_parameters=node_data_model.completion_params,
+            tools=tools,
             stop=stop,
             stream=False,
             user=self.user_id,
@@ -233,6 +236,9 @@ class ParameterExtractorNode(LLMNode):
                 ToolPromptMessage(
                     content='Great! You have called the function with the correct parameters.',
                     tool_call_id=id
+                ),
+                AssistantPromptMessage(
+                    content='I have extracted the parameters, let\'s move on.',
                 )
             ])
 
@@ -405,7 +411,7 @@ class ParameterExtractorNode(LLMNode):
                     if isinstance(result[parameter.name], str):
                         transformed_result[parameter.name] = result[parameter.name]
 
-            if parameter not in transformed_result:
+            if parameter.name not in transformed_result:
                 if parameter.type == 'number':
                     transformed_result[parameter.name] = 0
                 elif parameter.type == 'bool':

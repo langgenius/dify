@@ -57,7 +57,8 @@ class ParameterExtractorNodeData(BaseNodeData):
 
         for parameter in self.parameters:
             parameter_schema = {
-                'type': 'string' if parameter.type in ['string', 'select'] else parameter.type
+                'type': 'string' if parameter.type in ['string', 'select'] else parameter.type,
+                'description': parameter.description
             }
 
             if parameter.type == 'select':
