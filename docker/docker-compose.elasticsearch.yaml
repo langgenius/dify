@@ -1,29 +1,19 @@
-version: '3.5'
-
+version: '3'
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.2
     container_name: elasticsearch
+    restart: always
     environment:
-      - node.name=elasticsearch
-      - discovery.seed_hosts=elasticsearch
-      - cluster.initial_master_nodes=elasticsearch
-      - cluster.name=dify-es
-      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - cluster.name=docker-cluster
+      - node.name=docker-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms4g -Xmx4g"
-      - cluster.routing.allocation.disk.threshold_enabled=false
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65535
-        hard: 65535
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
     volumes:
-      - type: volume
-        source: data
-        target: /usr/share/elasticsearch/data
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/elasticsearch:/usr/share/elasticsearch/data
     ports:
       - "9200:9200"
     healthcheck:
@@ -31,6 +21,3 @@ services:
       interval: 30s
       timeout: 10s
       retries: 50
-volumes:
-  data:
-    driver: local
