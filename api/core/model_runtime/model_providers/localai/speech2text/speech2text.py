@@ -39,7 +39,10 @@ class LocalAISpeech2text(Speech2TextModel):
         request = Request("POST", url, data=data, files=files)
         prepared_request = session.prepare_request(request)
         response = session.send(prepared_request)
-        print(response.json())
+
+        if 'error' in response.json():
+            raise InvokeServerUnavailableError("Empty response")
+
         return response.json()["text"]
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
