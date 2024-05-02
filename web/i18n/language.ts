@@ -142,6 +142,13 @@ export const languages = [
     example: 'Cześć, Dify!',
     supported: true,
   },
+  {
+    value: 'ro-RO',
+    name: 'Română (România)',
+    prompt_name: 'Romanian',
+    example: 'Salut, Dify!',
+    supported: true,
+  }
 ]
 
 export const LanguagesSupported = languages.filter(item => item.supported).map(item => item.value)
