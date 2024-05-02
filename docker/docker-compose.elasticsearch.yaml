@@ -13,7 +13,9 @@ services:
       - xpack.security.http.ssl.enabled=false
       - xpack.security.transport.ssl.enabled=false
     volumes:
-      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/elasticsearch:/usr/share/elasticsearch/data
+      - type: volume
+        source: data
+        target: /usr/share/elasticsearch/data
     ports:
       - "9200:9200"
     healthcheck:
@@ -21,3 +23,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 50
+volumes:
+  data:
+    driver: local
