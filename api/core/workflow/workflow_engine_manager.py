@@ -160,9 +160,9 @@ class WorkflowEngineManager:
                                 callbacks=callbacks
                             )
                             # iteration has ended
+                            iteration_node_id = current_iteration_node.node_id
                             current_iteration_node = None
                             workflow_run_state.current_iteration_state = None
-                            iteration_node_id = current_iteration_node.node_id
                             # get next id
                             outgoing_edges = [edge for edge in graph.get('edges') if edge.get('source') == iteration_node_id]
                             if outgoing_edges:

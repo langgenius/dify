@@ -1,4 +1,4 @@
-from typing import Union, cast
+from typing import cast
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.base_node_data_entities import BaseIterationState
@@ -20,22 +20,23 @@ class IterationNode(BaseIterationNode):
         """
         Run the node.
         """
-        self._set_current_iteration_variable(variable_pool)
-        return IterationState(iteration_node_id=self.node_id, index=0, outputs=[])
+        state = IterationState(iteration_node_id=self.node_id, index=-1, outputs=[])
+        self._set_current_iteration_variable(variable_pool, state)
+        return state
 
-    def _get_next_iteration_start_id(self, variable_pool: VariablePool, state: IterationState) -> Union[NodeRunResult, str]:
+    def _get_next_iteration_start_id(self, variable_pool: VariablePool, state: IterationState) -> NodeRunResult | str:
         """
         Get next iteration start node id based on the graph.
         :param graph: graph
         :return: next node id
         """
         # resolve current output
-        self._resolve_current_output(variable_pool)
+        self._resolve_current_output(variable_pool, state)
         # move to next iteration
-        self._next_iteration(variable_pool)
+        self._next_iteration(variable_pool, state)
 
         node_data = cast(IterationNodeData, self.node_data)
-        if self._reached_iteration_limit():
+        if self._reached_iteration_limit(state):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={
@@ -68,7 +69,7 @@ class IterationNode(BaseIterationNode):
         :param variable_pool: variable pool
         """
         state.index += 1
-        self._set_current_iteration_variable(variable_pool)
+        self._set_current_iteration_variable(variable_pool, state)
 
     def _reached_iteration_limit(self, state: IterationState):
         """
@@ -94,3 +95,15 @@ class IterationNode(BaseIterationNode):
         variable_pool.append_variable(self.node_id, output_selector[1:], None)
         if output is not None:
             state.outputs.append(output)
+
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: IterationNodeData) -> dict[str, list[str]]:
+        """
+        Extract variable selector to variable mapping
+        :param node_data: node data
+        :return:
+        """
+        return {
+            'input_selector': node_data.iterator_selector,
+            'output_selector': node_data.output_selector
+        }

@@ -2,8 +2,6 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional
 
-from sympy import Union
-
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
@@ -161,7 +159,7 @@ class BaseIterationNode(BaseNode):
         """
         return self._run(variable_pool=variable_pool)
 
-    def get_next_iteration_start_id(self, variable_pool: VariablePool, state: BaseIterationState) -> Union[NodeRunResult, str]:
+    def get_next_iteration_start_id(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
         """
         Get next iteration start node id based on the graph.
         :param graph: graph
@@ -170,7 +168,7 @@ class BaseIterationNode(BaseNode):
         return self._get_next_iteration_start_id(variable_pool, state)
     
     @abstractmethod
-    def _get_next_iteration_start_id(self, variable_pool: VariablePool, state: BaseIterationState) -> Union[NodeRunResult, str]:
+    def _get_next_iteration_start_id(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
         """
         Get next iteration start node id based on the graph.
         :param graph: graph

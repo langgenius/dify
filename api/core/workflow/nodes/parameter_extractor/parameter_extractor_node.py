@@ -625,3 +625,13 @@ class ParameterExtractorNode(LLMNode):
             self._model_instance, self._model_config = super()._fetch_model_config(node_data_model)
 
         return self._model_instance, self._model_config
+    
+    @classmethod
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: ParameterExtractorNodeData) -> dict[str, list[str]]:
+        """
+        Extract variable selector to variable mapping
+        :param node_data: node data
+        :return:
+        """
+        return {
+        }

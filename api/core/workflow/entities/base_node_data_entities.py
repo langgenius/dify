@@ -8,9 +8,9 @@ class BaseNodeData(ABC, BaseModel):
     title: str
     desc: Optional[str] = None
 
-class BaseIterationNodeData(ABC, BaseNodeData):
+class BaseIterationNodeData(BaseNodeData):
     start_node_id: str
 
-class BaseIterationState(ABC):
+class BaseIterationState(BaseModel):
     iteration_node_id: str
     index: int
