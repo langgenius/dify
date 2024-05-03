@@ -1,6 +1,6 @@
 from typing import Optional
 
-from core.app.entities.queue_entities import AppQueueEvent, QueueIterationCompletedEvent, QueueIterationNextEvent
+from core.app.entities.queue_entities import AppQueueEvent
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseNodeData
@@ -110,7 +110,6 @@ class WorkflowLoggingCallback(BaseWorkflowCallback):
         self.print_text(f"Node ID: {node_id}", color='blue')
 
     def on_workflow_iteration_next(self, node_id: str, index: int, 
-                                   iteration: list[QueueIterationNextEvent.Output],
                                    output: Optional[dict]) -> None:
         """
         Publish iteration next
@@ -118,7 +117,7 @@ class WorkflowLoggingCallback(BaseWorkflowCallback):
         self.print_text("\n[on_workflow_iteration_next]", color='blue')
 
     def on_workflow_iteration_completed(self, node_id: str, 
-                                        iterations: list[QueueIterationCompletedEvent.Iteration]) -> None:
+                                        outputs: list[dict]) -> None:
         """
         Publish iteration completed
         """

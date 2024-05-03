@@ -144,7 +144,6 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         )
 
     def on_workflow_iteration_next(self, node_id: str, index: int, 
-                                   iteration: list[QueueIterationNextEvent.Output],
                                    output: Optional[dict]) -> None:
         """
         Publish iteration next
@@ -153,23 +152,22 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
             QueueIterationNextEvent(
                 node_id=node_id,
                 index=index,
-                iteration=iteration,
                 output=output
             )
         )
 
     def on_workflow_iteration_completed(self, node_id: str, 
-                                        iterations: list[QueueIterationCompletedEvent.Iteration]) -> None:
+                                        outputs: list[dict]) -> None:
         """
         Publish iteration completed
         """
         self._queue_manager.push(
             QueueIterationCompletedEvent(
                 node_id=node_id,
-                iterations=iterations
+                outputs=outputs
             )
         )
-
+        
     def on_event(self, event: AppQueueEvent) -> None:
         """
         Publish event

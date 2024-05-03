@@ -13,3 +13,4 @@ class BaseIterationNodeData(ABC, BaseNodeData):
 
 class BaseIterationState(ABC):
     iteration_node_id: str
+    index: int

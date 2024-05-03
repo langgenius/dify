@@ -16,6 +16,7 @@ from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
+from core.workflow.nodes.iteration.entities import IterationState
 from core.workflow.nodes.iteration.iteration_node import IterationNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from core.workflow.nodes.llm.entities import LLMNodeData
@@ -153,6 +154,11 @@ class WorkflowEngineManager:
                             state=workflow_run_state.current_iteration_state
                         )
                         if isinstance(next_iteration, NodeRunResult):
+                            self._workflow_iteration_completed(
+                                current_iteration_node=current_iteration_node,
+                                workflow_run_state=workflow_run_state,
+                                callbacks=callbacks
+                            )
                             # iteration has ended
                             current_iteration_node = None
                             workflow_run_state.current_iteration_state = None
@@ -163,6 +169,11 @@ class WorkflowEngineManager:
                                 # continue overall process
                                 next_node = self._get_node(graph, outgoing_edges[0].get('target'))
                         elif isinstance(next_iteration, str):
+                            self._workflow_iteration_next(
+                                current_iteration_node=current_iteration_node,
+                                workflow_run_state=workflow_run_state,
+                                callbacks=callbacks
+                            )
                             # move to next iteration
                             next_node_id = next_iteration
                             # get next id
@@ -193,9 +204,11 @@ class WorkflowEngineManager:
                     workflow_run_state.current_iteration_state = next_node.run(
                         variable_pool=workflow_run_state.variable_pool
                     )
-                    if callbacks:
-                        for callback in callbacks:
-                            callback.on_workflow_iteration_started(node_id=next_node.node_id)
+                    self._workflow_iteration_started(
+                        current_iteration_node=current_iteration_node,
+                        workflow_run_state=workflow_run_state,
+                        callbacks=callbacks
+                    )
                     # move to start node of iteration
                     next_node_id = next_node.get_next_iteration_start_id(
                         variable_pool=workflow_run_state.variable_pool,
@@ -384,6 +397,50 @@ class WorkflowEngineManager:
                 callback.on_workflow_run_failed(
                     error=error
                 )
+
+    def _workflow_iteration_started(self, current_iteration_node: BaseIterationNode,
+                                    workflow_run_state: WorkflowRunState,
+                                    callbacks: list[BaseWorkflowCallback] = None) -> None:
+        """
+        Workflow iteration started
+        :param current_iteration_node: current iteration node
+        :param workflow_run_state: workflow run state
+        :param callbacks: workflow callbacks
+        :return:
+        """
+        if callbacks:
+            for callback in callbacks:
+                callback.on_workflow_iteration_started(
+                    node_id=current_iteration_node.node_id,
+                )
+
+    def _workflow_iteration_next(self, current_iteration_node: BaseIterationNode,
+                                 workflow_run_state: WorkflowRunState, 
+                                 callbacks: list[BaseWorkflowCallback] = None) -> None:
+        """
+        Workflow iteration next
+        :param workflow_run_state: workflow run state
+        :return:
+        """
+        if callbacks:
+            if isinstance(workflow_run_state.current_iteration_state, IterationState):
+                for callback in callbacks:
+                    callback.on_workflow_iteration_next(
+                        node_id=current_iteration_node.node_id,
+                        index=workflow_run_state.current_iteration_state.index,
+                        output=workflow_run_state.current_iteration_state.outputs[-1]
+                    )
+    
+    def _workflow_iteration_completed(self, current_iteration_node: BaseIterationNode,
+                                        workflow_run_state: WorkflowRunState, 
+                                        callbacks: list[BaseWorkflowCallback] = None) -> None:
+        if callbacks:
+            if isinstance(workflow_run_state.current_iteration_state, IterationState):
+                for callback in callbacks:
+                    callback.on_workflow_iteration_completed(
+                        node_id=current_iteration_node.node_id,
+                        outputs=workflow_run_state.current_iteration_state.outputs
+                    )
 
     def _get_next_overall_node(self, workflow_run_state: WorkflowRunState,
                        graph: dict,

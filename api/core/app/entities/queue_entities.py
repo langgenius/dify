@@ -63,16 +63,8 @@ class QueueIterationNextEvent(AppQueueEvent):
     """
     event = QueueEvent.ITERATION_NEXT
 
-    class Output(BaseModel):
-        """
-        Output entity
-        """
-        node_id: str
-        output: dict
-        
     index: int
     node_id: str
-    iteration: list[Output] # output of all nodes in the current iteration
     output: Optional[dict] # output for the current iteration
 
 class QueueIterationCompletedEvent(AppQueueEvent):
@@ -81,23 +73,8 @@ class QueueIterationCompletedEvent(AppQueueEvent):
     """
     event = QueueEvent.ITERATION_COMPLETED
 
-    class Iteration(BaseModel):
-        """
-        Output entity
-        """
-        class IterationOutput(BaseModel):
-            """
-            Output entity
-            """
-            node_id: str
-            output: dict
-
-        index: int
-        iteration: list[IterationOutput]
-        output: Optional[dict]
-
     node_id: str
-    iterations: list[Iteration]
+    outputs: list[dict]
 
 class QueueTextChunkEvent(AppQueueEvent):
     """

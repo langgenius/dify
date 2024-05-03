@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from core.app.entities.queue_entities import AppQueueEvent, QueueIterationCompletedEvent, QueueIterationNextEvent
+from core.app.entities.queue_entities import AppQueueEvent
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
 
@@ -81,7 +81,6 @@ class BaseWorkflowCallback(ABC):
 
     @abstractmethod
     def on_workflow_iteration_next(self, node_id: str, index: int, 
-                                   iteration: list[QueueIterationNextEvent.Output],
                                    output: Optional[dict]) -> None:
         """
         Publish iteration next
@@ -90,7 +89,7 @@ class BaseWorkflowCallback(ABC):
 
     @abstractmethod
     def on_workflow_iteration_completed(self, node_id: str, 
-                                        iterations: list[QueueIterationCompletedEvent.Iteration]) -> None:
+                                        outputs: list[dict]) -> None:
         """
         Publish iteration completed
         """
