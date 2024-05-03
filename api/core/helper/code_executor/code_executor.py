@@ -6,7 +6,7 @@ from yarl import URL
 
 from config import get_env
 from core.helper.code_executor.javascript_transformer import NodeJsTemplateTransformer
-from core.helper.code_executor.jina2_transformer import Jinja2TemplateTransformer
+from core.helper.code_executor.jinja2_transformer import Jinja2TemplateTransformer
 from core.helper.code_executor.python_transformer import PythonTemplateTransformer
 
 # Code Executor

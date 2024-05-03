@@ -41,11 +41,11 @@ def setup_mock_redis() -> None:
     ext_redis.redis_client.lock = mock_redis_lock
 
 
-class AbstractTestVector:
+class AbstractVectorTest:
     def __init__(self):
         self.vector = None
         self.dataset_id = str(uuid.uuid4())
-        self.collection_name = Dataset.gen_collection_name_by_id(self.dataset_id)
+        self.collection_name = Dataset.gen_collection_name_by_id(self.dataset_id) + '_test'
         self.example_doc_id = str(uuid.uuid4())
         self.example_embedding = [1.001 * i for i in range(128)]
 

@@ -54,6 +54,7 @@ export type WorkflowProcess = {
   status: WorkflowRunningStatus
   tracing: NodeTracing[]
   expand?: boolean // for UI
+  resultText?: string
 }
 
 export type ChatItem = IChatItem & {

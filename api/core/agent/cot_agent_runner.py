@@ -219,7 +219,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         tool_input={scratchpad.action.action_name: scratchpad.action.action_input},
                         thought=scratchpad.thought,
                         observation={scratchpad.action.action_name: tool_invoke_response},
-                        tool_invoke_meta=tool_invoke_meta.to_dict(),
+                        tool_invoke_meta={scratchpad.action.action_name: tool_invoke_meta.to_dict()},
                         answer=scratchpad.agent_response,
                         messages_ids=message_file_ids,
                         llm_usage=usage_dict['usage']

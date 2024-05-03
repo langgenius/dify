@@ -36,6 +36,8 @@ class QdrantConfig(BaseModel):
     api_key: Optional[str]
     timeout: float = 20
     root_path: Optional[str]
+    grpc_port: int = 6334
+    prefer_grpc: bool = False
 
     def to_qdrant_params(self):
         if self.endpoint and self.endpoint.startswith('path:'):
@@ -51,7 +53,9 @@ class QdrantConfig(BaseModel):
                 'url': self.endpoint,
                 'api_key': self.api_key,
                 'timeout': self.timeout,
-                'verify': self.endpoint.startswith('https')
+                'verify': self.endpoint.startswith('https'),
+                'grpc_port': self.grpc_port,
+                'prefer_grpc': self.prefer_grpc
             }
 
 
@@ -113,8 +117,7 @@ class QdrantVector(BaseVector):
 
                 # create payload index
                 self._client.create_payload_index(collection_name, Field.GROUP_KEY.value,
-                                                  field_schema=PayloadSchemaType.KEYWORD,
-                                                  field_type=PayloadSchemaType.KEYWORD)
+                                                  field_schema=PayloadSchemaType.KEYWORD)
                 # creat full text index
                 text_index_params = TextIndexParams(
                     type=TextIndexType.TEXT,
