@@ -39,6 +39,14 @@ jobs:
       - name: Run Tool
         run: dev/pytest/pytest_tools.sh
 
+      - name: Set up Sandbox
+        uses: hoverkraft-tech/compose-action@v2.0.0
+        with:
+          compose-file: |
+            docker/docker-compose.middleware.yaml
+          services: |
+            sandbox
+
       - name: Run Workflow
         run: dev/pytest/pytest_workflow.sh
 

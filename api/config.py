@@ -107,7 +107,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.6.5"
+        self.CURRENT_VERSION = "0.6.6"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = get_env('EDITION')
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
