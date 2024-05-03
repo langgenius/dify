@@ -37,7 +37,7 @@ class RetrievalService:
         all_documents = []
         threads = []
         # retrieval_model source with keyword
-        if retrival_method == 'keyword_search':
+        if retrival_method == 'keyword_search' or retrival_method == 'hybrid_search':
             keyword_thread = threading.Thread(target=RetrievalService.keyword_search, kwargs={
                 'flask_app': current_app._get_current_object(),
                 'dataset_id': dataset_id,
@@ -48,6 +48,7 @@ class RetrievalService:
             threads.append(keyword_thread)
             keyword_thread.start()
         # retrieval_model source with semantic
+        ### TODO: what funk? need refactor
         if retrival_method == 'semantic_search' or retrival_method == 'hybrid_search':
             embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
                 'flask_app': current_app._get_current_object(),
