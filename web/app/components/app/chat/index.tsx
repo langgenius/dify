@@ -275,7 +275,7 @@ const Chat: FC<IChatProps> = ({
     <div className={cn('px-3.5', 'h-full')}>
       {isShowConfigElem && (configElem || null)}
       {/* Chat List */}
-      <div className={cn((isShowConfigElem && configElem) ? 'h-0' : 'h-full', 'space-y-[30px]')}>
+      <div className={cn((isShowConfigElem && configElem) ? 'h-0' : 'h-full', 'space-y-[30px]', 'mt-3.5')}>
         {chatList.map((item, index) => {
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
