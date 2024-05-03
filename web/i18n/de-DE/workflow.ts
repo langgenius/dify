@@ -245,6 +245,15 @@ const translation = {
         'header': 'Kopfzeile',
       },
       insertVarPlaceholder: 'Tippen Sie ‘/’, um eine Variable einzufügen',
+      timeout: {
+        title: 'Zeitüberschreitung',
+        connectLabel: 'Verbindungszeitüberschreitung',
+        connectPlaceholder: 'Geben Sie die Verbindungszeitüberschreitung in Sekunden ein',
+        readLabel: 'Lesezeitüberschreitung',
+        readPlaceholder: 'Geben Sie die Lesezeitüberschreitung in Sekunden ein',
+        writeLabel: 'Schreibzeitüberschreitung',
+        writePlaceholder: 'Geben Sie die Schreibzeitüberschreitung in Sekunden ein',
+      },
     },
     code: {
       inputVars: 'Eingabevariablen',
@@ -315,6 +324,9 @@ const translation = {
     questionClassifiers: {
       model: 'Modell',
       inputVars: 'Eingabevariablen',
+      outputVars: {
+        className: 'Klassenname',
+      },
       class: 'Klasse',
       classNamePlaceholder: 'Schreiben Sie Ihren Klassennamen',
       advancedSetting: 'Erweiterte Einstellung',

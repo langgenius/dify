@@ -476,7 +476,7 @@ class DatasetRetrievalSettingApi(Resource):
     @account_initialization_required
     def get(self):
         vector_type = current_app.config['VECTOR_STORE']
-        if vector_type == 'milvus' or vector_type == 'relyt':
+        if vector_type == 'milvus' or vector_type == 'pgvecto_rs' or vector_type == 'relyt':
             return {
                 'retrieval_method': [
                     'semantic_search'

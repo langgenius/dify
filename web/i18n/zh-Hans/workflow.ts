@@ -49,6 +49,9 @@ const translation = {
     processData: '数据处理',
     input: '输入',
     output: '输出',
+    jinjaEditorPlaceholder: '输入 “/” 或 “{” 插入变量',
+    viewOnly: '只读',
+    showRunHistory: '显示运行历史',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
@@ -249,6 +252,15 @@ const translation = {
         'header': 'Header',
       },
       insertVarPlaceholder: '键入 \'/\' 键快速插入变量',
+      timeout: {
+        title: '超时设置',
+        connectLabel: '连接超时',
+        connectPlaceholder: '输入连接超时（以秒为单位）',
+        readLabel: '读取超时',
+        readPlaceholder: '输入读取超时（以秒为单位）',
+        writeLabel: '写入超时',
+        writePlaceholder: '输入写入超时（以秒为单位）',
+      },
     },
     code: {
       inputVars: '输入变量',
@@ -319,6 +331,9 @@ const translation = {
     questionClassifiers: {
       model: '模型',
       inputVars: '输入变量',
+      outputVars: {
+        className: '分类名称',
+      },
       class: '分类',
       classNamePlaceholder: '输入你的分类名称',
       advancedSetting: '高级设置',

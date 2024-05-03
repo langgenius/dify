@@ -49,6 +49,9 @@ const translation = {
     processData: 'Process Data',
     input: 'Input',
     output: 'Output',
+    jinjaEditorPlaceholder: 'Type \'/\' or \'{\' to insert variable',
+    viewOnly: 'View Only',
+    showRunHistory: 'Show Run History',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
@@ -249,6 +252,15 @@ const translation = {
         'header': 'Header',
       },
       insertVarPlaceholder: 'type \'/\' to insert variable',
+      timeout: {
+        title: 'Timeout',
+        connectLabel: 'Connection Timeout',
+        connectPlaceholder: 'Enter connection timeout in seconds',
+        readLabel: 'Read Timeout',
+        readPlaceholder: 'Enter read timeout in seconds',
+        writeLabel: 'Write Timeout',
+        writePlaceholder: 'Enter write timeout in seconds',
+      },
     },
     code: {
       inputVars: 'Input Variables',
@@ -319,6 +331,9 @@ const translation = {
     questionClassifiers: {
       model: 'model',
       inputVars: 'Input Variables',
+      outputVars: {
+        className: 'Class Name',
+      },
       class: 'Class',
       classNamePlaceholder: 'Write your class name',
       advancedSetting: 'Advanced Setting',

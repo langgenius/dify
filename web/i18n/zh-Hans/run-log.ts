@@ -18,6 +18,12 @@ const translation = {
     tokens: '总 token 数',
     steps: '运行步数',
   },
+  resultEmpty: {
+    title: '本次运行仅输出JSON格式，',
+    tipLeft: '请转到',
+    link: '详细信息面板',
+    tipRight: '查看它。',
+  },
 }
 
 export default translation

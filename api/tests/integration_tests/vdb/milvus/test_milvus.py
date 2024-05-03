@@ -1,12 +1,12 @@
 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusConfig, MilvusVector
 from tests.integration_tests.vdb.test_vector_store import (
-    AbstractTestVector,
+    AbstractVectorTest,
     get_example_text,
     setup_mock_redis,
 )
 
 
-class TestMilvusVector(AbstractTestVector):
+class MilvusVectorTest(AbstractVectorTest):
     def __init__(self):
         super().__init__()
         self.vector = MilvusVector(
@@ -33,4 +33,4 @@ class TestMilvusVector(AbstractTestVector):
 
 
 def test_milvus_vector(setup_mock_redis):
-    TestMilvusVector().run_all_tests()
+    MilvusVectorTest().run_all_tests()

@@ -79,7 +79,9 @@ const getCycleEdges = (nodes: Node[], edges: Edge[]) => {
   return cycleEdges
 }
 
-export const initialNodes = (nodes: Node[], edges: Edge[]) => {
+export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
+  const nodes = cloneDeep(originNodes)
+  const edges = cloneDeep(originEdges)
   const firstNode = nodes[0]
 
   if (!firstNode?.position) {
@@ -121,7 +123,9 @@ export const initialNodes = (nodes: Node[], edges: Edge[]) => {
   })
 }
 
-export const initialEdges = (edges: Edge[], nodes: Node[]) => {
+export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
+  const nodes = cloneDeep(originNodes)
+  const edges = cloneDeep(originEdges)
   let selectedNode: Node | null = null
   const nodesMap = nodes.reduce((acc, node) => {
     acc[node.id] = node

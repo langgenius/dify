@@ -1,8 +1,7 @@
 import enum
 
-from sqlalchemy.dialects.postgresql import UUID
-
 from extensions.ext_database import db
+from models import StringUUID
 
 
 class APIBasedExtensionPoint(enum.Enum):
@@ -19,8 +18,8 @@ class APIBasedExtension(db.Model):
         db.Index('api_based_extension_tenant_idx', 'tenant_id'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     api_endpoint = db.Column(db.String(255), nullable=False)
     api_key = db.Column(db.Text, nullable=False)
