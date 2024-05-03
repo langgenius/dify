@@ -179,13 +179,35 @@ class WorkflowEngineManager:
 
                 has_entry_node = True
 
-                # max steps 30 reached
-                if len(workflow_run_state.workflow_nodes_and_results) > 30:
-                    raise ValueError('Max steps 30 reached.')
+                # max steps 200 reached
+                if len(workflow_run_state.workflow_nodes_and_results) > 200:
+                    raise ValueError('Max steps 200 reached.')
 
                 # or max execution time 10min reached
                 if self._is_timed_out(start_at=workflow_run_state.start_at, max_execution_time=600):
                     raise ValueError('Max execution time 10min reached.')
+
+                # handle iteration nodes
+                if isinstance(next_node, BaseIterationNode):
+                    current_iteration_node = next_node
+                    workflow_run_state.current_iteration_state = next_node.run(
+                        variable_pool=workflow_run_state.variable_pool
+                    )
+                    if callbacks:
+                        for callback in callbacks:
+                            callback.on_workflow_iteration_started(node_id=next_node.node_id)
+                    # move to start node of iteration
+                    next_node_id = next_node.get_next_iteration_start_id(
+                        variable_pool=workflow_run_state.variable_pool,
+                        state=workflow_run_state.current_iteration_state
+                    )
+                    if isinstance(next_node_id, NodeRunResult):
+                        # iteration has ended
+                        current_iteration_node = None
+                        workflow_run_state.current_iteration_state = None
+                        continue
+                    else:
+                        next_node = self._get_node(graph, next_node_id)
 
                 # run workflow, run multiple target nodes in the future
                 self._run_workflow_node(

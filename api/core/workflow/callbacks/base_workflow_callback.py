@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from core.app.entities.queue_entities import AppQueueEvent
+from core.app.entities.queue_entities import AppQueueEvent, QueueIterationCompletedEvent, QueueIterationNextEvent
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
 
@@ -69,6 +69,30 @@ class BaseWorkflowCallback(ABC):
     def on_node_text_chunk(self, node_id: str, text: str, metadata: Optional[dict] = None) -> None:
         """
         Publish text chunk
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def on_workflow_iteration_started(self, node_id: str) -> None:
+        """
+        Publish iteration started
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def on_workflow_iteration_next(self, node_id: str, index: int, 
+                                   iteration: list[QueueIterationNextEvent.Output],
+                                   output: Optional[dict]) -> None:
+        """
+        Publish iteration next
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def on_workflow_iteration_completed(self, node_id: str, 
+                                        iterations: list[QueueIterationCompletedEvent.Iteration]) -> None:
+        """
+        Publish iteration completed
         """
         raise NotImplementedError
 

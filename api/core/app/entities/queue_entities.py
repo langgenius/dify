@@ -21,6 +21,9 @@ class QueueEvent(Enum):
     WORKFLOW_STARTED = "workflow_started"
     WORKFLOW_SUCCEEDED = "workflow_succeeded"
     WORKFLOW_FAILED = "workflow_failed"
+    ITERATION_START = "iteration_start"
+    ITERATION_NEXT = "iteration_next"
+    ITERATION_COMPLETED = "iteration_completed"
     NODE_STARTED = "node_started"
     NODE_SUCCEEDED = "node_succeeded"
     NODE_FAILED = "node_failed"
@@ -47,6 +50,54 @@ class QueueLLMChunkEvent(AppQueueEvent):
     event = QueueEvent.LLM_CHUNK
     chunk: LLMResultChunk
 
+class QueueIterationStartEvent(AppQueueEvent):
+    """
+    QueueIterationStartEvent entity
+    """
+    event = QueueEvent.ITERATION_START
+    node_id: str
+
+class QueueIterationNextEvent(AppQueueEvent):
+    """
+    QueueIterationNextEvent entity
+    """
+    event = QueueEvent.ITERATION_NEXT
+
+    class Output(BaseModel):
+        """
+        Output entity
+        """
+        node_id: str
+        output: dict
+        
+    index: int
+    node_id: str
+    iteration: list[Output] # output of all nodes in the current iteration
+    output: Optional[dict] # output for the current iteration
+
+class QueueIterationCompletedEvent(AppQueueEvent):
+    """
+    QueueIterationCompletedEvent entity
+    """
+    event = QueueEvent.ITERATION_COMPLETED
+
+    class Iteration(BaseModel):
+        """
+        Output entity
+        """
+        class IterationOutput(BaseModel):
+            """
+            Output entity
+            """
+            node_id: str
+            output: dict
+
+        index: int
+        iteration: list[IterationOutput]
+        output: Optional[dict]
+
+    node_id: str
+    iterations: list[Iteration]
 
 class QueueTextChunkEvent(AppQueueEvent):
     """
