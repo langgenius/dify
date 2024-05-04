@@ -18,7 +18,7 @@ from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
-from models.model import App, Conversation, Message
+from models.model import App, Conversation, EndUser, Message
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -55,6 +55,14 @@ class AdvancedChatAppRunner(AppRunner):
         inputs = application_generate_entity.inputs
         query = application_generate_entity.query
         files = application_generate_entity.files
+
+        user_id = None
+        if application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
+            end_user = db.session.query(EndUser).filter(EndUser.id == application_generate_entity.user_id).first()
+            if end_user:
+                user_id = end_user.session_id
+        else:
+            user_id = application_generate_entity.user_id
 
         # moderation
         if self.handle_input_moderation(
@@ -98,7 +106,8 @@ class AdvancedChatAppRunner(AppRunner):
             system_inputs={
                 SystemVariable.QUERY: query,
                 SystemVariable.FILES: files,
-                SystemVariable.CONVERSATION: conversation.id,
+                SystemVariable.CONVERSATION_ID: conversation.id,
+                SystemVariable.USER_ID: user_id
             },
             callbacks=workflow_callbacks
         )

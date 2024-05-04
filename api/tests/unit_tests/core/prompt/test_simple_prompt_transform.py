@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import UserPromptMessage, AssistantPromptMessage
+from core.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from models.model import AppMode, Conversation
 
@@ -238,8 +238,8 @@ def test__get_completion_model_prompt_messages():
     prompt_rules = prompt_template['prompt_rules']
     full_inputs = {**inputs, '#context#': context, '#query#': query, '#histories#': memory.get_history_prompt_text(
         max_token_limit=2000,
-        ai_prefix=prompt_rules['human_prefix'] if 'human_prefix' in prompt_rules else 'Human',
-        human_prefix=prompt_rules['assistant_prefix'] if 'assistant_prefix' in prompt_rules else 'Assistant'
+        human_prefix=prompt_rules['human_prefix'] if 'human_prefix' in prompt_rules else 'Human',
+        ai_prefix=prompt_rules['assistant_prefix'] if 'assistant_prefix' in prompt_rules else 'Assistant'
     )}
     real_prompt = prompt_template['prompt_template'].format(full_inputs)
 

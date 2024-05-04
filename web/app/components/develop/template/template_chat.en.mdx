@@ -167,7 +167,7 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" abel="/chat-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "What are the specs of the iPhone 13 Pro Max?",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123",\n    "files": [\n      {\n        "type": "image",\n        "transfer_method": "remote_url",\n        "url": "https://cloud.dify.ai/logo/logo-site.png"\n      }\n    ]\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "What are the specs of the iPhone 13 Pro Max?",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123",\n    "files": [\n      {\n        "type": "image",\n        "transfer_method": "remote_url",\n        "url": "https://cloud.dify.ai/logo/logo-site.png"\n      }\n    ]\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/chat-messages' \

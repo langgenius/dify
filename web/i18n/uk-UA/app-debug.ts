@@ -321,7 +321,7 @@ const translation = {
   openingStatement: {
     title: 'Вступ до розмови', // Conversation Opener
     add: 'Додати', // Add
-    writeOpner: 'Напишіть вступне повідомлення', // Write opener
+    writeOpener: 'Напишіть вступне повідомлення', // Write opener
     placeholder: 'Напишіть тут своє вступне повідомлення, ви можете використовувати змінні, спробуйте ввести {{variable}}.', // Write your opener message here...
     openingQuestion: 'Відкриваючі питання', // Opening Questions
     noDataPlaceHolder: 'Початок розмови з користувачем може допомогти ШІ встановити більш тісний зв’язок з ним у розмовних застосунках.', // ... conversational applications.

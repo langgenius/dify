@@ -1,17 +1,22 @@
 import json
 import re
+from base64 import b64encode
 
 from core.helper.code_executor.template_transformer import TemplateTransformer
 
 PYTHON_RUNNER = """# declare main function here
 {{code}}
 
+from json import loads, dumps
+from base64 import b64decode
+
 # execute main function, and return the result
 # inputs is a dict, and it
-output = main(**{{inputs}})
+inputs = b64decode('{{inputs}}').decode('utf-8')
+output = main(**json.loads(inputs))
 
 # convert output to json and print
-output = json.dumps(output, indent=4)
+output = dumps(output, indent=4)
 
 result = f'''<<RESULT>>
 {output}
@@ -54,7 +59,7 @@ class PythonTemplateTransformer(TemplateTransformer):
         """
         
         # transform inputs to json string
-        inputs_str = json.dumps(inputs, indent=4, ensure_ascii=False)
+        inputs_str = b64encode(json.dumps(inputs, ensure_ascii=False).encode()).decode('utf-8')
 
         # replace code and inputs
         runner = PYTHON_RUNNER.replace('{{code}}', code)

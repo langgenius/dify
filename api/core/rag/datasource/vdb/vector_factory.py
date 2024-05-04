@@ -86,7 +86,9 @@ class Vector:
                     endpoint=config.get('QDRANT_URL'),
                     api_key=config.get('QDRANT_API_KEY'),
                     root_path=current_app.root_path,
-                    timeout=config.get('QDRANT_CLIENT_TIMEOUT')
+                    timeout=config.get('QDRANT_CLIENT_TIMEOUT'),
+                    grpc_port=config.get('QDRANT_GRPC_PORT'),
+                    prefer_grpc=config.get('QDRANT_GRPC_ENABLED')
                 )
             )
         elif vector_type == "milvus":
@@ -126,7 +128,6 @@ class Vector:
                     "vector_store": {"class_prefix": collection_name}
                 }
                 self._dataset.index_struct = json.dumps(index_struct_dict)
-            dim = len(self._embeddings.embed_query("hello relyt"))
             return RelytVector(
                 collection_name=collection_name,
                 config=RelytConfig(
@@ -135,6 +136,31 @@ class Vector:
                     user=config.get('RELYT_USER'),
                     password=config.get('RELYT_PASSWORD'),
                     database=config.get('RELYT_DATABASE'),
+                ),
+                group_id=self._dataset.id
+            )
+        elif vector_type == "pgvecto_rs":
+            from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRS, PgvectoRSConfig
+            if self._dataset.index_struct_dict:
+                class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
+                collection_name = class_prefix.lower()
+            else:
+                dataset_id = self._dataset.id
+                collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
+                index_struct_dict = {
+                    "type": 'pgvecto_rs',
+                    "vector_store": {"class_prefix": collection_name}
+                }
+                self._dataset.index_struct = json.dumps(index_struct_dict)
+            dim = len(self._embeddings.embed_query("pgvecto_rs"))
+            return PGVectoRS(
+                collection_name=collection_name,
+                config=PgvectoRSConfig(
+                    host=config.get('PGVECTO_RS_HOST'),
+                    port=config.get('PGVECTO_RS_PORT'),
+                    user=config.get('PGVECTO_RS_USER'),
+                    password=config.get('PGVECTO_RS_PASSWORD'),
+                    database=config.get('PGVECTO_RS_DATABASE'),
                 ),
                 dim=dim
             )

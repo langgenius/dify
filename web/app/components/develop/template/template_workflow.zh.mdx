@@ -63,7 +63,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 
     ### CompletionResponse
     返回完整的 App 结果，`Content-Type` 为 `application/json` 。
-    - `log_id` (string) 日志 ID
+    - `workflow_run_id` (string) workflow 执行 ID
     - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
     - `data` (object) 详细内容
       - `id` (string) workflow 执行 ID
@@ -174,7 +174,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-        "log_id": "djflajgkldjgd",
+        "workflow_run_id": "djflajgkldjgd",
         "task_id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "data": {
             "id": "fdlsjfjejkghjda",

@@ -13,6 +13,7 @@ import {
   useChecklistBeforePublish,
   useNodesReadOnly,
   useNodesSyncDraft,
+  useWorkflowMode,
   useWorkflowRun,
 } from '../hooks'
 import AppPublisher from '../../app/app-publisher'
@@ -21,35 +22,39 @@ import RunAndHistory from './run-and-history'
 import EditingTitle from './editing-title'
 import RunningTitle from './running-title'
 import RestoringTitle from './restoring-title'
+import ViewHistory from './view-history'
 import Checklist from './checklist'
 import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
 import Button from '@/app/components/base/button'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { publishWorkflow } from '@/service/workflow'
+import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const Header: FC = () => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const appDetail = useAppStore(s => s.appDetail)
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
-  const appID = useAppStore(state => state.appDetail?.id)
+  const appID = appDetail?.id
   const {
     nodesReadOnly,
     getNodesReadOnly,
   } = useNodesReadOnly()
-  const isRestoring = useStore(s => s.isRestoring)
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const {
     handleLoadBackupDraft,
-    handleRunSetting,
     handleBackupDraft,
     handleRestoreFromPublishedWorkflow,
   } = useWorkflowRun()
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { notify } = useContext(ToastContext)
+  const {
+    normal,
+    restoring,
+    viewHistory,
+  } = useWorkflowMode()
 
   const handleShowFeatures = useCallback(() => {
     const {
@@ -62,10 +67,6 @@ const Header: FC = () => {
     setShowFeaturesPanel(true)
   }, [workflowStore, getNodesReadOnly])
 
-  const handleGoBackToEdit = useCallback(() => {
-    handleRunSetting(true)
-  }, [handleRunSetting])
-
   const handleCancelRestore = useCallback(() => {
     handleLoadBackupDraft()
     workflowStore.setState({ isRestoring: false })
@@ -73,6 +74,7 @@ const Header: FC = () => {
 
   const handleRestore = useCallback(() => {
     workflowStore.setState({ isRestoring: false })
+    workflowStore.setState({ backupDraft: undefined })
     handleSyncWorkflowDraft(true)
   }, [handleSyncWorkflowDraft, workflowStore])
 
@@ -101,6 +103,11 @@ const Header: FC = () => {
       handleSyncWorkflowDraft(true)
   }, [handleSyncWorkflowDraft])
 
+  const handleGoBackToEdit = useCallback(() => {
+    handleLoadBackupDraft()
+    workflowStore.setState({ historyWorkflowData: undefined })
+  }, [workflowStore, handleLoadBackupDraft])
+
   return (
     <div
       className='absolute top-0 left-0 z-10 flex items-center justify-between w-full px-3 h-14'
@@ -115,39 +122,25 @@ const Header: FC = () => {
           )
         }
         {
-          !nodesReadOnly && !isRestoring && <EditingTitle />
+          normal && <EditingTitle />
         }
         {
-          nodesReadOnly && !isRestoring && <RunningTitle />
+          viewHistory && <RunningTitle />
         }
         {
-          isRestoring && <RestoringTitle />
+          restoring && <RestoringTitle />
         }
       </div>
       {
-        !isRestoring && (
+        normal && (
           <div className='flex items-center'>
-            {
-              nodesReadOnly && (
-                <Button
-                  className={`
-                    mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-primary-600
-                    border-[0.5px] border-gray-200 shadow-xs
-                  `}
-                  onClick={handleGoBackToEdit}
-                >
-                  <ArrowNarrowLeft className='w-4 h-4 mr-1' />
-                  {t('workflow.common.goBackToEdit')}
-                </Button>
-              )
-            }
             <RunAndHistory />
             <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
             <Button
               className={`
                 mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
                 border-[0.5px] border-gray-200 shadow-xs
-                ${nodesReadOnly && !isRestoring && 'opacity-50 !cursor-not-allowed'}
+                ${nodesReadOnly && 'opacity-50 !cursor-not-allowed'}
               `}
               onClick={handleShowFeatures}
             >
@@ -165,19 +158,32 @@ const Header: FC = () => {
                 crossAxisOffset: 53,
               }}
             />
-            {
-              !nodesReadOnly && (
-                <>
-                  <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
-                  <Checklist />
-                </>
-              )
-            }
+            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
+            <Checklist disabled={nodesReadOnly} />
           </div>
         )
       }
       {
-        isRestoring && (
+        viewHistory && (
+          <div className='flex items-center'>
+            <ViewHistory withText />
+            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
+            <Button
+              type='primary'
+              className={`
+                mr-2 px-3 py-0 h-8 text-[13px] font-medium
+                border-[0.5px] border-gray-200 shadow-xs
+              `}
+              onClick={handleGoBackToEdit}
+            >
+              <ArrowNarrowLeft className='w-4 h-4 mr-1' />
+              {t('workflow.common.goBackToEdit')}
+            </Button>
+          </div>
+        )
+      }
+      {
+        restoring && (
           <div className='flex items-center'>
             <Button
               className={`

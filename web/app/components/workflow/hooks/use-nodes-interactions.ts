@@ -243,9 +243,6 @@ export const useNodesInteractions = () => {
   }, [store, getNodesReadOnly])
 
   const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean) => {
-    if (getNodesReadOnly() && !workflowStore.getState().isRestoring)
-      return
-
     const {
       getNodes,
       setNodes,
@@ -289,14 +286,11 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
 
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft, getNodesReadOnly, workflowStore])
+  }, [store, handleSyncWorkflowDraft])
 
   const handleNodeClick = useCallback<NodeMouseHandler>((_, node) => {
-    if (getNodesReadOnly() && !workflowStore.getState().isRestoring)
-      return
-
     handleNodeSelect(node.id)
-  }, [handleNodeSelect, getNodesReadOnly, workflowStore])
+  }, [handleNodeSelect])
 
   const handleNodeConnect = useCallback<OnConnect>(({
     source,
@@ -324,18 +318,12 @@ export const useNodesInteractions = () => {
         return
     }
     const needDeleteEdges = edges.filter((edge) => {
-      if (edge.source === source) {
-        if (edge.sourceHandle)
-          return edge.sourceHandle === sourceHandle
-        else
-          return true
-      }
-      if (edge.target === target) {
-        if (edge.targetHandle)
-          return edge.targetHandle === targetHandle
-        else
-          return true
-      }
+      if (
+        (edge.source === source && edge.sourceHandle === sourceHandle)
+        || (edge.target === target && edge.targetHandle === targetHandle)
+      )
+        return true
+
       return false
     })
     const needDeleteEdgesIds = needDeleteEdges.map(edge => edge.id)
@@ -406,6 +394,8 @@ export const useNodesInteractions = () => {
 
     const nodes = getNodes()
     const currentNodeIndex = nodes.findIndex(node => node.id === nodeId)
+    if (nodes[currentNodeIndex].data.type === BlockEnum.Start)
+      return
     const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges)
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(connectedEdges.map(edge => ({ type: 'remove', edge })), nodes)
     const newNodes = produce(nodes, (draft: Node[]) => {
@@ -722,9 +712,10 @@ export const useNodesInteractions = () => {
     const {
       setClipboardElements,
       shortcutsDisabled,
+      showFeaturesPanel,
     } = workflowStore.getState()
 
-    if (shortcutsDisabled)
+    if (shortcutsDisabled || showFeaturesPanel)
       return
 
     const {
@@ -732,7 +723,7 @@ export const useNodesInteractions = () => {
     } = store.getState()
 
     const nodes = getNodes()
-    const nodesToCopy = nodes.filter(node => node.data.selected)
+    const nodesToCopy = nodes.filter(node => node.data.selected && node.data.type !== BlockEnum.Start)
 
     setClipboardElements(nodesToCopy)
 
@@ -746,9 +737,10 @@ export const useNodesInteractions = () => {
     const {
       clipboardElements,
       shortcutsDisabled,
+      showFeaturesPanel,
     } = workflowStore.getState()
 
-    if (shortcutsDisabled)
+    if (shortcutsDisabled || showFeaturesPanel)
       return
 
     const {
@@ -813,9 +805,10 @@ export const useNodesInteractions = () => {
 
     const {
       shortcutsDisabled,
+      showFeaturesPanel,
     } = workflowStore.getState()
 
-    if (shortcutsDisabled)
+    if (shortcutsDisabled || showFeaturesPanel)
       return
 
     const {
@@ -838,6 +831,36 @@ export const useNodesInteractions = () => {
       handleNodeDelete(node.id)
   }, [getNodesReadOnly, handleNodeDelete, store, workflowStore])
 
+  const handleNodeCancelRunningStatus = useCallback(() => {
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+
+    const nodes = getNodes()
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        node.data._runningStatus = undefined
+      })
+    })
+    setNodes(newNodes)
+  }, [store])
+
+  const handleNodesCancelSelected = useCallback(() => {
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+
+    const nodes = getNodes()
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        node.data.selected = false
+      })
+    })
+    setNodes(newNodes)
+  }, [store])
+
   return {
     handleNodeDragStart,
     handleNodeDrag,
@@ -857,5 +880,7 @@ export const useNodesInteractions = () => {
     handleNodeCut,
     handleNodeDeleteSelected,
     handleNodePaste,
+    handleNodeCancelRunningStatus,
+    handleNodesCancelSelected,
   }
 }

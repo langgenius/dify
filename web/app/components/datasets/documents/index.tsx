@@ -5,7 +5,6 @@ import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { debounce, groupBy, omit } from 'lodash-es'
-// import Link from 'next/link'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import List from './list'
 import s from './style.module.css'
@@ -20,7 +19,7 @@ import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selec
 import type { NotionPage } from '@/models/common'
 import type { CreateDocumentReq } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
-
+import RetryButton from '@/app/components/base/retry-button'
 // Custom page count is not currently supported.
 const limit = 15
 
@@ -198,7 +197,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         <p className={s.desc}>{t('datasetDocuments.list.desc')}</p>
       </div>
       <div className='flex flex-col px-6 py-4 flex-1'>
-        <div className='flex items-center justify-between flex-wrap gap-y-2 '>
+        <div className='flex items-center justify-between flex-wrap'>
           <Input
             showPrefix
             wrapperClassName='!w-[200px]'
@@ -206,13 +205,16 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             onChange={debounce(setSearchValue, 500)}
             value={searchValue}
           />
-          {embeddingAvailable && (
-            <Button type='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px] !shrink-0'>
-              <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
-              {isDataSourceNotion && t('datasetDocuments.list.addPages')}
-              {!isDataSourceNotion && t('datasetDocuments.list.addFile')}
-            </Button>
-          )}
+          <div className='flex gap-2 justify-center items-center !h-8'>
+            <RetryButton datasetId={datasetId} />
+            {embeddingAvailable && (
+              <Button type='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px] !shrink-0'>
+                <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
+                {isDataSourceNotion && t('datasetDocuments.list.addPages')}
+                {!isDataSourceNotion && t('datasetDocuments.list.addFile')}
+              </Button>
+            )}
+          </div>
         </div>
         {isLoading
           ? <Loading type='app' />
