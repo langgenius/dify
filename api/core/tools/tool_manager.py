@@ -17,7 +17,7 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolParameter,
 )
-from core.tools.entities.user_entities import UserToolProvider
+from core.tools.entities.user_entities import UserToolProvider, UserToolProviderTypeLiteral
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
@@ -33,7 +33,7 @@ from core.tools.utils.configuration import (
 from core.utils.module_import_helper import load_single_subclass_from_source
 from core.workflow.nodes.tool.entities import ToolEntity
 from extensions.ext_database import db
-from models.tools import ApiToolProvider, BuiltinToolProvider
+from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
@@ -430,30 +430,38 @@ class ToolManager:
         return cls._builtin_tools_labels[tool_name]
 
     @classmethod
-    def user_list_providers(cls, user_id: str, tenant_id: str) -> list[UserToolProvider]:
+    def user_list_providers(cls, user_id: str, tenant_id: str, typ: UserToolProviderTypeLiteral) -> list[UserToolProvider]:
         result_providers: dict[str, UserToolProvider] = {}
 
-        # get builtin providers
-        builtin_providers = cls.list_builtin_providers()
-        
-        # get db builtin providers
-        db_builtin_providers: list[BuiltinToolProvider] = db.session.query(BuiltinToolProvider). \
-            filter(BuiltinToolProvider.tenant_id == tenant_id).all()
+        filters = []
+        if not typ:
+            filters.extend(['builtin', 'api', 'workflow'])
+        else:
+            filters.append(typ)
 
-        find_db_builtin_provider = lambda provider: next(
-            (x for x in db_builtin_providers if x.provider == provider),
-            None
-        )
+        if 'builtin' in filters:
 
-        # append builtin providers
-        for provider in builtin_providers:
-            user_provider = ToolTransformService.builtin_provider_to_user_provider(
-                provider_controller=provider,
-                db_provider=find_db_builtin_provider(provider.identity.name),
-                decrypt_credentials=False
+            # get builtin providers
+            builtin_providers = cls.list_builtin_providers()
+            
+            # get db builtin providers
+            db_builtin_providers: list[BuiltinToolProvider] = db.session.query(BuiltinToolProvider). \
+                filter(BuiltinToolProvider.tenant_id == tenant_id).all()
+
+            find_db_builtin_provider = lambda provider: next(
+                (x for x in db_builtin_providers if x.provider == provider),
+                None
             )
 
-            result_providers[provider.identity.name] = user_provider
+            # append builtin providers
+            for provider in builtin_providers:
+                user_provider = ToolTransformService.builtin_provider_to_user_provider(
+                    provider_controller=provider,
+                    db_provider=find_db_builtin_provider(provider.identity.name),
+                    decrypt_credentials=False
+                )
+
+                result_providers[provider.identity.name] = user_provider
 
         # # get model tool providers
         # model_providers = cls.list_model_providers(tenant_id=tenant_id)
@@ -465,19 +473,35 @@ class ToolManager:
         #     result_providers[f'model_provider.{provider.identity.name}'] = user_provider
 
         # get db api providers
-        db_api_providers: list[ApiToolProvider] = db.session.query(ApiToolProvider). \
-            filter(ApiToolProvider.tenant_id == tenant_id).all()
 
-        for db_api_provider in db_api_providers:
-            provider_controller = ToolTransformService.api_provider_to_controller(
-                db_provider=db_api_provider,
-            )
-            user_provider = ToolTransformService.api_provider_to_user_provider(
-                provider_controller=provider_controller,
-                db_provider=db_api_provider,
-                decrypt_credentials=False
-            )
-            result_providers[db_api_provider.name] = user_provider
+        if 'api' in filters:
+            db_api_providers: list[ApiToolProvider] = db.session.query(ApiToolProvider). \
+                filter(ApiToolProvider.tenant_id == tenant_id).all()
+
+            for db_api_provider in db_api_providers:
+                provider_controller = ToolTransformService.api_provider_to_controller(
+                    db_provider=db_api_provider,
+                )
+                user_provider = ToolTransformService.api_provider_to_user_provider(
+                    provider_controller=provider_controller,
+                    db_provider=db_api_provider,
+                    decrypt_credentials=False
+                )
+                result_providers[f'api_provider.{db_api_provider.name}'] = user_provider
+
+        if 'workflow' in filters:
+            # get workflow providers
+            workflow_providers: list[WorkflowToolProvider] = db.session.query(WorkflowToolProvider). \
+                filter(WorkflowToolProvider.tenant_id == tenant_id).all()
+            
+            for db_workflow_provider in workflow_providers:
+                provider_controller = ToolTransformService.workflow_provider_to_controller(
+                    db_provider=db_workflow_provider,
+                )
+                user_provider = ToolTransformService.workflow_provider_to_user_provider(
+                    provider_controller=provider_controller,
+                )
+                result_providers[f'workflow_provider.{db_workflow_provider.name}'] = user_provider
 
         return BuiltinToolProviderSort.sort(list(result_providers.values()))
 

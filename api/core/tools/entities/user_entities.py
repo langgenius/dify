@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -14,6 +14,8 @@ class UserTool(BaseModel):
     label: I18nObject # label
     description: I18nObject
     parameters: Optional[list[ToolParameter]]
+
+UserToolProviderTypeLiteral = Optional[Literal['builtin', 'model', 'api', 'workflow']]
 
 class UserToolProvider(BaseModel):
     class ProviderType(Enum):

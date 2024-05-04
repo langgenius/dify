@@ -11,9 +11,10 @@ from core.tools.entities.user_entities import UserTool, UserToolProvider
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.provider.model_tool_provider import ModelToolProviderController
+from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool.tool import Tool
 from core.tools.utils.configuration import ToolConfigurationManager
-from models.tools import ApiToolProvider, BuiltinToolProvider
+from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +135,41 @@ class ToolTransformService:
         )
 
         return controller
+    
+    @staticmethod
+    def workflow_provider_to_controller(
+        db_provider: WorkflowToolProvider
+    ) -> WorkflowToolProviderController:
+        """
+        convert provider controller to provider
+        """
+        return WorkflowToolProviderController.from_db(db_provider)
+    
+    @staticmethod
+    def workflow_provider_to_user_provider(
+        provider_controller: WorkflowToolProviderController
+    ):
+        """
+        convert provider controller to user provider
+        """
+        return UserToolProvider(
+            id=provider_controller.identity.name,
+            author=provider_controller.identity.author,
+            name=provider_controller.identity.name,
+            description=I18nObject(
+                en_US=provider_controller.identity.description.en_US,
+                zh_Hans=provider_controller.identity.description.zh_Hans,
+            ),
+            icon=provider_controller.identity.icon,
+            label=I18nObject(
+                en_US=provider_controller.identity.label.en_US,
+                zh_Hans=provider_controller.identity.label.zh_Hans,
+            ),
+            type=UserToolProvider.ProviderType.WORKFLOW,
+            masked_credentials={},
+            is_team_authorization=True,
+            tools=[]
+        )
 
     @staticmethod
     def api_provider_to_user_provider(

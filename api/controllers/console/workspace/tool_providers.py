@@ -25,7 +25,11 @@ class ToolProviderListApi(Resource):
         user_id = current_user.id
         tenant_id = current_user.current_tenant_id
 
-        return ToolManageService.list_tool_providers(user_id, tenant_id)
+        req = reqparse.RequestParser()
+        req.add_argument('type', type=str, choices=['builtin', 'model', 'api', 'workflow'], required=False, nullable=True, location='args')
+        args = req.parse_args()
+
+        return ToolManageService.list_tool_providers(user_id, tenant_id, args.get('type', None))
 
 class ToolBuiltinProviderListToolsApi(Resource):
     @setup_required
