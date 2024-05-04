@@ -12,7 +12,7 @@ help:
     en_US: Get your API Key from Lepton AI
     zh_Hans: 从 Lepton AI 获取 API Key
   url:
-    en_US: https://dashboard.lepton.ai/workspace/mm1k227j/settings/api-tokens
+    en_US: https://dashboard.lepton.ai
 supported_model_types:
   - llm
 configurate_methods:
