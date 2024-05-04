@@ -14,6 +14,7 @@ from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.tools.model_tools_manage_service import ModelToolManageService
 from services.tools.tools_manage_service import ToolManageService
+from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 
 class ToolProviderListApi(Resource):
@@ -328,6 +329,7 @@ class ToolWorkflowProviderCreateApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
         
+        return WorkflowToolManageService.create_workflow_tool()
 
 class ToolWorkflowProviderUpdateApi(Resource):
     @setup_required
@@ -336,6 +338,8 @@ class ToolWorkflowProviderUpdateApi(Resource):
     def post(self):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
+        
+        return WorkflowToolManageService.update_workflow_tool()
 
 class ToolWorkflowProviderDeleteApi(Resource):
     @setup_required
@@ -344,6 +348,8 @@ class ToolWorkflowProviderDeleteApi(Resource):
     def post(self):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
+        
+        return WorkflowToolManageService.delete_workflow_tool()
         
 class ToolWorkflowProviderGetApi(Resource):
     @setup_required
@@ -354,6 +360,8 @@ class ToolWorkflowProviderGetApi(Resource):
         tenant_id = current_user.current_tenant_id
 
         parser = reqparse.RequestParser()
+
+        return jsonable_encoder(WorkflowToolManageService.get_workflow_tool())
 
 class ToolBuiltinListApi(Resource):
     @setup_required
@@ -377,6 +385,19 @@ class ToolApiListApi(Resource):
         tenant_id = current_user.current_tenant_id
 
         return jsonable_encoder([provider.to_dict() for provider in ApiToolManageService.list_api_tools(
+            user_id,
+            tenant_id,
+        )])
+    
+class ToolWorkflowListApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        return jsonable_encoder([provider.to_dict() for provider in WorkflowToolManageService.list_workflow_tools(
             user_id,
             tenant_id,
         )])
@@ -414,3 +435,4 @@ api.add_resource(ToolWorkflowProviderGetApi, '/workspaces/current/tool-provider/
 
 api.add_resource(ToolBuiltinListApi, '/workspaces/current/tools/builtin')
 api.add_resource(ToolApiListApi, '/workspaces/current/tools/api')
+api.add_resource(ToolWorkflowListApi, '/workspaces/current/tools/api')
