@@ -52,6 +52,8 @@ const translation = {
     jinjaEditorPlaceholder: 'Wprowadź \'/\' lub \'{\' aby wstawić zmienną',
     viewOnly: 'Tylko Podgląd',
     showRunHistory: 'Pokaż Historię Uruchomień',
+    enableJinja: 'Włącz wsparcie dla szablonów Jinja',
+    learnMore: 'Czytaj więcej',
   },
   errorMsg: {
     fieldRequired: '{{field}} jest wymagane',
