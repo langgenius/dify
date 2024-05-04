@@ -1,19 +1,16 @@
-import os
-import cv2
-import click
 import logging
+import os
 import tempfile
-import numpy as np
 from typing import Optional
 
+import click
+import cv2
+import numpy as np
 from skimage.metrics import structural_similarity as ssim
+
 from extensions.ext_storage import storage
 from models.model import UploadFile
-from services.errors.video import (
-    NoVideoUploadedServiceError,
-    VideoNokeyframesExtractedError,
-    FailedToWriteImageError
-)
+from services.errors.video import FailedToWriteImageError, NoVideoUploadedServiceError, VideoNokeyframesExtractedError
 
 
 class ExtractVideoFrames:

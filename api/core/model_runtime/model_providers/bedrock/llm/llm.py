@@ -36,7 +36,7 @@ from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
-    VideoPromptMessageContent
+    VideoPromptMessageContent,
 )
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.errors.invoke import (

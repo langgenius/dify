@@ -4,14 +4,12 @@ import tempfile
 from typing import Optional, Union
 
 from moviepy.editor import VideoFileClip
-from extensions.ext_storage import storage
 from werkzeug.datastructures import FileStorage
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from models.model import App, AppMode, UploadFile, EndUser, Account
-from services.file_service import VIDEO_EXTENSIONS
-from services.file_service import FileService
+from extensions.ext_storage import storage
+from models.model import Account, App, AppMode, EndUser, UploadFile
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -20,6 +18,7 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
     VideoConvertToAudioError,
 )
+from services.file_service import VIDEO_EXTENSIONS, FileService
 
 FILE_SIZE = 30
 FILE_SIZE_LIMIT = FILE_SIZE * 1024 * 1024
