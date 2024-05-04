@@ -242,4 +242,4 @@ docker compose up -d
 
 ## ライセンス
 
-このリポジトリは、Apache 2.0にいくつかの追加制限を加えた[Difyオープンソースライセンス](LICENSE)の下で利用可能です。
+このリポジトリは、Dify Open Source License にいくつかの追加制限を加えた[Difyオープンソースライセンス](LICENSE)の下で利用可能です。
