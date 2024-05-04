@@ -633,5 +633,15 @@ class ParameterExtractorNode(LLMNode):
         :param node_data: node data
         :return:
         """
-        return {
+        node_data = node_data
+
+        variable_mapping = {
+            'query': node_data.query
         }
+
+        if node_data.instruction:
+            variable_template_parser = VariableTemplateParser(template=node_data.instruction)
+            for selector in variable_template_parser.extract_variable_selectors():
+                variable_mapping[selector.variable] = selector.value_selector
+
+        return variable_mapping
