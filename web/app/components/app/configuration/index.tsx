@@ -301,6 +301,11 @@ const Configuration: FC = () => {
   const [visionConfig, doSetVisionConfig] = useState({
     enabled: false,
     number_limits: 2,
+    extract_audio: 'enabled',
+    extract_video: 'enabled',
+    similarity_threshold: 0.7,
+    blur_threshold: 800,
+    max_collect_frames: 100,
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
   })
@@ -309,6 +314,11 @@ const Configuration: FC = () => {
     doSetVisionConfig({
       enabled: config.enabled || false,
       number_limits: config.number_limits || 2,
+      extract_video: config.extract_video || 'enabled',
+      extract_audio: config.extract_audio || 'enabled',
+      similarity_threshold: config.similarity_threshold || 0.7,
+      blur_threshold: config.blur_threshold || 800,
+      max_collect_frames: config.max_collect_frames || 100,
       detail: config.detail || Resolution.low,
       transfer_methods: config.transfer_methods || [TransferMethod.local_file],
     })
@@ -503,8 +513,14 @@ const Configuration: FC = () => {
           completionParams: model.completion_params,
         }
 
-        if (modelConfig.file_upload)
-          handleSetVisionConfig(modelConfig.file_upload.image, true)
+        if (modelConfig.file_upload) {
+          const mergedConfig = {
+            ...modelConfig.file_upload.image,
+            ...modelConfig.file_upload.video,
+          }
+
+          handleSetVisionConfig(mergedConfig, true)
+        }
 
         syncToPublishedConfig(config)
         setPublishedConfig(config)
@@ -615,7 +631,19 @@ const Configuration: FC = () => {
         } as any,
       },
       file_upload: {
-        image: visionConfig,
+        image: {
+          enabled: visionConfig.enabled,
+          number_limits: visionConfig.number_limits,
+          detail: visionConfig.detail,
+          transfer_methods: visionConfig.transfer_methods,
+        },
+        video: {
+          extract_audio: visionConfig.extract_audio,
+          extract_video: visionConfig.extract_video,
+          similarity_threshold: visionConfig.similarity_threshold,
+          blur_threshold: visionConfig.blur_threshold,
+          max_collect_frames: visionConfig.max_collect_frames,
+        },
       },
     }
 

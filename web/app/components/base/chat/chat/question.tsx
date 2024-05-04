@@ -10,6 +10,7 @@ import { QuestionTriangle } from '@/app/components/base/icons/src/vender/solid/g
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import ImageGallery from '@/app/components/base/image-gallery'
+import VideoGallery from '@/app/components/base/video-gallery'
 
 type QuestionProps = {
   item: ChatItem
@@ -19,23 +20,17 @@ const Question: FC<QuestionProps> = ({
   item,
   questionIcon,
 }) => {
-  const {
-    content,
-    message_files,
-  } = item
-
-  const imgSrcs = message_files?.length ? message_files.map(item => item.url) : []
+  const { content, message_files } = item
+  const mediaSrcs = message_files?.length ? message_files.map(item => item.url) : []
+  const mediaType = message_files?.length ? message_files.map(item => item.type)[0] : ''
 
   return (
     <div className='flex justify-end mb-2 last:mb-0 pl-10'>
       <div className='group relative mr-4'>
         <QuestionTriangle className='absolute -right-2 top-0 w-2 h-3 text-[#D1E9FF]/50' />
         <div className='px-4 py-3 bg-[#D1E9FF]/50 rounded-b-2xl rounded-tl-2xl text-sm text-gray-900'>
-          {
-            !!imgSrcs.length && (
-              <ImageGallery srcs={imgSrcs} />
-            )
-          }
+          {!!mediaSrcs.length && mediaType === 'image' && (<ImageGallery srcs={mediaSrcs} />)}
+          {!!mediaSrcs.length && mediaType === 'video' && (<VideoGallery srcs={mediaSrcs} />)}
           <Markdown content={content} />
         </div>
         <div className='mt-1 h-[18px]' />

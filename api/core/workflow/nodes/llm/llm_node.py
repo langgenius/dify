@@ -464,6 +464,8 @@ class LLMNode(BaseNode):
                 for content_item in prompt_message.content:
                     if vision_enabled and content_item.type == PromptMessageContentType.IMAGE:
                         prompt_message_content.append(content_item)
+                    elif vision_enabled and content_item.type == PromptMessageContentType.VIDEO:
+                        prompt_message_content.append(content_item)
                     elif content_item.type == PromptMessageContentType.TEXT:
                         prompt_message_content.append(content_item)
 

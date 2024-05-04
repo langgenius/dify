@@ -250,6 +250,13 @@ const WorkflowWrap = memo(() => {
         number_limits: features.file_upload?.image.number_limits || 3,
         transfer_methods: features.file_upload?.image.transfer_methods || ['local_file', 'remote_url'],
       },
+      video: {
+        extract_audio: features.file_upload?.video?.extract_audio || 'enabled',
+        extract_video: features.file_upload?.video?.extract_video || 'enabled',
+        similarity_threshold: features.file_upload?.video?.similarity_threshold || 0.7,
+        max_collect_frames: features.file_upload?.video?.max_collect_frames || 20,
+        blur_threshold: features.file_upload?.video?.blur_threshold || 800,
+      },
     },
     opening: {
       enabled: !!features.opening_statement,

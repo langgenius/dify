@@ -15,6 +15,7 @@ class FileApi(WebApiResource):
     def post(self, app_model, end_user):
         # get file from request
         file = request.files['file']
+        source = request.args.get('source')
 
         # check file
         if 'file' not in request.files:
@@ -23,7 +24,7 @@ class FileApi(WebApiResource):
         if len(request.files) > 1:
             raise TooManyFilesError()
         try:
-            upload_file = FileService.upload_file(file, end_user)
+            upload_file = FileService.upload_file(file=file, user=end_user, tenant_id=app_model.tenant_id, source=source)
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:

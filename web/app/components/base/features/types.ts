@@ -30,6 +30,13 @@ export type FileUpload = {
     number_limits?: number
     transfer_methods?: TransferMethod[]
   }
+  video?: EnabledOrDisabled & {
+    extract_audio: string
+    extract_video: string
+    similarity_threshold: number
+    blur_threshold: number
+    max_collect_frames: number
+  }
 }
 
 export enum FeatureEnum {

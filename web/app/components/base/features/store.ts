@@ -46,6 +46,13 @@ export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
           number_limits: 3,
           transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
         },
+        video: {
+          extract_audio: 'enabled',
+          extract_video: 'enabled',
+          similarity_threshold: 0.7,
+          max_collect_frames: 20,
+          blur_threshold: 800,
+        },
       },
     },
   }

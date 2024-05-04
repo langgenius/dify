@@ -51,6 +51,7 @@ class PromptMessageContentType(Enum):
     """
     TEXT = 'text'
     IMAGE = 'image'
+    VIDEO = 'video'
 
 
 class PromptMessageContent(BaseModel):
@@ -78,6 +79,18 @@ class ImagePromptMessageContent(PromptMessageContent):
 
     type: PromptMessageContentType = PromptMessageContentType.IMAGE
     detail: DETAIL = DETAIL.LOW
+
+
+class VideoPromptMessageContent(PromptMessageContent):
+    """
+    Model class for video prompt message content.
+    """
+    class DETAIL(Enum):
+        LOW = 'low'
+        HIGH = 'high'
+    type: PromptMessageContentType = PromptMessageContentType.VIDEO
+    detail: DETAIL = DETAIL.LOW
+    description: Optional[str] = None
 
 
 class PromptMessage(ABC, BaseModel):
@@ -136,6 +149,7 @@ class AssistantPromptMessage(PromptMessage):
             return False
 
         return True
+
 
 class SystemPromptMessage(PromptMessage):
     """

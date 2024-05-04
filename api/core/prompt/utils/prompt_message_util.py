@@ -6,6 +6,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageContentType,
     PromptMessageRole,
     TextPromptMessageContent,
+    VideoPromptMessageContent
 )
 from core.prompt.simple_prompt_transform import ModelMode
 
@@ -38,6 +39,16 @@ class PromptMessageUtil:
                         if content.type == PromptMessageContentType.TEXT:
                             content = cast(TextPromptMessageContent, content)
                             text += content.data
+                        elif content.type == PromptMessageContentType.VIDEO:
+                            content = cast(VideoPromptMessageContent, content)
+                            if content.description:
+                                text += content.description
+
+                            files.append({
+                                "type": 'image',
+                                "data": content.data[:10] + '...[TRUNCATED]...' + content.data[-10:],
+                                "detail": content.detail.value
+                            })
                         else:
                             content = cast(ImagePromptMessageContent, content)
                             files.append({
@@ -62,6 +73,16 @@ class PromptMessageUtil:
                     if content.type == PromptMessageContentType.TEXT:
                         content = cast(TextPromptMessageContent, content)
                         text += content.data
+                    elif content.type == PromptMessageContentType.VIDEO:
+                        content = cast(VideoPromptMessageContent, content)
+                        if content.description:
+                            text += content.description
+
+                        files.append({
+                            "type": 'image',
+                            "data": content.data[:10] + '...[TRUNCATED]...' + content.data[-10:],
+                            "detail": content.detail.value
+                        })
                     else:
                         content = cast(ImagePromptMessageContent, content)
                         files.append({

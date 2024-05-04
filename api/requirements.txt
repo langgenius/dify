@@ -83,3 +83,7 @@ pydantic~=1.10.0
 pgvecto-rs==0.1.4
 firecrawl-py==0.0.5
 oss2==2.15.0
+opencv-python-headless==4.9.0.80
+scikit-image==0.23.1
+scikit-learn==1.2.2
+moviepy~=1.0.3

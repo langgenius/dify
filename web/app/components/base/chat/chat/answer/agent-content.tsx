@@ -7,6 +7,7 @@ import type {
 import { Markdown } from '@/app/components/base/markdown'
 import Thought from '@/app/components/app/chat/thought'
 import ImageGallery from '@/app/components/base/image-gallery'
+import VideoGallery from '@/app/components/base/video-gallery'
 import type { Emoji } from '@/app/components/tools/types'
 
 type AgentContentProps = {
@@ -28,6 +29,12 @@ const AgentContent: FC<AgentContentProps> = ({
     if (!list)
       return []
     return list.filter(file => file.type === 'image' && file.belongs_to === 'assistant')
+  }
+
+  const getVideos = (list?: VisionFile[]) => {
+    if (!list)
+      return []
+    return list.filter(file => file.type === 'video' && file.belongs_to === 'assistant')
   }
 
   if (annotation?.logAnnotation)
@@ -52,6 +59,10 @@ const AgentContent: FC<AgentContentProps> = ({
 
           {getImgs(thought.message_files).length > 0 && (
             <ImageGallery srcs={getImgs(thought.message_files).map(file => file.url)} />
+          )}
+
+          {getVideos(thought.message_files).length > 0 && (
+            <VideoGallery srcs={getVideos(thought.message_files).map(file => file.url)} />
           )}
         </div>
       ))}

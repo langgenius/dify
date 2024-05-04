@@ -77,7 +77,19 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
       } as any,
     },
     file_upload: {
-      image: visionConfig,
+      image: {
+        enabled: visionConfig.enabled,
+        number_limits: visionConfig.number_limits,
+        detail: visionConfig.detail,
+        transfer_methods: visionConfig.transfer_methods,
+      },
+      video: {
+        extract_audio: visionConfig.extract_audio,
+        extract_video: visionConfig.extract_video,
+        similarity_threshold: visionConfig.similarity_threshold,
+        blur_threshold: visionConfig.blur_threshold,
+        max_collect_frames: visionConfig.max_collect_frames,
+      },
     },
   }
   const {

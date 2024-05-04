@@ -124,8 +124,8 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
           list={files}
           onRemove={onRemove}
           onReUpload={onReUpload}
-          onImageLinkLoadError={onImageLinkLoadError}
-          onImageLinkLoadSuccess={onImageLinkLoadSuccess}
+          onMediaLinkLoadError={onImageLinkLoadError}
+          onMediaLinkLoadSuccess={onImageLinkLoadSuccess}
         />
       </div>
       <div className={`grid gap-1 ${settings.transfer_methods.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>

@@ -21,6 +21,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
+    VideoPromptMessageContent
 )
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, I18nObject, ModelType, PriceConfig
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -813,6 +814,22 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                             }
                         }
                         sub_messages.append(sub_message_dict)
+                    elif message_content.type == PromptMessageContentType.VIDEO:
+                        if message_content.description:
+                            message_content = cast(VideoPromptMessageContent, message_content)
+                            sub_text_message_dict = {
+                                "type": "text",
+                                "text": message_content.description
+                            }
+                            sub_messages.append(sub_text_message_dict)
+                        sub_image_message_dict = {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": message_content.data,
+                                "detail": message_content.detail.value
+                            }
+                        }
+                        sub_messages.append(sub_image_message_dict)
 
                 message_dict = {"role": "user", "content": sub_messages}
         elif isinstance(message, AssistantPromptMessage):

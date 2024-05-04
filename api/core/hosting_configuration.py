@@ -46,8 +46,8 @@ class HostingConfiguration:
     def init_app(self, app: Flask) -> None:
         config = app.config
 
-        if config.get('EDITION') != 'CLOUD':
-            return
+        # if config.get('EDITION') != 'CLOUD':
+        #     return
 
         self.provider_map["azure_openai"] = self.init_azure_openai(config)
         self.provider_map["openai"] = self.init_openai(config)

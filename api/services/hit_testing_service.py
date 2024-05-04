@@ -35,8 +35,7 @@ class HitTestingService:
                     "content": query,
                     "tsne_position": {'x': 0, 'y': 0},
                 },
-                "records": [],
-                "elapsed_time": 0
+                "records": []
             }
 
         start = time.perf_counter()

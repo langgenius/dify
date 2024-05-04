@@ -20,3 +20,7 @@ class ProviderNotSupportTextToSpeechServiceError(Exception):
 
 class ProviderNotSupportTextToSpeechLanageServiceError(Exception):
     pass
+
+
+class VideoConvertToAudioError(Exception):
+    pass

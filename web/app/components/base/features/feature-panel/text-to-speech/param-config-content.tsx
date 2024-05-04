@@ -31,12 +31,12 @@ const VoiceParamConfig = ({
   const text2speech = useFeatures(state => state.features.text2speech)
   const featuresStore = useFeaturesStore()
 
-  const languageItem = languages.find(item => item.value === text2speech.language)
+  const languageItem = languages.find(item => item.value === text2speech?.language)
   const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
 
   const language = languageItem?.value
   const voiceItems = useSWR({ appId, language }, fetchAppVoices).data
-  const voiceItem = voiceItems?.find(item => item.value === text2speech.voice)
+  const voiceItem = voiceItems?.find(item => item.value === text2speech?.voice)
   const localVoicePlaceholder = voiceItem?.name || t('common.placeholder.select')
 
   const handleChange = (value: Record<string, string>) => {
@@ -115,7 +115,7 @@ const VoiceParamConfig = ({
                           <>
                             <span
                               className={classNames('block', selected && 'font-normal')}>{t(`common.voice.language.${(item.value).toString().replace('-', '')}`)}</span>
-                            {(selected || item.value === text2speech.language) && (
+                            {(selected || item.value === text2speech?.language) && (
                               <span
                                 className={classNames(
                                   'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
@@ -176,7 +176,7 @@ const VoiceParamConfig = ({
                         {({ /* active, */ selected }) => (
                           <>
                             <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
-                            {(selected || item.value === text2speech.voice) && (
+                            {(selected || item.value === text2speech?.voice) && (
                               <span
                                 className={classNames(
                                   'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',

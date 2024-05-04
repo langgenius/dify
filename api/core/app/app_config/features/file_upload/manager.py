@@ -12,6 +12,8 @@ class FileUploadConfigManager:
         :param config: model config args
         :param is_vision: if True, the feature is vision feature
         """
+        video_config = None
+        image_config = None
         file_upload_dict = config.get('file_upload')
         if file_upload_dict:
             if 'image' in file_upload_dict and file_upload_dict['image']:
@@ -24,9 +26,21 @@ class FileUploadConfigManager:
                     if is_vision:
                         image_config['detail'] = file_upload_dict['image']['detail']
 
-                    return FileExtraConfig(
-                        image_config=image_config
-                    )
+            if 'video' in file_upload_dict and file_upload_dict['video']:
+                video_config = dict()
+                if file_upload_dict['video']['extract_video'] == 'enabled':
+                    video_config.update({
+                        'extract_video': file_upload_dict['video']['extract_video'],
+                        'max_collect_frames': file_upload_dict['video']['max_collect_frames'],
+                        'similarity_threshold': file_upload_dict['video']['similarity_threshold'],
+                        'blur_threshold': file_upload_dict['video']['blur_threshold']
+                    })
+                if file_upload_dict['video']['extract_audio'] == 'enabled':
+                    video_config.update({
+                            'extract_audio': file_upload_dict['video']['extract_audio']
+                        })
+
+            return FileExtraConfig(image_config=image_config, video_config=video_config)
 
         return None
 

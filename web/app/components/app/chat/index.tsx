@@ -144,8 +144,9 @@ const Chat: FC<IChatProps> = ({
   const handleSend = (q?: string) => {
     if (!valid(q) || (checkCanSend && !checkCanSend()))
       return
+
     onSend(q || query, files.filter(file => file.progress !== -1).map(fileItem => ({
-      type: 'image',
+      type: fileItem.file?.type?.split('/')[0] ?? 'image',
       transfer_method: fileItem.type,
       url: fileItem.url,
       upload_file_id: fileItem.fileId,
@@ -378,8 +379,8 @@ const Chat: FC<IChatProps> = ({
                     list={files}
                     onRemove={onRemove}
                     onReUpload={onReUpload}
-                    onImageLinkLoadSuccess={onImageLinkLoadSuccess}
-                    onImageLinkLoadError={onImageLinkLoadError}
+                    onMediaLinkLoadSuccess={onImageLinkLoadSuccess}
+                    onMediaLinkLoadError={onImageLinkLoadError}
                   />
                 </div>
               </>

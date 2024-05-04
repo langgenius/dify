@@ -1,17 +1,24 @@
 import io
-from typing import Optional
+import os
+import tempfile
+from typing import Optional, Union
 
+from moviepy.editor import VideoFileClip
+from extensions.ext_storage import storage
 from werkzeug.datastructures import FileStorage
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, UploadFile, EndUser, Account
+from services.file_service import VIDEO_EXTENSIONS
+from services.file_service import FileService
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
     ProviderNotSupportSpeechToTextServiceError,
     ProviderNotSupportTextToSpeechServiceError,
     UnsupportedAudioTypeServiceError,
+    VideoConvertToAudioError,
 )
 
 FILE_SIZE = 30
@@ -21,8 +28,13 @@ ALLOWED_EXTENSIONS = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm', 'amr']
 
 class AudioService:
     @classmethod
-    def transcript_asr(cls, app_model: App, file: FileStorage, end_user: Optional[str] = None):
-        if app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
+    def transcript_asr(cls, app_model: App, file: Union[FileStorage, UploadFile], end_user: Union[Account, EndUser] = None):
+        if isinstance(file, UploadFile):
+            extension = file.extension.lower()
+        else:
+            extension = file.mimetype.split('/')[1].lower()
+
+        if app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value] and extension not in VIDEO_EXTENSIONS:
             workflow = app_model.workflow
             if workflow is None:
                 raise ValueError("Speech to text is not enabled")
@@ -30,20 +42,40 @@ class AudioService:
             features_dict = workflow.features_dict
             if 'speech_to_text' not in features_dict or not features_dict['speech_to_text'].get('enabled'):
                 raise ValueError("Speech to text is not enabled")
-        else:
-            app_model_config: AppModelConfig = app_model.app_model_config
-
-            if not app_model_config.speech_to_text_dict['enabled']:
-                raise ValueError("Speech to text is not enabled")
 
         if file is None:
             raise NoAudioUploadedServiceError()
 
-        extension = file.mimetype
-        if extension not in [f'audio/{ext}' for ext in ALLOWED_EXTENSIONS]:
+        if extension in ALLOWED_EXTENSIONS:
+            if extension in VIDEO_EXTENSIONS:
+                try:
+                    if isinstance(file, FileStorage):
+                        upload_file = FileService.upload_file(file=file, user=end_user)
+                    else:
+                        upload_file = file
+
+                    # Download the video file to local temp directory
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        media_file_path = temp_dir + '/' + os.path.basename(upload_file.key)
+                        file_name = os.path.basename(media_file_path).split('.')[0]
+                        file_path = os.path.dirname(media_file_path)
+
+                        if not os.path.isfile(media_file_path):
+                            storage.download(filename=upload_file.key, target_filepath=media_file_path)
+
+                        # convert the video to audio
+                        video_clip = VideoFileClip(media_file_path)
+                        audio_clip = video_clip.audio
+                        audio_clip.write_audiofile(f'{file_path}/{file_name}.mp3', codec='libmp3lame')
+                        with open(f'{file_path}/{file_name}.mp3', 'rb') as audio_file:
+                            file_content = audio_file.read()
+                except Exception as e:
+                    raise VideoConvertToAudioError(str(e))
+            else:
+                file_content = file.read()
+        else:
             raise UnsupportedAudioTypeServiceError()
 
-        file_content = file.read()
         file_size = len(file_content)
 
         if file_size > FILE_SIZE_LIMIT:

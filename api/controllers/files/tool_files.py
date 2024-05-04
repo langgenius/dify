@@ -20,10 +20,10 @@ class ToolFilePreviewApi(Resource):
         args = parser.parse_args()
 
         if not ToolFileManager.verify_file(file_id=file_id,
-                                            timestamp=args['timestamp'],
-                                            nonce=args['nonce'],
-                                            sign=args['sign'],
-        ):
+                                           timestamp=args['timestamp'],
+                                           nonce=args['nonce'],
+                                           sign=args['sign'],
+                                           ):
             raise Forbidden('Invalid request.')
         
         try:

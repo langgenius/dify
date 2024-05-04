@@ -235,6 +235,11 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   visionConfig: {
     enabled: false,
     number_limits: 2,
+    similarity_threshold: 0.7,
+    extract_video: 'enabled',
+    extract_audio: 'enabled',
+    blur_threshold: 800,
+    max_collect_frames: 20,
     detail: Resolution.low,
     transfer_methods: [TransferMethod.remote_url],
   },

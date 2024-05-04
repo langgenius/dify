@@ -2,46 +2,61 @@ import datetime
 import hashlib
 import uuid
 from collections.abc import Generator
-from typing import Union
+from typing import Optional, Union
 
 from flask import current_app
 from flask_login import current_user
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
-from core.file.upload_file_parser import UploadFileParser
-from core.rag.extractor.extract_processor import ExtractProcessor
+from core.file.upload_file_parser import UploadFileParser, UNSTRUSTURED_ALLOWED_EXTENSIONS, IMAGE_EXTENSIONS, \
+    ALLOWED_EXTENSIONS, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.account import Account
+from models.account import Account, TenantAccountJoin
 from models.model import EndUser, UploadFile
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
-
-IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
-IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
-
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'xls', 'docx', 'csv']
-UNSTRUSTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'xls',
-                                   'docx', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml', 'epub']
 
 PREVIEW_WORDS_LIMIT = 3000
 
 
 class FileService:
-
     @staticmethod
-    def upload_file(file: FileStorage, user: Union[Account, EndUser], only_image: bool = False) -> UploadFile:
-        extension = file.filename.split('.')[-1]
-        etl_type = current_app.config['ETL_TYPE']
-        allowed_extensions = UNSTRUSTURED_ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS if etl_type == 'Unstructured' \
-            else ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS
-        if extension.lower() not in allowed_extensions:
-            raise UnsupportedFileTypeError()
-        elif only_image and extension.lower() not in IMAGE_EXTENSIONS:
-            raise UnsupportedFileTypeError()
+    def upload_file(file: Union[FileStorage, bytes], tenant_id: str, user: Union[Account, EndUser] = None, only_image: bool = False,
+                    file_name: Optional[str] = None) -> UploadFile:
+        mime_type = 'application/octet-stream'
+        if isinstance(file, FileStorage):
+            extension = file.filename.split('.')[-1]
+            etl_type = current_app.config['ETL_TYPE']
+            allowed_extensions = UNSTRUSTURED_ALLOWED_EXTENSIONS if etl_type == 'Unstructured' else ALLOWED_EXTENSIONS
+            file_extensions = allowed_extensions + VIDEO_EXTENSIONS + AUDIO_EXTENSIONS + IMAGE_EXTENSIONS
+            if not only_image and extension.lower() not in file_extensions:
+                raise UnsupportedFileTypeError("The types of uploaded files are not supported！")
+            elif only_image and extension.lower() not in IMAGE_EXTENSIONS:
+                raise UnsupportedFileTypeError("The types of uploaded image are not supported！")
 
-        # read file content
-        file_content = file.read()
+            # read file content
+            file_content = file.read()
+        else:
+            extension = file_name.split('.')[-1]
+            if extension == 'svg':
+                mime_type = 'image/svg+xml'
+            elif extension in ('md', 'txt'):
+                mime_type = 'text/plain'
+            elif extension in ('document', 'docx'):
+                mime_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            elif extension in VIDEO_EXTENSIONS:
+                mime_type = f'video/{extension}'
+            elif extension in AUDIO_EXTENSIONS:
+                mime_type = f'audio/{extension}'
+            elif extension in IMAGE_EXTENSIONS:
+                mime_type = f'image/{extension}'
+            elif extension in set(ALLOWED_EXTENSIONS + UNSTRUSTURED_ALLOWED_EXTENSIONS):
+                mime_type = f'application/{extension}'
+            else:
+                raise Forbidden("Not Support File Type.")
+
+            file_content = file
 
         # get file size
         file_size = len(file_content)
@@ -60,11 +75,15 @@ class FileService:
 
         if isinstance(user, Account):
             current_tenant_id = user.current_tenant_id
-        else:
+        elif isinstance(user, EndUser):
             # end_user
             current_tenant_id = user.tenant_id
+        else:
+            current_tenant_id = tenant_id
 
         file_key = 'upload_files/' + current_tenant_id + '/' + file_uuid + '.' + extension
+        tenant_owner = db.session.query(TenantAccountJoin).filter(TenantAccountJoin.tenant_id == tenant_id,
+                                                                  TenantAccountJoin.role == 'owner').first()
 
         # save file to storage
         storage.save(file_key, file_content)
@@ -75,12 +94,12 @@ class FileService:
             tenant_id=current_tenant_id,
             storage_type=config['STORAGE_TYPE'],
             key=file_key,
-            name=file.filename,
+            name=file.filename if isinstance(file, FileStorage) else file_name,
             size=file_size,
             extension=extension,
-            mime_type=file.mimetype,
+            mime_type=file.mimetype if isinstance(file, FileStorage) else mime_type,
             created_by_role=('account' if isinstance(user, Account) else 'end_user'),
-            created_by=user.id,
+            created_by=user.id if user else tenant_owner.account_id,
             created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
             used=False,
             hash=hashlib.sha3_256(file_content).hexdigest()
@@ -124,9 +143,9 @@ class FileService:
 
     @staticmethod
     def get_file_preview(file_id: str) -> str:
-        upload_file = db.session.query(UploadFile) \
-            .filter(UploadFile.id == file_id) \
-            .first()
+        from core.rag.extractor.extract_processor import ExtractProcessor
+
+        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
 
         if not upload_file:
             raise NotFound("File not found")
@@ -138,7 +157,7 @@ class FileService:
         if extension.lower() not in allowed_extensions:
             raise UnsupportedFileTypeError()
 
-        text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
+        text = ExtractProcessor.load_from_upload_file(upload_file=upload_file, return_text=True)
         text = text[0:PREVIEW_WORDS_LIMIT] if text else ''
 
         return text
@@ -149,16 +168,13 @@ class FileService:
         if not result:
             raise NotFound("File not found or signature is invalid")
 
-        upload_file = db.session.query(UploadFile) \
-            .filter(UploadFile.id == file_id) \
-            .first()
-
+        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
 
         # extract text from file
         extension = upload_file.extension
-        if extension.lower() not in IMAGE_EXTENSIONS:
+        if extension.lower() not in IMAGE_EXTENSIONS + VIDEO_EXTENSIONS + AUDIO_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
         generator = storage.load(upload_file.key, stream=True)
@@ -167,10 +183,7 @@ class FileService:
 
     @staticmethod
     def get_public_image_preview(file_id: str) -> tuple[Generator, str]:
-        upload_file = db.session.query(UploadFile) \
-            .filter(UploadFile.id == file_id) \
-            .first()
-
+        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
 

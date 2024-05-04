@@ -36,6 +36,7 @@ from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
+    VideoPromptMessageContent
 )
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.errors.invoke import (
@@ -345,6 +346,41 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                             }
                         }
                         sub_messages.append(sub_message_dict)
+                    elif message_content.type == PromptMessageContentType.VIDEO:
+                        if message_content.description:
+                            message_content = cast(VideoPromptMessageContent, message_content)
+                            sub_text_message_dict = {
+                                "type": "text",
+                                "text": message_content.description
+                            }
+                            sub_messages.append(sub_text_message_dict)
+                        message_content = cast(ImagePromptMessageContent, message_content)
+                        if not message_content.data.startswith("data:"):
+                            # fetch image data from url
+                            try:
+                                image_content = requests.get(message_content.data).content
+                                mime_type, _ = mimetypes.guess_type(message_content.data)
+                                base64_data = base64.b64encode(image_content).decode('utf-8')
+                            except Exception as ex:
+                                raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
+                        else:
+                            data_split = message_content.data.split(";base64,")
+                            mime_type = data_split[0].replace("data:", "")
+                            base64_data = data_split[1]
+
+                        if mime_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
+                            raise ValueError(f"Unsupported image type {mime_type}, "
+                                             f"only support image/jpeg, image/png, image/gif, and image/webp")
+
+                        sub_image_message_dict = {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": mime_type,
+                                "data": base64_data
+                            }
+                        }
+                        sub_messages.append(sub_image_message_dict)
 
                 message_dict = {"role": "user", "content": sub_messages}
         elif isinstance(message, AssistantPromptMessage):

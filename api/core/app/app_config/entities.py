@@ -188,6 +188,7 @@ class FileExtraConfig(BaseModel):
     File Upload Entity.
     """
     image_config: Optional[dict[str, Any]] = None
+    video_config: Optional[dict[str, Any]] = None
 
 
 class AppAdditionalFeatures(BaseModel):

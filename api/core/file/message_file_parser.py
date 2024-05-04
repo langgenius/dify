@@ -7,7 +7,7 @@ from core.file.file_obj import FileBelongsTo, FileTransferMethod, FileType, File
 from extensions.ext_database import db
 from models.account import Account
 from models.model import EndUser, MessageFile, UploadFile
-from services.file_service import IMAGE_EXTENSIONS
+from services.file_service import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 
 
 class MessageFileParser:
@@ -77,21 +77,53 @@ class MessageFileParser:
                             raise ValueError(error)
                     elif file_obj.transfer_method == FileTransferMethod.LOCAL_FILE:
                         # get upload file from upload_file_id
-                        upload_file = (db.session.query(UploadFile)
-                                       .filter(
+                        upload_file = db.session.query(UploadFile).filter(
                             UploadFile.id == file_obj.related_id,
                             UploadFile.tenant_id == self.tenant_id,
                             UploadFile.created_by == user.id,
-                            UploadFile.created_by_role == ('account' if isinstance(user, Account) else 'end_user'),
-                            UploadFile.extension.in_(IMAGE_EXTENSIONS)
-                        ).first())
+                            UploadFile.created_by_role == ('account' if isinstance(user, Account) else 'end_user')
+                        ).first()
 
                         # check upload file is belong to tenant and user
-                        if not upload_file:
-                            raise ValueError('Invalid upload file')
-
+                        if not upload_file and upload_file.extension not in IMAGE_EXTENSIONS:
+                            raise ValueError('Invalid upload images file')
                     new_files.append(file_obj)
 
+            if file_type == FileType.VIDEO:
+                # parse and validate files
+                image_config = file_extra_config.image_config
+
+                # check if image file feature is enabled
+                if not image_config:
+                    continue
+
+                # Validate number of files
+                if len(files) > image_config['number_limits']:
+                    raise ValueError(
+                        f"Number of image files exceeds the maximum limit {image_config['number_limits']}")
+
+                for file_obj in file_objs:
+                    # Validate transfer method
+                    if file_obj.transfer_method.value not in image_config['transfer_methods']:
+                        raise ValueError(f'Invalid transfer method: {file_obj.transfer_method.value}')
+
+                    # Validate file type
+                    if file_obj.type != FileType.VIDEO:
+                        raise ValueError(f'Invalid file type: {file_obj.type}')
+
+                    # get upload file from upload_file_id
+                    upload_file = db.session.query(UploadFile).filter(
+                        UploadFile.id == file_obj.related_id,
+                        UploadFile.tenant_id == self.tenant_id,
+                        UploadFile.created_by == user.id,
+                        UploadFile.created_by_role == (
+                            'account' if isinstance(user, Account) else 'end_user')
+                    ).first()
+
+                    if not upload_file and upload_file.extension not in VIDEO_EXTENSIONS:
+                        raise ValueError('Invalid upload video file')
+
+                    new_files.append(file_obj)
         # return all file objs
         return new_files
 
@@ -119,8 +151,8 @@ class MessageFileParser:
         :return:
         """
         type_file_objs: dict[FileType, list[FileVar]] = {
-            # Currently only support image
-            FileType.IMAGE: []
+            FileType.IMAGE: [],
+            FileType.VIDEO: []
         }
 
         if not files:
@@ -155,7 +187,8 @@ class MessageFileParser:
                 transfer_method=transfer_method,
                 url=file.get('url') if transfer_method == FileTransferMethod.REMOTE_URL else None,
                 related_id=file.get('upload_file_id') if transfer_method == FileTransferMethod.LOCAL_FILE else None,
-                extra_config=file_extra_config
+                extra_config=file_extra_config,
+                app_id=self.app_id
             )
         else:
             return FileVar(
@@ -165,7 +198,8 @@ class MessageFileParser:
                 transfer_method=FileTransferMethod.value_of(file.transfer_method),
                 url=file.url,
                 related_id=file.upload_file_id or None,
-                extra_config=file_extra_config
+                extra_config=file_extra_config,
+                app_id=self.app_id
             )
 
     def _check_image_remote_url(self, url):

@@ -119,6 +119,11 @@ const TextGeneration: FC<IMainProps> = ({
   const [visionConfig, setVisionConfig] = useState<VisionSettings>({
     enabled: false,
     number_limits: 2,
+    extract_video: 'enabled',
+    extract_audio: 'enabled',
+    similarity_threshold: 0.7,
+    blur_threshold: 800,
+    max_collect_frames: 20,
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
   })

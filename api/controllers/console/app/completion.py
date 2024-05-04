@@ -78,7 +78,7 @@ class CompletionMessageApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception(f"internal server error, {str(e)}")
             raise InternalServerError()
 
 

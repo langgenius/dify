@@ -52,7 +52,7 @@ class FileApi(Resource):
         if len(request.files) > 1:
             raise TooManyFilesError()
         try:
-            upload_file = FileService.upload_file(file, current_user)
+            upload_file = FileService.upload_file(file=file, user=current_user, tenant_id=current_user.current_tenant_id)
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:

@@ -72,7 +72,7 @@ const ChatInput: FC<ChatInputProps> = ({
         return
       }
       onSend(query, files.filter(file => file.progress !== -1).map(fileItem => ({
-        type: 'image',
+        type: fileItem.file?.type?.split('/')[0] ?? 'image',
         transfer_method: fileItem.type,
         url: fileItem.url,
         upload_file_id: fileItem.fileId,
@@ -150,8 +150,8 @@ const ChatInput: FC<ChatInputProps> = ({
                   list={files}
                   onRemove={onRemove}
                   onReUpload={onReUpload}
-                  onImageLinkLoadSuccess={onImageLinkLoadSuccess}
-                  onImageLinkLoadError={onImageLinkLoadError}
+                  onMediaLinkLoadSuccess={onImageLinkLoadSuccess}
+                  onMediaLinkLoadError={onImageLinkLoadError}
                 />
               </div>
             </>

@@ -228,7 +228,20 @@ export type ModelConfig = {
   }
   dataset_configs: DatasetConfigs
   file_upload?: {
-    image: VisionSettings
+    image: {
+      enabled: boolean
+      number_limits: number
+      detail: Resolution
+      transfer_methods: TransferMethod[]
+      image_file_size_limit?: number | string
+    }
+    video: {
+      extract_audio: string
+      extract_video: string
+      similarity_threshold: number
+      blur_threshold: number
+      max_collect_frames: number
+    }
   }
   files?: VisionFile[]
   created_at?: number
@@ -333,17 +346,32 @@ export enum Resolution {
   high = 'high',
 }
 
+export enum IsExtractAudio {
+  enabled = 'enabled',
+  diabled = 'diabled',
+}
+
+export enum IsExtractVideo {
+  enabled = 'enabled',
+  diabled = 'diabled',
+}
+
 export enum TransferMethod {
   all = 'all',
   local_file = 'local_file',
   remote_url = 'remote_url',
 }
 
-export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
+export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'mpeg', 'mpga']
 
 export type VisionSettings = {
   enabled: boolean
   number_limits: number
+  extract_audio: string
+  extract_video: string
+  similarity_threshold: number
+  blur_threshold: number
+  max_collect_frames: number
   detail: Resolution
   transfer_methods: TransferMethod[]
   image_file_size_limit?: number | string
