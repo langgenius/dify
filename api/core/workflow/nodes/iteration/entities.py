@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from core.workflow.entities.base_node_data_entities import BaseIterationNodeData, BaseIterationState
 
@@ -15,12 +15,19 @@ class IterationState(BaseIterationState):
     """
     Iteration State.
     """
-    outputs: list[dict] = None
+    outputs: list[Any] = None
+    current_output: Optional[Any] = None
 
-    def get_last_output(self) -> Optional[dict]:
+    def get_last_output(self) -> Optional[Any]:
         """
         Get last output.
         """
         if self.outputs:
             return self.outputs[-1]
         return None
+    
+    def get_current_output(self) -> Optional[Any]:
+        """
+        Get current output.
+        """
+        return self.current_output

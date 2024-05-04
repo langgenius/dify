@@ -432,7 +432,7 @@ class WorkflowEngineManager:
                     callback.on_workflow_iteration_next(
                         node_id=current_iteration_node.node_id,
                         index=workflow_run_state.current_iteration_state.index,
-                        output=workflow_run_state.current_iteration_state.get_last_output()
+                        output=workflow_run_state.current_iteration_state.get_current_output()
                     )
         # clear ran nodes
         workflow_run_state.workflow_node_runs = [

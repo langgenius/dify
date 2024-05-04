@@ -93,6 +93,7 @@ class IterationNode(BaseIterationNode):
         output = variable_pool.get_variable_value(output_selector)
         # clear the output for this iteration
         variable_pool.append_variable(self.node_id, output_selector[1:], None)
+        state.current_output = output
         if output is not None:
             state.outputs.append(output)
 
