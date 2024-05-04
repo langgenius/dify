@@ -49,8 +49,8 @@ DEFAULTS = {
     'HOSTED_OPENAI_TRIAL_MODELS': 'gpt-3.5-turbo,gpt-3.5-turbo-1106,gpt-3.5-turbo-instruct,gpt-3.5-turbo-16k,gpt-3.5-turbo-16k-0613,gpt-3.5-turbo-0613,gpt-3.5-turbo-0125,text-davinci-003',
     'HOSTED_OPENAI_PAID_ENABLED': 'False',
     'HOSTED_OPENAI_PAID_MODELS': 'gpt-4,gpt-4-turbo-preview,gpt-4-turbo-2024-04-09,gpt-4-1106-preview,gpt-4-0125-preview,gpt-3.5-turbo,gpt-3.5-turbo-16k,gpt-3.5-turbo-16k-0613,gpt-3.5-turbo-1106,gpt-3.5-turbo-0613,gpt-3.5-turbo-0125,gpt-3.5-turbo-instruct,text-davinci-003',
-    'HOSTED_AZURE_OPENAI_ENABLED': 'False',
-    'HOSTED_AZURE_OPENAI_QUOTA_LIMIT': 200,
+    'HOSTED_AZURE_OPENAI_ENABLED': 'True',
+    'HOSTED_AZURE_OPENAI_QUOTA_LIMIT': 1000,
     'HOSTED_ANTHROPIC_QUOTA_LIMIT': 600000,
     'HOSTED_ANTHROPIC_TRIAL_ENABLED': 'False',
     'HOSTED_ANTHROPIC_PAID_ENABLED': 'False',
@@ -116,6 +116,14 @@ class Config:
         self.LOG_FILE = get_env('LOG_FILE')
         self.LOG_FORMAT = get_env('LOG_FORMAT')
         self.LOG_DATEFORMAT = get_env('LOG_DATEFORMAT')
+
+        # CVTE TTS&Tools缺省授权
+        self.CVTE_APP_ID = get_env('CVTE_APP_ID')
+        self.CVTE_API_KEY = get_env('CVTE_API_KEY')
+        self.CVTE_API_SECRET = get_env('CVTE_API_SECRET')
+        self.CVTE_API_TOKEN = get_env('CVTE_API_TOKEN')
+        self.CVTE_WHISPER_API_URI = get_env('CVTE_WHISPER_API_URI')
+        self.CVTE_TTS_API_URI = get_env('CVTE_TTS_API_URI')
 
         # The backend URL prefix of the console API.
         # used to concatenate the login authorization callback or notion integration callback.
@@ -328,9 +336,14 @@ class Config:
         self.HOSTED_OPENAI_PAID_ENABLED = get_bool_env('HOSTED_OPENAI_PAID_ENABLED')
         self.HOSTED_OPENAI_PAID_MODELS = get_env('HOSTED_OPENAI_PAID_MODELS')
 
+        # AZURE OPENAI
         self.HOSTED_AZURE_OPENAI_ENABLED = get_bool_env('HOSTED_AZURE_OPENAI_ENABLED')
         self.HOSTED_AZURE_OPENAI_API_KEY = get_env('HOSTED_AZURE_OPENAI_API_KEY')
         self.HOSTED_AZURE_OPENAI_API_BASE = get_env('HOSTED_AZURE_OPENAI_API_BASE')
+        self.HOSTED_AZURE_OPENAI_TENANT_ID = get_env('HOSTED_AZURE_OPENAI_TENANT_ID')
+        self.HOSTED_AZURE_OPENAI_ENDPOINTS = get_env('HOSTED_AZURE_OPENAI_ENDPOINTS')
+        self.HOSTED_AZURE_OPENAI_CLIENT_SECRET = get_env('HOSTED_AZURE_OPENAI_CLIENT_SECRET')
+        self.HOSTED_AZURE_OPENAI_CLIENT_ID = get_env('HOSTED_AZURE_OPENAI_CLIENT_ID')
         self.HOSTED_AZURE_OPENAI_QUOTA_LIMIT = int(get_env('HOSTED_AZURE_OPENAI_QUOTA_LIMIT'))
 
         self.HOSTED_ANTHROPIC_API_BASE = get_env('HOSTED_ANTHROPIC_API_BASE')
