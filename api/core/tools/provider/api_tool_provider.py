@@ -78,9 +78,11 @@ class ApiBasedToolProviderController(ToolProviderController):
         else:
             raise ValueError(f'invalid auth type {auth_type}')
 
+        user = db_provider.user
+
         return ApiBasedToolProviderController(**{
             'identity': {
-                'author': db_provider.user.name if db_provider.user_id and db_provider.user else '',
+                'author': user.name if user else '',
                 'name': db_provider.name,
                 'label': {
                     'en_US': db_provider.name,

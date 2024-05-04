@@ -1,13 +1,19 @@
-import json
+from typing import Optional
 
 from core.app.app_config.entities import VariableEntity
+from core.model_runtime.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
+    ToolDescription,
+    ToolIdentity,
+    ToolParameter,
+    ToolParameterOption,
     ToolProviderType,
+    WorkflowToolParameterConfiguration,
 )
 from core.tools.provider.tool_provider import ToolProviderController
-from core.tools.tool.api_tool import ApiTool
-from core.tools.tool.tool import Tool
+from core.tools.tool.workflow_tool import WorkflowTool
 from core.workflow.entities.node_entities import NodeType
+from extensions.ext_database import db
 from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
@@ -22,8 +28,8 @@ class WorkflowToolProviderController(ToolProviderController):
 
         if not app:
             raise ValueError('app not found')
-
-        return WorkflowToolProviderController(**{
+        
+        controller = WorkflowToolProviderController(**{
             'identity': {
                 'author': db_provider.user.name if db_provider.user_id and db_provider.user else '',
                 'name': db_provider.name,
@@ -35,20 +41,23 @@ class WorkflowToolProviderController(ToolProviderController):
                     'en_US': db_provider.description,
                     'zh_Hans': db_provider.description
                 },
-                'icon': json.dumps({
-                    'content': app.icon,
-                    'background': app.icon_background
-                })
+                'icon': db_provider.icon,
             },
             'credentials_schema': {},
             'provider_id': db_provider.id or '',
         })
+        
+        # init tools
+
+        controller.tools = [controller._get_db_provider_tool(db_provider, app)]
+
+        return controller
 
     @property
     def app_type(self) -> ToolProviderType:
         return ToolProviderType.WORKFLOW_BASED
     
-    def _get_db_provider_tool(self, db_provider: WorkflowToolProvider, app: App) -> Tool:
+    def _get_db_provider_tool(self, db_provider: WorkflowToolProvider, app: App) -> WorkflowTool:
         """
             get db provider tool
             :param db_provider: the db provider
@@ -71,10 +80,101 @@ class WorkflowToolProviderController(ToolProviderController):
         variables = [
             VariableEntity(**variable) for variable in start_node.get('data', {}).get('variables', [])
         ]
+        variable_names = [variable.variable for variable in variables]
 
+        # fetch parameter configuration
+        parameters = [
+            WorkflowToolParameterConfiguration(**parameter) for parameter in db_provider.parameter_configurations
+        ]
+
+        if len(parameters) != len(variables):
+            raise ValueError('parameter configuration mismatch, please republish the tool to update')
         
+        for parameter in parameters:
+            if parameter.name not in variable_names:
+                raise ValueError('parameter configuration mismatch, please republish the tool to update')
 
-    def get_tools(self, user_id: str, tenant_id: str) -> list[ApiTool]:
+        def fetch_workflow_variable(variable_name: str) -> VariableEntity:
+            return next(filter(lambda x: x.variable == variable_name, variables), None)
+
+        user = db_provider.user
+
+        workflow_tool_parameters = []
+        for parameter in parameters:
+            variable = fetch_workflow_variable(parameter.name)
+            if not variable:
+                raise ValueError('variable not found')
+
+            parameter_type = None
+            options = None
+            if variable.type in [
+                VariableEntity.Type.TEXT_INPUT, 
+                VariableEntity.Type.PARAGRAPH, 
+                VariableEntity.Type.SELECT
+            ]:
+                parameter_type = ToolParameter.ToolParameterType.STRING
+            elif variable.type in [
+                VariableEntity.Type.NUMBER
+            ]:
+                parameter_type = ToolParameter.ToolParameterType.NUMBER
+            else:
+                raise ValueError(f'unsupported variable type {variable.type}')
+            
+            if variable.type == VariableEntity.Type.SELECT and variable.options:
+                options = [
+                    ToolParameterOption(
+                        value=option,
+                        label=I18nObject(
+                            en_US=option,
+                            zh_Hans=option
+                        )
+                    ) for option in variable.options
+                ]
+
+            workflow_tool_parameters.append(
+                ToolParameter(
+                    name=parameter.name,
+                    label=I18nObject(
+                        en_US=variable.label,
+                        zh_Hans=variable.label
+                    ),
+                    human_description=I18nObject(
+                        en_US=parameter.description,
+                        zh_Hans=parameter.description
+                    ),
+                    type=parameter_type,
+                    form=parameter.form,
+                    llm_description=parameter.description,
+                    required=variable.required,
+                    options=options,
+                    default=variable.default
+                )
+            )
+
+        return WorkflowTool(
+            identity=ToolIdentity(
+                author=user.name if user else '',
+                name=db_provider.name,
+                label=I18nObject(
+                    en_US=db_provider.description,
+                    zh_Hans=db_provider.description
+                ),
+                provider=self.provider_id,
+                icon=db_provider.icon,
+            ),
+            description=ToolDescription(
+                human=I18nObject(
+                    en_US=db_provider.description,
+                    zh_Hans=db_provider.description
+                ),
+                llm=db_provider.description,
+            ),
+            parameters=workflow_tool_parameters,
+            is_team_authorization=True,
+            workflow_app_id=app.id,
+        )
+
+    def get_tools(self, user_id: str, tenant_id: str) -> list[WorkflowTool]:
         """
             fetch tools from database
 
@@ -82,11 +182,33 @@ class WorkflowToolProviderController(ToolProviderController):
             :param tenant_id: the tenant id
             :return: the tools
         """
+        if self.tools is not None:
+            return self.tools
+        
+        db_providers: WorkflowToolProvider = db.session.query(WorkflowToolProvider).filter(
+            WorkflowToolProvider.tenant_id == tenant_id,
+            WorkflowToolProvider.app_id == self.provider_id,
+        ).first()
+
+        if not db_providers:
+            return []
+        
+        self.tools = [self._get_db_provider_tool(db_providers, db_providers.app)]
+
+        return self.tools
     
-    def get_tool(self, tool_name: str) -> ApiTool:
+    def get_tool(self, tool_name: str) -> Optional[WorkflowTool]:
         """
             get tool by name
 
             :param tool_name: the name of the tool
             :return: the tool
         """
+        if self.tools is None:
+            return None
+
+        for tool in self.tools:
+            if tool.identity.name == tool_name:
+                return tool
+        
+        return None
