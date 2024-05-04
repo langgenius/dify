@@ -13,22 +13,33 @@ class VariableAggregatorNode(BaseNode):
     _node_type = NodeType.VARIABLE_AGGREGATOR
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
-        node_data: VariableAssignerNodeData = cast(self._node_data_cls, self.node_data)
+        node_data = cast(VariableAssignerNodeData, self.node_data)
         # Get variables
         outputs = {}
         inputs = {}
-        for variable in node_data.variables:
-            value = variable_pool.get_variable_value(variable)
 
-            if value is not None:
-                outputs = {
-                    "output": value
-                }
+        if not node_data.advanced_setting.group_enabled:
+            for variable in node_data.variables:
+                value = variable_pool.get_variable_value(variable)
 
-                inputs = {
-                    '.'.join(variable[1:]): value
-                }
-                break
+                if value is not None:
+                    outputs = {
+                        "output": value
+                    }
+
+                    inputs = {
+                        '.'.join(variable[1:]): value
+                    }
+                    break
+        else:
+            for group in node_data.advanced_setting.groups:
+                for variable in group.variables:
+                    value = variable_pool.get_variable_value(variable)
+
+                    if value is not None:
+                        outputs[f'{group.group_name}_output'] = value
+                        inputs['.'.join(variable[1:])] = value
+                        break
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
