@@ -9,6 +9,7 @@ from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.model_runtime.utils.encoders import jsonable_encoder
+from libs.helper import uuid_value
 from libs.login import login_required
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -343,7 +344,27 @@ class ToolWorkflowProviderUpdateApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
         
-        return WorkflowToolManageService.update_workflow_tool()
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        reqparser = reqparse.RequestParser()
+        reqparser.add_argument('workflow_app_id', type=uuid_value, required=True, nullable=False, location='json')
+        reqparser.add_argument('name', type=str, required=True, nullable=False, location='json')
+        reqparser.add_argument('description', type=str, required=True, nullable=False, location='json')
+        reqparser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
+        reqparser.add_argument('parameters', type=list[dict], required=True, nullable=False, location='json')
+        
+        args = reqparser.parse_args()
+        
+        return WorkflowToolManageService.update_workflow_tool(
+            user_id,
+            tenant_id,
+            args['workflow_app_id'],
+            args['name'],
+            args['icon'],
+            args['description'],
+            args['parameters'],
+        )
 
 class ToolWorkflowProviderDeleteApi(Resource):
     @setup_required
@@ -353,7 +374,19 @@ class ToolWorkflowProviderDeleteApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
         
-        return WorkflowToolManageService.delete_workflow_tool()
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        reqparser = reqparse.RequestParser()
+        reqparser.add_argument('workflow_app_id', type=uuid_value, required=True, nullable=False, location='json')
+
+        args = reqparser.parse_args()
+
+        return WorkflowToolManageService.delete_workflow_tool(
+            user_id,
+            tenant_id,
+            args['workflow_app_id'],
+        )
         
 class ToolWorkflowProviderGetApi(Resource):
     @setup_required
@@ -364,8 +397,15 @@ class ToolWorkflowProviderGetApi(Resource):
         tenant_id = current_user.current_tenant_id
 
         parser = reqparse.RequestParser()
+        parser.add_argument('workflow_app_id', type=uuid_value, required=True, nullable=False, location='args')
 
-        return jsonable_encoder(WorkflowToolManageService.get_workflow_tool())
+        args = parser.parse_args()
+
+        return jsonable_encoder(WorkflowToolManageService.get_workflow_tool(
+            user_id,
+            tenant_id,
+            args['workflow_app_id'],
+        ))
 
 class ToolBuiltinListApi(Resource):
     @setup_required
@@ -432,11 +472,10 @@ api.add_resource(ToolApiProviderSchemaApi, '/workspaces/current/tool-provider/ap
 api.add_resource(ToolApiProviderPreviousTestApi, '/workspaces/current/tool-provider/api/test/pre')
 
 # workflow tool provider
-api.add_resource(ToolWorkflowProviderCreateApi, '/workspaces/current/tool-provider/workflow/create')
 api.add_resource(ToolWorkflowProviderUpdateApi, '/workspaces/current/tool-provider/workflow/update')
 api.add_resource(ToolWorkflowProviderDeleteApi, '/workspaces/current/tool-provider/workflow/delete')
 api.add_resource(ToolWorkflowProviderGetApi, '/workspaces/current/tool-provider/workflow/get')
 
 api.add_resource(ToolBuiltinListApi, '/workspaces/current/tools/builtin')
 api.add_resource(ToolApiListApi, '/workspaces/current/tools/api')
-api.add_resource(ToolWorkflowListApi, '/workspaces/current/tools/api')
+api.add_resource(ToolWorkflowListApi, '/workspaces/current/tools/workflow')

@@ -12,11 +12,9 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.workflow_tool import WorkflowTool
-from core.workflow.entities.node_entities import NodeType
 from extensions.ext_database import db
 from models.model import App
 from models.tools import WorkflowToolProvider
-from models.workflow import Workflow
 
 
 class WorkflowToolProviderController(ToolProviderController):
@@ -64,7 +62,7 @@ class WorkflowToolProviderController(ToolProviderController):
             :param app: the app
             :return: the tool
         """
-        workflow: Workflow = app.workflow
+        workflow = app.workflow
         if not workflow:
             raise ValueError('workflow not found')
 
@@ -72,7 +70,7 @@ class WorkflowToolProviderController(ToolProviderController):
         graph: dict = workflow.graph
 
         nodes = graph.get('nodes', [])
-        start_node = next(filter(lambda x: x.get('data', {}).get('type') == NodeType.START.value, nodes), None)
+        start_node = next(filter(lambda x: x.get('data', {}).get('type') == 'start', nodes), None)
 
         if not start_node:
             raise ValueError('start node not found')
