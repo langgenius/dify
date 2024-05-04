@@ -1,3 +1,6 @@
+import pytz
+from flask_login import current_user
+
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
@@ -46,11 +49,13 @@ class AgentService:
         else:
             executor = 'Unknown'
 
+        timezone = pytz.timezone(current_user.timezone)
+
         result = {
             'meta': {
                 'status': 'success',
                 'executor': executor,
-                'start_time': message.created_at.isoformat(),
+                'start_time': message.created_at.astimezone(timezone).isoformat(),
                 'elapsed_time': message.provider_response_latency,
                 'total_tokens': message.answer_tokens + message.message_tokens,
                 'agent_mode': app_model.app_model_config.agent_mode_dict.get('strategy', 'react'),
