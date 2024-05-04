@@ -7,8 +7,13 @@ from core.model_runtime.model_providers.openai_api_compatible.llm.llm import OAI
 
 
 class LeptonAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
-    MODEL_SUFFIX_MAP = {
+    MODEL_PREFIX_MAP = {
         'llama2-7b': 'llama2-7b',
+        'gemma-7b': 'gemma-7b',
+        'mistral-7b': 'mistral-7b',
+        'mixtral-8x7b': 'mixtral-8x7b',
+        'llama3-70b': 'llama3-70b',
+        'llama2-13b': 'llama2-13b',
     } 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
@@ -25,5 +30,5 @@ class LeptonAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
     @classmethod
     def _add_custom_parameters(cls, credentials: dict, model: str) -> None:
         credentials['mode'] = 'chat'
-        credentials['endpoint_url'] = f'https://{cls.MODEL_SUFFIX_MAP[model]}.lepton.run/api/v1'
+        credentials['endpoint_url'] = f'https://{cls.MODEL_PREFIX_MAP[model]}.lepton.run/api/v1'
         

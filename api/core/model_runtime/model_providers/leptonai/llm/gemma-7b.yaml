@@ -1,13 +1,13 @@
-model: llama2-7b
+model: gemma-7b
 label:
-  zh_Hans: llama2-7b
-  en_US: llama2-7b
+  zh_Hans: gemma-7b
+  en_US: gemma-7b
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 4096
+  context_size: 8192
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -15,11 +15,6 @@ parameter_rules:
     use_template: top_p
   - name: max_tokens
     use_template: max_tokens
-    default: 512
+    default: 1024
     min: 1
-    max: 4096
-pricing:
-  input: '0.01'
-  output: '0.01'
-  unit: '0.000001'
-  currency: USD
+    max: 1024
