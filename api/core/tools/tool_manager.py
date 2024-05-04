@@ -34,7 +34,7 @@ from core.utils.module_import_helper import load_single_subclass_from_source
 from core.workflow.nodes.tool.entities import ToolEntity
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider
-from services.tools_transform_service import ToolTransformService
+from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
 
