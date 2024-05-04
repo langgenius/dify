@@ -66,7 +66,6 @@ class HitTestingService:
                                                   )
 
         end = time.perf_counter()
-        elapsed_time = float(f'{end - start:0.4f}')
         logging.debug(f"Hit testing retrieve in {end - start:0.4f} seconds")
 
         dataset_query = DatasetQuery(
@@ -80,10 +79,10 @@ class HitTestingService:
         db.session.add(dataset_query)
         db.session.commit()
 
-        return cls.compact_retrieve_response(dataset, embeddings, query, all_documents, elapsed_time)
+        return cls.compact_retrieve_response(dataset, embeddings, query, all_documents)
 
     @classmethod
-    def compact_retrieve_response(cls, dataset: Dataset, embeddings: Embeddings, query: str, documents: list[Document], elapsed_time: float):
+    def compact_retrieve_response(cls, dataset: Dataset, embeddings: Embeddings, query: str, documents: list[Document]):
         text_embeddings = [
             embeddings.embed_query(query)
         ]
@@ -93,7 +92,7 @@ class HitTestingService:
         tsne_position_data = cls.get_tsne_positions_from_embeddings(text_embeddings)
 
         query_position = tsne_position_data.pop(0)
-        start = time.perf_counter()
+
         i = 0
         records = []
         for document in documents:
@@ -119,15 +118,13 @@ class HitTestingService:
             records.append(record)
 
             i += 1
-        end = time.perf_counter()
-        elapsed_time2 = float(f'{end - start:0.4f}')
+
         return {
             "query": {
                 "content": query,
                 "tsne_position": query_position,
             },
-            "records": records,
-            "elapsed_time": elapsed_time
+            "records": records
         }
 
     @classmethod
