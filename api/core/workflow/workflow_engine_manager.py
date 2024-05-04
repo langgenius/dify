@@ -159,6 +159,10 @@ class WorkflowEngineManager:
                             callbacks=callbacks
                         )
                         if isinstance(next_iteration, NodeRunResult):
+                            current_iteration_node.set_output(
+                                variable_pool=workflow_run_state.variable_pool,
+                                state=workflow_run_state.current_iteration_state
+                            )
                             self._workflow_iteration_completed(
                                 current_iteration_node=current_iteration_node,
                                 workflow_run_state=workflow_run_state,

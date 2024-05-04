@@ -45,6 +45,15 @@ class IterationNode(BaseIterationNode):
             )
         
         return node_data.start_node_id
+    
+    def _set_output(self, variable_pool: VariablePool, state: IterationState) -> None:
+        """
+        Set output
+        :param variable_pool: variable pool
+        :param state: iteration state
+        :return:
+        """
+        variable_pool.append_variable(self.node_id, ['output'], jsonable_encoder(state.outputs))
 
     def _set_current_iteration_variable(self, variable_pool: VariablePool, state: IterationState):
         """
