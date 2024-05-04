@@ -1,4 +1,6 @@
 .env
+*.env.*
+
 storage/privkeys/*
 
 # Logs
@@ -6,5 +8,4 @@ logs
 *.log*
 
 # jetbrains
-.idea/.env_pro
-
+.idea
