@@ -1,0 +1,29 @@
+identity:
+  author: Yash Parmar
+  name: search1api
+  label:
+    en_US: Search1API
+    zh_Hans: Search1API
+    pt_BR: Search1API
+  description:
+    en_US: Search1API
+    zh_Hans: Search1API
+    pt_BR: Search1API
+  icon: icon.png
+credentials_for_provider:
+  search1api_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Search1API key
+      zh_Hans: Search1API key
+      pt_BR: Search1API key
+    placeholder:
+      en_US: Please input your Search1API key
+      zh_Hans: 请输入你的 Search1API key
+      pt_BR: Please input your Search1API key
+    help:
+      en_US: Get your Search1API key from Search1API
+      zh_Hans: 从 Search1API 获取您的 Search1API key
+      pt_BR: Get your Search1API key from Search1API
+    url: https://search1api.com

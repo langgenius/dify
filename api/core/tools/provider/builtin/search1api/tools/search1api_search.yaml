@@ -1,0 +1,158 @@
+identity:
+  name: search1api_search
+  author: Yash Parmar
+  label:
+    en_US: Search1API
+    zh_Hans: Search1API 搜索聚合服务
+    pt_BR: Search1API
+description:
+  human:
+    en_US: A search engine tool built specifically for AI agents (LLMs), delivering real-time, accurate, and factual results at speed.
+    zh_Hans: 专为人工智能代理 (LLM) 构建的搜索引擎工具,可快速提供实时、准确和真实的结果。
+    pt_BR: A search engine tool built specifically for AI agents (LLMs), delivering real-time, accurate, and factual results at speed.
+  llm: A search engine tool built specifically for AI agents (LLMs), delivering real-time, accurate, and factual results at speed.
+parameters:
+  - name: search_type
+    type: select
+    required: true
+    label:
+      en_US: search_type
+      zh_Hans: 搜索类型
+      pt_BR: search_type
+    human_description:
+      en_US: The search type for page, news
+      zh_Hans: 你想要执行的操作,包括搜索、新闻
+      pt_BR: The search type for page, news
+    form: form
+    options:
+      - value: search
+        label:
+          en_US: Search
+          zh_Hans: 搜索
+          pt_BR: Search
+      - value: news
+        label:
+          en_US: News
+          zh_Hans: 新闻
+          pt_BR: News
+    default: search
+  - name: search_service
+    type: select
+    required: false
+    label:
+      en_US: Search Service
+      zh_Hans: 搜索服务
+      pt_BR: Search Service
+    human_description:
+      en_US: The search service you want to choose, including google, bing, duckduckgo
+      zh_Hans: 你想要选择的搜索服务,包括 google、bing、duckduckgo
+      pt_BR: The search service you want to choose, including google, bing, duckduckgo
+    form: form
+    options:
+      - value: google
+        label:
+          en_US: Google
+          zh_Hans: 谷歌
+          pt_BR: Google
+      - value: bing
+        label:
+          en_US: Bing
+          zh_Hans: 必应
+          pt_BR: Bing
+      - value: duckduckgo
+        label:
+          en_US: DuckDuckGo
+          zh_Hans: DuckDuckGo
+          pt_BR: DuckDuckGo
+    default: google
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+      pt_BR: Query string
+    human_description:
+      en_US: The query you want to ask
+      zh_Hans: 你想要查询的内容
+      pt_BR: The query you want to ask
+    llm_description: The query you want to ask
+    form: llm
+  - name: max_results
+    type: number
+    required: false
+    label:
+      en_US: Max Results
+      zh_Hans: 最大结果数
+      pt_BR: Max Results
+    human_description:
+      en_US: The maximum number of search results you want to have
+      zh_Hans: 你想要获得的最大搜索结果数
+      pt_BR: The maximum number of search results you want to have
+    form: form
+    min: 1
+    max: 100
+    default: 5
+  - name: crawl_results
+    type: number
+    required: false
+    label:
+      en_US: Crawl Results
+      zh_Hans: 爬取结果数
+      pt_BR: Crawl Results
+    human_description:
+      en_US: The number of results you want to crawl
+      zh_Hans: 你想要爬取的结果数
+      pt_BR: The number of results you want to crawl
+    form: form
+    min: 0
+    max: 10
+    default: 0
+  - name: image
+    type: boolean
+    required: false
+    label:
+      en_US: Include Images
+      zh_Hans: 包含图片
+      pt_BR: Include Images
+    human_description:
+      en_US: Whether to include image URLs in the search results
+      zh_Hans: 是否在搜索结果中包含图片 URL
+      pt_BR: Whether to include image URLs in the search results
+    form: form
+    options:
+      - value: true
+        label:
+          en_US: Yes
+          zh_Hans: 是
+          pt_BR: Yes
+      - value: false
+        label:
+          en_US: No
+          zh_Hans: 否
+          pt_BR: No
+    default: false
+  - name: gl
+    type: string
+    required: false
+    label:
+      en_US: Country
+      zh_Hans: 国家
+      pt_BR: Country
+    human_description:
+      en_US: The country you want to search
+      zh_Hans: 你想要搜索的国家
+      pt_BR: The country you want to search
+    form: form
+  - name: hl
+    type: string
+    required: false
+    label:
+      en_US: Language
+      zh_Hans: 语言
+      pt_BR: Language
+    human_description:
+      en_US: The language you want to search
+      zh_Hans: 你想要搜索的语言
+      pt_BR: The language you want to search
+    form: form
