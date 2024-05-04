@@ -39,6 +39,7 @@ const VideoGallery: FC<Props> = ({
     <div className={cn(s[`img-${videoNum}`], 'flex flex-wrap')}>
       {/* TODO: support preview */}
       {srcs.map((src, index) => (
+        // eslint-disable-next-line react/jsx-key
         <video controls title={src}>
           <source
             src={src}
