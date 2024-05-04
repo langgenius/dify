@@ -129,7 +129,7 @@ class ApiToolManageService:
         # parse openapi to tool bundle
         extra_info = {}
         # extra info like description will be set here
-        tool_bundles, schema_type = ToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
+        tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
         
         if len(tool_bundles) > 100:
             raise ValueError('the number of apis should be less than 100')
@@ -188,7 +188,7 @@ class ApiToolManageService:
             schema = response.text
 
             # try to parse schema, avoid SSRF attack
-            ToolManageService.parser_api_schema(schema)
+            ApiToolManageService.parser_api_schema(schema)
         except Exception as e:
             logger.error(f"parse api schema error: {str(e)}")
             raise ValueError('invalid schema, please check the url you provided')
@@ -239,7 +239,7 @@ class ApiToolManageService:
         # parse openapi to tool bundle
         extra_info = {}
         # extra info like description will be set here
-        tool_bundles, schema_type = ToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
+        tool_bundles, schema_type = ApiToolManageService.convert_schema_to_tool_bundles(schema, extra_info)
         
         # update db provider
         provider.name = provider_name
