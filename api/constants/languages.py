@@ -16,7 +16,7 @@ language_timezone_mapping = {
     'it-IT': 'Europe/Rome',
     'uk-UA': 'Europe/Kyiv',
     'vi-VN': 'Asia/Ho_Chi_Minh',
-    'pl-PL': 'Europe/Warsaw'
+    'pl-PL': 'Europe/Warsaw',
 }
 
 
