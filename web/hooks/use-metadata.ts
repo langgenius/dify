@@ -1,8 +1,8 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import dayjs from 'dayjs'
 import { formatFileSize, formatNumber, formatTime } from '@/utils/format'
 import type { DocType } from '@/models/datasets'
+import useTimestamp from '@/hooks/use-timestamp'
 
 export type inputType = 'input' | 'select' | 'textarea'
 export type metadataType = DocType | 'originInfo' | 'technicalParameters'
@@ -31,6 +31,8 @@ const fieldPrefix = 'datasetDocuments.metadata.field'
 
 export const useMetadataMap = (): MetadataMap => {
   const { t } = useTranslation()
+  const { formatTime: formatTimestamp } = useTimestamp()
+
   return {
     book: {
       text: t('datasetDocuments.metadata.type.book'),
@@ -230,11 +232,11 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'created_at': {
           label: t(`${fieldPrefix}.originInfo.uploadDate`),
-          render: value => dayjs.unix(value).format(t('datasetDocuments.metadata.dateTimeFormat') as string),
+          render: value => formatTimestamp(value, t('datasetDocuments.metadata.dateTimeFormat') as string),
         },
         'completed_at': {
           label: t(`${fieldPrefix}.originInfo.lastUpdateDate`),
-          render: value => dayjs.unix(value).format(t('datasetDocuments.metadata.dateTimeFormat') as string),
+          render: value => formatTimestamp(value, t('datasetDocuments.metadata.dateTimeFormat') as string),
         },
         'data_source_type': {
           label: t(`${fieldPrefix}.originInfo.source`),
