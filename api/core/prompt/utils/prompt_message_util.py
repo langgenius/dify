@@ -6,7 +6,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageContentType,
     PromptMessageRole,
     TextPromptMessageContent,
-    VideoPromptMessageContent
+    VideoPromptMessageContent,
 )
 from core.prompt.simple_prompt_transform import ModelMode
 

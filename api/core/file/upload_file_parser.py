@@ -7,8 +7,8 @@ import time
 from typing import Optional
 
 from flask import current_app
-from extensions.ext_storage import storage
 
+from extensions.ext_storage import storage
 
 AUDIO_EXTENSIONS = ['mp3', 'm4a', 'wav', 'webm', 'amr']
 VIDEO_EXTENSIONS = ['mp4', 'mov', 'mpeg', 'mpga']

@@ -9,8 +9,14 @@ from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden, NotFound
 
-from core.file.upload_file_parser import UploadFileParser, UNSTRUSTURED_ALLOWED_EXTENSIONS, IMAGE_EXTENSIONS, \
-    ALLOWED_EXTENSIONS, VIDEO_EXTENSIONS, AUDIO_EXTENSIONS
+from core.file.upload_file_parser import (
+    ALLOWED_EXTENSIONS,
+    AUDIO_EXTENSIONS,
+    IMAGE_EXTENSIONS,
+    UNSTRUSTURED_ALLOWED_EXTENSIONS,
+    VIDEO_EXTENSIONS,
+    UploadFileParser,
+)
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Account, TenantAccountJoin

@@ -21,7 +21,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
-    VideoPromptMessageContent
+    VideoPromptMessageContent,
 )
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, I18nObject, ModelType, PriceConfig
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
