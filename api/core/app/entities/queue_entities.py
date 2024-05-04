@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.workflow.entities.base_node_data_entities import BaseNodeData
@@ -65,7 +65,18 @@ class QueueIterationNextEvent(AppQueueEvent):
 
     index: int
     node_id: str
-    output: Optional[dict] # output for the current iteration
+    output: Optional[Any] # output for the current iteration
+
+    @validator('output', pre=True, always=True)
+    def set_output(cls, v):
+        """
+        Set output
+        """
+        if v is None:
+            return None
+        if isinstance(v, int | float | str | bool | dict | list):
+            return v
+        raise ValueError('output must be a valid type')
 
 class QueueIterationCompletedEvent(AppQueueEvent):
     """
@@ -74,7 +85,7 @@ class QueueIterationCompletedEvent(AppQueueEvent):
     event = QueueEvent.ITERATION_COMPLETED
 
     node_id: str
-    outputs: list[dict]
+    outputs: list[Any]
 
 class QueueTextChunkEvent(AppQueueEvent):
     """

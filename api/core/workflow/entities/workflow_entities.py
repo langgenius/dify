@@ -1,5 +1,7 @@
 from typing import Optional
 
+from pydantic import BaseModel
+
 from core.workflow.entities.base_node_data_entities import BaseIterationState
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
@@ -31,6 +33,13 @@ class WorkflowRunState:
 
     workflow_nodes_and_results: list[WorkflowNodeAndResult]
 
+    class NodeRun(BaseModel):
+        node_id: str
+        iteration_node_id: str
+
+    workflow_node_runs: list[NodeRun]
+    workflow_node_steps: int
+
     current_iteration_state: Optional[BaseIterationState]
 
     def __init__(self, workflow: Workflow,
@@ -52,3 +61,5 @@ class WorkflowRunState:
         self.workflow_nodes_and_results = []
 
         self.current_iteration_state = None
+        self.workflow_node_steps = 0
+        self.workflow_node_runs = []

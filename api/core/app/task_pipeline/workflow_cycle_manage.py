@@ -17,6 +17,9 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import (
     AdvancedChatTaskState,
+    IterationNodeCompletedStreamResponse,
+    IterationNodeNextStreamResponse,
+    IterationNodeStartStreamResponse,
     NodeExecutionInfo,
     NodeFinishStreamResponse,
     NodeStartStreamResponse,
@@ -399,7 +402,7 @@ class WorkflowCycleManage:
         )
     
     def _handle_iteration_to_stream_response(self, task_id: str, event: QueueIterationStartEvent | QueueIterationNextEvent | QueueIterationCompletedEvent) \
-        -> Union[NodeStartStreamResponse, NodeFinishStreamResponse]:
+        -> Union[IterationNodeStartStreamResponse, IterationNodeNextStreamResponse, IterationNodeCompletedStreamResponse]:
         """
         Handle iteration to stream response
         :param task_id: task id
@@ -407,53 +410,39 @@ class WorkflowCycleManage:
         :return:
         """
         if isinstance(event, QueueIterationStartEvent):
-            return NodeStartStreamResponse(
+            return IterationNodeStartStreamResponse(
                 task_id=task_id,
-                workflow_run_id='test',
-                data=NodeStartStreamResponse.Data(
+                workflow_run_id=self._task_state.workflow_run_id,
+                data=IterationNodeStartStreamResponse.Data(
                     id=event.node_id,
                     node_id=event.node_id,
-                    node_type=NodeType.ITERATION.value,
-                    title='Iteration',
-                    index=1,
-                    inputs={},
-                    created_at=int(time.time())
+                    created_at=int(time.time()),
+                    extras={}
                 )
             )
         elif isinstance(event, QueueIterationNextEvent):
-            return NodeFinishStreamResponse(
+            return IterationNodeNextStreamResponse(
                 task_id=task_id,
-                workflow_run_id='test',
-                data=NodeFinishStreamResponse.Data(
+                workflow_run_id=self._task_state.workflow_run_id,
+                data=IterationNodeNextStreamResponse.Data(
                     id=event.node_id,
                     node_id=event.node_id,
-                    node_type=NodeType.ITERATION.value,
                     index=event.index,
-                    title='Iteration',
-                    inputs={},
-                    outputs=event.output,
-                    status='SUCCEEDED',
-                    elapsed_time=0,
+                    output=event.output,
                     created_at=int(time.time()),
-                    finished_at=int(time.time())
+                    extras={}
                 )
             )
         elif isinstance(event, QueueIterationCompletedEvent):
-            return NodeFinishStreamResponse(
+            return IterationNodeCompletedStreamResponse(
                 task_id=task_id,
-                workflow_run_id='test',
-                data=NodeFinishStreamResponse.Data(
+                workflow_run_id=self._task_state.workflow_run_id,
+                data=IterationNodeCompletedStreamResponse.Data(
                     id=event.node_id,
                     node_id=event.node_id,
-                    node_type=NodeType.ITERATION.value,
-                    title='Iteration',
-                    index=1,
-                    inputs={},
-                    outputs={},
-                    status='SUCCEEDED',
-                    elapsed_time=0,
+                    outputs=event.outputs,
                     created_at=int(time.time()),
-                    finished_at=int(time.time())
+                    extras={}
                 )
             )
 

@@ -16,3 +16,11 @@ class IterationState(BaseIterationState):
     Iteration State.
     """
     outputs: list[dict] = None
+
+    def get_last_output(self) -> Optional[dict]:
+        """
+        Get last output.
+        """
+        if self.outputs:
+            return self.outputs[-1]
+        return None

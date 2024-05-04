@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.queue_entities import (
@@ -145,7 +145,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         )
 
     def on_workflow_iteration_next(self, node_id: str, index: int, 
-                                   output: Optional[dict]) -> None:
+                                   output: Optional[Any]) -> None:
         """
         Publish iteration next
         """
@@ -159,7 +159,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         )
 
     def on_workflow_iteration_completed(self, node_id: str, 
-                                        outputs: list[dict]) -> None:
+                                        outputs: list[Any]) -> None:
         """
         Publish iteration completed
         """

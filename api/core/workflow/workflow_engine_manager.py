@@ -153,6 +153,11 @@ class WorkflowEngineManager:
                             variable_pool=workflow_run_state.variable_pool,
                             state=workflow_run_state.current_iteration_state
                         )
+                        self._workflow_iteration_next(
+                            current_iteration_node=current_iteration_node,
+                            workflow_run_state=workflow_run_state,
+                            callbacks=callbacks
+                        )
                         if isinstance(next_iteration, NodeRunResult):
                             self._workflow_iteration_completed(
                                 current_iteration_node=current_iteration_node,
@@ -169,11 +174,6 @@ class WorkflowEngineManager:
                                 # continue overall process
                                 next_node = self._get_node(graph, outgoing_edges[0].get('target'))
                         elif isinstance(next_iteration, str):
-                            self._workflow_iteration_next(
-                                current_iteration_node=current_iteration_node,
-                                workflow_run_state=workflow_run_state,
-                                callbacks=callbacks
-                            )
                             # move to next iteration
                             next_node_id = next_iteration
                             # get next id
@@ -183,15 +183,14 @@ class WorkflowEngineManager:
                     break
 
                 # check is already ran
-                if next_node.node_id in [node_and_result.node.node_id
-                                         for node_and_result in workflow_run_state.workflow_nodes_and_results]:
+                if self._check_node_has_ran(workflow_run_state, next_node.node_id):
                     predecessor_node = next_node
                     continue
 
                 has_entry_node = True
 
                 # max steps 200 reached
-                if len(workflow_run_state.workflow_nodes_and_results) > 30:
+                if workflow_run_state.workflow_node_steps > 30:
                     raise ValueError('Max steps 30 reached.')
 
                 # or max execution time 10min reached
@@ -213,6 +212,11 @@ class WorkflowEngineManager:
                     next_node_id = next_node.get_next_iteration_start_id(
                         variable_pool=workflow_run_state.variable_pool,
                         state=workflow_run_state.current_iteration_state
+                    )
+                    self._workflow_iteration_next(
+                        current_iteration_node=current_iteration_node,
+                        workflow_run_state=workflow_run_state,
+                        callbacks=callbacks
                     )
                     if isinstance(next_node_id, NodeRunResult):
                         # iteration has ended
@@ -428,8 +432,13 @@ class WorkflowEngineManager:
                     callback.on_workflow_iteration_next(
                         node_id=current_iteration_node.node_id,
                         index=workflow_run_state.current_iteration_state.index,
-                        output=workflow_run_state.current_iteration_state.outputs[-1]
+                        output=workflow_run_state.current_iteration_state.get_last_output()
                     )
+        # clear ran nodes
+        workflow_run_state.workflow_node_runs = [
+            node_run for node_run in workflow_run_state.workflow_node_runs
+            if node_run.iteration_node_id != current_iteration_node.node_id
+        ]
     
     def _workflow_iteration_completed(self, current_iteration_node: BaseIterationNode,
                                         workflow_run_state: WorkflowRunState, 
@@ -551,6 +560,15 @@ class WorkflowEngineManager:
         """
         return time.perf_counter() - start_at > max_execution_time
 
+    def _check_node_has_ran(self, workflow_run_state: WorkflowRunState, node_id: str) -> bool:
+        """
+        Check node has ran
+        """
+        return bool([
+            node_and_result for node_and_result in workflow_run_state.workflow_node_runs
+            if node_and_result.node_id == node_id
+        ])
+
     def _run_workflow_node(self, workflow_run_state: WorkflowRunState,
                            node: BaseNode,
                            predecessor_node: Optional[BaseNode] = None,
@@ -574,6 +592,16 @@ class WorkflowEngineManager:
 
         # add to workflow_nodes_and_results
         workflow_run_state.workflow_nodes_and_results.append(workflow_nodes_and_result)
+
+        # add steps
+        workflow_run_state.workflow_node_steps += 1
+
+        # mark node as running
+        if workflow_run_state.current_iteration_state:
+            workflow_run_state.workflow_node_runs.append(WorkflowRunState.NodeRun(
+                node_id=node.node_id,
+                iteration_node_id=workflow_run_state.current_iteration_state.iteration_node_id
+            ))
 
         try:
             # run node, result must have inputs, process_data, outputs, execution_metadata
