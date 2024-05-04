@@ -326,16 +326,6 @@ class ToolApiProviderPreviousTestApi(Resource):
             args['schema'],
         )
 
-class ToolWorkflowProviderCreateApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self):
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-        
-        return WorkflowToolManageService.create_workflow_tool()
-
 class ToolWorkflowProviderUpdateApi(Resource):
     @setup_required
     @login_required

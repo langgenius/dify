@@ -31,7 +31,7 @@ class ToolTransformService:
             return url_prefix + 'builtin/' + provider_name + '/icon'
         elif provider_type == UserToolProvider.ProviderType.MODEL.value:
             return url_prefix + 'model/' + provider_name + '/icon'
-        elif provider_type == UserToolProvider.ProviderType.API.value:
+        elif provider_type in [UserToolProvider.ProviderType.API.value, UserToolProvider.ProviderType.WORKFLOW.value]:
             try:
                 return json.loads(icon)
             except:
