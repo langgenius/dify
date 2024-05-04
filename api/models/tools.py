@@ -130,7 +130,57 @@ class ApiToolProvider(db.Model):
     @property
     def tenant(self) -> Tenant:
         return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
+
+class WorkflowToolProvider(db.Model):
+    """
+    The table stores the workflow providers.
+    """
+    __tablename__ = 'tool_workflow_providers'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='tool_workflow_provider_pkey'),
+        db.UniqueConstraint('name', 'tenant_id', name='unique_workflow_tool_provider'),
+        db.UniqueConstraint('tenant_id', 'app_id', name='unique_workflow_tool_provider_app_id'),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    # name of the workflow provider
+    name = db.Column(db.String(40), nullable=False)
+    # icon
+    icon = db.Column(db.String(255), nullable=False)
+    # app id of the workflow provider
+    app_id = db.Column(StringUUID, nullable=False)
+    # who created this tool
+    user_id = db.Column(StringUUID, nullable=False)
+    # tenant id
+    tenant_id = db.Column(StringUUID, nullable=False)
+    # description of the provider
+    description = db.Column(db.Text, nullable=False)
+    # parameter configuration
+    parameter_configuration = db.Column(db.Text, nullable=False, server_default='[]')
+
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    @property
+    def schema_type(self) -> ApiProviderSchemaType:
+        return ApiProviderSchemaType.value_of(self.schema_type_str)
     
+    @property
+    def user(self) -> Account:
+        return db.session.query(Account).filter(Account.id == self.user_id).first()
+
+    @property
+    def tenant(self) -> Tenant:
+        return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
+    
+    @property
+    def parameter_configurations(self) -> list:
+        return json.loads(self.parameter_configuration)
+    
+    @property
+    def app(self) -> App:
+        return db.session.query(App).filter(App.id == self.app_id).first()
+
 class ToolModelInvoke(db.Model):
     """
     store the invoke logs from tool invoke

@@ -1,5 +1,4 @@
 from copy import deepcopy
-from typing import Any
 
 from core.entities.model_entities import ModelStatus
 from core.errors.error import ProviderTokenNotInitError
@@ -225,20 +224,3 @@ class ModelToolProviderController(ToolProviderController):
         """
         return ToolProviderType.MODEL
     
-    def validate_credentials(self, credentials: dict[str, Any]) -> None:
-        """
-            validate the credentials of the provider
-
-            :param tool_name: the name of the tool, defined in `get_tools`
-            :param credentials: the credentials of the tool
-        """
-        pass
-
-    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
-        """
-            validate the credentials of the provider
-
-            :param tool_name: the name of the tool, defined in `get_tools`
-            :param credentials: the credentials of the tool
-        """
-        pass

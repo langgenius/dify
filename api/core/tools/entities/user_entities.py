@@ -21,6 +21,7 @@ class UserToolProvider(BaseModel):
         APP = "app"
         API = "api"
         MODEL = "model"
+        WORKFLOW = "workflow"
 
     id: str
     author: str

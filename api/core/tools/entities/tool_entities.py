@@ -13,6 +13,7 @@ class ToolProviderType(Enum):
     BUILT_IN = "built-in"
     DATASET_RETRIEVAL = "dataset-retrieval"
     APP_BASED = "app-based"
+    WORKFLOW_BASED = "workflow-based"
     API_BASED = "api-based"
 
     @classmethod
@@ -330,6 +331,15 @@ class ModelToolProviderConfiguration(BaseModel):
     provider: str = Field(..., description="The provider of the model tool")
     models: list[ModelToolConfiguration] = Field(..., description="The models of the model tool")
     label: I18nObject = Field(..., description="The label of the model tool")
+
+
+class WorkflowToolParameterConfiguration(BaseModel):
+    """
+    Workflow tool configuration
+    """
+    name: str = Field(..., description="The name of the parameter")
+    description: str = Field(..., description="The description of the parameter")
+    form: ToolParameter.ToolParameterForm = Field(..., description="The form of the parameter")
 
 class ToolInvokeMeta(BaseModel):
     """

@@ -1,4 +1,3 @@
-from typing import Any
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
@@ -100,12 +99,6 @@ class ApiBasedToolProviderController(ToolProviderController):
     @property
     def app_type(self) -> ToolProviderType:
         return ToolProviderType.API_BASED
-    
-    def _validate_credentials(self, tool_name: str, credentials: dict[str, Any]) -> None:
-        pass
-
-    def validate_parameters(self, tool_name: str, tool_parameters: dict[str, Any]) -> None:
-        pass
 
     def _parse_tool_bundle(self, tool_bundle: ApiBasedToolBundle) -> ApiTool:
         """

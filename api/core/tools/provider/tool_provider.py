@@ -198,25 +198,3 @@ class ToolProviderController(BaseModel, ABC):
 
                 credentials[credential_name] = default_value
     
-    def validate_credentials(self, credentials: dict[str, Any]) -> None:
-        """
-            validate the credentials of the provider
-
-            :param tool_name: the name of the tool, defined in `get_tools`
-            :param credentials: the credentials of the tool
-        """
-        # validate credentials format
-        self.validate_credentials_format(credentials)
-
-        # validate credentials
-        self._validate_credentials(credentials)
-
-    @abstractmethod
-    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
-        """
-            validate the credentials of the provider
-
-            :param tool_name: the name of the tool, defined in `get_tools`
-            :param credentials: the credentials of the tool
-        """
-        pass
