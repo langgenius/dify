@@ -491,14 +491,15 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                                 "text": message_content.description
                             }
                             sub_messages.append(sub_text_message_dict)
-                        sub_image_message_dict = {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": message_content.data,
-                                "detail": message_content.detail.value
+                        if message_content.data:
+                            sub_image_message_dict = {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": message_content.data,
+                                    "detail": message_content.detail.value
+                                }
                             }
-                        }
-                        sub_messages.append(sub_image_message_dict)
+                            sub_messages.append(sub_image_message_dict)
                     elif message_content.type == PromptMessageContentType.IMAGE:
                         message_content = cast(ImagePromptMessageContent, message_content)
                         sub_message_dict = {

@@ -43,12 +43,12 @@ class PromptMessageUtil:
                             content = cast(VideoPromptMessageContent, content)
                             if content.description:
                                 text += content.description
-
-                            files.append({
-                                "type": 'image',
-                                "data": content.data[:10] + '...[TRUNCATED]...' + content.data[-10:],
-                                "detail": content.detail.value
-                            })
+                            if content.data:
+                                files.append({
+                                    "type": 'image',
+                                    "data": content.data[:10] + '...[TRUNCATED]...' + content.data[-10:],
+                                    "detail": content.detail.value
+                                })
                         else:
                             content = cast(ImagePromptMessageContent, content)
                             files.append({
@@ -77,12 +77,12 @@ class PromptMessageUtil:
                         content = cast(VideoPromptMessageContent, content)
                         if content.description:
                             text += content.description
-
-                        files.append({
-                            "type": 'image',
-                            "data": content.data[:10] + '...[TRUNCATED]...' + content.data[-10:],
-                            "detail": content.detail.value
-                        })
+                        if content.data:
+                            files.append({
+                                "type": 'image',
+                                "data": content.data[:10] + '...[TRUNCATED]...' + content.data[-10:],
+                                "detail": content.detail.value
+                            })
                     else:
                         content = cast(ImagePromptMessageContent, content)
                         files.append({
