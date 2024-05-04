@@ -13,6 +13,7 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 from core.tools.provider.model_tool_provider import ModelToolProviderController
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool.tool import Tool
+from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.configuration import ToolConfigurationManager
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 
@@ -248,7 +249,7 @@ class ToolTransformService:
     
     @staticmethod
     def tool_to_user_tool(
-        tool: Union[ApiBasedToolBundle, Tool], credentials: dict = None, tenant_id: str = None
+        tool: Union[ApiBasedToolBundle, WorkflowTool, Tool], credentials: dict = None, tenant_id: str = None
     ) -> UserTool:
         """
         convert tool to user tool

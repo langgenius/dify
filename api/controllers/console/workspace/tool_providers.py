@@ -345,6 +345,9 @@ class ToolWorkflowProviderUpdateApi(Resource):
         reqparser.add_argument('parameters', type=list[dict], required=True, nullable=False, location='json')
         
         args = reqparser.parse_args()
+
+        if not args['workflow_app_id']:
+            raise ValueError('incorrect workflow_app_id')
         
         return WorkflowToolManageService.update_workflow_tool(
             user_id,
@@ -396,6 +399,25 @@ class ToolWorkflowProviderGetApi(Resource):
             tenant_id,
             args['workflow_app_id'],
         ))
+    
+class ToolWorkflowProviderListToolApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        user_id = current_user.id
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('workflow_app_id', type=uuid_value, required=True, nullable=False, location='args')
+
+        args = parser.parse_args()
+
+        return jsonable_encoder(WorkflowToolManageService.list_single_workflow_tools(
+            user_id,
+            tenant_id,
+            args['workflow_app_id'],
+        ))
 
 class ToolBuiltinListApi(Resource):
     @setup_required
@@ -431,7 +453,7 @@ class ToolWorkflowListApi(Resource):
         user_id = current_user.id
         tenant_id = current_user.current_tenant_id
 
-        return jsonable_encoder([provider.to_dict() for provider in WorkflowToolManageService.list_workflow_tools(
+        return jsonable_encoder([provider.to_dict() for provider in WorkflowToolManageService.list_tenant_workflow_tools(
             user_id,
             tenant_id,
         )])
@@ -465,6 +487,7 @@ api.add_resource(ToolApiProviderPreviousTestApi, '/workspaces/current/tool-provi
 api.add_resource(ToolWorkflowProviderUpdateApi, '/workspaces/current/tool-provider/workflow/update')
 api.add_resource(ToolWorkflowProviderDeleteApi, '/workspaces/current/tool-provider/workflow/delete')
 api.add_resource(ToolWorkflowProviderGetApi, '/workspaces/current/tool-provider/workflow/get')
+api.add_resource(ToolWorkflowProviderListToolApi, '/workspaces/current/tool-provider/workflow/tools')
 
 api.add_resource(ToolBuiltinListApi, '/workspaces/current/tools/builtin')
 api.add_resource(ToolApiListApi, '/workspaces/current/tools/api')

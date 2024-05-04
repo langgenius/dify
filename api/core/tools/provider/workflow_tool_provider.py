@@ -67,7 +67,7 @@ class WorkflowToolProviderController(ToolProviderController):
             raise ValueError('workflow not found')
 
         # fetch start node
-        graph: dict = workflow.graph
+        graph: dict = workflow.graph_dict
 
         nodes = graph.get('nodes', [])
         start_node = next(filter(lambda x: x.get('data', {}).get('type') == 'start', nodes), None)

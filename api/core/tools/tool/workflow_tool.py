@@ -24,3 +24,18 @@ class WorkflowTool(Tool):
             invoke the tool
         """
         pass
+
+    def fork_tool_runtime(self, meta: dict[str, Any]) -> 'WorkflowTool':
+        """
+            fork a new tool with meta data
+
+            :param meta: the meta data of a tool call processing, tenant_id is required
+            :return: the new tool
+        """
+        return self.__class__(
+            identity=self.identity.copy() if self.identity else None,
+            parameters=self.parameters.copy() if self.parameters else None,
+            description=self.description.copy() if self.description else None,
+            runtime=Tool.Runtime(**meta),
+            workflow_app_id=self.workflow_app_id,
+        )
