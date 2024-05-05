@@ -43,7 +43,7 @@ class CodeExecutor:
     }
 
     code_language_to_running_language = {
-        CodeLanguage.JAVASCRIPT: CodeLanguage.JAVASCRIPT,
+        CodeLanguage.JAVASCRIPT: 'nodejs',
         CodeLanguage.JINJA2: CodeLanguage.PYTHON3,
         CodeLanguage.PYTHON3: CodeLanguage.PYTHON3,
     }
