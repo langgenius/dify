@@ -456,6 +456,7 @@ class WorkflowNodeExecution(db.Model):
 
     @property
     def extras(self):
+        from core.tools.tool_manager import ToolManager
         extras = {}
         if self.execution_metadata_dict:
             from core.workflow.entities.node_entities import NodeType
