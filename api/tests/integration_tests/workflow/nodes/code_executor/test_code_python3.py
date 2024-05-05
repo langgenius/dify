@@ -1,3 +1,5 @@
+from textwrap import dedent
+
 from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
 from core.workflow.nodes.code.code_node import PYTHON_DEFAULT_CODE
 
@@ -11,10 +13,10 @@ def test_python3_plain():
 
 
 def test_python3_json():
-    code = """
-import json
-print(json.dumps({'Hello': 'World'}))
-    """
+    code = dedent("""
+    import json
+    print(json.dumps({'Hello': 'World'}))
+    """)
     result = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload='', code=code)
     assert result == '{"Hello": "World"}\n'
 

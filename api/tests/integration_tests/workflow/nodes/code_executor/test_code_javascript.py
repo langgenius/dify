@@ -1,3 +1,5 @@
+from textwrap import dedent
+
 from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
 from core.workflow.nodes.code.code_node import JAVASCRIPT_DEFAULT_CODE
 
@@ -11,10 +13,10 @@ def test_javascript_plain():
 
 
 def test_javascript_json():
-    code = """
-obj = {'Hello': 'World'}
-console.log(JSON.stringify(obj))
-    """
+    code = dedent("""
+    obj = {'Hello': 'World'}
+    console.log(JSON.stringify(obj))
+    """)
     result = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload='', code=code)
     assert result == '{"Hello":"World"}\n'
 
