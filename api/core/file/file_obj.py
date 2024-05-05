@@ -10,9 +10,11 @@ from core.app.app_config.entities import FileExtraConfig
 from core.file.file_parser_cache import FileParserCache
 from core.file.tool_file_parser import ToolFileParser
 from core.file.upload_file_parser import UploadFileParser
-from core.model_runtime.entities.message_entities import (ImagePromptMessageContent,
-                                                          VideoPromptMessageContent,
-                                                          TextPromptMessageContent)
+from core.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    TextPromptMessageContent,
+    VideoPromptMessageContent,
+)
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, UploadFile
