@@ -26,7 +26,7 @@ class UploadFileParser:
         if not upload_file:
             return None
 
-        if upload_file.extension not in IMAGE_EXTENSIONS:
+        if upload_file.extension not in IMAGE_EXTENSIONS + MEDIA_EXTENSIONS:
             return None
 
         if current_app.config['MULTIMODAL_SEND_IMAGE_FORMAT'] == 'url' or force_url:

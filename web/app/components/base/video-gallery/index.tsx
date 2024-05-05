@@ -34,13 +34,13 @@ const VideoGallery: FC<Props> = ({
 
   const videoNum = srcs.length
   const videoStyle = getWidthStyle(videoNum)
-  console.log(videoPreviewUrl)
+
   return (
     <div className={cn(s[`img-${videoNum}`], 'flex flex-wrap')}>
       {/* TODO: support preview */}
       {srcs.map((src, index) => (
         // eslint-disable-next-line react/jsx-key
-        <video controls title={src}>
+        <video controls title='preview'>
           <source
             src={src}
             key={index}

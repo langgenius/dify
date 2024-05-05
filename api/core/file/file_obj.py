@@ -157,8 +157,8 @@ class FileVar(BaseModel):
             elif video_config.get('extract_video') == 'enabled' and video_config.get('extract_audio') == 'enabled':
                 return VideoPromptMessageContent(
                     data=self.data,
-                    detail=ImagePromptMessageContent.DETAIL.HIGH
-                    if image_config.get("detail") == "high" else ImagePromptMessageContent.DETAIL.LOW,
+                    detail=VideoPromptMessageContent.DETAIL.HIGH
+                    if image_config.get("detail") == "high" else VideoPromptMessageContent.DETAIL.LOW,
                     description=self.video_text
                 )
             else:

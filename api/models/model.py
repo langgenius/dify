@@ -792,7 +792,7 @@ class Message(db.Model):
         files = []
         for message_file in message_files:
             url = message_file.url
-            if message_file.type == 'image':
+            if message_file.type in ('image', 'video', 'audio'):
                 if message_file.transfer_method == 'local_file':
                     upload_file = (db.session.query(UploadFile)
                                    .filter(

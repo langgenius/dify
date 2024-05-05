@@ -22,7 +22,7 @@ const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar,
   const ref = useRef(null)
   const mediaSrcs = item.message_files?.map(item => item.url)
   const mediaType = item.message_files?.map(item => item.type)[0] || ''
-  console.log('message_files', item.message_files, mediaSrcs, mediaType)
+
   return (
     <div className={`flex items-start justify-end ${isShowPromptLog && 'first-of-type:pt-[14px]'}`} key={id} ref={ref}>
       <div className={s.questionWrapWrap}>
