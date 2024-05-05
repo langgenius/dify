@@ -81,7 +81,7 @@ class AppGenerateEntity(BaseModel):
     invoke_from: InvokeFrom
 
     # invoke call depth
-    call_depth: int
+    call_depth: int = 0
 
     # extra parameters, like: auto_generate_conversation_name
     extras: dict[str, Any] = {}

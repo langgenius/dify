@@ -40,7 +40,7 @@ class ToolNode(BaseNode):
         # get tool runtime
         try:
             tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self.tenant_id, self.app_id, self.node_id, node_data, self.user_id, self.invoke_from
+                self.tenant_id, self.app_id, self.node_id, node_data, self.invoke_from
             )
         except Exception as e:
             return NodeRunResult(

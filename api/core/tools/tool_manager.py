@@ -178,6 +178,24 @@ class ToolManager:
                 'credentials': model_tool.model_configuration['model_instance'].credentials,
                 'invoke_from': invoke_from
             })
+        elif provider_type == 'workflow':
+            workflow_provider = db.session.query(WorkflowToolProvider).filter(
+                WorkflowToolProvider.tenant_id == tenant_id,
+                WorkflowToolProvider.name == provider_name
+            ).first()
+
+            if workflow_provider is None:
+                raise ToolProviderNotFoundError(f'workflow provider {provider_name} not found')
+
+            controller = ToolTransformService.workflow_provider_to_controller(
+                db_provider=workflow_provider
+            )
+
+            return controller.get_tool(tool_name).fork_tool_runtime(meta={
+                'tenant_id': tenant_id,
+                'credentials': {},
+                'invoke_from': invoke_from
+            })
         elif provider_type == 'app':
             raise NotImplementedError('app provider not implemented')
         else:

@@ -2,10 +2,11 @@ import json
 from copy import deepcopy
 from typing import Any, Union
 
-from flask_login import current_user
-
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
 from core.tools.tool.tool import Tool
+from extensions.ext_database import db
+from models.account import Account
+from models.model import App, EndUser
 
 
 class WorkflowTool(Tool):
@@ -35,19 +36,40 @@ class WorkflowTool(Tool):
             raise ValueError('workflow not found')
         
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-        
+
         generator = WorkflowAppGenerator()
+        app = db.session.query(App).filter(App.id == self.workflow_app_id).first()
+        if not app:
+            raise ValueError('app not found')
+        workflow = app.workflow
+
         result = generator.generate(
             app_model=app, 
             workflow=workflow, 
-            user=current_user, 
-            args=tool_parameters, 
+            user=self._get_user(user_id), 
+            args={
+                'inputs': tool_parameters,
+            }, 
             invoke_from=self.runtime.invoke_from,
             stream=False,
             call_depth=self.workflow_call_depth
         )
 
         return self.create_text_message(json.dumps(result))
+
+    def _get_user(self, user_id: str) -> Union[EndUser, Account]:
+        """
+            get the user by user id
+        """
+
+        user = db.session.query(EndUser).filter(EndUser.id == user_id).first()
+        if not user:
+            user = db.session.query(Account).filter(Account.id == user_id).first()
+
+        if not user:
+            raise ValueError('user not found')
+
+        return user
 
     def fork_tool_runtime(self, meta: dict[str, Any]) -> 'WorkflowTool':
         """
@@ -62,5 +84,6 @@ class WorkflowTool(Tool):
             description=deepcopy(self.description),
             runtime=Tool.Runtime(**meta),
             workflow_app_id=self.workflow_app_id,
-            workflow_entities=deepcopy(self.workflow_entities)
+            workflow_entities=self.workflow_entities,
+            workflow_call_depth=self.workflow_call_depth
         )
