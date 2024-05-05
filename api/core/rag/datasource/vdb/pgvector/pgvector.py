@@ -3,6 +3,7 @@ import uuid
 from contextlib import contextmanager
 from typing import Any
 
+import psycopg2.extras
 import psycopg2.pool
 from pydantic import BaseModel
 
@@ -80,8 +81,8 @@ class PGVector(BaseVector):
                 )
             )
         with self._get_cursor() as cur:
-            cur.executemany(
-                f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (%s, %s, %s, %s)", values
+            psycopg2.extras.execute_values(
+                cur, f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES %s", values
             )
         return pks
 
