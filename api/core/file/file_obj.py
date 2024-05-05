@@ -10,7 +10,9 @@ from core.app.app_config.entities import FileExtraConfig
 from core.file.file_parser_cache import FileParserCache
 from core.file.tool_file_parser import ToolFileParser
 from core.file.upload_file_parser import UploadFileParser
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent, VideoPromptMessageContent
+from core.model_runtime.entities.message_entities import (ImagePromptMessageContent,
+                                                          VideoPromptMessageContent,
+                                                          TextPromptMessageContent)
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, UploadFile
@@ -130,24 +132,35 @@ class FileVar(BaseModel):
         return self._get_data(force_url=True)
 
     @property
-    def prompt_message_content(self) -> ImagePromptMessageContent | VideoPromptMessageContent:
-        if self.type == FileType.IMAGE:
-            image_config = self.extra_config.image_config
+    def prompt_message_content(
+            self) -> ImagePromptMessageContent | VideoPromptMessageContent | TextPromptMessageContent:
+        image_config = self.extra_config.image_config
+        video_config = self.extra_config.video_config
 
+        if self.type == FileType.IMAGE:
             return ImagePromptMessageContent(
                 data=self.data,
                 detail=ImagePromptMessageContent.DETAIL.HIGH
                 if image_config.get("detail") == "high" else ImagePromptMessageContent.DETAIL.LOW
             )
         if self.type == FileType.VIDEO:
-            image_config = self.extra_config.image_config
-
-            return VideoPromptMessageContent(
-                data=self.data,
-                detail=VideoPromptMessageContent.DETAIL.HIGH
-                if image_config.get("detail") == "high" else VideoPromptMessageContent.DETAIL.LOW,
-                description=self.video_text
-            )
+            if video_config.get('extract_video') != 'enabled' and video_config.get('extract_audio') == 'enabled':
+                return TextPromptMessageContent(data=self.video_text)
+            elif video_config.get('extract_video') == 'enabled' and video_config.get('extract_audio') != 'enabled':
+                return ImagePromptMessageContent(
+                    data=self.data,
+                    detail=ImagePromptMessageContent.DETAIL.HIGH
+                    if image_config.get("detail") == "high" else ImagePromptMessageContent.DETAIL.LOW
+                )
+            elif video_config.get('extract_video') == 'enabled' and video_config.get('extract_audio') == 'enabled':
+                return VideoPromptMessageContent(
+                    data=self.data,
+                    detail=ImagePromptMessageContent.DETAIL.HIGH
+                    if image_config.get("detail") == "high" else ImagePromptMessageContent.DETAIL.LOW,
+                    description=self.video_text
+                )
+            else:
+                raise ValueError('Either video frame extraction or audio extraction one of them must be enabled!')
 
     def _get_data(self, force_url: bool = False) -> Optional[str]:
         if self.type == FileType.IMAGE:
