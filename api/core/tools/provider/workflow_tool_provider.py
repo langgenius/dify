@@ -173,7 +173,8 @@ class WorkflowToolProviderController(ToolProviderController):
             workflow_entities={
                 'app': app,
                 'workflow': workflow,
-            }
+            },
+            workflow_call_depth=0
         )
 
     def get_tools(self, user_id: str, tenant_id: str) -> list[WorkflowTool]:

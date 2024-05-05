@@ -4,7 +4,6 @@ from typing import Any, Union
 
 from flask_login import current_user
 
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
 from core.tools.tool.tool import Tool
 
@@ -34,6 +33,8 @@ class WorkflowTool(Tool):
         app = self.workflow_entities.get('app')
         if not workflow or not app:
             raise ValueError('workflow not found')
+        
+        from core.app.apps.workflow.app_generator import WorkflowAppGenerator
         
         generator = WorkflowAppGenerator()
         result = generator.generate(
