@@ -9,6 +9,7 @@ from typing import Any, Union
 from flask import current_app
 
 from core.agent.entities import AgentToolEntity
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.provider_manager import ProviderManager
 from core.tools import *
@@ -101,7 +102,8 @@ class ToolManager:
             raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
 
     @classmethod
-    def get_tool_runtime(cls, provider_type: str, provider_name: str, tool_name: str, tenant_id: str) \
+    def get_tool_runtime(cls, provider_type: str, provider_name: str, tool_name: str, 
+                         tenant_id: str, invoke_from: InvokeFrom = InvokeFrom.DEBUGGER) \
         -> Union[BuiltinTool, ApiTool]:
         """
             get the tool runtime
@@ -121,6 +123,7 @@ class ToolManager:
                 return builtin_tool.fork_tool_runtime(meta={
                     'tenant_id': tenant_id,
                     'credentials': {},
+                    'invoke_from': invoke_from
                 })
 
             # get credentials
@@ -142,7 +145,8 @@ class ToolManager:
             return builtin_tool.fork_tool_runtime(meta={
                 'tenant_id': tenant_id,
                 'credentials': decrypted_credentials,
-                'runtime_parameters': {}
+                'runtime_parameters': {},
+                'invoke_from': invoke_from
             })
         
         elif provider_type == 'api':
@@ -158,6 +162,7 @@ class ToolManager:
             return api_provider.get_tool(tool_name).fork_tool_runtime(meta={
                 'tenant_id': tenant_id,
                 'credentials': decrypted_credentials,
+                'invoke_from': invoke_from
             })
         elif provider_type == 'model':
             if tenant_id is None:
@@ -170,7 +175,8 @@ class ToolManager:
 
             return model_tool.fork_tool_runtime(meta={
                 'tenant_id': tenant_id,
-                'credentials': model_tool.model_configuration['model_instance'].credentials
+                'credentials': model_tool.model_configuration['model_instance'].credentials,
+                'invoke_from': invoke_from
             })
         elif provider_type == 'app':
             raise NotImplementedError('app provider not implemented')
@@ -222,14 +228,16 @@ class ToolManager:
         return parameter_value
 
     @classmethod
-    def get_agent_tool_runtime(cls, tenant_id: str, app_id: str, agent_tool: AgentToolEntity) -> Tool:
+    def get_agent_tool_runtime(cls, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, invoke_from: InvokeFrom = InvokeFrom.DEBUGGER) -> Tool:
         """
             get the agent tool runtime
         """
         tool_entity = cls.get_tool_runtime(
-            provider_type=agent_tool.provider_type, provider_name=agent_tool.provider_id,
+            provider_type=agent_tool.provider_type, 
+            provider_name=agent_tool.provider_id,
             tool_name=agent_tool.tool_name,
             tenant_id=tenant_id,
+            invoke_from=invoke_from
         )
         runtime_parameters = {}
         parameters = tool_entity.get_all_runtime_parameters()
@@ -253,7 +261,7 @@ class ToolManager:
         return tool_entity
 
     @classmethod
-    def get_workflow_tool_runtime(cls, tenant_id: str, app_id: str, node_id: str, workflow_tool: ToolEntity):
+    def get_workflow_tool_runtime(cls, tenant_id: str, app_id: str, node_id: str, workflow_tool: ToolEntity, invoke_from: InvokeFrom = InvokeFrom.DEBUGGER) -> Tool:
         """
             get the workflow tool runtime
         """
@@ -262,6 +270,7 @@ class ToolManager:
             provider_name=workflow_tool.provider_id,
             tool_name=workflow_tool.tool_name,
             tenant_id=tenant_id,
+            invoke_from=invoke_from
         )
         runtime_parameters = {}
         parameters = tool_entity.get_all_runtime_parameters()

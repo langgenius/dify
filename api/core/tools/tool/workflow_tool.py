@@ -1,11 +1,18 @@
+import json
+from copy import deepcopy
 from typing import Any, Union
 
+from flask_login import current_user
+
+from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
 from core.tools.tool.tool import Tool
 
 
 class WorkflowTool(Tool):
     workflow_app_id: str
+    workflow_entities: dict[str, Any]
+    workflow_call_depth: int
 
     """
     Workflow tool.
@@ -23,7 +30,23 @@ class WorkflowTool(Tool):
         """
             invoke the tool
         """
-        pass
+        workflow = self.workflow_entities.get('workflow')
+        app = self.workflow_entities.get('app')
+        if not workflow or not app:
+            raise ValueError('workflow not found')
+        
+        generator = WorkflowAppGenerator()
+        result = generator.generate(
+            app_model=app, 
+            workflow=workflow, 
+            user=current_user, 
+            args=tool_parameters, 
+            invoke_from=self.runtime.invoke_from,
+            stream=False,
+            call_depth=self.workflow_call_depth
+        )
+
+        return self.create_text_message(json.dumps(result))
 
     def fork_tool_runtime(self, meta: dict[str, Any]) -> 'WorkflowTool':
         """
@@ -33,9 +56,10 @@ class WorkflowTool(Tool):
             :return: the new tool
         """
         return self.__class__(
-            identity=self.identity.copy() if self.identity else None,
-            parameters=self.parameters.copy() if self.parameters else None,
-            description=self.description.copy() if self.description else None,
+            identity=deepcopy(self.identity),
+            parameters=deepcopy(self.parameters),
+            description=deepcopy(self.description),
             runtime=Tool.Runtime(**meta),
             workflow_app_id=self.workflow_app_id,
+            workflow_entities=deepcopy(self.workflow_entities)
         )

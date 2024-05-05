@@ -34,7 +34,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                  user: Union[Account, EndUser],
                  args: dict,
                  invoke_from: InvokeFrom,
-                 stream: bool = True) \
+                 stream: bool = True,
+                 call_depth: int = 0) \
             -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
@@ -75,7 +76,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             files=file_objs,
             user_id=user.id,
             stream=stream,
-            invoke_from=invoke_from
+            invoke_from=invoke_from,
+            call_depth=call_depth + 1
         )
 
         # init queue manager

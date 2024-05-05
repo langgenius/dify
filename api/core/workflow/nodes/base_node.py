@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
@@ -37,6 +38,7 @@ class BaseNode(ABC):
     workflow_id: str
     user_id: str
     user_from: UserFrom
+    invoke_from: InvokeFrom
 
     node_id: str
     node_data: BaseNodeData
@@ -49,6 +51,7 @@ class BaseNode(ABC):
                  workflow_id: str,
                  user_id: str,
                  user_from: UserFrom,
+                 invoke_from: InvokeFrom,
                  config: dict,
                  callbacks: list[BaseWorkflowCallback] = None) -> None:
         self.tenant_id = tenant_id
@@ -56,6 +59,7 @@ class BaseNode(ABC):
         self.workflow_id = workflow_id
         self.user_id = user_id
         self.user_from = user_from
+        self.invoke_from = invoke_from
 
         self.node_id = config.get("id")
         if not self.node_id:

@@ -4,6 +4,7 @@ from typing import Optional, cast
 
 from core.app.app_config.entities import FileExtraConfig
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
@@ -51,6 +52,8 @@ node_classes = {
     NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode
 }
 
+WORKFLOW_CALL_MAX_DEPTH = 5
+
 logger = logging.getLogger(__name__)
 
 
@@ -87,9 +90,11 @@ class WorkflowEngineManager:
     def run_workflow(self, workflow: Workflow,
                      user_id: str,
                      user_from: UserFrom,
+                     invoke_from: InvokeFrom,
                      user_inputs: dict,
                      system_inputs: Optional[dict] = None,
-                     callbacks: list[BaseWorkflowCallback] = None) -> None:
+                     callbacks: list[BaseWorkflowCallback] = None,
+                     call_depth: Optional[int] = 1) -> None:
         """
         Run workflow
         :param workflow: Workflow instance
@@ -100,6 +105,9 @@ class WorkflowEngineManager:
         :param callbacks: workflow callbacks
         :return:
         """
+        if call_depth > WORKFLOW_CALL_MAX_DEPTH:
+            raise ValueError('Max workflow call depth reached.')
+
         # fetch workflow graph
         graph = workflow.graph_dict
         if not graph:
@@ -128,7 +136,8 @@ class WorkflowEngineManager:
                 user_inputs=user_inputs
             ),
             user_id=user_id,
-            user_from=user_from
+            user_from=user_from,
+            invoke_from=invoke_from
         )
 
         try:
@@ -176,12 +185,12 @@ class WorkflowEngineManager:
                             outgoing_edges = [edge for edge in graph.get('edges') if edge.get('source') == iteration_node_id]
                             if outgoing_edges:
                                 # continue overall process
-                                next_node = self._get_node(graph, outgoing_edges[0].get('target'))
+                                next_node = self._get_node(workflow_run_state, graph, outgoing_edges[0].get('target'))
                         elif isinstance(next_iteration, str):
                             # move to next iteration
                             next_node_id = next_iteration
                             # get next id
-                            next_node = self._get_node(graph, next_node_id)
+                            next_node = self._get_node(workflow_run_state, graph, next_node_id)
                 
                 if not next_node:
                     break
@@ -228,7 +237,7 @@ class WorkflowEngineManager:
                         workflow_run_state.current_iteration_state = None
                         continue
                     else:
-                        next_node = self._get_node(graph, next_node_id)
+                        next_node = self._get_node(workflow_run_state, graph, next_node_id)
 
                 # run workflow, run multiple target nodes in the future
                 self._run_workflow_node(
@@ -480,6 +489,7 @@ class WorkflowEngineManager:
                         workflow_id=workflow_run_state.workflow_id,
                         user_id=workflow_run_state.user_id,
                         user_from=workflow_run_state.user_from,
+                        invoke_from=workflow_run_state.invoke_from,
                         config=node_config,
                         callbacks=callbacks
                     )
@@ -528,11 +538,12 @@ class WorkflowEngineManager:
                 workflow_id=workflow_run_state.workflow_id,
                 user_id=workflow_run_state.user_id,
                 user_from=workflow_run_state.user_from,
+                invoke_from=workflow_run_state.invoke_from,
                 config=target_node_config,
                 callbacks=callbacks
             )
         
-    def _get_node(self, graph: dict, node_id) -> Optional[BaseNode]:
+    def _get_node(self, workflow_run_state: WorkflowRunState, graph: dict, node_id) -> Optional[BaseNode]:
         """
         Get node from graph by node id
         """
@@ -545,11 +556,12 @@ class WorkflowEngineManager:
                 node_type = NodeType.value_of(node_config.get('data', {}).get('type'))
                 node_cls = node_classes.get(node_type)
                 return node_cls(
-                    tenant_id=None,
-                    app_id=None,
-                    workflow_id=None,
-                    user_id=None,
-                    user_from=UserFrom.ACCOUNT,
+                    tenant_id=workflow_run_state.tenant_id,
+                    app_id=workflow_run_state.app_id,
+                    workflow_id=workflow_run_state.workflow_id,
+                    user_id=workflow_run_state.user_id,
+                    user_from=workflow_run_state.user_from,
+                    invoke_from=workflow_run_state.invoke_from,
                     config=node_config
                 )
 

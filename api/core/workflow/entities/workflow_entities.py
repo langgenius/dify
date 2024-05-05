@@ -2,6 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.base_node_data_entities import BaseIterationState
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
@@ -25,6 +26,7 @@ class WorkflowRunState:
     workflow_type: WorkflowType
     user_id: str
     user_from: UserFrom
+    invoke_from: InvokeFrom
 
     start_at: float
     variable_pool: VariablePool
@@ -46,13 +48,15 @@ class WorkflowRunState:
                  start_at: float,
                  variable_pool: VariablePool,
                  user_id: str,
-                 user_from: UserFrom):
+                 user_from: UserFrom,
+                 invoke_from: InvokeFrom):
         self.workflow_id = workflow.id
         self.tenant_id = workflow.tenant_id
         self.app_id = workflow.app_id
         self.workflow_type = WorkflowType.value_of(workflow.type)
         self.user_id = user_id
         self.user_from = user_from
+        self.invoke_from = invoke_from
 
         self.start_at = start_at
         self.variable_pool = variable_pool

@@ -4,6 +4,7 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, validator
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.entities.tool_entities import (
     ToolDescription,
     ToolIdentity,
@@ -41,6 +42,7 @@ class Tool(BaseModel, ABC):
 
         tenant_id: str = None
         tool_id: str = None
+        invoke_from: InvokeFrom = InvokeFrom.DEBUGGER
         credentials: dict[str, Any] = None
         runtime_parameters: dict[str, Any] = None
 

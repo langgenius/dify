@@ -170,6 +170,10 @@ class WorkflowToolProviderController(ToolProviderController):
             parameters=workflow_tool_parameters,
             is_team_authorization=True,
             workflow_app_id=app.id,
+            workflow_entities={
+                'app': app,
+                'workflow': workflow,
+            }
         )
 
     def get_tools(self, user_id: str, tenant_id: str) -> list[WorkflowTool]:

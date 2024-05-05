@@ -73,12 +73,14 @@ class WorkflowAppRunner:
             user_from=UserFrom.ACCOUNT
             if application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
             else UserFrom.END_USER,
+            invoke_from=application_generate_entity.invoke_from,
             user_inputs=inputs,
             system_inputs={
                 SystemVariable.FILES: files,
                 SystemVariable.USER_ID: user_id
             },
-            callbacks=workflow_callbacks
+            callbacks=workflow_callbacks,
+            call_depth=application_generate_entity.call_depth
         )
 
     def get_workflow(self, app_model: App, workflow_id: str) -> Optional[Workflow]:

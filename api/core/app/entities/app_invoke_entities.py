@@ -80,6 +80,9 @@ class AppGenerateEntity(BaseModel):
     stream: bool
     invoke_from: InvokeFrom
 
+    # invoke call depth
+    call_depth: int
+
     # extra parameters, like: auto_generate_conversation_name
     extras: dict[str, Any] = {}
 

@@ -102,6 +102,7 @@ class AdvancedChatAppRunner(AppRunner):
             user_from=UserFrom.ACCOUNT
             if application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
             else UserFrom.END_USER,
+            invoke_from=application_generate_entity.invoke_from,
             user_inputs=inputs,
             system_inputs={
                 SystemVariable.QUERY: query,
