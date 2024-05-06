@@ -54,11 +54,13 @@ export type WorkflowProcess = {
   status: WorkflowRunningStatus
   tracing: NodeTracing[]
   expand?: boolean // for UI
+  resultText?: string
 }
 
 export type ChatItem = IChatItem & {
   isError?: boolean
   workflowProcess?: WorkflowProcess
+  conversationId?: string
 }
 
 export type OnSend = (message: string, files?: VisionFile[]) => void

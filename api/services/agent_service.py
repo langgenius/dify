@@ -1,3 +1,6 @@
+import pytz
+from flask_login import current_user
+
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
@@ -46,11 +49,13 @@ class AgentService:
         else:
             executor = 'Unknown'
 
+        timezone = pytz.timezone(current_user.timezone)
+
         result = {
             'meta': {
                 'status': 'success',
                 'executor': executor,
-                'start_time': message.created_at.isoformat(),
+                'start_time': message.created_at.astimezone(timezone).isoformat(),
                 'elapsed_time': message.provider_response_latency,
                 'total_tokens': message.answer_tokens + message.message_tokens,
                 'agent_mode': app_model.app_model_config.agent_mode_dict.get('strategy', 'react'),
@@ -82,19 +87,22 @@ class AgentService:
                 tool_output = tool_outputs.get(tool_name, {})
                 tool_meta_data = tool_meta.get(tool_name, {})
                 tool_config = tool_meta_data.get('tool_config', {})
-                tool_icon = ToolManager.get_tool_icon(
-                    tenant_id=app_model.tenant_id,
-                    provider_type=tool_config.get('tool_provider_type', ''),
-                    provider_id=tool_config.get('tool_provider', ''),
-                )
-                if not tool_icon:
-                    tool_entity = find_agent_tool(tool_name)
-                    if tool_entity:
-                        tool_icon = ToolManager.get_tool_icon(
-                            tenant_id=app_model.tenant_id,
-                            provider_type=tool_entity.provider_type,
-                            provider_id=tool_entity.provider_id,
-                        )
+                if tool_config.get('tool_provider_type', '') != 'dataset-retrieval':
+                    tool_icon = ToolManager.get_tool_icon(
+                        tenant_id=app_model.tenant_id,
+                        provider_type=tool_config.get('tool_provider_type', ''),
+                        provider_id=tool_config.get('tool_provider', ''),
+                    )
+                    if not tool_icon:
+                        tool_entity = find_agent_tool(tool_name)
+                        if tool_entity:
+                            tool_icon = ToolManager.get_tool_icon(
+                                tenant_id=app_model.tenant_id,
+                                provider_type=tool_entity.provider_type,
+                                provider_id=tool_entity.provider_id,
+                            )
+                else:
+                    tool_icon = ''
 
                 tool_calls.append({
                     'status': 'success' if not tool_meta_data.get('error') else 'error',

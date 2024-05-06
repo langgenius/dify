@@ -4,6 +4,7 @@ import {
   getOutgoers,
 } from 'reactflow'
 import dagre from 'dagre'
+import { v4 as uuid4 } from 'uuid'
 import {
   cloneDeep,
   uniqBy,
@@ -78,7 +79,9 @@ const getCycleEdges = (nodes: Node[], edges: Edge[]) => {
   return cycleEdges
 }
 
-export const initialNodes = (nodes: Node[], edges: Edge[]) => {
+export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
+  const nodes = cloneDeep(originNodes)
+  const edges = cloneDeep(originEdges)
   const firstNode = nodes[0]
 
   if (!firstNode?.position) {
@@ -120,7 +123,9 @@ export const initialNodes = (nodes: Node[], edges: Edge[]) => {
   })
 }
 
-export const initialEdges = (edges: Edge[], nodes: Node[]) => {
+export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
+  const nodes = cloneDeep(originNodes)
+  const edges = cloneDeep(originEdges)
   let selectedNode: Node | null = null
   const nodesMap = nodes.reduce((acc, node) => {
     acc[node.id] = node
@@ -175,8 +180,8 @@ export const getLayoutByDagre = (originNodes: Node[], originEdges: Edge[]) => {
   dagreGraph.setGraph({
     rankdir: 'LR',
     align: 'UL',
-    nodesep: 64,
-    ranksep: 40,
+    nodesep: 40,
+    ranksep: 60,
   })
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: node.width, height: node.height })
@@ -330,4 +335,29 @@ export const getToolCheckParams = (
     toolSettingSchema,
     language,
   }
+}
+
+export const changeNodesAndEdgesId = (nodes: Node[], edges: Edge[]) => {
+  const idMap = nodes.reduce((acc, node) => {
+    acc[node.id] = uuid4()
+
+    return acc
+  }, {} as Record<string, string>)
+
+  const newNodes = nodes.map((node) => {
+    return {
+      ...node,
+      id: idMap[node.id],
+    }
+  })
+
+  const newEdges = edges.map((edge) => {
+    return {
+      ...edge,
+      source: idMap[edge.source],
+      target: idMap[edge.target],
+    }
+  })
+
+  return [newNodes, newEdges] as [Node[], Edge[]]
 }

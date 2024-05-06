@@ -4,6 +4,7 @@
 - searxng
 - dalle
 - azuredalle
+- stability
 - wikipedia
 - model.openai
 - model.google
@@ -13,9 +14,11 @@
 - pubmed
 - stablediffusion
 - webscraper
+- jina
 - model.zhipuai
 - aippt
 - youtube
+- code
 - wolframalpha
 - maths
 - github
@@ -27,3 +30,4 @@
 - qrcode
 - dingtalk
 - feishu
+- slack

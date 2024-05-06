@@ -201,7 +201,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
             endpoint_url,
             headers=headers,
             json=data,
-            timeout=(10, 60),
+            timeout=(10, 300),
             stream=stream
         )
 

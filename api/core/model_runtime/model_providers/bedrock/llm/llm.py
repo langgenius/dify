@@ -370,29 +370,14 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :return:md = genai.GenerativeModel(model)
         """
         prefix = model.split('.')[0]
-
+        model_name = model.split('.')[1]
         if isinstance(messages, str):
             prompt = messages
         else:
-            prompt = self._convert_messages_to_prompt(messages, prefix)
+            prompt = self._convert_messages_to_prompt(messages, prefix, model_name)
 
         return self._get_num_tokens_by_gpt2(prompt)
     
-    def _convert_messages_to_prompt(self, model_prefix: str, messages: list[PromptMessage]) -> str:
-        """
-        Format a list of messages into a full prompt for the Google model
-
-        :param messages: List of PromptMessage to combine.
-        :return: Combined string with necessary human_prompt and ai_prompt tags.
-        """
-        messages = messages.copy()  # don't mutate the original list
-        
-        text = "".join(
-            self._convert_one_message_to_text(message, model_prefix)
-            for message in messages
-        )
-
-        return text.rstrip()
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -432,7 +417,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _convert_one_message_to_text(self, message: PromptMessage, model_prefix: str) -> str:
+    def _convert_one_message_to_text(self, message: PromptMessage, model_prefix: str, model_name: Optional[str] = None) -> str:
         """
         Convert a single message to a string.
 
@@ -446,9 +431,21 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             ai_prompt = "\n\nAssistant:"
 
         elif model_prefix == "meta":
-            human_prompt_prefix = "\n[INST]"
+            # LLAMA3
+            if model_name.startswith("llama3"):
+                human_prompt_prefix = "<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n"
+                human_prompt_postfix = "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"
+                ai_prompt = "\n\nAssistant:"
+            else:
+                # LLAMA2
+                human_prompt_prefix = "\n[INST]"
+                human_prompt_postfix = "[\\INST]\n"
+                ai_prompt = ""
+
+        elif model_prefix == "mistral":
+            human_prompt_prefix = "<s>[INST]"
             human_prompt_postfix = "[\\INST]\n"
-            ai_prompt = ""
+            ai_prompt = "\n\nAssistant:"
 
         elif model_prefix == "amazon":
             human_prompt_prefix = "\n\nUser:"
@@ -473,11 +470,12 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         return message_text
 
-    def _convert_messages_to_prompt(self, messages: list[PromptMessage], model_prefix: str) -> str:
+    def _convert_messages_to_prompt(self, messages: list[PromptMessage], model_prefix: str, model_name: Optional[str] = None) -> str:
         """
         Format a list of messages into a full prompt for the Anthropic, Amazon and Llama models
 
         :param messages: List of PromptMessage to combine.
+        :param model_name: specific model name.Optional,just to distinguish llama2 and llama3
         :return: Combined string with necessary human_prompt and ai_prompt tags.
         """
         if not messages:
@@ -488,18 +486,20 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             messages.append(AssistantPromptMessage(content=""))
 
         text = "".join(
-            self._convert_one_message_to_text(message, model_prefix)
+            self._convert_one_message_to_text(message, model_prefix, model_name)
             for message in messages
         )
 
         # trim off the trailing ' ' that might come from the "Assistant: "
         return text.rstrip()
 
-    def _create_payload(self, model_prefix: str, prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[list[str]] = None, stream: bool = True):
+    def _create_payload(self, model: str, prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[list[str]] = None, stream: bool = True):
         """
         Create payload for bedrock api call depending on model provider
         """
         payload = dict()
+        model_prefix = model.split('.')[0]
+        model_name = model.split('.')[1]
 
         if model_prefix == "amazon":
             payload["textGenerationConfig"] = { **model_parameters }
@@ -519,6 +519,13 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 payload["frequencyPenalty"] = {model_parameters.get("frequencyPenalty")}
             if model_parameters.get("countPenalty"):
                 payload["countPenalty"] = {model_parameters.get("countPenalty")}
+        
+        elif model_prefix == "mistral":
+            payload["temperature"] = model_parameters.get("temperature")
+            payload["top_p"] = model_parameters.get("top_p")
+            payload["max_tokens"] = model_parameters.get("max_tokens")
+            payload["prompt"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
+            payload["stop"] = stop[:10] if stop else []
 
         elif model_prefix == "anthropic":
             payload = { **model_parameters }
@@ -532,7 +539,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         
         elif model_prefix == "meta":
             payload = { **model_parameters }
-            payload["prompt"] = self._convert_messages_to_prompt(prompt_messages, model_prefix)
+            payload["prompt"] = self._convert_messages_to_prompt(prompt_messages, model_prefix, model_name)
 
         else:
             raise ValueError(f"Got unknown model prefix {model_prefix}")
@@ -567,7 +574,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         )
 
         model_prefix = model.split('.')[0]
-        payload = self._create_payload(model_prefix, prompt_messages, model_parameters, stop, stream)
+        payload = self._create_payload(model, prompt_messages, model_parameters, stop, stream)
 
         # need workaround for ai21 models which doesn't support streaming
         if stream and model_prefix != "ai21":
@@ -648,6 +655,11 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             output = response_body.get("generation").strip('\n')
             prompt_tokens = response_body.get("prompt_token_count")
             completion_tokens = response_body.get("generation_token_count")
+        
+        elif model_prefix == "mistral":
+            output = response_body.get("outputs")[0].get("text")
+            prompt_tokens = response.get('ResponseMetadata').get('HTTPHeaders').get('x-amzn-bedrock-input-token-count')
+            completion_tokens = response.get('ResponseMetadata').get('HTTPHeaders').get('x-amzn-bedrock-output-token-count')
 
         else:
             raise ValueError(f"Got unknown model prefix {model_prefix} when handling block response")
@@ -731,6 +743,10 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 content_delta = payload.get("text")
                 finish_reason = payload.get("finish_reason")
             
+            elif model_prefix == "mistral":
+                content_delta = payload.get('outputs')[0].get("text")
+                finish_reason = payload.get('outputs')[0].get("stop_reason")
+
             elif model_prefix == "meta":
                 content_delta = payload.get("generation").strip('\n')
                 finish_reason = payload.get("stop_reason")

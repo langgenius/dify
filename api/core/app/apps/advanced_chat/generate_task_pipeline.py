@@ -28,9 +28,9 @@ from core.app.entities.task_entities import (
     AdvancedChatTaskState,
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
+    ChatflowStreamGenerateRoute,
     ErrorStreamResponse,
     MessageEndStreamResponse,
-    StreamGenerateRoute,
     StreamResponse,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
@@ -84,13 +84,19 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         """
         super().__init__(application_generate_entity, queue_manager, user, stream)
 
+        if isinstance(self._user, EndUser):
+            user_id = self._user.session_id
+        else:
+            user_id = self._user.id
+
         self._workflow = workflow
         self._conversation = conversation
         self._message = message
         self._workflow_system_variables = {
             SystemVariable.QUERY: message.query,
             SystemVariable.FILES: application_generate_entity.files,
-            SystemVariable.CONVERSATION: conversation.id,
+            SystemVariable.CONVERSATION_ID: conversation.id,
+            SystemVariable.USER_ID: user_id
         }
 
         self._task_state = AdvancedChatTaskState(
@@ -98,6 +104,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         )
 
         self._stream_generate_routes = self._get_stream_generate_routes()
+        self._conversation_name_generate_thread = None
 
     def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
@@ -107,6 +114,12 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         db.session.refresh(self._workflow)
         db.session.refresh(self._user)
         db.session.close()
+
+        # start generate conversation name thread
+        self._conversation_name_generate_thread = self._generate_conversation_name(
+            self._conversation,
+            self._application_generate_entity.query
+        )
 
         generator = self._process_stream_response()
         if self._stream:
@@ -278,6 +291,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             else:
                 continue
 
+        if self._conversation_name_generate_thread:
+            self._conversation_name_generate_thread.join()
+
     def _save_message(self) -> None:
         """
         Save message.
@@ -327,7 +343,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             **extras
         )
 
-    def _get_stream_generate_routes(self) -> dict[str, StreamGenerateRoute]:
+    def _get_stream_generate_routes(self) -> dict[str, ChatflowStreamGenerateRoute]:
         """
         Get stream generate routes.
         :return:
@@ -350,7 +366,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 continue
 
             for start_node_id in start_node_ids:
-                stream_generate_routes[start_node_id] = StreamGenerateRoute(
+                stream_generate_routes[start_node_id] = ChatflowStreamGenerateRoute(
                     answer_node_id=answer_node_id,
                     generate_route=generate_route
                 )
@@ -414,15 +430,14 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             for route_chunk in route_chunks:
                 if route_chunk.type == 'text':
                     route_chunk = cast(TextGenerateRouteChunk, route_chunk)
-                    for token in route_chunk.text:
-                        # handle output moderation chunk
-                        should_direct_answer = self._handle_output_moderation_chunk(token)
-                        if should_direct_answer:
-                            continue
 
-                        self._task_state.answer += token
-                        yield self._message_to_stream_response(token, self._message.id)
-                        time.sleep(0.01)
+                    # handle output moderation chunk
+                    should_direct_answer = self._handle_output_moderation_chunk(route_chunk.text)
+                    if should_direct_answer:
+                        continue
+
+                    self._task_state.answer += route_chunk.text
+                    yield self._message_to_stream_response(route_chunk.text, self._message.id)
                 else:
                     break
 
@@ -447,10 +462,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         for route_chunk in route_chunks:
             if route_chunk.type == 'text':
                 route_chunk = cast(TextGenerateRouteChunk, route_chunk)
-                for token in route_chunk.text:
-                    self._task_state.answer += token
-                    yield self._message_to_stream_response(token, self._message.id)
-                    time.sleep(0.01)
+                self._task_state.answer += route_chunk.text
+                yield self._message_to_stream_response(route_chunk.text, self._message.id)
             else:
                 route_chunk = cast(VarGenerateRouteChunk, route_chunk)
                 value_selector = route_chunk.value_selector

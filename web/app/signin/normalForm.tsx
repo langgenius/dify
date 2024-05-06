@@ -96,8 +96,17 @@ const NormalForm = () => {
           remember_me: true,
         },
       })
-      localStorage.setItem('console_token', res.data)
-      router.replace('/apps')
+
+      if (res.result === 'success') {
+        localStorage.setItem('console_token', res.data)
+        router.replace('/apps')
+      }
+      else {
+        Toast.notify({
+          type: 'error',
+          message: res.data,
+        })
+      }
     }
     finally {
       setIsLoading(false)
@@ -236,7 +245,7 @@ const NormalForm = () => {
                       <span className='cursor-pointer text-primary-600'>{t('login.forget')}</span>
                     </Tooltip> */}
                   </label>
-                  <div className="relative mt-1 rounded-md shadow-sm">
+                  <div className="relative mt-1">
                     <input
                       id="password"
                       value={password}
@@ -290,6 +299,15 @@ const NormalForm = () => {
               href='https://dify.ai/privacy'
             >{t('login.pp')}</Link>
           </div>
+
+          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-gray-600">
+            {t('login.goToInit')}
+            &nbsp;
+            <Link
+              className='text-primary-600'
+              href='/install'
+            >{t('login.setAdminAccount')}</Link>
+          </div>}
 
         </div>
       </div>

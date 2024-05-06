@@ -8,6 +8,7 @@ import produce from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import { clone, isEqual } from 'lodash-es'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
+import { useShallow } from 'zustand/react/shallow'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
 import AppPublisher from '../app-publisher'
@@ -57,7 +58,7 @@ import { fetchCollectionList } from '@/service/tools'
 import { type Collection } from '@/app/components/tools/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
-type PublichConfig = {
+type PublishConfig = {
   modelConfig: ModelConfig
   completionParams: FormValue
 }
@@ -65,7 +66,10 @@ type PublichConfig = {
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { appDetail, setAppSiderbarExpand } = useAppStore()
+  const { appDetail, setAppSiderbarExpand } = useAppStore(useShallow(state => ({
+    appDetail: state.appDetail,
+    setAppSiderbarExpand: state.setAppSiderbarExpand,
+  })))
   const [formattingChanged, setFormattingChanged] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
@@ -74,7 +78,7 @@ const Configuration: FC = () => {
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const [mode, setMode] = useState('')
-  const [publishedConfig, setPublishedConfig] = useState<PublichConfig | null>(null)
+  const [publishedConfig, setPublishedConfig] = useState<PublishConfig | null>(null)
 
   const modalConfig = useMemo(() => appDetail?.model_config || {} as BackendModelConfig, [appDetail])
   const [conversationId, setConversationId] = useState<string | null>('')
@@ -225,7 +229,7 @@ const Configuration: FC = () => {
 
   const [isShowHistoryModal, { setTrue: showHistoryModal, setFalse: hideHistoryModal }] = useBoolean(false)
 
-  const syncToPublishedConfig = (_publishedConfig: PublichConfig) => {
+  const syncToPublishedConfig = (_publishedConfig: PublishConfig) => {
     const modelConfig = _publishedConfig.modelConfig
     setModelConfig(_publishedConfig.modelConfig)
     setCompletionParams(_publishedConfig.completionParams)

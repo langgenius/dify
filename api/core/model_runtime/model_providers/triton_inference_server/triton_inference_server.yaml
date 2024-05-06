@@ -43,7 +43,7 @@ model_credential_schema:
       placeholder:
         zh_Hans: 在此输入您的上下文大小
         en_US: Enter the context size
-      default: 2048
+      default: '2048'
     - variable: completion_type
       label:
         zh_Hans: 补全类型
@@ -69,16 +69,16 @@ model_credential_schema:
         en_US: Stream output
       type: select
       required: true
-      default: true
+      default: 'true'
       placeholder:
         zh_Hans: 是否支持流式输出
         en_US: Whether to support stream output
       options:
         - label:
             zh_Hans: 是
-            en_US: Yes
-          value: true
+            en_US: 'Yes'
+          value: 'true'
         - label:
             zh_Hans: 否
-            en_US: No
-          value: false
+            en_US: 'No'
+          value: 'false'
