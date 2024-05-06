@@ -354,7 +354,7 @@ const translation = {
     overview: '概要',
     promptEng: 'Orchestrate',
     apiAccess: 'APIアクセス',
-    logAndAnn: 'ログ＆アナウンス',
+    logAndAnn: 'ログ＆注釈',
     logs: 'ログ',
   },
   environment: {
