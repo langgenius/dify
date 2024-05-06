@@ -9,7 +9,7 @@
     "lint": "next lint",
     "fix": "next lint --fix",
     "eslint-fix": "eslint --fix",
-    "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky install ./web/.husky",
+    "prepare": "npx only-allow yarn && cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky install ./web/.husky",
     "gen-icons": "node ./app/components/base/icons/script.js",
     "uglify-embed": "node ./bin/uglify-embed",
     "check-i18n": "node ./i18n/script.js"
@@ -28,6 +28,7 @@
     "@next/mdx": "^14.0.4",
     "@sentry/react": "^7.54.0",
     "@sentry/utils": "^7.54.0",
+    "@t3-oss/env-nextjs": "^0.10.1",
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tailwindcss/typography": "^0.5.9",
     "ahooks": "^3.7.5",
@@ -84,6 +85,7 @@
     "swr": "^2.1.0",
     "use-context-selector": "^1.4.1",
     "uuid": "^9.0.1",
+    "zod": "^3.23.6",
     "zustand": "^4.5.1"
   },
   "devDependencies": {
@@ -112,11 +114,12 @@
     "eslint": "^8.36.0",
     "eslint-config-next": "^14.0.4",
     "husky": "^8.0.3",
+    "jiti": "^1.21.0",
     "lint-staged": "^13.2.2",
     "postcss": "^8.4.31",
     "sass": "^1.61.0",
     "tailwindcss": "^3.3.3",
-    "typescript": "4.9.5",
+    "typescript": "^5.4.5",
     "uglify-js": "^3.17.4"
   },
   "lint-staged": {
@@ -129,5 +132,6 @@
   },
   "engines": {
     "node": ">=18.17.0"
-  }
+  },
+  "packageManager": "yarn@4.2.1"
 }

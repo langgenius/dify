@@ -8,9 +8,7 @@ To start the web frontend service, you will need [Node.js v18.x (LTS)](https://n
 First, install the dependencies:
 
 ```bash
-npm install
-# or
-yarn install --frozen-lockfile
+yarn install
 ```
 
 Then, configure the environment variables. Create a file named `.env.local` in the current directory and copy the contents from `.env.example`. Modify the values of these environment variables according to your requirements:
@@ -30,12 +28,16 @@ NEXT_PUBLIC_PUBLIC_API_PREFIX=http://localhost:5001/api
 
 # SENTRY
 NEXT_PUBLIC_SENTRY_DSN=
+
+# optional
+NEXT_PUBLIC_SITE_ABOUT=
+NEXT_PUBLIC_MAINTENANCE_NOTICE=
 ```
 
 Finally, run the development server:
 
 ```bash
-npm run dev
+ run dev
 # or
 yarn dev
 ```
@@ -48,17 +50,17 @@ You can start editing the file under folder `app`. The page auto-updates as you 
 ### Deploy on server
 First, build the app for production:
 ```bash
-npm run build
+yarn run build
 ```
 
 Then, start the server:
 ```bash
-npm run start
+yarn run start
 ```
 
 If you want to customize the host and port:
 ```bash
-npm run start --port=3001 --host=0.0.0.0
+yarn run start --port=3001 --host=0.0.0.0
 ```
 
 ## Lint Code

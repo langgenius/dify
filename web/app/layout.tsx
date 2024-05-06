@@ -6,6 +6,7 @@ import Topbar from './components/base/topbar'
 import { getLocaleOnServer } from '@/i18n/server'
 import './styles/globals.css'
 import './styles/markdown.scss'
+import { env } from '@/env'
 
 export const metadata = {
   title: 'Dify',
@@ -36,12 +37,8 @@ const LocaleLayout = ({
       </head>
       <body
         className="h-full select-auto"
-        data-api-prefix={process.env.NEXT_PUBLIC_API_PREFIX}
-        data-pubic-api-prefix={process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX}
-        data-public-edition={process.env.NEXT_PUBLIC_EDITION}
-        data-public-sentry-dsn={process.env.NEXT_PUBLIC_SENTRY_DSN}
-        data-public-maintenance-notice={process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE}
-        data-public-site-about={process.env.NEXT_PUBLIC_SITE_ABOUT}
+        data-public-maintenance-notice={env.NEXT_PUBLIC_MAINTENANCE_NOTICE}
+        data-public-site-about={env.NEXT_PUBLIC_SITE_ABOUT}
       >
         <Topbar/>
         <BrowerInitor>

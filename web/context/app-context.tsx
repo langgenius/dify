@@ -10,6 +10,7 @@ import { fetchCurrentWorkspace, fetchLanggeniusVersion, fetchUserProfile } from 
 import type { App } from '@/types/app'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
+import { env } from '@/env'
 
 export type AppContextValue = {
   apps: App[]
@@ -91,7 +92,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       const result = await userProfileResponse.json()
       setUserProfile(result)
       const current_version = userProfileResponse.headers.get('x-version')
-      const current_env = process.env.NODE_ENV === 'development' ? 'DEVELOPMENT' : userProfileResponse.headers.get('x-env')
+      const current_env = env.NODE_ENV === 'development' ? 'DEVELOPMENT' : userProfileResponse.headers.get('x-env')
       const versionData = await fetchLanggeniusVersion({ url: '/version', params: { current_version } })
       setLangeniusVersionInfo({ ...versionData, current_version, latest_version: versionData.version, current_env })
     }
