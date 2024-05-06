@@ -9,7 +9,7 @@
     "lint": "next lint",
     "fix": "next lint --fix",
     "eslint-fix": "eslint --fix",
-    "prepare": "npx only-allow yarn && cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky install ./web/.husky",
+    "prepare": "cp .env.example .env && cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky install ./web/.husky",
     "gen-icons": "node ./app/components/base/icons/script.js",
     "uglify-embed": "node ./bin/uglify-embed",
     "check-i18n": "node ./i18n/script.js"
@@ -132,6 +132,5 @@
   },
   "engines": {
     "node": ">=18.17.0"
-  },
-  "packageManager": "yarn@4.2.1"
+  }
 }
