@@ -5,12 +5,12 @@ import React, { useEffect, useState } from 'react'
 import { useDebounceFn } from 'ahooks'
 import { ArrowDownIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid'
-import dayjs from 'dayjs'
 import { pick } from 'lodash-es'
 import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import dayjs from 'dayjs'
 import s from './style.module.css'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
@@ -29,6 +29,7 @@ import ProgressBar from '@/app/components/base/progress-bar'
 import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import { DotsHorizontal, HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import useTimestamp from '@/hooks/use-timestamp'
 
 export const SettingsIcon = ({ className }: SVGProps<SVGElement>) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -305,6 +306,7 @@ type IDocumentListProps = {
  */
 const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = [], datasetId, onUpdate }) => {
   const { t } = useTranslation()
+  const { formatTime } = useTimestamp()
   const router = useRouter()
   const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(false)
@@ -368,7 +370,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
               <td>{renderCount(doc.word_count)}</td>
               <td>{renderCount(doc.hit_count)}</td>
               <td className='text-gray-500 text-[13px]'>
-                {dayjs.unix(doc.created_at).format(t('datasetHitTesting.dateTimeFormat') as string)}
+                {formatTime(doc.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
               </td>
               <td>
                 {
