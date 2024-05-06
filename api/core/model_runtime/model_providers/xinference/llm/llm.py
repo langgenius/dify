@@ -116,7 +116,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                     credentials['completion_type'] = 'completion'
                 else:
                     raise ValueError(f'xinference model ability {extra_param.model_ability} is not supported, check if you have the right model type')
-                
+
             if extra_param.support_function_call:
                 credentials['support_function_call'] = True
 
@@ -455,8 +455,6 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             if stream:
                 if tools and len(tools) > 0:
                     raise InvokeBadRequestError('xinference tool calls does not support stream mode')
-                if(credentials.get('support_vision', False)):
-                    raise InvokeBadRequestError('xinference vision does not support stream mode')
                 return self._handle_chat_stream_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
                                                         tools=tools, resp=resp)
             return self._handle_chat_generate_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
@@ -534,7 +532,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         """
         if len(resp.choices) == 0:
             raise InvokeServerUnavailableError("Empty response")
-        
+
         assistant_message = resp.choices[0].message
 
         # convert tool call to assistant message tool call
