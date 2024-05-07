@@ -22,5 +22,5 @@ parameter_rules:
   - name: max_tokens
     use_template: max_tokens
     min: 1
-    max: 1024
+    max: 32000
     default: 1024
