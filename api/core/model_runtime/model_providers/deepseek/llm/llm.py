@@ -8,7 +8,6 @@ from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import (
     PromptMessage,
     PromptMessageTool,
-    SystemPromptMessage,
 )
 from core.model_runtime.model_providers.openai.llm.llm import OpenAILargeLanguageModel
 
