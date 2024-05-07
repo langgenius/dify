@@ -319,6 +319,9 @@ const translation = {
     questionClassifiers: {
       model: '模型',
       inputVars: '輸入變數',
+      outputVars: {
+        className: '分類名稱',
+      },
       class: '分類',
       classNamePlaceholder: '輸入你的分類名稱',
       advancedSetting: '高階設定',

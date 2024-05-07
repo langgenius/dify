@@ -1,11 +1,12 @@
 import { memo } from 'react'
-import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
 import { useWorkflow } from '../hooks'
 import { useStore } from '@/app/components/workflow/store'
+import useTimestamp from '@/hooks/use-timestamp'
 
 const EditingTitle = () => {
   const { t } = useTranslation()
+  const { formatTime } = useTimestamp()
   const { formatTimeFromNow } = useWorkflow()
   const draftUpdatedAt = useStore(state => state.draftUpdatedAt)
   const publishedAt = useStore(state => state.publishedAt)
@@ -15,7 +16,7 @@ const EditingTitle = () => {
       {
         !!draftUpdatedAt && (
           <>
-            {t('workflow.common.autoSaved')} {dayjs(draftUpdatedAt).format('HH:mm:ss')}
+            {t('workflow.common.autoSaved')} {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
           </>
         )
       }

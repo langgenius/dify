@@ -31,6 +31,7 @@ const translation = {
   tos: 'Terms of Service',
   pp: 'Privacy Policy',
   tosDesc: 'By signing up, you agree to our',
+  goToInit: 'If you have not initialized the account, please go to the initialization page',
   donthave: 'Don\'t have?',
   invalidInvitationCode: 'Invalid invitation code',
   accountAlreadyInited: 'Account already initialized',

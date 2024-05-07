@@ -16,11 +16,10 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import {
-  CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
-  COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
+  QUESTION_CLASSIFIER_OUTPUT_STRUCT,
   SUPPORT_OUTPUT_VARS_NODE,
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
@@ -125,7 +124,7 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
     }
 
     case BlockEnum.QuestionClassifier: {
-      res.vars = isChatMode ? CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT : COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT
+      res.vars = QUESTION_CLASSIFIER_OUTPUT_STRUCT
       break
     }
 
@@ -235,6 +234,8 @@ const matchNotSystemVars = (prompts: string[]) => {
   const allVars: string[] = []
   prompts.forEach((prompt) => {
     VAR_REGEX.lastIndex = 0
+    if (typeof prompt !== 'string')
+      return
     allVars.push(...(prompt.match(VAR_REGEX) || []))
   })
   const uniqVars = uniq(allVars).map(v => v.replaceAll('{{#', '').replace('#}}', '').split('.'))
@@ -552,7 +553,7 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
     }
 
     case BlockEnum.QuestionClassifier: {
-      varsToValueSelectorList(isChatMode ? CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT : COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT, [id], res)
+      varsToValueSelectorList(QUESTION_CLASSIFIER_OUTPUT_STRUCT, [id], res)
       break
     }
 
