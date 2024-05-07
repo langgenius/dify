@@ -5,19 +5,21 @@ from tests.integration_tests.vdb.test_vector_store import (
 )
 
 
-class TestElasticSearchVector(AbstractVectorTest):
+class ElasticSearchVectorTest(AbstractVectorTest):
     def __init__(self):
         super().__init__()
+        self.attributes = ['doc_id', 'dataset_id', 'document_id', 'doc_hash']
         self.vector = ElasticSearchVector(
-            index_name='difyai-001',
+            index_name=self.collection_name.lower(),
             config=ElasticSearchConfig(
                 host='http://localhost',
                 port='9200',
                 api_key_id='difyai',
                 api_key='difyai123456'
             ),
-            attributes=[]
+            attributes=self.attributes
         )
 
+
 def test_elasticsearch_vector(setup_mock_redis):
-    TestElasticSearchVector().run_all_tests()
+    ElasticSearchVectorTest().run_all_tests()

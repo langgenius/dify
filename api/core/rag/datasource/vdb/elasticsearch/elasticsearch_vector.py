@@ -29,7 +29,7 @@ class ElasticSearchConfig(BaseModel):
 
 class ElasticSearchVector(BaseVector):
     def __init__(self, index_name: str, config: ElasticSearchConfig, attributes: list):
-        super().__init__(index_name)
+        super().__init__(index_name.lower())
         self._client = self._init_client(config)
         self._attributes = attributes
 
@@ -38,7 +38,7 @@ class ElasticSearchVector(BaseVector):
             client = Elasticsearch(
                 hosts=f'{config.host}:{config.port}',
                 api_key=(config.api_key_id, config.api_key),
-                request_timeout=30,
+                request_timeout=300,
                 retry_on_timeout=True,
                 max_retries=5,
             )
@@ -70,8 +70,7 @@ class ElasticSearchVector(BaseVector):
                     },
                 }
             }
-            self._client.indices.create(index=self._collection_name, body={"mappings": mapping},
-                                        wait_for_active_shards=all, ignore=400)
+            self._client.options(ignore_status=400).indices.create(index=self._collection_name, mappings=mapping)
 
         added_ids = []
         for i, text in enumerate(texts):
@@ -127,7 +126,7 @@ class ElasticSearchVector(BaseVector):
             }
         }
 
-        results = self._client.search(index=self._collection_name, body=query_str, size=10)
+        results = self._client.search(index=self._collection_name, body=query_str)
 
         docs_and_scores = []
         for hit in results['hits']['hits']:
