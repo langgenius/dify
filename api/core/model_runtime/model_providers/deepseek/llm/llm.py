@@ -11,8 +11,8 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.model_providers.openai.llm.llm import OpenAILargeLanguageModel
 
-
 class DeepSeekLargeLanguageModel(OpenAILargeLanguageModel):
+
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
                 tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
@@ -20,11 +20,12 @@ class DeepSeekLargeLanguageModel(OpenAILargeLanguageModel):
             -> Union[LLMResult, Generator]:
         self._add_custom_parameters(credentials)
 
-        return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream)
+        return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         self._add_custom_parameters(credentials)
         super().validate_credentials(model, credentials)
+
 
     # refactored from openai model runtime, use cl100k_base for calculate token number
     def _num_tokens_from_string(self, model: str, text: str,
@@ -108,3 +109,4 @@ class DeepSeekLargeLanguageModel(OpenAILargeLanguageModel):
         else:
             parsed_url = urlparse(credentials['endpoint_url'])
             credentials['openai_api_base']=f"{parsed_url.scheme}://{parsed_url.netloc}"
+
