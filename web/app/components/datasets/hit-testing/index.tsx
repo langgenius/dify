@@ -132,7 +132,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
                           </td>
                           <td className='max-w-xs group-hover:text-primary-600'>{record.content}</td>
                           <td className='w-36'>
-                            {formatTime(record.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
+                            {dayjs.unix(record.created_at).format(t('datasetHitTesting.dateTimeFormat') as string)}
                           </td>
                         </tr>
                       })}
