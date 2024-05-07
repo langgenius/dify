@@ -3,11 +3,11 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import dayjs from 'dayjs'
 import { Edit02, Trash03 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 import type { AnnotationItem } from './type'
 import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
+import useTimestamp from '@/hooks/use-timestamp'
 
 type Props = {
   list: AnnotationItem[]
@@ -21,6 +21,7 @@ const List: FC<Props> = ({
   onRemove,
 }) => {
   const { t } = useTranslation()
+  const { formatTime } = useTimestamp()
   const [currId, setCurrId] = React.useState<string | null>(null)
   const [showConfirmDelete, setShowConfirmDelete] = React.useState(false)
   return (
@@ -54,7 +55,7 @@ const List: FC<Props> = ({
                 className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
                 title={item.answer}
               >{item.answer}</td>
-              <td>{dayjs(item.created_at * 1000).format('YYYY-MM-DD HH:mm')}</td>
+              <td>{formatTime(item.created_at, t('appLog.dateTimeFormat') as string)}</td>
               <td>{item.hit_count}</td>
               <td className='w-[96px]' onClick={e => e.stopPropagation()}>
                 {/* Actions */}
