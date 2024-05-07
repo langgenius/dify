@@ -9,7 +9,7 @@ from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.excel_extractor import ExcelExtractor
-from api.core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
+from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
 from core.rag.extractor.html_extractor import HtmlExtractor
 from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
