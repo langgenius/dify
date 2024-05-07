@@ -7,7 +7,8 @@ from core.model_runtime.model_providers.__base.model_provider import ModelProvid
 logger = logging.getLogger(__name__)
 
 
-class DeepseekProvider(ModelProvider):
+
+class DeepSeekProvider(ModelProvider):
 
     def validate_provider_credentials(self, credentials: dict) -> None:
         """
@@ -19,6 +20,8 @@ class DeepseekProvider(ModelProvider):
         try:
             model_instance = self.get_model_instance(ModelType.LLM)
 
+            # Use `deepseek-chat` model for validate,
+            # no matter what model you pass in, text completion model or chat model
             model_instance.validate_credentials(
                 model='deepseek-chat',
                 credentials=credentials
