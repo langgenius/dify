@@ -17,5 +17,6 @@ class BearerDataSource:
 
 
 class FireCrawlDataSource(BearerDataSource):
-
-    
+    def validate_bearer_data_source(self):
+        
+        pass
