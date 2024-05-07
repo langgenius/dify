@@ -74,7 +74,7 @@ class QuestionClassifierNode(LLMNode):
                 classes_map = {class_.id: class_.name for class_ in classes}
                 category_ids = [_class.id for _class in classes]
                 if category_id_result in category_ids:
-                    category_name = classes_map[category_id]
+                    category_name = classes_map[category_id_result]
                     category_id = category_id_result
 
         except Exception:
