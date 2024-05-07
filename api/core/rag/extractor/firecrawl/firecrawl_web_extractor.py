@@ -22,7 +22,7 @@ class FirecrawlWebExtractor(BaseExtractor):
         url: str,
         api_key: str,
         base_url: str = 'https://api.firecrawl.dev',
-        mode: str = 'scrape', 
+        mode: str = 'crawl', 
     ):
         """Initialize with url, api_key, base_url and mode."""
         self._url = url
