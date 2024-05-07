@@ -1,6 +1,7 @@
 from typing import IO, Optional
 
 from requests import Request, Session
+from yarl import URL
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
@@ -31,7 +32,8 @@ class LocalAISpeech2text(Speech2TextModel):
         :param user: unique user id
         :return: text for given audio file
         """
-        url = credentials['server_url'] + "/v1/audio/transcriptions"
+        
+        url = str(URL(credentials['server_url']) / "v1/audio/transcriptions")
         data = {"model": model}
         files = {"file": file}
 
