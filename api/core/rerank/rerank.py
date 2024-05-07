@@ -1,4 +1,8 @@
+import os
 from typing import Optional
+
+from flashrank import Ranker, RerankRequest
+from flask import current_app
 
 from core.model_manager import ModelInstance
 from core.rag.models.document import Document
@@ -29,6 +33,23 @@ class RerankRunner:
                 unique_documents.append(document)
 
         documents = unique_documents
+        passages = []
+        i = 1
+        for document in documents:
+            passage = {
+                'id': i,
+                'text': document.page_content,
+                'meta': document.metadata
+            }
+            passages.append(passage)
+            i += 1
+        folder = current_app.config.get('STORAGE_LOCAL_PATH')
+        if not os.path.isabs(folder):
+            folder = os.path.join(current_app.root_path, folder)
+        ranker = Ranker(model_name="ms-marco-MiniLM-L-12-v2", cache_dir=folder)
+        rerank_request = RerankRequest(query=query, passages=passages)
+        results = ranker.rerank(rerank_request)
+        print(results)
 
         rerank_result = self.rerank_model_instance.invoke_rerank(
             query=query,
