@@ -14,13 +14,15 @@ class XinferenceModelExtraParameter:
     max_tokens: int = 512
     context_length: int = 2048
     support_function_call: bool = False
+    support_vision: bool = False
 
-    def __init__(self, model_format: str, model_handle_type: str, model_ability: list[str], 
-                 support_function_call: bool, max_tokens: int, context_length: int) -> None:
+    def __init__(self, model_format: str, model_handle_type: str, model_ability: list[str],
+                 support_function_call: bool, support_vision: bool, max_tokens: int, context_length: int) -> None:
         self.model_format = model_format
         self.model_handle_type = model_handle_type
         self.model_ability = model_ability
         self.support_function_call = support_function_call
+        self.support_vision = support_vision
         self.max_tokens = max_tokens
         self.context_length = context_length
 
@@ -71,7 +73,7 @@ class XinferenceHelper:
             raise RuntimeError(f'get xinference model extra parameter failed, url: {url}, error: {e}')
         if response.status_code != 200:
             raise RuntimeError(f'get xinference model extra parameter failed, status code: {response.status_code}, response: {response.text}')
-        
+
         response_json = response.json()
 
         model_format = response_json.get('model_format', 'ggmlv3')
@@ -87,17 +89,19 @@ class XinferenceHelper:
             model_handle_type = 'chat'
         else:
             raise NotImplementedError(f'xinference model handle type {model_handle_type} is not supported')
-        
+
         support_function_call = 'tools' in model_ability
+        support_vision = 'vision' in model_ability
         max_tokens = response_json.get('max_tokens', 512)
 
         context_length = response_json.get('context_length', 2048)
-        
+
         return XinferenceModelExtraParameter(
             model_format=model_format,
             model_handle_type=model_handle_type,
             model_ability=model_ability,
             support_function_call=support_function_call,
+            support_vision=support_vision,
             max_tokens=max_tokens,
             context_length=context_length
         )
