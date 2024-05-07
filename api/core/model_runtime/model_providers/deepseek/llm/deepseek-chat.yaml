@@ -51,7 +51,7 @@ parameter_rules:
       en_US: An integer N between 0 and 20, specifying that each output position returns the top N tokens with output probability, and returns the logarithmic probability of these tokens. When specifying this parameter, logprobs must be true.
   - name: frequency_penalty
     use_template: frequency_penalty
-    default: 
+    default: 0
     min: -2.0
     max: 2.0
     help:
@@ -62,4 +62,3 @@ pricing:
   output: '2'
   unit: '0.000001'
   currency: RMB
-
