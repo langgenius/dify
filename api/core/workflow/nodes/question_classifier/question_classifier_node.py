@@ -67,10 +67,16 @@ class QuestionClassifierNode(LLMNode):
         category_id = node_data.classes[0].id
         try:
             result_text_json = parse_and_check_json_markdown(result_text, [])
-            #result_text_json = json.loads(result_text.strip('```JSON\n'))
+            # result_text_json = json.loads(result_text.strip('```JSON\n'))
             if 'category_name' in result_text_json and 'category_id' in result_text_json:
-                category_name = result_text_json['category_name']
-                category_id = result_text_json['category_id']
+                category_id_result = result_text_json['category_id']
+                classes = node_data.classes
+                classes_map = {class_.id: class_.name for class_ in classes}
+                category_ids = [_class.id for _class in classes]
+                if category_id_result in category_ids:
+                    category_name = classes_map[category_id]
+                    category_id = category_id_result
+
         except Exception:
             logging.error(f"Failed to parse result text: {result_text}")
         try:
