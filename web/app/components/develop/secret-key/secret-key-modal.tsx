@@ -6,7 +6,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import useSWR, { useSWRConfig } from 'swr'
-import { useContext } from 'use-context-selector'
 import copy from 'copy-to-clipboard'
 import SecretKeyGenerateModal from './secret-key-generate'
 import s from './style.module.css'
@@ -26,8 +25,7 @@ import type { CreateApiKeyResponse } from '@/models/app'
 import Tooltip from '@/app/components/base/tooltip'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
-import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n/language'
+import useTimestamp from '@/hooks/use-timestamp'
 import { useAppContext } from '@/context/app-context'
 
 type ISecretKeyModalProps = {
@@ -42,6 +40,7 @@ const SecretKeyModal = ({
   onClose,
 }: ISecretKeyModalProps) => {
   const { t } = useTranslation()
+  const { formatTime } = useTimestamp()
   const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setVisible] = useState(false)
@@ -55,9 +54,6 @@ const SecretKeyModal = ({
 
   const [delKeyID, setDelKeyId] = useState('')
 
-  const { locale } = useContext(I18n)
-
-  // const [isCopied, setIsCopied] = useState(false)
   const [copyValue, setCopyValue] = useState('')
 
   useEffect(() => {
@@ -100,13 +96,6 @@ const SecretKeyModal = ({
     return `${token.slice(0, 3)}...${token.slice(-20)}`
   }
 
-  const formatDate = (timestamp: string) => {
-    if (locale === LanguagesSupported[0])
-      return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format((+timestamp) * 1000)
-    else
-      return new Intl.DateTimeFormat('fr-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format((+timestamp) * 1000)
-  }
-
   return (
     <Modal isShow={isShow} onClose={onClose} title={`${t('appApi.apiKeyModal.apiSecretKey')}`} className={`${s.customModal} px-8 flex flex-col`}>
       <XMarkIcon className={`w-6 h-6 absolute cursor-pointer text-gray-500 ${s.close}`} onClick={onClose} />
@@ -117,18 +106,16 @@ const SecretKeyModal = ({
           <div className='flex flex-col flex-grow mt-4 overflow-hidden'>
             <div className='flex items-center flex-shrink-0 text-xs font-semibold text-gray-500 border-b border-solid h-9'>
               <div className='flex-shrink-0 w-64 px-3'>{t('appApi.apiKeyModal.secretKey')}</div>
-              <div className='flex-shrink-0 px-3 w-28'>{t('appApi.apiKeyModal.created')}</div>
-              <div className='flex-shrink-0 px-3 w-28'>{t('appApi.apiKeyModal.lastUsed')}</div>
+              <div className='flex-shrink-0 px-3 w-[200px]'>{t('appApi.apiKeyModal.created')}</div>
+              <div className='flex-shrink-0 px-3 w-[200px]'>{t('appApi.apiKeyModal.lastUsed')}</div>
               <div className='flex-grow px-3'></div>
             </div>
             <div className='flex-grow overflow-auto'>
               {apiKeysList.data.map(api => (
                 <div className='flex items-center text-sm font-normal text-gray-700 border-b border-solid h-9' key={api.id}>
                   <div className='flex-shrink-0 w-64 px-3 font-mono truncate'>{generateToken(api.token)}</div>
-                  <div className='flex-shrink-0 px-3 truncate w-28'>{formatDate(api.created_at)}</div>
-                  {/* <div className='flex-shrink-0 px-3 truncate w-28'>{dayjs((+api.created_at) * 1000).format('MMM D, YYYY')}</div> */}
-                  {/* <div className='flex-shrink-0 px-3 truncate w-28'>{api.last_used_at ? dayjs((+api.last_used_at) * 1000).format('MMM D, YYYY') : 'Never'}</div> */}
-                  <div className='flex-shrink-0 px-3 truncate w-28'>{api.last_used_at ? formatDate(api.last_used_at) : t('appApi.never')}</div>
+                  <div className='flex-shrink-0 px-3 truncate w-[200px]'>{formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string)}</div>
+                  <div className='flex-shrink-0 px-3 truncate w-[200px]'>{api.last_used_at ? formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
                   <div className='flex flex-grow px-3'>
                     <Tooltip
                       selector={`key-${api.token}`}

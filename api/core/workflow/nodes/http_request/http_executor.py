@@ -1,4 +1,5 @@
 import json
+import os
 from copy import deepcopy
 from random import randint
 from typing import Any, Optional, Union
@@ -13,10 +14,10 @@ from core.workflow.entities.variable_pool import ValueType, VariablePool
 from core.workflow.nodes.http_request.entities import HttpRequestNodeData
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
-MAX_BINARY_SIZE = 1024 * 1024 * 10  # 10MB
-READABLE_MAX_BINARY_SIZE = '10MB'
-MAX_TEXT_SIZE = 1024 * 1024 // 10  # 0.1MB
-READABLE_MAX_TEXT_SIZE = '0.1MB'
+MAX_BINARY_SIZE = int(os.environ.get('HTTP_REQUEST_NODE_MAX_BINARY_SIZE', str(1024 * 1024 * 10))) # 10MB
+READABLE_MAX_BINARY_SIZE = f'{MAX_BINARY_SIZE / 1024 / 1024:.2f}MB'
+MAX_TEXT_SIZE = int(os.environ.get('HTTP_REQUEST_NODE_MAX_TEXT_SIZE', str(1024 * 1024))) # 10MB # 1MB
+READABLE_MAX_TEXT_SIZE = f'{MAX_TEXT_SIZE / 1024 / 1024:.2f}MB'
 
 
 class HttpExecutorResponse:
