@@ -53,7 +53,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:latest
+    image: langgenius/dify-sandbox:0.1.0
     restart: always
     cap_add:
       # Why is sys_admin permission needed?
