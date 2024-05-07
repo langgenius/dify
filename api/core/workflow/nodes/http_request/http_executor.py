@@ -19,7 +19,6 @@ READABLE_MAX_BINARY_SIZE = f'{MAX_BINARY_SIZE / 1024 / 1024:.2f}MB'
 MAX_TEXT_SIZE = int(os.environ.get('HTTP_REQUEST_NODE_MAX_TEXT_SIZE', str(1024 * 1024))) # 10MB # 1MB
 READABLE_MAX_TEXT_SIZE = f'{MAX_TEXT_SIZE / 1024 / 1024:.2f}MB'
 
-
 class HttpExecutorResponse:
     headers: dict[str, str]
     response: Union[httpx.Response, requests.Response]
@@ -345,10 +344,13 @@ class HttpExecutor:
         # validate response
         return self._validate_and_parse_response(response)
     
-    def to_raw_request(self) -> str:
+    def to_raw_request(self, mask_authorization_header: Optional[bool] = True) -> str:
         """
         convert to raw request
         """
+        if mask_authorization_header == None:
+            mask_authorization_header = True
+            
         server_url = self.server_url
         if self.params:
             server_url += f'?{urlencode(self.params)}'
@@ -357,6 +359,17 @@ class HttpExecutor:
 
         headers = self._assembling_headers()
         for k, v in headers.items():
+            if mask_authorization_header:
+                # get authorization header
+                if self.authorization.type == 'api-key':
+                    authorization_header = 'Authorization'
+                    if self.authorization.config and self.authorization.config.header:
+                        authorization_header = self.authorization.config.header
+                    
+                    if k.lower() == authorization_header.lower():
+                        raw_request += f'{k}: {"*" * len(v)}\n'
+                        continue
+            
             raw_request += f'{k}: {v}\n'
 
         raw_request += '\n'

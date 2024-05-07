@@ -1,5 +1,4 @@
 import logging
-import os
 from mimetypes import guess_extension
 from os import path
 from typing import cast
@@ -9,13 +8,14 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.http_request.entities import HttpRequestNodeData
+from core.workflow.nodes.http_request.entities import (
+    MAX_CONNECT_TIMEOUT,
+    MAX_READ_TIMEOUT,
+    MAX_WRITE_TIMEOUT,
+    HttpRequestNodeData,
+)
 from core.workflow.nodes.http_request.http_executor import HttpExecutor, HttpExecutorResponse
 from models.workflow import WorkflowNodeExecutionStatus
-
-MAX_CONNECT_TIMEOUT = int(os.environ.get('HTTP_REQUEST_MAX_CONNECT_TIMEOUT', '300'))
-MAX_READ_TIMEOUT = int(os.environ.get('HTTP_REQUEST_MAX_READ_TIMEOUT', '600'))
-MAX_WRITE_TIMEOUT = int(os.environ.get('HTTP_REQUEST_MAX_WRITE_TIMEOUT', '600'))
 
 HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeData.Timeout(connect=min(10, MAX_CONNECT_TIMEOUT),
                                                            read=min(60, MAX_READ_TIMEOUT),
@@ -63,7 +63,9 @@ class HttpRequestNode(BaseNode):
             process_data = {}
             if http_executor:
                 process_data = {
-                    'request': http_executor.to_raw_request(),
+                    'request': http_executor.to_raw_request(
+                        mask_authorization_header=node_data.mask_authorization_header
+                    ),
                 }
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -82,7 +84,9 @@ class HttpRequestNode(BaseNode):
                 'files': files,
             },
             process_data={
-                'request': http_executor.to_raw_request(),
+                'request': http_executor.to_raw_request(
+                    mask_authorization_header=node_data.mask_authorization_header
+                ),
             }
         )
 

@@ -38,6 +38,7 @@ def test_get(setup_http_mock):
             'headers': 'X-Header:123',
             'params': 'A:b',
             'body': None,
+            'mask_authorization_header': False,
         }
     }, **BASIC_NODE_DATA)
 
@@ -95,6 +96,7 @@ def test_custom_authorization_header(setup_http_mock):
             'headers': 'X-Header:123',
             'params': 'A:b',
             'body': None,
+            'mask_authorization_header': False,
         }
     }, **BASIC_NODE_DATA)
 
@@ -126,6 +128,7 @@ def test_template(setup_http_mock):
             'headers': 'X-Header:123\nX-Header2:{{#a.b123.args2#}}',
             'params': 'A:b\nTemplate:{{#a.b123.args2#}}',
             'body': None,
+            'mask_authorization_header': False,
         }
     }, **BASIC_NODE_DATA)
 
@@ -161,6 +164,7 @@ def test_json(setup_http_mock):
                 'type': 'json',
                 'data': '{"a": "{{#a.b123.args1#}}"}'
             },
+            'mask_authorization_header': False,
         }
     }, **BASIC_NODE_DATA)
 
@@ -193,6 +197,7 @@ def test_x_www_form_urlencoded(setup_http_mock):
                 'type': 'x-www-form-urlencoded',
                 'data': 'a:{{#a.b123.args1#}}\nb:{{#a.b123.args2#}}'
             },
+            'mask_authorization_header': False,
         }
     }, **BASIC_NODE_DATA)
 
@@ -225,6 +230,7 @@ def test_form_data(setup_http_mock):
                 'type': 'form-data',
                 'data': 'a:{{#a.b123.args1#}}\nb:{{#a.b123.args2#}}'
             },
+            'mask_authorization_header': False,
         }
     }, **BASIC_NODE_DATA)
 
@@ -260,6 +266,7 @@ def test_none_data(setup_http_mock):
                 'type': 'none',
                 'data': '123123123'
             },
+            'mask_authorization_header': False,
         }
     }, **BASIC_NODE_DATA)
 
