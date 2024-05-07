@@ -1,4 +1,3 @@
-from typing import Iterator, Literal, Optional
 
 # [REVIEW] Implement if Needed? Do we need a new type of data source
 class BearerDataSource:

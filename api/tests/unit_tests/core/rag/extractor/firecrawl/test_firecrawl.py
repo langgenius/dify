@@ -1,6 +1,8 @@
 import os
-from core.rag.models.document import Document
+
 from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
+from core.rag.models.document import Document
+
 
 def test_firecrawl_web_extractor_scrape_mode():
     url = "https://dify.ai"
