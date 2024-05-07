@@ -39,9 +39,17 @@ model_credential_schema:
       en_US: Enter your model name
       zh_Hans: 输入模型名称
   credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
     - variable: base_url
       label:
-        zh_Hans: 服务器URL
+        zh_Hans: 服务器 URL
         en_US: Base URL
       type: text-input
       required: true
