@@ -11,6 +11,7 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.model_providers.openai.llm.llm import OpenAILargeLanguageModel
 
+
 class DeepSeekLargeLanguageModel(OpenAILargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
