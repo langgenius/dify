@@ -76,6 +76,9 @@ model_credential_schema:
         en_US: Enter your Endpoint ID
         zh_Hans: 输入您的 Endpoint ID
     - variable: base_model_name
+      show_on:
+        - variable: __model_type
+          value: llm
       label:
         en_US: Base Model
         zh_Hans: 基础模型

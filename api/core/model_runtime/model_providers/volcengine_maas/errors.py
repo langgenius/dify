@@ -152,5 +152,5 @@ ErrorCodeMap = {
 
 def wrap_error(e: MaasException) -> Exception:
     if ErrorCodeMap.get(e.code):
-        return ErrorCodeMap.get(e.code)(e)
+        return ErrorCodeMap.get(e.code)(e.code_n, e.code, e.message, e.req_id)
     return e

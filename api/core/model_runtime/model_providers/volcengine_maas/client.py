@@ -15,10 +15,12 @@ from core.model_runtime.model_providers.volcengine_maas.volc_sdk import ChatRole
 
 
 class MaaSClient(MaasService):
-    endpoint_id: str
-
     def __init__(self, host: str, region: str):
+        self.endpoint_id = None
         super().__init__(host, region)
+
+    def set_endpoint_id(self, endpoint_id: str):
+        self.endpoint_id = endpoint_id
 
     @classmethod
     def from_credential(cls, credentials: dict) -> 'MaaSClient':
@@ -29,7 +31,7 @@ class MaaSClient(MaasService):
         endpoint_id = credentials['endpoint_id']
 
         client = cls(host, region)
-        client.endpoint_id = endpoint_id
+        client.set_endpoint_id(endpoint_id)
         client.set_ak(ak)
         client.set_sk(sk)
         return client
