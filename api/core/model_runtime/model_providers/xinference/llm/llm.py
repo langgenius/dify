@@ -446,20 +446,13 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             resp = client.chat.completions.create(
                 model=credentials['model_uid'],
                 messages=[self._convert_prompt_message_to_dict(message) for message in prompt_messages],
-                stream=stream and not vision,
+                stream=stream,
                 user=user,
                 **generate_config,
             )
             if stream:
                 if tools and len(tools) > 0:
                     raise InvokeBadRequestError('xinference tool calls does not support stream mode')
-                if vision:
-                    return self._handle_blocking_response_to_stream_response(
-                        self._handle_chat_generate_response(
-                            model=model, credentials=credentials, prompt_messages=prompt_messages,
-                            tools=tools, resp=resp
-                        )
-                    )
                 return self._handle_chat_stream_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
                                                         tools=tools, resp=resp)
             return self._handle_chat_generate_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
@@ -468,18 +461,11 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             resp = client.completions.create(
                 model=credentials['model_uid'],
                 prompt=self._convert_prompt_message_to_text(prompt_messages),
-                stream=stream and not vision,
+                stream=stream,
                 user=user,
                 **generate_config,
             )
             if stream:
-                if vision:
-                    return self._handle_blocking_response_to_stream_response(
-                        self._handle_completion_generate_response(
-                            model=model, credentials=credentials, prompt_messages=prompt_messages,
-                            tools=tools, resp=resp
-                        )
-                    )
                 return self._handle_completion_stream_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
                                                         tools=tools, resp=resp)
             return self._handle_completion_generate_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
@@ -575,21 +561,6 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
         return response
     
-    def _handle_blocking_response_to_stream_response(self, blocking_response: LLMResult) -> Generator:
-        """
-            handle blocking response to stream response
-        """
-        yield LLMResultChunk(
-            model=blocking_response.model,
-            prompt_messages=blocking_response.prompt_messages,
-            system_fingerprint=blocking_response.system_fingerprint,
-            delta=LLMResultChunkDelta(
-                index=0,
-                message=blocking_response.message,
-                usage=blocking_response.usage
-            ),
-        )
-
     def _handle_chat_stream_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                                         tools: list[PromptMessageTool],
                                         resp: Iterator[ChatCompletionChunk]) -> Generator:
