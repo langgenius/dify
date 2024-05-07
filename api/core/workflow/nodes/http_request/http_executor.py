@@ -344,10 +344,13 @@ class HttpExecutor:
         # validate response
         return self._validate_and_parse_response(response)
     
-    def to_raw_request(self, mask_authorization_header: bool = False) -> str:
+    def to_raw_request(self, mask_authorization_header: Optional[bool] = True) -> str:
         """
         convert to raw request
         """
+        if mask_authorization_header == None:
+            mask_authorization_header = True
+            
         server_url = self.server_url
         if self.params:
             server_url += f'?{urlencode(self.params)}'

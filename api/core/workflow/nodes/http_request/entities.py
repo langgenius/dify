@@ -51,3 +51,4 @@ class HttpRequestNodeData(BaseNodeData):
     params: str
     body: Optional[Body]
     timeout: Optional[Timeout]
+    mask_authorization_header: Optional[bool] = True
