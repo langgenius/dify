@@ -21,6 +21,7 @@
     "@formatjs/intl-localematcher": "^0.5.4",
     "@headlessui/react": "^1.7.13",
     "@heroicons/react": "^2.0.16",
+    "@hookform/resolvers": "^3.3.4",
     "@lexical/react": "^0.12.2",
     "@mdx-js/loader": "^2.3.0",
     "@mdx-js/react": "^2.3.0",
@@ -31,6 +32,7 @@
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tailwindcss/typography": "^0.5.9",
     "ahooks": "^3.7.5",
+    "class-variance-authority": "^0.7.0",
     "classnames": "^2.3.2",
     "copy-to-clipboard": "^3.3.3",
     "crypto-js": "^4.2.0",
@@ -60,6 +62,7 @@
     "react-dom": "^18.2.0",
     "react-error-boundary": "^4.0.2",
     "react-headless-pagination": "^1.1.4",
+    "react-hook-form": "^7.51.4",
     "react-i18next": "^12.2.0",
     "react-infinite-scroll-component": "^6.1.0",
     "react-markdown": "^8.0.6",
@@ -84,6 +87,7 @@
     "swr": "^2.1.0",
     "use-context-selector": "^1.4.1",
     "uuid": "^9.0.1",
+    "zod": "^3.23.6",
     "zustand": "^4.5.1"
   },
   "devDependencies": {
