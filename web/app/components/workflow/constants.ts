@@ -259,67 +259,9 @@ export const RETRIEVAL_OUTPUT_STRUCT = `{
 
 export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.Start, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
-  BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner,
+  BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.QuestionClassifier,
 ]
 
-const USAGE = {
-  variable: 'usage',
-  type: VarType.object,
-  children: [
-    {
-      variable: 'prompt_tokens',
-      type: VarType.number,
-    },
-    {
-      variable: 'prompt_unit_price',
-      type: VarType.number,
-    },
-    {
-      variable: 'prompt_price_unit',
-      type: VarType.number,
-    },
-    {
-      variable: 'prompt_price',
-      type: VarType.number,
-    },
-    {
-      variable: 'completion_tokens',
-      type: VarType.number,
-    },
-    {
-      variable: 'completion_unit_price',
-      type: VarType.number,
-    },
-    {
-      variable: 'completion_price_unit',
-      type: VarType.number,
-    },
-    {
-      variable: 'completion_unit_price',
-      type: VarType.number,
-    },
-    {
-      variable: 'completion_price',
-      type: VarType.number,
-    },
-    {
-      variable: 'total_tokens',
-      type: VarType.number,
-    },
-    {
-      variable: 'total_price',
-      type: VarType.number,
-    },
-    {
-      variable: 'currency',
-      type: VarType.string,
-    },
-    {
-      variable: 'latency',
-      type: VarType.number,
-    },
-  ],
-}
 export const LLM_OUTPUT_STRUCT: Var[] = [
   {
     variable: 'text',
@@ -341,36 +283,11 @@ export const TEMPLATE_TRANSFORM_OUTPUT_STRUCT: Var[] = [
   },
 ]
 
-const QUESTION_CLASSIFIER_OUTPUT_STRUCT_COMMON: Var[] = [
-  USAGE,
+export const QUESTION_CLASSIFIER_OUTPUT_STRUCT = [
   {
-    variable: 'topic',
+    variable: 'class_name',
     type: VarType.string,
   },
-]
-
-export const CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT = [
-  {
-    variable: 'model_mode',
-    type: VarType.string,
-  },
-  {
-    variable: 'messages',
-    type: VarType.arrayObject,
-  },
-  ...QUESTION_CLASSIFIER_OUTPUT_STRUCT_COMMON,
-]
-
-export const COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT = [
-  {
-    variable: 'model_mode',
-    type: VarType.string,
-  },
-  {
-    variable: 'text',
-    type: VarType.string,
-  },
-  ...QUESTION_CLASSIFIER_OUTPUT_STRUCT_COMMON,
 ]
 
 export const HTTP_REQUEST_OUTPUT_STRUCT: Var[] = [

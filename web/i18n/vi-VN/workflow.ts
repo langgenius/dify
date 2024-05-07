@@ -327,6 +327,9 @@ const translation = {
     questionClassifiers: {
       model: 'mô hình',
       inputVars: 'Biến đầu vào',
+      outputVars: {
+        className: 'Tên phân loại',
+      },
       class: 'Lớp',
       classNamePlaceholder: 'Viết tên lớp của bạn',
       advancedSetting: 'Cài đặt Nâng cao',
