@@ -52,6 +52,10 @@ const translation = {
     jinjaEditorPlaceholder: 'Type \'/\' or \'{\' to insert variable',
     viewOnly: 'View Only',
     showRunHistory: 'Show Run History',
+    copy: 'Copy',
+    duplicate: 'Duplicate',
+    addBlock: 'Add Block',
+    pasteHere: 'Paste Here',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

@@ -36,6 +36,8 @@ import {
   useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
+  usePanelInteractions,
+  useSelectionInteractions,
   useWorkflow,
   useWorkflowInit,
   useWorkflowReadOnly,
@@ -49,6 +51,7 @@ import Panel from './panel'
 import Features from './features'
 import HelpLine from './help-line'
 import CandidateNode from './candidate-node'
+import PanelContextmenu from './panel-contextmenu'
 import { useStore } from './store'
 import {
   initialEdges,
@@ -84,6 +87,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
+  const panelMenu = useStore(s => s.panelMenu)
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -150,6 +154,13 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleEdgesChange,
   } = useEdgesInteractions()
   const {
+    handleSelectionChange,
+    handleSelectionDrag,
+  } = useSelectionInteractions()
+  const {
+    handlePaneContextMenu,
+  } = usePanelInteractions()
+  const {
     isValidConnection,
   } = useWorkflow()
 
@@ -183,6 +194,7 @@ const Workflow: FC<WorkflowProps> = memo(({
       {
         showFeaturesPanel && <Features />
       }
+      <PanelContextmenu />
       <HelpLine />
       <ReactFlow
         nodeTypes={nodeTypes}
@@ -201,6 +213,9 @@ const Workflow: FC<WorkflowProps> = memo(({
         onEdgeMouseEnter={handleEdgeEnter}
         onEdgeMouseLeave={handleEdgeLeave}
         onEdgesChange={handleEdgesChange}
+        onSelectionChange={handleSelectionChange}
+        onSelectionDrag={handleSelectionDrag}
+        onPaneContextMenu={handlePaneContextMenu}
         connectionLineComponent={CustomConnectionLine}
         defaultViewport={viewport}
         multiSelectionKeyCode={null}

@@ -361,3 +361,7 @@ export const changeNodesAndEdgesId = (nodes: Node[], edges: Edge[]) => {
 
   return [newNodes, newEdges] as [Node[], Edge[]]
 }
+
+export const isMac = () => {
+  return navigator.userAgent.toUpperCase().includes('MAC')
+}

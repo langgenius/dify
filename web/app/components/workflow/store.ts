@@ -83,6 +83,11 @@ type Shape = {
   setControlMode: (controlMode: Shape['controlMode']) => void
   candidateNode?: Node
   setCandidateNode: (candidateNode?: Node) => void
+  panelMenu?: {
+    top: number
+    left: number
+  }
+  setPanelMenu: (panelMenu: Shape['panelMenu']) => void
 }
 
 export const createWorkflowStore = () => {
@@ -142,6 +147,8 @@ export const createWorkflowStore = () => {
     setControlMode: controlMode => set(() => ({ controlMode })),
     candidateNode: undefined,
     setCandidateNode: candidateNode => set(() => ({ candidateNode })),
+    panelMenu: undefined,
+    setPanelMenu: panelMenu => set(() => ({ panelMenu })),
   }))
 }
 

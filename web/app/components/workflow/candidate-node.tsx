@@ -1,8 +1,11 @@
-import { memo } from 'react'
+import {
+  memo,
+} from 'react'
 import produce from 'immer'
 import {
   useReactFlow,
   useStoreApi,
+  useViewport,
 } from 'reactflow'
 import { useEventListener } from 'ahooks'
 import {
@@ -26,6 +29,7 @@ const CandidateNode = ({
   const reactflow = useReactFlow()
   const workflowStore = useWorkflowStore()
   const candidateNode = useStore(s => s.candidateNode)
+  const { zoom } = useViewport()
 
   useEventListener('click', (e) => {
     const { candidateNode } = workflowStore.getState()
@@ -74,6 +78,8 @@ const CandidateNode = ({
       style={{
         left: mouse.elementX,
         top: mouse.elementY,
+        transform: `scale(${zoom})`,
+        transformOrigin: '0 0',
       }}
     >
       <CustomNode {...candidateNode as any} />
