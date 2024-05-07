@@ -1,4 +1,3 @@
-import logging
 from threading import Lock
 from time import time
 
