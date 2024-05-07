@@ -1,9 +1,13 @@
+import os
 from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, validator
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 
+MAX_CONNECT_TIMEOUT = int(os.environ.get('HTTP_REQUEST_MAX_CONNECT_TIMEOUT', '300'))
+MAX_READ_TIMEOUT = int(os.environ.get('HTTP_REQUEST_MAX_READ_TIMEOUT', '600'))
+MAX_WRITE_TIMEOUT = int(os.environ.get('HTTP_REQUEST_MAX_WRITE_TIMEOUT', '600'))
 
 class HttpRequestNodeData(BaseNodeData):
     """
@@ -36,9 +40,9 @@ class HttpRequestNodeData(BaseNodeData):
         data: Union[None, str]
 
     class Timeout(BaseModel):
-        connect: int
-        read:  int
-        write:  int
+        connect: int = MAX_CONNECT_TIMEOUT
+        read:  int = MAX_READ_TIMEOUT
+        write:  int = MAX_WRITE_TIMEOUT
 
     method: Literal['get', 'post', 'put', 'patch', 'delete', 'head']
     url: str
@@ -47,3 +51,4 @@ class HttpRequestNodeData(BaseNodeData):
     params: str
     body: Optional[Body]
     timeout: Optional[Timeout]
+    mask_authorization_header: Optional[bool] = True
