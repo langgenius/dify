@@ -1,13 +1,14 @@
-version: '3'
+version: '3.5'
+
 services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.13.2
-    container_name: elasticsearch
+    container_name: es
     restart: always
     environment:
       - discovery.type=single-node
-      - cluster.name=docker-cluster
-      - node.name=docker-node
+      - cluster.name=es-cluster
+      - node.name=es-node
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - xpack.security.enabled=false
       - xpack.security.http.ssl.enabled=false
@@ -26,3 +27,7 @@ services:
 volumes:
   data:
     driver: local
+
+networks:
+  default:
+    name: es

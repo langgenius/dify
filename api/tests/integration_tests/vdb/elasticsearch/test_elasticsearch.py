@@ -12,7 +12,7 @@ class ElasticSearchVectorTest(AbstractVectorTest):
         self.vector = ElasticSearchVector(
             index_name=self.collection_name.lower(),
             config=ElasticSearchConfig(
-                host='http://localhost',
+                host='http://127.0.0.1',
                 port='9200',
                 api_key_id='difyai',
                 api_key='difyai123456'

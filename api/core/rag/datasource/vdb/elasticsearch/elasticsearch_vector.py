@@ -87,7 +87,7 @@ class ElasticSearchVector(BaseVector):
         return uuids
 
     def text_exists(self, id: str) -> bool:
-        return self._client.exists(index=self._collection_name, id=id)
+        return self._client.exists(index=self._collection_name, id=id).__bool__()
 
     def delete_by_ids(self, ids: list[str]) -> None:
         for id in ids:
