@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import dayjs from 'dayjs'
 import StatusPanel from '@/app/components/workflow/run/status'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import useTimestamp from '@/hooks/use-timestamp'
 
 type ResultPanelProps = {
   status: string
@@ -14,7 +14,7 @@ type ResultPanelProps = {
   inputs?: any
   outputs?: any
   created_by?: string
-  created_at?: string
+  created_at: string
   agentMode?: string
   tools?: string[]
   iterations?: number
@@ -28,12 +28,13 @@ const ResultPanel: FC<ResultPanelProps> = ({
   inputs,
   outputs,
   created_by,
-  created_at = 0,
+  created_at,
   agentMode,
   tools,
   iterations,
 }) => {
   const { t } = useTranslation()
+  const { formatTime } = useTimestamp()
 
   return (
     <div className='bg-white py-2'>
@@ -83,7 +84,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
             <div className='flex'>
               <div className='shrink-0 w-[104px] px-2 py-[5px] text-gray-500 text-xs leading-[18px] truncate'>{t('runLog.meta.startTime')}</div>
               <div className='grow px-2 py-[5px] text-gray-900 text-xs leading-[18px]'>
-                <span>{dayjs(created_at).format('YYYY-MM-DD hh:mm:ss')}</span>
+                <span>{formatTime(Date.parse(created_at) / 1000, t('appLog.dateTimeFormat') as string)}</span>
               </div>
             </div>
             <div className='flex'>

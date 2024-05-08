@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Literal, Optional
 
 from httpx import post
@@ -6,7 +7,7 @@ from yarl import URL
 
 from config import get_env
 from core.helper.code_executor.javascript_transformer import NodeJsTemplateTransformer
-from core.helper.code_executor.jina2_transformer import Jinja2TemplateTransformer
+from core.helper.code_executor.jinja2_transformer import Jinja2TemplateTransformer
 from core.helper.code_executor.python_transformer import PythonTemplateTransformer
 
 # Code Executor
@@ -28,7 +29,25 @@ class CodeExecutionResponse(BaseModel):
     data: Data
 
 
+class CodeLanguage(str, Enum):
+    PYTHON3 = 'python3'
+    JINJA2 = 'jinja2'
+    JAVASCRIPT = 'javascript'
+
+
 class CodeExecutor:
+    code_template_transformers = {
+        CodeLanguage.PYTHON3: PythonTemplateTransformer,
+        CodeLanguage.JINJA2: Jinja2TemplateTransformer,
+        CodeLanguage.JAVASCRIPT: NodeJsTemplateTransformer,
+    }
+
+    code_language_to_running_language = {
+        CodeLanguage.JAVASCRIPT: 'nodejs',
+        CodeLanguage.JINJA2: CodeLanguage.PYTHON3,
+        CodeLanguage.PYTHON3: CodeLanguage.PYTHON3,
+    }
+
     @classmethod
     def execute_code(cls, language: Literal['python3', 'javascript', 'jinja2'], preload: str, code: str) -> str:
         """
@@ -44,9 +63,7 @@ class CodeExecutor:
         }
 
         data = {
-            'language': 'python3' if language == 'jinja2' else
-                        'nodejs' if language == 'javascript' else
-                        'python3' if language == 'python3' else None,
+            'language': cls.code_language_to_running_language.get(language),
             'code': code,
             'preload': preload
         }
@@ -86,15 +103,9 @@ class CodeExecutor:
         :param inputs: inputs
         :return:
         """
-        template_transformer = None
-        if language == 'python3':
-            template_transformer = PythonTemplateTransformer
-        elif language == 'jinja2':
-            template_transformer = Jinja2TemplateTransformer
-        elif language == 'javascript':
-            template_transformer = NodeJsTemplateTransformer
-        else:
-            raise CodeExecutionException('Unsupported language')
+        template_transformer = cls.code_template_transformers.get(language)
+        if not template_transformer:
+            raise CodeExecutionException(f'Unsupported language {language}')
 
         runner, preload = template_transformer.transform_caller(code, inputs)
 

@@ -323,7 +323,7 @@ const translation = {
   openingStatement: {
     title: '對話開場白',
     add: '新增開場白',
-    writeOpner: '編寫開場白',
+    writeOpener: '編寫開場白',
     placeholder: '在這裡寫下你的開場白，你可以使用變數，嘗試輸入 {{variable}}。',
     openingQuestion: '開場問題',
     noDataPlaceHolder:

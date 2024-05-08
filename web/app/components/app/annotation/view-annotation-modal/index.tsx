@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import dayjs from 'dayjs'
 import { Pagination } from 'react-headless-pagination'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
@@ -16,6 +15,7 @@ import DeleteConfirmModal from '@/app/components/base/modal/delete-confirm-modal
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import { fetchHitHistoryList } from '@/service/annotation'
 import { APP_PAGE_LIMIT } from '@/config'
+import useTimestamp from '@/hooks/use-timestamp'
 
 type Props = {
   appId: string
@@ -43,6 +43,7 @@ const ViewAnnotationModal: FC<Props> = ({
   const [newQuestion, setNewQuery] = useState(question)
   const [newAnswer, setNewAnswer] = useState(answer)
   const { t } = useTranslation()
+  const { formatTime } = useTimestamp()
   const [currPage, setCurrPage] = React.useState<number>(0)
   const [total, setTotal] = useState(0)
   const [hitHistoryList, setHitHistoryList] = useState<HitHistoryItem[]>([])
@@ -119,7 +120,7 @@ const ViewAnnotationModal: FC<Props> = ({
               <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.response')}</td>
               <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.source')}</td>
               <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.score')}</td>
-              <td className='whitespace-nowrap w-[140px]'>{t('appAnnotation.hitHistoryTable.time')}</td>
+              <td className='whitespace-nowrap w-[160px]'>{t('appAnnotation.hitHistoryTable.time')}</td>
             </tr>
           </thead>
           <tbody className="text-gray-500">
@@ -142,7 +143,7 @@ const ViewAnnotationModal: FC<Props> = ({
                 >{item.response}</td>
                 <td>{item.source}</td>
                 <td>{item.score ? item.score.toFixed(2) : '-'}</td>
-                <td>{dayjs(item.created_at * 1000).format('YYYY-MM-DD HH:mm')}</td>
+                <td>{formatTime(item.created_at, t('appLog.dateTimeFormat') as string)}</td>
               </tr>
             ))}
           </tbody>
@@ -214,12 +215,11 @@ const ViewAnnotationModal: FC<Props> = ({
                 <MessageCheckRemove />
                 <div>{t('appAnnotation.editModal.removeThisCache')}</div>
               </div>
-              <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{dayjs(createdAt * 1000).format('YYYY-MM-DD HH:mm')}</div>
+              <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{formatTime(createdAt, t('appLog.dateTimeFormat') as string)}</div>
             </div>
           )
           : undefined}
-      >
-      </Drawer>
+      />
       <DeleteConfirmModal
         isShow={showModal}
         onHide={() => setShowModal(false)}
