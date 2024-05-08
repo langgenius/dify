@@ -157,3 +157,23 @@ def compact_generate_response(response: Union[dict, Generator]) -> Response:
 
         return Response(stream_with_context(generate()), status=200,
                         mimetype='text/event-stream')
+
+def str_to_bool(v):
+    """
+    Converts a string or boolean to a boolean value.
+    From https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
+
+    Parameters:
+    - v (str or bool): Input string or boolean.
+
+    Returns:
+    - bool: True for 'yes', 'true', 't', 'y', '1', False for 'no', 'false', 'f', 'n', '0', or any other unrecognized string.
+    """
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    else:
+        return False
