@@ -1,9 +1,10 @@
 import os
 
 import pytest
+from api.core.model_runtime.entities.rerank_entities import RerankResult
+
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.localai.rerank.rerank import LocalaiRerankModel
-from api.core.model_runtime.entities.rerank_entities import RerankResult
 
 
 def test_validate_credentials_for_chat_model():
@@ -54,10 +55,13 @@ def test_invoke_rerank_model():
     assert isinstance(response, RerankResult)
     assert len(response.docs) == 3
 import os
+
 import pytest
+from api.core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
+
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.localai.rerank.rerank import LocalaiRerankModel
-from api.core.model_runtime.entities.rerank_entities import RerankResult, RerankDocument
+
 
 def test_validate_credentials_for_chat_model():
     model = LocalaiRerankModel()
