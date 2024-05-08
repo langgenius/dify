@@ -173,7 +173,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = cohere.Client(credentials.get('api_key'), base_url=credentials.get('base_url'))
 
         if stop:
             model_parameters['end_sequences'] = stop
@@ -233,7 +233,8 @@ class CohereLargeLanguageModel(LargeLanguageModel):
 
         return response
 
-    def _handle_generate_stream_response(self, model: str, credentials: dict, response: Iterator[GenerateStreamedResponse],
+    def _handle_generate_stream_response(self, model: str, credentials: dict,
+                                         response: Iterator[GenerateStreamedResponse],
                                          prompt_messages: list[PromptMessage]) -> Generator:
         """
         Handle llm stream response
@@ -317,7 +318,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = cohere.Client(credentials.get('api_key'), base_url=credentials.get('base_url'))
 
         if stop:
             model_parameters['stop_sequences'] = stop
@@ -636,7 +637,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :return: number of tokens
         """
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = cohere.Client(credentials.get('api_key'), base_url=credentials.get('base_url'))
 
         response = client.tokenize(
             text=text,
