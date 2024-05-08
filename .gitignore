@@ -151,6 +151,7 @@ docker/volumes/milvus/*
 
 # docker env files
 docker_beta/env/*.env
+!docker_beta/env/*.env.example
 docker_beta/volumes/*
 
 sdks/python-client/build
