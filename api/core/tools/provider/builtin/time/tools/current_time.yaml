@@ -12,6 +12,19 @@ description:
     pt_BR: A tool for getting the current time.
   llm: A tool for getting the current time.
 parameters:
+  - name: format
+    type: string
+    required: false
+    label:
+      en_US: Format
+      zh_Hans: 格式
+      pt_BR: Format
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: strftime 标准的时间格式。
+      pt_BR: Time format in strftime standard.
+    form: form
+    default: "%Y-%m-%d %H:%M:%S"
   - name: timezone
     type: select
     required: false
