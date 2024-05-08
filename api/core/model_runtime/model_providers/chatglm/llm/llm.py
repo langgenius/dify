@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Generator
-from os.path import join
 from typing import Optional, cast
 
 from httpx import Timeout
@@ -265,7 +264,7 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
         client_kwargs = {
             "timeout": Timeout(315.0, read=300.0, write=10.0, connect=5.0),
             "api_key": "1",
-            "base_url": join(credentials['api_base'], 'v1')
+            "base_url": '/'.join([credentials['api_base'], 'v1'])
         }
 
         return client_kwargs

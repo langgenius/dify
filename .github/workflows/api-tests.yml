@@ -45,7 +45,7 @@ jobs:
         run: bash dev/pytest/pytest_unit_tests.sh
 
       - name: Run ModelRuntime
-        if: ${{ matrix.os != 'windows-latest' }}
+        # if: ${{ matrix.os != 'windows-latest' }}
         run: bash dev/pytest/pytest_model_runtime.sh
 
       - name: Run Tool
