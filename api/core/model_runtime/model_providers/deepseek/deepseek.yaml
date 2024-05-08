@@ -1,21 +1,21 @@
-provider: yi
+provider: deepseek
 label:
-  en_US: 01.AI
-  zh_Hans: 零一万物
+  en_US: deepseek
+  zh_Hans: 深度求索
 description:
-  en_US: Models provided by 01.AI, such as yi-34b-chat and yi-vl-plus.
-  zh_Hans: 零一万物提供的模型，例如 yi-34b-chat 和 yi-vl-plus。
+  en_US: Models provided by deepseek, such as deepseek-chat、deepseek-coder.
+  zh_Hans: 深度求索提供的模型，例如 deepseek-chat、deepseek-coder 。
 icon_small:
   en_US: icon_s_en.svg
 icon_large:
   en_US: icon_l_en.svg
-background: "#E9F1EC"
+background: "#c0cdff"
 help:
   title:
-    en_US: Get your API Key from 01.ai
-    zh_Hans: 从零一万物获取 API Key
+    en_US: Get your API Key from deepseek
+    zh_Hans: 从深度求索获取 API Key
   url:
-    en_US: https://platform.lingyiwanwu.com/apikeys
+    en_US: https://platform.deepseek.com/api_keys
 supported_model_types:
   - llm
 configurate_methods:
@@ -37,5 +37,5 @@ provider_credential_schema:
       type: text-input
       required: false
       placeholder:
-        zh_Hans: Base URL, e.g. https://api.lingyiwanwu.com/v1
-        en_US: Base URL, e.g. https://api.lingyiwanwu.com/v1
+        zh_Hans: Base URL, e.g. https://api.deepseek.com/v1 or https://api.deepseek.com
+        en_US: Base URL, e.g. https://api.deepseek.com/v1 or https://api.deepseek.com
