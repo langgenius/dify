@@ -60,7 +60,13 @@ jobs:
             docker/docker-compose.elasticsearch.yaml
             docker/docker-compose.pgvecto-rs.yaml
           services: |
+            weaviate
+            qdrant
+            etcd
+            minio
+            milvus-standalone
             elasticsearch
+            pgvecto-rs
 
       - name: Test Vector Stores
         run: dev/pytest/pytest_vdb.sh
