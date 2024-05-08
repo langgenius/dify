@@ -42,8 +42,8 @@ from fields.document_fields import (
     document_status_fields,
     document_with_segments_fields,
 )
-from libs.login import login_required
 from libs.helper import str_to_bool
+from libs.login import login_required
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentSegment
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService
