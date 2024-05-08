@@ -1,0 +1,151 @@
+provider: volcengine_maas
+label:
+  en_US: Volcengine
+description:
+  en_US: Volcengine MaaS models.
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+  zh_Hans: icon_l_zh.svg
+background: "#F9FAFB"
+help:
+  title:
+    en_US: Get your Access Key and Secret Access Key from Volcengine Console
+  url:
+    en_US: https://console.volcengine.com/iam/keymanage/
+supported_model_types:
+  - llm
+  - text-embedding
+configurate_methods:
+  - customizable-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your Model Name
+      zh_Hans: 输入模型名称
+  credential_form_schemas:
+    - variable: volc_access_key_id
+      required: true
+      label:
+        en_US: Access Key
+        zh_Hans: Access Key
+      type: secret-input
+      placeholder:
+        en_US: Enter your Access Key
+        zh_Hans: 输入您的 Access Key
+    - variable: volc_secret_access_key
+      required: true
+      label:
+        en_US: Secret Access Key
+        zh_Hans: Secret Access Key
+      type: secret-input
+      placeholder:
+        en_US: Enter your Secret Access Key
+        zh_Hans: 输入您的 Secret Access Key
+    - variable: volc_region
+      required: true
+      label:
+        en_US: Volcengine Region
+        zh_Hans: 火山引擎地区
+      type: text-input
+      default: cn-beijing
+      placeholder:
+        en_US: Enter Volcengine Region
+        zh_Hans: 输入火山引擎地域
+    - variable: api_endpoint_host
+      required: true
+      label:
+        en_US: API Endpoint Host
+        zh_Hans: API Endpoint Host
+      type: text-input
+      default: maas-api.ml-platform-cn-beijing.volces.com
+      placeholder:
+        en_US: Enter your API Endpoint Host
+        zh_Hans: 输入 API Endpoint Host
+    - variable: endpoint_id
+      required: true
+      label:
+        en_US: Endpoint ID
+        zh_Hans: Endpoint ID
+      type: text-input
+      placeholder:
+        en_US: Enter your Endpoint ID
+        zh_Hans: 输入您的 Endpoint ID
+    - variable: base_model_name
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        en_US: Base Model
+        zh_Hans: 基础模型
+      type: select
+      required: true
+      options:
+        - label:
+            en_US: Skylark2-pro-4k
+          value: Skylark2-pro-4k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Custom
+            zh_Hans: 自定义
+          value: Custom
+    - variable: mode
+      required: true
+      show_on:
+        - variable: __model_type
+          value: llm
+        - variable: base_model_name
+          value: Custom
+      label:
+        zh_Hans: 模型类型
+        en_US: Completion Mode
+      type: select
+      default: chat
+      placeholder:
+        zh_Hans: 选择对话类型
+        en_US: Select Completion Mode
+      options:
+        - value: completion
+          label:
+            en_US: Completion
+            zh_Hans: 补全
+        - value: chat
+          label:
+            en_US: Chat
+            zh_Hans: 对话
+    - variable: context_size
+      required: true
+      show_on:
+        - variable: __model_type
+          value: llm
+        - variable: base_model_name
+          value: Custom
+      label:
+        zh_Hans: 模型上下文长度
+        en_US: Model Context Size
+      type: text-input
+      default: '4096'
+      placeholder:
+        zh_Hans: 输入您的模型上下文长度
+        en_US: Enter your Model Context Size
+    - variable: max_tokens
+      required: true
+      show_on:
+        - variable: __model_type
+          value: llm
+        - variable: base_model_name
+          value: Custom
+      label:
+        zh_Hans: 最大 token 上限
+        en_US: Upper Bound for Max Tokens
+      default: '4096'
+      type: text-input
+      placeholder:
+        zh_Hans: 输入您的模型最大 token 上限
+        en_US: Enter your model Upper Bound for Max Tokens
