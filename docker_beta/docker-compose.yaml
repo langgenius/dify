@@ -1,0 +1,346 @@
+version: '3'
+services:
+  # API service
+  api:
+    image: langgenius/dify-api:0.6.6
+    restart: always
+    env_file:
+      - path: ./env/api.env
+        required: false
+      - path: ./env/db.env
+        required: false
+      - path: ./env/redis.env
+        required: false
+      - path: ./env/weaviate.env
+        required: false
+      - path: ./env/qdrant.env
+        required: false
+      - path: ./env/mail.env
+        required: false
+      - path: ./env/code.env
+        required: false
+    environment:
+      MODE: api
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
+      CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-''}
+      INIT_PASSWORD: ${INIT_PASSWORD:-''}
+      CONSOLE_API_URL: ${CONSOLE_API_URL:-''}
+      SERVICE_API_URL: ${SERVICE_API_URL:-''}
+      APP_WEB_URL: ${APP_WEB_URL:-''}
+      FILES_URL: ${FILES_URL:-''}
+      MIGRATION_ENABLED: ${MIGRATION_ENABLED:-'true'}
+      DB_USERNAME: ${PGUSER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${POSTGRES_DB:-dify}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_USERNAME: ${REDIS_USERNAME:-''}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
+      REDIS_USE_SSL: ${REDIS_USE_SSL:-'false'}
+      REDIS_DB: ${REDIS_DB:-0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
+      WEB_API_CORS_ALLOW_ORIGINS: ${WEB_API_CORS_ALLOW_ORIGINS:-'*'}
+      CONSOLE_CORS_ALLOW_ORIGINS: ${CONSOLE_CORS_ALLOW_ORIGINS:-'*'}
+      STORAGE_TYPE: ${STORAGE_TYPE:-local}
+      STORAGE_LOCAL_PATH: ${STORAGE_LOCAL_PATH:-storage}
+      S3_ENDPOINT: ${S3_ENDPOINT:-'https://xxx.r2.cloudflarestorage.com'}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-difyai}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-ak-difyai}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-sk-difyai}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      AZURE_BLOB_ACCOUNT_NAME: ${AZURE_BLOB_ACCOUNT_NAME:-difyai}
+      AZURE_BLOB_ACCOUNT_KEY: ${AZURE_BLOB_ACCOUNT_KEY:-difyai}
+      AZURE_BLOB_CONTAINER_NAME: ${AZURE_BLOB_CONTAINER_NAME:-difyai-container}
+      AZURE_BLOB_ACCOUNT_URL: ${AZURE_BLOB_ACCOUNT_URL:-'https://<your_account_name>.blob.core.windows.net'}
+      GOOGLE_STORAGE_BUCKET_NAME: ${GOOGLE_STORAGE_BUCKET_NAME:-yout-bucket-name}
+      GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: ${GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64:-your-google-service-account-json-base64-string}
+      VECTOR_STORE: ${VECTOR_STORE:-weaviate}
+      WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
+      WEAVIATE_API_KEY: ${AUTHENTICATION_APIKEY_ALLOWED_KEYS:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
+      QDRANT_CLIENT_TIMEOUT: ${QDRANT_CLIENT_TIMEOUT:-20}
+      QDRANT_GRPC_ENABLED: ${QDRANT_GRPC_ENABLED:-'false'}
+      QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
+      MILVUS_HOST: ${MILVUS_HOST:-127.0.0.1}
+      MILVUS_PORT: ${MILVUS_PORT:-19530}
+      MILVUS_USER: ${MILVUS_USER:-root}
+      MILVUS_PASSWORD: ${MILVUS_PASSWORD:-Milvus}
+      MILVUS_SECURE: ${MILVUS_SECURE:-'false'}
+      RELYT_HOST: ${RELYT_HOST:-db}
+      RELYT_PORT: ${RELYT_PORT:-5432}
+      RELYT_USER: ${RELYT_USER:-postgres}
+      RELYT_PASSWORD: ${RELYT_PASSWORD:-difyai123456}
+      RELYT_DATABASE: ${RELYT_DATABASE:-postgres}
+      MAIL_TYPE: ${MAIL_TYPE:-''}
+      MAIL_DEFAULT_SEND_FROM: ${MAIL_DEFAULT_SEND_FROM:-'e.g. no-reply <no-reply@dify.ai>'}
+      SMTP_SERVER: ${SMTP_SERVER:-''}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-''}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-''}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-'true'}
+      RESEND_API_KEY: ${RESEND_API_KEY:-''}
+      RESEND_API_URL: ${RESEND_API_URL:-https://api.resend.com}
+      SENTRY_DSN: ${SENTRY_DSN:-''}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+      NOTION_INTEGRATION_TYPE: ${NOTION_INTEGRATION_TYPE:-public}
+      NOTION_CLIENT_SECRET: ${NOTION_CLIENT_SECRET:-you-client-secret}
+      NOTION_CLIENT_ID: ${NOTION_CLIENT_ID:-you-client-id}
+      NOTION_INTERNAL_SECRET: ${NOTION_INTERNAL_SECRET:-you-internal-secret}
+      CODE_EXECUTION_ENDPOINT: ${CODE_EXECUTION_ENDPOINT:-"http://sandbox:8194"}
+      CODE_EXECUTION_API_KEY: ${CODE_EXECUTION_API_KEY:-dify-sandbox}
+      CODE_MAX_NUMBER: ${CODE_MAX_NUMBER:-9223372036854775807}
+      CODE_MIN_NUMBER: ${CODE_MIN_NUMBER:- -9223372036854775808}
+      CODE_MAX_STRING_LENGTH: ${CODE_MAX_STRING_LENGTH:-80000}
+      TEMPLATE_TRANSFORM_MAX_LENGTH: ${TEMPLATE_TRANSFORM_MAX_LENGTH:-80000}
+      CODE_MAX_STRING_ARRAY_LENGTH: ${CODE_MAX_STRING_ARRAY_LENGTH:-30}
+      CODE_MAX_OBJECT_ARRAY_LENGTH: ${CODE_MAX_OBJECT_ARRAY_LENGTH:-30}
+      CODE_MAX_NUMBER_ARRAY_LENGTH: ${CODE_MAX_NUMBER_ARRAY_LENGTH:-1000}
+    depends_on:
+      - db
+      - redis
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+    # uncomment to expose dify-api port to host
+    # ports:
+    #   - "5001:5001"
+
+  # worker service
+  # The Celery worker for processing the queue.
+  worker:
+    image: langgenius/dify-api:0.6.6
+    restart: always
+    env_file:
+      - path: ./env/api.env
+        required: false
+      - path: ./env/db.env
+        required: false
+      - path: ./env/redis.env
+        required: false
+      - path: ./env/weaviate.env
+        required: false
+      - path: ./env/qdrant.env
+        required: false
+      - path: ./env/mail.env
+        required: false
+    environment:
+      # Startup mode, 'worker' starts the Celery worker for processing the queue.
+      MODE: worker
+
+      # -- all variables below are identical to the api service --
+
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
+      CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-''}
+      INIT_PASSWORD: ${INIT_PASSWORD:-''}
+      CONSOLE_API_URL: ${CONSOLE_API_URL:-''}
+      SERVICE_API_URL: ${SERVICE_API_URL:-''}
+      APP_WEB_URL: ${APP_WEB_URL:-''}
+      FILES_URL: ${FILES_URL:-''}
+      MIGRATION_ENABLED: ${MIGRATION_ENABLED:-'true'}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_DATABASE: ${DB_DATABASE:-dify}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_USERNAME: ${REDIS_USERNAME:-''}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
+      REDIS_USE_SSL: ${REDIS_USE_SSL:-'false'}
+      REDIS_DB: ${REDIS_DB:-0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
+      WEB_API_CORS_ALLOW_ORIGINS: ${WEB_API_CORS_ALLOW_ORIGINS:-'*'}
+      CONSOLE_CORS_ALLOW_ORIGINS: ${CONSOLE_CORS_ALLOW_ORIGINS:-'*'}
+      STORAGE_TYPE: ${STORAGE_TYPE:-local}
+      STORAGE_LOCAL_PATH: ${STORAGE_LOCAL_PATH:-storage}
+      S3_ENDPOINT: ${S3_ENDPOINT:-'https://xxx.r2.cloudflarestorage.com'}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-difyai}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-ak-difyai}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-sk-difyai}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      AZURE_BLOB_ACCOUNT_NAME: ${AZURE_BLOB_ACCOUNT_NAME:-difyai}
+      AZURE_BLOB_ACCOUNT_KEY: ${AZURE_BLOB_ACCOUNT_KEY:-difyai}
+      AZURE_BLOB_CONTAINER_NAME: ${AZURE_BLOB_CONTAINER_NAME:-difyai-container}
+      AZURE_BLOB_ACCOUNT_URL: ${AZURE_BLOB_ACCOUNT_URL:-'https://<your_account_name>.blob.core.windows.net'}
+      GOOGLE_STORAGE_BUCKET_NAME: ${GOOGLE_STORAGE_BUCKET_NAME:-yout-bucket-name}
+      GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: ${GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64:-your-google-service-account-json-base64-string}
+      VECTOR_STORE: ${VECTOR_STORE:-weaviate}
+      WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
+      WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
+      QDRANT_CLIENT_TIMEOUT: ${QDRANT_CLIENT_TIMEOUT:-20}
+      QDRANT_GRPC_ENABLED: ${QDRANT_GRPC_ENABLED:-'false'}
+      QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
+      MILVUS_HOST: ${MILVUS_HOST:-127.0.0.1}
+      MILVUS_PORT: ${MILVUS_PORT:-19530}
+      MILVUS_USER: ${MILVUS_USER:-root}
+      MILVUS_PASSWORD: ${MILVUS_PASSWORD:-Milvus}
+      MILVUS_SECURE: ${MILVUS_SECURE:-'false'}
+      RELYT_HOST: ${RELYT_HOST:-db}
+      RELYT_PORT: ${RELYT_PORT:-5432}
+      RELYT_USER: ${RELYT_USER:-postgres}
+      RELYT_PASSWORD: ${RELYT_PASSWORD:-difyai123456}
+      RELYT_DATABASE: ${RELYT_DATABASE:-postgres}
+      MAIL_TYPE: ${MAIL_TYPE:-''}
+      MAIL_DEFAULT_SEND_FROM: ${MAIL_DEFAULT_SEND_FROM:-'e.g. no-reply <no-reply@dify.ai>'}
+      SMTP_SERVER: ${SMTP_SERVER:-''}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-''}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-''}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-'true'}
+      RESEND_API_KEY: ${RESEND_API_KEY:-''}
+      RESEND_API_URL: ${RESEND_API_URL:-https://api.resend.com}
+      SENTRY_DSN: ${SENTRY_DSN:-''}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-1.0}
+      SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE:-1.0}
+      NOTION_INTEGRATION_TYPE: ${NOTION_INTEGRATION_TYPE:-public}
+      NOTION_CLIENT_SECRET: ${NOTION_CLIENT_SECRET:-you-client-secret}
+      NOTION_CLIENT_ID: ${NOTION_CLIENT_ID:-you-client-id}
+      NOTION_INTERNAL_SECRET: ${NOTION_INTERNAL_SECRET:-you-internal-secret}
+    depends_on:
+      - db
+      - redis
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+
+  # Frontend web application.
+  web:
+    image: langgenius/dify-web:0.6.6
+    restart: always
+    env_file:
+      - path: ./env/web.env
+        required: false
+    environment:
+      CONSOLE_API_URL: ${CONSOLE_API_URL:-''}
+      APP_API_URL: ${APP_API_URL:-''}
+      SENTRY_DSN: ${SENTRY_DSN:-''}
+    # uncomment to expose dify-web port to host
+    # ports:
+    #   - "3000:3000"
+
+  # The postgres database.
+  db:
+    image: postgres:15-alpine
+    restart: always
+    env_file:
+      - path: ./env/db.env
+        required: false
+    environment:
+      PGUSER: ${PGUSER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
+      POSTGRES_DB: ${POSTGRES_DB:-dify}
+      PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
+    volumes:
+      - ./volumes/db/data:/var/lib/postgresql/data
+    # uncomment to expose db(postgresql) port to host
+    # ports:
+    #   - "5432:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # The redis cache.
+  redis:
+    image: redis:6-alpine
+    restart: always
+    volumes:
+      # Mount the redis data directory to the container.
+      - ./volumes/redis/data:/data
+    # Set the redis password when startup redis server.
+    command: redis-server --requirepass difyai123456
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+    # uncomment to expose redis port to host
+    # ports:
+    #   - "6379:6379"
+
+  # The Weaviate vector store.
+  weaviate:
+    image: semitechnologies/weaviate:1.19.0
+    restart: always
+    volumes:
+      # Mount the Weaviate data directory to the container.
+      - ./volumes/weaviate:/var/lib/weaviate
+    env_file:
+      - path: ./env/weaviate.env
+        required: false
+    environment:
+      # The Weaviate configurations
+      # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      
+      QUERY_DEFAULTS_LIMIT: ${QUERY_DEFAULTS_LIMIT:-25}
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED:-'false'}
+      DEFAULT_VECTORIZER_MODULE: ${DEFAULT_VECTORIZER_MODULE:-'none'}
+      CLUSTER_HOSTNAME: ${CLUSTER_HOSTNAME:-'node1'}
+      AUTHENTICATION_APIKEY_ENABLED: ${AUTHENTICATION_APIKEY_ENABLED:-'true'}
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${AUTHENTICATION_APIKEY_ALLOWED_KEYS:-'WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih'}
+      AUTHENTICATION_APIKEY_USERS: ${AUTHENTICATION_APIKEY_USERS:-'hello@dify.ai'}
+      AUTHORIZATION_ADMINLIST_ENABLED: ${AUTHORIZATION_ADMINLIST_ENABLED:-'true'}
+      AUTHORIZATION_ADMINLIST_USERS: ${AUTHORIZATION_ADMINLIST_USERS:-'hello@dify.ai'}
+    # uncomment to expose weaviate port to host
+    # ports:
+    #  - "8080:8080"
+
+  # The DifySandbox
+  sandbox:
+    image: langgenius/dify-sandbox:0.1.0
+    restart: always
+    cap_add:
+    # Why is sys_admin permission needed?
+    # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-sys_admin-permission-needed
+      - SYS_ADMIN
+    env_file:
+      - path: ./env/sandbox.env
+        required: false
+    environment:
+      # The DifySandbox configurations
+      API_KEY: ${API_KEY:-dify-sandbox}
+      GIN_MODE: ${GIN_MODE:-release}
+      WORKER_TIMEOUT: ${WORKER_TIMEOUT:-15}
+
+  # Qdrant vector store.
+  # uncomment to use qdrant as vector store.
+  # (if uncommented, you need to comment out the weaviate service above,
+  # and set VECTOR_STORE to qdrant in the api & worker service.)
+  # qdrant:
+  #   image: langgenius/qdrant:v1.7.3
+  #   restart: always
+  #   volumes:
+  #     - ./volumes/qdrant:/qdrant/storage
+  #   env_file:
+  #     - path: ./env/qdrant.env
+  #       required: false
+  #   environment:
+  #     QDRANT_API_KEY: ${QDRANT_API_KEY:-'difyai123456'}
+  #   # uncomment to expose qdrant port to host
+  #   # ports:
+  #   #  - "6333:6333"
+  #   #  - "6334:6334"
+
+  # The nginx reverse proxy.
+  # used for reverse proxying the API service and Web service.
+  nginx:
+    image: nginx:latest
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/proxy.conf:/etc/nginx/proxy.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      #- ./nginx/ssl:/etc/ssl
+    depends_on:
+      - api
+      - web
+    ports:
+      - "80:80"
+      #- "443:443"
