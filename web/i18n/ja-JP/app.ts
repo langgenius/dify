@@ -23,6 +23,7 @@ const translation = {
     'さまざまなチャンネルでチームメンバーや貢献者、開発者と議論します。',
   roadmap: 'ロードマップを見る',
   newApp: {
+    // this comment is to recreate PR
     startFromBlank: '最初から作成',
     startFromTemplate: 'テンプレートから作成',
     captionAppType: 'どのタイプのアプリを作成しますか？',
