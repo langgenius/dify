@@ -111,20 +111,20 @@
     "cross-env": "^7.0.3",
     "eslint": "^8.36.0",
     "eslint-config-next": "^14.0.4",
+    "eslint-config-prettier": "^9.1.0",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.2",
     "postcss": "^8.4.31",
+    "prettier": "^3.2.5",
     "sass": "^1.61.0",
     "tailwindcss": "^3.3.3",
     "typescript": "4.9.5",
     "uglify-js": "^3.17.4"
   },
   "lint-staged": {
-    "**/*.js?(x)": [
-      "eslint --fix"
-    ],
-    "**/*.ts?(x)": [
-      "eslint --fix"
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --cache --fix",
+      "prettier --ignore-path ./.gitignore --write"
     ]
   },
   "engines": {

@@ -1,13 +1,7 @@
 {
-  "extends": [
-    "next",
-    "@antfu"
-  ],
+  "extends": ["next", "@antfu", "prettier"],
   "rules": {
-    "@typescript-eslint/consistent-type-definitions": [
-      "error",
-      "type"
-    ],
+    "@typescript-eslint/consistent-type-definitions": ["error", "type"],
     "@typescript-eslint/no-var-requires": "off",
     "no-console": "off",
     "indent": "off",
