@@ -9,16 +9,15 @@ from controllers.web.error import WebSSOTokenInvalidError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
-from services.enterprise.enterprise_feature_service import EnterpriseFeatureService
+from services.feature_service import FeatureService
 
 
 class PassportResource(Resource):
     """Base resource for passport."""
     def get(self):
-        # Enterprise feature: SSO enforced for web
         end_user_session_id = ''
-        enterprise_features = EnterpriseFeatureService.get_enterprise_features()
-        if enterprise_features.sso_enforced_for_web:
+        system_features = FeatureService.get_system_features()
+        if system_features.sso_enforced_for_web:
             web_sso_token = request.headers.get('X-Web-SSO-Token')
             if not web_sso_token:
                 raise WebSSOTokenInvalidError()
@@ -44,7 +43,7 @@ class PassportResource(Resource):
         if not app_model or app_model.status != 'normal' or not app_model.enable_site:
             raise NotFound()
 
-        if enterprise_features.sso_enforced_for_web:
+        if system_features.sso_enforced_for_web:
             end_user = db.session.query(EndUser) \
                 .filter(EndUser.tenant_id == app_model.tenant_id,
                         EndUser.app_id == app_model.id,

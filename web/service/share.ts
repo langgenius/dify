@@ -11,7 +11,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import type { ChatConfig } from '@/app/components/base/chat/types'
-import type { EnterpriseFeatures } from '@/types/enterprise'
+import type { SystemFeatures } from '@/types/feature'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -132,8 +132,8 @@ export const fetchAppParams = async (isInstalledApp: boolean, installedAppId = '
   return (getAction('get', isInstalledApp))(getUrl('parameters', isInstalledApp, installedAppId)) as Promise<ChatConfig>
 }
 
-export const fetchEnterpriseFeatures = async () => {
-  return (getAction('get', false))(getUrl('enterprise-features', false, '')) as Promise<EnterpriseFeatures>
+export const fetchSystemFeatures = async () => {
+  return (getAction('get', false))(getUrl('system-features', false, '')) as Promise<SystemFeatures>
 }
 
 export const fetchWebSAMLSSOUrl = async () => {

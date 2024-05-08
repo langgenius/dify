@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import cn from 'classnames'
-import { fetchEnterpriseFeatures } from '@/service/share'
+import { fetchSystemFeatures } from '@/service/share'
 import Loading from '@/app/components/base/loading'
 import LogoSite from '@/app/components/base/logo/logo-site'
 
@@ -20,7 +20,7 @@ const SSOForm: FC<SSOFormProps> = ({ children, isChatbot }) => {
   const [loading, setLoading] = React.useState(true)
 
   useEffect(() => {
-    fetchEnterpriseFeatures().then((res) => {
+    fetchSystemFeatures().then((res) => {
       setIsSSOEnforced(res.sso_enforced_for_web)
 
       if (res.sso_enforced_for_web && !isChatbot) {

@@ -1,9 +1,4 @@
 import { get } from './base'
-import type { EnterpriseFeatures } from '@/types/enterprise'
-
-export const getEnterpriseFeatures = () => {
-  return get<EnterpriseFeatures>('/enterprise-features')
-}
 
 export const getUserSAMLSSOUrl = () => {
   return get<{ url: string }>('/enterprise/sso/saml/login')
