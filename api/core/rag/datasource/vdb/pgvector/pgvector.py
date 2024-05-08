@@ -22,15 +22,15 @@ class PGVectorConfig(BaseModel):
     @root_validator()
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
-            raise ValueError("config PGVECTO_HOST is required")
+            raise ValueError("config PGVECTOR_HOST is required")
         if not values["port"]:
-            raise ValueError("config PGVECTO_PORT is required")
+            raise ValueError("config PGVECTOR_PORT is required")
         if not values["user"]:
-            raise ValueError("config PGVECTO_USER is required")
+            raise ValueError("config PGVECTOR_USER is required")
         if not values["password"]:
-            raise ValueError("config PGVECTO_PASSWORD is required")
+            raise ValueError("config PGVECTOR_PASSWORD is required")
         if not values["database"]:
-            raise ValueError("config PGVECTO_DATABASE is required")
+            raise ValueError("config PGVECTOR_DATABASE is required")
         return values
 
 
