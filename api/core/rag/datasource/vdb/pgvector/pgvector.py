@@ -5,7 +5,7 @@ from typing import Any
 
 import psycopg2.extras
 import psycopg2.pool
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
@@ -13,11 +13,25 @@ from extensions.ext_redis import redis_client
 
 
 class PGVectorConfig(BaseModel):
-    host: str = "localhost"
-    port: int = 5432
+    host: str
+    port: int
     user: str
     password: str
     database: str
+
+    @root_validator()
+    def validate_config(cls, values: dict) -> dict:
+        if not values["host"]:
+            raise ValueError("config PGVECTO_HOST is required")
+        if not values["port"]:
+            raise ValueError("config PGVECTO_PORT is required")
+        if not values["user"]:
+            raise ValueError("config PGVECTO_USER is required")
+        if not values["password"]:
+            raise ValueError("config PGVECTO_PASSWORD is required")
+        if not values["database"]:
+            raise ValueError("config PGVECTO_DATABASE is required")
+        return values
 
 
 SQL_CREATE_TABLE = """
@@ -113,19 +127,23 @@ class PGVector(BaseVector):
 
         :param query_vector: The input vector to search for similar items.
         :param top_k: The number of nearest neighbors to return, default is 5.
-        :param distance_metric: The distance metric to use ('l2', 'max_inner_product', 'cosine').
         :return: List of Documents that are nearest to the query vector.
         """
         top_k = kwargs.get("top_k", 5)
 
         with self._get_cursor() as cur:
             cur.execute(
-                f"SELECT meta, text FROM {self.table_name} ORDER BY embedding <-> %s LIMIT {top_k}",
+                f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name} ORDER BY distance LIMIT {top_k}",
                 (json.dumps(query_vector),),
             )
             docs = []
+            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
             for record in cur:
-                docs.append(Document(page_content=record[1], metadata=record[0]))
+                metadata, text, distance = record
+                score = 1 - distance
+                metadata["score"] = score
+                if score > score_threshold:
+                    docs.append(Document(page_content=text, metadata=metadata))
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -146,7 +164,6 @@ class PGVector(BaseVector):
 
             with self._get_cursor() as cur:
                 cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
-                cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
                 cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name, dimension=dimension))
                 # TODO: create index https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
