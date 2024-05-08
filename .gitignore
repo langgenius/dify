@@ -149,6 +149,10 @@ docker/volumes/etcd/*
 docker/volumes/minio/*
 docker/volumes/milvus/*
 
+# docker env files
+docker_beta/env/*.env
+docker_beta/volumes/*
+
 sdks/python-client/build
 sdks/python-client/dist
 sdks/python-client/dify_client.egg-info
