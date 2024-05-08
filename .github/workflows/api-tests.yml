@@ -33,11 +33,16 @@ jobs:
       - name: Install dependencies
         run: pip install -r ./api/requirements.txt -r ./api/requirements-dev.txt
 
-      # - uses: cygwin/cygwin-install-action@master
-      #  if: ${{ matrix.os == 'windows-latest' }}
+      - uses: msys2/setup-msys2@v2
+        if: ${{ matrix.os == 'windows-latest' }}
+        with:
+          install: >-
+            curl
+            git
+            bash
 
       - name: Run Unit tests
-        run: gitbash.exe dev/pytest/pytest_unit_tests.sh
+        run: bash dev/pytest/pytest_unit_tests.sh
 
       - name: Run ModelRuntime
         run: bash dev/pytest/pytest_model_runtime.sh
