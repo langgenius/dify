@@ -43,6 +43,7 @@ from fields.document_fields import (
     document_with_segments_fields,
 )
 from libs.login import login_required
+from libs.helper import str_to_bool
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentSegment
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService
@@ -141,7 +142,7 @@ class DatasetDocumentListApi(Resource):
         limit = request.args.get('limit', default=20, type=int)
         search = request.args.get('keyword', default=None, type=str)
         sort = request.args.get('sort', default='-created_at', type=str)
-        fetch = request.args.get('fetch', default=False, type=bool)
+        fetch = request.args.get('fetch', default=False, type=str_to_bool)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound('Dataset not found.')
