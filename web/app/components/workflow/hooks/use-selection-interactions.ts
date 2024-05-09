@@ -14,7 +14,7 @@ export const useSelectionInteractions = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
 
-  const handleSelectionChange = useCallback<OnSelectionChangeFunc>(({ nodes: nodesInSelection, edges: edgesInSelection }) => {
+  const handleSelectionStart = useCallback(() => {
     const {
       getNodes,
       setNodes,
@@ -23,9 +23,8 @@ export const useSelectionInteractions = () => {
       userSelectionRect,
     } = store.getState()
 
-    const nodes = getNodes()
-
     if (!userSelectionRect?.width || !userSelectionRect?.height) {
+      const nodes = getNodes()
       const newNodes = produce(nodes, (draft) => {
         draft.forEach((node) => {
           if (node.data._isBundled)
@@ -40,8 +39,22 @@ export const useSelectionInteractions = () => {
         })
       })
       setEdges(newEdges)
-      return
     }
+  }, [store])
+
+  const handleSelectionChange = useCallback<OnSelectionChangeFunc>(({ nodes: nodesInSelection, edges: edgesInSelection }) => {
+    const {
+      getNodes,
+      setNodes,
+      edges,
+      setEdges,
+      userSelectionRect,
+    } = store.getState()
+
+    const nodes = getNodes()
+
+    if (!userSelectionRect?.width || !userSelectionRect?.height)
+      return
 
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
@@ -89,6 +102,7 @@ export const useSelectionInteractions = () => {
   }, [store, workflowStore])
 
   return {
+    handleSelectionStart,
     handleSelectionChange,
     handleSelectionDrag,
   }

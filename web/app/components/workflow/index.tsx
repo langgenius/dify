@@ -178,6 +178,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleEdgesChange,
   } = useEdgesInteractions()
   const {
+    handleSelectionStart,
     handleSelectionChange,
     handleSelectionDrag,
   } = useSelectionInteractions()
@@ -240,6 +241,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         onEdgeMouseEnter={handleEdgeEnter}
         onEdgeMouseLeave={handleEdgeLeave}
         onEdgesChange={handleEdgesChange}
+        onSelectionStart={handleSelectionStart}
         onSelectionChange={handleSelectionChange}
         onSelectionDrag={handleSelectionDrag}
         onPaneContextMenu={handlePaneContextMenu}
