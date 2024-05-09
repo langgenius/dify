@@ -149,11 +149,8 @@ docker/volumes/etcd/*
 docker/volumes/minio/*
 docker/volumes/milvus/*
 
-# docker beta deployment env files
-docker_beta/env/*.env
-!docker_beta/env/*.env.example
-
-docker_beta/volumes/*
+docker/dotenvs/*.env
+!docker/dotenvs/*.env.example
 
 sdks/python-client/build
 sdks/python-client/dist

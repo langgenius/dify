@@ -5,12 +5,9 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
-      # The password for the default postgres user.
-      POSTGRES_PASSWORD: difyai123456
-      # The name of the default postgres database.
-      POSTGRES_DB: dify
-      # postgres data directory
-      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
+      POSTGRES_DB: ${POSTGRES_DB:-dify}
+      PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     ports:
@@ -38,16 +35,16 @@ services:
     environment:
       # The Weaviate configurations
       # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
-      QUERY_DEFAULTS_LIMIT: 25
-      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'false'
       PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
-      DEFAULT_VECTORIZER_MODULE: 'none'
-      CLUSTER_HOSTNAME: 'node1'
-      AUTHENTICATION_APIKEY_ENABLED: 'true'
-      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih'
-      AUTHENTICATION_APIKEY_USERS: 'hello@dify.ai'
-      AUTHORIZATION_ADMINLIST_ENABLED: 'true'
-      AUTHORIZATION_ADMINLIST_USERS: 'hello@dify.ai'
+      QUERY_DEFAULTS_LIMIT: ${QUERY_DEFAULTS_LIMIT:-25}
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED:-false}
+      DEFAULT_VECTORIZER_MODULE: ${DEFAULT_VECTORIZER_MODULE:-none}
+      CLUSTER_HOSTNAME: ${CLUSTER_HOSTNAME:-node1}
+      AUTHENTICATION_APIKEY_ENABLED: ${AUTHENTICATION_APIKEY_ENABLED:-true}
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${AUTHENTICATION_APIKEY_ALLOWED_KEYS:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
+      AUTHENTICATION_APIKEY_USERS: ${AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
+      AUTHORIZATION_ADMINLIST_ENABLED: ${AUTHORIZATION_ADMINLIST_ENABLED:-true}
+      AUTHORIZATION_ADMINLIST_USERS: ${AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
     ports:
       - "8080:8080"
 
@@ -61,9 +58,9 @@ services:
       - SYS_ADMIN
     environment:
       # The DifySandbox configurations
-      API_KEY: dify-sandbox
-      GIN_MODE: 'release'
-      WORKER_TIMEOUT: 15
+      API_KEY: ${API_KEY:-dify-sandbox}
+      GIN_MODE: ${GIN_MODE:-'release'}
+      WORKER_TIMEOUT: ${WORKER_TIMEOUT:-15}
     ports:
       - "8194:8194"
 
@@ -77,7 +74,7 @@ services:
   #   volumes:
   #     - ./volumes/qdrant:/qdrant/storage
   #   environment:
-  #     QDRANT_API_KEY: 'difyai123456'
+  #     QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
   #   ports:
   #     - "6333:6333"
   #     - "6334:6334"

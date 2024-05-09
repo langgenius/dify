@@ -6,8 +6,11 @@ services:
     restart: always
     volumes:
       - ./volumes/qdrant:/qdrant/storage
+    env_file:
+      - path: ./env/qdrant.env
+        required: false
     environment:
-      QDRANT_API_KEY: 'difyai123456'
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-'difyai123456'}
     ports:
       - "6333:6333"
       - "6334:6334"
