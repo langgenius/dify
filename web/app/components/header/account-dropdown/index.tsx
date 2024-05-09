@@ -17,8 +17,6 @@ import { ArrowUpRight, ChevronDown } from '@/app/components/base/icons/src/vende
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n/language'
-import { env } from '@/env'
-
 export type IAppSelecotr = {
   isMobile: boolean
 }
@@ -136,7 +134,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                       </Link>
                     </Menu.Item>
                     {
-                      env.NEXT_PUBLIC_HIDE_ABOUT_INFO !== 'TRUE' && (
+                      document?.body?.getAttribute('data-public-site-about') !== 'hide' && (
                         <Menu.Item>
                           <div className={classNames(itemClassName, 'justify-between')} onClick={() => setAboutVisible(true)}>
                             <div>{t('common.userProfile.about')}</div>

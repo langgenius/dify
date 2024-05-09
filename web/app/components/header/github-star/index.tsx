@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react'
 import { Github } from '@/app/components/base/icons/src/public/common'
 import type { GithubRepo } from '@/models/common'
-import { env } from '@/env'
 
 const getStar = async () => {
   const res = await fetch('https://api.github.com/repos/langgenius/dify')
@@ -19,10 +18,10 @@ const GithubStar = () => {
   useEffect(() => {
     (async () => {
       try {
-        if (env.NODE_ENV?.toUpperCase() === 'DEVELOPMENT')
+        if (process.env.NODE_ENV === 'development')
           return
 
-        setGithubRepo(await getStar())
+        await setGithubRepo(await getStar())
         setIsFetched(true)
       }
       catch (e) {

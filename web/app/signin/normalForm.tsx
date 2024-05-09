@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import classNames from 'classnames'
 import useSWR from 'swr'
 import Link from 'next/link'
+import { useContext } from 'use-context-selector'
 import Toast from '../components/base/toast'
 import style from './page.module.css'
-import { API_PREFIX, IS_CE_EDITION } from '@/config'
+import { IS_CE_EDITION, apiPrefix } from '@/config'
 import Button from '@/app/components/base/button'
 import { login, oauth } from '@/service/common'
+import I18n from '@/context/i18n'
 import { getPurifyHref } from '@/utils'
 const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
 
@@ -63,6 +65,7 @@ function reducer(state: IState, action: IAction) {
 const NormalForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
+  const { locale } = useContext(I18n)
 
   const [state, dispatch] = useReducer(reducer, {
     formValid: false,
@@ -154,7 +157,7 @@ const NormalForm = () => {
           {!IS_CE_EDITION && (
             <div className="flex flex-col gap-3 mt-6">
               <div className='w-full'>
-                <a href={getPurifyHref(`${API_PREFIX}/oauth/login/github`)}>
+                <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
                   <Button
                     type='default'
                     disabled={isLoading}
@@ -173,7 +176,7 @@ const NormalForm = () => {
                 </a>
               </div>
               <div className='w-full'>
-                <a href={getPurifyHref(`${API_PREFIX}/oauth/login/google`)}>
+                <a href={getPurifyHref(`${apiPrefix}/oauth/login/google`)}>
                   <Button
                     type='default'
                     disabled={isLoading}

@@ -10,7 +10,6 @@ import { fetchCurrentWorkspace, fetchLanggeniusVersion, fetchUserProfile } from 
 import type { App } from '@/types/app'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
-import { env } from '@/env'
 
 export type AppContextValue = {
   apps: App[]
@@ -92,7 +91,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       const result = await userProfileResponse.json()
       setUserProfile(result)
       const current_version = userProfileResponse.headers.get('x-version')
-      const current_env = env.NODE_ENV?.toUpperCase() === 'DEVELOPMENT' ? 'DEVELOPMENT' : userProfileResponse.headers.get('x-env')
+      const current_env = process.env.NODE_ENV === 'development' ? 'DEVELOPMENT' : userProfileResponse.headers.get('x-env')
       const versionData = await fetchLanggeniusVersion({ url: '/version', params: { current_version } })
       setLangeniusVersionInfo({ ...versionData, current_version, latest_version: versionData.version, current_env })
     }
@@ -125,7 +124,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       mutateCurrentWorkspace,
     }}>
       <div className='flex flex-col h-full overflow-y-auto'>
-        {env.NEXT_PUBLIC_MAINTENANCE_NOTICE && <MaintenanceNotice />}
+        {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}
         <div ref={pageContainerRef} className='grow relative flex flex-col overflow-y-auto overflow-x-hidden bg-gray-100'>
           {children}
         </div>
