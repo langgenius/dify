@@ -1,13 +1,17 @@
 'use client'
 import type { FC } from 'react'
 import React, { useState } from 'react'
+import cn from 'classnames'
+import type { OffsetOptions, Placement } from '@floating-ui/react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 export type TooltipProps = {
-  position?: 'top' | 'right' | 'bottom' | 'left'
+  position?: Placement
   triggerMethod?: 'hover' | 'click'
   popupContent: React.ReactNode
   children: React.ReactNode
   hideArrow?: boolean
+  popupClassName?: string
+  offset?: OffsetOptions
 }
 
 const arrow = (
@@ -20,6 +24,8 @@ const Tooltip: FC<TooltipProps> = ({
   popupContent,
   children,
   hideArrow,
+  popupClassName,
+  offset,
 }) => {
   const [open, setOpen] = useState(false)
 
@@ -28,7 +34,7 @@ const Tooltip: FC<TooltipProps> = ({
       open={open}
       onOpenChange={setOpen}
       placement={position}
-      offset={10}
+      offset={offset ?? 10}
     >
       <PortalToFollowElemTrigger
         onClick={() => triggerMethod === 'click' && setOpen(v => !v)}
@@ -40,7 +46,10 @@ const Tooltip: FC<TooltipProps> = ({
       <PortalToFollowElemContent
         className="z-[9999]"
       >
-        <div className='relative px-3 py-2 text-xs font-normal text-gray-700 bg-white rounded-md shadow-lg'>
+        <div className={cn(
+          'relative px-3 py-2 text-xs font-normal text-gray-700 bg-white rounded-md shadow-lg',
+          popupClassName,
+        )}>
           {popupContent}
           {!hideArrow && arrow}
         </div>

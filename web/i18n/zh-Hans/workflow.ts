@@ -52,6 +52,12 @@ const translation = {
     jinjaEditorPlaceholder: '输入 “/” 或 “{” 插入变量',
     viewOnly: '只读',
     showRunHistory: '显示运行历史',
+    copy: '拷贝',
+    duplicate: '复制',
+    addBlock: '添加节点',
+    pasteHere: '粘贴到这里',
+    pointerMode: '指针模式',
+    handMode: '手模式',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
