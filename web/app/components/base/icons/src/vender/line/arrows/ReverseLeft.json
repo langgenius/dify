@@ -1,0 +1,39 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "16",
+			"height": "16",
+			"viewBox": "0 0 16 16",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Icon"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Icon_2",
+							"d": "M2.66699 4.66667H9.33366C11.5428 4.66667 13.3337 6.45753 13.3337 8.66667C13.3337 10.8758 11.5428 12.6667 9.33366 12.6667H2.66699M2.66699 4.66667L5.33366 2M2.66699 4.66667L5.33366 7.33333",
+							"stroke": "currentColor",
+							"stroke-width": "1.5",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					}
+				]
+			}
+		]
+	},
+	"name": "ReverseLeft"
+}
