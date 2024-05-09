@@ -32,14 +32,14 @@ export const languages = [
   {
     value: 'zh-Hans',
     name: '简体中文',
-    prompt_name: 'Chinese',
+    prompt_name: 'Simplified Chinese',
     example: '你好，Dify！',
     supported: true,
   },
   {
     value: 'zh-Hant',
     name: '繁體中文',
-    prompt_name: 'Chinese',
+    prompt_name: 'Traditional Chinese',
     example: '你好，Dify！',
     supported: true,
   },
