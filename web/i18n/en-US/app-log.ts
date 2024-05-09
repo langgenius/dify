@@ -22,6 +22,8 @@ const translation = {
     pagination: {
       previous: 'Prev',
       next: 'Next',
+      goTo: 'Go to',
+      page: 'page',
     },
     empty: {
       noChat: 'No conversation yet',
