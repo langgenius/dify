@@ -63,12 +63,18 @@ class WorkflowService:
     def sync_draft_workflow(self, app_model: App,
                             graph: dict,
                             features: dict,
+                            unique_hash: str,
                             account: Account) -> Workflow:
         """
         Sync draft workflow
         """
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow(app_model=app_model)
+
+        if workflow:
+            # validate unique hash
+            if workflow.unique_hash != unique_hash:
+                raise ValueError('Workflow graph might have been modified, please refresh and resubmit.')
 
         # validate features structure
         self.validate_features_structure(

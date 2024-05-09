@@ -59,6 +59,7 @@ class DraftWorkflowApi(Resource):
             parser = reqparse.RequestParser()
             parser.add_argument('graph', type=dict, required=True, nullable=False, location='json')
             parser.add_argument('features', type=dict, required=True, nullable=False, location='json')
+            parser.add_argument('hash', type=str, required=False, location='json')
             args = parser.parse_args()
         elif 'text/plain' in content_type:
             try:
@@ -71,7 +72,8 @@ class DraftWorkflowApi(Resource):
 
                 args = {
                     'graph': data.get('graph'),
-                    'features': data.get('features')
+                    'features': data.get('features'),
+                    'hash': data.get('hash')
                 }
             except json.JSONDecodeError:
                 return {'message': 'Invalid JSON data'}, 400
@@ -83,11 +85,13 @@ class DraftWorkflowApi(Resource):
             app_model=app_model,
             graph=args.get('graph'),
             features=args.get('features'),
+            unique_hash=args.get('hash'),
             account=current_user
         )
 
         return {
             "result": "success",
+            "hash": workflow.unique_hash,
             "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at)
         }
 
