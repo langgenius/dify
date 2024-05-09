@@ -24,6 +24,7 @@ export const useSelectionInteractions = () => {
     } = store.getState()
 
     const nodes = getNodes()
+
     if (!userSelectionRect?.width || !userSelectionRect?.height) {
       const newNodes = produce(nodes, (draft) => {
         draft.forEach((node) => {

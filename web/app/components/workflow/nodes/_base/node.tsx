@@ -7,19 +7,13 @@ import {
   memo,
   useMemo,
   useRef,
-  useState,
 } from 'react'
-import {
-  useClickAway,
-  useEventListener,
-} from 'ahooks'
 import type { NodeProps } from '../../types'
 import {
   BlockEnum,
   NodeRunningStatus,
 } from '../../types'
 import {
-  useNodesInteractions,
   useNodesReadOnly,
   useToolIcon,
 } from '../../hooks'
@@ -28,7 +22,6 @@ import {
   NodeTargetHandle,
 } from './components/node-handle'
 import NodeControl from './components/node-control'
-import PanelOperatorPopup from './components/panel-operator/panel-operator-popup'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   CheckCircle,
@@ -47,9 +40,7 @@ const BaseNode: FC<BaseNodeProps> = ({
 }) => {
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
-  const { handleNodeSelect } = useNodesInteractions()
   const toolIcon = useToolIcon(data)
-  const [showPanelOperatorPopup, setShowPanelOperatorPopup] = useState(false)
 
   const showSelectedBorder = data.selected || data._isBundled
   const {
@@ -63,17 +54,6 @@ const BaseNode: FC<BaseNodeProps> = ({
       showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
     }
   }, [data._runningStatus, showSelectedBorder])
-
-  useEventListener('contextmenu', (e) => {
-    e.preventDefault()
-    handleNodeSelect(id)
-    setShowPanelOperatorPopup(true)
-  }, {
-    target: nodeRef,
-  })
-  useClickAway(() => {
-    setShowPanelOperatorPopup(false)
-  }, nodeRef)
 
   return (
     <div
@@ -157,17 +137,6 @@ const BaseNode: FC<BaseNodeProps> = ({
           data.desc && (
             <div className='px-3 pt-1 pb-2 text-xs leading-[18px] text-gray-500 whitespace-pre-line break-words'>
               {data.desc}
-            </div>
-          )
-        }
-        {
-          showPanelOperatorPopup && (
-            <div className='absolute z-50'>
-              <PanelOperatorPopup
-                id={id}
-                data={data}
-                onClosePopup={() => setShowPanelOperatorPopup(false)}
-              />
             </div>
           )
         }

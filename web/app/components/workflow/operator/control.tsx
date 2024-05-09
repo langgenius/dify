@@ -10,7 +10,7 @@ import {
   useWorkflowStore,
 } from '../store'
 import AddBlock from './add-block'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import TipPopup from './tip-popup'
 import {
   Cursor02C,
   Hand02,
@@ -41,7 +41,7 @@ const Control = () => {
     <div className='flex items-center p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-lg text-gray-500'>
       <AddBlock />
       <div className='mx-[3px] w-[1px] h-3.5 bg-gray-200'></div>
-      <TooltipPlus popupContent='Pointer mode'>
+      <TipPopup title={t('workflow.common.pointerMode')}>
         <div
           className={cn(
             'flex items-center justify-center mr-[1px] w-8 h-8 rounded-lg cursor-pointer',
@@ -54,8 +54,8 @@ const Control = () => {
             controlMode === 'pointer' ? <Cursor02CSolid className='w-4 h-4' /> : <Cursor02C className='w-4 h-4' />
           }
         </div>
-      </TooltipPlus>
-      <TooltipPlus popupContent='Hand mode'>
+      </TipPopup>
+      <TipPopup title={t('workflow.common.handMode')}>
         <div
           className={cn(
             'flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer',
@@ -68,9 +68,9 @@ const Control = () => {
             controlMode === 'hand' ? <Hand02Solid className='w-4 h-4' /> : <Hand02 className='w-4 h-4' />
           }
         </div>
-      </TooltipPlus>
+      </TipPopup>
       <div className='mx-[3px] w-[1px] h-3.5 bg-gray-200'></div>
-      <TooltipPlus popupContent={t('workflow.panel.organizeBlocks')}>
+      <TipPopup title={t('workflow.panel.organizeBlocks')}>
         <div
           className={cn(
             'flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/5 hover:text-gray-700 cursor-pointer',
@@ -80,7 +80,7 @@ const Control = () => {
         >
           <OrganizeGrid className='w-4 h-4' />
         </div>
-      </TooltipPlus>
+      </TipPopup>
     </div>
   )
 }

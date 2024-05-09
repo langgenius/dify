@@ -56,6 +56,8 @@ const translation = {
     duplicate: '复制',
     addBlock: '添加节点',
     pasteHere: '粘贴到这里',
+    pointerMode: '指针模式',
+    handMode: '手模式',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',

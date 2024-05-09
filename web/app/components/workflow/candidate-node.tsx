@@ -14,25 +14,16 @@ import {
 } from './store'
 import CustomNode from './nodes'
 
-type CandidateNodeProps = {
-  mouse: {
-    pageX: number
-    pageY: number
-    elementX: number
-    elementY: number
-  }
-}
-const CandidateNode = ({
-  mouse,
-}: CandidateNodeProps) => {
+const CandidateNode = () => {
   const store = useStoreApi()
   const reactflow = useReactFlow()
   const workflowStore = useWorkflowStore()
   const candidateNode = useStore(s => s.candidateNode)
+  const mousePosition = useStore(s => s.mousePosition)
   const { zoom } = useViewport()
 
   useEventListener('click', (e) => {
-    const { candidateNode } = workflowStore.getState()
+    const { candidateNode, mousePosition } = workflowStore.getState()
 
     if (candidateNode) {
       e.preventDefault()
@@ -42,7 +33,7 @@ const CandidateNode = ({
       } = store.getState()
       const { screenToFlowPosition } = reactflow
       const nodes = getNodes()
-      const { x, y } = screenToFlowPosition({ x: mouse.pageX, y: mouse.pageY })
+      const { x, y } = screenToFlowPosition({ x: mousePosition.pageX, y: mousePosition.pageY })
       const newNodes = produce(nodes, (draft) => {
         draft.push({
           ...candidateNode,
@@ -76,8 +67,8 @@ const CandidateNode = ({
     <div
       className='absolute z-10'
       style={{
-        left: mouse.elementX,
-        top: mouse.elementY,
+        left: mousePosition.elementX,
+        top: mousePosition.elementY,
         transform: `scale(${zoom})`,
         transformOrigin: '0 0',
       }}

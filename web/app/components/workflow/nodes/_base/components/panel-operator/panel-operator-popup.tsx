@@ -7,7 +7,6 @@ import { useEdges } from 'reactflow'
 import ChangeBlock from './change-block'
 import {
   canRunBySingle,
-  isMac,
 } from '@/app/components/workflow/utils'
 import { useStore } from '@/app/components/workflow/store'
 import {
@@ -117,7 +116,7 @@ const PanelOperatorPopup = ({
                 }}
               >
                 {t('workflow.common.copy')}
-                <ShortcutsName keys={isMac() ? ['⌘', 'C'] : ['Ctrl', 'C']} />
+                <ShortcutsName keys={['ctrl', 'c']} />
               </div>
               <div
                 className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
@@ -126,7 +125,7 @@ const PanelOperatorPopup = ({
                 }}
               >
                 {t('workflow.common.duplicate')}
-                <ShortcutsName keys={isMac() ? ['⌘', 'D'] : ['Ctrl', 'D']} />
+                <ShortcutsName keys={['ctrl', 'd']} />
               </div>
             </div>
             <div className='h-[1px] bg-gray-100'></div>

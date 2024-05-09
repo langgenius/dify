@@ -56,6 +56,8 @@ const translation = {
     duplicate: 'Duplicate',
     addBlock: 'Add Block',
     pasteHere: 'Paste Here',
+    pointerMode: 'Pointer Mode',
+    handMode: 'Hand Mode',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

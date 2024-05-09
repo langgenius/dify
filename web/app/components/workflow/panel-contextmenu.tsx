@@ -2,20 +2,23 @@ import {
   memo,
   useRef,
 } from 'react'
+import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import ShortcutsName from './shortcuts-name'
-import { isMac } from './utils'
 import {
   useStore,
   useWorkflowStore,
 } from './store'
+import { useNodesInteractions } from './hooks'
 
 const PanelContextmenu = () => {
   const { t } = useTranslation()
   const ref = useRef(null)
   const workflowStore = useWorkflowStore()
   const panelMenu = useStore(s => s.panelMenu)
+  const clipboardElements = useStore(s => s.clipboardElements)
+  const { handleNodesPaste } = useNodesInteractions()
 
   useClickAway(() => {
     workflowStore.setState({
@@ -41,24 +44,29 @@ const PanelContextmenu = () => {
           onClick={() => {}}
         >
           {t('workflow.common.addBlock')}
-          <ShortcutsName keys={['Shift', 'A']} />
         </div>
         <div
           className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
           onClick={() => {}}
         >
           {t('workflow.common.run')}
-          <ShortcutsName keys={isMac() ? ['⌥', 'R'] : ['Alt', 'R']} />
+          <ShortcutsName keys={['alt', 'r']} />
         </div>
       </div>
       <div className='h-[1px] bg-gray-100'></div>
       <div className='p-1'>
         <div
-          className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-          onClick={() => {}}
+          className={cn(
+            'flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer',
+            !clipboardElements.length ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50',
+          )}
+          onClick={() => {
+            if (clipboardElements.length)
+              handleNodesPaste()
+          }}
         >
           {t('workflow.common.pasteHere')}
-          <ShortcutsName keys={isMac() ? ['⌘', 'V'] : ['Ctrl', 'V']} />
+          <ShortcutsName keys={['ctrl', 'v']} />
         </div>
       </div>
       <div className='h-[1px] bg-gray-100'></div>
