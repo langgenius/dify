@@ -13,6 +13,8 @@ jobs:
   python-style:
     name: Python Style
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
 
     steps:
       - name: Checkout code
