@@ -70,13 +70,14 @@ class ToolNode(BaseNode):
             )
 
         # convert tool messages
-        plain_text, files = self._convert_tool_messages(messages)
+        plain_text, files, chunks = self._convert_tool_messages(messages)
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             outputs={
                 'text': plain_text,
-                'files': files
+                'files': files,
+                'chunks': chunks
             },
             metadata={
                 NodeRunMetadataKey.TOOL_INFO: tool_info
@@ -111,7 +112,7 @@ class ToolNode(BaseNode):
         
         return template_parser.format(inputs)
 
-    def _convert_tool_messages(self, messages: list[ToolInvokeMessage]) -> tuple[str, list[FileVar]]:
+    def _convert_tool_messages(self, messages: list[ToolInvokeMessage]) -> tuple[str, list[FileVar], list]:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
         """
@@ -125,8 +126,9 @@ class ToolNode(BaseNode):
         # extract plain text and files
         files = self._extract_tool_response_binary(messages)
         plain_text = self._extract_tool_response_text(messages)
+        chunks = self._extract_tool_response_chunk(messages)
 
-        return plain_text, files
+        return plain_text, files, chunks
 
     def _extract_tool_response_binary(self, tool_response: list[ToolInvokeMessage]) -> list[FileVar]:
         """
@@ -179,6 +181,29 @@ class ToolNode(BaseNode):
             f'Link: {message.message}\n' if message.type == ToolInvokeMessage.MessageType.LINK else ''
             for message in tool_response
         ])
+
+    def _extract_tool_response_chunk(self, tool_response: list[ToolInvokeMessage]) -> list:
+        """
+        Extract tool response text
+        """
+        all_chunks = []
+        node_data = cast(ToolNodeData, self.node_data)
+        icon = ToolManager.get_tool_icon(
+            tenant_id=self.tenant_id,
+            provider_type=node_data.provider_type,
+            provider_id=node_data.provider_id
+        )
+        for message in tool_response:
+            if message.type == ToolInvokeMessage.MessageType.CHUNK:
+                for chunk in message.message:
+                    chunk.icon = icon
+                    chunk.metadata = {
+                        '_source': 'tool'
+                    }
+                    all_chunks.append(chunk)
+        return all_chunks
+
+
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(cls, node_data: ToolNodeData) -> dict[str, list[str]]:

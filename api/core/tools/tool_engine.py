@@ -131,7 +131,7 @@ class ToolEngine:
 
             # hit the callback handler
             workflow_tool_callback.on_tool_end(
-                tool_name=tool.identity.name, 
+                tool_name=tool.identity.name,
                 tool_inputs=tool_parameters, 
                 tool_outputs=response
             )
