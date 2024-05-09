@@ -41,6 +41,7 @@ jobs:
 #            Please run 'dev/reformat' to fix the fixable linting errors.
         uses: actions/github-script@v7
         with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             github.rest.issues.createComment({
               issue_number: context.issue.number,
