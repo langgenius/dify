@@ -12,7 +12,6 @@ import { setAutoFreeze } from 'immer'
 import {
   useEventListener,
   useKeyPress,
-  useMouse,
 } from 'ahooks'
 import ReactFlow, {
   Background,
@@ -42,6 +41,7 @@ import {
   useWorkflow,
   useWorkflowInit,
   useWorkflowReadOnly,
+  useWorkflowStartRun,
 } from './hooks'
 import Header from './header'
 import CustomNode from './nodes'
@@ -87,7 +87,6 @@ const Workflow: FC<WorkflowProps> = memo(({
   viewport,
 }) => {
   const workflowContainerRef = useRef<HTMLDivElement>(null)
-  const mouse = useMouse(workflowContainerRef.current)
   const workflowStore = useWorkflowStore()
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
@@ -137,6 +136,10 @@ const Workflow: FC<WorkflowProps> = memo(({
     }
   }, [handleSyncWorkflowDraftWhenPageClose])
 
+  useEventListener('keydown', (e) => {
+    if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey))
+      e.preventDefault()
+  })
   useEventListener('mousemove', (e) => {
     const containerClientRect = workflowContainerRef.current?.getBoundingClientRect()
 
@@ -165,6 +168,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleNodeContextMenu,
     handleNodesCopy,
     handleNodesPaste,
+    handleNodesDuplicate,
     handleNodesDelete,
   } = useNodesInteractions()
   const {
@@ -183,6 +187,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   const {
     isValidConnection,
   } = useWorkflow()
+  const { handleStartWorkflowRun } = useWorkflowStartRun()
 
   useOnViewportChange({
     onEnd: () => {
@@ -194,7 +199,8 @@ const Workflow: FC<WorkflowProps> = memo(({
   useKeyPress('delete', handleEdgeDelete)
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, handleNodesCopy, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.v`, handleNodesPaste, { exactMatch: true, useCapture: true })
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, handleNodesPaste, { exactMatch: true, useCapture: true })
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, handleNodesDuplicate, { exactMatch: true, useCapture: true })
+  useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, handleStartWorkflowRun, { exactMatch: true, useCapture: true })
 
   return (
     <div

@@ -151,8 +151,11 @@ export const createWorkflowStore = () => {
     setSelection: selection => set(() => ({ selection })),
     bundleNodeSize: null,
     setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
-    controlMode: 'pointer',
-    setControlMode: controlMode => set(() => ({ controlMode })),
+    controlMode: localStorage.getItem('workflow-operation-mode') === 'pointer' ? 'pointer' : 'hand',
+    setControlMode: (controlMode) => {
+      set(() => ({ controlMode }))
+      localStorage.setItem('workflow-operation-mode', controlMode)
+    },
     candidateNode: undefined,
     setCandidateNode: candidateNode => set(() => ({ candidateNode })),
     panelMenu: undefined,

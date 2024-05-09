@@ -709,120 +709,6 @@ export const useNodesInteractions = () => {
     handleSyncWorkflowDraft()
   }, [store, handleSyncWorkflowDraft, getNodesReadOnly, t])
 
-  const handleNodeCopySelected = useCallback((): undefined | Node[] => {
-    if (getNodesReadOnly())
-      return
-
-    const {
-      setClipboardElements,
-      shortcutsDisabled,
-      showFeaturesPanel,
-    } = workflowStore.getState()
-
-    if (shortcutsDisabled || showFeaturesPanel)
-      return
-
-    const {
-      getNodes,
-    } = store.getState()
-
-    const nodes = getNodes()
-    const nodesToCopy = nodes.filter(node => node.data.selected && node.data.type !== BlockEnum.Start)
-
-    setClipboardElements(nodesToCopy)
-
-    return nodesToCopy
-  }, [getNodesReadOnly, store, workflowStore])
-
-  const handleNodePaste = useCallback((): undefined | Node[] => {
-    if (getNodesReadOnly())
-      return
-
-    const {
-      clipboardElements,
-      shortcutsDisabled,
-      showFeaturesPanel,
-    } = workflowStore.getState()
-
-    if (shortcutsDisabled || showFeaturesPanel)
-      return
-
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-
-    const nodesToPaste: Node[] = []
-    const nodes = getNodes()
-
-    for (const nodeToPaste of clipboardElements) {
-      const nodeType = nodeToPaste.data.type
-      const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
-
-      const newNode = generateNewNode({
-        data: {
-          ...NODES_INITIAL_DATA[nodeType],
-          ...nodeToPaste.data,
-          _connectedSourceHandleIds: [],
-          _connectedTargetHandleIds: [],
-          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
-          selected: true,
-        },
-        position: {
-          x: nodeToPaste.position.x + 10,
-          y: nodeToPaste.position.y + 10,
-        },
-      })
-      nodesToPaste.push(newNode)
-    }
-
-    setNodes([...nodes.map((n: Node) => ({ ...n, selected: false, data: { ...n.data, selected: false } })), ...nodesToPaste])
-
-    handleSyncWorkflowDraft()
-
-    return nodesToPaste
-  }, [getNodesReadOnly, handleSyncWorkflowDraft, store, t, workflowStore])
-
-  const handleNodeDuplicateSelected = useCallback(() => {
-    if (getNodesReadOnly())
-      return
-
-    handleNodeCopySelected()
-    handleNodePaste()
-  }, [getNodesReadOnly, handleNodeCopySelected, handleNodePaste])
-
-  const handleNodeDeleteSelected = useCallback(() => {
-    if (getNodesReadOnly())
-      return
-
-    const {
-      shortcutsDisabled,
-      showFeaturesPanel,
-    } = workflowStore.getState()
-
-    if (shortcutsDisabled || showFeaturesPanel)
-      return
-
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
-
-    const currentEdgeIndex = edges.findIndex(edge => edge.selected)
-
-    if (currentEdgeIndex > -1)
-      return
-
-    const nodes = getNodes()
-    const nodesToDelete = nodes.filter(node => node.data.selected)
-
-    if (!nodesToDelete)
-      return
-
-    for (const node of nodesToDelete)
-      handleNodeDelete(node.id)
-  }, [getNodesReadOnly, handleNodeDelete, store, workflowStore])
-
   const handleNodeCancelRunningStatus = useCallback(() => {
     const {
       getNodes,
@@ -864,7 +750,8 @@ export const useNodesInteractions = () => {
         nodeId: node.id,
       },
     })
-  }, [workflowStore])
+    handleNodeSelect(node.id)
+  }, [workflowStore, handleNodeSelect])
 
   const handleNodesCopy = useCallback(() => {
     if (getNodesReadOnly())
@@ -953,7 +840,41 @@ export const useNodesInteractions = () => {
     }
   }, [t, getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, reactflow])
 
-  const handleNodesDuplicate = useCallback(() => {}, [])
+  const handleNodesDuplicate = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+    const nodes = getNodes()
+
+    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.End)
+
+    if (selectedNode) {
+      const nodeType = selectedNode.data.type
+      const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
+
+      const newNode = generateNewNode({
+        data: {
+          ...NODES_INITIAL_DATA[nodeType as BlockEnum],
+          ...selectedNode.data,
+          selected: false,
+          _isBundled: false,
+          _connectedSourceHandleIds: [],
+          _connectedTargetHandleIds: [],
+          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
+        },
+        position: {
+          x: selectedNode.position.x + selectedNode.width! + 10,
+          y: selectedNode.position.y,
+        },
+      })
+
+      setNodes([...nodes, newNode])
+    }
+  }, [store, t, getNodesReadOnly])
 
   const handleNodesDelete = useCallback(() => {
     if (getNodesReadOnly())
@@ -999,10 +920,6 @@ export const useNodesInteractions = () => {
     handleNodeDelete,
     handleNodeChange,
     handleNodeAdd,
-    handleNodeDuplicateSelected,
-    handleNodeCopySelected,
-    handleNodeDeleteSelected,
-    handleNodePaste,
     handleNodeCancelRunningStatus,
     handleNodesCancelSelected,
     handleNodeContextMenu,

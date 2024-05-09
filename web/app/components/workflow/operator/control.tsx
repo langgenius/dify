@@ -5,10 +5,7 @@ import {
   useNodesReadOnly,
   useWorkflow,
 } from '../hooks'
-import {
-  useStore,
-  useWorkflowStore,
-} from '../store'
+import { useStore } from '../store'
 import AddBlock from './add-block'
 import TipPopup from './tip-popup'
 import {
@@ -23,8 +20,8 @@ import { OrganizeGrid } from '@/app/components/base/icons/src/vender/line/layout
 
 const Control = () => {
   const { t } = useTranslation()
-  const workflowStore = useWorkflowStore()
   const controlMode = useStore(s => s.controlMode)
+  const setControlMode = useStore(s => s.setControlMode)
   const { handleLayout } = useWorkflow()
   const {
     nodesReadOnly,
@@ -48,7 +45,7 @@ const Control = () => {
             controlMode === 'pointer' ? 'bg-primary-50 text-primary-600' : 'hover:bg-black/5 hover:text-gray-700',
             `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
           )}
-          onClick={() => workflowStore.setState({ controlMode: 'pointer' })}
+          onClick={() => setControlMode('pointer')}
         >
           {
             controlMode === 'pointer' ? <Cursor02CSolid className='w-4 h-4' /> : <Cursor02C className='w-4 h-4' />
@@ -62,7 +59,7 @@ const Control = () => {
             controlMode === 'hand' ? 'bg-primary-50 text-primary-600' : 'hover:bg-black/5 hover:text-gray-700',
             `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
           )}
-          onClick={() => workflowStore.setState({ controlMode: 'hand' })}
+          onClick={() => setControlMode('hand')}
         >
           {
             controlMode === 'hand' ? <Hand02Solid className='w-4 h-4' /> : <Hand02 className='w-4 h-4' />

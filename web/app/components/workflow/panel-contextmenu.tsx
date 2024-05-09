@@ -6,25 +6,57 @@ import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import ShortcutsName from './shortcuts-name'
+import { useStore } from './store'
 import {
-  useStore,
-  useWorkflowStore,
-} from './store'
-import { useNodesInteractions } from './hooks'
+  useNodesInteractions,
+  usePanelInteractions,
+  useWorkflowStartRun,
+} from './hooks'
+import AddBlock from './operator/add-block'
+import { exportAppConfig } from '@/service/apps'
+import { useToastContext } from '@/app/components/base/toast'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const PanelContextmenu = () => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const ref = useRef(null)
-  const workflowStore = useWorkflowStore()
   const panelMenu = useStore(s => s.panelMenu)
   const clipboardElements = useStore(s => s.clipboardElements)
+  const appDetail = useAppStore(s => s.appDetail)
   const { handleNodesPaste } = useNodesInteractions()
+  const { handlePaneContextmenuCancel } = usePanelInteractions()
+  const { handleStartWorkflowRun } = useWorkflowStartRun()
 
   useClickAway(() => {
-    workflowStore.setState({
-      panelMenu: undefined,
-    })
+    handlePaneContextmenuCancel()
   }, ref)
+
+  const onExport = async () => {
+    if (!appDetail)
+      return
+    try {
+      const { data } = await exportAppConfig(appDetail.id)
+      const a = document.createElement('a')
+      const file = new Blob([data], { type: 'application/yaml' })
+      a.href = URL.createObjectURL(file)
+      a.download = `${appDetail.name}.yml`
+      a.click()
+    }
+    catch (e) {
+      notify({ type: 'error', message: t('app.exportFailed') })
+    }
+  }
+
+  const renderTrigger = () => {
+    return (
+      <div
+        className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
+      >
+        {t('workflow.common.addBlock')}
+      </div>
+    )
+  }
 
   if (!panelMenu)
     return null
@@ -39,15 +71,19 @@ const PanelContextmenu = () => {
       ref={ref}
     >
       <div className='p-1'>
+        <AddBlock
+          renderTrigger={renderTrigger}
+          offset={{
+            mainAxis: -36,
+            crossAxis: -4,
+          }}
+        />
         <div
           className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-          onClick={() => {}}
-        >
-          {t('workflow.common.addBlock')}
-        </div>
-        <div
-          className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-          onClick={() => {}}
+          onClick={() => {
+            handleStartWorkflowRun()
+            handlePaneContextmenuCancel()
+          }}
         >
           {t('workflow.common.run')}
           <ShortcutsName keys={['alt', 'r']} />
@@ -61,8 +97,10 @@ const PanelContextmenu = () => {
             !clipboardElements.length ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50',
           )}
           onClick={() => {
-            if (clipboardElements.length)
+            if (clipboardElements.length) {
               handleNodesPaste()
+              handlePaneContextmenuCancel()
+            }
           }}
         >
           {t('workflow.common.pasteHere')}
@@ -73,7 +111,7 @@ const PanelContextmenu = () => {
       <div className='p-1'>
         <div
           className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-          onClick={() => {}}
+          onClick={() => onExport()}
         >
           {t('app.export')}
         </div>

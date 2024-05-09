@@ -36,7 +36,9 @@ const PanelOperatorPopup = ({
   const edges = useEdges()
   const {
     handleNodeDelete,
+    handleNodesDuplicate,
     handleNodeSelect,
+    handleNodesCopy,
   } = useNodesInteractions()
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -106,13 +108,14 @@ const PanelOperatorPopup = ({
         )
       }
       {
-        data.type !== BlockEnum.Start && !nodesReadOnly && (
+        data.type !== BlockEnum.Start && data.type !== BlockEnum.End && !nodesReadOnly && (
           <>
             <div className='p-1'>
               <div
                 className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
                 onClick={() => {
                   onClosePopup()
+                  handleNodesCopy()
                 }}
               >
                 {t('workflow.common.copy')}
@@ -122,6 +125,7 @@ const PanelOperatorPopup = ({
                 className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
                 onClick={() => {
                   onClosePopup()
+                  handleNodesDuplicate()
                 }}
               >
                 {t('workflow.common.duplicate')}

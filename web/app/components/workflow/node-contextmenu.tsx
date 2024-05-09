@@ -6,22 +6,18 @@ import { useClickAway } from 'ahooks'
 import { useNodes } from 'reactflow'
 import PanelOperatorPopup from './nodes/_base/components/panel-operator/panel-operator-popup'
 import type { Node } from './types'
-import {
-  useStore,
-  useWorkflowStore,
-} from './store'
+import { useStore } from './store'
+import { usePanelInteractions } from './hooks'
 
 const PanelContextmenu = () => {
   const ref = useRef(null)
   const nodes = useNodes()
-  const workflowStore = useWorkflowStore()
+  const { handleNodeContextmenuCancel } = usePanelInteractions()
   const nodeMenu = useStore(s => s.nodeMenu)
   const currentNode = nodes.find(node => node.id === nodeMenu?.nodeId) as Node
 
   useClickAway(() => {
-    workflowStore.setState({
-      nodeMenu: undefined,
-    })
+    handleNodeContextmenuCancel()
   }, ref)
 
   if (!nodeMenu || !currentNode)
@@ -39,11 +35,7 @@ const PanelContextmenu = () => {
       <PanelOperatorPopup
         id={currentNode.id}
         data={currentNode.data}
-        onClosePopup={() => {
-          workflowStore.setState({
-            nodeMenu: undefined,
-          })
-        }}
+        onClosePopup={() => handleNodeContextmenuCancel()}
       />
     </div>
   )

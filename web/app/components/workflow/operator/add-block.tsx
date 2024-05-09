@@ -6,16 +6,18 @@ import {
 import cn from 'classnames'
 import { useStoreApi } from 'reactflow'
 import { useTranslation } from 'react-i18next'
+import type { OffsetOptions } from '@floating-ui/react'
 import {
   generateNewNode,
 } from '../utils'
-import { NODES_INITIAL_DATA } from '../constants'
-import { useWorkflowStore } from '../store'
-import TipPopup from './tip-popup'
 import {
   useNodesExtraData,
   useNodesReadOnly,
-} from '@/app/components/workflow/hooks'
+  usePanelInteractions,
+} from '../hooks'
+import { NODES_INITIAL_DATA } from '../constants'
+import { useWorkflowStore } from '../store'
+import TipPopup from './tip-popup'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import type {
@@ -25,14 +27,28 @@ import {
   BlockEnum,
 } from '@/app/components/workflow/types'
 
-const AddBlock = () => {
+type AddBlockProps = {
+  renderTrigger?: (open: boolean) => React.ReactNode
+  offset?: OffsetOptions
+}
+const AddBlock = ({
+  renderTrigger,
+  offset,
+}: AddBlockProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const nodesExtraData = useNodesExtraData()
   const { nodesReadOnly } = useNodesReadOnly()
+  const { handlePaneContextmenuCancel } = usePanelInteractions()
   const [open, setOpen] = useState(false)
   const availableNextNodes = nodesExtraData[BlockEnum.Start].availableNextNodes
+
+  const handleOpenChange = useCallback((open: boolean) => {
+    setOpen(open)
+    if (!open)
+      handlePaneContextmenuCancel()
+  }, [handlePaneContextmenuCancel])
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     const {
@@ -57,7 +73,7 @@ const AddBlock = () => {
     })
   }, [store, workflowStore, t])
 
-  const renderTrigger = useCallback((open: boolean) => {
+  const renderTriggerElement = useCallback((open: boolean) => {
     return (
       <TipPopup
         title={t('workflow.common.addBlock')}
@@ -76,15 +92,15 @@ const AddBlock = () => {
   return (
     <BlockSelector
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={handleOpenChange}
       disabled={nodesReadOnly}
       onSelect={handleSelect}
       placement='top-start'
-      offset={{
+      offset={offset ?? {
         mainAxis: 4,
         crossAxis: -8,
       }}
-      trigger={renderTrigger}
+      trigger={renderTrigger || renderTriggerElement}
       popupClassName='!min-w-[256px]'
       availableBlocksTypes={availableNextNodes}
     />

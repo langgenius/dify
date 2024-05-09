@@ -17,7 +17,21 @@ export const usePanelInteractions = () => {
     })
   }, [workflowStore])
 
+  const handlePaneContextmenuCancel = useCallback(() => {
+    workflowStore.setState({
+      panelMenu: undefined,
+    })
+  }, [workflowStore])
+
+  const handleNodeContextmenuCancel = useCallback(() => {
+    workflowStore.setState({
+      nodeMenu: undefined,
+    })
+  }, [workflowStore])
+
   return {
     handlePaneContextMenu,
+    handlePaneContextmenuCancel,
+    handleNodeContextmenuCancel,
   }
 }
