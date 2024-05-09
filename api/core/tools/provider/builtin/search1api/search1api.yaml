@@ -1,19 +1,20 @@
 identity:
   author: Yash Parmar
-  name: search1api
+  name: Search1API
   label:
     en_US: Search1API
-    zh_Hans: Search1API
+    zh_Hans: Search1API 
     pt_BR: Search1API
   description:
     en_US: Search1API
     zh_Hans: Search1API
     pt_BR: Search1API
   icon: icon.png
+
 credentials_for_provider:
   search1api_api_key:
     type: secret-input
-    required: true
+    required: true 
     label:
       en_US: Search1API key
       zh_Hans: Search1API key
