@@ -22,15 +22,15 @@ export const env = createEnv({
     NEXT_PUBLIC_DEPLOY_ENV: z
       .enum(['DEVELOPMENT', 'PRODUCTION']),
     NEXT_PUBLIC_EDITION: z
-      .enum(['SELF_HOSTED']),
-    NEXT_PUBLIC_API_PREFIX: z.string().url(),
-    NEXT_PUBLIC_PUBLIC_API_PREFIX: z.string().url(),
-    NEXT_PUBLIC_SENTRY_DSN: z.string().url().url().optional(),
+      .enum(['SELF_HOSTED', 'CLOUD']),
+    NEXT_PUBLIC_API_PREFIX: z.string().optional().default('http://localhost:5001/console/api'),
+    NEXT_PUBLIC_PUBLIC_API_PREFIX: z.string().default('http://localhost:5001/api'),
+    NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
     NEXT_PUBLIC_NODE_ENV: z
       .enum(['DEVELOPMENT', 'PRODUCTION'])
       .default('DEVELOPMENT'),
-    NEXT_PUBLIC_MAINTENANCE_NOTICE: z.boolean().optional(),
-    NEXT_PUBLIC_SITE_ABOUT: z.boolean().optional(),
+    NEXT_PUBLIC_MAINTENANCE_NOTICE: z.enum(['TRUE']).optional(),
+    NEXT_PUBLIC_HIDE_ABOUT_INFO: z.enum(['TRUE']).optional(),
   },
 
   /**
@@ -46,7 +46,10 @@ export const env = createEnv({
     NEXT_PUBLIC_PUBLIC_API_PREFIX: process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     NEXT_PUBLIC_MAINTENANCE_NOTICE: process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE,
-    NEXT_PUBLIC_SITE_ABOUT: process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE,
+    // forward compatibility with the old env var
+    NEXT_PUBLIC_HIDE_ABOUT_INFO: process.env.NEXT_PUBLIC_SITE_ABOUT?.toUpperCase() === 'HIDE'
+      ? 'TRUE'
+      : process.env.NEXT_PUBLIC_HIDE_ABOUT_INFO,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

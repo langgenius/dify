@@ -19,7 +19,7 @@ const GithubStar = () => {
   useEffect(() => {
     (async () => {
       try {
-        if (env.NODE_ENV === 'development')
+        if (env.NODE_ENV?.toUpperCase() === 'DEVELOPMENT')
           return
 
         setGithubRepo(await getStar())

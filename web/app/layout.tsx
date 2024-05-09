@@ -6,7 +6,6 @@ import Topbar from './components/base/topbar'
 import { getLocaleOnServer } from '@/i18n/server'
 import './styles/globals.css'
 import './styles/markdown.scss'
-import { env } from '@/env'
 
 export const metadata = {
   title: 'Dify',
@@ -35,12 +34,8 @@ const LocaleLayout = ({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
-      <body
-        className="h-full select-auto"
-        data-public-maintenance-notice={env.NEXT_PUBLIC_MAINTENANCE_NOTICE}
-        data-public-site-about={env.NEXT_PUBLIC_SITE_ABOUT}
-      >
-        <Topbar/>
+      <body className="h-full select-auto">
+        <Topbar />
         <BrowerInitor>
           <SentryInitor>
             {/* @ts-expect-error Async Server Component */}
