@@ -1,3 +1,4 @@
+@@ -1,71 +1,73 @@
 # Dify Frontend
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
@@ -21,15 +22,18 @@ NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
 NEXT_PUBLIC_EDITION=SELF_HOSTED
 # The base URL of console application, refers to the Console base URL of WEB service if console domain is
 # different from api or web app domain.
-# example: http://cloud.dify.ai/console/api
-NEXT_PUBLIC_API_PREFIX=http://localhost:5001/console/api
+# example: http://cloud.dify.ai/console/api or http://localhost:5001/console/api
+NEXT_PUBLIC_API_PREFIX=
 # The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from
 # console or api domain.
-# example: http://udify.app/api
-NEXT_PUBLIC_PUBLIC_API_PREFIX=http://localhost:5001/api
-
-# SENTRY
+# example: http://udify.app/api or http://localhost:5001/api
+NEXT_PUBLIC_PUBLIC_API_PREFIX=
+# Sentry
 NEXT_PUBLIC_SENTRY_DSN=
+# Pass 'TRUE' to show maintenance notice
+NEXT_PUBLIC_MAINTENANCE_NOTICE=
+# Pass 'TRUE' to hide release info and service status
+NEXT_PUBLIC_HIDE_ABOUT_INFO=
 ```
 
 Finally, run the development server:

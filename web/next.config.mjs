@@ -1,5 +1,15 @@
-const { codeInspectorPlugin } = require('code-inspector-plugin')
-const withMDX = require('@next/mdx')({
+/**
+ * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful
+ * for Docker builds.
+ */
+import { fileURLToPath } from 'node:url'
+import { codeInspectorPlugin } from 'code-inspector-plugin'
+import mdx from '@next/mdx'
+import createJiti from 'jiti'
+const jiti = createJiti(fileURLToPath(import.meta.url))
+jiti('./env.ts')
+
+const withMDX = mdx({
   extension: /\.mdx?$/,
   options: {
     // If you use remark-gfm, you'll need to use next.config.mjs
@@ -46,4 +56,4 @@ const nextConfig = {
   output: 'standalone',
 }
 
-module.exports = withMDX(nextConfig)
+export default withMDX(nextConfig)
