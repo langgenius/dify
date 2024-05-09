@@ -360,15 +360,16 @@ services:
   sandbox:
     image: langgenius/dify-sandbox:0.1.0
     restart: always
-    cap_add:
-    # Why is sys_admin permission needed?
-    # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-sys_admin-permission-needed
-      - SYS_ADMIN
     environment:
       # The DifySandbox configurations
       API_KEY: dify-sandbox
-      GIN_MODE: release
+      GIN_MODE: 'release'
       WORKER_TIMEOUT: 15
+      ENABLE_NETWORK: 'true'
+    ports:
+      - "8195:8194"
+    volumes:
+      - ./volumes/sandbox/dependencies:/dependencies
 
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.

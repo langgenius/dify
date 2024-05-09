@@ -273,6 +273,9 @@ const translation = {
     code: {
       inputVars: '输入变量',
       outputVars: '输出变量',
+      advanceDependencies: '高级依赖',
+      advanceDependenciesTip: '在这里添加一些比较重的依赖包，原生包和一切轻量的包不需要单独添加',
+      searchDependencies: '搜索依赖',
     },
     templateTransform: {
       inputVars: '输入变量',
