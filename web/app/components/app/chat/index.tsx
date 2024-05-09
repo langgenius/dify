@@ -260,11 +260,7 @@ const Chat: FC<IChatProps> = ({
         return {
           ...item,
           content: item.content,
-          annotation: {
-            ...(item.annotation || {}),
-            id: '',
-            logAnnotation: undefined, // remove log
-          } as Annotation,
+          annotation: undefined,
         }
       }
       return item
