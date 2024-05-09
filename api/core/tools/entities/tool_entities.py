@@ -77,12 +77,13 @@ class ToolInvokeMessage(BaseModel):
         LINK = "link"
         BLOB = "blob"
         IMAGE_LINK = "image_link"
+        CHUNK = "chunk"
 
     type: MessageType = MessageType.TEXT
     """
         plain text, image url or link url
     """
-    message: Union[str, bytes] = None
+    message: Union[str, bytes, list] = None
     meta: dict[str, Any] = None
     save_as: str = ''
 

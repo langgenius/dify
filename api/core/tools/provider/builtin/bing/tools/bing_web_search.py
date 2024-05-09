@@ -40,7 +40,7 @@ class BingSearchTool(BuiltinTool):
         news = response['news']['value'] if 'news' in response else []
         computation = response['computation']['value'] if 'computation' in response else None
 
-        if result_type == 'link':
+        if result_type == 'link' or result_type == 'chunk':
             results = []
             if search_results:
                 for result in search_results:
@@ -72,7 +72,7 @@ class BingSearchTool(BuiltinTool):
                     ))
                     
             return results
-        else:
+        if result_type == 'text' or result_type == 'chunk':
             # construct text
             text = ''
             if search_results:

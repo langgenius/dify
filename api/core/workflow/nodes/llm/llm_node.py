@@ -311,6 +311,9 @@ class LLMNode(BaseNode):
             }
 
             return source
+        if ('metadata' in context_dict and '_source' in context_dict['metadata']
+                and context_dict['metadata']['_source'] == 'tool'):
+            return context_dict
 
         return None
 
