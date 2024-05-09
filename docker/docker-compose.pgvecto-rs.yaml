@@ -4,6 +4,9 @@ services:
   pgvecto-rs:
     image: tensorchord/pgvecto-rs:pg16-v0.2.0
     restart: always
+    env_file:
+      - path: ./env/pgvector-rs.env
+        required: false
     environment:
       PGUSER: ${PGUSER:-postgres}
       # The password for the default postgres user.

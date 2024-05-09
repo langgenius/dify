@@ -4,6 +4,9 @@ services:
   db:
     image: postgres:15-alpine
     restart: always
+    env_file:
+      - path: ./env/db.env
+        required: false
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
       POSTGRES_DB: ${POSTGRES_DB:-dify}
@@ -32,6 +35,9 @@ services:
     volumes:
       # Mount the Weaviate data directory to the container.
       - ./volumes/weaviate:/var/lib/weaviate
+    env_file:
+      - path: ./env/weaviate.env
+        required: false
     environment:
       # The Weaviate configurations
       # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
@@ -56,6 +62,9 @@ services:
       # Why is sys_admin permission needed?
       # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-sys_admin-permission-needed
       - SYS_ADMIN
+    env_file:
+      - path: ./env/sandbox.env
+        required: false
     environment:
       # The DifySandbox configurations
       API_KEY: ${API_KEY:-dify-sandbox}
@@ -73,6 +82,9 @@ services:
   #   restart: always
   #   volumes:
   #     - ./volumes/qdrant:/qdrant/storage
+  #   env_file:
+  #     - path: ./env/qdrant.env
+  #       required: false
   #   environment:
   #     QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
   #   ports:
