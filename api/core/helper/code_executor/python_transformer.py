@@ -27,12 +27,7 @@ result = f'''<<RESULT>>
 print(result)
 """
 
-PYTHON_PRELOAD = """
-import json
-import base64
-import subprocess
-import os
-"""
+PYTHON_PRELOAD = """"""
 
 PYTHON_NATIVE_PACKAGES = [
     'json', 'datetime', 'math', 'random', 're', 'string', 'sys', 'time', 'traceback', 'uuid', 'os', 'base64',
