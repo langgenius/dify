@@ -59,7 +59,7 @@ services:
     environment:
       # The DifySandbox configurations
       API_KEY: ${API_KEY:-dify-sandbox}
-      GIN_MODE: ${GIN_MODE:-'release'}
+      GIN_MODE: ${GIN_MODE:-release}
       WORKER_TIMEOUT: ${WORKER_TIMEOUT:-15}
     ports:
       - "8194:8194"
