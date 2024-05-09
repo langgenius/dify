@@ -111,6 +111,7 @@
     "cross-env": "^7.0.3",
     "eslint": "^8.36.0",
     "eslint-config-next": "^14.0.4",
+    "eslint-plugin-tailwindcss": "^3.15.1",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.2",
     "postcss": "^8.4.31",

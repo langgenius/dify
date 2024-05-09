@@ -1,6 +1,7 @@
 {
   "extends": [
     "next",
+    "plugin:tailwindcss/recommended",
     "@antfu"
   ],
   "rules": {
