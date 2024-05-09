@@ -278,7 +278,6 @@ services:
       # The Weaviate configurations
       # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
       PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
-      
       QUERY_DEFAULTS_LIMIT: ${QUERY_DEFAULTS_LIMIT:-25}
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED:-false}
       DEFAULT_VECTORIZER_MODULE: ${DEFAULT_VECTORIZER_MODULE:-none}
