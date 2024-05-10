@@ -64,7 +64,7 @@ services:
       WORKER_TIMEOUT: 15
       ENABLE_NETWORK: 'true'
     ports:
-      - "8195:8194"
+      - "8194:8194"
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
 
