@@ -1,0 +1,51 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ cit_dify_api.project_name }}"
+  labels:
+    app: "{{ cit_dify_api.project_name }}"
+spec:
+  type: NodePort
+  ports:
+    - port: 5001
+      targetPort: 5001
+  selector:
+    app: "{{ cit_dify_api.project_name }}"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ cit_dify_api.project_name }}"
+  labels:
+    app: "{{ cit_dify_api.project_name }}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "{{ cit_dify_api.project_name }}"
+  template:
+    metadata:
+      labels:
+        app: "{{ cit_dify_api.project_name }}"
+    spec:
+      containers:
+        - name: "{{ cit_dify_api.project_name }}"
+          image: "{{ cit_dify_api.main_docker_image }}"
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5001
+          envFrom:
+            - configMapRef:
+                name: "{{ cit_dify_api.project_name }}"
+            - secretRef:
+                name: "{{ cit_dify_api.project_name }}"
+          volumeMounts:
+            - name: genaihub-volumn-pvc
+              mountPath: /app/api/storage
+              subPath: "{{ cit_dify_api.project_name }}"
+              readOnly: false
+      volumes:
+        - name: genaihub-volumn-pvc
+          persistentVolumeClaim:
+            claimName: genaihub-volumn-pvc
