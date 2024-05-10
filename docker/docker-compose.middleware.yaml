@@ -57,6 +57,8 @@ services:
     restart: always
     environment:
       # The DifySandbox configurations
+      # Make sure you are changing this key for your deployment with a strong key.
+      # You can generate a strong key using `openssl rand -base64 42`.
       API_KEY: dify-sandbox
       GIN_MODE: 'release'
       WORKER_TIMEOUT: 15
