@@ -43,6 +43,7 @@ from services.vector_service import VectorService
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
+from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.document_indexing_task import document_indexing_task
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.duplicate_document_indexing_task import duplicate_document_indexing_task
@@ -131,13 +132,9 @@ class DatasetService:
 
     @staticmethod
     def get_dataset(dataset_id):
-        dataset = Dataset.query.filter_by(
+        return Dataset.query.filter_by(
             id=dataset_id
         ).first()
-        if dataset is None:
-            return None
-        else:
-            return dataset
 
     @staticmethod
     def check_dataset_model_setting(dataset):
@@ -1245,6 +1242,25 @@ class SegmentService:
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is indexing, please try again later")
+        if 'enabled' in args and args['enabled'] is not None:
+            action = args['enabled']
+            if segment.enabled != action:
+                if not action:
+                    segment.enabled = action
+                    segment.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                    segment.disabled_by = current_user.id
+                    db.session.add(segment)
+                    db.session.commit()
+                    # Set cache to prevent indexing the same segment multiple times
+                    redis_client.setex(indexing_cache_key, 600, 1)
+                    disable_segment_from_index_task.delay(segment.id)
+                    return segment
+        if not segment.enabled:
+            if 'enabled' in args and args['enabled'] is not None:
+                if not args['enabled']:
+                    raise ValueError("Can't update disabled segment")
+            else:
+                raise ValueError("Can't update disabled segment")
         try:
             content = args['content']
             if segment.content == content:
@@ -1252,8 +1268,9 @@ class SegmentService:
                     segment.answer = args['answer']
                 if 'keywords' in args and args['keywords']:
                     segment.keywords = args['keywords']
-                if 'enabled' in args and args['enabled'] is not None:
-                    segment.enabled = args['enabled']
+                segment.enabled = True
+                segment.disabled_at = None
+                segment.disabled_by = None
                 db.session.add(segment)
                 db.session.commit()
                 # update segment index task
@@ -1298,12 +1315,16 @@ class SegmentService:
                 segment.completed_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                 segment.updated_by = current_user.id
                 segment.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                segment.enabled = True
+                segment.disabled_at = None
+                segment.disabled_by = None
                 if document.doc_form == 'qa_model':
                     segment.answer = args['answer']
                 db.session.add(segment)
                 db.session.commit()
                 # update segment vector index
                 VectorService.update_segment_vector(args['keywords'], segment, dataset)
+
         except Exception as e:
             logging.exception("update segment index failed")
             segment.enabled = False

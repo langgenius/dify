@@ -57,16 +57,14 @@ const Blocks = ({
               className='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !bg-transparent !rounded-xl !shadow-lg'
               htmlContent={(
                 <div>
-                  <div className='flex items-center mb-2'>
-                    <BlockIcon
-                      size='md'
-                      className='mr-2'
-                      type={BlockEnum.Tool}
-                      toolIcon={toolWithProvider.icon}
-                    />
-                    <div className='text-sm text-gray-900'>{tool.label[language]}</div>
-                  </div>
-                  {tool.description[language]}
+                  <BlockIcon
+                    size='md'
+                    className='mb-2'
+                    type={BlockEnum.Tool}
+                    toolIcon={toolWithProvider.icon}
+                  />
+                  <div className='mb-1 text-sm leading-5 text-gray-900'>{tool.label[language]}</div>
+                  <div className='text-xs text-gray-700 leading-[18px]'>{tool.description[language]}</div>
                 </div>
               )}
               noArrow
@@ -83,11 +81,11 @@ const Blocks = ({
                 })}
               >
                 <BlockIcon
-                  className='mr-2'
+                  className='mr-2 shrink-0'
                   type={BlockEnum.Tool}
                   toolIcon={toolWithProvider.icon}
                 />
-                <div className='text-sm text-gray-900'>{tool.label[language]}</div>
+                <div className='text-sm text-gray-900 truncate'>{tool.label[language]}</div>
               </div>
             </Tooltip>
           ))
@@ -97,7 +95,7 @@ const Blocks = ({
   }, [onSelect, language])
 
   return (
-    <div className='p-1 max-h-[464px] overflow-y-auto'>
+    <div className='p-1 max-w-[320px] max-h-[464px] overflow-y-auto'>
       {
         !tools.length && (
           <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>{t('workflow.tabs.noResult')}</div>

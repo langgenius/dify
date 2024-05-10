@@ -9,7 +9,7 @@ flask-restful~=0.3.10
 flask-cors~=4.0.0
 gunicorn~=22.0.0
 gevent~=23.9.1
-openai~=1.13.3
+openai~=1.26.0
 tiktoken~=0.6.0
 psycopg2-binary~=2.9.6
 pycryptodome==3.19.1
@@ -83,3 +83,4 @@ pydantic~=1.10.0
 pgvecto-rs==0.1.4
 firecrawl-py==0.0.5
 oss2==2.15.0
+pgvector==0.2.5

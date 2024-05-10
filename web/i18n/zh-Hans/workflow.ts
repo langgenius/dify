@@ -52,6 +52,14 @@ const translation = {
     jinjaEditorPlaceholder: '输入 “/” 或 “{” 插入变量',
     viewOnly: '只读',
     showRunHistory: '显示运行历史',
+    enableJinja: '开启支持 Jinja 模板',
+    learnMore: '了解更多',
+    copy: '拷贝',
+    duplicate: '复制',
+    addBlock: '添加节点',
+    pasteHere: '粘贴到这里',
+    pointerMode: '指针模式',
+    handMode: '手模式',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
@@ -331,6 +339,9 @@ const translation = {
     questionClassifiers: {
       model: '模型',
       inputVars: '输入变量',
+      outputVars: {
+        className: '分类名称',
+      },
       class: '分类',
       classNamePlaceholder: '输入你的分类名称',
       advancedSetting: '高级设置',

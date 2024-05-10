@@ -55,6 +55,7 @@ if __name__ == '__main__':
 
 """
 
+
 class Jinja2TemplateTransformer(TemplateTransformer):
     @classmethod
     def transform_caller(cls, code: str, inputs: dict) -> tuple[str, str]:

@@ -13,13 +13,21 @@ class AliyunStorage(BaseStorage):
 
     def __init__(self, app: Flask):
         super().__init__(app)
+
         app_config = self.app.config
         self.bucket_name = app_config.get('ALIYUN_OSS_BUCKET_NAME')
+        oss_auth_method = aliyun_s3.Auth
+        region = None
+        if app_config.get('ALIYUN_OSS_AUTH_VERSION') == 'v4':
+            oss_auth_method = aliyun_s3.AuthV4
+            region = app_config.get('ALIYUN_OSS_REGION')
+        oss_auth = oss_auth_method(app_config.get('ALIYUN_OSS_ACCESS_KEY'), app_config.get('ALIYUN_OSS_SECRET_KEY'))
         self.client = aliyun_s3.Bucket(
-            aliyun_s3.Auth(app_config.get('ALIYUN_OSS_ACCESS_KEY'), app_config.get('ALIYUN_OSS_SECRET_KEY')),
+            oss_auth,
             app_config.get('ALIYUN_OSS_ENDPOINT'),
             self.bucket_name,
-            connect_timeout=30
+            connect_timeout=30,
+            region=region,
         )
 
     def save(self, filename, data):
