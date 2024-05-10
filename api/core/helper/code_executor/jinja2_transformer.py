@@ -80,11 +80,13 @@ class Jinja2TemplateTransformer(TemplateTransformer):
             dependencies = []
 
         # add native packages and jinja2
-        for package in PYTHON_STANDARD_PACKAGES + ['jinja2']:
+        for package in PYTHON_STANDARD_PACKAGES.union(['jinja2']):
             dependencies.append(CodeDependency(name=package, version=''))
 
         # deduplicate
-        dependencies = list({dep.name: dep for dep in dependencies}.values())
+        dependencies = list({
+            dep.name: dep for dep in dependencies if dep.name
+        }.values())
 
         return runner, JINJA2_PRELOAD, dependencies
 
