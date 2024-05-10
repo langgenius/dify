@@ -13,6 +13,8 @@ class ToolEntity(BaseModel):
     tool_label: str # redundancy
     tool_configurations: dict[str, Any]
 
+    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
     @validator('tool_configurations', pre=True, always=True)
     def validate_tool_configurations(cls, value, values):
         if not isinstance(value, dict):
@@ -30,6 +32,8 @@ class ToolNodeData(BaseNodeData, ToolEntity):
         value: Union[Any, list[str]]
         type: Literal['mixed', 'variable', 'constant']
 
+        # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+        # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
         @validator('type', pre=True, always=True)
         def check_type(cls, value, values):
             typ = value

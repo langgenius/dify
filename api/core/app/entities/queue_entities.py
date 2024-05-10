@@ -195,7 +195,7 @@ class QueueErrorEvent(AppQueueEvent):
     QueueErrorEvent entity
     """
     event = QueueEvent.ERROR
-    error: Any
+    error: Any = None
 
 
 class QueuePingEvent(AppQueueEvent):

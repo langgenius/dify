@@ -16,7 +16,7 @@ class ExtensionModule(enum.Enum):
 
 
 class ModuleExtension(BaseModel):
-    extension_class: Any
+    extension_class: Any = None
     name: str
     label: Optional[dict] = None
     form_schema: Optional[list] = None

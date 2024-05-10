@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -112,9 +112,7 @@ class ErrorStreamResponse(StreamResponse):
     """
     event: StreamEvent = StreamEvent.ERROR
     err: Exception
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class MessageStreamResponse(StreamResponse):

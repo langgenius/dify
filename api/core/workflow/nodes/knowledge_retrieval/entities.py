@@ -18,7 +18,7 @@ class MultipleRetrievalConfig(BaseModel):
     Multiple Retrieval Config.
     """
     top_k: int
-    score_threshold: Optional[float]
+    score_threshold: Optional[float] = None
     reranking_model: RerankingModelConfig
 
 

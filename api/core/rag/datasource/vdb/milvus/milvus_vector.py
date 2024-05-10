@@ -2,7 +2,7 @@ import logging
 from typing import Any, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, model_validator
 from pymilvus import MilvusClient, MilvusException, connections
 
 from core.rag.datasource.vdb.field import Field
@@ -22,7 +22,8 @@ class MilvusConfig(BaseModel):
     batch_size: int = 100
     database: str = "default"
 
-    @root_validator()
+    @model_validator()
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values.get('host'):
             raise ValueError("config MILVUS_HOST is required")

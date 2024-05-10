@@ -15,7 +15,7 @@ class TwilioAPIWrapper(BaseModel):
     named parameters to the constructor.
     """
 
-    client: Any  #: :meta private:
+    client: Any = None  #: :meta private:
     account_sid: Optional[str] = None
     """Twilio account string identifier."""
     auth_token: Optional[str] = None
@@ -32,6 +32,8 @@ class TwilioAPIWrapper(BaseModel):
         must be empty.
     """  # noqa: E501
 
+    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
     @validator("client", pre=True, always=True)
     def set_validator(cls, values: dict) -> dict:
         """Validate that api key and python package exists in environment."""
