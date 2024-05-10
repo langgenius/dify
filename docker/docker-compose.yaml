@@ -203,7 +203,7 @@ services:
       REDIS_USE_SSL: 'false'
       # The configurations of celery broker.
       CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
-      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob`, Default: `local`
+      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage`, Default: `local`
       STORAGE_TYPE: local
       STORAGE_LOCAL_PATH: storage
       # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
@@ -217,6 +217,9 @@ services:
       AZURE_BLOB_ACCOUNT_KEY: 'difyai'
       AZURE_BLOB_CONTAINER_NAME: 'difyai-container'
       AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
+      # The Google storage configurations, only available when STORAGE_TYPE is `google-storage`.
+      GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
+      GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
       # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`, `pgvector`.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
