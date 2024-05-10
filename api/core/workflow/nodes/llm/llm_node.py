@@ -28,6 +28,7 @@ from core.workflow.nodes.llm.entities import (
     LLMNodeData,
     ModelConfig,
 )
+from core.workflow.nodes.llm.knowledge_resource import KnowledgeResource
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from models.model import Conversation
@@ -197,8 +198,8 @@ class LLMNode(BaseNode):
             usage = LLMUsage.empty_usage()
 
         return full_text, usage
-    
-    def _transform_chat_messages(self, 
+
+    def _transform_chat_messages(self,
         messages: list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
     ) -> list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate:
         """
@@ -245,13 +246,13 @@ class LLMNode(BaseNode):
                 # check if it's a context structure
                 if 'metadata' in d and '_source' in d['metadata'] and 'content' in d:
                     return d['content']
-                
+
                 # else, parse the dict
                 try:
                     return json.dumps(d, ensure_ascii=False)
                 except Exception:
                     return str(d)
-                
+
             if isinstance(value, str):
                 value = value
             elif isinstance(value, list):
@@ -356,13 +357,19 @@ class LLMNode(BaseNode):
                 for item in context_value:
                     if isinstance(item, str):
                         context_str += item + '\n'
-                    else:
+                    elif isinstance(item, dict):
                         if 'content' not in item:
                             raise ValueError(f'Invalid context structure: {item}')
 
                         context_str += item['content'] + '\n'
 
                         retriever_resource = self._convert_to_original_retriever_resource(item)
+                        if retriever_resource:
+                            original_retriever_resource.append(retriever_resource)
+                    elif isinstance(item, KnowledgeResource):
+                        context_str += item.content + '\n'
+
+                        retriever_resource = self._convert_to_original_retriever_resource(item.to_dict())
                         if retriever_resource:
                             original_retriever_resource.append(retriever_resource)
 
