@@ -42,6 +42,7 @@ import {
   useWorkflowInit,
   useWorkflowReadOnly,
   useWorkflowStartRun,
+  useWorkflowUpdate,
 } from './hooks'
 import Header from './header'
 import CustomNode from './nodes'
@@ -119,14 +120,17 @@ const Workflow: FC<WorkflowProps> = memo(({
 
   useEffect(() => {
     return () => {
-      handleSyncWorkflowDraft(true)
+      handleSyncWorkflowDraft(true, true)
     }
   }, [])
 
+  const { handleRefreshWorkflowDraft } = useWorkflowUpdate()
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
     if (document.visibilityState === 'hidden')
       syncWorkflowDraftWhenPageClose()
-  }, [syncWorkflowDraftWhenPageClose])
+    else if (document.visibilityState === 'visible')
+      handleRefreshWorkflowDraft()
+  }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft])
 
   useEffect(() => {
     document.addEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)

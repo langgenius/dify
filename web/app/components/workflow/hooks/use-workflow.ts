@@ -385,6 +385,7 @@ export const useWorkflowInit = () => {
   } = useWorkflowTemplate()
   const { handleFetchAllTools } = useFetchToolsData()
   const appDetail = useAppStore(state => state.appDetail)!
+  const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
   workflowStore.setState({ appId: appDetail.id })
@@ -394,6 +395,7 @@ export const useWorkflowInit = () => {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
 
       setData(res)
+      setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)
     }
     catch (error: any) {
@@ -418,7 +420,7 @@ export const useWorkflowInit = () => {
         })
       }
     }
-  }, [appDetail, nodesTemplate, edgesTemplate, workflowStore])
+  }, [appDetail, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
 
   useEffect(() => {
     handleGetInitialWorkflowData()
