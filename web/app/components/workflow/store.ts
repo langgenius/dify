@@ -96,6 +96,8 @@ type Shape = {
   setNodeMenu: (nodeMenu: Shape['nodeMenu']) => void
   mousePosition: { pageX: number; pageY: number; elementX: number; elementY: number }
   setMousePosition: (mousePosition: Shape['mousePosition']) => void
+  syncWorkflowDraftHash: string
+  setSyncWorkflowDraftHash: (hash: string) => void
 }
 
 export const createWorkflowStore = () => {
@@ -164,6 +166,8 @@ export const createWorkflowStore = () => {
     setNodeMenu: nodeMenu => set(() => ({ nodeMenu })),
     mousePosition: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },
     setMousePosition: mousePosition => set(() => ({ mousePosition })),
+    syncWorkflowDraftHash: '',
+    setSyncWorkflowDraftHash: syncWorkflowDraftHash => set(() => ({ syncWorkflowDraftHash })),
   }))
 }
 
