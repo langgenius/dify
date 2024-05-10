@@ -1,0 +1,13 @@
+identity:
+  author: Pan YANG
+  name: slack
+  label:
+    en_US: Slack
+    zh_Hans: Slack
+    pt_BR: Slack
+  description:
+    en_US: Slack Webhook
+    zh_Hans: Slack Webhook
+    pt_BR: Slack Webhook
+  icon: icon.svg
+credentials_for_provider:

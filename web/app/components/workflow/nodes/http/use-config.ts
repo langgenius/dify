@@ -1,10 +1,11 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import useVarList from '../_base/hooks/use-var-list'
 import { VarType } from '../../types'
 import type { Var } from '../../types'
-import type { Authorization, Body, HttpNodeType, Method } from './types'
+import { useStore } from '../../store'
+import type { Authorization, Body, HttpNodeType, Method, Timeout } from './types'
 import useKeyValueList from './hooks/use-key-value-list'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
@@ -14,12 +15,26 @@ import {
 
 const useConfig = (id: string, payload: HttpNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
+
+  const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
+
   const { inputs, setInputs } = useNodeCrud<HttpNodeType>(id, payload)
 
   const { handleVarListChange, handleAddVariable } = useVarList<HttpNodeType>({
     inputs,
     setInputs,
   })
+
+  useEffect(() => {
+    const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
+    if (isReady) {
+      setInputs({
+        ...defaultConfig,
+        ...inputs,
+      })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultConfig])
 
   const handleMethodChange = useCallback((method: Method) => {
     const newInputs = produce(inputs, (draft: HttpNodeType) => {
@@ -76,6 +91,13 @@ const useConfig = (id: string, payload: HttpNodeType) => {
   const setAuthorization = useCallback((authorization: Authorization) => {
     const newInputs = produce(inputs, (draft: HttpNodeType) => {
       draft.authorization = authorization
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const setTimeout = useCallback((timeout: Timeout) => {
+    const newInputs = produce(inputs, (draft: HttpNodeType) => {
+      draft.timeout = timeout
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -148,6 +170,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     showAuthorization,
     hideAuthorization,
     setAuthorization,
+    setTimeout,
     // single run
     isShowSingleRun,
     hideSingleRun,

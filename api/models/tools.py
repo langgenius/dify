@@ -1,12 +1,12 @@
 import json
 
 from sqlalchemy import ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from extensions.ext_database import db
+from models import StringUUID
 from models.model import Account, App, Tenant
 
 
@@ -22,11 +22,11 @@ class BuiltinToolProvider(db.Model):
     )
 
     # id of the tool provider
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     # id of the tenant
-    tenant_id = db.Column(UUID, nullable=True)
+    tenant_id = db.Column(StringUUID, nullable=True)
     # who created this tool provider
-    user_id = db.Column(UUID, nullable=False)
+    user_id = db.Column(StringUUID, nullable=False)
     # name of the tool provider
     provider = db.Column(db.String(40), nullable=False)
     # credential of the tool provider
@@ -49,11 +49,11 @@ class PublishedAppTool(db.Model):
     )
 
     # id of the tool provider
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     # id of the app
-    app_id = db.Column(UUID, ForeignKey('apps.id'), nullable=False)
+    app_id = db.Column(StringUUID, ForeignKey('apps.id'), nullable=False)
     # who published this tool
-    user_id = db.Column(UUID, nullable=False)
+    user_id = db.Column(StringUUID, nullable=False)
     # description of the tool, stored in i18n format, for human
     description = db.Column(db.Text, nullable=False)
     # llm_description of the tool, for LLM
@@ -87,7 +87,7 @@ class ApiToolProvider(db.Model):
         db.UniqueConstraint('name', 'tenant_id', name='unique_api_tool_provider')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     # name of the api provider
     name = db.Column(db.String(40), nullable=False)
     # icon
@@ -96,9 +96,9 @@ class ApiToolProvider(db.Model):
     schema = db.Column(db.Text, nullable=False)
     schema_type_str = db.Column(db.String(40), nullable=False)
     # who created this tool
-    user_id = db.Column(UUID, nullable=False)
+    user_id = db.Column(StringUUID, nullable=False)
     # tenant id
-    tenant_id = db.Column(UUID, nullable=False)
+    tenant_id = db.Column(StringUUID, nullable=False)
     # description of the provider
     description = db.Column(db.Text, nullable=False)
     # json format tools
@@ -140,11 +140,11 @@ class ToolModelInvoke(db.Model):
         db.PrimaryKeyConstraint('id', name='tool_model_invoke_pkey'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     # who invoke this tool
-    user_id = db.Column(UUID, nullable=False)
+    user_id = db.Column(StringUUID, nullable=False)
     # tenant id
-    tenant_id = db.Column(UUID, nullable=False)
+    tenant_id = db.Column(StringUUID, nullable=False)
     # provider
     provider = db.Column(db.String(40), nullable=False)
     # type
@@ -180,13 +180,13 @@ class ToolConversationVariables(db.Model):
         db.Index('conversation_id_idx', 'conversation_id'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     # conversation user id
-    user_id = db.Column(UUID, nullable=False)
+    user_id = db.Column(StringUUID, nullable=False)
     # tenant id
-    tenant_id = db.Column(UUID, nullable=False)
+    tenant_id = db.Column(StringUUID, nullable=False)
     # conversation id
-    conversation_id = db.Column(UUID, nullable=False)
+    conversation_id = db.Column(StringUUID, nullable=False)
     # variables pool
     variables_str = db.Column(db.Text, nullable=False)
 
@@ -208,13 +208,13 @@ class ToolFile(db.Model):
         db.Index('tool_file_conversation_id_idx', 'conversation_id'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     # conversation user id
-    user_id = db.Column(UUID, nullable=False)
+    user_id = db.Column(StringUUID, nullable=False)
     # tenant id
-    tenant_id = db.Column(UUID, nullable=False)
+    tenant_id = db.Column(StringUUID, nullable=False)
     # conversation id
-    conversation_id = db.Column(UUID, nullable=True)
+    conversation_id = db.Column(StringUUID, nullable=True)
     # file key
     file_key = db.Column(db.String(255), nullable=False)
     # mime type

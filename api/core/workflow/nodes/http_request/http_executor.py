@@ -1,4 +1,5 @@
 import json
+import os
 from copy import deepcopy
 from random import randint
 from typing import Any, Optional, Union
@@ -13,12 +14,10 @@ from core.workflow.entities.variable_pool import ValueType, VariablePool
 from core.workflow.nodes.http_request.entities import HttpRequestNodeData
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
-HTTP_REQUEST_DEFAULT_TIMEOUT = (10, 60)
-MAX_BINARY_SIZE = 1024 * 1024 * 10  # 10MB
-READABLE_MAX_BINARY_SIZE = '10MB'
-MAX_TEXT_SIZE = 1024 * 1024 // 10  # 0.1MB
-READABLE_MAX_TEXT_SIZE = '0.1MB'
-
+MAX_BINARY_SIZE = int(os.environ.get('HTTP_REQUEST_NODE_MAX_BINARY_SIZE', str(1024 * 1024 * 10))) # 10MB
+READABLE_MAX_BINARY_SIZE = f'{MAX_BINARY_SIZE / 1024 / 1024:.2f}MB'
+MAX_TEXT_SIZE = int(os.environ.get('HTTP_REQUEST_NODE_MAX_TEXT_SIZE', str(1024 * 1024))) # 10MB # 1MB
+READABLE_MAX_TEXT_SIZE = f'{MAX_TEXT_SIZE / 1024 / 1024:.2f}MB'
 
 class HttpExecutorResponse:
     headers: dict[str, str]
@@ -137,14 +136,16 @@ class HttpExecutor:
     files: Union[None, dict[str, Any]]
     boundary: str
     variable_selectors: list[VariableSelector]
+    timeout: HttpRequestNodeData.Timeout
 
-    def __init__(self, node_data: HttpRequestNodeData, variable_pool: Optional[VariablePool] = None):
+    def __init__(self, node_data: HttpRequestNodeData, timeout: HttpRequestNodeData.Timeout, variable_pool: Optional[VariablePool] = None):
         """
         init
         """
         self.server_url = node_data.url
         self.method = node_data.method
         self.authorization = node_data.authorization
+        self.timeout = timeout
         self.params = {}
         self.headers = {}
         self.body = None
@@ -307,7 +308,7 @@ class HttpExecutor:
             'url': self.server_url,
             'headers': headers,
             'params': self.params,
-            'timeout': HTTP_REQUEST_DEFAULT_TIMEOUT,
+            'timeout': (self.timeout.connect, self.timeout.read, self.timeout.write),
             'follow_redirects': True
         }
 
@@ -343,10 +344,13 @@ class HttpExecutor:
         # validate response
         return self._validate_and_parse_response(response)
     
-    def to_raw_request(self) -> str:
+    def to_raw_request(self, mask_authorization_header: Optional[bool] = True) -> str:
         """
         convert to raw request
         """
+        if mask_authorization_header == None:
+            mask_authorization_header = True
+            
         server_url = self.server_url
         if self.params:
             server_url += f'?{urlencode(self.params)}'
@@ -355,6 +359,17 @@ class HttpExecutor:
 
         headers = self._assembling_headers()
         for k, v in headers.items():
+            if mask_authorization_header:
+                # get authorization header
+                if self.authorization.type == 'api-key':
+                    authorization_header = 'Authorization'
+                    if self.authorization.config and self.authorization.config.header:
+                        authorization_header = self.authorization.config.header
+                    
+                    if k.lower() == authorization_header.lower():
+                        raw_request += f'{k}: {"*" * len(v)}\n'
+                        continue
+            
             raw_request += f'{k}: {v}\n'
 
         raw_request += '\n'

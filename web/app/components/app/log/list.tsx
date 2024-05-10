@@ -11,6 +11,8 @@ import {
 import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
@@ -40,6 +42,11 @@ import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useAppContext } from '@/context/app-context'
+import useTimestamp from '@/hooks/use-timestamp'
+
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
@@ -78,7 +85,7 @@ const PARAM_MAP = {
 }
 
 // Format interface data for easy display
-const getFormattedChatList = (messages: ChatMessage[], conversationId: string) => {
+const getFormattedChatList = (messages: ChatMessage[], conversationId: string, timezone: string, format: string) => {
   const newChatList: IChatItem[] = []
   messages.forEach((item: ChatMessage) => {
     newChatList.push({
@@ -115,7 +122,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string) =
         query: item.query,
       },
       more: {
-        time: dayjs.unix(item.created_at).format('hh:mm A'),
+        time: dayjs.unix(item.created_at).tz(timezone).format(format),
         tokens: item.answer_tokens + item.message_tokens,
         latency: item.provider_response_latency.toFixed(2),
       },
@@ -130,8 +137,8 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string) =
 
         if (item.annotation) {
           return {
-            id: '',
-            authorName: '',
+            id: item.annotation.id,
+            authorName: item.annotation.account.name,
             logAnnotation: item.annotation,
             created_at: 0,
           }
@@ -154,6 +161,8 @@ type IDetailPanel<T> = {
 }
 
 function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionConversationFullDetailResponse>({ detail, onFeedback }: IDetailPanel<T>) {
+  const { userProfile: { timezone } } = useAppContext()
+  const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal, showMessageLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
@@ -188,7 +197,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         const varValues = messageRes.data[0].inputs
         setVarValues(varValues)
       }
-      const newItems = [...getFormattedChatList(messageRes.data, detail.id), ...items]
+      const newItems = [...getFormattedChatList(messageRes.data, detail.id, timezone!, t('appLog.dateTimeFormat') as string), ...items]
       if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
         newItems.unshift({
           id: 'introduction',
@@ -271,7 +280,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
         <div>
           <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
-          <div className='text-gray-700 text-[13px] leading-[18px]'>{isChatMode ? detail.id?.split('-').slice(-1)[0] : dayjs.unix(detail.created_at).format(t('appLog.dateTimeFormat') as string)}</div>
+          <div className='text-gray-700 text-[13px] leading-[18px]'>{isChatMode ? detail.id?.split('-').slice(-1)[0] : formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
         </div>
         <div className='flex items-center flex-wrap gap-y-1 justify-end'>
           {!isAdvanced && (
@@ -535,6 +544,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
  */
 const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
   const { t } = useTranslation()
+  const { formatTime } = useTimestamp()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -549,7 +559,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <Tooltip
         htmlContent={
           <span className='text-xs text-gray-500 inline-flex items-center'>
-            <EditIconSolid className='mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${dayjs.unix(annotation?.created_at || dayjs().unix()).format('MM-DD hh:mm A')}`}
+            <EditIconSolid className='mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         }
         className={(isHighlight && !isChatMode) ? '' : '!hidden'}
@@ -598,7 +608,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 setCurrentConversation(log)
               }}>
               <td className='text-center align-middle'>{!log.read_at && <span className='inline-block bg-[#3F83F8] h-1.5 w-1.5 rounded'></span>}</td>
-              <td className='w-[160px]'>{dayjs.unix(log.created_at).format(t('appLog.dateTimeFormat') as string)}</td>
+              <td className='w-[160px]'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
               <td>{renderTdValue(endUser || defaultValue, !endUser)}</td>
               <td style={{ maxWidth: isChatMode ? 300 : 200 }}>
                 {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}

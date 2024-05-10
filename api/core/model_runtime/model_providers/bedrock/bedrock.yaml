@@ -70,6 +70,10 @@ provider_credential_schema:
           label:
             en_US: AWS GovCloud (US-West)
             zh_Hans: AWS GovCloud (US-West)
+        - value: ap-southeast-2
+          label:
+            en_US: Asia Pacific (Sydney)
+            zh_Hans: 亚太地区 (悉尼)
     - variable: model_for_validation
       required: false
       label:

@@ -1,7 +1,7 @@
 beautifulsoup4==4.12.2
 flask~=3.0.1
 Flask-SQLAlchemy~=3.0.5
-SQLAlchemy~=1.4.28
+SQLAlchemy~=2.0.29
 Flask-Compress~=1.14
 flask-login~=0.6.3
 flask-migrate~=4.0.5
@@ -9,7 +9,7 @@ flask-restful~=0.3.10
 flask-cors~=4.0.0
 gunicorn~=22.0.0
 gevent~=23.9.1
-openai~=1.13.3
+openai~=1.26.0
 tiktoken~=0.6.0
 psycopg2-binary~=2.9.6
 pycryptodome==3.19.1
@@ -81,4 +81,5 @@ lxml==5.1.0
 xlrd~=2.0.1
 pydantic~=1.10.0
 pgvecto-rs==0.1.4
+firecrawl-py==0.0.5
 oss2==2.15.0
