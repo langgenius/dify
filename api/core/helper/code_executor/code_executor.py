@@ -12,7 +12,7 @@ from config import get_env
 from core.helper.code_executor.entities import CodeDependency
 from core.helper.code_executor.javascript_transformer import NodeJsTemplateTransformer
 from core.helper.code_executor.jinja2_transformer import Jinja2TemplateTransformer
-from core.helper.code_executor.python_transformer import PYTHON_NATIVE_PACKAGES, PythonTemplateTransformer
+from core.helper.code_executor.python_transformer import PYTHON_STANDARD_PACKAGES, PythonTemplateTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +178,7 @@ class CodeExecutor:
             response = response.json()
             dependencies = response.get('data', {}).get('dependencies', [])
             return [
-                CodeDependency(**dependency) for dependency in dependencies if dependency.get('name') not in PYTHON_NATIVE_PACKAGES
+                CodeDependency(**dependency) for dependency in dependencies if dependency.get('name') not in PYTHON_STANDARD_PACKAGES
             ]
         except Exception as e:
             logger.exception(f'Failed to list dependencies: {e}')

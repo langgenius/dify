@@ -29,10 +29,10 @@ print(result)
 
 PYTHON_PRELOAD = """"""
 
-PYTHON_NATIVE_PACKAGES = [
+PYTHON_STANDARD_PACKAGES = set([
     'json', 'datetime', 'math', 'random', 're', 'string', 'sys', 'time', 'traceback', 'uuid', 'os', 'base64',
-    'hashlib', 'hmac', 'binascii', 'collections', 'functools', 'operator', 'itertools', 'uuid',
-]
+    'hashlib', 'hmac', 'binascii', 'collections', 'functools', 'operator', 'itertools', 'uuid', 
+])
 
 class PythonTemplateTransformer(TemplateTransformer):
     @classmethod
@@ -52,17 +52,16 @@ class PythonTemplateTransformer(TemplateTransformer):
         runner = PYTHON_RUNNER.replace('{{code}}', code)
         runner = runner.replace('{{inputs}}', inputs_str)
 
-        if not dependencies:
+        # add standard packages
+        if dependencies is None:
             dependencies = []
 
-        # add native packages
-        for package in PYTHON_NATIVE_PACKAGES:
-            dependencies.append(CodeDependency(name=package, version=''))
+        for package in PYTHON_STANDARD_PACKAGES:
+            if package not in dependencies:
+                dependencies.append(CodeDependency(name=package, version=''))
 
-        # deduplicate dependencies and remove empty names
-        dependencies = list({
-            dep.name: dep for dep in dependencies if dep.name
-        }.values())
+        # deduplicate
+        dependencies = list({dep.name: dep for dep in dependencies if dep.name}.values())
 
         return runner, PYTHON_PRELOAD, dependencies
     

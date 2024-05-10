@@ -4,7 +4,7 @@ from base64 import b64encode
 from typing import Optional
 
 from core.helper.code_executor.entities import CodeDependency
-from core.helper.code_executor.python_transformer import PYTHON_NATIVE_PACKAGES
+from core.helper.code_executor.python_transformer import PYTHON_STANDARD_PACKAGES
 from core.helper.code_executor.template_transformer import TemplateTransformer
 
 PYTHON_RUNNER = """
@@ -80,7 +80,7 @@ class Jinja2TemplateTransformer(TemplateTransformer):
             dependencies = []
 
         # add native packages and jinja2
-        for package in PYTHON_NATIVE_PACKAGES + ['jinja2']:
+        for package in PYTHON_STANDARD_PACKAGES + ['jinja2']:
             dependencies.append(CodeDependency(name=package, version=''))
 
         # deduplicate
