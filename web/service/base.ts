@@ -10,7 +10,6 @@ import type {
   WorkflowFinishedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
-import { CONVERSATION_ID_INFO } from '@/app/components/base/chat/constants'
 const TIME_OUT = 100000
 
 const ContentType = {
@@ -98,13 +97,8 @@ function unicodeToChar(text: string) {
   })
 }
 
-function removeInvalidWebSSOTokenAndRelogin() {
-  localStorage.removeItem('web_sso_token')
-
-  localStorage.removeItem('token')
-  localStorage.removeItem(CONVERSATION_ID_INFO)
-
-  globalThis.location.reload()
+function requiredWebSSOLogin() {
+  globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}`
 }
 
 export function format(text: string) {
@@ -253,7 +247,6 @@ const baseFetch = <T>(
   if (isPublicAPI) {
     const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
     const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
-    const webSSOToken = localStorage.getItem('web_sso_token') || ''
     let accessTokenJson = { [sharedToken]: '' }
     try {
       accessTokenJson = JSON.parse(accessToken)
@@ -262,7 +255,6 @@ const baseFetch = <T>(
 
     }
     options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
-    options.headers.set('X-Web-SSO-Token', webSSOToken)
   }
   else {
     const accessToken = localStorage.getItem('console_token') || ''
@@ -321,8 +313,8 @@ const baseFetch = <T>(
                     if (!silent)
                       Toast.notify({ type: 'error', message: data.message })
 
-                    if (data.code === 'web_sso_token_invalid')
-                      removeInvalidWebSSOTokenAndRelogin()
+                    if (data.code === 'web_sso_auth_required')
+                      requiredWebSSOLogin()
 
                     return Promise.reject(data)
                   })
@@ -484,8 +476,8 @@ export const ssePost = (
         res.json().then((data: any) => {
           Toast.notify({ type: 'error', message: data.message || 'Server Error' })
 
-          if (data.code === 'web_sso_token_invalid')
-            removeInvalidWebSSOTokenAndRelogin()
+          if (data.code === 'web_sso_auth_required')
+            requiredWebSSOLogin()
         })
         onError?.('Server Error')
         return

@@ -136,12 +136,23 @@ export const fetchSystemFeatures = async () => {
   return (getAction('get', false))(getUrl('system-features', false, '')) as Promise<SystemFeatures>
 }
 
-export const fetchWebSAMLSSOUrl = async () => {
-  return (getAction('get', false))(getUrl('/enterprise/sso/saml/login', false, '')) as Promise<{ url: string }>
+export const fetchWebSAMLSSOUrl = async (appCode: string, redirectUrl: string) => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/saml/login', false, ''), {
+    params: {
+      app_code: appCode,
+      redirect_url: redirectUrl,
+    },
+  }) as Promise<{ url: string }>
 }
 
-export const fetchWebOIDCSSOUrl = async () => {
-  return (getAction('get', false))(getUrl('/enterprise/sso/oidc/login', false, '')) as Promise<{ url: string; state: string }>
+export const fetchWebOIDCSSOUrl = async (appCode: string, redirectUrl: string) => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/oidc/login', false, ''), {
+    params: {
+      app_code: appCode,
+      redirect_url: redirectUrl,
+    },
+
+  }) as Promise<{ url: string }>
 }
 
 export const fetchAppMeta = async (isInstalledApp: boolean, installedAppId = '') => {

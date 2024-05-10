@@ -5,7 +5,7 @@ from flask_restful import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from controllers.web import api
-from controllers.web.error import WebSSOTokenInvalidError
+from controllers.web.error import WebSSOAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
@@ -15,17 +15,10 @@ from services.feature_service import FeatureService
 class PassportResource(Resource):
     """Base resource for passport."""
     def get(self):
-        end_user_session_id = ''
+
         system_features = FeatureService.get_system_features()
         if system_features.sso_enforced_for_web:
-            web_sso_token = request.headers.get('X-Web-SSO-Token')
-            if not web_sso_token:
-                raise WebSSOTokenInvalidError()
-            try:
-                web_sso_token_decode = PassportService().verify(web_sso_token)
-                end_user_session_id = web_sso_token_decode.get('end_user_session_id')
-            except Unauthorized:
-                raise WebSSOTokenInvalidError()
+            raise WebSSOAuthRequiredError()
 
         app_code = request.headers.get('X-App-Code')
         if app_code is None:
@@ -43,31 +36,13 @@ class PassportResource(Resource):
         if not app_model or app_model.status != 'normal' or not app_model.enable_site:
             raise NotFound()
 
-        if system_features.sso_enforced_for_web:
-            end_user = db.session.query(EndUser) \
-                .filter(EndUser.tenant_id == app_model.tenant_id,
-                        EndUser.app_id == app_model.id,
-                        EndUser.type == 'browser',
-                        EndUser.is_anonymous == False,
-                        EndUser.session_id == end_user_session_id)\
-                .first()
-
-            if not end_user:
-                end_user = EndUser(
-                    tenant_id=app_model.tenant_id,
-                    app_id=app_model.id,
-                    type='browser',
-                    is_anonymous=False,
-                    session_id=end_user_session_id,
-                )
-        else:
-            end_user = EndUser(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                type='browser',
-                is_anonymous=True,
-                session_id=generate_session_id(),
-            )
+        end_user = EndUser(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            type='browser',
+            is_anonymous=True,
+            session_id=generate_session_id(),
+        )
 
         db.session.add(end_user)
         db.session.commit()

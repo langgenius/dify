@@ -5,14 +5,14 @@ import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
-import { getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/enterprise'
+import { getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 import Button from '@/app/components/base/button'
 
-type EnterpriseSSOFormProps = {
+type UserSSOFormProps = {
   protocol: string
 }
 
-const EnterpriseSSOForm: FC<EnterpriseSSOFormProps> = ({
+const UserSSOForm: FC<UserSSOFormProps> = ({
   protocol,
 }) => {
   const searchParams = useSearchParams()
@@ -84,4 +84,4 @@ const EnterpriseSSOForm: FC<EnterpriseSSOFormProps> = ({
   )
 }
 
-export default EnterpriseSSOForm
+export default UserSSOForm

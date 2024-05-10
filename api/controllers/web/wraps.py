@@ -4,7 +4,7 @@ from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
-from controllers.web.error import WebSSOTokenInvalidError
+from controllers.web.error import WebSSOAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
@@ -18,31 +18,6 @@ def validate_jwt_token(view=None):
             app_model, end_user = decode_jwt_token()
 
             return view(app_model, end_user, *args, **kwargs)
-        return decorated
-    if view:
-        return decorator(view)
-    return decorator
-
-
-def validate_web_sso_token(view=None):
-    def decorator(view):
-        @wraps(view)
-        def decorated(*args, **kwargs):
-            system_features = FeatureService.get_system_features()
-
-            if not system_features.sso_enforced_for_web:
-                return view(*args, **kwargs)
-
-            # check if token is present
-            web_sso_token = request.headers.get('X-Web-SSO-Token')
-            if not web_sso_token:
-                raise WebSSOTokenInvalidError()
-            try:
-                PassportService().verify(web_sso_token)
-            except Unauthorized:
-                raise WebSSOTokenInvalidError()
-
-            return view(*args, **kwargs)
         return decorated
     if view:
         return decorator(view)
@@ -76,8 +51,20 @@ def decode_jwt_token():
     if not end_user:
         raise NotFound()
 
+    _validate_web_sso_enforced(decoded)
+
     return app_model, end_user
 
 
+def _validate_web_sso_enforced(token: dict):
+    system_features = FeatureService.get_system_features()
+    if not system_features.sso_enforced_for_web:
+        return
+
+    source = token.get('token_source')
+    if not source or source != 'sso':
+        raise WebSSOAuthRequiredError()
+
+
 class WebApiResource(Resource):
-    method_decorators = [validate_web_sso_token, validate_jwt_token]
+    method_decorators = [validate_jwt_token]

@@ -117,7 +117,7 @@ class UnsupportedFileTypeError(BaseHTTPException):
     code = 415
 
 
-class WebSSOTokenInvalidError(BaseHTTPException):
-    error_code = 'web_sso_token_invalid'
-    description = "Invalid X-Web-SSO-Token header."
+class WebSSOAuthRequiredError(BaseHTTPException):
+    error_code = 'web_sso_auth_required'
+    description = "Web SSO authentication required."
     code = 401

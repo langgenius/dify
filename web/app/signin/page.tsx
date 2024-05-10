@@ -6,7 +6,7 @@ import Loading from '../components/base/loading'
 import Forms from './forms'
 import Header from './_header'
 import style from './page.module.css'
-import EnterpriseSSOForm from './enterpriseSSOForm'
+import UserSSOForm from './userSSOForm'
 import { IS_CE_EDITION } from '@/config'
 
 import type { SystemFeatures } from '@/types/feature'
@@ -81,7 +81,7 @@ gtag('config', 'AW-11217955271"');
           )}
 
           {!loading && systemFeatures.sso_enforced_for_signin && (
-            <EnterpriseSSOForm protocol={systemFeatures.sso_enforced_for_signin_protocol} />
+            <UserSSOForm protocol={systemFeatures.sso_enforced_for_signin_protocol} />
           )}
         </div>
 

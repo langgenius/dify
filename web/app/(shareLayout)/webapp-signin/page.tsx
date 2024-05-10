@@ -6,29 +6,46 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
-import { fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
+import { fetchSystemFeatures, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
 import LogoSite from '@/app/components/base/logo/logo-site'
+import { setAccessToken } from '@/app/components/share/utils'
 
-const EnterpriseWebSSOForm: FC = () => {
+const WebSSOForm: FC = () => {
   const searchParams = useSearchParams()
 
-  const protocal = searchParams.get('protocal')
-  const webSSOTokenFromUrl = searchParams.get('web_sso_token')
+  const redirectUrl = searchParams.get('redirect_url')
+  const tokenFromUrl = searchParams.get('web_sso_token')
   const message = searchParams.get('message')
 
   const router = useRouter()
   const { t } = useTranslation()
 
   const [isLoading, setIsLoading] = useState(false)
+  const [protocal, setProtocal] = useState('')
 
   useEffect(() => {
-    if (webSSOTokenFromUrl) {
-      localStorage.setItem('web_sso_token', webSSOTokenFromUrl)
+    const fetchFeaturesAndSetToken = async () => {
+      await fetchSystemFeatures().then((res) => {
+        setProtocal(res.sso_enforced_for_web_protocol)
+      })
 
-      const redirectUrl = localStorage.getItem('web_app_redirect_url')
-      if (redirectUrl)
+      // Callback from SSO, process token and redirect
+      if (tokenFromUrl && redirectUrl) {
+        const appCode = redirectUrl.split('/').pop()
+        if (!appCode) {
+          Toast.notify({
+            type: 'error',
+            message: 'redirect url is invalid. App code is not found.',
+          })
+          return
+        }
+
+        await setAccessToken(appCode, tokenFromUrl)
         router.push(redirectUrl)
+      }
     }
+
+    fetchFeaturesAndSetToken()
 
     if (message) {
       Toast.notify({
@@ -40,15 +57,34 @@ const EnterpriseWebSSOForm: FC = () => {
 
   const handleSSOLogin = () => {
     setIsLoading(true)
+
+    if (!redirectUrl) {
+      Toast.notify({
+        type: 'error',
+        message: 'redirect url is not found.',
+      })
+      setIsLoading(false)
+      return
+    }
+
+    const appCode = redirectUrl.split('/').pop()
+    if (!appCode) {
+      Toast.notify({
+        type: 'error',
+        message: 'redirect url is invalid. App code is not found.',
+      })
+      return
+    }
+
     if (protocal === 'saml') {
-      fetchWebSAMLSSOUrl().then((res) => {
+      fetchWebSAMLSSOUrl(appCode, redirectUrl).then((res) => {
         router.push(res.url)
       }).finally(() => {
         setIsLoading(false)
       })
     }
     else if (protocal === 'oidc') {
-      fetchWebOIDCSSOUrl().then((res) => {
+      fetchWebOIDCSSOUrl(appCode, redirectUrl).then((res) => {
         router.push(res.url)
       }).finally(() => {
         setIsLoading(false)
@@ -108,4 +144,4 @@ const EnterpriseWebSSOForm: FC = () => {
   )
 }
 
-export default React.memo(EnterpriseWebSSOForm)
+export default React.memo(WebSSOForm)
