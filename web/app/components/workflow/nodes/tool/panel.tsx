@@ -131,6 +131,11 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
               type='Array[File]'
               description={t(`${i18nPrefix}.outputVars.files.title`)}
             />
+            <VarItem
+              name='chunks'
+              type='Array[Object]'
+              description={t(`${i18nPrefix}.outputVars.files.title`)}
+            />
           </>
         </OutputVars>
       </div>

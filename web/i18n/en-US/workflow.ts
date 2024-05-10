@@ -333,6 +333,9 @@ const translation = {
           upload_file_id: 'Upload file id',
         },
       },
+      chunks: {
+        title: 'tool generated content list',
+      },
     },
     questionClassifiers: {
       model: 'model',
