@@ -893,14 +893,14 @@ export const useNodesInteractions = () => {
     } = store.getState()
 
     const nodes = getNodes()
-    const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.End)
+    const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start)
 
     if (bundledNodes.length) {
       bundledNodes.forEach(node => handleNodeDelete(node.id))
       return
     }
 
-    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.End)
+    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
 
     if (selectedNode)
       handleNodeDelete(selectedNode.id)
