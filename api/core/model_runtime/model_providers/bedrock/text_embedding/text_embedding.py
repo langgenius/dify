@@ -4,6 +4,7 @@ import time
 from typing import Optional
 
 import boto3
+import tiktoken
 from botocore.config import Config
 from botocore.exceptions import (
     ClientError,
@@ -28,7 +29,7 @@ from core.model_runtime.model_providers.__base.text_embedding_model import TextE
 logger = logging.getLogger(__name__)
 
 class BedrockTextEmbeddingModel(TextEmbeddingModel):
-
+    _enc = None
 
     def _invoke(self, model: str, credentials: dict,
                 texts: list[str], user: Optional[str] = None) \
@@ -66,7 +67,7 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
               response_body = self._invoke_bedrock_embedding(model, bedrock_runtime, body)
               embeddings.extend([response_body.get('embedding')])
               token_usage += response_body.get('inputTextTokenCount')
-           logger.warning(f'Total Tokens: {token_usage}')
+           
            result = TextEmbeddingResult(
                 model=model,
                 embeddings=embeddings,
@@ -87,16 +88,25 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
               }
               response_body = self._invoke_bedrock_embedding(model, bedrock_runtime, body)
               embeddings.extend(response_body.get('embeddings'))
-              token_usage += len(text)
-           result = TextEmbeddingResult(
-                model=model,
-                embeddings=embeddings,
-                usage=self._calc_response_usage(
-                    model=model,
-                    credentials=credentials,
-                    tokens=token_usage
-                )
+
+           token_usage = self.get_num_tokens(
+                   model=model,
+                   credentials=credentials,
+                   texts = texts)
+           
+           # calc usage
+           usage = self._calc_response_usage(
+              model=model,
+              credentials=credentials,
+              tokens=token_usage
            )
+           
+           result = TextEmbeddingResult(
+              embeddings=embeddings,
+              usage=usage,
+              model=model
+           )
+
            return result
         
         #others
@@ -113,8 +123,24 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
         :return:
         """
         num_tokens = 0
-        for text in texts:
-            num_tokens += self._get_num_tokens_by_gpt2(text)
+        model_prefix = model.split('.')[0]
+        if model_prefix == "cohere" :
+           #count fake token numbers to fix the issue of max length 2048
+           for text in texts:
+               num_tokens += len(text)
+        else:
+           if self._enc == None:
+               #Use tiktoken as the tokennizer, we can switch to: 
+               #gpt2, gpt-4, gpt-3.5-turbo, text-embedding-ada-00,text-embedding-3-large
+               #text-davinci-002, text-davinci-003
+               #self._enc = tiktoken.get_encoding("cl100k_base")
+               self._enc = tiktoken.encoding_for_model("gpt-4")
+
+           for text in texts:
+               # calculate the number of tokens in the encoded text
+               tokens = self._enc.encode(text)
+               num_tokens += len(tokens)
+        
         return num_tokens
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
