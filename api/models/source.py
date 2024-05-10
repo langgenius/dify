@@ -15,6 +15,8 @@ class DataSourceBinding(db.Model):
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     tenant_id = db.Column(StringUUID, nullable=False)
     access_token = db.Column(db.String(255), nullable=False)
+    endpoint_url = db.Column(db.String(512), nullable=True)  # For validation with endpoint + bearer key
+    bearer_key = db.Column(db.String(512), nullable=True)    # For validation with endpoint + bearer key
     provider = db.Column(db.String(255), nullable=False)
     source_info = db.Column(JSONB, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
