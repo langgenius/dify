@@ -70,11 +70,6 @@ const CodeEditor: FC<Props> = ({
   const resizeEditorToContent = () => {
     if (editorRef.current) {
       const contentHeight = editorRef.current.getContentHeight() // Math.max(, minHeight)
-      console.log(contentHeight, valueRef.current)
-      // editorRef.current.layout({ height: contentHeight - 648 })
-      // setTimeout(() => {
-      //   console.log(editorRef.current.getContentHeight() - contentHeight)
-      // }, 2000)
       setEditorContentHeight(contentHeight)
     }
   }
