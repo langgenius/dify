@@ -5,7 +5,7 @@ import { Switch as OriginalSwitch } from '@headlessui/react'
 
 type SwitchProps = {
   onChange: (value: boolean) => void
-  size?: 'md' | 'lg' | 'l'
+  size?: 'sm' | 'md' | 'lg' | 'l'
   defaultValue?: boolean
   disabled?: boolean
 }
@@ -19,18 +19,21 @@ const Switch = ({ onChange, size = 'lg', defaultValue = false, disabled = false 
     lg: 'h-6 w-11',
     l: 'h-5 w-9',
     md: 'h-4 w-7',
+    sm: 'h-3 w-5',
   }
 
   const circleStyle = {
     lg: 'h-5 w-5',
     l: 'h-4 w-4',
     md: 'h-3 w-3',
+    sm: 'h-2 w-2',
   }
 
   const translateLeft = {
     lg: 'translate-x-5',
     l: 'translate-x-4',
     md: 'translate-x-3',
+    sm: 'translate-x-2',
   }
   return (
     <OriginalSwitch
