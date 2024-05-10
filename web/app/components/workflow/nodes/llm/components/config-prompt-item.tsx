@@ -3,8 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { uniqueId } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
-import type { PromptItem, Variable } from '../../../types'
-import { EditionType } from '../../../types'
+import type { PromptItem } from '../../../types'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
@@ -25,7 +24,6 @@ type Props = {
   payload: PromptItem
   handleChatModeMessageRoleChange: (role: PromptRole) => void
   onPromptChange: (p: string) => void
-  onEditionTypeChange: (editionType: EditionType) => void
   onRemove: () => void
   isShowContext: boolean
   hasSetBlockStatus: {
@@ -35,8 +33,6 @@ type Props = {
   }
   availableVars: any
   availableNodes: any
-  varList: Variable[]
-  handleAddVariable: (payload: any) => void
 }
 
 const roleOptions = [
@@ -68,21 +64,17 @@ const ConfigPromptItem: FC<Props> = ({
   isChatApp,
   payload,
   onPromptChange,
-  onEditionTypeChange,
   onRemove,
   isShowContext,
   hasSetBlockStatus,
   availableVars,
   availableNodes,
-  varList,
-  handleAddVariable,
 }) => {
   const { t } = useTranslation()
   const [instanceId, setInstanceId] = useState(uniqueId())
   useEffect(() => {
     setInstanceId(`${id}-${uniqueId()}`)
   }, [id])
-
   return (
     <Editor
       className={className}
@@ -115,7 +107,7 @@ const ConfigPromptItem: FC<Props> = ({
           </TooltipPlus>
         </div>
       }
-      value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}
+      value={payload.text}
       onChange={onPromptChange}
       readOnly={readOnly}
       showRemove={canRemove}
@@ -126,11 +118,6 @@ const ConfigPromptItem: FC<Props> = ({
       hasSetBlockStatus={hasSetBlockStatus}
       nodesOutputVars={availableVars}
       availableNodes={availableNodes}
-      isSupportJinja
-      editionType={payload.edition_type}
-      onEditionTypeChange={onEditionTypeChange}
-      varList={varList}
-      handleAddVariable={handleAddVariable}
     />
   )
 }

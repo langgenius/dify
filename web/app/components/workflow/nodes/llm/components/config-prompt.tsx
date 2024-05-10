@@ -6,8 +6,8 @@ import produce from 'immer'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
 import cn from 'classnames'
-import type { PromptItem, ValueSelector, Var, Variable } from '../../../types'
-import { EditionType, PromptRole } from '../../../types'
+import type { PromptItem, ValueSelector, Var } from '../../../types'
+import { PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import ConfigPromptItem from './config-prompt-item'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
@@ -30,8 +30,6 @@ type Props = {
     history: boolean
     query: boolean
   }
-  varList?: Variable[]
-  handleAddVariable: (payload: any) => void
 }
 
 const ConfigPrompt: FC<Props> = ({
@@ -44,12 +42,10 @@ const ConfigPrompt: FC<Props> = ({
   onChange,
   isShowContext,
   hasSetBlockStatus,
-  varList = [],
-  handleAddVariable,
 }) => {
   const { t } = useTranslation()
   const payloadWithIds = (isChatModel && Array.isArray(payload))
-    ? payload.map((item) => {
+    ? payload.map((item, i) => {
       const id = uuid4()
       return {
         id: item.id || id,
@@ -71,16 +67,7 @@ const ConfigPrompt: FC<Props> = ({
   const handleChatModePromptChange = useCallback((index: number) => {
     return (prompt: string) => {
       const newPrompt = produce(payload as PromptItem[], (draft) => {
-        draft[index][draft[index].edition_type === EditionType.jinja2 ? 'jinja2_text' : 'text'] = prompt
-      })
-      onChange(newPrompt)
-    }
-  }, [onChange, payload])
-
-  const handleChatModeEditionTypeChange = useCallback((index: number) => {
-    return (editionType: EditionType) => {
-      const newPrompt = produce(payload as PromptItem[], (draft) => {
-        draft[index].edition_type = editionType
+        draft[index].text = prompt
       })
       onChange(newPrompt)
     }
@@ -119,14 +106,7 @@ const ConfigPrompt: FC<Props> = ({
 
   const handleCompletionPromptChange = useCallback((prompt: string) => {
     const newPrompt = produce(payload as PromptItem, (draft) => {
-      draft[draft.edition_type === EditionType.jinja2 ? 'jinja2_text' : 'text'] = prompt
-    })
-    onChange(newPrompt)
-  }, [onChange, payload])
-
-  const handleCompletionEditionTypeChange = useCallback((editionType: EditionType) => {
-    const newPrompt = produce(payload as PromptItem, (draft) => {
-      draft.edition_type = editionType
+      draft.text = prompt
     })
     onChange(newPrompt)
   }, [onChange, payload])
@@ -181,14 +161,11 @@ const ConfigPrompt: FC<Props> = ({
                           isChatApp={isChatApp}
                           payload={item}
                           onPromptChange={handleChatModePromptChange(index)}
-                          onEditionTypeChange={handleChatModeEditionTypeChange(index)}
                           onRemove={handleRemove(index)}
                           isShowContext={isShowContext}
                           hasSetBlockStatus={hasSetBlockStatus}
                           availableVars={availableVars}
                           availableNodes={availableNodes}
-                          varList={varList}
-                          handleAddVariable={handleAddVariable}
                         />
                       </div>
 
@@ -210,7 +187,7 @@ const ConfigPrompt: FC<Props> = ({
             <Editor
               instanceId={`${nodeId}-chat-workflow-llm-prompt-editor`}
               title={<span className='capitalize'>{t(`${i18nPrefix}.prompt`)}</span>}
-              value={(payload as PromptItem).edition_type === EditionType.basic ? (payload as PromptItem).text : ((payload as PromptItem).jinja2_text || '')}
+              value={(payload as PromptItem).text}
               onChange={handleCompletionPromptChange}
               readOnly={readOnly}
               isChatModel={isChatModel}
@@ -219,11 +196,6 @@ const ConfigPrompt: FC<Props> = ({
               hasSetBlockStatus={hasSetBlockStatus}
               nodesOutputVars={availableVars}
               availableNodes={availableNodes}
-              isSupportJinja
-              editionType={(payload as PromptItem).edition_type}
-              varList={varList}
-              onEditionTypeChange={handleCompletionEditionTypeChange}
-              handleAddVariable={handleAddVariable}
             />
           </div>
         )}

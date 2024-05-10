@@ -6,23 +6,29 @@ import { useTranslation } from 'react-i18next'
 import type { Props as EditorProps } from '.'
 import Editor from '.'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
-import type { NodeOutPutVar, Variable } from '@/app/components/workflow/types'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import type { Variable } from '@/app/components/workflow/types'
 
 const TO_WINDOW_OFFSET = 8
 
 type Props = {
-  availableVars: NodeOutPutVar[]
+  nodeId: string
   varList: Variable[]
-  onAddVar?: (payload: Variable) => void
+  onAddVar: (payload: Variable) => void
 } & EditorProps
 
 const CodeEditor: FC<Props> = ({
-  availableVars,
+  nodeId,
   varList,
   onAddVar,
   ...editorProps
 }) => {
   const { t } = useTranslation()
+
+  const { availableVars } = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: () => true,
+  })
 
   const isLeftBraceRef = useRef(false)
 
@@ -70,8 +76,7 @@ const CodeEditor: FC<Props> = ({
       if (popupPosition.y + height > window.innerHeight - TO_WINDOW_OFFSET)
         newPopupPosition.y = window.innerHeight - height - TO_WINDOW_OFFSET
 
-      if (newPopupPosition.x !== popupPosition.x || newPopupPosition.y !== popupPosition.y)
-        setPopupPosition(newPopupPosition)
+      setPopupPosition(newPopupPosition)
     }
   }, [isShowVarPicker, popupPosition])
 
@@ -119,7 +124,7 @@ const CodeEditor: FC<Props> = ({
         value_selector: varValue,
       }
 
-      onAddVar?.(newVar)
+      onAddVar(newVar)
     }
     const editor: any = editorRef.current
     const monaco: any = monacoRef.current

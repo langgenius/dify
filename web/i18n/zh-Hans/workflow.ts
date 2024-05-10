@@ -52,8 +52,6 @@ const translation = {
     jinjaEditorPlaceholder: '输入 “/” 或 “{” 插入变量',
     viewOnly: '只读',
     showRunHistory: '显示运行历史',
-    enableJinja: '开启支持 Jinja 模板',
-    learnMore: '了解更多',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
