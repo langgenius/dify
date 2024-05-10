@@ -44,7 +44,7 @@ class CohereRerankModel(RerankModel):
             )
 
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = cohere.Client(credentials.get('api_key'), base_url=credentials.get('base_url'))
         response = client.rerank(
             query=query,
             documents=docs,

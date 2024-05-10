@@ -4,7 +4,7 @@ We need to be nimble and ship fast given where we are, but we also want to make 
 
 This guide, like Dify itself, is a constant work in progress. We highly appreciate your understanding if at times it lags behind the actual project, and welcome any feedback for us to improve.
 
-In terms of licensing, please take a minute to read our short [License and Contributor Agreement](./license). The community also adheres to the [code of conduct](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md).
+In terms of licensing, please take a minute to read our short [License and Contributor Agreement](./LICENSE). The community also adheres to the [code of conduct](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md).
 
 ## Before you jump in
 

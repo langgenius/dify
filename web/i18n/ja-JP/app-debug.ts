@@ -324,7 +324,7 @@ const translation = {
   openingStatement: {
     title: '会話開始',
     add: '追加',
-    writeOpner: 'オープナーを書く',
+    writeOpener: 'オープナーを書く',
     placeholder: 'ここにオープナーメッセージを書いてください。変数を使用できます。{{variable}} を入力してみてください。',
     openingQuestion: '開始質問',
     noDataPlaceHolder:

@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
-  <a href="https://docs.dify.ai/getting-started/install-self-hosted">自己ホスティング</a> ·
+  <a href="https://docs.dify.ai/getting-started/install-self-hosted">セルフホスト</a> ·
   <a href="https://docs.dify.ai">ドキュメント</a> ·
   <a href="https://cal.com/guchenhe/dify-demo">デモのスケジュール</a>
 </p>
@@ -54,7 +54,7 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
 
 
 
-**2. 網羅的なモデルサポート**: 
+**2. 包括的なモデルサポート**: 
   数百のプロプライエタリ/オープンソースのLLMと、数十の推論プロバイダーおよびセルフホスティングソリューションとのシームレスな統合を提供します。GPT、Mistral、Llama3、およびOpenAI API互換のモデルをカバーします。サポートされているモデルプロバイダーの完全なリストは[こちら](https://docs.dify.ai/getting-started/readme/model-providers)をご覧ください。
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
@@ -94,9 +94,9 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
   </tr>
   <tr>
     <td align="center">サポートされているLLM</td>
-    <td align="center">豊富なバリエーション</td>
-    <td align="center">豊富なバリエーション</td>
-    <td align="center">豊富なバリエーション</td>
+    <td align="center">バリエーション豊富</td>
+    <td align="center">バリエーション豊富</td>
+    <td align="center">バリエーション豊富</td>
     <td align="center">OpenAIのみ</td>
   </tr>
   <tr>
@@ -110,7 +110,7 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
     <td align="center">エージェント</td>
     <td align="center">✅</td>
     <td align="center">✅</td>
-    <td align="center">✅</td>
+    <td align="center">❌</td>
     <td align="center">✅</td>
   </tr>
   <tr>
@@ -146,34 +146,34 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
 ## Difyの使用方法
 
 - **クラウド </br>**
-[こちら](https://dify.ai)のDify Cloudサービスを利用して、セットアップが不要で誰でも試すことができます。サンドボックスプランでは、200回の無料のGPT-4呼び出しが含まれています。
+[こちら](https://dify.ai)のDify Cloudサービスを利用して、セットアップ不要で試すことができます。サンドボックスプランには、200回の無料のGPT-4呼び出しが含まれています。
 
 - **Dify Community Editionのセルフホスティング</br>**
-この[スターターガイド](#quick-start)を使用して、環境でDifyをすばやく実行できます。
-さらなる参照や詳細な手順については、[ドキュメント](https://docs.dify.ai)をご覧ください。
+この[スターターガイド](#quick-start)を使用して、ローカル環境でDifyを簡単に実行できます。
+さらなる参考資料や詳細な手順については、[ドキュメント](https://docs.dify.ai)をご覧ください。
 
 - **エンタープライズ/組織向けのDify</br>**
 追加のエンタープライズ向け機能を提供しています。[こちらからミーティングを予約](https://cal.com/guchenhe/30min)したり、[メールを送信](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)してエンタープライズのニーズについて相談してください。 </br>
   > AWSを使用しているスタートアップや中小企業の場合は、[AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)のDify Premiumをチェックして、ワンクリックで独自のAWS VPCにデプロイできます。カスタムロゴとブランディングでアプリを作成するオプションを備えた手頃な価格のAMIオファリングです。
 
 
-## 先を見る
+## 最新の情報を入手
 
-GitHubでDifyにスターを付け、新しいリリースをすぐに通知されます。
+GitHub上でDifyにスターを付けることで、Difyに関する新しいニュースを受け取れます。
 
 ![star-us](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
 
 
 
 ## クイックスタート
-> Difyをインストールする前に、マシンが以下の最小システム要件を満たしていることを確認してください：
+> Difyをインストールする前に、お使いのマシンが以下の最小システム要件を満たしていることを確認してください：
 > 
 >- CPU >= 2コア
 >- RAM >= 4GB
 
 </br>
 
-Difyサーバーを起動する最も簡単な方法は、当社の[docker-compose.yml](docker/docker-compose.yaml)ファイルを実行することです。インストールコマンドを実行する前に、マシンに[Docker](https://docs.docker.com/get-docker/)と[Docker Compose](https://docs.docker.com/compose/install/)がインストールされていることを確認してください。
+Difyサーバーを起動する最も簡単な方法は、[docker-compose.yml](docker/docker-compose.yaml)ファイルを実行することです。インストールコマンドを実行する前に、マシンに[Docker](https://docs.docker.com/get-docker/)と[Docker Compose](https://docs.docker.com/compose/install/)がインストールされていることを確認してください。
 
 ```bash
 cd docker
@@ -216,7 +216,7 @@ docker compose up -d
 * [Discord](https://discord.gg/FngNHpbcY7). 主に: アプリケーションの共有やコミュニティとの交流。
 * [Twitter](https://twitter.com/dify_ai). 主に: アプリケーションの共有やコミュニティとの交流。
 
-または、直接チームメンバーとミーティングをスケジュールします：
+または、直接チームメンバーとミーティングをスケジュール：
 
 <table>
   <tr>
@@ -227,7 +227,7 @@ docker compose up -d
     <td><a href='https://cal.com
 
 /guchenhe/30min'>ミーティング</a></td>
-    <td>無料の30分間のミーティングをスケジュールしてください。</td>
+    <td>無料の30分間のミーティングをスケジュール</td>
   </tr>
   <tr>
     <td><a href='mailto:support@dify.ai?subject=[GitHub]Technical%20Support'>技術サポート</a></td>
@@ -242,4 +242,4 @@ docker compose up -d
 
 ## ライセンス
 
-プロジェクトはMITライセンスの下で利用可能です。[LICENSE](LICENSE)をご参照ください。
+このリポジトリは、Dify Open Source License にいくつかの追加制限を加えた[Difyオープンソースライセンス](LICENSE)の下で利用可能です。
