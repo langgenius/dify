@@ -14,3 +14,12 @@ class KnowledgeResource(BaseModel):
     score: Optional[float] = None
     metadata: Optional[dict[str, Any]] = None
 
+    def to_dict(self):
+        return {
+            'content': self.content,
+            'title': self.title,
+            'url': self.url,
+            'icon': self.icon,
+            'score': self.score,
+            'metadata': self.metadata
+        }

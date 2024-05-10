@@ -22,6 +22,7 @@ from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResu
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.llm.entities import LLMNodeData, ModelConfig
+from core.workflow.nodes.llm.knowledge_resource import KnowledgeResource
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from models.model import Conversation
@@ -262,13 +263,19 @@ class LLMNode(BaseNode):
                 for item in context_value:
                     if isinstance(item, str):
                         context_str += item + '\n'
-                    else:
+                    elif isinstance(item, dict):
                         if 'content' not in item:
                             raise ValueError(f'Invalid context structure: {item}')
 
                         context_str += item['content'] + '\n'
 
                         retriever_resource = self._convert_to_original_retriever_resource(item)
+                        if retriever_resource:
+                            original_retriever_resource.append(retriever_resource)
+                    elif isinstance(item, KnowledgeResource):
+                        context_str += item.content + '\n'
+
+                        retriever_resource = self._convert_to_original_retriever_resource(item.to_dict())
                         if retriever_resource:
                             original_retriever_resource.append(retriever_resource)
 

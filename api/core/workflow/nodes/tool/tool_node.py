@@ -200,7 +200,7 @@ class ToolNode(BaseNode):
                     chunk.metadata = {
                         '_source': 'tool'
                     }
-                    all_chunks.append(chunk)
+                    all_chunks.append(chunk.to_dict())
         return all_chunks
 
 
