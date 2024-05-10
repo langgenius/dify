@@ -115,6 +115,8 @@ const CodeEditor: FC<Props> = ({
       },
     })
 
+    monaco.editor.setTheme('default-theme') // Fix: sometimes not load the default theme
+
     onMount?.(editor, monaco)
     setIsMounted(true)
   }
