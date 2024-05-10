@@ -24,6 +24,7 @@ const translation = {
       next: 'Next',
       goTo: 'Go to',
       page: 'page',
+      invalidPageNum: 'invalid page number',
     },
     empty: {
       noChat: 'No conversation yet',

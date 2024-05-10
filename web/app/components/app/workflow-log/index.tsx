@@ -7,6 +7,7 @@ import { Pagination } from 'react-headless-pagination'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import { Trans, useTranslation } from 'react-i18next'
 import Link from 'next/link'
+import Toast from '../../base/toast'
 import List from './list'
 import Filter from './filter'
 import s from './style.module.css'
@@ -76,6 +77,15 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
+      if (Number(inputPage) <= 0 || Number(inputPage) - 1 > Math.ceil(Number(total) / APP_PAGE_LIMIT) - 1) {
+        Toast.notify({
+          message: t('appLog.table.pagination.invalidPageNum'),
+          type: 'error',
+        })
+        setInputPage('')
+        return
+      }
+
       if (Number(inputPage) !== currPage + 1)
         setCurrPage(Number(inputPage) - 1)
       setInputPage('')
