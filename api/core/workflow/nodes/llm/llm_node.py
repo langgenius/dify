@@ -647,11 +647,13 @@ class LLMNode(BaseNode):
         variable_selectors = []
         if isinstance(prompt_template, list):
             for prompt in prompt_template:
-                variable_template_parser = VariableTemplateParser(template=prompt.text)
-                variable_selectors.extend(variable_template_parser.extract_variable_selectors())
+                if prompt.edition_type != 'jinja2':
+                    variable_template_parser = VariableTemplateParser(template=prompt.text)
+                    variable_selectors.extend(variable_template_parser.extract_variable_selectors())
         else:
-            variable_template_parser = VariableTemplateParser(template=prompt_template.text)
-            variable_selectors = variable_template_parser.extract_variable_selectors()
+            if prompt_template.edition_type != 'jinja2':
+                variable_template_parser = VariableTemplateParser(template=prompt_template.text)
+                variable_selectors = variable_template_parser.extract_variable_selectors()
 
         variable_mapping = {}
         for variable_selector in variable_selectors:
