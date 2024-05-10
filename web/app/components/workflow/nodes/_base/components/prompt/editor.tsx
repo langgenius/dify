@@ -233,6 +233,7 @@ const Editor: FC<Props> = ({
                     value={value}
                     onChange={onChange}
                     noWrapper
+                    isExpand={isExpand}
                   />
                 </div>
               )}

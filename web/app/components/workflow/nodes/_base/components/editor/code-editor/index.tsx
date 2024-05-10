@@ -1,10 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
-
 import React, { useEffect, useRef, useState } from 'react'
+import cn from 'classnames'
 import Base from '../base'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+
 import './style.css'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
@@ -25,6 +26,7 @@ export type Props = {
   isInNode?: boolean
   onMount?: (editor: any, monaco: any) => void
   noWrapper?: boolean
+  isExpand?: boolean
 }
 
 const languageMap = {
@@ -55,6 +57,7 @@ const CodeEditor: FC<Props> = ({
   isInNode,
   onMount,
   noWrapper,
+  isExpand,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
@@ -78,7 +81,7 @@ const CodeEditor: FC<Props> = ({
     onChange(value || '')
     setTimeout(() => {
       resizeEditorToContent()
-    }, 100)
+    }, 10)
   }
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
@@ -163,13 +166,11 @@ const CodeEditor: FC<Props> = ({
   )
 
   return (
-    <div>
+    <div className={cn(isExpand && 'h-full')}>
       {noWrapper
-        ? <div className='relative no-wrapper' style={{
+        ? <div className={cn(isExpand && 'h-full', 'relative no-wrapper')} style={{
           height: (editorContentHeight) / 2 + CODE_EDITOR_LINE_HEIGHT, // In IDE, the last line can always be in lop line. So there is some blank space in the bottom.
           minHeight: CODE_EDITOR_LINE_HEIGHT,
-          maxHeight: 536,
-          overflowY: 'auto',
         }}>
           {main}
         </div>
