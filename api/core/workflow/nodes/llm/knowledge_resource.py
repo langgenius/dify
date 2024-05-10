@@ -11,6 +11,7 @@ class KnowledgeResource(BaseModel):
     title: str
     url: Optional[str] = None
     icon: Optional[str] = None
+    resource_from: Optional[str] = None
     score: Optional[float] = None
     metadata: Optional[dict[str, Any]] = None
 
@@ -20,6 +21,7 @@ class KnowledgeResource(BaseModel):
             'title': self.title,
             'url': self.url,
             'icon': self.icon,
+            'resource_from': self.resource_from,
             'score': self.score,
             'metadata': self.metadata
         }

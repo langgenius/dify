@@ -197,6 +197,7 @@ class ToolNode(BaseNode):
             if message.type == ToolInvokeMessage.MessageType.CHUNK:
                 for chunk in message.message:
                     chunk.icon = icon
+                    chunk.resource_from = node_data.title
                     chunk.metadata = {
                         '_source': 'tool'
                     }
