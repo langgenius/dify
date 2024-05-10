@@ -10,7 +10,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
-from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
+from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback, Site
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
 from services.errors.message import (
@@ -261,10 +261,13 @@ class MessageService:
             max_token_limit=3000,
             message_limit=3,
         )
+        
+        site = db.session.query(Site).filter(Site.app_id == app_model.id).first()
 
         questions = LLMGenerator.generate_suggested_questions_after_answer(
             tenant_id=app_model.tenant_id,
-            histories=histories
+            histories=histories,
+            language=site.default_language if site else "English"
         )
 
         return questions

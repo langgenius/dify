@@ -7,8 +7,8 @@ from core.llm_generator.prompts import SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCT
 
 class SuggestedQuestionsAfterAnswerOutputParser:
 
-    def get_format_instructions(self) -> str:
-        return SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
+    def get_format_instructions(self, language: str) -> str:
+        return SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT.format(language=language)
 
     def parse(self, text: str) -> Any:
         action_match = re.search(r"\[.*?\]", text.strip(), re.DOTALL)

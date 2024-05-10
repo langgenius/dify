@@ -64,6 +64,7 @@ User Input:
 SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "Please help me predict the three most likely questions that human would ask, "
     "and keeping each question under 20 characters.\n"
+    "You must answer in {language}, in a style that is clear and detailed in {language}. No language other than {language} should be used. \n"
     "The output must be an array in JSON format following the specified schema:\n"
     "[\"question1\",\"question2\",\"question3\"]\n"
 )
