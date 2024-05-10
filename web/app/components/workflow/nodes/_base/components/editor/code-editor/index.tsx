@@ -2,13 +2,15 @@
 import type { FC } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
 
-import React, { useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import Base from '../base'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import './style.css'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
 loader.config({ paths: { vs: '/vs' } })
+
+const CODE_EDITOR_LINE_HEIGHT = 18
 
 export type Props = {
   value?: string | object
@@ -57,15 +59,23 @@ const CodeEditor: FC<Props> = ({
   const [isFocus, setIsFocus] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
   const minHeight = height || 200
+  const [editorContentHeight, setEditorContentHeight] = useState(56)
+
+  const valueRef = useRef(value)
+  useEffect(() => {
+    valueRef.current = value
+  }, [value])
 
   const editorRef = useRef<any>(null)
   const resizeEditorToContent = () => {
     if (editorRef.current) {
-      const contentHeight = Math.max(editorRef.current.getContentHeight(), minHeight)
-      editorRef.current.layout({ height: contentHeight - 648 })
-      setTimeout(() => {
-        console.log(editorRef.current.getContentHeight() - contentHeight)
-      }, 2000)
+      const contentHeight = editorRef.current.getContentHeight() // Math.max(, minHeight)
+      console.log(contentHeight, valueRef.current)
+      // editorRef.current.layout({ height: contentHeight - 648 })
+      // setTimeout(() => {
+      //   console.log(editorRef.current.getContentHeight() - contentHeight)
+      // }, 2000)
+      setEditorContentHeight(contentHeight)
     }
   }
 
@@ -73,7 +83,7 @@ const CodeEditor: FC<Props> = ({
     onChange(value || '')
     setTimeout(() => {
       resizeEditorToContent()
-    }, 10)
+    }, 100)
   }
 
   const handleEditorDidMount = (editor: any, monaco: any) => {
@@ -161,9 +171,13 @@ const CodeEditor: FC<Props> = ({
     <div>
       {noWrapper
         ? <div className='relative no-wrapper' style={{
-          // minHeight,
-          // height: minHeight,
-        }}>{main}</div>
+          height: (editorContentHeight) / 2 + CODE_EDITOR_LINE_HEIGHT, // In IDE, the last line can always be in lop line. So there is some blank space in the bottom.
+          minHeight: CODE_EDITOR_LINE_HEIGHT,
+          maxHeight: 536,
+          overflowY: 'auto',
+        }}>
+          {main}
+        </div>
         : (
           <Base
             className='relative'
