@@ -327,6 +327,9 @@ const translation = {
     questionClassifiers: {
       model: 'модель',
       inputVars: 'Вхідні змінні',
+      outputVars: {
+        className: 'Назва класу',
+      },
       class: 'Клас',
       classNamePlaceholder: 'Напишіть назву вашого класу',
       advancedSetting: 'Розширена настройка',

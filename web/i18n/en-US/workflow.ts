@@ -54,6 +54,12 @@ const translation = {
     showRunHistory: 'Show Run History',
     enableJinja: 'Enable Jinja template support',
     learnMore: 'Learn More',
+    copy: 'Copy',
+    duplicate: 'Duplicate',
+    addBlock: 'Add Block',
+    pasteHere: 'Paste Here',
+    pointerMode: 'Pointer Mode',
+    handMode: 'Hand Mode',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
@@ -333,6 +339,9 @@ const translation = {
     questionClassifiers: {
       model: 'model',
       inputVars: 'Input Variables',
+      outputVars: {
+        className: 'Class Name',
+      },
       class: 'Class',
       classNamePlaceholder: 'Write your class name',
       advancedSetting: 'Advanced Setting',

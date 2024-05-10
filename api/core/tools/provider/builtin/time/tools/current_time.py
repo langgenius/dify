@@ -17,11 +17,12 @@ class CurrentTimeTool(BuiltinTool):
         """
         # get timezone
         tz = tool_parameters.get('timezone', 'UTC')
+        fm = tool_parameters.get('format') or '%Y-%m-%d %H:%M:%S %Z'
         if tz == 'UTC':
-            return self.create_text_message(f'{datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")}')
-
+            return self.create_text_message(f'{datetime.now(timezone.utc).strftime(fm)}')
+        
         try:
             tz = pytz_timezone(tz)
         except:
             return self.create_text_message(f'Invalid timezone: {tz}')
-        return self.create_text_message(f'{datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S %Z")}')
+        return self.create_text_message(f'{datetime.now(tz).strftime(fm)}')

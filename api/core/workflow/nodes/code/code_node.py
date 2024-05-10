@@ -1,7 +1,7 @@
 import os
 from typing import Optional, Union, cast
 
-from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor
+from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
@@ -39,7 +39,7 @@ class CodeNode(BaseNode):
         :param filters: filter by node config parameters.
         :return:
         """
-        if filters and filters.get("code_language") == "javascript":
+        if filters and filters.get("code_language") == CodeLanguage.JAVASCRIPT:
             return {
                 "type": "code",
                 "config": {
@@ -53,7 +53,7 @@ class CodeNode(BaseNode):
                             "value_selector": []
                         }
                     ],
-                    "code_language": "javascript",
+                    "code_language": CodeLanguage.JAVASCRIPT,
                     "code": JAVASCRIPT_DEFAULT_CODE,
                     "outputs": {
                         "result": {
@@ -77,7 +77,7 @@ class CodeNode(BaseNode):
                         "value_selector": []
                     }
                 ],
-                "code_language": "python3",
+                "code_language": CodeLanguage.PYTHON3,
                 "code": PYTHON_DEFAULT_CODE,
                 "outputs": {
                     "result": {
