@@ -110,7 +110,7 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
     <td align="center">エージェント</td>
     <td align="center">✅</td>
     <td align="center">✅</td>
-    <td align="center">✅</td>
+    <td align="center">❌</td>
     <td align="center">✅</td>
   </tr>
   <tr>

@@ -58,6 +58,7 @@ const translation = {
       ruRU: 'Rosyjski',
       ukUA: 'Ukraiński',
       viVN: 'Wietnamski',
+      plPL: 'Polski',
     },
   },
   unit: {

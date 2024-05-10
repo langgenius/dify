@@ -15,7 +15,7 @@ else if (
   globalThis.document?.body?.getAttribute('data-api-prefix')
   && globalThis.document?.body?.getAttribute('data-pubic-api-prefix')
 ) {
-  // Not bulild can not get env from process.env.NEXT_PUBLIC_ in browser https://nextjs.org/docs/basic-features/environment-variables#exposing-environment-variables-to-the-browser
+  // Not build can not get env from process.env.NEXT_PUBLIC_ in browser https://nextjs.org/docs/basic-features/environment-variables#exposing-environment-variables-to-the-browser
   apiPrefix = globalThis.document.body.getAttribute('data-api-prefix') as string
   publicApiPrefix = globalThis.document.body.getAttribute('data-pubic-api-prefix') as string
 }
