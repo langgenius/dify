@@ -91,7 +91,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
                 <Split />
                 <div className='pt-4'>
                   <Field
-                    title={t(`${i18nPrefix}.advanceDependencies`)}
+                    title={t(`${i18nPrefix}.advancedDependencies`)}
                     operations={
                       <AddButton onClick={() => handleAddDependency({ name: '', version: '' })} />
                     }
