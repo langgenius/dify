@@ -259,6 +259,10 @@ class ModelProviderAvailableModelApi(Resource):
 
 
 api.add_resource(ModelProviderModelApi, '/workspaces/current/model-providers/<string:provider>/models')
+api.add_resource(ModelProviderModelApi, '/workspaces/current/model-providers/<string:provider>/models/enable',
+                 endpoint='model-provider-model-enable')
+api.add_resource(ModelProviderModelApi, '/workspaces/current/model-providers/<string:provider>/models/disable',
+                 endpoint='model-provider-model-disable')
 api.add_resource(ModelProviderModelCredentialApi,
                  '/workspaces/current/model-providers/<string:provider>/models/credentials')
 api.add_resource(ModelProviderModelValidateApi,

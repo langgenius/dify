@@ -67,6 +67,7 @@ DEFAULTS = {
     'INVITE_EXPIRY_HOURS': 72,
     'BILLING_ENABLED': 'False',
     'CAN_REPLACE_LOGO': 'False',
+    'MODEL_LB_ENABLED': 'False',
     'ETL_TYPE': 'dify',
     'KEYWORD_STORE': 'jieba',
     'BATCH_UPLOAD_LIMIT': 20,
@@ -116,6 +117,7 @@ class Config:
         self.LOG_FILE = get_env('LOG_FILE')
         self.LOG_FORMAT = get_env('LOG_FORMAT')
         self.LOG_DATEFORMAT = get_env('LOG_DATEFORMAT')
+        self.API_COMPRESSION_ENABLED = get_bool_env('API_COMPRESSION_ENABLED')
 
         # The backend URL prefix of the console API.
         # used to concatenate the login authorization callback or notion integration callback.
@@ -195,6 +197,12 @@ class Config:
         self.CELERY_RESULT_BACKEND = 'db+{}'.format(self.SQLALCHEMY_DATABASE_URI) \
             if self.CELERY_BACKEND == 'database' else self.CELERY_BROKER_URL
         self.BROKER_USE_SSL = self.CELERY_BROKER_URL.startswith('rediss://')
+
+        # ------------------------
+        # Code Execution Sandbox Configurations.
+        # ------------------------
+        self.CODE_EXECUTION_ENDPOINT = get_env('CODE_EXECUTION_ENDPOINT')
+        self.CODE_EXECUTION_API_KEY = get_env('CODE_EXECUTION_API_KEY')
 
         # ------------------------
         # File Storage Configurations.
@@ -308,6 +316,15 @@ class Config:
         self.UPLOAD_FILE_SIZE_LIMIT = int(get_env('UPLOAD_FILE_SIZE_LIMIT'))
         self.UPLOAD_FILE_BATCH_LIMIT = int(get_env('UPLOAD_FILE_BATCH_LIMIT'))
         self.UPLOAD_IMAGE_FILE_SIZE_LIMIT = int(get_env('UPLOAD_IMAGE_FILE_SIZE_LIMIT'))
+        self.BATCH_UPLOAD_LIMIT = get_env('BATCH_UPLOAD_LIMIT')
+
+        # RAG ETL Configurations.
+        self.ETL_TYPE = get_env('ETL_TYPE')
+        self.UNSTRUCTURED_API_URL = get_env('UNSTRUCTURED_API_URL')
+        self.KEYWORD_DATA_SOURCE_TYPE = get_env('KEYWORD_DATA_SOURCE_TYPE')
+
+        # Tool Configurations.
+        self.TOOL_ICON_CACHE_MAX_AGE = get_env('TOOL_ICON_CACHE_MAX_AGE')
 
         # Moderation in app Configurations.
         self.OUTPUT_MODERATION_BUFFER_SIZE = int(get_env('OUTPUT_MODERATION_BUFFER_SIZE'))
@@ -359,18 +376,13 @@ class Config:
         self.HOSTED_FETCH_APP_TEMPLATES_MODE = get_env('HOSTED_FETCH_APP_TEMPLATES_MODE')
         self.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = get_env('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN')
 
-        self.ETL_TYPE = get_env('ETL_TYPE')
-        self.UNSTRUCTURED_API_URL = get_env('UNSTRUCTURED_API_URL')
+        # Platform Billing Configurations.
         self.BILLING_ENABLED = get_bool_env('BILLING_ENABLED')
-        self.CAN_REPLACE_LOGO = get_bool_env('CAN_REPLACE_LOGO')
 
-        self.BATCH_UPLOAD_LIMIT = get_env('BATCH_UPLOAD_LIMIT')
-
-        self.CODE_EXECUTION_ENDPOINT = get_env('CODE_EXECUTION_ENDPOINT')
-        self.CODE_EXECUTION_API_KEY = get_env('CODE_EXECUTION_API_KEY')
-
-        self.API_COMPRESSION_ENABLED = get_bool_env('API_COMPRESSION_ENABLED')
-        self.TOOL_ICON_CACHE_MAX_AGE = get_env('TOOL_ICON_CACHE_MAX_AGE')
-
-        self.KEYWORD_DATA_SOURCE_TYPE = get_env('KEYWORD_DATA_SOURCE_TYPE')
+        # ------------------------
+        # Enterprise feature Configurations.
+        # **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
+        # ------------------------
         self.ENTERPRISE_ENABLED = get_bool_env('ENTERPRISE_ENABLED')
+        self.CAN_REPLACE_LOGO = get_bool_env('CAN_REPLACE_LOGO')
+        self.MODEL_LB_ENABLED = get_bool_env('MODEL_LB_ENABLED')

@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+from collections import defaultdict
 from collections.abc import Iterator
 from json import JSONDecodeError
 from typing import Optional
@@ -8,7 +9,12 @@ from typing import Optional
 from pydantic import BaseModel
 
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
-from core.entities.provider_entities import CustomConfiguration, SystemConfiguration, SystemConfigurationStatus
+from core.entities.provider_entities import (
+    CustomConfiguration,
+    ModelSettings,
+    SystemConfiguration,
+    SystemConfigurationStatus,
+)
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_runtime.entities.model_entities import FetchFrom, ModelType
@@ -39,6 +45,7 @@ class ProviderConfiguration(BaseModel):
     using_provider_type: ProviderType
     system_configuration: SystemConfiguration
     custom_configuration: CustomConfiguration
+    model_settings: list[ModelSettings]
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -522,15 +529,22 @@ class ProviderConfiguration(BaseModel):
         else:
             model_types = provider_instance.get_provider_schema().supported_model_types
 
+        # Group model settings by model type and model
+        model_setting_map = defaultdict(dict)
+        for model_setting in self.model_settings:
+            model_setting_map[model_setting.model_type][model_setting.model] = model_setting
+
         if self.using_provider_type == ProviderType.SYSTEM:
             provider_models = self._get_system_provider_models(
                 model_types=model_types,
-                provider_instance=provider_instance
+                provider_instance=provider_instance,
+                model_setting_map=model_setting_map
             )
         else:
             provider_models = self._get_custom_provider_models(
                 model_types=model_types,
-                provider_instance=provider_instance
+                provider_instance=provider_instance,
+                model_setting_map=model_setting_map
             )
 
         if only_active:
@@ -541,18 +555,27 @@ class ProviderConfiguration(BaseModel):
 
     def _get_system_provider_models(self,
                                     model_types: list[ModelType],
-                                    provider_instance: ModelProvider) -> list[ModelWithProviderEntity]:
+                                    provider_instance: ModelProvider,
+                                    model_setting_map: dict[ModelType, dict[str, ModelSettings]]) \
+            -> list[ModelWithProviderEntity]:
         """
         Get system provider models.
 
         :param model_types: model types
         :param provider_instance: provider instance
+        :param model_setting_map: model setting map
         :return:
         """
         provider_models = []
         for model_type in model_types:
-            provider_models.extend(
-                [
+            for m in provider_instance.models(model_type):
+                status = ModelStatus.ACTIVE
+                if m.model_type in model_setting_map and m.model in model_setting_map[m.model_type]:
+                    model_setting = model_setting_map[m.model_type][m.model]
+                    if model_setting.enabled is False:
+                        status = ModelStatus.DISABLED
+
+                provider_models.append(
                     ModelWithProviderEntity(
                         model=m.model,
                         label=m.label,
@@ -562,11 +585,9 @@ class ProviderConfiguration(BaseModel):
                         model_properties=m.model_properties,
                         deprecated=m.deprecated,
                         provider=SimpleModelProviderEntity(self.provider),
-                        status=ModelStatus.ACTIVE
+                        status=status
                     )
-                    for m in provider_instance.models(model_type)
-                ]
-            )
+                )
 
         if self.provider.provider not in original_provider_configurate_methods:
             original_provider_configurate_methods[self.provider.provider] = []
@@ -611,6 +632,13 @@ class ProviderConfiguration(BaseModel):
                         if custom_model_schema.model_type not in model_types:
                             continue
 
+                        status = ModelStatus.ACTIVE
+                        if (custom_model_schema.model_type in model_setting_map
+                                and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]):
+                            model_setting = model_setting_map[custom_model_schema.model_type][custom_model_schema.model]
+                            if model_setting.enabled is False:
+                                status = ModelStatus.DISABLED
+
                         provider_models.append(
                             ModelWithProviderEntity(
                                 model=custom_model_schema.model,
@@ -621,7 +649,7 @@ class ProviderConfiguration(BaseModel):
                                 model_properties=custom_model_schema.model_properties,
                                 deprecated=custom_model_schema.deprecated,
                                 provider=SimpleModelProviderEntity(self.provider),
-                                status=ModelStatus.ACTIVE
+                                status=status
                             )
                         )
 
@@ -632,16 +660,20 @@ class ProviderConfiguration(BaseModel):
                     m.status = ModelStatus.NO_PERMISSION
                 elif not quota_configuration.is_valid:
                     m.status = ModelStatus.QUOTA_EXCEEDED
+
         return provider_models
 
     def _get_custom_provider_models(self,
                                     model_types: list[ModelType],
-                                    provider_instance: ModelProvider) -> list[ModelWithProviderEntity]:
+                                    provider_instance: ModelProvider,
+                                    model_setting_map: dict[ModelType, dict[str, ModelSettings]]) \
+            -> list[ModelWithProviderEntity]:
         """
         Get custom provider models.
 
         :param model_types: model types
         :param provider_instance: provider instance
+        :param model_setting_map: model setting map
         :return:
         """
         provider_models = []
@@ -656,6 +688,16 @@ class ProviderConfiguration(BaseModel):
 
             models = provider_instance.models(model_type)
             for m in models:
+                status = ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE
+                load_balancing_enabled = False
+                if m.model_type in model_setting_map and m.model in model_setting_map[m.model_type]:
+                    model_setting = model_setting_map[m.model_type][m.model]
+                    if model_setting.enabled is False:
+                        status = ModelStatus.DISABLED
+
+                    if len(model_setting.load_balancing_configs) > 1:
+                        load_balancing_enabled = True
+
                 provider_models.append(
                     ModelWithProviderEntity(
                         model=m.model,
@@ -666,7 +708,8 @@ class ProviderConfiguration(BaseModel):
                         model_properties=m.model_properties,
                         deprecated=m.deprecated,
                         provider=SimpleModelProviderEntity(self.provider),
-                        status=ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE
+                        status=status,
+                        load_balancing_enabled=load_balancing_enabled
                     )
                 )
 
@@ -690,6 +733,17 @@ class ProviderConfiguration(BaseModel):
             if not custom_model_schema:
                 continue
 
+            status = ModelStatus.ACTIVE
+            load_balancing_enabled = False
+            if (custom_model_schema.model_type in model_setting_map
+                    and custom_model_schema.model in model_setting_map[custom_model_schema.model_type]):
+                model_setting = model_setting_map[custom_model_schema.model_type][custom_model_schema.model]
+                if model_setting.enabled is False:
+                    status = ModelStatus.DISABLED
+
+                if len(model_setting.load_balancing_configs) > 1:
+                    load_balancing_enabled = True
+
             provider_models.append(
                 ModelWithProviderEntity(
                     model=custom_model_schema.model,
@@ -700,11 +754,20 @@ class ProviderConfiguration(BaseModel):
                     model_properties=custom_model_schema.model_properties,
                     deprecated=custom_model_schema.deprecated,
                     provider=SimpleModelProviderEntity(self.provider),
-                    status=ModelStatus.ACTIVE
+                    status=status,
+                    load_balancing_enabled=load_balancing_enabled
                 )
             )
 
         return provider_models
+
+    def _get_load_balancing_configs(self, model: str) -> dict:
+        """
+        Get load balancing configs.
+        :param model: model name
+        :return:
+        """
+        return {}
 
 
 class ProviderConfigurations(BaseModel):
