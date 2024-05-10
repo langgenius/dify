@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import type { Props as EditorProps } from '.'
 import Editor from '.'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
@@ -138,7 +139,7 @@ const CodeEditor: FC<Props> = ({
   }
 
   return (
-    <div>
+    <div className={cn(editorProps.isExpand && 'h-full')}>
       <Editor
         {...editorProps}
         onMount={onEditorMounted}

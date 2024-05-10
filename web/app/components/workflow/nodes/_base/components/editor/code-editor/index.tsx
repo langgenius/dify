@@ -168,8 +168,8 @@ const CodeEditor: FC<Props> = ({
   return (
     <div className={cn(isExpand && 'h-full')}>
       {noWrapper
-        ? <div className={cn(isExpand && 'h-full', 'relative no-wrapper')} style={{
-          height: (editorContentHeight) / 2 + CODE_EDITOR_LINE_HEIGHT, // In IDE, the last line can always be in lop line. So there is some blank space in the bottom.
+        ? <div className='relative no-wrapper' style={{
+          height: isExpand ? '100%' : (editorContentHeight) / 2 + CODE_EDITOR_LINE_HEIGHT, // In IDE, the last line can always be in lop line. So there is some blank space in the bottom.
           minHeight: CODE_EDITOR_LINE_HEIGHT,
         }}>
           {main}
