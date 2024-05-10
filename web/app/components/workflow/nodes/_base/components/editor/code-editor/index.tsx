@@ -57,13 +57,28 @@ const CodeEditor: FC<Props> = ({
   const [isFocus, setIsFocus] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
   const minHeight = height || 200
-  const handleEditorChange = (value: string | undefined) => {
-    onChange(value || '')
+
+  const editorRef = useRef<any>(null)
+  const resizeEditorToContent = () => {
+    if (editorRef.current) {
+      const contentHeight = Math.max(editorRef.current.getContentHeight(), minHeight)
+      editorRef.current.layout({ height: contentHeight - 648 })
+      setTimeout(() => {
+        console.log(editorRef.current.getContentHeight() - contentHeight)
+      }, 2000)
+    }
   }
 
-  const editorRef = useRef(null)
+  const handleEditorChange = (value: string | undefined) => {
+    onChange(value || '')
+    setTimeout(() => {
+      resizeEditorToContent()
+    }, 10)
+  }
+
   const handleEditorDidMount = (editor: any, monaco: any) => {
     editorRef.current = editor
+    resizeEditorToContent()
 
     editor.onDidFocusEditorText(() => {
       setIsFocus(true)
@@ -118,7 +133,7 @@ const CodeEditor: FC<Props> = ({
     <>
       {/* https://www.npmjs.com/package/@monaco-editor/react */}
       <Editor
-        className='h-full'
+        // className='min-h-[100%]' // h-full
         // language={language === CodeLanguage.javascript ? 'javascript' : 'python'}
         language={languageMap[language] || 'javascript'}
         theme={isMounted ? theme : 'default-theme'} // sometimes not load the default theme
@@ -147,7 +162,7 @@ const CodeEditor: FC<Props> = ({
       {noWrapper
         ? <div className='relative no-wrapper' style={{
           // minHeight,
-          height: minHeight,
+          // height: minHeight,
         }}>{main}</div>
         : (
           <Base
