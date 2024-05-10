@@ -48,6 +48,7 @@ export type FetchWorkflowDraftResponse = {
     name: string
     email: string
   }
+  hash: string
   updated_at: number
 }
 

@@ -109,7 +109,7 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
     <td align="center">Agent</td>
     <td align="center">✅</td>
     <td align="center">✅</td>
-    <td align="center">✅</td>
+    <td align="center">❌</td>
     <td align="center">✅</td>
   </tr>
   <tr>
@@ -127,7 +127,7 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
     <td align="center">❌</td>
   </tr>
   <tr>
-    <td align="center">Enterprise Feature (SSO/Access control)</td>
+    <td align="center">Enterprise Features (SSO/Access control)</td>
     <td align="center">✅</td>
     <td align="center">❌</td>
     <td align="center">❌</td>

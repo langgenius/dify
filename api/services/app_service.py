@@ -196,6 +196,7 @@ class AppService:
                 app_model=app,
                 graph=workflow.get('graph'),
                 features=workflow.get('features'),
+                unique_hash=None,
                 account=account
             )
             workflow_service.publish_workflow(
