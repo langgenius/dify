@@ -32,7 +32,7 @@ from models.dataset import (
     DocumentSegment,
 )
 from models.model import UploadFile
-from models.source import DataSourceBinding
+from models.source import DataSourceOauthBinding
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
@@ -664,12 +664,12 @@ class DocumentService:
                         exist_document[data_source_info['notion_page_id']] = document.id
                 for notion_info in notion_info_list:
                     workspace_id = notion_info['workspace_id']
-                    data_source_binding = DataSourceBinding.query.filter(
+                    data_source_binding = DataSourceOauthBinding.query.filter(
                         db.and_(
-                            DataSourceBinding.tenant_id == current_user.current_tenant_id,
-                            DataSourceBinding.provider == 'notion',
-                            DataSourceBinding.disabled == False,
-                            DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                            DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                            DataSourceOauthBinding.provider == 'notion',
+                            DataSourceOauthBinding.disabled == False,
+                            DataSourceOauthBinding.source_info['workspace_id'] == f'"{workspace_id}"'
                         )
                     ).first()
                     if not data_source_binding:
@@ -799,12 +799,12 @@ class DocumentService:
                 notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                 for notion_info in notion_info_list:
                     workspace_id = notion_info['workspace_id']
-                    data_source_binding = DataSourceBinding.query.filter(
+                    data_source_binding = DataSourceOauthBinding.query.filter(
                         db.and_(
-                            DataSourceBinding.tenant_id == current_user.current_tenant_id,
-                            DataSourceBinding.provider == 'notion',
-                            DataSourceBinding.disabled == False,
-                            DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                            DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                            DataSourceOauthBinding.provider == 'notion',
+                            DataSourceOauthBinding.disabled == False,
+                            DataSourceOauthBinding.source_info['workspace_id'] == f'"{workspace_id}"'
                         )
                     ).first()
                     if not data_source_binding:

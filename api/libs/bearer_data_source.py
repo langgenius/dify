@@ -3,6 +3,10 @@
 from abc import abstractmethod
 
 import requests
+from api.models.source import DataSourceBearerBinding
+from flask_login import current_user
+
+from extensions.ext_database import db
 
 
 class BearerDataSource:
@@ -39,3 +43,25 @@ class FireCrawlDataSource(BearerDataSource):
         return response.json().get("status") == "success"
 
 
+    def save_credentials(self):
+         # save data source binding
+        data_source_binding = DataSourceBearerBinding.query.filter(
+            db.and_(
+                DataSourceBearerBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceBearerBinding.provider == 'firecrawl',
+                DataSourceBearerBinding.endpoint_url == self.api_base_url,
+                DataSourceBearerBinding.bearer_key == self.api_key
+            )
+        ).first()
+        if data_source_binding:
+            data_source_binding.disabled = False
+            db.session.commit()
+        else:
+            new_data_source_binding = DataSourceBearerBinding(
+                tenant_id=current_user.current_tenant_id,
+                provider='firecrawl',
+                endpoint_url=self.api_base_url,
+                bearer_key=self.api_key
+            )
+            db.session.add(new_data_source_binding)
+            db.session.commit()
