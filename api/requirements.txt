@@ -81,7 +81,6 @@ lxml==5.1.0
 xlrd~=2.0.1
 pydantic~=2.7.1
 pydantic-extra-types~=2.7.0
-bump-pydantic~=0.8.0
 pgvecto-rs==0.1.4
 firecrawl-py==0.0.5
 oss2==2.15.0
