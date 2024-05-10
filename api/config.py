@@ -222,7 +222,7 @@ class Config:
 
         # ------------------------
         # Vector Store Configurations.
-        # Currently, only support: qdrant, milvus, zilliz, weaviate, relyt
+        # Currently, only support: qdrant, milvus, zilliz, weaviate, relyt, pgvector
         # ------------------------
         self.VECTOR_STORE = get_env('VECTOR_STORE')
         self.KEYWORD_STORE = get_env('KEYWORD_STORE')
@@ -260,6 +260,13 @@ class Config:
         self.PGVECTO_RS_USER = get_env('PGVECTO_RS_USER')
         self.PGVECTO_RS_PASSWORD = get_env('PGVECTO_RS_PASSWORD')
         self.PGVECTO_RS_DATABASE = get_env('PGVECTO_RS_DATABASE')
+
+        # pgvector settings
+        self.PGVECTOR_HOST = get_env('PGVECTOR_HOST')
+        self.PGVECTOR_PORT = get_env('PGVECTOR_PORT')
+        self.PGVECTOR_USER = get_env('PGVECTOR_USER')
+        self.PGVECTOR_PASSWORD = get_env('PGVECTOR_PASSWORD')
+        self.PGVECTOR_DATABASE = get_env('PGVECTOR_DATABASE')
 
         # ------------------------
         # Mail Configurations.

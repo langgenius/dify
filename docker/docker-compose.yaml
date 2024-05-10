@@ -122,6 +122,12 @@ services:
       RELYT_USER: postgres
       RELYT_PASSWORD: difyai123456
       RELYT_DATABASE: postgres
+      # pgvector configurations
+      PGVECTOR_HOST: pgvector
+      PGVECTOR_PORT: 5432
+      PGVECTOR_USER: postgres
+      PGVECTOR_PASSWORD: difyai123456
+      PGVECTOR_DATABASE: dify
       # Mail configuration, support: resend, smtp
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -211,7 +217,7 @@ services:
       AZURE_BLOB_ACCOUNT_KEY: 'difyai'
       AZURE_BLOB_CONTAINER_NAME: 'difyai-container'
       AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
-      # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`.
+      # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`, `pgvector`.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
       WEAVIATE_ENDPOINT: http://weaviate:8080
@@ -251,6 +257,12 @@ services:
       RELYT_USER: postgres
       RELYT_PASSWORD: difyai123456
       RELYT_DATABASE: postgres
+      # pgvector configurations
+      PGVECTOR_HOST: pgvector
+      PGVECTOR_PORT: 5432
+      PGVECTOR_USER: postgres
+      PGVECTOR_PASSWORD: difyai123456
+      PGVECTOR_DATABASE: dify
       # Notion import configuration, support public and internal
       NOTION_INTEGRATION_TYPE: public
       NOTION_CLIENT_SECRET: you-client-secret
@@ -373,6 +385,31 @@ services:
   #   # ports:
   #   #  - "6333:6333"
   #   #  - "6334:6334"
+
+  # The pgvector vector database.
+  # Uncomment to use qdrant as vector store.
+  # pgvector:
+  #   image: pgvector/pgvector:pg16
+  #   restart: always
+  #   environment:
+  #     PGUSER: postgres
+  #     # The password for the default postgres user.
+  #     POSTGRES_PASSWORD: difyai123456
+  #     # The name of the default postgres database.
+  #     POSTGRES_DB: dify
+  #     # postgres data directory
+  #     PGDATA: /var/lib/postgresql/data/pgdata
+  #   volumes:
+  #     - ./volumes/pgvector/data:/var/lib/postgresql/data
+  #   # uncomment to expose db(postgresql) port to host
+  #   # ports:
+  #   #   - "5433:5432"
+  #   healthcheck:
+  #     test: [ "CMD", "pg_isready" ]
+  #     interval: 1s
+  #     timeout: 3s
+  #     retries: 30
+
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
