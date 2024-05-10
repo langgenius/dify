@@ -107,7 +107,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.6.6"
+        self.CURRENT_VERSION = "0.6.7"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = get_env('EDITION')
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -215,6 +215,8 @@ class Config:
         self.ALIYUN_OSS_ACCESS_KEY=get_env('ALIYUN_OSS_ACCESS_KEY')
         self.ALIYUN_OSS_SECRET_KEY=get_env('ALIYUN_OSS_SECRET_KEY')
         self.ALIYUN_OSS_ENDPOINT=get_env('ALIYUN_OSS_ENDPOINT')
+        self.ALIYUN_OSS_REGION=get_env('ALIYUN_OSS_REGION')
+        self.ALIYUN_OSS_AUTH_VERSION=get_env('ALIYUN_OSS_AUTH_VERSION')
         self.GOOGLE_STORAGE_BUCKET_NAME = get_env('GOOGLE_STORAGE_BUCKET_NAME')
         self.GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 = get_env('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')
 

@@ -57,6 +57,7 @@ export type ModelConfigDetail = {
 }
 
 export type LogAnnotation = {
+  id: string
   content: string
   account: {
     id: string

@@ -141,7 +141,7 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
             return []
 
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = cohere.Client(credentials.get('api_key'), base_url=credentials.get('base_url'))
 
         response = client.tokenize(
             text=text,
@@ -180,7 +180,7 @@ class CohereTextEmbeddingModel(TextEmbeddingModel):
         :return: embeddings and used tokens
         """
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = cohere.Client(credentials.get('api_key'), base_url=credentials.get('base_url'))
 
         # call embedding model
         response = client.embed(
