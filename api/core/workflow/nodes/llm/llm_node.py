@@ -198,6 +198,86 @@ class LLMNode(BaseNode):
             usage = LLMUsage.empty_usage()
 
         return full_text, usage
+    
+    def _transform_chat_messages(self, 
+        messages: list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
+    ) -> list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate:
+        """
+        Transform chat messages
+
+        :param messages: chat messages
+        :return:
+        """
+
+        if isinstance(messages, LLMNodeCompletionModelPromptTemplate):
+            if messages.edition_type == 'jinja2':
+                messages.text = messages.jinja2_text
+
+            return messages
+
+        for message in messages:
+            if message.edition_type == 'jinja2':
+                message.text = message.jinja2_text
+
+        return messages
+
+    def _fetch_jinja_inputs(self, node_data: LLMNodeData, variable_pool: VariablePool) -> dict[str, str]:
+        """
+        Fetch jinja inputs
+        :param node_data: node data
+        :param variable_pool: variable pool
+        :return:
+        """
+        variables = {}
+
+        if not node_data.prompt_config:
+            return variables
+
+        for variable_selector in node_data.prompt_config.jinja2_variables or []:
+            variable = variable_selector.variable
+            value = variable_pool.get_variable_value(
+                variable_selector=variable_selector.value_selector
+            )
+
+            def parse_dict(d: dict) -> str:
+                """
+                Parse dict into string
+                """
+                # check if it's a context structure
+                if 'metadata' in d and '_source' in d['metadata'] and 'content' in d:
+                    return d['content']
+                
+                # else, parse the dict
+                try:
+                    return json.dumps(d, ensure_ascii=False)
+                except Exception:
+                    return str(d)
+                
+            if isinstance(value, str):
+                value = value
+            elif isinstance(value, list):
+                result = ''
+                for item in value:
+                    if isinstance(item, dict):
+                        result += parse_dict(item)
+                    elif isinstance(item, str):
+                        result += item
+                    elif isinstance(item, int | float):
+                        result += str(item)
+                    else:
+                        result += str(item)
+                    result += '\n'
+                value = result.strip()
+            elif isinstance(value, dict):
+                value = parse_dict(value)
+            elif isinstance(value, int | float):
+                value = str(value)
+            else:
+                value = str(value)
+
+            variables[variable] = value
+
+        return variables
 
     def _transform_chat_messages(self,
         messages: list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate

@@ -53,19 +53,20 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.1.0
+    image: langgenius/dify-sandbox:0.2.0
     restart: always
-    cap_add:
-      # Why is sys_admin permission needed?
-      # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-sys_admin-permission-needed
-      - SYS_ADMIN
     environment:
       # The DifySandbox configurations
+      # Make sure you are changing this key for your deployment with a strong key.
+      # You can generate a strong key using `openssl rand -base64 42`.
       API_KEY: dify-sandbox
       GIN_MODE: 'release'
       WORKER_TIMEOUT: 15
+      ENABLE_NETWORK: 'true'
     ports:
       - "8194:8194"
+    volumes:
+      - ./volumes/sandbox/dependencies:/dependencies
 
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.
