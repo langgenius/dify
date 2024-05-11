@@ -152,7 +152,7 @@ services:
       NOTION_CLIENT_ID: you-client-id
       NOTION_INTERNAL_SECRET: you-internal-secret
       # The sandbox service endpoint.
-      CODE_EXECUTION_ENDPOINT: "http://sandbox:8194"
+      CODE_EXECUTION_ENDPOINT: "http://proxy:8194"
       CODE_EXECUTION_API_KEY: dify-sandbox
       CODE_MAX_NUMBER: 9223372036854775807
       CODE_MIN_NUMBER: -9223372036854775808
@@ -170,6 +170,9 @@ services:
     # uncomment to expose dify-api port to host
     # ports:
     #   - "5001:5001"
+    networks:
+      - proxy_network
+      - default
 
   # worker service
   # The Celery worker for processing the queue.
@@ -277,6 +280,9 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+    networks:
+      - proxy_network
+      - default
 
   # Frontend web application.
   web:
@@ -373,7 +379,22 @@ services:
       ENABLE_NETWORK: 'true'
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
+    networks:
+      - proxy_network
 
+  # Proxy server
+  proxy:
+    image: ubuntu/squid:latest
+    restart: always
+    ports:
+      - "3128:3128"
+      - "8194:8194"
+    volumes:
+      # pls clearly modify the squid.conf file to fit your network environment.
+      - ./volumes/proxy/squid.conf:/etc/squid/squid.conf
+    networks:
+      - proxy_network
+      - default
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.
   # (if uncommented, you need to comment out the weaviate service above,
@@ -431,3 +452,8 @@ services:
     ports:
       - "80:80"
       #- "443:443"
+networks:
+  # create a network between sandbox, api and proxy, and can not access outside.
+  proxy_network:
+    driver: bridge
+    internal: true
