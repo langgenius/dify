@@ -19,6 +19,7 @@ import {
 import {
   getKeyboardKeyCodeBySystem,
   getKeyboardKeyNameBySystem,
+  isEventTargetInputArea,
 } from '../utils'
 import ShortcutsName from '../shortcuts-name'
 import TipPopup from './tip-popup'
@@ -128,10 +129,13 @@ const ZoomInOut: FC = () => {
   })
 
   useKeyPress('shift.1', (e) => {
-    e.preventDefault()
     if (workflowReadOnly)
       return
 
+    if (isEventTargetInputArea(e.target as HTMLElement))
+      return
+
+    e.preventDefault()
     zoomTo(1)
     handleSyncWorkflowDraft()
   }, {
@@ -140,10 +144,13 @@ const ZoomInOut: FC = () => {
   })
 
   useKeyPress('shift.2', (e) => {
-    e.preventDefault()
     if (workflowReadOnly)
       return
 
+    if (isEventTargetInputArea(e.target as HTMLElement))
+      return
+
+    e.preventDefault()
     zoomTo(2)
     handleSyncWorkflowDraft()
   }, {
@@ -152,10 +159,13 @@ const ZoomInOut: FC = () => {
   })
 
   useKeyPress('shift.5', (e) => {
-    e.preventDefault()
     if (workflowReadOnly)
       return
 
+    if (isEventTargetInputArea(e.target as HTMLElement))
+      return
+
+    e.preventDefault()
     zoomTo(0.5)
     handleSyncWorkflowDraft()
   }, {
