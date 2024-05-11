@@ -73,6 +73,8 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                   navs.map(nav => (
                     <Menu.Item key={nav.id}>
                       <div className='flex items-center w-full px-3 py-[6px] text-gray-700 text-[14px] rounded-lg font-normal hover:bg-gray-100 cursor-pointer truncate' onClick={() => {
+                        if (curNav?.id === nav.id)
+                          return
                         setAppDetail()
                         router.push(nav.link)
                       }} title={nav.name}>
