@@ -33,6 +33,7 @@ const ProviderContext = createContext<{
   enableBilling: boolean
   onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
+  enableModelLoadBalancing: boolean
 }>({
       modelProviders: [],
       textGenerationModelList: [],
@@ -57,6 +58,7 @@ const ProviderContext = createContext<{
       enableBilling: false,
       onPlanInfoChanged: () => { },
       enableReplaceWebAppLogo: false,
+      enableModelLoadBalancing: false,
     })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -76,6 +78,7 @@ export const ProviderContextProvider = ({
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
   const [enableBilling, setEnableBilling] = useState(true)
   const [enableReplaceWebAppLogo, setEnableReplaceWebAppLogo] = useState(false)
+  const [enableModelLoadBalancing, setEnableModelLoadBalancing] = useState(false)
 
   const fetchPlan = async () => {
     const data = await fetchCurrentPlanInfo()
@@ -86,6 +89,8 @@ export const ProviderContextProvider = ({
       setPlan(parseCurrentPlan(data))
       setIsFetchedPlan(true)
     }
+    if (data.model_load_balancing_enabled)
+      setEnableModelLoadBalancing(true)
   }
   useEffect(() => {
     fetchPlan()
@@ -102,6 +107,7 @@ export const ProviderContextProvider = ({
       enableBilling,
       onPlanInfoChanged: fetchPlan,
       enableReplaceWebAppLogo,
+      enableModelLoadBalancing,
     }}>
       {children}
     </ProviderContext.Provider>
