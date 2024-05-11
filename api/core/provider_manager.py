@@ -901,6 +901,7 @@ class ProviderManager:
                             provider_model_credentials = cached_provider_model_credentials
 
                         load_balancing_configs.append(ModelLoadBalancingConfiguration(
+                            id=load_balancing_model_config.id,
                             name=load_balancing_model_config.name,
                             credentials=provider_model_credentials
                         ))

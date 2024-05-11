@@ -147,9 +147,9 @@ class ModelLoadBalancingService:
         for model_setting in provider_configuration.model_settings:
             if model_setting.model == model and model_setting.model_type == model_type:
                 load_balancing_configs = model_setting.load_balancing_configs
-                for load_balancing_config in load_balancing_configs:
-                    if load_balancing_config.name == load_balancing_config.name:
-                        credentials = load_balancing_config.credentials
+                for lb_config in load_balancing_configs:
+                    if lb_config.id == load_balancing_model_config.id:
+                        credentials = lb_config.credentials
 
                         # Get credential form schemas from model credential schema or provider credential schema
                         if provider_configuration.provider.model_credential_schema:
