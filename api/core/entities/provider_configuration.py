@@ -28,7 +28,7 @@ from core.model_runtime.model_providers import model_provider_factory
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.__base.model_provider import ModelProvider
 from extensions.ext_database import db
-from models.provider import Provider, ProviderModel, ProviderType, TenantPreferredModelProvider
+from models.provider import Provider, ProviderModel, ProviderModelSetting, ProviderType, TenantPreferredModelProvider
 
 logger = logging.getLogger(__name__)
 
@@ -408,6 +408,68 @@ class ProviderConfiguration(BaseModel):
             )
 
             provider_model_credentials_cache.delete()
+
+    def enable_model(self, model_type: ModelType, model: str) -> ProviderModelSetting:
+        """
+        Enable model.
+        :param model_type: model type
+        :param model: model name
+        :return:
+        """
+        model_setting = db.session.query(ProviderModelSetting) \
+            .filter(
+            ProviderModelSetting.tenant_id == self.tenant_id,
+            ProviderModelSetting.provider_name == self.provider.provider,
+            ProviderModelSetting.model_type == model_type.to_origin_model_type(),
+            ProviderModelSetting.model_name == model
+        ).first()
+
+        if model_setting:
+            model_setting.enabled = True
+            db.session.commit()
+        else:
+            model_setting = ProviderModelSetting(
+                tenant_id=self.tenant_id,
+                provider_name=self.provider.provider,
+                model_type=model_type.to_origin_model_type(),
+                model_name=model,
+                enabled=True
+            )
+            db.session.add(model_setting)
+            db.session.commit()
+
+        return model_setting
+
+    def disable_model(self, model_type: ModelType, model: str) -> ProviderModelSetting:
+        """
+        Disable model.
+        :param model_type: model type
+        :param model: model name
+        :return:
+        """
+        model_setting = db.session.query(ProviderModelSetting) \
+            .filter(
+            ProviderModelSetting.tenant_id == self.tenant_id,
+            ProviderModelSetting.provider_name == self.provider.provider,
+            ProviderModelSetting.model_type == model_type.to_origin_model_type(),
+            ProviderModelSetting.model_name == model
+        ).first()
+
+        if model_setting:
+            model_setting.enabled = False
+            db.session.commit()
+        else:
+            model_setting = ProviderModelSetting(
+                tenant_id=self.tenant_id,
+                provider_name=self.provider.provider,
+                model_type=model_type.to_origin_model_type(),
+                model_name=model,
+                enabled=False
+            )
+            db.session.add(model_setting)
+            db.session.commit()
+
+        return model_setting
 
     def get_provider_instance(self) -> ModelProvider:
         """
