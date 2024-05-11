@@ -58,6 +58,7 @@ export type IGenerationItemProps = {
   innerClassName?: string
   contentClassName?: string
   footerClassName?: string
+  hideProcessDetail?: boolean
 }
 
 export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
@@ -108,6 +109,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   varList,
   innerClassName,
   contentClassName,
+  hideProcessDetail,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -291,7 +293,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             <div className={`flex ${contentClassName}`}>
               <div className='grow w-0'>
                 {workflowProcessData && (
-                  <WorkflowProcessItem grayBg hideInfo data={workflowProcessData} expand={workflowProcessData.expand} />
+                  <WorkflowProcessItem grayBg hideInfo data={workflowProcessData} expand={workflowProcessData.expand} hideProcessDetail={hideProcessDetail} />
                 )}
                 {workflowProcessData && !isError && (
                   <ResultTab data={workflowProcessData} content={content} />
