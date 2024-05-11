@@ -334,6 +334,8 @@ const translation = {
     quotaTip: '剩余免费额度',
     loadPresets: '加载预设',
     parameters: '参数',
+    loadBalancing: '负载均衡',
+    configLoadBalancing: '设置负载均衡',
   },
   dataSource: {
     add: '添加数据源',

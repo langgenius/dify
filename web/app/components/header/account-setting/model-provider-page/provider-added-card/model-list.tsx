@@ -13,11 +13,13 @@ import { useLanguage } from '../hooks'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 // import Tab from './tab'
+import ModelBadge from '../model-badge'
 import AddModelButton from './add-model-button'
-import Indicator from '@/app/components/header/indicator'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import Button from '@/app/components/base/button'
+import Switch from '@/app/components/base/switch'
+import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 
 type ModelListProps = {
   provider: ModelProvider
@@ -46,10 +48,7 @@ const ModelList: FC<ModelListProps> = ({
               {t('common.modelProvider.modelsNum', { num: models.length })}
             </span>
             <span
-              className={`
-                hidden group-hover:inline-flex items-center pl-1 pr-1.5 h-6 bg-gray-50 
-                text-xs font-medium text-gray-500 cursor-pointer rounded-lg
-              `}
+              className='hidden group-hover:inline-flex items-center pl-1 pr-1.5 h-6 text-xs font-medium text-gray-500 bg-gray-50 cursor-pointer rounded-lg'
               onClick={() => onCollapse()}
             >
               <ChevronDownDouble className='mr-0.5 w-3 h-3 rotate-180' />
@@ -92,7 +91,13 @@ const ModelList: FC<ModelListProps> = ({
                 showModelType
                 showMode
                 showContextSize
-              />
+              >
+                {/* TODO: check feature switch */}
+                <ModelBadge className='ml-1 uppercase text-indigo-600 border-indigo-300'>
+                  <Balance className='w-3 h-3 mr-0.5' />
+                  {t('common.modelProvider.loadBalancing')}
+                </ModelBadge>
+              </ModelName>
               <div className='shrink-0 flex items-center'>
                 {
                   model.fetch_from === ConfigurateMethodEnum.customizableModel && (
@@ -105,9 +110,22 @@ const ModelList: FC<ModelListProps> = ({
                     </Button>
                   )
                 }
-                <Indicator
+                {/* <Indicator
                   className='ml-2.5'
                   color={model.status === ModelStatusEnum.active ? 'green' : 'gray'}
+                /> */}
+                {/* TODO: check feature switch */}
+                {!model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status) && (
+                  <Button className='opacity-0 group-hover:opacity-100 m-2 px-3 h-[28px] text-xs text-gray-700 rounded-md transition-opacity'>
+                    <Balance className='mr-1 w-[14px] h-[14px]' />
+                    {t('common.modelProvider.configLoadBalancing')}
+                  </Button>
+                )}
+                <Switch
+                  defaultValue={model.deprecated ? false : model?.status === ModelStatusEnum.active}
+                  disabled={model.deprecated || ![ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status)}
+                  size='md'
+                  onChange={async value => value}
                 />
               </div>
             </div>

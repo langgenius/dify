@@ -63,6 +63,7 @@ export enum ModelStatusEnum {
   noConfigure = 'no-configure',
   quotaExceeded = 'quota-exceeded',
   noPermission = 'no-permission',
+  disabled = 'disabled',
 }
 
 export const MODEL_STATUS_TEXT: { [k: string]: TypeWithI18N } = {
@@ -116,6 +117,7 @@ export type ModelItem = {
   fetch_from: ConfigurateMethodEnum
   status: ModelStatusEnum
   model_properties: Record<string, string | number>
+  load_balancing_enabled: boolean
   deprecated?: boolean
 }
 

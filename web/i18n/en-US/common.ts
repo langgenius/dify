@@ -334,6 +334,8 @@ const translation = {
     quotaTip: 'Remaining available free tokens',
     loadPresets: 'Load Presents',
     parameters: 'PARAMETERS',
+    loadBalancing: 'Load Balancing',
+    configLoadBalancing: 'Config Load Balancing',
   },
   dataSource: {
     add: 'Add a data source',

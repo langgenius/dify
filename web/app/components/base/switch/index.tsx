@@ -4,7 +4,7 @@ import classNames from 'classnames'
 import { Switch as OriginalSwitch } from '@headlessui/react'
 
 type SwitchProps = {
-  onChange: (value: boolean) => void
+  onChange?: (value: boolean) => void
   size?: 'sm' | 'md' | 'lg' | 'l'
   defaultValue?: boolean
   disabled?: boolean
@@ -42,7 +42,7 @@ const Switch = ({ onChange, size = 'lg', defaultValue = false, disabled = false 
         if (disabled)
           return
         setEnabled(checked)
-        onChange(checked)
+        onChange?.(checked)
       }}
       className={classNames(
         wrapStyle[size],
