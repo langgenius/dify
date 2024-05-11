@@ -67,10 +67,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
-    const newInputs = produce({
-      ...inputRef.current,
-      model,
-    }, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId
       draft.model.mode = model.mode!

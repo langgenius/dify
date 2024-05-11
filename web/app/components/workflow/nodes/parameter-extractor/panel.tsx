@@ -23,22 +23,12 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     isChatModel,
     isChatMode,
     isCompletionModel,
+    handleModelChanged,
     handleCompletionParamsChange,
     handleMemoryChange,
   } = useConfig(id, data)
 
-  // TODO: default value problem
-  const model = {
-    provider: '',
-    name: '',
-    mode: 'chat',
-    completion_params: {
-      temperature: 0.7,
-    },
-    ...inputs.model,
-  }
-
-  const handleModelChanged = () => { }
+  const model = inputs.model
 
   return (
     <div className='mt-2'>
