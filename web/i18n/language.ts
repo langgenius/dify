@@ -19,6 +19,7 @@ export type I18nText = {
   'vi-VN': string
   'de_DE': string
   'zh_Hant': string
+  'ro-RO': string
   'pl-PL': string
 }
 
