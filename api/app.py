@@ -78,7 +78,7 @@ config_type = os.getenv('EDITION', default='SELF_HOSTED')  # ce edition first
 def create_app() -> Flask:
     app = DifyApp(__name__)
     app.config.from_object(Config())
-
+    os.environ['REDIS_CLUSTER_ENABLED'] = app.config['REDIS_CLUSTER_ENABLED']
     app.secret_key = app.config['SECRET_KEY']
 
     log_handlers = None
