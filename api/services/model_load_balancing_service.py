@@ -6,6 +6,7 @@ from typing import Optional
 
 from core.entities.provider_configuration import ProviderConfiguration
 from core.helper import encrypter
+from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
@@ -265,6 +266,7 @@ class ModelLoadBalancingService:
         )
 
         db.session.add(load_balancing_model_config)
+        db.session.flush()
         db.session.commit()
 
     def update_load_balancing_config(self, tenant_id: str,
@@ -344,6 +346,8 @@ class ModelLoadBalancingService:
         load_balancing_model_config.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
+        self._clear_credentials_cache(tenant_id, config_id)
+
     def _custom_credentials_validate(self, tenant_id: str,
                                      provider_configuration: ProviderConfiguration,
                                      model_type: ModelType,
@@ -418,3 +422,58 @@ class ModelLoadBalancingService:
             credential_schema = provider_configuration.provider.provider_credential_schema
 
         return credential_schema
+
+    def delete_load_balancing_config(self, tenant_id: str, provider: str, model: str, model_type: str, config_id: str) \
+            -> None:
+        """
+        Delete load balancing configuration.
+        :param tenant_id: workspace id
+        :param provider: provider name
+        :param model: model name
+        :param model_type: model type
+        :param config_id: load balancing config id
+        :return:
+        """
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
+
+        # Convert model type to ModelType
+        model_type = ModelType.value_of(model_type)
+
+        # Get load balancing configurations
+        load_balancing_model_config = db.session.query(LoadBalancingModelConfig) \
+            .filter(
+            LoadBalancingModelConfig.tenant_id == tenant_id,
+            LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
+            LoadBalancingModelConfig.model_type == model_type.to_origin_model_type(),
+            LoadBalancingModelConfig.model_name == model,
+            LoadBalancingModelConfig.id == config_id
+        ).first()
+
+        if not load_balancing_model_config:
+            raise ValueError('Load balancing config does not exist')
+
+        db.session.delete(load_balancing_model_config)
+        db.session.commit()
+
+        self._clear_credentials_cache(tenant_id, config_id)
+
+    def _clear_credentials_cache(self, tenant_id: str, config_id: str) -> None:
+        """
+        Clear credentials cache.
+        :param tenant_id: workspace id
+        :param config_id: load balancing config id
+        :return:
+        """
+        provider_model_credentials_cache = ProviderCredentialsCache(
+            tenant_id=tenant_id,
+            identity_id=config_id,
+            cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL
+        )
+
+        provider_model_credentials_cache.delete()
