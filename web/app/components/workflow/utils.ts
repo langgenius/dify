@@ -406,3 +406,11 @@ export const getTopLeftNodePosition = (nodes: Node[]) => {
     y: minY,
   }
 }
+
+export const isEventTargetInputArea = (target: HTMLElement) => {
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')
+    return true
+
+  if (target.contentEditable === 'true')
+    return true
+}
