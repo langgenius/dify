@@ -313,7 +313,7 @@ const baseFetch = <T>(
                     if (!silent)
                       Toast.notify({ type: 'error', message: data.message })
 
-                    if (data.code === 'web_sso_auth_required')
+                    if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized')
                       requiredWebSSOLogin()
 
                     return Promise.reject(data)
@@ -476,7 +476,7 @@ export const ssePost = (
         res.json().then((data: any) => {
           Toast.notify({ type: 'error', message: data.message || 'Server Error' })
 
-          if (data.code === 'web_sso_auth_required')
+          if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized')
             requiredWebSSOLogin()
         })
         onError?.('Server Error')
