@@ -18,8 +18,6 @@ export class PickerBlockMenuOption extends MenuOption {
     private data: {
       key: string
       group?: string
-      // props: Props
-      // Component: ComponentType<Props & MenuOptionRenderProps>
       onSelect?: () => void
       render: (menuRenderProps: MenuOptionRenderProps) => JSX.Element
     },
@@ -27,11 +25,6 @@ export class PickerBlockMenuOption extends MenuOption {
     super(data.key)
     this.group = data.group
   }
-
-  // public render = (menuRenderProps: MenuOptionRenderProps) => {
-  //   const Component = this.data.Component
-  //   return <Component key={this.data.key} {...menuRenderProps} {...this.data.props} />
-  // }
 
   public onSelectMenuOption = () => this.data.onSelect?.()
   public renderMenuOption = (menuRenderProps: MenuOptionRenderProps) => <Fragment key={this.data.key}>{this.data.render(menuRenderProps)}</Fragment>
