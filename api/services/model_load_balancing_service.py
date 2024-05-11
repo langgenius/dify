@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
@@ -106,6 +107,74 @@ class ModelLoadBalancingService:
             load_balancing_configs.insert(0, inherit_config)
 
         return load_balancing_configs
+
+    def get_load_balancing_config(self, tenant_id: str, provider: str, model: str, model_type: str, config_id: str) \
+            -> Optional[dict]:
+        """
+        Get load balancing configuration.
+        :param tenant_id: workspace id
+        :param provider: provider name
+        :param model: model name
+        :param model_type: model type
+        :param config_id: load balancing config id
+        :return:
+        """
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
+
+        # Convert model type to ModelType
+        model_type = ModelType.value_of(model_type)
+
+        # Get load balancing configurations
+        load_balancing_model_config = db.session.query(LoadBalancingModelConfig) \
+            .filter(
+            LoadBalancingModelConfig.tenant_id == tenant_id,
+            LoadBalancingModelConfig.provider_name == provider_configuration.provider.provider,
+            LoadBalancingModelConfig.model_type == model_type.to_origin_model_type(),
+            LoadBalancingModelConfig.model_name == model,
+            LoadBalancingModelConfig.id == config_id
+        ).first()
+
+        if not load_balancing_model_config:
+            return None
+
+        credentials = {}
+        for model_setting in provider_configuration.model_settings:
+            if model_setting.model == model and model_setting.model_type == model_type:
+                load_balancing_configs = model_setting.load_balancing_configs
+                for load_balancing_config in load_balancing_configs:
+                    if load_balancing_config.name == load_balancing_config.name:
+                        credentials = load_balancing_config.credentials
+
+                        # Get credential form schemas from model credential schema or provider credential schema
+                        if provider_configuration.provider.model_credential_schema:
+                            credential_form_schemas = (provider_configuration.provider.model_credential_schema
+                                                       .credential_form_schemas)
+                        else:
+                            credential_form_schemas = (provider_configuration.provider.provider_credential_schema
+                                                       .credential_form_schemas)
+
+                        if not credential_form_schemas:
+                            credential_form_schemas = []
+
+                        # Obfuscate credentials
+                        credentials = provider_configuration.obfuscated_credentials(
+                            credentials=credentials,
+                            credential_form_schemas=credential_form_schemas
+                        )
+                        break
+
+        return {
+            'id': load_balancing_model_config.id,
+            'name': load_balancing_model_config.name,
+            'credentials': credentials,
+            'enabled': load_balancing_model_config.enabled
+        }
 
     def _init_inherit_config(self, tenant_id: str, provider: str, model: str, model_type: ModelType) \
             -> LoadBalancingModelConfig:
