@@ -1,71 +1,65 @@
 'use client'
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-// import { useContext } from 'use-context-selector'
-import Toast from '../components/base/toast'
+
+import type { SubmitHandler } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
+import classNames from 'classnames'
 import Loading from '../components/base/loading'
 import Button from '@/app/components/base/button'
-// import I18n from '@/context/i18n'
 
 import { fetchInitValidateStatus, fetchSetupStatus, setup } from '@/service/common'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 
-const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
+
+const accountFormSchema = z.object({
+  email: z
+    .string()
+    .min(1, { message: 'login.error.emailInValid' })
+    .email('login.error.emailInValid'),
+  name: z.string().min(1, { message: 'login.error.nameEmpty' }),
+  password: z.string().min(8, {
+    message: 'login.error.passwordLengthInValid',
+  }).regex(validPassword, 'login.error.passwordInvalid'),
+})
+
+type AccountFormValues = z.infer<typeof accountFormSchema>
 
 const InstallForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
-
-  const [email, setEmail] = React.useState('')
-  const [name, setName] = React.useState('')
-  const [password, setPassword] = React.useState('')
   const [showPassword, setShowPassword] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<AccountFormValues>({
+    resolver: zodResolver(accountFormSchema),
+    defaultValues: {
+      name: '',
+      password: '',
+      email: '',
+    },
+  })
 
-  const showErrorMessage = (message: string) => {
-    Toast.notify({
-      type: 'error',
-      message,
-    })
-  }
-  const valid = () => {
-    if (!email) {
-      showErrorMessage(t('login.error.emailEmpty'))
-      return false
-    }
-    if (!validEmailReg.test(email)) {
-      showErrorMessage(t('login.error.emailInValid'))
-      return false
-    }
-    if (!name.trim()) {
-      showErrorMessage(t('login.error.nameEmpty'))
-      return false
-    }
-    if (!password.trim()) {
-      showErrorMessage(t('login.error.passwordEmpty'))
-      return false
-    }
-    if (!validPassword.test(password)) {
-      showErrorMessage(t('login.error.passwordInvalid'))
-      return false
-    }
-
-    return true
-  }
-  const handleSetting = async () => {
-    if (!valid())
-      return
+  const onSubmit: SubmitHandler<AccountFormValues> = async (data) => {
     await setup({
       body: {
-        email,
-        name,
-        password,
+        ...data,
       },
     })
     router.push('/signin')
+  }
+
+  const handleSetting = async () => {
+    handleSubmit(onSubmit)()
   }
 
   useEffect(() => {
@@ -93,24 +87,22 @@ const InstallForm = () => {
           mt-1 text-sm text-gray-600
         '>{t('login.setAdminAccountDesc')}</p>
         </div>
-
         <div className="grow mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white ">
-            <form onSubmit={() => { }}>
+            <form onSubmit={handleSubmit(onSubmit)}>
               <div className='mb-5'>
                 <label htmlFor="email" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
                   {t('login.email')}
                 </label>
                 <div className="mt-1">
                   <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
+                    {...register('email')}
                     placeholder={t('login.emailPlaceholder') || ''}
                     className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
                   />
+                  {errors.email && <span className='text-red-400 text-sm'>{t(`${errors.email?.message}`)}</span>}
                 </div>
+
               </div>
 
               <div className='mb-5'>
@@ -119,14 +111,12 @@ const InstallForm = () => {
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
                   <input
-                    id="name"
-                    type="text"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
+                    {...register('name')}
                     placeholder={t('login.namePlaceholder') || ''}
                     className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
                   />
                 </div>
+                {errors.name && <span className='text-red-400 text-sm'>{t(`${errors.name.message}`)}</span>}
               </div>
 
               <div className='mb-5'>
@@ -135,13 +125,12 @@ const InstallForm = () => {
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
                   <input
-                    id="password"
+                    {...register('password')}
                     type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
                     placeholder={t('login.passwordPlaceholder') || ''}
                     className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
                   />
+
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                     <button
                       type="button"
@@ -152,18 +141,12 @@ const InstallForm = () => {
                     </button>
                   </div>
                 </div>
-                <div className='mt-1 text-xs text-gray-500'>{t('login.error.passwordInvalid')}</div>
 
+                <div className={classNames('mt-1 text-xs text-gray-500', {
+                  'text-red-400 !text-sm': errors.password,
+                })}>{t('login.error.passwordInvalid')}</div>
               </div>
 
-              {/* <div className="flex items-center justify-between">
-              <div className="text-sm">
-                <div className="flex items-center mb-4">
-                  <input id="default-checkbox" type="checkbox" className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 rounded" />
-                  <label htmlFor="default-checkbox" className="ml-2 text-sm font-medium cursor-pointer text-primary-600 hover:text-gray-500">{t('login.acceptPP')}</label>
-                </div>
-              </div>
-            </div> */}
               <div>
                 <Button type='primary' className='w-full !fone-medium !text-sm' onClick={handleSetting}>
                   {t('login.installBtn')}

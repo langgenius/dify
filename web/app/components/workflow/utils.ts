@@ -361,3 +361,56 @@ export const changeNodesAndEdgesId = (nodes: Node[], edges: Edge[]) => {
 
   return [newNodes, newEdges] as [Node[], Edge[]]
 }
+
+export const isMac = () => {
+  return navigator.userAgent.toUpperCase().includes('MAC')
+}
+
+const specialKeysNameMap: Record<string, string | undefined> = {
+  ctrl: '⌘',
+  alt: '⌥',
+}
+
+export const getKeyboardKeyNameBySystem = (key: string) => {
+  if (isMac())
+    return specialKeysNameMap[key] || key
+
+  return key
+}
+
+const specialKeysCodeMap: Record<string, string | undefined> = {
+  ctrl: 'meta',
+}
+
+export const getKeyboardKeyCodeBySystem = (key: string) => {
+  if (isMac())
+    return specialKeysCodeMap[key] || key
+
+  return key
+}
+
+export const getTopLeftNodePosition = (nodes: Node[]) => {
+  let minX = Infinity
+  let minY = Infinity
+
+  nodes.forEach((node) => {
+    if (node.position.x < minX)
+      minX = node.position.x
+
+    if (node.position.y < minY)
+      minY = node.position.y
+  })
+
+  return {
+    x: minX,
+    y: minY,
+  }
+}
+
+export const isEventTargetInputArea = (target: HTMLElement) => {
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')
+    return true
+
+  if (target.contentEditable === 'true')
+    return true
+}

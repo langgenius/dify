@@ -3,6 +3,7 @@ from typing import Literal
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
+from jinja2 import Template
 
 from core.helper.code_executor.code_executor import CodeExecutor
 
@@ -18,7 +19,7 @@ class MockedCodeExecutor:
             }
         elif language == 'jinja2':
             return {
-                "result": "3"
+                "result": Template(code).render(inputs)
             }
 
 @pytest.fixture

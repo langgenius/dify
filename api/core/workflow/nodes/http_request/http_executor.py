@@ -236,7 +236,7 @@ class HttpExecutor:
                 for kv in kv_paris:
                     if not kv.strip():
                         continue
-                    kv = kv.split(':')
+                    kv = kv.split(':', 1)
                     if len(kv) == 2:
                         body[kv[0].strip()] = kv[1]
                     elif len(kv) == 1:
