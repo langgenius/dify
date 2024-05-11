@@ -235,9 +235,17 @@ class LoadBalancingConfigEnableApi(Resource):
                             choices=[mt.value for mt in ModelType], location='json')
         args = parser.parse_args()
 
-        # TODO
+        # enable model load balancing config
+        model_load_balancing_service = ModelLoadBalancingService()
+        model_load_balancing_service.enable_load_balancing_config(
+            tenant_id=tenant_id,
+            provider=provider,
+            model=args['model'],
+            model_type=args['model_type'],
+            config_id=config_id
+        )
 
-        return {}
+        return {"result": "success"}
 
 
 class LoadBalancingConfigDisableApi(Resource):
@@ -257,9 +265,17 @@ class LoadBalancingConfigDisableApi(Resource):
                             choices=[mt.value for mt in ModelType], location='json')
         args = parser.parse_args()
 
-        # TODO
+        # disable model load balancing config
+        model_load_balancing_service = ModelLoadBalancingService()
+        model_load_balancing_service.disable_load_balancing_config(
+            tenant_id=tenant_id,
+            provider=provider,
+            model=args['model'],
+            model_type=args['model_type'],
+            config_id=config_id
+        )
 
-        return {}
+        return {"result": "success"}
 
 
 # Model Load Balancing Feature
