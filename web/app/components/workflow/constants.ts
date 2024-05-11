@@ -77,6 +77,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailableNextNodes: IfElseDefault.getAvailableNextNodes,
     checkValid: IfElseDefault.checkValid,
   },
+  [BlockEnum.Iteration]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: IfElseDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: IfElseDefault.getAvailableNextNodes,
+    checkValid: IfElseDefault.checkValid,
+  },
   [BlockEnum.Code]: {
     author: 'Dify',
     about: '',
@@ -105,6 +114,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: QuestionClassifierDefault.checkValid,
   },
   [BlockEnum.HttpRequest]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: HttpRequestDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: HttpRequestDefault.getAvailableNextNodes,
+    checkValid: HttpRequestDefault.checkValid,
+  },
+  [BlockEnum.ParameterExtractor]: {
     author: 'Dify',
     about: '',
     availablePrevNodes: [],

@@ -22,6 +22,8 @@ export enum BlockEnum {
   HttpRequest = 'http-request',
   VariableAssigner = 'variable-assigner',
   Tool = 'tool',
+  ParameterExtractor = 'parameter-extractor',
+  Iteration = 'iteration',
 }
 
 export type Branch = {
