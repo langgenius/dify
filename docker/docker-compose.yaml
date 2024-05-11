@@ -161,6 +161,9 @@ services:
       CODE_MAX_STRING_ARRAY_LENGTH: 30
       CODE_MAX_OBJECT_ARRAY_LENGTH: 30
       CODE_MAX_NUMBER_ARRAY_LENGTH: 1000
+      # SSRF Proxy server
+      SSRF_PROXY_HTTP_URL: 'http://ssrf_proxy:3128'
+      SSRF_PROXY_HTTPS_URL: 'http://ssrf_proxy:3128'
     depends_on:
       - db
       - redis
@@ -171,7 +174,7 @@ services:
     # ports:
     #   - "5001:5001"
     networks:
-      - proxy_network
+      - ssrf_proxy_network
       - default
 
   # worker service
@@ -281,7 +284,7 @@ services:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
     networks:
-      - proxy_network
+      - ssrf_proxy_network
       - default
 
   # Frontend web application.
@@ -377,25 +380,22 @@ services:
       GIN_MODE: 'release'
       WORKER_TIMEOUT: 15
       ENABLE_NETWORK: 'true'
-      HTTP_PROXY: 'http://proxy:3128'
-      HTTPS_PROXY: 'http://proxy:3128'
+      HTTP_PROXY: 'http://ssrf_proxy:3128'
+      HTTPS_PROXY: 'http://ssrf_proxy:3128'
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
     networks:
-      - proxy_network
+      - ssrf_proxy_network
 
-  # Proxy server
-  proxy:
+  # ssrf_proxy server
+  ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always
-    ports:
-      - "3128:3128"
-      - "8194:8194"
     volumes:
       # pls clearly modify the squid.conf file to fit your network environment.
-      - ./volumes/proxy/squid.conf:/etc/squid/squid.conf
+      - ./volumes/ssrf_proxy/squid.conf:/etc/squid/squid.conf
     networks:
-      - proxy_network
+      - ssrf_proxy_network
       - default
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.
@@ -455,7 +455,7 @@ services:
       - "80:80"
       #- "443:443"
 networks:
-  # create a network between sandbox, api and proxy, and can not access outside.
-  proxy_network:
+  # create a network between sandbox, api and ssrf_proxy, and can not access outside.
+  ssrf_proxy_network:
     driver: bridge
     internal: true
