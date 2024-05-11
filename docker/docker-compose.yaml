@@ -152,7 +152,7 @@ services:
       NOTION_CLIENT_ID: you-client-id
       NOTION_INTERNAL_SECRET: you-internal-secret
       # The sandbox service endpoint.
-      CODE_EXECUTION_ENDPOINT: "http://sandbox:8194"
+      CODE_EXECUTION_ENDPOINT: "http://proxy:8194"
       CODE_EXECUTION_API_KEY: dify-sandbox
       CODE_MAX_NUMBER: 9223372036854775807
       CODE_MIN_NUMBER: -9223372036854775808
