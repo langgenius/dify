@@ -6,6 +6,7 @@ import {
 } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import copy from 'copy-to-clipboard'
 import ResultText from '../run/result-text'
 import ResultPanel from '../run/result-panel'
 import TracingPanel from '../run/tracing-panel'
@@ -16,9 +17,12 @@ import { useStore } from '../store'
 import {
   WorkflowRunningStatus,
 } from '../types'
+import { SimpleBtn } from '../../app/text-generate/item'
+import Toast from '../../base/toast'
 import InputsPanel from './inputs-panel'
 import Loading from '@/app/components/base/loading'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
+import { Clipboard } from '@/app/components/base/icons/src/vender/line/files'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()
@@ -108,12 +112,28 @@ const WorkflowPreview = () => {
             <InputsPanel onRun={() => switchTab('RESULT')} />
           )}
           {currentTab === 'RESULT' && (
-            <ResultText
-              isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
-              outputs={workflowRunningData?.resultText}
-              error={workflowRunningData?.result?.error}
-              onClick={() => switchTab('DETAIL')}
-            />
+            <>
+              <ResultText
+                isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
+                outputs={workflowRunningData?.resultText}
+                error={workflowRunningData?.result?.error}
+                onClick={() => switchTab('DETAIL')}
+              />
+              <SimpleBtn
+                isDisabled={workflowRunningData?.result.status !== WorkflowRunningStatus.Succeeded}
+                className={cn('ml-4 mb-4 inline-flex space-x-1')}
+                onClick={() => {
+                  const content = workflowRunningData?.resultText
+                  if (typeof content === 'string')
+                    copy(content)
+                  else
+                    copy(JSON.stringify(content))
+                  Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+                }}>
+                <Clipboard className='w-3.5 h-3.5' />
+                <div>{t('common.operation.copy')}</div>
+              </SimpleBtn>
+            </>
           )}
           {currentTab === 'DETAIL' && (
             <ResultPanel
@@ -143,6 +163,7 @@ const WorkflowPreview = () => {
               <Loading />
             </div>
           )}
+
         </div>
       </div>
     </div>
