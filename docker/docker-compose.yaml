@@ -452,3 +452,8 @@ services:
     ports:
       - "80:80"
       #- "443:443"
+networks:
+  # create a network between sandbox, api and proxy, and can not access outside.
+  proxy_network:
+    driver: bridge
+    internal: true
