@@ -152,7 +152,7 @@ services:
       NOTION_CLIENT_ID: you-client-id
       NOTION_INTERNAL_SECRET: you-internal-secret
       # The sandbox service endpoint.
-      CODE_EXECUTION_ENDPOINT: "http://proxy:8194"
+      CODE_EXECUTION_ENDPOINT: "http://sandbox:8194"
       CODE_EXECUTION_API_KEY: dify-sandbox
       CODE_MAX_NUMBER: 9223372036854775807
       CODE_MIN_NUMBER: -9223372036854775808
@@ -377,6 +377,8 @@ services:
       GIN_MODE: 'release'
       WORKER_TIMEOUT: 15
       ENABLE_NETWORK: 'true'
+      HTTP_PROXY: 'http://proxy:3128'
+      HTTPS_PROXY: 'http://proxy:3128'
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
     networks:

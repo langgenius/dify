@@ -274,7 +274,7 @@ const translation = {
       inputVars: 'Input Variables',
       outputVars: 'Output Variables',
       advancedDependencies: 'Advanced Dependencies',
-      advancedDependenciesTip: 'Add some heavy dependencies here, standard and light dependencies are already included',
+      advancedDependenciesTip: 'Add some preloaded dependencies that take more time to consume or are not default built-in here',
       searchDependencies: 'Search Dependencies',
     },
     templateTransform: {

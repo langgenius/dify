@@ -95,6 +95,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
                     operations={
                       <AddButton onClick={() => handleAddDependency({ name: '', version: '' })} />
                     }
+                    tooltip={t(`${i18nPrefix}.advancedDependenciesTip`)!}
                   >
                     <Dependencies
                       available_dependencies={availableDependencies}
