@@ -51,7 +51,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
 
           return t.text !== ''
         })
-        : (payload.prompt_template as PromptItem).text === ''
+        : ((payload.prompt_template as PromptItem).edition_type === EditionType.jinja2 ? (payload.prompt_template as PromptItem).jinja2_text === '' : (payload.prompt_template as PromptItem).text === '')
       if (isPromptyEmpty)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.llm.prompt') })
     }
