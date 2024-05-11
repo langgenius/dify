@@ -41,7 +41,7 @@ import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 type IDebug = {
-  hasSetAPIKEY: boolean
+  isAPIKeySet: boolean
   onSetting: () => void
   inputs: Inputs
   modelParameterParams: Pick<ModelParameterModalProps, 'setModel' | 'onCompletionParamsChange'>
@@ -51,7 +51,7 @@ type IDebug = {
 }
 
 const Debug: FC<IDebug> = ({
-  hasSetAPIKEY = true,
+  isAPIKeySet = true,
   onSetting,
   inputs,
   modelParameterParams,
@@ -503,7 +503,7 @@ const Debug: FC<IDebug> = ({
           onCancel={handleCancel}
         />
       )}
-      {!hasSetAPIKEY && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
+      {!isAPIKeySet && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
     </>
   )
 }

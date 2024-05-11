@@ -23,7 +23,7 @@ const ProviderContext = createContext<{
   modelProviders: ModelProvider[]
   textGenerationModelList: Model[]
   supportRetrievalMethods: RETRIEVE_METHOD[]
-  hasSettedApiKey: boolean
+  isAPIKeySet: boolean
   plan: {
     type: Plan
     usage: UsagePlanInfo
@@ -37,7 +37,7 @@ const ProviderContext = createContext<{
       modelProviders: [],
       textGenerationModelList: [],
       supportRetrievalMethods: [],
-      hasSettedApiKey: true,
+      isAPIKeySet: true,
       plan: {
         type: Plan.sandbox,
         usage: {
@@ -95,7 +95,7 @@ export const ProviderContextProvider = ({
     <ProviderContext.Provider value={{
       modelProviders: providersData?.data || [],
       textGenerationModelList: textGenerationModelList?.data || [],
-      hasSettedApiKey: !!textGenerationModelList?.data.some(model => model.status === ModelStatusEnum.active),
+      isAPIKeySet: !!textGenerationModelList?.data.some(model => model.status === ModelStatusEnum.active),
       supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
       plan,
       isFetchedPlan,
