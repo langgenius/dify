@@ -134,7 +134,7 @@ const ConfigPanel = () => {
             {site?.privacy_policy
               ? <div className={`flex items-center ${isMobile && 'w-full justify-end'}`}>{t('share.chat.privacyPolicyLeft')}
                 <a
-                  className='text-gray-500'
+                  className='text-gray-500 px-1'
                   href={site?.privacy_policy}
                   target='_blank' rel='noopener noreferrer'>{t('share.chat.privacyPolicyMiddle')}</a>
                 {t('share.chat.privacyPolicyRight')}
