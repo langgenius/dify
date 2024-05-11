@@ -68,12 +68,17 @@ class TencentVector(BaseVector):
         collections = self._db.list_collections()
         for collection in collections:
             if collection.collection_name == self._collection_name:
+                self.collection = collection
                 return True
         return False
 
     def _create_collection(self, dimension: int) -> None:
         lock_name = 'vector_indexing_lock_{}'.format(self._collection_name)
         with redis_client.lock(lock_name, timeout=20):
+            collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
+            if redis_client.get(collection_exist_cache_key):
+                return
+
             if self._has_collection():
                 return
 
@@ -117,6 +122,7 @@ class TencentVector(BaseVector):
                 description="Collection for Dify",
                 index=index,
             )
+            redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self._create_collection(len(embeddings[0]))
