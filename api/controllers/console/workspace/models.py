@@ -175,6 +175,56 @@ class ModelProviderModelCredentialApi(Resource):
         }
 
 
+class ModelProviderModelEnableApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def patch(self, provider: str):
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('model', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('model_type', type=str, required=True, nullable=False,
+                            choices=[mt.value for mt in ModelType], location='json')
+        args = parser.parse_args()
+
+        model_provider_service = ModelProviderService()
+        model_provider_service.enable_model(
+            tenant_id=tenant_id,
+            provider=provider,
+            model=args['model'],
+            model_type=args['model_type']
+        )
+
+        return {'result': 'success'}
+
+
+class ModelProviderModelDisableApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def patch(self, provider: str):
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('model', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('model_type', type=str, required=True, nullable=False,
+                            choices=[mt.value for mt in ModelType], location='json')
+        args = parser.parse_args()
+
+        model_provider_service = ModelProviderService()
+        model_provider_service.disable_model(
+            tenant_id=tenant_id,
+            provider=provider,
+            model=args['model'],
+            model_type=args['model_type']
+        )
+
+        return {'result': 'success'}
+
+
 class ModelProviderModelValidateApi(Resource):
 
     @setup_required
@@ -259,9 +309,9 @@ class ModelProviderAvailableModelApi(Resource):
 
 
 api.add_resource(ModelProviderModelApi, '/workspaces/current/model-providers/<string:provider>/models')
-api.add_resource(ModelProviderModelApi, '/workspaces/current/model-providers/<string:provider>/models/enable',
+api.add_resource(ModelProviderModelEnableApi, '/workspaces/current/model-providers/<string:provider>/models/enable',
                  endpoint='model-provider-model-enable')
-api.add_resource(ModelProviderModelApi, '/workspaces/current/model-providers/<string:provider>/models/disable',
+api.add_resource(ModelProviderModelDisableApi, '/workspaces/current/model-providers/<string:provider>/models/disable',
                  endpoint='model-provider-model-disable')
 api.add_resource(ModelProviderModelCredentialApi,
                  '/workspaces/current/model-providers/<string:provider>/models/credentials')
