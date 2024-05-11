@@ -144,7 +144,7 @@ class ProviderConfiguration(BaseModel):
             return credentials
 
         # Obfuscate credentials
-        return self._obfuscated_credentials(
+        return self.obfuscated_credentials(
             credentials=credentials,
             credential_form_schemas=self.provider.provider_credential_schema.credential_form_schemas
             if self.provider.provider_credential_schema else []
@@ -288,7 +288,7 @@ class ProviderConfiguration(BaseModel):
                     return credentials
 
                 # Obfuscate credentials
-                return self._obfuscated_credentials(
+                return self.obfuscated_credentials(
                     credentials=credentials,
                     credential_form_schemas=self.provider.model_credential_schema.credential_form_schemas
                     if self.provider.model_credential_schema else []
@@ -616,7 +616,7 @@ class ProviderConfiguration(BaseModel):
 
         return secret_input_form_variables
 
-    def _obfuscated_credentials(self, credentials: dict, credential_form_schemas: list[CredentialFormSchema]) -> dict:
+    def obfuscated_credentials(self, credentials: dict, credential_form_schemas: list[CredentialFormSchema]) -> dict:
         """
         Obfuscated credentials.
 

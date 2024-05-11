@@ -1,5 +1,5 @@
 from flask_restful import Resource, marshal_with, reqparse
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console import api
 from controllers.console.setup import setup_required
@@ -111,6 +111,36 @@ class LoadBalancingConfigListApi(Resource):
 
 
 class LoadBalancingConfigApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider: str, config_id: str):
+        if not TenantAccountRole.is_privileged_role(current_user.current_tenant.current_role):
+            raise Forbidden()
+
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('model', type=str, required=True, nullable=False, location='args')
+        parser.add_argument('model_type', type=str, required=True, nullable=False,
+                            choices=[mt.value for mt in ModelType], location='args')
+        args = parser.parse_args()
+
+        # get model load balancing config detail
+        model_load_balancing_service = ModelLoadBalancingService()
+        result = model_load_balancing_service.get_load_balancing_config(
+            tenant_id=tenant_id,
+            provider=provider,
+            model=args['model'],
+            model_type=args['model_type'],
+            config_id=config_id
+        )
+
+        if not result:
+            raise NotFound()
+
+        return result
+
     @setup_required
     @login_required
     @account_initialization_required
