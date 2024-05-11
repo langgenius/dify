@@ -4,6 +4,7 @@ from contextlib import closing
 
 from flask import Flask
 from google.cloud import storage as GoogleCloudStorage
+import json
 
 from extensions.storage.base_storage import BaseStorage
 
@@ -17,7 +18,7 @@ class GoogleStorage(BaseStorage):
         self.bucket_name = app_config.get('GOOGLE_STORAGE_BUCKET_NAME')
         service_account_json = base64.b64decode(app_config.get('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')).decode(
             'utf-8')
-        self.client = GoogleCloudStorage.Client().from_service_account_json(service_account_json)
+        self.client = GoogleCloudStorage.Client.from_service_account_info(json.loads(service_account_json))
 
     def save(self, filename, data):
         bucket = self.client.get_bucket(self.bucket_name)
