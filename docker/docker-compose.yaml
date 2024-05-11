@@ -4,21 +4,6 @@ services:
   api:
     image: langgenius/dify-api:0.6.6
     restart: always
-    env_file:
-      - path: ./env/api.env
-        required: false
-      - path: ./env/db.env
-        required: false
-      - path: ./env/redis.env
-        required: false
-      - path: ./env/weaviate.env
-        required: false
-      - path: ./env/qdrant.env
-        required: false
-      - path: ./env/mail.env
-        required: false
-      - path: ./env/code.env
-        required: false
     environment:
       MODE: api
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -115,19 +100,6 @@ services:
   worker:
     image: langgenius/dify-api:0.6.6
     restart: always
-    env_file:
-      - path: ./env/api.env
-        required: false
-      - path: ./env/db.env
-        required: false
-      - path: ./env/redis.env
-        required: false
-      - path: ./env/weaviate.env
-        required: false
-      - path: ./env/qdrant.env
-        required: false
-      - path: ./env/mail.env
-        required: false
     environment:
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
       MODE: worker
@@ -215,9 +187,6 @@ services:
   web:
     image: langgenius/dify-web:0.6.6
     restart: always
-    env_file:
-      - path: ./env/web.env
-        required: false
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
@@ -230,9 +199,6 @@ services:
   db:
     image: postgres:15-alpine
     restart: always
-    env_file:
-      - path: ./env/db.env
-        required: false
     environment:
       PGUSER: ${PGUSER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
@@ -267,13 +233,12 @@ services:
   # The Weaviate vector store.
   weaviate:
     image: semitechnologies/weaviate:1.19.0
+    profiles:
+      - vdb-weaviate
     restart: always
     volumes:
       # Mount the Weaviate data directory to the container.
       - ./volumes/weaviate:/var/lib/weaviate
-    env_file:
-      - path: ./env/weaviate.env
-        required: false
     environment:
       # The Weaviate configurations
       # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
@@ -299,33 +264,11 @@ services:
     # Why is sys_admin permission needed?
     # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-sys_admin-permission-needed
       - SYS_ADMIN
-    env_file:
-      - path: ./env/sandbox.env
-        required: false
     environment:
       # The DifySandbox configurations
       API_KEY: ${API_KEY:-dify-sandbox}
       GIN_MODE: ${GIN_MODE:-release}
       WORKER_TIMEOUT: ${WORKER_TIMEOUT:-15}
-
-  # Qdrant vector store.
-  # uncomment to use qdrant as vector store.
-  # (if uncommented, you need to comment out the weaviate service above,
-  # and set VECTOR_STORE to qdrant in the api & worker service.)
-  # qdrant:
-  #   image: langgenius/qdrant:v1.7.3
-  #   restart: always
-  #   volumes:
-  #     - ./volumes/qdrant:/qdrant/storage
-  #   env_file:
-  #     - path: ./env/qdrant.env
-  #       required: false
-  #   environment:
-  #     QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
-  #   # uncomment to expose qdrant port to host
-  #   # ports:
-  #   #  - "6333:6333"
-  #   #  - "6334:6334"
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
@@ -343,3 +286,110 @@ services:
     ports:
       - "80:80"
       # - "443:443"
+
+  # Qdrant vector store.
+  # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
+  qdrant:
+    image: langgenius/qdrant:v1.7.3
+    profiles:
+      - vdb-qdrant
+    restart: always
+    volumes:
+      - ./volumes/qdrant:/qdrant/storage
+    environment:
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
+    # uncomment to expose qdrant port to host
+    # ports:
+    #  - "6333:6333"
+    #  - "6334:6334"
+
+  
+  # pgvector-rs vector store
+  pgvector-rs:
+    image: tensorchord/pgvecto-rs:pg16-v0.2.0
+    profiles:
+      - vdb-pgvector-rs
+    restart: always
+    environment:
+      PGUSER: ${PGUSER:-postgres}
+      # The password for the default postgres user.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
+      # The name of the default postgres database.
+      POSTGRES_DB: ${POSTGRES_DB:-dify}
+      # postgres data directory
+      PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
+    volumes:
+      - ./volumes/pgvectors/data:/var/lib/postgresql/data
+    # uncomment to expose db(postgresql) port to host
+    ports:
+      - "5431:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # Milvus vector database services
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=${ETCD_AUTO_COMPACTION_MODE:-revision}
+      - ETCD_AUTO_COMPACTION_RETENTION=${ETCD_AUTO_COMPACTION_RETENTION:-1000}
+      - ETCD_QUOTA_BACKEND_BYTES=${ETCD_QUOTA_BACKEND_BYTES:-4294967296}
+      - ETCD_SNAPSHOT_COUNT=${ETCD_SNAPSHOT_COUNT:-50000}
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/etcd:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - milvus
+
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - milvus
+
+  milvus-standalone:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.3.1
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-etcd:2379}
+      MINIO_ADDRESS: ${MINIO_ADDRESS:-minio:9000}
+      common.security.authorizationEnabled: ${common.security.authorizationEnabled:-true}
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/milvus:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - "etcd"
+      - "minio"
+    networks:
+      - milvus

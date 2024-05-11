@@ -5,8 +5,7 @@ services:
     image: postgres:15-alpine
     restart: always
     env_file:
-      - path: ./env/db.env
-        required: false
+      - ./middleware.env
     environment:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
       POSTGRES_DB: ${POSTGRES_DB:-dify}
@@ -36,8 +35,7 @@ services:
       # Mount the Weaviate data directory to the container.
       - ./volumes/weaviate:/var/lib/weaviate
     env_file:
-      - path: ./env/weaviate.env
-        required: false
+      - ./middleware.env
     environment:
       # The Weaviate configurations
       # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
@@ -63,8 +61,7 @@ services:
       # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-sys_admin-permission-needed
       - SYS_ADMIN
     env_file:
-      - path: ./env/sandbox.env
-        required: false
+      - ./middleware.env
     environment:
       # The DifySandbox configurations
       API_KEY: ${API_KEY:-dify-sandbox}
@@ -73,20 +70,112 @@ services:
     ports:
       - "8194:8194"
 
-  # Qdrant vector store.
-  # uncomment to use qdrant as vector store.
-  # (if uncommented, you need to comment out the weaviate service above,
-  # and set VECTOR_STORE to qdrant in the api & worker service.)
-  # qdrant:
-  #   image: qdrant/qdrant:1.7.3
-  #   restart: always
-  #   volumes:
-  #     - ./volumes/qdrant:/qdrant/storage
-  #   env_file:
-  #     - path: ./env/qdrant.env
-  #       required: false
-  #   environment:
-  #     QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
-  #   ports:
-  #     - "6333:6333"
-  #     - "6334:6334"
+ # Qdrant vector store.
+  # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
+  qdrant:
+    image: langgenius/qdrant:v1.7.3
+    profiles:
+      - vdb-qdrant
+    restart: always
+    volumes:
+      - ./volumes/qdrant:/qdrant/storage
+    environment:
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
+    # uncomment to expose qdrant port to host
+    # ports:
+    #  - "6333:6333"
+    #  - "6334:6334"
+
+  
+  # pgvector-rs vector store
+  pgvector-rs:
+    image: tensorchord/pgvecto-rs:pg16-v0.2.0
+    profiles:
+      - vdb-pgvector-rs
+    restart: always
+    environment:
+      PGUSER: ${PGUSER:-postgres}
+      # The password for the default postgres user.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
+      # The name of the default postgres database.
+      POSTGRES_DB: ${POSTGRES_DB:-dify}
+      # postgres data directory
+      PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
+    volumes:
+      - ./volumes/pgvectors/data:/var/lib/postgresql/data
+    # uncomment to expose db(postgresql) port to host
+    ports:
+      - "5431:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # Milvus-related services
+  # etcd service for Milvus
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=${ETCD_AUTO_COMPACTION_MODE:-revision}
+      - ETCD_AUTO_COMPACTION_RETENTION=${ETCD_AUTO_COMPACTION_RETENTION:-1000}
+      - ETCD_QUOTA_BACKEND_BYTES=${ETCD_QUOTA_BACKEND_BYTES:-4294967296}
+      - ETCD_SNAPSHOT_COUNT=${ETCD_SNAPSHOT_COUNT:-50000}
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/etcd:/etcd
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - milvus
+
+  # Minio service for Milvus
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/minio:/minio_data
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - milvus
+
+  # Milvus vector database service
+  milvus-standalone:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.3.1
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-etcd:2379}
+      MINIO_ADDRESS: ${MINIO_ADDRESS:-minio:9000}
+      common.security.authorizationEnabled: ${common.security.authorizationEnabled:-true}
+    volumes:
+      - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/milvus:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    depends_on:
+      - "etcd"
+      - "minio"
+    networks:
+      - milvus

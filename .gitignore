@@ -150,9 +150,7 @@ docker/volumes/minio/*
 docker/volumes/milvus/*
 
 # docker env files
-!docker/env/
-docker/env/*.env
-!docker/env/*.env.example
+!docker/*.env.example
 
 sdks/python-client/build
 sdks/python-client/dist
