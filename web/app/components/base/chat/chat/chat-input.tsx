@@ -14,6 +14,7 @@ import type {
   VisionConfig,
 } from '../types'
 import { TransferMethod } from '../types'
+import { useChatWithHistoryContext } from '../chat-with-history/context'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ToastContext } from '@/app/components/base/toast'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -40,6 +41,7 @@ const ChatInput: FC<ChatInputProps> = ({
   speechToTextConfig,
   onSend,
 }) => {
+  const { appData } = useChatWithHistoryContext()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [voiceInputShow, setVoiceInputShow] = useState(false)
@@ -130,8 +132,8 @@ const ChatInput: FC<ChatInputProps> = ({
     <div className='relative'>
       <div
         className={`
-          p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto
-          ${isDragActive && 'border-primary-600'}
+          relative p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto
+          ${isDragActive && 'border-primary-600'} mb-2
         `}
       >
         {
@@ -221,6 +223,9 @@ const ChatInput: FC<ChatInputProps> = ({
           )
         }
       </div>
+      {appData?.site?.custom_disclaimer && <div className='text-xs text-gray-500 mt-1 text-center'>
+        {appData.site.custom_disclaimer}
+      </div>}
     </div>
   )
 }

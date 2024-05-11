@@ -67,6 +67,7 @@ export type IChatProps = {
   visionConfig?: VisionSettings
   supportAnnotation?: boolean
   allToolIcons?: Record<string, string | Emoji>
+  customDisclaimer?: string
 }
 
 const Chat: FC<IChatProps> = ({
@@ -102,6 +103,7 @@ const Chat: FC<IChatProps> = ({
   supportAnnotation,
   onChatListChange,
   allToolIcons,
+  customDisclaimer,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -358,7 +360,7 @@ const Chat: FC<IChatProps> = ({
               </div>
             </div>
           )}
-          <div className={cn('p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto', isDragActive && 'border-primary-600')}>
+          <div className={cn('relative p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto', isDragActive && 'border-primary-600')}>
             {visionConfig?.enabled && (
               <>
                 <div className='absolute bottom-2 left-2 flex items-center'>
@@ -440,6 +442,9 @@ const Chat: FC<IChatProps> = ({
               />
             )}
           </div>
+          {customDisclaimer && <div className='text-xs text-gray-500 mt-1 text-center'>
+            {customDisclaimer}
+          </div>}
         </div>
       )}
     </div>

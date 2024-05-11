@@ -107,6 +107,8 @@ class ApiToolProvider(db.Model):
     credentials_str = db.Column(db.Text, nullable=False)
     # privacy policy
     privacy_policy = db.Column(db.String(255), nullable=True)
+    # custom_disclaimer
+    custom_disclaimer = db.Column(db.String(255), nullable=True)
 
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
