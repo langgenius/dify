@@ -322,16 +322,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                     </SimpleBtn>
                   )
                 }
-                {currentTab === 'RESULT' && (
+                {(currentTab === 'RESULT' || !isWorkflow) && (
                   <SimpleBtn
                     isDisabled={isError || !messageId}
                     className={cn(isMobile && '!px-1.5', 'space-x-1')}
                     onClick={() => {
-                      const content = workflowProcessData?.resultText
-                      if (typeof content === 'string')
-                        copy(content)
+                      const copyContent = isWorkflow ? workflowProcessData?.resultText : content
+                      if (typeof copyContent === 'string')
+                        copy(copyContent)
                       else
-                        copy(JSON.stringify(content))
+                        copy(JSON.stringify(copyContent))
                       Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
                     }}>
                     <Clipboard className='w-3.5 h-3.5' />
