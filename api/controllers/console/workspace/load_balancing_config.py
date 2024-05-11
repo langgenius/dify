@@ -5,6 +5,7 @@ from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from fields.load_balancing_config import load_balancing_config_list_fields
 from libs.login import current_user, login_required
 from models.account import TenantAccountRole
@@ -105,9 +106,22 @@ class LoadBalancingConfigListApi(Resource):
         parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
-        # TODO
+        # create model load balancing config
+        model_load_balancing_service = ModelLoadBalancingService()
 
-        return {}
+        try:
+            model_load_balancing_service.create_load_balancing_config(
+                tenant_id=tenant_id,
+                provider=provider,
+                model=args['model'],
+                model_type=args['model_type'],
+                name=args['name'],
+                credentials=args['credentials']
+            )
+        except CredentialsValidateFailedError as ex:
+            raise ValueError(str(ex))
+
+        return {'result': 'success'}, 201
 
 
 class LoadBalancingConfigApi(Resource):
@@ -158,9 +172,23 @@ class LoadBalancingConfigApi(Resource):
         parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
-        # TODO
+        # create model load balancing config
+        model_load_balancing_service = ModelLoadBalancingService()
 
-        return {}
+        try:
+            model_load_balancing_service.update_load_balancing_config(
+                tenant_id=tenant_id,
+                provider=provider,
+                model=args['model'],
+                model_type=args['model_type'],
+                config_id=config_id,
+                name=args['name'],
+                credentials=args['credentials']
+            )
+        except CredentialsValidateFailedError as ex:
+            raise ValueError(str(ex))
+
+        return {'result': 'success'}
 
     @setup_required
     @login_required

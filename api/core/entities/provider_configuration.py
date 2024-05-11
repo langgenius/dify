@@ -165,7 +165,7 @@ class ProviderConfiguration(BaseModel):
         ).first()
 
         # Get provider credential secret variables
-        provider_credential_secret_variables = self._extract_secret_variables(
+        provider_credential_secret_variables = self.extract_secret_variables(
             self.provider.provider_credential_schema.credential_form_schemas
             if self.provider.provider_credential_schema else []
         )
@@ -316,7 +316,7 @@ class ProviderConfiguration(BaseModel):
         ).first()
 
         # Get provider credential secret variables
-        provider_credential_secret_variables = self._extract_secret_variables(
+        provider_credential_secret_variables = self.extract_secret_variables(
             self.provider.model_credential_schema.credential_form_schemas
             if self.provider.model_credential_schema else []
         )
@@ -433,6 +433,7 @@ class ProviderConfiguration(BaseModel):
 
         if model_setting:
             model_setting.enabled = True
+            model_setting.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
         else:
             model_setting = ProviderModelSetting(
@@ -464,6 +465,7 @@ class ProviderConfiguration(BaseModel):
 
         if model_setting:
             model_setting.enabled = False
+            model_setting.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
         else:
             model_setting = ProviderModelSetting(
@@ -506,6 +508,7 @@ class ProviderConfiguration(BaseModel):
 
         if model_setting:
             model_setting.load_balancing_enabled = True
+            model_setting.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
         else:
             model_setting = ProviderModelSetting(
@@ -537,6 +540,7 @@ class ProviderConfiguration(BaseModel):
 
         if model_setting:
             model_setting.load_balancing_enabled = False
+            model_setting.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
         else:
             model_setting = ProviderModelSetting(
@@ -602,7 +606,7 @@ class ProviderConfiguration(BaseModel):
 
         db.session.commit()
 
-    def _extract_secret_variables(self, credential_form_schemas: list[CredentialFormSchema]) -> list[str]:
+    def extract_secret_variables(self, credential_form_schemas: list[CredentialFormSchema]) -> list[str]:
         """
         Extract secret input form variables.
 
@@ -625,7 +629,7 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         # Get provider credential secret variables
-        credential_secret_variables = self._extract_secret_variables(
+        credential_secret_variables = self.extract_secret_variables(
             credential_form_schemas
         )
 
@@ -902,14 +906,6 @@ class ProviderConfiguration(BaseModel):
             )
 
         return provider_models
-
-    def _get_load_balancing_configs(self, model: str) -> dict:
-        """
-        Get load balancing configs.
-        :param model: model name
-        :return:
-        """
-        return {}
 
 
 class ProviderConfigurations(BaseModel):
