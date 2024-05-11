@@ -205,9 +205,17 @@ class LoadBalancingConfigApi(Resource):
                             choices=[mt.value for mt in ModelType], location='args')
         args = parser.parse_args()
 
-        # TODO
+        # delete model load balancing config
+        model_load_balancing_service = ModelLoadBalancingService()
+        model_load_balancing_service.delete_load_balancing_config(
+            tenant_id=tenant_id,
+            provider=provider,
+            model=args['model'],
+            model_type=args['model_type'],
+            config_id=config_id
+        )
 
-        return {}
+        return {'result': 'success'}, 204
 
 
 class LoadBalancingConfigEnableApi(Resource):
