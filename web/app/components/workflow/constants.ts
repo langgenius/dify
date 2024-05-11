@@ -9,9 +9,11 @@ import IfElseDefault from './nodes/if-else/default'
 import CodeDefault from './nodes/code/default'
 import TemplateTransformDefault from './nodes/template-transform/default'
 import HttpRequestDefault from './nodes/http/default'
+import ParameterExtractorDefault from './nodes/parameter-extractor/default'
 import ToolDefault from './nodes/tool/default'
 import VariableAssignerDefault from './nodes/variable-assigner/default'
 import EndNodeDefault from './nodes/end/default'
+import IterationDefault from './nodes/iteration/default'
 
 type NodesExtraData = {
   author: string
@@ -82,9 +84,9 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
-    getAvailablePrevNodes: IfElseDefault.getAvailablePrevNodes,
-    getAvailableNextNodes: IfElseDefault.getAvailableNextNodes,
-    checkValid: IfElseDefault.checkValid,
+    getAvailablePrevNodes: IterationDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: IterationDefault.getAvailableNextNodes,
+    checkValid: IterationDefault.checkValid,
   },
   [BlockEnum.Code]: {
     author: 'Dify',
@@ -122,15 +124,6 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailableNextNodes: HttpRequestDefault.getAvailableNextNodes,
     checkValid: HttpRequestDefault.checkValid,
   },
-  [BlockEnum.ParameterExtractor]: {
-    author: 'Dify',
-    about: '',
-    availablePrevNodes: [],
-    availableNextNodes: [],
-    getAvailablePrevNodes: HttpRequestDefault.getAvailablePrevNodes,
-    getAvailableNextNodes: HttpRequestDefault.getAvailableNextNodes,
-    checkValid: HttpRequestDefault.checkValid,
-  },
   [BlockEnum.VariableAssigner]: {
     author: 'Dify',
     about: '',
@@ -139,6 +132,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: VariableAssignerDefault.getAvailablePrevNodes,
     getAvailableNextNodes: VariableAssignerDefault.getAvailableNextNodes,
     checkValid: VariableAssignerDefault.checkValid,
+  },
+  [BlockEnum.ParameterExtractor]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: ParameterExtractorDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: ParameterExtractorDefault.getAvailableNextNodes,
+    checkValid: ParameterExtractorDefault.checkValid,
   },
   [BlockEnum.Tool]: {
     author: 'Dify',
@@ -195,6 +197,12 @@ export const NODES_INITIAL_DATA = {
     desc: '',
     ...IfElseDefault.defaultValue,
   },
+  [BlockEnum.Iteration]: {
+    type: BlockEnum.Iteration,
+    title: '',
+    desc: '',
+    ...IterationDefault.defaultValue,
+  },
   [BlockEnum.Code]: {
     type: BlockEnum.Code,
     title: '',
@@ -227,6 +235,13 @@ export const NODES_INITIAL_DATA = {
     desc: '',
     variables: [],
     ...HttpRequestDefault.defaultValue,
+  },
+  [BlockEnum.ParameterExtractor]: {
+    type: BlockEnum.ParameterExtractor,
+    title: '',
+    desc: '',
+    variables: [],
+    ...ParameterExtractorDefault.defaultValue,
   },
   [BlockEnum.VariableAssigner]: {
     type: BlockEnum.VariableAssigner,

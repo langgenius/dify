@@ -441,6 +441,8 @@ export const useNodesInteractions = () => {
     if (nodeType === BlockEnum.VariableAssigner)
       targetHandle = 'varNotSet'
 
+    console.log('nodeType:', nodeType)
+
     const {
       getNodes,
       setNodes,
