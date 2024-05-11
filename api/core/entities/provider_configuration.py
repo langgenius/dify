@@ -76,6 +76,14 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
+        if self.model_settings:
+            # check if model is disabled by admin
+            for model_setting in self.model_settings:
+                if (model_setting.model_type == model_type
+                        and model_setting.model == model
+                        and not model_setting.enabled):
+                    raise ValueError(f'Model {model} is disabled.')
+
         if self.using_provider_type == ProviderType.SYSTEM:
             restrict_models = []
             for quota_configuration in self.system_configuration.quota_configurations:
@@ -753,7 +761,8 @@ class ProviderConfiguration(BaseModel):
                 break
 
             if should_use_custom_model:
-                if original_provider_configurate_methods[self.provider.provider] == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
+                if original_provider_configurate_methods[self.provider.provider] == [
+                    ConfigurateMethod.CUSTOMIZABLE_MODEL]:
                     # only customizable model
                     for restrict_model in restrict_models:
                         copy_credentials = self.system_configuration.credentials.copy()
