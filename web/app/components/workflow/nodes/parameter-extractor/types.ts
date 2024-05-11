@@ -1,5 +1,12 @@
-import type { CommonNodeType } from '@/app/components/workflow/types'
+import type { CommonNodeType, Memory, ModelConfig, ValueSelector } from '@/app/components/workflow/types'
 
+type Param = {
+
+}
 export type ParameterExtractorNodeType = CommonNodeType & {
-  query: string
+  model: ModelConfig
+  query: ValueSelector
+  parameters: Param[]
+  instruction: string
+  memory?: Memory
 }

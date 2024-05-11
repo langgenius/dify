@@ -6,7 +6,15 @@ const i18nPrefix = 'workflow.errorMsg'
 
 const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
   defaultValue: {
-    query: '',
+    query: [],
+    model: {
+      provider: '',
+      name: '',
+      mode: 'chat',
+      completion_params: {
+        temperature: 0.7,
+      },
+    },
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode
