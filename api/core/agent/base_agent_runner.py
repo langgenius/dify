@@ -42,6 +42,7 @@ from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from models.model import Conversation, Message, MessageAgentThought
 from models.tools import ToolConversationVariables
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 
 logger = logging.getLogger(__name__)
 
@@ -84,9 +85,14 @@ class BaseAgentRunner(AppRunner):
         self.message = message
         self.user_id = user_id
         self.memory = memory
-        self.history_prompt_messages = self.organize_agent_history(
-            prompt_messages=prompt_messages or []
-        )
+        self.history_prompt_messages = AgentHistoryPromptTransform(
+            tenant_id=tenant_id,
+            app_config=app_config,
+            model_config=model_config,
+            message=message,
+            prompt_messages=prompt_messages or [],
+            memory=memory
+        ).get_prompt()
         self.variables_pool = variables_pool
         self.db_variables_pool = db_variables
         self.model_instance = model_instance
@@ -445,102 +451,4 @@ class BaseAgentRunner(AppRunner):
         db_variables.variables_str = json.dumps(jsonable_encoder(tool_variables.pool))
         db.session.commit()
         db.session.close()
-
-    def organize_agent_history(self, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
-        """
-        Organize agent history
-        """
-        result = []
-        # check if there is a system message in the beginning of the conversation
-        for prompt_message in prompt_messages:
-            if isinstance(prompt_message, SystemPromptMessage):
-                result.append(prompt_message)
-
-        messages: list[Message] = db.session.query(Message).filter(
-            Message.conversation_id == self.message.conversation_id,
-        ).order_by(Message.created_at.asc()).all()
-
-        for message in messages:
-            if message.id == self.message.id:
-                continue
-            
-            result.append(self.organize_agent_user_prompt(message))
-            agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
-            if agent_thoughts:
-                for agent_thought in agent_thoughts:
-                    tools = agent_thought.tool
-                    if tools:
-                        tools = tools.split(';')
-                        tool_calls: list[AssistantPromptMessage.ToolCall] = []
-                        tool_call_response: list[ToolPromptMessage] = []
-                        try:
-                            tool_inputs = json.loads(agent_thought.tool_input)
-                        except Exception as e:
-                            tool_inputs = { tool: {} for tool in tools }
-                        try:
-                            tool_responses = json.loads(agent_thought.observation)
-                        except Exception as e:
-                            tool_responses = { tool: agent_thought.observation for tool in tools }
-
-                        for tool in tools:
-                            # generate a uuid for tool call
-                            tool_call_id = str(uuid.uuid4())
-                            tool_calls.append(AssistantPromptMessage.ToolCall(
-                                id=tool_call_id,
-                                type='function',
-                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                                    name=tool,
-                                    arguments=json.dumps(tool_inputs.get(tool, {})),
-                                )
-                            ))
-                            tool_call_response.append(ToolPromptMessage(
-                                content=tool_responses.get(tool, agent_thought.observation),
-                                name=tool,
-                                tool_call_id=tool_call_id,
-                            ))
-
-                        result.extend([
-                            AssistantPromptMessage(
-                                content=agent_thought.thought,
-                                tool_calls=tool_calls,
-                            ),
-                            *tool_call_response
-                        ])
-                    if not tools:
-                        result.append(AssistantPromptMessage(content=agent_thought.thought))
-            else:
-                if message.answer:
-                    result.append(AssistantPromptMessage(content=message.answer))
-
-        db.session.close()
-
-        return result
-
-    def organize_agent_user_prompt(self, message: Message) -> UserPromptMessage:
-        message_file_parser = MessageFileParser(
-            tenant_id=self.tenant_id,
-            app_id=self.app_config.app_id,
-        )
-
-        files = message.message_files
-        if files:
-            file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
-
-            if file_extra_config:
-                file_objs = message_file_parser.transform_message_files(
-                    files,
-                    file_extra_config
-                )
-            else:
-                file_objs = []
-
-            if not file_objs:
-                return UserPromptMessage(content=message.query)
-            else:
-                prompt_message_contents = [TextPromptMessageContent(data=message.query)]
-                for file_obj in file_objs:
-                    prompt_message_contents.append(file_obj.prompt_message_content)
-
-                return UserPromptMessage(content=prompt_message_contents)
-        else:
-            return UserPromptMessage(content=message.query)
+        
