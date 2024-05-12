@@ -5,7 +5,6 @@ import io
 
 from flask import Flask
 from google.cloud import storage as GoogleCloudStorage
-import json
 
 from extensions.storage.base_storage import BaseStorage
 
@@ -20,7 +19,7 @@ class GoogleStorage(BaseStorage):
         service_account_json_str = app_config.get('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')
         # if service_account_json_str is empty, use Application Default Credentials
         if service_account_json_str:
-            service_account_json = json.loads(service_account_json_str)
+            service_account_json = base64.b64decode(service_account_json_str).decode('utf-8')
             self.client = GoogleCloudStorage.Client.from_service_account_info(service_account_json)
         else:
             self.client = GoogleCloudStorage.Client()
