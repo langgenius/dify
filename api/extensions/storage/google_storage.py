@@ -16,9 +16,13 @@ class GoogleStorage(BaseStorage):
         super().__init__(app)
         app_config = self.app.config
         self.bucket_name = app_config.get('GOOGLE_STORAGE_BUCKET_NAME')
-        service_account_json = base64.b64decode(app_config.get('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')).decode(
-            'utf-8')
-        self.client = GoogleCloudStorage.Client.from_service_account_info(json.loads(service_account_json))
+        service_account_json_str = app_config.get('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')
+        # if service_account_json_str is empty, use Application Default Credentials
+        if service_account_json_str:
+            service_account_json = json.loads(service_account_json_str)
+            self.client = GoogleCloudStorage.Client.from_service_account_info(service_account_json)
+        else:
+            self.client = GoogleCloudStorage.Client()
 
     def save(self, filename, data):
         bucket = self.client.get_bucket(self.bucket_name)
