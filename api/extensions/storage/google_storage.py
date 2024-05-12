@@ -1,6 +1,7 @@
 import base64
 from collections.abc import Generator
 from contextlib import closing
+import io
 
 from flask import Flask
 from google.cloud import storage as GoogleCloudStorage
@@ -27,7 +28,8 @@ class GoogleStorage(BaseStorage):
     def save(self, filename, data):
         bucket = self.client.get_bucket(self.bucket_name)
         blob = bucket.blob(filename)
-        blob.upload_from_file(data)
+        with io.BytesIO(data) as stream:
+            blob.upload_from_file(stream)
 
     def load_once(self, filename: str) -> bytes:
         bucket = self.client.get_bucket(self.bucket_name)
