@@ -2,7 +2,7 @@ version: '3.5'
 
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.2
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
     container_name: es
     restart: always
     environment:
