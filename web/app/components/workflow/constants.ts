@@ -318,6 +318,10 @@ export const TOOL_OUTPUT_STRUCT: Var[] = [
     variable: 'files',
     type: VarType.arrayFile,
   },
+  {
+    variable: 'chunks',
+    type: VarType.arrayObject,
+  },
 ]
 
 export const WORKFLOW_DATA_UPDATE = 'WORKFLOW_DATA_UPDATE'

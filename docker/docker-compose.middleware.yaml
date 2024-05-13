@@ -63,17 +63,15 @@ services:
       GIN_MODE: 'release'
       WORKER_TIMEOUT: 15
       ENABLE_NETWORK: 'true'
-      HTTP_PROXY: 'http://ssrf_proxy:3128'
-      HTTPS_PROXY: 'http://ssrf_proxy:3128'
+      HTTP_PROXY: 'http://proxy:3128'
+      HTTPS_PROXY: 'http://proxy:3128'
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
     networks:
-      - ssrf_proxy_network
+      - proxy_network
 
-  # ssrf_proxy server
-  # for more information, please refer to
-  # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-ssrf_proxy-needed
-  ssrf_proxy:
+  # Proxy server
+  proxy:
     image: ubuntu/squid:latest
     restart: always
     ports:
@@ -81,9 +79,9 @@ services:
       - "8194:8194"
     volumes:
       # pls clearly modify the squid.conf file to fit your network environment.
-      - ./volumes/ssrf_proxy/squid.conf:/etc/squid/squid.conf
+      - ./volumes/proxy/squid.conf:/etc/squid/squid.conf
     networks:
-      - ssrf_proxy_network
+      - proxy_network
       - default
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.
@@ -102,7 +100,7 @@ services:
 
 
 networks:
-  # create a network between sandbox, api and ssrf_proxy, and can not access outside.
-  ssrf_proxy_network:
+  # create a network between sandbox, api and proxy, and can not access outside.
+  proxy_network:
     driver: bridge
     internal: true

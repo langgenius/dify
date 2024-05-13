@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, List
 
 from pydantic import BaseModel, validator
 
@@ -15,6 +15,7 @@ from core.tools.entities.tool_entities import (
     ToolRuntimeVariablePool,
 )
 from core.tools.tool_file_manager import ToolFileManager
+from core.workflow.nodes.llm.knowledge_resource import KnowledgeResource
 
 
 class Tool(BaseModel, ABC):
@@ -337,6 +338,8 @@ class Tool(BaseModel, ABC):
             create an image message
 
             :param image: the url of the image
+            :param save_as: the save_as
+
             :return: the image message
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE, 
@@ -348,6 +351,7 @@ class Tool(BaseModel, ABC):
             create a link message
 
             :param link: the url of the link
+            :param save_as: the save_as
             :return: the link message
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.LINK, 
@@ -359,10 +363,24 @@ class Tool(BaseModel, ABC):
             create a text message
 
             :param text: the text
+            :param save_as: the save_as
             :return: the text message
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, 
                                  message=text,
+                                 save_as=save_as
+                                 )
+
+    def create_chunk_message(self, chunks: List[KnowledgeResource], save_as: str = '') -> ToolInvokeMessage:
+        """
+            create a chunk message
+
+            :param chunks: the chunks
+            :param save_as: the save_as
+            :return: the text message
+        """
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.CHUNK,
+                                 message=chunks,
                                  save_as=save_as
                                  )
     
@@ -371,9 +389,11 @@ class Tool(BaseModel, ABC):
             create a blob message
 
             :param blob: the blob
+            :param meta: the meta
+            :param save_as: the save_as
             :return: the blob message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB, 
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB,
                                  message=blob, meta=meta,
                                  save_as=save_as
                                  )

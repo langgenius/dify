@@ -337,6 +337,9 @@ const translation = {
           url: '图片链接',
           upload_file_id: '上传文件ID',
         },
+        chunks: {
+          title: '工具生成的内容列表',
+        },
       },
     },
     questionClassifiers: {

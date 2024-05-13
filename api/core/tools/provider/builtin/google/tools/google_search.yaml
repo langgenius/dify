@@ -39,6 +39,11 @@ parameters:
           en_US: link
           zh_Hans: 链接
           pt_BR: link
+      - value: chunk
+        label:
+          en_US: chunk
+          zh_Hans: 分段
+          pt_BR: chunk
     default: link
     label:
       en_US: Result type
