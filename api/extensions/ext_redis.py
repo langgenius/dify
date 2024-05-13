@@ -20,7 +20,7 @@ def init_app(app):
     if app.config.get('REDIS_USE_SSL', False):
         connection_class = SSLConnection
     cluster_mode = app.config.get('REDIS_CLUSTER_ENABLED',False)
-    if '1' == cluster_mode:
+    if cluster_mode:
         redis_client = RedisCluster(startup_nodes=[{'host': app.config.get('REDIS_HOST', 'localhost'), 'port': app.config.get('REDIS_PORT', 6379)}], 
                                     decode_responses=True, password=app.config.get('REDIS_PASSWORD', None))
     else:
