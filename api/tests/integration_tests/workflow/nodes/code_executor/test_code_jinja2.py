@@ -1,7 +1,7 @@
 import base64
 
 from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
-from core.helper.code_executor.jinja2_transformer import JINJA2_PRELOAD, PYTHON_RUNNER
+from core.helper.code_executor.jinja2.jinja2_transformer import JINJA2_PRELOAD, PYTHON_RUNNER
 
 CODE_LANGUAGE = CodeLanguage.JINJA2
 
