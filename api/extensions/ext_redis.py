@@ -1,14 +1,14 @@
+import os
 import redis
 from redis.connection import Connection, SSLConnection
 from rediscluster import RedisCluster
-import os
 
 redis_cluster_flag = os.getenv('REDIS_CLUSTER_ENABLED')
 redis_username = os.getenv('REDIS_USERNAME')
 redis_pwd = os.getenv('REDIS_PASSWORD')
 redis_host = os.getenv('REDIS_HOST')
 redis_port = os.getenv('REDIS_PORT')
-if 'false' == redis_cluster_flag:
+if redis_cluster_flag is None or 'false' == redis_cluster_flag:
     redis_client = redis.Redis()
 else:
     redis_client = RedisCluster(startup_nodes=[{'host': redis_host, 'port': redis_port}], decode_responses=True, password=redis_pwd)
