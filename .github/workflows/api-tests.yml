@@ -51,7 +51,6 @@ jobs:
         run: dev/pytest/pytest_workflow.sh
 
       - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, ElasticSearch, PgVecto-RS)
-      - name: Set up Vector Stores (Weaviate, Qdrant, Milvus, ElasticSearch, PgVecto-RS)
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
           compose-file: |
