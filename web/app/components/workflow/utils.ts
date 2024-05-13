@@ -254,7 +254,7 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
   return nodesConnectedSourceOrTargetHandleIdsMap
 }
 
-export const generateNewNode = ({ data, position, id }: Pick<Node, 'data' | 'position'> & { id?: string }) => {
+export const generateNewNode = ({ data, position, id, ...rest }: Omit<Node, 'id'> & { id?: string }) => {
   return {
     id: id || `${Date.now()}`,
     type: 'custom',
@@ -262,6 +262,7 @@ export const generateNewNode = ({ data, position, id }: Pick<Node, 'data' | 'pos
     position,
     targetPosition: Position.Left,
     sourcePosition: Position.Right,
+    ...rest,
   } as Node
 }
 

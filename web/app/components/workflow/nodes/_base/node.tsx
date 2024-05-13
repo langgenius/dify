@@ -8,6 +8,7 @@ import {
   useMemo,
   useRef,
 } from 'react'
+import cn from 'classnames'
 import type { NodeProps } from '../../types'
 import {
   BlockEnum,
@@ -21,6 +22,7 @@ import {
   NodeSourceHandle,
   NodeTargetHandle,
 } from './components/node-handle'
+import NodeResizer from './components/node-resizer'
 import NodeControl from './components/node-control'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
@@ -57,24 +59,35 @@ const BaseNode: FC<BaseNodeProps> = ({
 
   return (
     <div
-      className={`
-        flex border-[2px] rounded-2xl
-        ${(showSelectedBorder && !data._isInvalidConnection) ? 'border-primary-600' : 'border-transparent'}
-      `}
+      className={cn(
+        'flex border-[2px] rounded-2xl',
+        (showSelectedBorder && !data._isInvalidConnection) ? 'border-primary-600' : 'border-transparent',
+      )}
       ref={nodeRef}
+      style={{
+        width: data.type === BlockEnum.Iteration ? data.width : 'auto',
+        height: data.type === BlockEnum.Iteration ? data.height : 'auto',
+      }}
     >
       <div
-        className={`
-          group relative pb-1 w-[240px] bg-[#fcfdff] shadow-xs
-          border border-transparent rounded-[15px]
-          ${!data._runningStatus && 'hover:shadow-lg'}
-          ${showRunningBorder && '!border-primary-500'}
-          ${showSuccessBorder && '!border-[#12B76A]'}
-          ${showFailedBorder && '!border-[#F04438]'}
-          ${data._isInvalidConnection && '!border-[#F04438]'}
-          ${data._isBundled && '!shadow-lg'}
-        `}
+        className={cn(
+          'group relative pb-1 shadow-xs bg-[#fcfdff]',
+          'border border-transparent rounded-[15px]',
+          data.type !== BlockEnum.Iteration && 'w-[240px]',
+          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full',
+          !data._runningStatus && 'hover:shadow-lg',
+          showRunningBorder && '!border-primary-500',
+          showSuccessBorder && '!border-[#12B76A]',
+          showFailedBorder && '!border-[#F04438]',
+          data._isInvalidConnection && '!border-[#F04438]',
+          data._isBundled && '!shadow-lg',
+        )}
       >
+        {
+          data.type === BlockEnum.Iteration && (
+            <NodeResizer nodeId={id} />
+          )
+        }
         {
           data.type !== BlockEnum.VariableAssigner && !data._isCandidate && (
             <NodeTargetHandle
@@ -103,7 +116,10 @@ const BaseNode: FC<BaseNodeProps> = ({
             />
           )
         }
-        <div className='flex items-center px-3 pt-3 pb-2'>
+        <div className={cn(
+          'flex items-center px-3 pt-3 pb-2 rounded-t-2xl',
+          data.type === BlockEnum.Iteration && 'bg-[rgba(250,252,255,0.9)]',
+        )}>
           <BlockIcon
             className='shrink-0 mr-2'
             type={data.type}
@@ -132,7 +148,19 @@ const BaseNode: FC<BaseNodeProps> = ({
             )
           }
         </div>
-        {cloneElement(children, { id, data })}
+        {
+          data.type !== BlockEnum.Iteration && (
+            cloneElement(children, { id, data })
+          )
+        }
+        {/* {cloneElement(children, { id, data, className: 'pl-1 pr-1 pb-1 bg-white' })} */}
+        {
+          data.type === BlockEnum.Iteration && (
+            <div className='grow pl-1 pr-1 pb-1'>
+              {cloneElement(children, { id, data })}
+            </div>
+          )
+        }
         {
           data.desc && (
             <div className='px-3 pt-1 pb-2 text-xs leading-[18px] text-gray-500 whitespace-pre-line break-words'>

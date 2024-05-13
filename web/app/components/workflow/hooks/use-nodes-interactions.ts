@@ -8,6 +8,7 @@ import type {
   NodeMouseHandler,
   OnConnect,
   OnConnectStart,
+  ResizeParamsWithDirection,
 } from 'reactflow'
 import {
   getConnectedEdges,
@@ -440,8 +441,6 @@ export const useNodesInteractions = () => {
 
     if (nodeType === BlockEnum.VariableAssigner)
       targetHandle = 'varNotSet'
-
-    console.log('nodeType:', nodeType)
 
     const {
       getNodes,
@@ -908,6 +907,33 @@ export const useNodesInteractions = () => {
       handleNodeDelete(selectedNode.id)
   }, [store, workflowStore, getNodesReadOnly, handleNodeDelete])
 
+  const handleNodeResize = useCallback((nodeId: string, params: ResizeParamsWithDirection) => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+    const { x, y, width, height } = params
+
+    const nodes = getNodes()
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((n) => {
+        if (n.id === nodeId) {
+          n.data.width = width
+          n.data.height = height
+          n.width = width
+          n.height = height
+          n.position.x = x
+          n.position.y = y
+        }
+      })
+    })
+    setNodes(newNodes)
+    handleSyncWorkflowDraft()
+  }, [store, getNodesReadOnly, handleSyncWorkflowDraft])
+
   return {
     handleNodeDragStart,
     handleNodeDrag,
@@ -929,5 +955,6 @@ export const useNodesInteractions = () => {
     handleNodesPaste,
     handleNodesDuplicate,
     handleNodesDelete,
+    handleNodeResize,
   }
 }

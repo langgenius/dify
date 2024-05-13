@@ -45,6 +45,8 @@ export type CommonNodeType<T = {}> = {
   title: string
   desc: string
   type: BlockEnum
+  width?: number
+  height?: number
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
 export type CommonEdgeType = {
