@@ -60,6 +60,7 @@ const translation = {
     pasteHere: '粘贴到这里',
     pointerMode: '指针模式',
     handMode: '手模式',
+    model: '模型',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
@@ -350,6 +351,11 @@ const translation = {
       addClass: '添加分类',
       instruction: '指令',
       instructionPlaceholder: '在这里输入你的指令',
+    },
+    parameterExtractor: {
+      inputVar: '输入变量',
+      extractParameters: '提取参数',
+      extractParametersNotSet: '提取参数未设置',
     },
   },
   tracing: {

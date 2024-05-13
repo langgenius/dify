@@ -60,6 +60,7 @@ const translation = {
     pasteHere: 'Paste Here',
     pointerMode: 'Pointer Mode',
     handMode: 'Hand Mode',
+    model: 'Model',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
@@ -350,6 +351,11 @@ const translation = {
       addClass: 'Add Class',
       instruction: 'Instruction',
       instructionPlaceholder: 'Write your instruction',
+    },
+    parameterExtractor: {
+      inputVar: 'Input Variable',
+      extractParameters: 'Extract Parameters',
+      extractParametersNotSet: 'Extract Parameters not setup',
     },
   },
   tracing: {

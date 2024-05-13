@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import React, { useCallback } from 'react'
 import produce from 'immer'
 import RemoveButton from '../../../_base/components/remove-button'
+import ListNoDataPlaceholder from '../../../_base/components/list-no-data-placeholder'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
@@ -52,9 +53,9 @@ const VarList: FC<Props> = ({
 
   if (list.length === 0) {
     return (
-      <div className='flex rounded-md bg-gray-50 items-center h-[42px] justify-center leading-[18px] text-xs font-normal text-gray-500'>
+      <ListNoDataPlaceholder>
         {t('workflow.nodes.variableAssigner.noVarTip')}
-      </div>
+      </ListNoDataPlaceholder>
     )
   }
 

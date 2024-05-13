@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import produce from 'immer'
-import type { Memory } from '../../types'
+import type { Memory, ValueSelector, Var } from '../../types'
+import { VarType } from '../../types'
 import { useStore } from '../../store'
 import {
   useIsChatMode,
   useNodesReadOnly,
 } from '../../hooks'
-import type { ParameterExtractorNodeType } from './types'
+import type { Param, ParameterExtractorNodeType } from './types'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   ModelTypeEnum,
@@ -35,6 +36,24 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     doSetInputs(newInputs)
     inputRef.current = newInputs
   }, [doSetInputs, defaultRolePrefix])
+
+  const filterVar = useCallback((varPayload: Var) => {
+    return [VarType.string].includes(varPayload.type)
+  }, [])
+
+  const handleInputVarChange = useCallback((newInputVar: ValueSelector | string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.query = newInputVar as ValueSelector || []
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleExactParamsChange = useCallback((newParams: Param[]) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.parameters = newParams
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
 
   // model
   const model = inputs.model || {
@@ -105,12 +124,15 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
 
   return {
     readOnly,
+    handleInputVarChange,
+    filterVar,
     isChatMode,
     inputs,
     isChatModel,
     isCompletionModel,
     handleModelChanged,
     handleCompletionParamsChange,
+    handleExactParamsChange,
     handleMemoryChange,
   }
 }

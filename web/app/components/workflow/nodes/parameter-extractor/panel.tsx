@@ -2,14 +2,18 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
+import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
 import type { ParameterExtractorNodeType } from './types'
+import ExtractParameter from './components/extract-parameter/list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-const i18nPrefix = 'workflow.nodes.llm'
+
+const i18nPrefix = 'workflow.nodes.parameterExtractor'
+const i18nCommonPrefix = 'workflow.common'
 
 const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
   id,
@@ -20,11 +24,14 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
   const {
     readOnly,
     inputs,
+    handleInputVarChange,
+    filterVar,
     isChatModel,
     isChatMode,
     isCompletionModel,
     handleModelChanged,
     handleCompletionParamsChange,
+    handleExactParamsChange,
     handleMemoryChange,
   } = useConfig(id, data)
 
@@ -34,7 +41,21 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     <div className='mt-2'>
       <div className='px-4 pb-4 space-y-4'>
         <Field
-          title={t(`${i18nPrefix}.model`)}
+          title={t(`${i18nPrefix}.inputVar`)}
+        >
+          <>
+            <VarReferencePicker
+              readonly={readOnly}
+              nodeId={id}
+              isShowNodeName
+              value={inputs.query || []}
+              onChange={handleInputVarChange}
+              filterVar={filterVar}
+            />
+          </>
+        </Field>
+        <Field
+          title={t(`${i18nCommonPrefix}.model`)}
         >
           <ModelParameterModal
             popupClassName='!w-[387px]'
@@ -49,6 +70,15 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             hideDebugWithMultipleModel
             debugWithMultipleModel={false}
             readonly={readOnly}
+          />
+        </Field>
+        <Field
+          title={t(`${i18nPrefix}.extractParameters`)}
+        >
+          <ExtractParameter
+            readonly={readOnly}
+            list={inputs.parameters || []}
+            onChange={handleExactParamsChange}
           />
         </Field>
         {/* Memory */}
