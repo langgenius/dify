@@ -355,6 +355,22 @@ const translation = {
     parameterExtractor: {
       inputVar: '输入变量',
       extractParameters: '提取参数',
+      importFromTool: '从工具导入',
+      addExtractParameter: '添加提取参数',
+      addExtractParameterContent: {
+        name: '名称',
+        namePlaceholder: '提取参数名称',
+        type: '类型',
+        typePlaceholder: '提取参数类型',
+        description: '描述',
+        descriptionPlaceholder: '提取参数描述',
+      },
+      dataType: {
+        string: '字符串',
+        number: '数字',
+        bool: '布尔',
+        select: '选择',
+      },
       extractParametersNotSet: '提取参数未设置',
     },
   },

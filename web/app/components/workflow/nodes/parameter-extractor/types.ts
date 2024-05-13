@@ -12,6 +12,7 @@ export type Param = {
   type: ParamType
   options?: string[]
   description: string
+  required?: boolean
 }
 
 export type ParameterExtractorNodeType = CommonNodeType & {

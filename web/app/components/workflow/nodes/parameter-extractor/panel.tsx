@@ -6,6 +6,8 @@ import VarReferencePicker from '../_base/components/variable/var-reference-picke
 import useConfig from './use-config'
 import type { ParameterExtractorNodeType } from './types'
 import ExtractParameter from './components/extract-parameter/list'
+import ImportFromTool from './components/extract-parameter/import-from-tool'
+import AddExtractParameter from './components/extract-parameter/add'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -74,6 +76,17 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
         </Field>
         <Field
           title={t(`${i18nPrefix}.extractParameters`)}
+          operations={
+            !readOnly
+              ? (
+                <div className='flex items-center space-x-1'>
+                  <ImportFromTool onImport={() => { }} />
+                  {!readOnly && (<div className='w-px h-3 bg-gray-200'></div>)}
+                  <AddExtractParameter onAdd={() => { }} />
+                </div>
+              )
+              : undefined
+          }
         >
           <ExtractParameter
             readonly={readOnly}
