@@ -33,6 +33,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     isCompletionModel,
     handleModelChanged,
     handleCompletionParamsChange,
+    addExtractParameter,
     handleExactParamsChange,
     handleMemoryChange,
   } = useConfig(id, data)
@@ -82,7 +83,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                 <div className='flex items-center space-x-1'>
                   <ImportFromTool onImport={() => { }} />
                   {!readOnly && (<div className='w-px h-3 bg-gray-200'></div>)}
-                  <AddExtractParameter onAdd={() => { }} />
+                  <AddExtractParameter onAdd={addExtractParameter} />
                 </div>
               )
               : undefined

@@ -364,6 +364,8 @@ const translation = {
         typePlaceholder: '提取参数类型',
         description: '描述',
         descriptionPlaceholder: '提取参数描述',
+        required: '必填',
+        requiredContent: '必填仅作为模型推理的参考，不用于参数输出的强制验证。',
       },
       dataType: {
         string: '字符串',

@@ -30,18 +30,32 @@ const List: FC<Props> = ({
     }
   }, [list, onChange])
 
+  const handleItemEdit = useCallback((index: number) => {
+    return () => {
+      // return handleItemChange(index)
+    }
+  }, [])
+
+  const handleItemDelete = useCallback((index: number) => {
+    return () => {
+      const newList = list.filter((_, i) => i !== index)
+      onChange(newList)
+    }
+  }, [list, onChange])
+
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder >{t(`${i18nPrefix}.extractParametersNotSet`)}</ListNoDataPlaceholder>
     )
   }
   return (
-    <div>
+    <div className='space-y-1'>
       {list.map((item, index) => (
         <Item
           key={index}
           payload={item}
-          onChange={handleItemChange(index)}
+          onDelete={handleItemDelete(index)}
+          onEdit={handleItemEdit(index)}
         />
       ))}
     </div>

@@ -12,9 +12,18 @@ import Button from '@/app/components/base/button'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import Select from '@/app/components/base/select'
 import Switch from '@/app/components/base/switch'
+import Toast from '@/app/components/base/toast'
+import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
+const errorI18nPrefix = 'workflow.errorMsg'
 const inputClassName = 'w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-100 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+
+const DEFAULT_PARAM: Param = {
+  name: '',
+  type: ParamType.string,
+  description: '',
+}
 
 type Props = {
   onAdd: (payload: Param) => void
@@ -25,11 +34,7 @@ const AddExtractParameter: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  const [param, setParam] = useState<Param>({
-    name: '',
-    type: ParamType.string,
-    description: '',
-  })
+  const [param, setParam] = useState<Param>(DEFAULT_PARAM)
 
   const handleParamChange = useCallback((key: string) => {
     return (value: any) => {
@@ -43,13 +48,33 @@ const AddExtractParameter: FC<Props> = ({
   }, [])
 
   const [isShowAddModal, {
-    setTrue: showAddModal,
+    setTrue: doShowAddModal,
     setFalse: hideAddModal,
   }] = useBoolean(false)
 
+  const showAddModal = useCallback(() => {
+    setParam(DEFAULT_PARAM)
+    doShowAddModal()
+  }, [doShowAddModal])
+
   const checkValid = useCallback(() => {
+    let errMessage = ''
+    if (!param.name)
+      errMessage = t(`${errorI18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.addExtractParameterContent.name`) })
+    if (!errMessage && param.type === ParamType.select && (!param.options || param.options.length === 0))
+      errMessage = t(`${errorI18nPrefix}.fieldRequired`, { field: t('appDebug.variableConig.options') })
+    if (!errMessage && !param.description)
+      errMessage = t(`${errorI18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.addExtractParameterContent.description`) })
+
+    if (errMessage) {
+      Toast.notify({
+        type: 'error',
+        message: errMessage,
+      })
+      return false
+    }
     return true
-  }, [])
+  }, [param, t])
 
   const handleAdd = useCallback(() => {
     if (!checkValid())
@@ -58,6 +83,7 @@ const AddExtractParameter: FC<Props> = ({
     onAdd(param)
     hideAddModal()
   }, [checkValid, onAdd, param, hideAddModal])
+
   return (
     <div>
       <AddButton className='mx-1' onClick={showAddModal} />
@@ -94,7 +120,11 @@ const AddExtractParameter: FC<Props> = ({
                   ]}
                 />
               </Field>
-              {/* TODO: Select Options */}
+              {param.type === ParamType.select && (
+                <Field title={t('appDebug.variableConig.options')}>
+                  <ConfigSelect options={param.options || []} onChange={handleParamChange('options')} />
+                </Field>
+              )}
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.description`)}>
                 <textarea
                   className={cn(inputClassName, '!h-[80px]')}
@@ -106,7 +136,7 @@ const AddExtractParameter: FC<Props> = ({
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.required`)}>
                 <>
                   <div className='mb-1.5 leading-[18px] text-xs font-normal text-gray-500'>{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`)}</div>
-                  <Switch size='md' defaultValue={param.required} onChange={handleParamChange('required')} />
+                  <Switch size='l' defaultValue={param.required} onChange={handleParamChange('required')} />
                 </>
               </Field>
             </div>

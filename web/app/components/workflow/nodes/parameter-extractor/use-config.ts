@@ -55,6 +55,15 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const addExtractParameter = useCallback((payload: Param) => {
+    const newInputs = produce(inputs, (draft) => {
+      if (!draft.parameters)
+        draft.parameters = []
+      draft.parameters.push(payload)
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   // model
   const model = inputs.model || {
     provider: '',
@@ -133,6 +142,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     handleModelChanged,
     handleCompletionParamsChange,
     handleExactParamsChange,
+    addExtractParameter,
     handleMemoryChange,
   }
 }
