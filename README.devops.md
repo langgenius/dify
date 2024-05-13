@@ -4,6 +4,7 @@
 2. Worker
     Worker service, The Celery worker for processing the queue.
     All the config are same as API, only set MODE variable to "worker"
+    <span style="color:red;">!Important API and Worker service mount to a same place</span>
 3. Web
     Frontend web application.
 4. Weaviate
