@@ -97,6 +97,10 @@ function unicodeToChar(text: string) {
   })
 }
 
+function requiredWebSSOLogin() {
+  globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}`
+}
+
 export function format(text: string) {
   let res = text.trim()
   if (res.startsWith('\n'))
@@ -308,6 +312,10 @@ const baseFetch = <T>(
                   return bodyJson.then((data: ResponseError) => {
                     if (!silent)
                       Toast.notify({ type: 'error', message: data.message })
+
+                    if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized')
+                      requiredWebSSOLogin()
+
                     return Promise.reject(data)
                   })
                 }
@@ -467,6 +475,9 @@ export const ssePost = (
       if (!/^(2|3)\d{2}$/.test(String(res.status))) {
         res.json().then((data: any) => {
           Toast.notify({ type: 'error', message: data.message || 'Server Error' })
+
+          if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized')
+            requiredWebSSOLogin()
         })
         onError?.('Server Error')
         return

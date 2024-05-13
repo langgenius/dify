@@ -4,9 +4,11 @@ from flask import request
 from flask_restful import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
+from controllers.web.error import WebSSOAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
+from services.feature_service import FeatureService
 
 
 def validate_jwt_token(view=None):
@@ -20,6 +22,7 @@ def validate_jwt_token(view=None):
     if view:
         return decorator(view)
     return decorator
+
 
 def decode_jwt_token():
     auth_header = request.headers.get('Authorization')
@@ -48,7 +51,20 @@ def decode_jwt_token():
     if not end_user:
         raise NotFound()
 
+    _validate_web_sso_enforced(decoded)
+
     return app_model, end_user
+
+
+def _validate_web_sso_enforced(token: dict):
+    system_features = FeatureService.get_system_features()
+    if not system_features.sso_enforced_for_web:
+        return
+
+    source = token.get('token_source')
+    if not source or source != 'sso':
+        raise WebSSOAuthRequiredError()
+
 
 class WebApiResource(Resource):
     method_decorators = [validate_jwt_token]

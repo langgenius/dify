@@ -1,7 +1,6 @@
 from flask_login import current_user
 from flask_restful import Resource
 
-from services.enterprise.enterprise_feature_service import EnterpriseFeatureService
 from services.feature_service import FeatureService
 
 from . import api
@@ -15,10 +14,10 @@ class FeatureApi(Resource):
         return FeatureService.get_features(current_user.current_tenant_id).dict()
 
 
-class EnterpriseFeatureApi(Resource):
+class SystemFeatureApi(Resource):
     def get(self):
-        return EnterpriseFeatureService.get_enterprise_features().dict()
+        return FeatureService.get_system_features().dict()
 
 
 api.add_resource(FeatureApi, '/features')
-api.add_resource(EnterpriseFeatureApi, '/enterprise-features')
+api.add_resource(SystemFeatureApi, '/system-features')
