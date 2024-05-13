@@ -1,5 +1,7 @@
 const translation = {
   createApp: 'TẠO ỨNG DỤNG',
+  installingApp: 'Đang cài đặt ứng dụng',
+  installingAppFailed: 'Không thể cài đặt ứng dụng',
   types: {
     all: 'Tất cả',
     chatbot: 'Chatbot',

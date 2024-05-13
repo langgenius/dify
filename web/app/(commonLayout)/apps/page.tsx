@@ -1,11 +1,41 @@
 import classNames from 'classnames'
+import getConfig from 'next/config'
 import style from '../list.module.css'
 import Apps from './Apps'
+import AppRemoteImport from './AppRemoteImport'
 import { getLocaleOnServer, useTranslation as translate } from '@/i18n/server'
+import Loading from '@/app/components/base/loading'
 
-const AppList = async () => {
+const { serverRuntimeConfig } = getConfig()
+
+const AppList = async ({ searchParams }: any) => {
   const locale = getLocaleOnServer()
   const { t } = await translate(locale, 'app')
+
+  const showRemoteImport = (remoteInstallUrl: string, allowedHosts: string[]) => {
+    if (!remoteInstallUrl || !allowedHosts?.length)
+      return false
+
+    try {
+      return allowedHosts.includes(new URL(remoteInstallUrl).hostname)
+    }
+    catch (_error) {
+      return false
+    }
+  }
+
+  if (showRemoteImport(searchParams.remoteInstallUrl, serverRuntimeConfig.apps?.importFromRemote?.allowedHosts)) {
+    return (
+      <>
+        <div className="flex justify-center items-center relative w-full h-full bg-[#F0F2F7]">
+          <div>
+            <AppRemoteImport remoteInstallUrl={searchParams.remoteInstallUrl} />
+            <Loading />
+          </div>
+        </div>
+      </>
+    )
+  }
 
   return (
     <div className='relative flex flex-col overflow-y-auto bg-gray-100 shrink-0 h-0 grow'>
