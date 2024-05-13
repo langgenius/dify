@@ -20,10 +20,10 @@ FROM base AS production
 ENV FLASK_APP app.py
 ENV EDITION SELF_HOSTED
 ENV DEPLOY_ENV PRODUCTION
-ENV CONSOLE_API_URL http://127.0.0.1:5001
-ENV CONSOLE_WEB_URL http://127.0.0.1:3000
-ENV SERVICE_API_URL http://127.0.0.1:5001
-ENV APP_WEB_URL http://127.0.0.1:3000
+ENV CONSOLE_API_URL https://chatwithdoc-api.flow.ciandt.cn
+ENV CONSOLE_WEB_URL https://chatwithdoc-api.flow.ciandt.cn
+ENV SERVICE_API_URL https://chatwithdoc-api.flow.ciandt.cn
+ENV APP_WEB_URL https://chatwithdoc.flow.ciandt.cn
 
 EXPOSE 5001
 

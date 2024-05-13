@@ -36,8 +36,8 @@ FROM base as production
 ENV NODE_ENV production
 ENV EDITION SELF_HOSTED
 ENV DEPLOY_ENV PRODUCTION
-ENV CONSOLE_API_URL http://127.0.0.1:5001
-ENV APP_API_URL http://127.0.0.1:5001
+ENV CONSOLE_API_URL https://chatwithdoc-api.flow.ciandt.cn
+ENV APP_API_URL https://chatwithdoc-api.flow.ciandt.cn
 ENV PORT 3000
 
 # set timezone
