@@ -31,6 +31,7 @@ type AnswerProps = {
   allToolIcons?: Record<string, string | Emoji>
   showPromptLog?: boolean
   chatAnswerContainerInner?: string
+  hideProcessDetail?: boolean
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -42,6 +43,7 @@ const Answer: FC<AnswerProps> = ({
   allToolIcons,
   showPromptLog,
   chatAnswerContainerInner,
+  hideProcessDetail,
 }) => {
   const { t } = useTranslation()
   const {
@@ -129,7 +131,7 @@ const Answer: FC<AnswerProps> = ({
             }
             {
               workflowProcess && (
-                <WorkflowProcess data={workflowProcess} hideInfo />
+                <WorkflowProcess data={workflowProcess} hideInfo hideProcessDetail={hideProcessDetail} />
               )
             }
             {

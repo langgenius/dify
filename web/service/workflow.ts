@@ -9,12 +9,12 @@ import type {
 } from '@/types/workflow'
 import type { BlockEnum } from '@/app/components/workflow/types'
 
-export const fetchWorkflowDraft: Fetcher<FetchWorkflowDraftResponse, string> = (url) => {
-  return get<FetchWorkflowDraftResponse>(url, {}, { silent: true })
+export const fetchWorkflowDraft = (url: string) => {
+  return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
 }
 
 export const syncWorkflowDraft = ({ url, params }: { url: string; params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features'> }) => {
-  return post<CommonResponse & { updated_at: number }>(url, { body: params })
+  return post<CommonResponse & { updated_at: number; hash: string }>(url, { body: params }, { silent: true })
 }
 
 export const fetchNodesDefaultConfigs: Fetcher<NodesDefaultConfigsResponse, string> = (url) => {

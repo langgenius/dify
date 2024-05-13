@@ -40,6 +40,7 @@ const translation = {
     emailInValid: 'Please enter a valid email address',
     nameEmpty: 'Name is required',
     passwordEmpty: 'Password is required',
+    passwordLengthInValid: 'Password must be at least 8 characters',
     passwordInvalid: 'Password must contain letters and numbers, and the length must be greater than 8',
   },
   license: {

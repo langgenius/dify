@@ -1,0 +1,36 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "16",
+			"height": "16",
+			"viewBox": "0 0 16 16",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Icon"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector",
+							"d": "M3.53647 1.81277C2.46674 1.43738 1.43787 2.46625 1.81326 3.53598L5.40722 13.7777C5.81532 14.9407 7.43953 14.9956 7.92526 13.8628L9.70733 9.70683L13.8633 7.92476C14.9961 7.4391 14.9412 5.81484 13.7782 5.40674L3.53647 1.81277Z",
+							"fill": "currentColor"
+						},
+						"children": []
+					}
+				]
+			}
+		]
+	},
+	"name": "Cursor02C"
+}

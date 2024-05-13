@@ -259,7 +259,7 @@ class QuestionClassifierNode(LLMNode):
             user_prompt_message_3 = ChatModelMessage(
                 role=PromptMessageRole.USER,
                 text=QUESTION_CLASSIFIER_USER_PROMPT_3.format(input_text=input_text,
-                                                              categories=json.dumps(categories),
+                                                              categories=json.dumps(categories, ensure_ascii=False),
                                                               classification_instructions=instruction)
             )
             prompt_messages.append(user_prompt_message_3)
@@ -269,7 +269,7 @@ class QuestionClassifierNode(LLMNode):
                 text=QUESTION_CLASSIFIER_COMPLETION_PROMPT.format(histories=memory_str,
                                                                   input_text=input_text,
                                                                   categories=json.dumps(categories),
-                                                                  classification_instructions=instruction)
+                                                                  classification_instructions=instruction, ensure_ascii=False)
             )
 
         else:

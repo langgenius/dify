@@ -4,6 +4,7 @@ from typing import Optional, Union
 
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
+from libs import helper
 from models import StringUUID
 from models.account import Account
 
@@ -155,6 +156,21 @@ class Workflow(db.Model):
             return old_structure_variables
 
         return variables
+
+    @property
+    def unique_hash(self) -> str:
+        """
+        Get hash of workflow.
+
+        :return: hash
+        """
+        entity = {
+            'graph': self.graph_dict,
+            'features': self.features_dict
+        }
+
+        return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
+
 
 class WorkflowRunTriggeredFrom(Enum):
     """

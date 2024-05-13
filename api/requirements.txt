@@ -84,3 +84,4 @@ pgvecto-rs==0.1.4
 oss2==2.15.0
 elasticsearch==8.13.1
 firecrawl-py==0.0.5
+pgvector==0.2.5
