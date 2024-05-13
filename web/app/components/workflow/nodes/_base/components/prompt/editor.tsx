@@ -1,16 +1,19 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useRef } from 'react'
 import cn from 'classnames'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import {
-  BlockEnum,
-  type Node,
-  type NodeOutPutVar,
+import { BlockEnum, EditionType } from '../../../../types'
+import type {
+  Node,
+  NodeOutPutVar,
+  Variable,
 } from '../../../../types'
+
 import Wrap from '../editor/wrap'
+import { CodeLanguage } from '../../../code/types'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -21,6 +24,10 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
+import Switch from '@/app/components/base/switch'
+import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
+
 type Props = {
   className?: string
   headerClassName?: string
@@ -42,6 +49,12 @@ type Props = {
   }
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  // for jinja
+  isSupportJinja?: boolean
+  editionType?: EditionType
+  onEditionTypeChange?: (editionType: EditionType) => void
+  varList?: Variable[]
+  handleAddVariable?: (payload: any) => void
 }
 
 const Editor: FC<Props> = ({
@@ -61,6 +74,11 @@ const Editor: FC<Props> = ({
   hasSetBlockStatus,
   nodesOutputVars,
   availableNodes = [],
+  isSupportJinja,
+  editionType,
+  onEditionTypeChange,
+  varList = [],
+  handleAddVariable,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -85,20 +103,6 @@ const Editor: FC<Props> = ({
     setTrue: setFocus,
     setFalse: setBlur,
   }] = useBoolean(false)
-  const hideTooltipRunId = useRef(0)
-
-  const [isShowInsertToolTip, setIsShowInsertTooltip] = useState(false)
-  useEffect(() => {
-    if (isFocus) {
-      clearTimeout(hideTooltipRunId.current)
-      setIsShowInsertTooltip(true)
-    }
-    else {
-      hideTooltipRunId.current = setTimeout(() => {
-        setIsShowInsertTooltip(false)
-      }, 100) as any
-    }
-  }, [isFocus])
 
   const handleInsertVariable = () => {
     setFocus()
@@ -116,6 +120,29 @@ const Editor: FC<Props> = ({
               <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>
               {/* Operations */}
               <div className='flex items-center space-x-2'>
+                {isSupportJinja && (
+                  <TooltipPlus
+                    popupContent={
+                      <div>
+                        <div>{t('workflow.common.enableJinja')}</div>
+                        <a className='text-[#155EEF]' target='_blank' href='https://jinja.palletsprojects.com/en/2.10.x/'>{t('workflow.common.learnMore')}</a>
+                      </div>
+                    }
+                    hideArrow
+                  >
+                    <div className={cn(editionType === EditionType.jinja2 && 'border-black/5 bg-white', 'mb-1 flex h-[22px] items-center px-1.5 rounded-[5px] border border-transparent hover:border-black/5 space-x-0.5')}>
+                      <Jinja className='w-6 h-3 text-gray-300' />
+                      <Switch
+                        size='sm'
+                        defaultValue={editionType === EditionType.jinja2}
+                        onChange={(checked) => {
+                          onEditionTypeChange?.(checked ? EditionType.jinja2 : EditionType.basic)
+                        }}
+                      />
+                    </div>
+                  </TooltipPlus>
+
+                )}
                 {!readOnly && (
                   <TooltipPlus
                     popupContent={`${t('workflow.common.insertVarTip')}`}
@@ -142,57 +169,75 @@ const Editor: FC<Props> = ({
 
           {/* Min: 80 Max: 560. Header: 24 */}
           <div className={cn('pb-2', isExpand && 'flex flex-col grow')}>
-            <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto')}>
-              <PromptEditor
-                instanceId={instanceId}
-                compact
-                className='min-h-[56px]'
-                style={isExpand ? { height: editorExpandHeight - 5 } : {}}
-                value={value}
-                contextBlock={{
-                  show: justVar ? false : isShowContext,
-                  selectable: !hasSetBlockStatus?.context,
-                  canNotAddContext: true,
-                }}
-                historyBlock={{
-                  show: justVar ? false : isShowHistory,
-                  selectable: !hasSetBlockStatus?.history,
-                  history: {
-                    user: 'Human',
-                    assistant: 'Assistant',
-                  },
-                }}
-                queryBlock={{
-                  show: false, // use [sys.query] instead of query block
-                  selectable: false,
-                }}
-                workflowVariableBlock={{
-                  show: true,
-                  variables: nodesOutputVars || [],
-                  workflowNodesMap: availableNodes.reduce((acc, node) => {
-                    acc[node.id] = {
-                      title: node.data.title,
-                      type: node.data.type,
-                    }
-                    if (node.data.type === BlockEnum.Start) {
-                      acc.sys = {
-                        title: t('workflow.blocks.start'),
-                        type: BlockEnum.Start,
-                      }
-                    }
-                    return acc
-                  }, {} as any),
-                }}
-                onChange={onChange}
-                onBlur={setBlur}
-                onFocus={setFocus}
-                editable={!readOnly}
-              />
-              {/* to patch Editor not support dynamic change editable status */}
-              {readOnly && <div className='absolute inset-0 z-10'></div>}
-            </div>
+            {!(isSupportJinja && editionType === EditionType.jinja2)
+              ? (
+                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto')}>
+                  <PromptEditor
+                    instanceId={instanceId}
+                    compact
+                    className='min-h-[56px]'
+                    style={isExpand ? { height: editorExpandHeight - 5 } : {}}
+                    value={value}
+                    contextBlock={{
+                      show: justVar ? false : isShowContext,
+                      selectable: !hasSetBlockStatus?.context,
+                      canNotAddContext: true,
+                    }}
+                    historyBlock={{
+                      show: justVar ? false : isShowHistory,
+                      selectable: !hasSetBlockStatus?.history,
+                      history: {
+                        user: 'Human',
+                        assistant: 'Assistant',
+                      },
+                    }}
+                    queryBlock={{
+                      show: false, // use [sys.query] instead of query block
+                      selectable: false,
+                    }}
+                    workflowVariableBlock={{
+                      show: true,
+                      variables: nodesOutputVars || [],
+                      workflowNodesMap: availableNodes.reduce((acc, node) => {
+                        acc[node.id] = {
+                          title: node.data.title,
+                          type: node.data.type,
+                        }
+                        if (node.data.type === BlockEnum.Start) {
+                          acc.sys = {
+                            title: t('workflow.blocks.start'),
+                            type: BlockEnum.Start,
+                          }
+                        }
+                        return acc
+                      }, {} as any),
+                    }}
+                    onChange={onChange}
+                    onBlur={setBlur}
+                    onFocus={setFocus}
+                    editable={!readOnly}
+                  />
+                  {/* to patch Editor not support dynamic change editable status */}
+                  {readOnly && <div className='absolute inset-0 z-10'></div>}
+                </div>
+              )
+              : (
+                <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto')}>
+                  <CodeEditor
+                    availableVars={nodesOutputVars || []}
+                    varList={varList}
+                    onAddVar={handleAddVariable}
+                    isInNode
+                    readOnly={readOnly}
+                    language={CodeLanguage.python3}
+                    value={value}
+                    onChange={onChange}
+                    noWrapper
+                    isExpand={isExpand}
+                  />
+                </div>
+              )}
           </div>
-
         </div>
       </div>
     </Wrap>

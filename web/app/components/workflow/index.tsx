@@ -6,19 +6,24 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
 } from 'react'
 import { setAutoFreeze } from 'immer'
 import {
+  useEventListener,
   useKeyPress,
 } from 'ahooks'
 import ReactFlow, {
   Background,
   ReactFlowProvider,
+  SelectionMode,
   useEdgesState,
   useNodesState,
   useOnViewportChange,
 } from 'reactflow'
-import type { Viewport } from 'reactflow'
+import type {
+  Viewport,
+} from 'reactflow'
 import 'reactflow/dist/style.css'
 import './style.css'
 import type {
@@ -31,9 +36,13 @@ import {
   useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
+  usePanelInteractions,
+  useSelectionInteractions,
   useWorkflow,
   useWorkflowInit,
   useWorkflowReadOnly,
+  useWorkflowStartRun,
+  useWorkflowUpdate,
 } from './hooks'
 import Header from './header'
 import CustomNode from './nodes'
@@ -43,8 +52,15 @@ import CustomConnectionLine from './custom-connection-line'
 import Panel from './panel'
 import Features from './features'
 import HelpLine from './help-line'
-import { useStore } from './store'
+import CandidateNode from './candidate-node'
+import PanelContextmenu from './panel-contextmenu'
+import NodeContextmenu from './node-contextmenu'
 import {
+  useStore,
+  useWorkflowStore,
+} from './store'
+import {
+  getKeyboardKeyCodeBySystem,
   initialEdges,
   initialNodes,
 } from './utils'
@@ -71,9 +87,12 @@ const Workflow: FC<WorkflowProps> = memo(({
   edges: originalEdges,
   viewport,
 }) => {
+  const workflowContainerRef = useRef<HTMLDivElement>(null)
+  const workflowStore = useWorkflowStore()
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
+  const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const {
     handleSyncWorkflowDraft,
@@ -101,14 +120,17 @@ const Workflow: FC<WorkflowProps> = memo(({
 
   useEffect(() => {
     return () => {
-      handleSyncWorkflowDraft(true)
+      handleSyncWorkflowDraft(true, true)
     }
   }, [])
 
+  const { handleRefreshWorkflowDraft } = useWorkflowUpdate()
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
     if (document.visibilityState === 'hidden')
       syncWorkflowDraftWhenPageClose()
-  }, [syncWorkflowDraftWhenPageClose])
+    else if (document.visibilityState === 'visible')
+      handleRefreshWorkflowDraft()
+  }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft])
 
   useEffect(() => {
     document.addEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
@@ -117,6 +139,25 @@ const Workflow: FC<WorkflowProps> = memo(({
       document.removeEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
     }
   }, [handleSyncWorkflowDraftWhenPageClose])
+
+  useEventListener('keydown', (e) => {
+    if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey))
+      e.preventDefault()
+  })
+  useEventListener('mousemove', (e) => {
+    const containerClientRect = workflowContainerRef.current?.getBoundingClientRect()
+
+    if (containerClientRect) {
+      workflowStore.setState({
+        mousePosition: {
+          pageX: e.clientX,
+          pageY: e.clientY,
+          elementX: e.clientX - containerClientRect.left,
+          elementY: e.clientY - containerClientRect.top,
+        },
+      })
+    }
+  })
 
   const {
     handleNodeDragStart,
@@ -128,11 +169,11 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleNodeConnect,
     handleNodeConnectStart,
     handleNodeConnectEnd,
-    handleNodeDuplicateSelected,
-    handleNodeCopySelected,
-    handleNodeCut,
-    handleNodeDeleteSelected,
-    handleNodePaste,
+    handleNodeContextMenu,
+    handleNodesCopy,
+    handleNodesPaste,
+    handleNodesDuplicate,
+    handleNodesDelete,
   } = useNodesInteractions()
   const {
     handleEdgeEnter,
@@ -141,8 +182,17 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleEdgesChange,
   } = useEdgesInteractions()
   const {
+    handleSelectionStart,
+    handleSelectionChange,
+    handleSelectionDrag,
+  } = useSelectionInteractions()
+  const {
+    handlePaneContextMenu,
+  } = usePanelInteractions()
+  const {
     isValidConnection,
   } = useWorkflow()
+  const { handleStartWorkflowRun } = useWorkflowStartRun()
 
   useOnViewportChange({
     onEnd: () => {
@@ -150,12 +200,12 @@ const Workflow: FC<WorkflowProps> = memo(({
     },
   })
 
-  useKeyPress(['delete', 'backspace'], handleNodeDeleteSelected)
-  useKeyPress(['delete', 'backspace'], handleEdgeDelete)
-  useKeyPress(['ctrl.c', 'meta.c'], handleNodeCopySelected)
-  useKeyPress(['ctrl.x', 'meta.x'], handleNodeCut)
-  useKeyPress(['ctrl.v', 'meta.v'], handleNodePaste)
-  useKeyPress(['ctrl.alt.d', 'meta.shift.d'], handleNodeDuplicateSelected)
+  useKeyPress('delete', handleNodesDelete)
+  useKeyPress('delete', handleEdgeDelete)
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, handleNodesCopy, { exactMatch: true, useCapture: true })
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.v`, handleNodesPaste, { exactMatch: true, useCapture: true })
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, handleNodesDuplicate, { exactMatch: true, useCapture: true })
+  useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, handleStartWorkflowRun, { exactMatch: true, useCapture: true })
 
   return (
     <div
@@ -165,13 +215,17 @@ const Workflow: FC<WorkflowProps> = memo(({
         ${workflowReadOnly && 'workflow-panel-animation'}
         ${nodeAnimation && 'workflow-node-animation'}
       `}
+      ref={workflowContainerRef}
     >
+      <CandidateNode />
       <Header />
       <Panel />
       <Operator />
       {
         showFeaturesPanel && <Features />
       }
+      <PanelContextmenu />
+      <NodeContextmenu />
       <HelpLine />
       <ReactFlow
         nodeTypes={nodeTypes}
@@ -184,12 +238,17 @@ const Workflow: FC<WorkflowProps> = memo(({
         onNodeMouseEnter={handleNodeEnter}
         onNodeMouseLeave={handleNodeLeave}
         onNodeClick={handleNodeClick}
+        onNodeContextMenu={handleNodeContextMenu}
         onConnect={handleNodeConnect}
         onConnectStart={handleNodeConnectStart}
         onConnectEnd={handleNodeConnectEnd}
         onEdgeMouseEnter={handleEdgeEnter}
         onEdgeMouseLeave={handleEdgeLeave}
         onEdgesChange={handleEdgesChange}
+        onSelectionStart={handleSelectionStart}
+        onSelectionChange={handleSelectionChange}
+        onSelectionDrag={handleSelectionDrag}
+        onPaneContextMenu={handlePaneContextMenu}
         connectionLineComponent={CustomConnectionLine}
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
@@ -198,11 +257,15 @@ const Workflow: FC<WorkflowProps> = memo(({
         nodesConnectable={!nodesReadOnly}
         nodesFocusable={!nodesReadOnly}
         edgesFocusable={!nodesReadOnly}
-        panOnDrag={!workflowReadOnly}
+        panOnDrag={controlMode === 'hand' && !workflowReadOnly}
         zoomOnPinch={!workflowReadOnly}
         zoomOnScroll={!workflowReadOnly}
         zoomOnDoubleClick={!workflowReadOnly}
         isValidConnection={isValidConnection}
+        selectionKeyCode={null}
+        selectionMode={SelectionMode.Partial}
+        selectionOnDrag={controlMode === 'pointer' && !workflowReadOnly}
+        minZoom={0.25}
       >
         <Background
           gap={[14, 14]}

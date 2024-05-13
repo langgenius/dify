@@ -111,7 +111,7 @@ es basados en LLM Function Calling o ReAct, y agregar herramientas preconstruida
     <td align="center">Agente</td>
     <td align="center">✅</td>
     <td align="center">✅</td>
-    <td align="center">✅</td>
+    <td align="center">❌</td>
     <td align="center">✅</td>
   </tr>
   <tr>
