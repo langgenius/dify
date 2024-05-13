@@ -186,11 +186,7 @@ class Config:
         self.REDIS_USERNAME = get_env('REDIS_USERNAME')
         self.REDIS_PASSWORD = get_env('REDIS_PASSWORD')
         self.REDIS_DB = get_env('REDIS_DB')
-<<<<<<< HEAD
         self.REDIS_CLUSTER_ENABLED = get_bool_env('REDIS_CLUSTER_ENABLED')
-=======
-        self.REDIS_CLUSTER = get_env('REDIS_CLUSTER')
->>>>>>> 3949d5ca606a080f24a8458c52de76f19adfbec0
         self.REDIS_USE_SSL = get_bool_env('REDIS_USE_SSL')
 
         # ------------------------
