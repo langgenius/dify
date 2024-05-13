@@ -154,6 +154,24 @@ class ModelInstance:
             user=user
         )
 
+    def get_text_embedding_num_tokens(self, texts: list[str]) -> int:
+        """
+        Get number of tokens for text embedding
+
+        :param texts: texts to embed
+        :return:
+        """
+        if not isinstance(self.model_type_instance, TextEmbeddingModel):
+            raise Exception("Model type instance is not TextEmbeddingModel")
+
+        self.model_type_instance = cast(TextEmbeddingModel, self.model_type_instance)
+        return self._round_robin_invoke(
+            function=self.model_type_instance.get_num_tokens,
+            model=self.model,
+            credentials=self.credentials,
+            texts=texts
+        )
+
     def invoke_rerank(self, query: str, docs: list[str], score_threshold: Optional[float] = None,
                       top_n: Optional[int] = None,
                       user: Optional[str] = None) \
@@ -263,21 +281,28 @@ class ModelInstance:
         if not self.load_balancing_manager:
             return function(*args, **kwargs)
 
+        last_exception = None
         while True:
             lb_config = self.load_balancing_manager.fetch_next()
             if not lb_config:
-                raise ProviderTokenNotInitError("Model credentials is not initialized.")
+                if not last_exception:
+                    raise ProviderTokenNotInitError("Model credentials is not initialized.")
+                else:
+                    raise last_exception
 
             try:
-                del kwargs['credentials']
+                if 'credentials' in kwargs:
+                    del kwargs['credentials']
                 return function(*args, **kwargs, credentials=lb_config.credentials)
-            except InvokeRateLimitError:
+            except InvokeRateLimitError as e:
                 # expire in 60 seconds
                 self.load_balancing_manager.cooldown(lb_config, expire=60)
+                last_exception = e
                 continue
-            except InvokeAuthorizationError | InvokeConnectionError:
+            except (InvokeAuthorizationError, InvokeConnectionError) as e:
                 # expire in 10 seconds
                 self.load_balancing_manager.cooldown(lb_config, expire=10)
+                last_exception = e
                 continue
             except Exception as e:
                 raise e
