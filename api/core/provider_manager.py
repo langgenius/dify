@@ -860,6 +860,12 @@ class ProviderManager:
                             continue
 
                         if not load_balancing_model_config.encrypted_config:
+                            if load_balancing_model_config.name == "__inherit__":
+                                load_balancing_configs.append(ModelLoadBalancingConfiguration(
+                                    id=load_balancing_model_config.id,
+                                    name=load_balancing_model_config.name,
+                                    credentials={}
+                                ))
                             continue
 
                         provider_model_credentials_cache = ProviderCredentialsCache(

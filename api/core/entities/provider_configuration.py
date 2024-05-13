@@ -76,13 +76,11 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
-        current_model_setting = None
         if self.model_settings:
             # check if model is disabled by admin
             for model_setting in self.model_settings:
                 if (model_setting.model_type == model_type
                         and model_setting.model == model):
-                    current_model_setting = model_setting
                     if not model_setting.enabled:
                         raise ValueError(f'Model {model} is disabled.')
 
@@ -104,20 +102,17 @@ class ProviderConfiguration(BaseModel):
 
             return copy_credentials
         else:
-            # check if load balancing is enabled
-            if current_model_setting.load_balancing_configs:
-                # TODO use load balancing proxy to choose credentials
-                pass
-
+            credentials = None
             if self.custom_configuration.models:
                 for model_configuration in self.custom_configuration.models:
                     if model_configuration.model_type == model_type and model_configuration.model == model:
-                        return model_configuration.credentials
+                        credentials = model_configuration.credentials
+                        break
 
             if self.custom_configuration.provider:
-                return self.custom_configuration.provider.credentials
-            else:
-                return None
+                credentials = self.custom_configuration.provider.credentials
+
+            return credentials
 
     def get_system_configuration_status(self) -> SystemConfigurationStatus:
         """
