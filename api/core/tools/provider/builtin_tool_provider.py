@@ -4,6 +4,7 @@ from typing import Any
 
 from yaml import FullLoader, load
 
+from core.helper.module_import_helper import load_single_subclass_from_source
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderCredentials, ToolProviderType
 from core.tools.entities.user_entities import UserToolProviderCredentials
 from core.tools.errors import (
@@ -15,7 +16,6 @@ from core.tools.errors import (
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
-from core.utils.module_import_helper import load_single_subclass_from_source
 
 
 class BuiltinToolProviderController(ToolProviderController):
