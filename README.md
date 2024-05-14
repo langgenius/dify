@@ -187,7 +187,7 @@ After running, you can access the Dify dashboard in your browser at [http://loca
 ##  Upgrade steps
 - 1. Stop the service，Command, please execute in the docker directory
 ```bash
-docker-compose down
+docker compose down
 ```
 
 - 2. Back up Docker image ID
