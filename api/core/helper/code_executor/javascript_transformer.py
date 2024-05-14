@@ -1,6 +1,8 @@
 import json
 import re
+from typing import Optional
 
+from core.helper.code_executor.entities import CodeDependency
 from core.helper.code_executor.template_transformer import TemplateTransformer
 
 NODEJS_RUNNER = """// declare main function here
@@ -22,7 +24,8 @@ NODEJS_PRELOAD = """"""
 
 class NodeJsTemplateTransformer(TemplateTransformer):
     @classmethod
-    def transform_caller(cls, code: str, inputs: dict) -> tuple[str, str]:
+    def transform_caller(cls, code: str, inputs: dict, 
+                         dependencies: Optional[list[CodeDependency]] = None) -> tuple[str, str, list[CodeDependency]]:
         """
         Transform code to python runner
         :param code: code
@@ -37,7 +40,7 @@ class NodeJsTemplateTransformer(TemplateTransformer):
         runner = NODEJS_RUNNER.replace('{{code}}', code)
         runner = runner.replace('{{inputs}}', inputs_str)
 
-        return runner, NODEJS_PRELOAD
+        return runner, NODEJS_PRELOAD, []
 
     @classmethod
     def transform_response(cls, response: str) -> dict:

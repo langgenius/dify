@@ -2,6 +2,7 @@ import os
 from typing import Optional, Union, cast
 
 from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
@@ -61,7 +62,8 @@ class CodeNode(BaseNode):
                             "children": None
                         }
                     }
-                }
+                },
+                "available_dependencies": []
             }
 
         return {
@@ -84,8 +86,11 @@ class CodeNode(BaseNode):
                         "type": "string",
                         "children": None
                     }
-                }
-            }
+                },
+                "dependencies": [
+                ]
+            },
+            "available_dependencies": jsonable_encoder(CodeExecutor.list_dependencies('python3'))
         }
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
@@ -115,7 +120,8 @@ class CodeNode(BaseNode):
             result = CodeExecutor.execute_workflow_code_template(
                 language=code_language,
                 code=code,
-                inputs=variables
+                inputs=variables,
+                dependencies=node_data.dependencies
             )
 
             # Transform result
