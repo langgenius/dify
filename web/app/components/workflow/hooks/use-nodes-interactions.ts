@@ -325,7 +325,7 @@ export const useNodesInteractions = () => {
     const targetNode = nodes.find(node => node.id === target!)
     const sourceNode = nodes.find(node => node.id === source!)
 
-    if (targetNode?.parentNode !== sourceNode?.parentNode)
+    if (targetNode?.parentId !== sourceNode?.parentId)
       return
     if (targetNode && targetNode?.data.type === BlockEnum.VariableAssigner) {
       const treeNodes = getTreeLeafNodes(target!)
@@ -353,9 +353,9 @@ export const useNodesInteractions = () => {
       data: {
         sourceType: nodes.find(node => node.id === source)!.data.type,
         targetType: nodes.find(node => node.id === target)!.data.type,
-        isInIteration: !!targetNode?.parentNode,
+        isInIteration: !!targetNode?.parentId,
       },
-      zIndex: targetNode?.parentNode ? 1001 : 0,
+      zIndex: targetNode?.parentId ? 1001 : 0,
     }
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
       [
@@ -426,7 +426,7 @@ export const useNodesInteractions = () => {
           }
         }
 
-        if (node.id === currentNode.parentNode) {
+        if (node.id === currentNode.parentId) {
           node.data._children = node.data._children?.filter(child => child !== nodeId)
 
           if (currentNode.id === (node as Node<IterationNodeType>).data.start_node_id)
@@ -496,9 +496,9 @@ export const useNodesInteractions = () => {
         x: lastOutgoer ? lastOutgoer.position.x : prevNode.position.x + NODE_WIDTH_X_OFFSET,
         y: lastOutgoer ? lastOutgoer.position.y + lastOutgoer.height! + Y_OFFSET : prevNode.position.y,
       }
-      newNode.parentNode = prevNode.parentNode
+      newNode.parentId = prevNode.parentId
       newNode.extent = prevNode.extent
-      if (prevNode.parentNode) {
+      if (prevNode.parentId) {
         newNode.data.isInIteration = true
         newNode.zIndex = 1001
       }
@@ -513,10 +513,10 @@ export const useNodesInteractions = () => {
         data: {
           sourceType: prevNode.data.type,
           targetType: newNode.data.type,
-          isInIteration: !!prevNode.parentNode,
+          isInIteration: !!prevNode.parentId,
           _connectedNodeIsSelected: true,
         },
-        zIndex: prevNode.parentNode ? 1001 : 0,
+        zIndex: prevNode.parentId ? 1001 : 0,
       }
 
       const newNodes = produce(nodes, (draft: Node[]) => {
@@ -526,7 +526,7 @@ export const useNodesInteractions = () => {
           if (node.id === prevNode.id)
             node.data._connectedSourceHandleIds?.push(prevNodeSourceHandle!)
 
-          if (node.data.type === BlockEnum.Iteration && prevNode.parentNode === node.id)
+          if (node.data.type === BlockEnum.Iteration && prevNode.parentId === node.id)
             node.data._children?.push(newNode.id)
         })
         draft.push(newNode)
@@ -552,9 +552,9 @@ export const useNodesInteractions = () => {
         x: nextNode.position.x,
         y: nextNode.position.y,
       }
-      newNode.parentNode = nextNode.parentNode
+      newNode.parentId = nextNode.parentId
       newNode.extent = nextNode.extent
-      if (nextNode.parentNode) {
+      if (nextNode.parentId) {
         newNode.data.isInIteration = true
         newNode.zIndex = 1001
       }
@@ -569,10 +569,10 @@ export const useNodesInteractions = () => {
         data: {
           sourceType: newNode.data.type,
           targetType: nextNode.data.type,
-          isInIteration: !!nextNode.parentNode,
+          isInIteration: !!nextNode.parentId,
           _connectedNodeIsSelected: true,
         },
-        zIndex: nextNode.parentNode ? 1001 : 0,
+        zIndex: nextNode.parentId ? 1001 : 0,
       }
       const afterNodesInSameBranch = getAfterNodesInSameBranch(nextNodeId!)
       const afterNodesInSameBranchIds = afterNodesInSameBranch.map(node => node.id)
@@ -586,7 +586,7 @@ export const useNodesInteractions = () => {
           if (node.id === nextNodeId)
             node.data._connectedTargetHandleIds?.push(nextNodeTargetHandle!)
 
-          if (node.data.type === BlockEnum.Iteration && nextNode.parentNode === node.id)
+          if (node.data.type === BlockEnum.Iteration && nextNode.parentId === node.id)
             node.data._children?.push(newNode.id)
         })
         draft.push(newNode)
@@ -614,9 +614,9 @@ export const useNodesInteractions = () => {
         x: nextNode.position.x,
         y: nextNode.position.y,
       }
-      newNode.parentNode = prevNode.parentNode
+      newNode.parentId = prevNode.parentId
       newNode.extent = prevNode.extent
-      if (prevNode.parentNode) {
+      if (prevNode.parentId) {
         newNode.data.isInIteration = true
         newNode.zIndex = 1001
       }
@@ -632,10 +632,10 @@ export const useNodesInteractions = () => {
         data: {
           sourceType: prevNode.data.type,
           targetType: newNode.data.type,
-          isInIteration: !!prevNode.parentNode,
+          isInIteration: !!prevNode.parentId,
           _connectedNodeIsSelected: true,
         },
-        zIndex: prevNode.parentNode ? 1001 : 0,
+        zIndex: prevNode.parentId ? 1001 : 0,
       }
       let newNextEdge: Edge | null = null
       if (nodeType !== BlockEnum.IfElse && nodeType !== BlockEnum.QuestionClassifier) {
@@ -649,10 +649,10 @@ export const useNodesInteractions = () => {
           data: {
             sourceType: newNode.data.type,
             targetType: nextNode.data.type,
-            isInIteration: !!nextNode.parentNode,
+            isInIteration: !!nextNode.parentId,
             _connectedNodeIsSelected: true,
           },
-          zIndex: nextNode.parentNode ? 1001 : 0,
+          zIndex: nextNode.parentId ? 1001 : 0,
         }
       }
       const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
@@ -679,7 +679,7 @@ export const useNodesInteractions = () => {
           if (afterNodesInSameBranchIds.includes(node.id))
             node.position.x += NODE_WIDTH_X_OFFSET
 
-          if (node.data.type === BlockEnum.Iteration && prevNode.parentNode === node.id)
+          if (node.data.type === BlockEnum.Iteration && prevNode.parentId === node.id)
             node.data._children?.push(prevNode.id)
         })
         draft.push(newNode)
@@ -737,8 +737,9 @@ export const useNodesInteractions = () => {
         x: currentNode.position.x,
         y: currentNode.position.y,
       },
-      parentNode: currentNode.parentNode,
+      parentId: currentNode.parentId,
       extent: currentNode.extent,
+      zIndex: currentNode.zIndex,
     })
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
       [
@@ -756,7 +757,7 @@ export const useNodesInteractions = () => {
             ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
           }
         }
-        if (node.id === currentNode.parentNode && currentNode.data.isIterationStart) {
+        if (node.id === currentNode.parentId && currentNode.data.isIterationStart) {
           node.data._children = [
             newCurrentNode.id,
             ...(node.data._children || []),
@@ -899,6 +900,9 @@ export const useNodesInteractions = () => {
             x: nodeToPaste.position.x + offsetX,
             y: nodeToPaste.position.y + offsetY,
           },
+          parentId: nodeToPaste.parentId,
+          extent: nodeToPaste.extent,
+          zIndex: nodeToPaste.zIndex,
         })
         newNode.id = newNode.id + index
         nodesToPaste.push(newNode)
@@ -939,6 +943,9 @@ export const useNodesInteractions = () => {
           x: selectedNode.position.x + selectedNode.width! + 10,
           y: selectedNode.position.y,
         },
+        parentId: selectedNode.parentId,
+        extent: selectedNode.extent,
+        zIndex: selectedNode.zIndex,
       })
 
       setNodes([...nodes, newNode])

@@ -73,7 +73,7 @@
     "react-tooltip": "5.8.3",
     "react-window": "^1.8.9",
     "react-window-infinite-loader": "^1.0.9",
-    "reactflow": "^11.10.3",
+    "reactflow": "^11.11.3",
     "recordrtc": "^5.6.2",
     "rehype-katex": "^6.0.2",
     "remark-breaks": "^3.0.2",

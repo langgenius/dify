@@ -94,11 +94,11 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
   }
 
   const iterationNodeMap = nodes.reduce((acc, node) => {
-    if (node.parentNode) {
-      if (acc[node.parentNode])
-        acc[node.parentNode].push(node.id)
+    if (node.parentId) {
+      if (acc[node.parentId])
+        acc[node.parentId].push(node.id)
       else
-        acc[node.parentNode] = [node.id]
+        acc[node.parentId] = [node.id]
     }
     return acc
   }, {} as Record<string, string[]>)

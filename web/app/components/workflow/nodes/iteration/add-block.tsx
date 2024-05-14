@@ -57,7 +57,7 @@ const AddBlock = ({
         y: 87,
       },
       zIndex: 1001,
-      parentNode: iterationNodeId,
+      parentId: iterationNodeId,
       extent: 'parent',
     })
     const newNodes = produce(nodes, (draft) => {
