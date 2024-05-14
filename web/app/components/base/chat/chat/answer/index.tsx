@@ -20,6 +20,7 @@ import LoadingAnim from '@/app/components/app/chat/loading-anim'
 import Citation from '@/app/components/app/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import type { Emoji } from '@/app/components/tools/types'
+import { usePathname } from 'next/navigation'
 
 type AnswerProps = {
   item: ChatItem
@@ -77,6 +78,7 @@ const Answer: FC<AnswerProps> = ({
       getContentWidth()
   }, [responding])
 
+  const router = usePathname();
   return (
     <div className='flex mb-2 last:mb-0'>
       <div className='shrink-0 relative w-10 h-10'>
@@ -128,7 +130,7 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              workflowProcess && (
+              workflowProcess && !router.startsWith('/chat') &&  (
                 <WorkflowProcess data={workflowProcess} hideInfo />
               )
             }
