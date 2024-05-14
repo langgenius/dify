@@ -71,10 +71,8 @@ class ToolModelManager:
         if not model_instance:
             raise InvokeModelError('Model not found')
         
-        llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-
         # get tokens
-        tokens = llm_model.get_num_tokens(model_instance.model, model_instance.credentials, prompt_messages)
+        tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
         return tokens
 
@@ -106,13 +104,8 @@ class ToolModelManager:
             tenant_id=tenant_id, model_type=ModelType.LLM,
         )
 
-        llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-
-        # get model credentials
-        model_credentials = model_instance.credentials
-
         # get prompt tokens
-        prompt_tokens = llm_model.get_num_tokens(model_instance.model, model_credentials, prompt_messages)
+        prompt_tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
         model_parameters = {
             'temperature': 0.8,
@@ -142,9 +135,7 @@ class ToolModelManager:
         db.session.commit()
 
         try:
-            response: LLMResult = llm_model.invoke(
-                model=model_instance.model,
-                credentials=model_credentials,
+            response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
                 tools=[], stop=[], stream=False, user=user_id, callbacks=[]

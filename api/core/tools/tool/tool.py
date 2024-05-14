@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Optional, Union, List
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, validator
 
@@ -371,7 +371,7 @@ class Tool(BaseModel, ABC):
                                  save_as=save_as
                                  )
 
-    def create_chunk_message(self, chunks: List[KnowledgeResource], save_as: str = '') -> ToolInvokeMessage:
+    def create_chunk_message(self, chunks: list[KnowledgeResource], save_as: str = '') -> ToolInvokeMessage:
         """
             create a chunk message
 
