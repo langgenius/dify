@@ -1,7 +1,6 @@
-import asyncio
-from email.message import EmailMessage
-
-import aiosmtplib
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 
 class SMTPClient:
@@ -14,15 +13,16 @@ class SMTPClient:
         self._use_tls = use_tls
 
     def send(self, mail: dict):
-        message = EmailMessage()
-        message["From"] = self._from
-        message["To"] = mail['to']
-        message["Subject"] = mail['subject']
-        message.set_content(mail['html'], subtype='html')
-        asyncio.run(aiosmtplib.send(message,
-                                    hostname=self.server,
-                                    port=self.port,
-                                    use_tls=self._use_tls,
-                                    username=self.username,
-                                    password=self.password))
-
+        if self._use_tls:
+            smtp = smtplib.SMTP_SSL(self.server, self.port)
+        else:
+            smtp = smtplib.SMTP(self.server, self.port)
+        if self.username and self.password:
+            smtp.login(self.username, self.password)
+        msg = MIMEMultipart()
+        msg['Subject'] = mail['subject']
+        msg['From'] = self._from
+        msg['To'] = mail['to']
+        msg.attach(MIMEText(mail['html'], 'html'))
+        smtp.sendmail(self.username, mail['to'], msg.as_string())
+        smtp.quit()
