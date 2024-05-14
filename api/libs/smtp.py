@@ -1,7 +1,8 @@
+import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import logging
+
 
 class SMTPClient:
     def __init__(self, server: str, port: int, username: str, password: str, _from: str, use_tls=False):
