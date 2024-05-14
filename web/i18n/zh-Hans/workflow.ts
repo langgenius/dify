@@ -378,6 +378,8 @@ const translation = {
         select: '选择',
       },
       extractParametersNotSet: '提取参数未设置',
+      instruction: '指令',
+      advancedSetting: '高级设置',
     },
   },
   tracing: {

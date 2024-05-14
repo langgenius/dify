@@ -378,6 +378,8 @@ const translation = {
         select: 'Select',
       },
       extractParametersNotSet: 'Extract Parameters not setup',
+      instruction: 'Instruction',
+      advancedSetting: 'Advanced Setting',
     },
   },
   tracing: {

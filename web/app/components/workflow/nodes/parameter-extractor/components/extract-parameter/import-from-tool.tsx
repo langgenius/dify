@@ -16,7 +16,10 @@ const ImportFromTool: FC<Props> = ({
 
   return (
     <div>
-      <div className='flex items-center h-6 px-2 cursor-pointer rounded-md hover:bg-gray-100 text-xs font-medium text-gray-500' >
+      <div
+        className='flex items-center h-6 px-2 cursor-pointer rounded-md hover:bg-gray-100 text-xs font-medium text-gray-500'
+        onClick={onImport}
+      >
         {t(`${i18nPrefix}.importFromTool`)}
       </div>
     </div>

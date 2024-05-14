@@ -3,6 +3,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
+import Editor from '../_base/components/prompt/editor'
 import useConfig from './use-config'
 import type { ParameterExtractorNodeType } from './types'
 import ExtractParameter from './components/extract-parameter/list'
@@ -13,6 +14,9 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import Toast from '@/app/components/base/toast'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 const i18nCommonPrefix = 'workflow.common'
@@ -35,7 +39,11 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     handleCompletionParamsChange,
     addExtractParameter,
     handleExactParamsChange,
+    handleInstructionChange,
+    hasSetBlockStatus,
     handleMemoryChange,
+    availableVars,
+    availableNodes,
   } = useConfig(id, data)
 
   const model = inputs.model
@@ -81,7 +89,12 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             !readOnly
               ? (
                 <div className='flex items-center space-x-1'>
-                  <ImportFromTool onImport={() => { }} />
+                  <ImportFromTool onImport={() => {
+                    Toast.notify({
+                      type: 'info',
+                      message: 'TODO',
+                    })
+                  }} />
                   {!readOnly && (<div className='w-px h-3 bg-gray-200'></div>)}
                   <AddExtractParameter type='add' onSave={addExtractParameter} />
                 </div>
@@ -96,17 +109,47 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           />
         </Field>
         {/* Memory */}
-        {isChatMode && (
+        <Field
+          title={t(`${i18nPrefix}.advancedSetting`)}
+          supportFold
+        >
           <>
-            <Split />
-            <MemoryConfig
-              readonly={readOnly}
-              config={{ data: inputs.memory }}
-              onChange={handleMemoryChange}
-              canSetRoleName={isCompletionModel}
+            <Editor
+              title={
+                <div className='flex items-center space-x-1'>
+                  <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
+                  <TooltipPlus popupContent={
+                    <div className='w-[120px]'>
+                      {'TODO'}
+                    </div>}>
+                    <HelpCircle className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
+                  </TooltipPlus>
+                </div>
+              }
+              value={inputs.instruction}
+              onChange={handleInstructionChange}
+              readOnly={readOnly}
+              isChatModel={isChatModel}
+              isChatApp={isChatMode}
+              isShowContext={false}
+              hasSetBlockStatus={hasSetBlockStatus}
+              nodesOutputVars={availableVars}
+              availableNodes={availableNodes}
             />
+
+            {isChatMode && (
+              <div className='mt-4'>
+                <MemoryConfig
+                  readonly={readOnly}
+                  config={{ data: inputs.memory }}
+                  onChange={handleMemoryChange}
+                  canSetRoleName={isCompletionModel}
+                />
+              </div>
+            )}
           </>
-        )}
+        </Field>
+
       </div>
       <Split />
       <div className='px-4 pt-4 pb-2'>

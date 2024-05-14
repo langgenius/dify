@@ -13,6 +13,8 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 
 const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -117,12 +119,37 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     }
   }, [model?.provider, currentProvider, currentModel, handleModelChanged])
 
+  const filterInputVar = useCallback((varPayload: Var) => {
+    return [VarType.number, VarType.string].includes(varPayload.type)
+  }, [])
+
+  const {
+    availableVars,
+    availableNodes,
+  } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: filterInputVar,
+  })
+
   const handleCompletionParamsChange = useCallback((newParams: Record<string, any>) => {
     const newInputs = produce(inputs, (draft) => {
       draft.model.completion_params = newParams
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
+
+  const handleInstructionChange = useCallback((newInstruction: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.instruction = newInstruction
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const hasSetBlockStatus = {
+    history: false,
+    query: isChatMode ? checkHasQueryBlock(inputs.instruction) : false,
+    context: false,
+  }
 
   const handleMemoryChange = useCallback((newMemory?: Memory) => {
     const newInputs = produce(inputs, (draft) => {
@@ -143,6 +170,10 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     handleCompletionParamsChange,
     handleExactParamsChange,
     addExtractParameter,
+    handleInstructionChange,
+    hasSetBlockStatus,
+    availableVars,
+    availableNodes,
     handleMemoryChange,
   }
 }
