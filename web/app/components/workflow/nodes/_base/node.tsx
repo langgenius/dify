@@ -71,10 +71,10 @@ const BaseNode: FC<BaseNodeProps> = ({
     >
       <div
         className={cn(
-          'group relative pb-1 shadow-xs bg-[#fcfdff]',
+          'group relative pb-1 shadow-xs',
           'border border-transparent rounded-[15px]',
-          data.type !== BlockEnum.Iteration && 'w-[240px]',
-          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full',
+          data.type !== BlockEnum.Iteration && 'w-[240px] bg-[#fcfdff]',
+          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-[#fcfdff]/80',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && '!border-primary-500',
           showSuccessBorder && '!border-[#12B76A]',
@@ -89,7 +89,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.type !== BlockEnum.VariableAssigner && !data._isCandidate && (
+          data.type !== BlockEnum.VariableAssigner && !data._isCandidate && !data.isIterationStart && (
             <NodeTargetHandle
               id={id}
               data={data}
@@ -153,7 +153,6 @@ const BaseNode: FC<BaseNodeProps> = ({
             cloneElement(children, { id, data })
           )
         }
-        {/* {cloneElement(children, { id, data, className: 'pl-1 pr-1 pb-1 bg-white' })} */}
         {
           data.type === BlockEnum.Iteration && (
             <div className='grow pl-1 pr-1 pb-1'>

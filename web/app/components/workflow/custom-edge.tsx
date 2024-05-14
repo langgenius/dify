@@ -87,6 +87,7 @@ const CustomEdge = ({
             nopan nodrag hover:scale-125
             ${data?._hovering ? 'block' : 'hidden'}
             ${open && '!block'}
+            ${data.isInIteration && 'z-[1001]'}
           `}
           style={{
             position: 'absolute',

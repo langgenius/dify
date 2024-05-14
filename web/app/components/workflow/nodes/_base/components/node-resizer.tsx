@@ -32,36 +32,17 @@ const NodeResizer = ({
   }, [nodeId, handleNodeResize])
 
   return (
-    <>
-      <NodeResizeControl
-        position='top-left'
-        className='!border-none !bg-transparent'
-        onResize={handleResize}
-      >
-        <Icon className='absolute left-0 top-0' />
-      </NodeResizeControl>
-      <NodeResizeControl
-        position='top-right'
-        className='!border-none !bg-transparent'
-        onResize={handleResize}
-      >
-        <Icon className='absolute top-0 right-0 origin-center rotate-90' />
-      </NodeResizeControl>
-      <NodeResizeControl
-        position='bottom-left'
-        className='!border-none !bg-transparent'
-        onResize={handleResize}
-      >
-        <div className='absolute left-0 bottom-0 origin-center -rotate-90'><Icon /></div>
-      </NodeResizeControl>
+    <div className='hidden group-hover:block'>
       <NodeResizeControl
         position='bottom-right'
         className='!border-none !bg-transparent'
         onResize={handleResize}
+        minWidth={272}
+        minHeight={176}
       >
         <div className='absolute bottom-0 right-0 origin-center rotate-180'><Icon /></div>
       </NodeResizeControl>
-    </>
+    </div>
   )
 }
 

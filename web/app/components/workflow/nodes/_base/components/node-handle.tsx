@@ -38,7 +38,11 @@ export const NodeTargetHandle = memo(({
   const nodesExtraData = useNodesExtraData()
   const { getNodesReadOnly } = useNodesReadOnly()
   const connected = data._connectedTargetHandleIds?.includes(handleId)
-  const availablePrevNodes = nodesExtraData[data.type].availablePrevNodes
+  const availablePrevNodes = nodesExtraData[data.type].availablePrevNodes.filter((node) => {
+    if (data.isInIteration && node === BlockEnum.Iteration)
+      return false
+    return true
+  })
   const isConnectable = !!availablePrevNodes.length
 
   const handleOpenChange = useCallback((v: boolean) => {
@@ -116,7 +120,11 @@ export const NodeSourceHandle = memo(({
   const { handleNodeAdd } = useNodesInteractions()
   const nodesExtraData = useNodesExtraData()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const availableNextNodes = nodesExtraData[data.type].availableNextNodes
+  const availableNextNodes = nodesExtraData[data.type].availableNextNodes.filter((node) => {
+    if (data.isInIteration && node === BlockEnum.Iteration)
+      return false
+    return true
+  })
   const isConnectable = !!availableNextNodes.length
   const connected = data._connectedSourceHandleIds?.includes(handleId)
   const handleOpenChange = useCallback((v: boolean) => {

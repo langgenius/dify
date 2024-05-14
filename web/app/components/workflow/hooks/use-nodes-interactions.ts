@@ -34,6 +34,7 @@ import {
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getTopLeftNodePosition,
 } from '../utils'
+import type { IterationNodeType } from '../nodes/iteration/types'
 import { useNodesExtraData } from './use-nodes-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import {
@@ -62,11 +63,17 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly())
       return
 
+    if (node.data.isIterationStart)
+      return
+
     dragNodeStartPosition.current = { x: node.position.x, y: node.position.y }
   }, [workflowStore, getNodesReadOnly])
 
   const handleNodeDrag = useCallback<NodeDragHandler>((e, node: Node) => {
     if (getNodesReadOnly())
+      return
+
+    if (node.data.isIterationStart)
       return
 
     const {
@@ -316,6 +323,10 @@ export const useNodesInteractions = () => {
     } = store.getState()
     const nodes = getNodes()
     const targetNode = nodes.find(node => node.id === target!)
+    const sourceNode = nodes.find(node => node.id === source!)
+
+    if (targetNode?.parentNode !== sourceNode?.parentNode)
+      return
     if (targetNode && targetNode?.data.type === BlockEnum.VariableAssigner) {
       const treeNodes = getTreeLeafNodes(target!)
 
@@ -342,7 +353,9 @@ export const useNodesInteractions = () => {
       data: {
         sourceType: nodes.find(node => node.id === source)!.data.type,
         targetType: nodes.find(node => node.id === target)!.data.type,
+        isInIteration: !!targetNode?.parentNode,
       },
+      zIndex: targetNode?.parentNode ? 1001 : 0,
     }
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
       [
@@ -399,6 +412,7 @@ export const useNodesInteractions = () => {
 
     const nodes = getNodes()
     const currentNodeIndex = nodes.findIndex(node => node.id === nodeId)
+    const currentNode = nodes[currentNodeIndex]
     if (nodes[currentNodeIndex].data.type === BlockEnum.Start)
       return
     const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges)
@@ -410,6 +424,13 @@ export const useNodesInteractions = () => {
             ...node.data,
             ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
           }
+        }
+
+        if (node.id === currentNode.parentNode) {
+          node.data._children = node.data._children?.filter(child => child !== nodeId)
+
+          if (currentNode.id === (node as Node<IterationNodeType>).data.start_node_id)
+            (node as Node<IterationNodeType>).data.start_node_id = ''
         }
       })
       draft.splice(currentNodeIndex, 1)
@@ -475,8 +496,14 @@ export const useNodesInteractions = () => {
         x: lastOutgoer ? lastOutgoer.position.x : prevNode.position.x + NODE_WIDTH_X_OFFSET,
         y: lastOutgoer ? lastOutgoer.position.y + lastOutgoer.height! + Y_OFFSET : prevNode.position.y,
       }
+      newNode.parentNode = prevNode.parentNode
+      newNode.extent = prevNode.extent
+      if (prevNode.parentNode) {
+        newNode.data.isInIteration = true
+        newNode.zIndex = 1001
+      }
 
-      const newEdge = {
+      const newEdge: Edge = {
         id: `${prevNodeId}-${newNode.id}`,
         type: 'custom',
         source: prevNodeId,
@@ -486,15 +513,21 @@ export const useNodesInteractions = () => {
         data: {
           sourceType: prevNode.data.type,
           targetType: newNode.data.type,
+          isInIteration: !!prevNode.parentNode,
           _connectedNodeIsSelected: true,
         },
+        zIndex: prevNode.parentNode ? 1001 : 0,
       }
+
       const newNodes = produce(nodes, (draft: Node[]) => {
         draft.forEach((node) => {
           node.data.selected = false
 
           if (node.id === prevNode.id)
             node.data._connectedSourceHandleIds?.push(prevNodeSourceHandle!)
+
+          if (node.data.type === BlockEnum.Iteration && prevNode.parentNode === node.id)
+            node.data._children?.push(newNode.id)
         })
         draft.push(newNode)
       })
@@ -519,6 +552,12 @@ export const useNodesInteractions = () => {
         x: nextNode.position.x,
         y: nextNode.position.y,
       }
+      newNode.parentNode = nextNode.parentNode
+      newNode.extent = nextNode.extent
+      if (nextNode.parentNode) {
+        newNode.data.isInIteration = true
+        newNode.zIndex = 1001
+      }
 
       const newEdge = {
         id: `${newNode.id}-${nextNodeId}`,
@@ -530,8 +569,10 @@ export const useNodesInteractions = () => {
         data: {
           sourceType: newNode.data.type,
           targetType: nextNode.data.type,
+          isInIteration: !!nextNode.parentNode,
           _connectedNodeIsSelected: true,
         },
+        zIndex: nextNode.parentNode ? 1001 : 0,
       }
       const afterNodesInSameBranch = getAfterNodesInSameBranch(nextNodeId!)
       const afterNodesInSameBranchIds = afterNodesInSameBranch.map(node => node.id)
@@ -544,6 +585,9 @@ export const useNodesInteractions = () => {
 
           if (node.id === nextNodeId)
             node.data._connectedTargetHandleIds?.push(nextNodeTargetHandle!)
+
+          if (node.data.type === BlockEnum.Iteration && nextNode.parentNode === node.id)
+            node.data._children?.push(newNode.id)
         })
         draft.push(newNode)
       })
@@ -570,6 +614,12 @@ export const useNodesInteractions = () => {
         x: nextNode.position.x,
         y: nextNode.position.y,
       }
+      newNode.parentNode = prevNode.parentNode
+      newNode.extent = prevNode.extent
+      if (prevNode.parentNode) {
+        newNode.data.isInIteration = true
+        newNode.zIndex = 1001
+      }
 
       const currentEdgeIndex = edges.findIndex(edge => edge.source === prevNodeId && edge.target === nextNodeId)
       const newPrevEdge = {
@@ -582,8 +632,10 @@ export const useNodesInteractions = () => {
         data: {
           sourceType: prevNode.data.type,
           targetType: newNode.data.type,
+          isInIteration: !!prevNode.parentNode,
           _connectedNodeIsSelected: true,
         },
+        zIndex: prevNode.parentNode ? 1001 : 0,
       }
       let newNextEdge: Edge | null = null
       if (nodeType !== BlockEnum.IfElse && nodeType !== BlockEnum.QuestionClassifier) {
@@ -597,8 +649,10 @@ export const useNodesInteractions = () => {
           data: {
             sourceType: newNode.data.type,
             targetType: nextNode.data.type,
+            isInIteration: !!nextNode.parentNode,
             _connectedNodeIsSelected: true,
           },
+          zIndex: nextNode.parentNode ? 1001 : 0,
         }
       }
       const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
@@ -624,6 +678,9 @@ export const useNodesInteractions = () => {
           }
           if (afterNodesInSameBranchIds.includes(node.id))
             node.position.x += NODE_WIDTH_X_OFFSET
+
+          if (node.data.type === BlockEnum.Iteration && prevNode.parentNode === node.id)
+            node.data._children?.push(prevNode.id)
         })
         draft.push(newNode)
       })
@@ -673,11 +730,15 @@ export const useNodesInteractions = () => {
         _connectedSourceHandleIds: [],
         _connectedTargetHandleIds: [],
         selected: currentNode.data.selected,
+        isInIteration: currentNode.data.isInIteration,
+        isIterationStart: currentNode.data.isIterationStart,
       },
       position: {
         x: currentNode.position.x,
         y: currentNode.position.y,
       },
+      parentNode: currentNode.parentNode,
+      extent: currentNode.extent,
     })
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
       [
@@ -694,6 +755,13 @@ export const useNodesInteractions = () => {
             ...node.data,
             ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
           }
+        }
+        if (node.id === currentNode.parentNode && currentNode.data.isIterationStart) {
+          node.data._children = [
+            newCurrentNode.id,
+            ...(node.data._children || []),
+          ].filter(child => child !== currentNodeId)
+          node.data.start_node_id = newCurrentNode.id
         }
       })
       const index = draft.findIndex(node => node.id === currentNodeId)
@@ -918,6 +986,34 @@ export const useNodesInteractions = () => {
     const { x, y, width, height } = params
 
     const nodes = getNodes()
+    const currentNode = nodes.find(n => n.id === nodeId)!
+    const childrenNodes = nodes.filter(n => currentNode.data._children?.includes(n.id))
+    let rightNode: Node
+    let bottomNode: Node
+
+    childrenNodes.forEach((n) => {
+      if (rightNode) {
+        if (n.position.x > rightNode.position.x)
+          rightNode = n
+      }
+      else {
+        rightNode = n
+      }
+      if (bottomNode) {
+        if (n.position.y > bottomNode.position.y)
+          bottomNode = n
+      }
+      else {
+        bottomNode = n
+      }
+    })
+
+    if (rightNode! && bottomNode!) {
+      if (width < rightNode!.position.x + rightNode.width!)
+        return
+      if (height < bottomNode.position.y + bottomNode.height!)
+        return
+    }
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((n) => {
         if (n.id === nodeId) {
@@ -933,6 +1029,58 @@ export const useNodesInteractions = () => {
     setNodes(newNodes)
     handleSyncWorkflowDraft()
   }, [store, getNodesReadOnly, handleSyncWorkflowDraft])
+
+  const handleNodeRerender = useCallback((nodeId: string) => {
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+
+    const nodes = getNodes()
+    const currentNode = nodes.find(n => n.id === nodeId)!
+    const childrenNodes = nodes.filter(n => currentNode.data._children?.includes(n.id))
+    let rightNode: Node
+    let bottomNode: Node
+
+    childrenNodes.forEach((n) => {
+      if (rightNode) {
+        if (n.position.x > rightNode.position.x)
+          rightNode = n
+      }
+      else {
+        rightNode = n
+      }
+      if (bottomNode) {
+        if (n.position.y > bottomNode.position.y)
+          bottomNode = n
+      }
+      else {
+        bottomNode = n
+      }
+    })
+
+    const widthShouldExtend = rightNode! && currentNode.width! < rightNode.position.x + rightNode.width!
+    const heightShouldExtend = bottomNode! && currentNode.height! < bottomNode.position.y + bottomNode.height!
+
+    if (widthShouldExtend || heightShouldExtend) {
+      const newNodes = produce(nodes, (draft) => {
+        draft.forEach((n) => {
+          if (n.id === nodeId) {
+            if (widthShouldExtend) {
+              n.data.width = rightNode.position.x + rightNode.width!
+              n.width = rightNode.position.x + rightNode.width!
+            }
+            if (heightShouldExtend) {
+              n.data.height = bottomNode.position.y + bottomNode.height!
+              n.height = bottomNode.position.y + bottomNode.height!
+            }
+          }
+        })
+      })
+
+      setNodes(newNodes)
+    }
+  }, [store])
 
   return {
     handleNodeDragStart,
@@ -956,5 +1104,6 @@ export const useNodesInteractions = () => {
     handleNodesDuplicate,
     handleNodesDelete,
     handleNodeResize,
+    handleNodeRerender,
   }
 }

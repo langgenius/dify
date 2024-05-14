@@ -93,6 +93,16 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
     })
   }
 
+  const iterationNodeMap = nodes.reduce((acc, node) => {
+    if (node.parentNode) {
+      if (acc[node.parentNode])
+        acc[node.parentNode].push(node.id)
+      else
+        acc[node.parentNode] = [node.id]
+    }
+    return acc
+  }, {} as Record<string, string[]>)
+
   return nodes.map((node) => {
     node.type = 'custom'
 
@@ -118,6 +128,9 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
         return topic
       })
     }
+
+    if (node.data.type === BlockEnum.Iteration)
+      node.data._children = iterationNodeMap[node.id] || []
 
     return node
   })

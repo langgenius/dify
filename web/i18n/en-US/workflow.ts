@@ -103,6 +103,7 @@ const translation = {
     'template-transform': 'Template',
     'http-request': 'HTTP Request',
     'variable-assigner': 'Variable Assigner',
+    'iteration-start': 'Iteration Start',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',

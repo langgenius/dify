@@ -103,6 +103,7 @@ const translation = {
     'template-transform': '模板转换',
     'http-request': 'HTTP 请求',
     'variable-assigner': '变量赋值',
+    'iteration-start': '迭代开始',
   },
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
