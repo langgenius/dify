@@ -1,7 +1,7 @@
 import base64
+import io
 from collections.abc import Generator
 from contextlib import closing
-import io
 
 from flask import Flask
 from google.cloud import storage as GoogleCloudStorage
