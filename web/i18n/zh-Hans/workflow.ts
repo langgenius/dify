@@ -102,8 +102,10 @@ const translation = {
     'code': '代码执行',
     'template-transform': '模板转换',
     'http-request': 'HTTP 请求',
-    'variable-assigner': '变量赋值',
+    'variable-assigner': '变量聚合器',
     'iteration-start': '迭代开始',
+    'iteration': '迭代',
+    'parameter-extractor': '参数提取器',
   },
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
@@ -116,7 +118,9 @@ const translation = {
     'code': '执行一段 Python 或 NodeJS 代码实现自定义逻辑',
     'template-transform': '使用 Jinja 模板语法将数据转换为字符串',
     'http-request': '允许通过 HTTP 协议发送服务器请求',
-    'variable-assigner': '将不同分支中的变量指派给同一个变量，以实现后置节点统一配置',
+    'variable-assigner': '将多路分支的变量聚合为一个变量，以实现下游节点统一配置。',
+    'iteration': '对列表对象执行多次步骤直至输出所有结果。',
+    'parameter-extractor': '利用 LLM 从自然语言内推理提取出结构化参数，用于后置的工具调用或 HTTP 请求。',
   },
   operator: {
     zoomIn: '放大',

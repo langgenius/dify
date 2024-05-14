@@ -26,6 +26,7 @@ import { BlockEnum } from '../types'
 import { useWorkflowStore } from '../store'
 import {
   ITERATION_CHILDREN_Z_INDEX,
+  ITERATION_PADDING,
   NODES_INITIAL_DATA,
   NODE_WIDTH_X_OFFSET,
   Y_OFFSET,
@@ -1061,9 +1062,9 @@ export const useNodesInteractions = () => {
     })
 
     if (rightNode! && bottomNode!) {
-      if (width < rightNode!.position.x + rightNode.width!)
+      if (width < rightNode!.position.x + rightNode.width! + ITERATION_PADDING)
         return
-      if (height < bottomNode.position.y + bottomNode.height!)
+      if (height < bottomNode.position.y + bottomNode.height! + ITERATION_PADDING)
         return
     }
     const newNodes = produce(nodes, (draft) => {
@@ -1119,12 +1120,12 @@ export const useNodesInteractions = () => {
         draft.forEach((n) => {
           if (n.id === nodeId) {
             if (widthShouldExtend) {
-              n.data.width = rightNode.position.x + rightNode.width!
-              n.width = rightNode.position.x + rightNode.width!
+              n.data.width = rightNode.position.x + rightNode.width! + ITERATION_PADDING
+              n.width = rightNode.position.x + rightNode.width! + ITERATION_PADDING
             }
             if (heightShouldExtend) {
-              n.data.height = bottomNode.position.y + bottomNode.height!
-              n.height = bottomNode.position.y + bottomNode.height!
+              n.data.height = bottomNode.position.y + bottomNode.height! + ITERATION_PADDING
+              n.height = bottomNode.position.y + bottomNode.height! + ITERATION_PADDING
             }
           }
         })

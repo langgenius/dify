@@ -102,8 +102,10 @@ const translation = {
     'code': 'Code',
     'template-transform': 'Template',
     'http-request': 'HTTP Request',
-    'variable-assigner': 'Variable Assigner',
+    'variable-assigner': 'Variable Aggregator',
     'iteration-start': 'Iteration Start',
+    'iteration': 'Iteration',
+    'parameter-extractor': 'Parameter Extactor',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -116,7 +118,9 @@ const translation = {
     'code': 'Execute a piece of Python or NodeJS code to implement custom logic',
     'template-transform': 'Convert data to string using Jinja template syntax',
     'http-request': 'Allow server requests to be sent over the HTTP protocol',
-    'variable-assigner': 'Assign variables in different branches to the same variable to achieve unified configuration of post-nodes',
+    'variable-assigner': 'Aggregate multi-branch variables into a single variable for unified configuration of downstream nodes.',
+    'iteration': 'Perform multiple steps on a list object until all results are outputted.',
+    'parameter-extractor': 'Use LLM to extract structured parameters from natural language for tool invocations or HTTP requests.',
   },
   operator: {
     zoomIn: 'Zoom In',

@@ -271,6 +271,7 @@ export const AUTO_LAYOUT_OFFSET = {
 }
 export const ITERATION_NODE_Z_INDEX = 1
 export const ITERATION_CHILDREN_Z_INDEX = 1002
+export const ITERATION_PADDING = 16
 
 export const RETRIEVAL_OUTPUT_STRUCT = `{
   "content": "",
