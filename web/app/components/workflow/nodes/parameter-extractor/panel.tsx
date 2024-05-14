@@ -151,18 +151,24 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
         </Field>
 
       </div>
-      <Split />
-      <div className='px-4 pt-4 pb-2'>
-        <OutputVars>
-          <>
-            <VarItem
-              name='text'
-              type='string'
-              description={t(`${i18nPrefix}.outputVars.output`)}
-            />
-          </>
-        </OutputVars>
-      </div>
+      {inputs.parameters?.length > 0 && (<>
+        <Split />
+        <div className='px-4 pt-4 pb-2'>
+          <OutputVars>
+            <>
+              {inputs.parameters.map((param, index) => (
+                <VarItem
+                  key={index}
+                  name={param.name}
+                  type={t(`${i18nPrefix}.dataType.${param.type}`)}
+                  description={param.description}
+                />
+              ))}
+            </>
+          </OutputVars>
+        </div>
+      </>)}
+
     </div>
   )
 }
