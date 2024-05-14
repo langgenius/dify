@@ -217,6 +217,7 @@ export const canRunBySingle = (nodeType: BlockEnum) => {
     || nodeType === BlockEnum.QuestionClassifier
     || nodeType === BlockEnum.HttpRequest
     || nodeType === BlockEnum.Tool
+    || nodeType === BlockEnum.ParameterExtractor
 }
 
 type ConnectedSourceOrTargetNodesChange = {

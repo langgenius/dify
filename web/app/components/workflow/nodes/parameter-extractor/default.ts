@@ -2,7 +2,7 @@ import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { ParameterExtractorNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
-const i18nPrefix = 'workflow.errorMsg'
+const i18nPrefix = 'workflow'
 
 const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
   defaultValue: {
@@ -27,9 +27,19 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
     return nodes
   },
   checkValid(payload: ParameterExtractorNodeType, t: any) {
+    let errorMessages = ''
+    if (!errorMessages && (!payload.query || payload.query.length === 0))
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.inputVar`) })
+
+    if (!errorMessages && !payload.model.provider)
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.model`) })
+
+    if (!errorMessages && (!payload.parameters || payload.parameters.length === 0))
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.extractParameters`) })
+
     return {
-      isValid: true,
-      errorMessage: '',
+      isValid: !errorMessages,
+      errorMessage: errorMessages,
     }
   },
 }

@@ -7,6 +7,7 @@ import {
   useIsChatMode,
   useNodesReadOnly,
 } from '../../hooks'
+import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { Param, ParameterExtractorNodeType } from './types'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
@@ -80,7 +81,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
 
   const isCompletionModel = !isChatModel
 
-  const appendDefaultPromptConfig = useCallback((draft: ParameterExtractorNodeType, defaultConfig: any, passInIsChatMode?: boolean) => {
+  const appendDefaultPromptConfig = useCallback((draft: ParameterExtractorNodeType, defaultConfig: any, _passInIsChatMode?: boolean) => {
     const promptTemplates = defaultConfig.prompt_templates
     if (!isChatModel) {
       setDefaultRolePrefix({
@@ -90,7 +91,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     }
   }, [isChatModel])
 
-  const [modelChanged, setModelChanged] = useState(false)
+  // const [modelChanged, setModelChanged] = useState(false)
   const {
     currentProvider,
     currentModel,
@@ -106,7 +107,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
         appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
     })
     setInputs(newInputs)
-    setModelChanged(true)
+    // setModelChanged(true)
   }, [setInputs, defaultConfig, appendDefaultPromptConfig])
 
   useEffect(() => {
@@ -158,6 +159,32 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  // single run
+  const {
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runInputData,
+    setRunInputData,
+    runResult,
+  } = useOneStepRun<ParameterExtractorNodeType>({
+    id,
+    data: inputs,
+    defaultRunInputData: {
+      query: '',
+    },
+  })
+
+  const query = runInputData.query
+  const setQuery = useCallback((newQuery: string) => {
+    setRunInputData({
+      ...runInputData,
+      query: newQuery,
+    })
+  }, [runInputData, setRunInputData])
+
   return {
     readOnly,
     handleInputVarChange,
@@ -175,6 +202,14 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     availableVars,
     availableNodes,
     handleMemoryChange,
+    query,
+    setQuery,
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runResult,
   }
 }
 

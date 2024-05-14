@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import Editor from '../_base/components/prompt/editor'
+import ResultPanel from '../../run/result-panel'
 import useConfig from './use-config'
 import type { ParameterExtractorNodeType } from './types'
 import ExtractParameter from './components/extract-parameter/list'
@@ -13,10 +14,11 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import Toast from '@/app/components/base/toast'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 const i18nCommonPrefix = 'workflow.common'
@@ -44,6 +46,14 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     handleMemoryChange,
     availableVars,
     availableNodes,
+    query,
+    setQuery,
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runResult,
   } = useConfig(id, data)
 
   const model = inputs.model
@@ -168,7 +178,28 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           </OutputVars>
         </div>
       </>)}
-
+      {isShowSingleRun && (
+        <BeforeRunForm
+          nodeName={inputs.title}
+          onHide={hideSingleRun}
+          forms={[
+            {
+              inputs: [{
+                label: t(`${i18nPrefix}.inputVar`)!,
+                variable: 'query',
+                type: InputVarType.paragraph,
+                required: true,
+              }],
+              values: { query },
+              onChange: keyValue => setQuery((keyValue as any).query),
+            },
+          ]}
+          runningStatus={runningStatus}
+          onRun={handleRun}
+          onStop={handleStop}
+          result={<ResultPanel {...runResult} showSteps={false} />}
+        />
+      )}
     </div>
   )
 }
