@@ -1,7 +1,10 @@
 import json
 import re
 from base64 import b64encode
+from typing import Optional
 
+from core.helper.code_executor.entities import CodeDependency
+from core.helper.code_executor.python_transformer import PYTHON_STANDARD_PACKAGES
 from core.helper.code_executor.template_transformer import TemplateTransformer
 
 PYTHON_RUNNER = """
@@ -58,7 +61,8 @@ if __name__ == '__main__':
 
 class Jinja2TemplateTransformer(TemplateTransformer):
     @classmethod
-    def transform_caller(cls, code: str, inputs: dict) -> tuple[str, str]:
+    def transform_caller(cls, code: str, inputs: dict, 
+                         dependencies: Optional[list[CodeDependency]] = None) -> tuple[str, str, list[CodeDependency]]:
         """
         Transform code to python runner
         :param code: code
@@ -72,7 +76,19 @@ class Jinja2TemplateTransformer(TemplateTransformer):
         runner = PYTHON_RUNNER.replace('{{code}}', code)
         runner = runner.replace('{{inputs}}', inputs_str)
 
-        return runner, JINJA2_PRELOAD
+        if not dependencies:
+            dependencies = []
+
+        # add native packages and jinja2
+        for package in PYTHON_STANDARD_PACKAGES.union(['jinja2']):
+            dependencies.append(CodeDependency(name=package, version=''))
+
+        # deduplicate
+        dependencies = list({
+            dep.name: dep for dep in dependencies if dep.name
+        }.values())
+
+        return runner, JINJA2_PRELOAD, dependencies
 
     @classmethod
     def transform_response(cls, response: str) -> dict:

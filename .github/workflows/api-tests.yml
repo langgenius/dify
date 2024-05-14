@@ -46,6 +46,7 @@ jobs:
             docker/docker-compose.middleware.yaml
           services: |
             sandbox
+            ssrf_proxy
 
       - name: Run Workflow
         run: dev/pytest/pytest_workflow.sh
