@@ -18,12 +18,14 @@ type WorkflowProcessProps = {
   grayBg?: boolean
   expand?: boolean
   hideInfo?: boolean
+  hideProcessDetail?: boolean
 }
 const WorkflowProcessItem = ({
   data,
   grayBg,
   expand = false,
   hideInfo = false,
+  hideProcessDetail = false,
 }: WorkflowProcessProps) => {
   const { t } = useTranslation()
   const [collapse, setCollapse] = useState(!expand)
@@ -94,6 +96,7 @@ const WorkflowProcessItem = ({
                   <NodePanel
                     nodeInfo={node}
                     hideInfo={hideInfo}
+                    hideProcessDetail={hideProcessDetail}
                   />
                 </div>
               ))

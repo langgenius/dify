@@ -1,4 +1,4 @@
-# Devlopment with devcontainer
+# Development with devcontainer
 This project includes a devcontainer configuration that allows you to open the project in a container with a fully configured development environment.
 Both frontend and backend environments are initialized when the container is started.
 ## GitHub Codespaces
@@ -33,5 +33,5 @@ Performance Impact: While usually minimal, programs running inside a devcontaine
 if you see such error message when you open this project in codespaces:
 ![Alt text](troubleshooting.png)
 
-a simple workaround is change `/signin` endpoint into another one, then login with github account and close the tab, then change it back to `/signin` endpoint. Then all things will be fine.
+a simple workaround is change `/signin` endpoint into another one, then login with GitHub account and close the tab, then change it back to `/signin` endpoint. Then all things will be fine.
 The reason is `signin` endpoint is not allowed in codespaces, details can be found [here](https://github.com/orgs/community/discussions/5204)
