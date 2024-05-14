@@ -167,7 +167,7 @@ const ConfigPrompt: FC<Props> = ({
                       return true
                     })()
                     return (
-                      <div key={item.id} className='relative group'>
+                      <div key={item.id || index} className='relative group'>
                         {canDrag && <DragHandle className='group-hover:block hidden absolute left-[-14px] top-2 w-3.5 h-3.5 text-gray-400' />}
                         <ConfigPromptItem
                           className={cn(canDrag && 'handle')}
