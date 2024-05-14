@@ -586,6 +586,7 @@ export const useNodesInteractions = () => {
           data: {
             sourceType: newNode.data.type,
             targetType: nextNode.data.type,
+            isInIteration: !!nextNode.parentId,
             _connectedNodeIsSelected: true,
           },
         }
