@@ -26,15 +26,21 @@ const DEFAULT_PARAM: Param = {
 }
 
 type Props = {
-  onAdd: (payload: Param) => void
+  type: 'add' | 'edit'
+  payload?: Param
+  onSave: (payload: Param) => void
+  onCancel?: () => void
 }
 
 const AddExtractParameter: FC<Props> = ({
-  onAdd,
+  type,
+  payload,
+  onSave,
+  onCancel,
 }) => {
   const { t } = useTranslation()
-
-  const [param, setParam] = useState<Param>(DEFAULT_PARAM)
+  const isAdd = type === 'add'
+  const [param, setParam] = useState<Param>(isAdd ? DEFAULT_PARAM : payload as Param)
 
   const handleParamChange = useCallback((key: string) => {
     return (value: any) => {
@@ -47,15 +53,22 @@ const AddExtractParameter: FC<Props> = ({
     }
   }, [])
 
-  const [isShowAddModal, {
-    setTrue: doShowAddModal,
-    setFalse: hideAddModal,
-  }] = useBoolean(false)
+  const [isShowModal, {
+    setTrue: doShowModal,
+    setFalse: doHideModal,
+  }] = useBoolean(!isAdd)
+
+  const hideModal = useCallback(() => {
+    doHideModal()
+    onCancel?.()
+  }, [onCancel, doHideModal])
 
   const showAddModal = useCallback(() => {
-    setParam(DEFAULT_PARAM)
-    doShowAddModal()
-  }, [doShowAddModal])
+    if (isAdd)
+      setParam(DEFAULT_PARAM)
+
+    doShowModal()
+  }, [isAdd, doShowModal])
 
   const checkValid = useCallback(() => {
     let errMessage = ''
@@ -76,22 +89,24 @@ const AddExtractParameter: FC<Props> = ({
     return true
   }, [param, t])
 
-  const handleAdd = useCallback(() => {
+  const handleSave = useCallback(() => {
     if (!checkValid())
       return
 
-    onAdd(param)
-    hideAddModal()
-  }, [checkValid, onAdd, param, hideAddModal])
+    onSave(param)
+    hideModal()
+  }, [checkValid, onSave, param, hideModal])
 
   return (
     <div>
-      <AddButton className='mx-1' onClick={showAddModal} />
-      {isShowAddModal && (
+      {isAdd && (
+        <AddButton className='mx-1' onClick={showAddModal} />
+      )}
+      {isShowModal && (
         <Modal
           title={t(`${i18nPrefix}.addExtractParameter`)}
           isShow
-          onClose={hideAddModal}
+          onClose={hideModal}
           className='!w-[400px] !max-w-[400px] !p-4'
           wrapperClassName='!z-[100]'
         >
@@ -141,8 +156,8 @@ const AddExtractParameter: FC<Props> = ({
               </Field>
             </div>
             <div className='mt-4 flex justify-end space-x-2'>
-              <Button className='flex !h-8 !w-[95px] text-[13px] font-medium text-gray-700' onClick={hideAddModal} >{t('common.operation.cancel')}</Button>
-              <Button className='flex !h-8 !w-[95px] text-[13px] font-medium' type='primary' onClick={handleAdd}>{t('common.operation.add')}</Button>
+              <Button className='flex !h-8 !w-[95px] text-[13px] font-medium text-gray-700' onClick={hideModal} >{t('common.operation.cancel')}</Button>
+              <Button className='flex !h-8 !w-[95px] text-[13px] font-medium' type='primary' onClick={handleSave} >{isAdd ? t('common.operation.add') : t('common.operation.save')}</Button>
             </div>
           </div>
         </Modal>

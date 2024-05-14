@@ -41,15 +41,16 @@ const Item: FC<Props> = ({
       >
         <div
           className='p-1 cursor-pointer rounded-md hover:bg-black/5'
-          onClick={onDelete}
+          onClick={onEdit}
         >
-          <Edit03 className='w-4 h-4 text-gray-500' onClick={onEdit} />
+          <Edit03 className='w-4 h-4 text-gray-500' />
         </div>
+
         <div
           className='p-1 cursor-pointer rounded-md hover:bg-black/5'
           onClick={onDelete}
         >
-          <Trash03 className='w-4 h-4 text-gray-500' onClick={onDelete} />
+          <Trash03 className='w-4 h-4 text-gray-500' />
         </div>
       </div>
     </div>

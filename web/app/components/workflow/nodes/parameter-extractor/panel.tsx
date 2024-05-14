@@ -7,7 +7,7 @@ import useConfig from './use-config'
 import type { ParameterExtractorNodeType } from './types'
 import ExtractParameter from './components/extract-parameter/list'
 import ImportFromTool from './components/extract-parameter/import-from-tool'
-import AddExtractParameter from './components/extract-parameter/add'
+import AddExtractParameter from './components/extract-parameter/update'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -83,7 +83,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                 <div className='flex items-center space-x-1'>
                   <ImportFromTool onImport={() => { }} />
                   {!readOnly && (<div className='w-px h-3 bg-gray-200'></div>)}
-                  <AddExtractParameter onAdd={addExtractParameter} />
+                  <AddExtractParameter type='add' onSave={addExtractParameter} />
                 </div>
               )
               : undefined
