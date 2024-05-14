@@ -123,7 +123,7 @@ export const languages = [
     value: 'ko-KR',
     name: '한국어(대한민국)',
     example: '안녕, Dify!',
-    supported: false,
+    supported: true,
   },
   {
     value: 'ru-RU',

@@ -9,8 +9,8 @@ flask-restful~=0.3.10
 flask-cors~=4.0.0
 gunicorn~=22.0.0
 gevent~=23.9.1
-openai~=1.26.0
-tiktoken~=0.6.0
+openai~=1.29.0
+tiktoken~=0.7.0
 psycopg2-binary~=2.9.6
 pycryptodome==3.19.1
 python-dotenv==1.0.0
