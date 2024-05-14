@@ -16,6 +16,7 @@ import type { NodeProps } from '@/app/components/workflow/types'
 
 const Node: FC<NodeProps<IterationNodeType>> = ({
   id,
+  data,
 }) => {
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()
@@ -37,7 +38,10 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
         size={2 / zoom}
         color='#E4E5E7'
       />
-      <AddBlock iterationNodeId={id} />
+      <AddBlock
+        iterationNodeId={id}
+        iterationNodeData={data}
+      />
     </div>
   )
 }

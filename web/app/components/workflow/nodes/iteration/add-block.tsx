@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useMemo,
 } from 'react'
 import produce from 'immer'
 import cn from 'classnames'
@@ -14,6 +15,8 @@ import {
   useNodesReadOnly,
 } from '../../hooks'
 import { NODES_INITIAL_DATA } from '../../constants'
+import InsertBlock from './insert-block'
+import type { IterationNodeType } from './types'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { IterationStart } from '@/app/components/base/icons/src/vender/workflow'
@@ -27,15 +30,28 @@ import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type AddBlockProps = {
   iterationNodeId: string
+  iterationNodeData: IterationNodeType
 }
 const AddBlock = ({
   iterationNodeId,
+  iterationNodeData,
 }: AddBlockProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
   const nodesExtraData = useNodesExtraData()
   const { nodesReadOnly } = useNodesReadOnly()
   const availableNextNodes = nodesExtraData[BlockEnum.Start].availableNextNodes
+  const availablePrevBlocks = useMemo(() => {
+    if (iterationNodeData.startNodeType) {
+      return nodesExtraData[iterationNodeData.startNodeType].availablePrevNodes.filter((nodeType) => {
+        if (nodeType === BlockEnum.Iteration)
+          return false
+        return true
+      })
+    }
+
+    return []
+  }, [nodesExtraData, iterationNodeData.startNodeType])
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     const {
@@ -65,6 +81,7 @@ const AddBlock = ({
         if (node.id === iterationNodeId) {
           node.data._children = [newNode.id]
           node.data.start_node_id = newNode.id
+          node.data.startNodeType = newNode.data.type
         }
       })
       draft.push(newNode)
@@ -93,15 +110,28 @@ const AddBlock = ({
           <IterationStart className='w-4 h-4 text-white' />
         </div>
       </TooltipPlus>
-      <div className='w-8 h-0.5 bg-gray-300'></div>
-      <BlockSelector
-        disabled={nodesReadOnly}
-        onSelect={handleSelect}
-        trigger={renderTriggerElement}
-        triggerInnerClassName='inline-flex'
-        popupClassName='!min-w-[256px]'
-        availableBlocksTypes={availableNextNodes}
-      />
+      <div className='group/insert relative w-8 h-0.5 bg-gray-300'>
+        {
+          iterationNodeData.startNodeType && (
+            <InsertBlock
+              startNodeId={iterationNodeData.start_node_id}
+              availableBlocksTypes={availablePrevBlocks}
+            />
+          )
+        }
+      </div>
+      {
+        !iterationNodeData.startNodeType && (
+          <BlockSelector
+            disabled={nodesReadOnly}
+            onSelect={handleSelect}
+            trigger={renderTriggerElement}
+            triggerInnerClassName='inline-flex'
+            popupClassName='!min-w-[256px]'
+            availableBlocksTypes={availableNextNodes}
+          />
+        )
+      }
     </div>
   )
 }

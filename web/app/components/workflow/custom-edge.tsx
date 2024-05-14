@@ -20,6 +20,9 @@ import type {
   Edge,
   OnSelectBlock,
 } from './types'
+import {
+  BlockEnum,
+} from './types'
 
 const CustomEdge = ({
   id,
@@ -50,8 +53,16 @@ const CustomEdge = ({
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const nodesExtraData = useNodesExtraData()
-  const availablePrevNodes = nodesExtraData[(data as Edge['data'])!.targetType]?.availablePrevNodes || []
-  const availableNextNodes = nodesExtraData[(data as Edge['data'])!.sourceType]?.availableNextNodes || []
+  const availablePrevNodes = (nodesExtraData[(data as Edge['data'])!.targetType]?.availablePrevNodes || []).filter((nodeType) => {
+    if ((data as Edge['data'])?.isInIteration && nodeType === BlockEnum.Iteration)
+      return false
+    return true
+  })
+  const availableNextNodes = (nodesExtraData[(data as Edge['data'])!.sourceType]?.availableNextNodes || []).filter((nodeType) => {
+    if ((data as Edge['data'])?.isInIteration && nodeType === BlockEnum.Iteration)
+      return false
+    return true
+  })
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])

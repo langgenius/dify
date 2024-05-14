@@ -429,8 +429,10 @@ export const useNodesInteractions = () => {
         if (node.id === currentNode.parentId) {
           node.data._children = node.data._children?.filter(child => child !== nodeId)
 
-          if (currentNode.id === (node as Node<IterationNodeType>).data.start_node_id)
-            (node as Node<IterationNodeType>).data.start_node_id = ''
+          if (currentNode.id === (node as Node<IterationNodeType>).data.start_node_id) {
+            (node as Node<IterationNodeType>).data.start_node_id = '';
+            (node as Node<IterationNodeType>).data.startNodeType = undefined
+          }
         }
       })
       draft.splice(currentNodeIndex, 1)
@@ -558,6 +560,8 @@ export const useNodesInteractions = () => {
         newNode.data.isInIteration = true
         newNode.zIndex = 1001
       }
+      if (nextNode.data.isIterationStart)
+        newNode.data.isIterationStart = true
 
       const newEdge = {
         id: `${newNode.id}-${nextNodeId}`,
@@ -588,6 +592,14 @@ export const useNodesInteractions = () => {
 
           if (node.data.type === BlockEnum.Iteration && nextNode.parentId === node.id)
             node.data._children?.push(newNode.id)
+
+          if (node.data.type === BlockEnum.Iteration && node.data.start_node_id === nextNodeId) {
+            node.data.start_node_id = newNode.id
+            node.data.startNodeType = newNode.data.type
+          }
+
+          if (node.id === nextNodeId && node.data.isIterationStart)
+            node.data.isIterationStart = false
         })
         draft.push(newNode)
       })
@@ -763,6 +775,7 @@ export const useNodesInteractions = () => {
             ...(node.data._children || []),
           ].filter(child => child !== currentNodeId)
           node.data.start_node_id = newCurrentNode.id
+          node.data.startNodeType = newCurrentNode.data.type
         }
       })
       const index = draft.findIndex(node => node.id === currentNodeId)
