@@ -1,17 +1,19 @@
 import os
-from typing import Literal
+from typing import Literal, Optional
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from jinja2 import Template
 
 from core.helper.code_executor.code_executor import CodeExecutor
+from core.helper.code_executor.entities import CodeDependency
 
 MOCK = os.getenv('MOCK_SWITCH', 'false') == 'true'
 
 class MockedCodeExecutor:
     @classmethod
-    def invoke(cls, language: Literal['python3', 'javascript', 'jinja2'], code: str, inputs: dict) -> dict:
+    def invoke(cls, language: Literal['python3', 'javascript', 'jinja2'], 
+               code: str, inputs: dict, dependencies: Optional[list[CodeDependency]] = None) -> dict:
         # invoke directly
         if language == 'python3':
             return {
