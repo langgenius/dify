@@ -22,6 +22,7 @@ import QuestionClassifyDefault from '@/app/components/workflow/nodes/question-cl
 import HTTPDefault from '@/app/components/workflow/nodes/http/default'
 import ToolDefault from '@/app/components/workflow/nodes/tool/default'
 import VariableAssigner from '@/app/components/workflow/nodes/variable-assigner/default'
+import ParameterExtractorDefault from '@/app/components/workflow/nodes/parameter-extractor/default'
 import { getInputVars as doGetInputVars } from '@/app/components/base/prompt-editor/constants'
 const { checkValid: checkLLMValid } = LLMDefault
 const { checkValid: checkKnowledgeRetrievalValid } = KnowledgeRetrievalDefault
@@ -32,6 +33,7 @@ const { checkValid: checkQuestionClassifyValid } = QuestionClassifyDefault
 const { checkValid: checkHttpValid } = HTTPDefault
 const { checkValid: checkToolValid } = ToolDefault
 const { checkValid: checkVariableAssignerValid } = VariableAssigner
+const { checkValid: checkParameterExtractorValid } = ParameterExtractorDefault
 
 const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.LLM]: checkLLMValid,
@@ -43,6 +45,7 @@ const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.HttpRequest]: checkHttpValid,
   [BlockEnum.Tool]: checkToolValid,
   [BlockEnum.VariableAssigner]: checkVariableAssignerValid,
+  [BlockEnum.ParameterExtractor]: checkParameterExtractorValid,
 } as any
 
 type Params<T> = {
