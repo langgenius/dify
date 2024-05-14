@@ -133,6 +133,27 @@ class ModelInstance:
             callbacks=callbacks
         )
 
+    def get_llm_num_tokens(self, prompt_messages: list[PromptMessage],
+                           tools: Optional[list[PromptMessageTool]] = None) -> int:
+        """
+        Get number of tokens for llm
+
+        :param prompt_messages: prompt messages
+        :param tools: tools for tool calling
+        :return:
+        """
+        if not isinstance(self.model_type_instance, LargeLanguageModel):
+            raise Exception("Model type instance is not LargeLanguageModel")
+
+        self.model_type_instance = cast(LargeLanguageModel, self.model_type_instance)
+        return self._round_robin_invoke(
+            function=self.model_type_instance.get_num_tokens,
+            model=self.model,
+            credentials=self.credentials,
+            prompt_messages=prompt_messages,
+            tools=tools
+        )
+
     def invoke_text_embedding(self, texts: list[str], user: Optional[str] = None) \
             -> TextEmbeddingResult:
         """
