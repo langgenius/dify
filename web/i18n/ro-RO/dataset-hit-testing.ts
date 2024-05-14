@@ -1,28 +1,28 @@
 const translation = {
-  title: 'Retrieval Testing',
-  desc: 'Test the hitting effect of the Knowledge based on the given query text.',
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
-  recents: 'Recents',
+  title: 'Testarea Recuperării',
+  desc: 'Testați efectul de atingere al Cunoștințelor pe baza textului interogat dat.',
+  dateTimeFormat: 'DD/MM/YYYY hh:mm A',
+  recents: 'Recente',
   table: {
     header: {
-      source: 'Source',
+      source: 'Sursă',
       text: 'Text',
-      time: 'Time',
+      time: 'Timp',
     },
   },
   input: {
-    title: 'Source text',
-    placeholder: 'Please enter a text, a short declarative sentence is recommended.',
-    countWarning: 'Up to 200 characters.',
-    indexWarning: 'High quality Knowledge only.',
-    testing: 'Testing',
+    title: 'Text sursă',
+    placeholder: 'Vă rugăm să introduceți un text, se recomandă o propoziție declarativă scurtă.',
+    countWarning: 'Până la 200 de caractere.',
+    indexWarning: 'Doar Cunoștințe de înaltă calitate.',
+    testing: 'Testare',
   },
   hit: {
-    title: 'RETRIEVAL PARAGRAPHS',
-    emptyTip: 'Retrieval Testing results will show here',
+    title: 'PARAGRAFE DE RECUPERARE',
+    emptyTip: 'Rezultatele testării de recuperare vor apărea aici',
   },
-  noRecentTip: 'No recent query results here',
-  viewChart: 'View VECTOR CHART',
+  noRecentTip: 'Nu există rezultate de interogare recente aici',
+  viewChart: 'Vizualizați GRAFICUL VECTORIAL',
 }
 
 export default translation
