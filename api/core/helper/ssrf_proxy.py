@@ -42,6 +42,20 @@ def delete(url, *args, **kwargs):
         if kwargs['follow_redirects']:
             kwargs['allow_redirects'] = kwargs['follow_redirects']
         kwargs.pop('follow_redirects')
+    if 'timeout' in kwargs:
+        timeout = kwargs['timeout']
+        if timeout is None:
+            kwargs.pop('timeout')
+        elif isinstance(timeout, tuple):
+            # check length of tuple
+            if len(timeout) == 2:
+                kwargs['timeout'] = timeout
+            elif len(timeout) == 1:
+                kwargs['timeout'] = timeout[0]
+            elif len(timeout) > 2:
+                kwargs['timeout'] = (timeout[0], timeout[1])
+        else:
+            kwargs['timeout'] = (timeout, timeout)
     return _delete(url=url, *args, proxies=requests_proxies, **kwargs)
 
 def head(url, *args, **kwargs):
