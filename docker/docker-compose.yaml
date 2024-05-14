@@ -293,6 +293,122 @@ services:
       - ssrf_proxy_network
       - default
 
+  # beat service
+  # The Celery beat service for processing periodic tasks.
+  beat:
+    image: langgenius/dify-api:0.6.8
+    restart: always
+    environment:
+      CONSOLE_WEB_URL: ''
+      # Startup mode, 'beat' starts the Celery beat service for processing periodic tasks.
+      MODE: beat
+
+      # --- All the configurations below are the same as those in the 'api' service. ---
+
+      # The log level for the application. Supported values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
+      LOG_LEVEL: INFO
+      # A secret key that is used for securely signing the session cookie and encrypting sensitive information on the database. You can generate a strong key using `openssl rand -base64 42`.
+      # same as the API service
+      SECRET_KEY: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
+      # The configurations of postgres database connection.
+      # It is consistent with the configuration in the 'db' service below.
+      DB_USERNAME: postgres
+      DB_PASSWORD: difyai123456
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: dify
+      # The configurations of redis cache connection.
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_USERNAME: ''
+      REDIS_PASSWORD: difyai123456
+      REDIS_DB: 0
+      REDIS_USE_SSL: 'false'
+      # The configurations of celery broker.
+      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage`, Default: `local`
+      STORAGE_TYPE: local
+      STORAGE_LOCAL_PATH: storage
+      # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
+      S3_ENDPOINT: 'https://xxx.r2.cloudflarestorage.com'
+      S3_BUCKET_NAME: 'difyai'
+      S3_ACCESS_KEY: 'ak-difyai'
+      S3_SECRET_KEY: 'sk-difyai'
+      S3_REGION: 'us-east-1'
+      # The Azure Blob storage configurations, only available when STORAGE_TYPE is `azure-blob`.
+      AZURE_BLOB_ACCOUNT_NAME: 'difyai'
+      AZURE_BLOB_ACCOUNT_KEY: 'difyai'
+      AZURE_BLOB_CONTAINER_NAME: 'difyai-container'
+      AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
+      # The Google storage configurations, only available when STORAGE_TYPE is `google-storage`.
+      GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
+      GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
+      # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`, `pgvector`.
+      VECTOR_STORE: weaviate
+      # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      # The Weaviate API key.
+      WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      # The Qdrant endpoint URL. Only available when VECTOR_STORE is `qdrant`.
+      QDRANT_URL: http://qdrant:6333
+      # The Qdrant API key.
+      QDRANT_API_KEY: difyai123456
+      # The Qdrant clinet timeout setting.
+      QDRANT_CLIENT_TIMEOUT: 20
+      # The Qdrant client enable gRPC mode.
+      QDRANT_GRPC_ENABLED: 'false'
+      # The Qdrant server gRPC mode PORT.
+      QDRANT_GRPC_PORT: 6334
+      # Milvus configuration Only available when VECTOR_STORE is `milvus`.
+      # The milvus host.
+      MILVUS_HOST: 127.0.0.1
+      # The milvus host.
+      MILVUS_PORT: 19530
+      # The milvus username.
+      MILVUS_USER: root
+      # The milvus password.
+      MILVUS_PASSWORD: Milvus
+      # The milvus tls switch.
+      MILVUS_SECURE: 'false'
+      # Mail configuration, support: resend
+      MAIL_TYPE: ''
+      # default send from email address, if not specified
+      MAIL_DEFAULT_SEND_FROM: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
+      SMTP_SERVER: ''
+      SMTP_PORT: 587
+      SMTP_USERNAME: ''
+      SMTP_PASSWORD: ''
+      SMTP_USE_TLS: 'true'
+      # the api-key for resend (https://resend.com)
+      RESEND_API_KEY: ''
+      RESEND_API_URL: https://api.resend.com
+      # relyt configurations
+      RELYT_HOST: db
+      RELYT_PORT: 5432
+      RELYT_USER: postgres
+      RELYT_PASSWORD: difyai123456
+      RELYT_DATABASE: postgres
+      # pgvector configurations
+      PGVECTOR_HOST: pgvector
+      PGVECTOR_PORT: 5432
+      PGVECTOR_USER: postgres
+      PGVECTOR_PASSWORD: difyai123456
+      PGVECTOR_DATABASE: dify
+      # Notion import configuration, support public and internal
+      NOTION_INTEGRATION_TYPE: public
+      NOTION_CLIENT_SECRET: you-client-secret
+      NOTION_CLIENT_ID: you-client-id
+      NOTION_INTERNAL_SECRET: you-internal-secret
+    depends_on:
+      - db
+      - redis
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
+
   # Frontend web application.
   web:
     image: langgenius/dify-web:0.6.8
