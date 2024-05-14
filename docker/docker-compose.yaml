@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.6
+    image: langgenius/dify-api:0.6.8
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -122,6 +122,12 @@ services:
       RELYT_USER: postgres
       RELYT_PASSWORD: difyai123456
       RELYT_DATABASE: postgres
+      # pgvector configurations
+      PGVECTOR_HOST: pgvector
+      PGVECTOR_PORT: 5432
+      PGVECTOR_USER: postgres
+      PGVECTOR_PASSWORD: difyai123456
+      PGVECTOR_DATABASE: dify
       # Mail configuration, support: resend, smtp
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -155,6 +161,9 @@ services:
       CODE_MAX_STRING_ARRAY_LENGTH: 30
       CODE_MAX_OBJECT_ARRAY_LENGTH: 30
       CODE_MAX_NUMBER_ARRAY_LENGTH: 1000
+      # SSRF Proxy server
+      SSRF_PROXY_HTTP_URL: 'http://ssrf_proxy:3128'
+      SSRF_PROXY_HTTPS_URL: 'http://ssrf_proxy:3128'
     depends_on:
       - db
       - redis
@@ -164,13 +173,17 @@ services:
     # uncomment to expose dify-api port to host
     # ports:
     #   - "5001:5001"
+    networks:
+      - ssrf_proxy_network
+      - default
 
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.6
+    image: langgenius/dify-api:0.6.8
     restart: always
     environment:
+      CONSOLE_WEB_URL: ''
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
       MODE: worker
 
@@ -197,7 +210,7 @@ services:
       REDIS_USE_SSL: 'false'
       # The configurations of celery broker.
       CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
-      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob`, Default: `local`
+      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage`, Default: `local`
       STORAGE_TYPE: local
       STORAGE_LOCAL_PATH: storage
       # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
@@ -211,7 +224,10 @@ services:
       AZURE_BLOB_ACCOUNT_KEY: 'difyai'
       AZURE_BLOB_CONTAINER_NAME: 'difyai-container'
       AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
-      # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`.
+      # The Google storage configurations, only available when STORAGE_TYPE is `google-storage`.
+      GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
+      GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
+      # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`, `pgvector`.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
       WEAVIATE_ENDPOINT: http://weaviate:8080
@@ -242,6 +258,11 @@ services:
       MAIL_TYPE: ''
       # default send from email address, if not specified
       MAIL_DEFAULT_SEND_FROM: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
+      SMTP_SERVER: ''
+      SMTP_PORT: 587
+      SMTP_USERNAME: ''
+      SMTP_PASSWORD: ''
+      SMTP_USE_TLS: 'true'
       # the api-key for resend (https://resend.com)
       RESEND_API_KEY: ''
       RESEND_API_URL: https://api.resend.com
@@ -251,6 +272,12 @@ services:
       RELYT_USER: postgres
       RELYT_PASSWORD: difyai123456
       RELYT_DATABASE: postgres
+      # pgvector configurations
+      PGVECTOR_HOST: pgvector
+      PGVECTOR_PORT: 5432
+      PGVECTOR_USER: postgres
+      PGVECTOR_PASSWORD: difyai123456
+      PGVECTOR_DATABASE: dify
       # Notion import configuration, support public and internal
       NOTION_INTEGRATION_TYPE: public
       NOTION_CLIENT_SECRET: you-client-secret
@@ -262,10 +289,13 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.6.6
+    image: langgenius/dify-web:0.6.8
     restart: always
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
@@ -346,18 +376,35 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.1.0
+    image: langgenius/dify-sandbox:0.2.0
     restart: always
-    cap_add:
-    # Why is sys_admin permission needed?
-    # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-sys_admin-permission-needed
-      - SYS_ADMIN
     environment:
       # The DifySandbox configurations
+      # Make sure you are changing this key for your deployment with a strong key.
+      # You can generate a strong key using `openssl rand -base64 42`.
       API_KEY: dify-sandbox
-      GIN_MODE: release
+      GIN_MODE: 'release'
       WORKER_TIMEOUT: 15
+      ENABLE_NETWORK: 'true'
+      HTTP_PROXY: 'http://ssrf_proxy:3128'
+      HTTPS_PROXY: 'http://ssrf_proxy:3128'
+    volumes:
+      - ./volumes/sandbox/dependencies:/dependencies
+    networks:
+      - ssrf_proxy_network
 
+  # ssrf_proxy server
+  # for more information, please refer to
+  # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-ssrf_proxy-needed
+  ssrf_proxy:
+    image: ubuntu/squid:latest
+    restart: always
+    volumes:
+      # pls clearly modify the squid.conf file to fit your network environment.
+      - ./volumes/ssrf_proxy/squid.conf:/etc/squid/squid.conf
+    networks:
+      - ssrf_proxy_network
+      - default
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.
   # (if uncommented, you need to comment out the weaviate service above,
@@ -373,6 +420,31 @@ services:
   #   # ports:
   #   #  - "6333:6333"
   #   #  - "6334:6334"
+
+  # The pgvector vector database.
+  # Uncomment to use qdrant as vector store.
+  # pgvector:
+  #   image: pgvector/pgvector:pg16
+  #   restart: always
+  #   environment:
+  #     PGUSER: postgres
+  #     # The password for the default postgres user.
+  #     POSTGRES_PASSWORD: difyai123456
+  #     # The name of the default postgres database.
+  #     POSTGRES_DB: dify
+  #     # postgres data directory
+  #     PGDATA: /var/lib/postgresql/data/pgdata
+  #   volumes:
+  #     - ./volumes/pgvector/data:/var/lib/postgresql/data
+  #   # uncomment to expose db(postgresql) port to host
+  #   # ports:
+  #   #   - "5433:5432"
+  #   healthcheck:
+  #     test: [ "CMD", "pg_isready" ]
+  #     interval: 1s
+  #     timeout: 3s
+  #     retries: 30
+
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
@@ -390,3 +462,8 @@ services:
     ports:
       - "80:80"
       #- "443:443"
+networks:
+  # create a network between sandbox, api and ssrf_proxy, and can not access outside.
+  ssrf_proxy_network:
+    driver: bridge
+    internal: true

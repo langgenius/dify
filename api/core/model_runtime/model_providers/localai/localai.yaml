@@ -15,6 +15,8 @@ help:
 supported_model_types:
   - llm
   - text-embedding
+  - rerank
+  - speech2text
 configurate_methods:
   - customizable-model
 model_credential_schema:
@@ -57,6 +59,9 @@ model_credential_schema:
         zh_Hans: 在此输入LocalAI的服务器地址，如 http://192.168.1.100:8080
         en_US: Enter the url of your LocalAI, e.g. http://192.168.1.100:8080
     - variable: context_size
+      show_on:
+        - variable: __model_type
+          value: llm
       label:
         zh_Hans: 上下文大小
         en_US: Context size

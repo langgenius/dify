@@ -137,8 +137,8 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
 
         if (item.annotation) {
           return {
-            id: '',
-            authorName: '',
+            id: item.annotation.id,
+            authorName: item.annotation.account.name,
             logAnnotation: item.annotation,
             created_at: 0,
           }

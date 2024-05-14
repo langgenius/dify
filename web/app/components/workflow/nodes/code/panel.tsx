@@ -5,6 +5,7 @@ import RemoveEffectVarConfirm from '../_base/components/remove-effect-var-confir
 import useConfig from './use-config'
 import type { CodeNodeType } from './types'
 import { CodeLanguage } from './types'
+import Dependencies from './dependency'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
 import OutputVarList from '@/app/components/workflow/nodes/_base/components/variable/output-var-list'
 import AddButton from '@/app/components/base/button/add-button'
@@ -59,6 +60,11 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     varInputs,
     inputVarValues,
     setInputVarValues,
+    allowDependencies,
+    availableDependencies,
+    handleAddDependency,
+    handleRemoveDependency,
+    handleChangeDependency,
   } = useConfig(id, data)
 
   return (
@@ -78,6 +84,31 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
             filterVar={filterVar}
           />
         </Field>
+        {
+          allowDependencies
+            ? (
+              <div>
+                <Split />
+                <div className='pt-4'>
+                  <Field
+                    title={t(`${i18nPrefix}.advancedDependencies`)}
+                    operations={
+                      <AddButton onClick={() => handleAddDependency({ name: '', version: '' })} />
+                    }
+                    tooltip={t(`${i18nPrefix}.advancedDependenciesTip`)!}
+                  >
+                    <Dependencies
+                      available_dependencies={availableDependencies}
+                      dependencies={inputs.dependencies || []}
+                      handleRemove={index => handleRemoveDependency(index)}
+                      handleChange={(index, dependency) => handleChangeDependency(index, dependency)}
+                    />
+                  </Field>
+                </div>
+              </div>
+            )
+            : null
+        }
         <Split />
         <CodeEditor
           isInNode

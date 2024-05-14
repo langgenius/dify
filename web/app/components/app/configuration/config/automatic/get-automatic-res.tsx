@@ -115,7 +115,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       return true
     }
 
-    // alway display prompt panel on desktop mode
+    // always display prompt panel on desktop mode
     return true
   }
 

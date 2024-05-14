@@ -1,8 +1,6 @@
 import {
   memo,
   useEffect,
-  // useRef,
-  useState,
 } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
@@ -16,15 +14,18 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 const ResultTab = ({
   data,
   content,
+  currentTab,
+  onCurrentTabChange,
 }: {
   data?: WorkflowProcess
   content: any
+  currentTab: string
+  onCurrentTabChange: (tab: string) => void
 }) => {
   const { t } = useTranslation()
-  const [currentTab, setCurrentTab] = useState<string>('DETAIL')
 
   const switchTab = async (tab: string) => {
-    setCurrentTab(tab)
+    onCurrentTabChange(tab)
   }
   useEffect(() => {
     if (data?.resultText)

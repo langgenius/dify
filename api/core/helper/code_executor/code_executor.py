@@ -1,13 +1,20 @@
+import logging
+import time
+from enum import Enum
+from threading import Lock
 from typing import Literal, Optional
 
-from httpx import post
+from httpx import get, post
 from pydantic import BaseModel
 from yarl import URL
 
 from config import get_env
+from core.helper.code_executor.entities import CodeDependency
 from core.helper.code_executor.javascript_transformer import NodeJsTemplateTransformer
 from core.helper.code_executor.jinja2_transformer import Jinja2TemplateTransformer
-from core.helper.code_executor.python_transformer import PythonTemplateTransformer
+from core.helper.code_executor.python_transformer import PYTHON_STANDARD_PACKAGES, PythonTemplateTransformer
+
+logger = logging.getLogger(__name__)
 
 # Code Executor
 CODE_EXECUTION_ENDPOINT = get_env('CODE_EXECUTION_ENDPOINT')
@@ -27,10 +34,34 @@ class CodeExecutionResponse(BaseModel):
     message: str
     data: Data
 
+class CodeLanguage(str, Enum):
+    PYTHON3 = 'python3'
+    JINJA2 = 'jinja2'
+    JAVASCRIPT = 'javascript'
+
 
 class CodeExecutor:
+    dependencies_cache = {}
+    dependencies_cache_lock = Lock()
+
+    code_template_transformers = {
+        CodeLanguage.PYTHON3: PythonTemplateTransformer,
+        CodeLanguage.JINJA2: Jinja2TemplateTransformer,
+        CodeLanguage.JAVASCRIPT: NodeJsTemplateTransformer,
+    }
+
+    code_language_to_running_language = {
+        CodeLanguage.JAVASCRIPT: 'nodejs',
+        CodeLanguage.JINJA2: CodeLanguage.PYTHON3,
+        CodeLanguage.PYTHON3: CodeLanguage.PYTHON3,
+    }
+
     @classmethod
-    def execute_code(cls, language: Literal['python3', 'javascript', 'jinja2'], preload: str, code: str) -> str:
+    def execute_code(cls, 
+                     language: Literal['python3', 'javascript', 'jinja2'], 
+                     preload: str, 
+                     code: str, 
+                     dependencies: Optional[list[CodeDependency]] = None) -> str:
         """
         Execute code
         :param language: code language
@@ -44,12 +75,14 @@ class CodeExecutor:
         }
 
         data = {
-            'language': 'python3' if language == 'jinja2' else
-                        'nodejs' if language == 'javascript' else
-                        'python3' if language == 'python3' else None,
+            'language': cls.code_language_to_running_language.get(language),
             'code': code,
-            'preload': preload
+            'preload': preload,
+            'enable_network': True
         }
+
+        if dependencies:
+            data['dependencies'] = [dependency.dict() for dependency in dependencies]
 
         try:
             response = post(str(url), json=data, headers=headers, timeout=CODE_EXECUTION_TIMEOUT)
@@ -78,7 +111,7 @@ class CodeExecutor:
         return response.data.stdout
 
     @classmethod
-    def execute_workflow_code_template(cls, language: Literal['python3', 'javascript', 'jinja2'], code: str, inputs: dict) -> dict:
+    def execute_workflow_code_template(cls, language: Literal['python3', 'javascript', 'jinja2'], code: str, inputs: dict, dependencies: Optional[list[CodeDependency]] = None) -> dict:
         """
         Execute code
         :param language: code language
@@ -86,21 +119,67 @@ class CodeExecutor:
         :param inputs: inputs
         :return:
         """
-        template_transformer = None
-        if language == 'python3':
-            template_transformer = PythonTemplateTransformer
-        elif language == 'jinja2':
-            template_transformer = Jinja2TemplateTransformer
-        elif language == 'javascript':
-            template_transformer = NodeJsTemplateTransformer
-        else:
-            raise CodeExecutionException('Unsupported language')
+        template_transformer = cls.code_template_transformers.get(language)
+        if not template_transformer:
+            raise CodeExecutionException(f'Unsupported language {language}')
 
-        runner, preload = template_transformer.transform_caller(code, inputs)
+        runner, preload, dependencies = template_transformer.transform_caller(code, inputs, dependencies)
 
         try:
-            response = cls.execute_code(language, preload, runner)
+            response = cls.execute_code(language, preload, runner, dependencies)
         except CodeExecutionException as e:
             raise e
 
         return template_transformer.transform_response(response)
+    
+    @classmethod
+    def list_dependencies(cls, language: Literal['python3']) -> list[CodeDependency]:
+        with cls.dependencies_cache_lock:
+            if language in cls.dependencies_cache:
+                # check expiration
+                dependencies = cls.dependencies_cache[language]
+                if dependencies['expiration'] > time.time():
+                    return dependencies['data']
+                # remove expired cache
+                del cls.dependencies_cache[language]
+        
+        dependencies = cls._get_dependencies(language)
+        with cls.dependencies_cache_lock:
+            cls.dependencies_cache[language] = {
+                'data': dependencies,
+                'expiration': time.time() + 60
+            }
+        
+        return dependencies
+        
+    @classmethod
+    def _get_dependencies(cls, language: Literal['python3']) -> list[CodeDependency]:
+        """
+        List dependencies
+        """
+        url = URL(CODE_EXECUTION_ENDPOINT) / 'v1' / 'sandbox' / 'dependencies'
+
+        headers = {
+            'X-Api-Key': CODE_EXECUTION_API_KEY
+        }
+
+        running_language = cls.code_language_to_running_language.get(language)
+        if isinstance(running_language, Enum):
+            running_language = running_language.value
+
+        data = {
+            'language': running_language,
+        }
+
+        try:
+            response = get(str(url), params=data, headers=headers, timeout=CODE_EXECUTION_TIMEOUT)
+            if response.status_code != 200:
+                raise Exception(f'Failed to list dependencies, got status code {response.status_code}, please check if the sandbox service is running')
+            response = response.json()
+            dependencies = response.get('data', {}).get('dependencies', [])
+            return [
+                CodeDependency(**dependency) for dependency in dependencies if dependency.get('name') not in PYTHON_STANDARD_PACKAGES
+            ]
+        except Exception as e:
+            logger.exception(f'Failed to list dependencies: {e}')
+            return []

@@ -10,6 +10,7 @@ import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-s
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 
 const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -21,6 +22,11 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
     doSetInputs(newPayload)
     inputsRef.current = newPayload
   }, [doSetInputs])
+
+  const { availableVars } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: () => true,
+  })
 
   const { handleAddVariable: handleAddEmptyVariable } = useVarList<TemplateTransformNodeType>({
     inputs,
@@ -108,6 +114,7 @@ const useConfig = (id: string, payload: TemplateTransformNodeType) => {
   return {
     readOnly,
     inputs,
+    availableVars,
     handleVarListChange,
     handleVarNameChange,
     handleAddVariable,

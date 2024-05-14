@@ -100,6 +100,12 @@ model_credential_schema:
             - variable: __model_type
               value: llm
         - label:
+            en_US: gpt-4-turbo
+          value: gpt-4-turbo
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
             en_US: gpt-4-turbo-2024-04-09
           value: gpt-4-turbo-2024-04-09
           show_on:

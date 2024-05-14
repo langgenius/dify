@@ -52,6 +52,14 @@ const translation = {
     jinjaEditorPlaceholder: 'Type \'/\' or \'{\' to insert variable',
     viewOnly: 'View Only',
     showRunHistory: 'Show Run History',
+    enableJinja: 'Enable Jinja template support',
+    learnMore: 'Learn More',
+    copy: 'Copy',
+    duplicate: 'Duplicate',
+    addBlock: 'Add Block',
+    pasteHere: 'Paste Here',
+    pointerMode: 'Pointer Mode',
+    handMode: 'Hand Mode',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
@@ -265,6 +273,9 @@ const translation = {
     code: {
       inputVars: 'Input Variables',
       outputVars: 'Output Variables',
+      advancedDependencies: 'Advanced Dependencies',
+      advancedDependenciesTip: 'Add some preloaded dependencies that take more time to consume or are not default built-in here',
+      searchDependencies: 'Search Dependencies',
     },
     templateTransform: {
       inputVars: 'Input Variables',

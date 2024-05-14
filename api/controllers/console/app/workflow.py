@@ -7,7 +7,7 @@ from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
 from controllers.console import api
-from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist
+from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
@@ -20,6 +20,7 @@ from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
+from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ class DraftWorkflowApi(Resource):
             parser = reqparse.RequestParser()
             parser.add_argument('graph', type=dict, required=True, nullable=False, location='json')
             parser.add_argument('features', type=dict, required=True, nullable=False, location='json')
+            parser.add_argument('hash', type=str, required=False, location='json')
             args = parser.parse_args()
         elif 'text/plain' in content_type:
             try:
@@ -71,7 +73,8 @@ class DraftWorkflowApi(Resource):
 
                 args = {
                     'graph': data.get('graph'),
-                    'features': data.get('features')
+                    'features': data.get('features'),
+                    'hash': data.get('hash')
                 }
             except json.JSONDecodeError:
                 return {'message': 'Invalid JSON data'}, 400
@@ -79,15 +82,21 @@ class DraftWorkflowApi(Resource):
             abort(415)
 
         workflow_service = WorkflowService()
-        workflow = workflow_service.sync_draft_workflow(
-            app_model=app_model,
-            graph=args.get('graph'),
-            features=args.get('features'),
-            account=current_user
-        )
+
+        try:
+            workflow = workflow_service.sync_draft_workflow(
+                app_model=app_model,
+                graph=args.get('graph'),
+                features=args.get('features'),
+                unique_hash=args.get('hash'),
+                account=current_user
+            )
+        except WorkflowHashNotEqualError:
+            raise DraftWorkflowNotSync()
 
         return {
             "result": "success",
+            "hash": workflow.unique_hash,
             "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at)
         }
 

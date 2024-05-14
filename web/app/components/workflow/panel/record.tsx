@@ -2,11 +2,11 @@ import { memo, useCallback } from 'react'
 import type { WorkflowDataUpdator } from '../types'
 import Run from '../run'
 import { useStore } from '../store'
-import { useWorkflowInteractions } from '../hooks'
+import { useWorkflowUpdate } from '../hooks'
 
 const Record = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
-  const { handleUpdateWorkflowCanvas } = useWorkflowInteractions()
+  const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
 
   const handleResultCallback = useCallback((res: any) => {
     const graph: WorkflowDataUpdator = res.graph

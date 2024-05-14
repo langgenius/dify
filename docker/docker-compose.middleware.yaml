@@ -53,20 +53,38 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.1.0
+    image: langgenius/dify-sandbox:0.2.0
     restart: always
-    cap_add:
-      # Why is sys_admin permission needed?
-      # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-sys_admin-permission-needed
-      - SYS_ADMIN
     environment:
       # The DifySandbox configurations
+      # Make sure you are changing this key for your deployment with a strong key.
+      # You can generate a strong key using `openssl rand -base64 42`.
       API_KEY: dify-sandbox
       GIN_MODE: 'release'
       WORKER_TIMEOUT: 15
-    ports:
-      - "8194:8194"
+      ENABLE_NETWORK: 'true'
+      HTTP_PROXY: 'http://ssrf_proxy:3128'
+      HTTPS_PROXY: 'http://ssrf_proxy:3128'
+    volumes:
+      - ./volumes/sandbox/dependencies:/dependencies
+    networks:
+      - ssrf_proxy_network
 
+  # ssrf_proxy server
+  # for more information, please refer to
+  # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-ssrf_proxy-needed
+  ssrf_proxy:
+    image: ubuntu/squid:latest
+    restart: always
+    ports:
+      - "3128:3128"
+      - "8194:8194"
+    volumes:
+      # pls clearly modify the squid.conf file to fit your network environment.
+      - ./volumes/ssrf_proxy/squid.conf:/etc/squid/squid.conf
+    networks:
+      - ssrf_proxy_network
+      - default
   # Qdrant vector store.
   # uncomment to use qdrant as vector store.
   # (if uncommented, you need to comment out the weaviate service above,
@@ -81,3 +99,10 @@ services:
   #   ports:
   #     - "6333:6333"
   #     - "6334:6334"
+
+
+networks:
+  # create a network between sandbox, api and ssrf_proxy, and can not access outside.
+  ssrf_proxy_network:
+    driver: bridge
+    internal: true
