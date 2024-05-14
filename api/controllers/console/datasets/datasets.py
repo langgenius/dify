@@ -512,6 +512,7 @@ class DatasetRetrievalSettingMockApi(Resource):
         else:
             raise ValueError("Unsupported vector db type.")
 
+
 class DatasetErrorDocs(Resource):
     @setup_required
     @login_required

@@ -1,6 +1,6 @@
 from core.rag.extractor.extractor_base import BaseExtractor
-from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
 from core.rag.models.document import Document
+from services.website_service import WebsiteService
 
 
 class FirecrawlWebExtractor(BaseExtractor):
@@ -20,42 +20,16 @@ class FirecrawlWebExtractor(BaseExtractor):
     def __init__(
         self,
         url: str,
-        api_key: str,
-        base_url: str = 'https://api.firecrawl.dev',
-        mode: str = 'crawl', 
+        job_id: str
     ):
         """Initialize with url, api_key, base_url and mode."""
         self._url = url
-        self._api_key = api_key
-        self._base_url = base_url
-        self._mode = mode
-        self._firecrawl_app = FirecrawlApp(api_key=self._api_key, base_url=self._base_url)
+        self.job_id = job_id
 
     def extract(self) -> list[Document]:
+        """Extract content from the URL."""
         documents = []
-        if self._mode == 'scrape':
-            content = self._scrape_url()
-            if content:
-                documents.append(self._create_document(content))
-        elif self._mode in ['crawl', 'crawl_return_urls']:
-            items = self._crawl_url(return_only_urls=(self._mode == 'crawl_return_urls'))
-            for item in items:
-                if item:
-                    documents.append(self._create_document(item, is_url=(self._mode == 'crawl_return_urls')))
-        return documents
-
-    def _create_document(self, content, is_url=False):
-        if is_url:
-            return Document(page_content=content.get('url', ''))
-        else:
-            return Document(page_content=content.get('markdown', ''))
-    
-    def _scrape_url(self):
-        return self._firecrawl_app.scrape_url(self._url)
-    
-    def _crawl_url(self, return_only_urls=False):
-        return self._firecrawl_app.crawl_url(self._url, {
-            "crawlerOptions": {
-                "returnOnlyUrls": return_only_urls
-            }
-        })
+        document = WebsiteService.get_crawl_url_data(self.job_id, 'firecrawl', self._url)
+        if document:
+            documents.append(document)
+        return []

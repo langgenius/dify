@@ -523,6 +523,9 @@ class DocumentService:
                     notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                     for notion_info in notion_info_list:
                         count = count + len(notion_info['pages'])
+                elif document_data["data_source"]["type"] == "website":
+                    website_info = document_data["data_source"]['info_list']['website_info']
+                    count = len(website_info['urls'])
                 batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
                 if count > batch_upload_limit:
                     raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -695,6 +698,26 @@ class DocumentService:
                 # delete not selected documents
                 if len(exist_document) > 0:
                     clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
+            elif document_data["data_source"]["type"] == "website":
+                website_info = document_data["data_source"]['info_list']['website_info']
+                urls = website_info['urls']
+                for url in urls:
+                    data_source_info = {
+                        'url': url,
+                        'provider': website_info['provider'],
+                        'job_id': website_info['job_id']
+                    }
+                    document = DocumentService.build_document(dataset, dataset_process_rule.id,
+                                                              document_data["data_source"]["type"],
+                                                              document_data["doc_form"],
+                                                              document_data["doc_language"],
+                                                              data_source_info, created_from, position,
+                                                              account, website_info['url'], batch)
+                    db.session.add(document)
+                    db.session.flush()
+                    document_ids.append(document.id)
+                    documents.append(document)
+                    position += 1
             db.session.commit()
 
             # trigger async task
@@ -813,6 +836,15 @@ class DocumentService:
                             "notion_page_icon": page['page_icon'],
                             "type": page['type']
                         }
+            elif document_data["data_source"]["type"] == "website":
+                website_info = document_data["data_source"]['info_list']['website_info']
+                urls = website_info['urls']
+                for url in urls:
+                    data_source_info = {
+                        'url': url,
+                        'provider': website_info['provider'],
+                        'job_id': website_info['job_id']
+                    }
             document.data_source_type = document_data["data_source"]["type"]
             document.data_source_info = json.dumps(data_source_info)
             document.name = file_name
@@ -851,6 +883,9 @@ class DocumentService:
                 notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                 for notion_info in notion_info_list:
                     count = count + len(notion_info['pages'])
+            elif document_data["data_source"]["type"] == "website":
+                website_info = document_data["data_source"]['info_list']['website_info']
+                count = len(website_info['urls'])
             batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -951,6 +986,10 @@ class DocumentService:
             if 'notion_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list'][
                 'notion_info_list']:
                 raise ValueError("Notion source info is required")
+        if args['data_source']['type'] == 'website':
+            if 'website_info' not in args['data_source']['info_list'] or not args['data_source']['info_list'][
+                'website_info']:
+                raise ValueError("Website source info is required")
 
     @classmethod
     def process_rule_args_validate(cls, args: dict):

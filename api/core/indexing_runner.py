@@ -376,6 +376,20 @@ class IndexingRunner:
                 document_model=dataset_document.doc_form
             )
             text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule['mode'])
+        elif dataset_document.data_source_type == 'website':
+            if (not data_source_info or 'provider' not in data_source_info
+                    or 'url' not in data_source_info or 'job_id' not in data_source_info):
+                raise ValueError("no website import info found")
+            extract_setting = ExtractSetting(
+                datasource_type="website",
+                website_info={
+                    "provider": data_source_info['provider'],
+                    "job_id": data_source_info['job_id'],
+                    "url": data_source_info['url']
+                },
+                document_model=dataset_document.doc_form
+            )
+            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule['mode'])
         # update document status to splitting
         self._update_document_index_status(
             document_id=dataset_document.id,

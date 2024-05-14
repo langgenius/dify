@@ -250,7 +250,7 @@ class DatasetDocumentListApi(Resource):
         DocumentService.document_create_args_validate(args)
 
         try:
-            documents, batch = DocumentService.save_document_with_dataset_id(dataset, args, current_user)
+            documents, batch = DocumentService. save_document_with_dataset_id(dataset, args, current_user)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

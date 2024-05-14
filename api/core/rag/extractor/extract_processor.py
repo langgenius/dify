@@ -142,12 +142,14 @@ class ExtractProcessor:
                 tenant_id=extract_setting.notion_info.tenant_id,
             )
             return extractor.extract()
-        elif extract_setting.datasource_type == DatasourceType.URL.value:
-            # [Review] Not sure if api key and base url belong here.
-            extractor = FirecrawlWebExtractor(
-                api_key=extract_setting.firecrawl_info.firecrawl_api_key,
-                base_url=extract_setting.firecrawl_info.firecrawl_base_url,
-                url=extract_setting.firecrawl_info.url, mode=extract_setting.firecrawl_info.mode)
-            return extractor.extract()
+        elif extract_setting.datasource_type == DatasourceType.WEBSITE.value:
+            if extract_setting.website_info.provider == 'firecrawl':
+                extractor = FirecrawlWebExtractor(
+                    url=extract_setting.website_info.url,
+                    job_id=extract_setting.website_info.job_id
+                )
+                return extractor.extract()
+            else:
+                raise ValueError(f"Unsupported website provider: {extract_setting.website_info.provider}")
         else:
             raise ValueError(f"Unsupported datasource type: {extract_setting.datasource_type}")
