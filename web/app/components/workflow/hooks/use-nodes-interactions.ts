@@ -536,6 +536,9 @@ export const useNodesInteractions = () => {
               ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
             }
           }
+
+          if (node.data.type === BlockEnum.Iteration && prevNode.parentId === node.id)
+            node.data._children?.push(newNode.id)
         })
         draft.push(newNode)
       })
@@ -613,6 +616,17 @@ export const useNodesInteractions = () => {
               ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
             }
           }
+
+          if (node.data.type === BlockEnum.Iteration && nextNode.parentId === node.id)
+            node.data._children?.push(newNode.id)
+
+          if (node.data.type === BlockEnum.Iteration && node.data.start_node_id === nextNodeId) {
+            node.data.start_node_id = newNode.id
+            node.data.startNodeType = newNode.data.type
+          }
+
+          if (node.id === nextNodeId && node.data.isIterationStart)
+            node.data.isIterationStart = false
         })
         draft.push(newNode)
       })
