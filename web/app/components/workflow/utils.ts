@@ -17,6 +17,7 @@ import type {
 } from './types'
 import { BlockEnum } from './types'
 import {
+  ITERATION_NODE_Z_INDEX,
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from './constants'
@@ -268,7 +269,7 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
   return nodesConnectedSourceOrTargetHandleIdsMap
 }
 
-export const generateNewNode = ({ data, position, id, ...rest }: Omit<Node, 'id'> & { id?: string }) => {
+export const generateNewNode = ({ data, position, id, zIndex, ...rest }: Omit<Node, 'id'> & { id?: string }) => {
   return {
     id: id || `${Date.now()}`,
     type: 'custom',
@@ -276,6 +277,7 @@ export const generateNewNode = ({ data, position, id, ...rest }: Omit<Node, 'id'
     position,
     targetPosition: Position.Left,
     sourcePosition: Position.Right,
+    zIndex: data.type === BlockEnum.Iteration ? ITERATION_NODE_Z_INDEX : zIndex,
     ...rest,
   } as Node
 }

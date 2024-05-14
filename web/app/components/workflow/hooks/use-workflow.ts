@@ -152,10 +152,20 @@ export const useWorkflow = () => {
     } = store.getState()
     const nodes = getNodes()
     const currentNode = nodes.find(node => node.id === nodeId)
+
     const list: Node[] = []
 
     if (!currentNode)
       return list
+
+    if (currentNode.parentId) {
+      const parentNode = nodes.find(node => node.id === currentNode.parentId)
+      if (parentNode) {
+        const parentList = getBeforeNodesInSameBranch(parentNode.id)
+
+        list.push(...parentList)
+      }
+    }
 
     const traverse = (root: Node, callback: (node: Node) => void) => {
       if (root) {

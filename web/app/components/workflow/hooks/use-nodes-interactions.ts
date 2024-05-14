@@ -25,6 +25,7 @@ import type {
 import { BlockEnum } from '../types'
 import { useWorkflowStore } from '../store'
 import {
+  ITERATION_CHILDREN_Z_INDEX,
   NODES_INITIAL_DATA,
   NODE_WIDTH_X_OFFSET,
   Y_OFFSET,
@@ -355,7 +356,7 @@ export const useNodesInteractions = () => {
         targetType: nodes.find(node => node.id === target)!.data.type,
         isInIteration: !!targetNode?.parentId,
       },
-      zIndex: targetNode?.parentId ? 1001 : 0,
+      zIndex: targetNode?.parentId ? ITERATION_CHILDREN_Z_INDEX : 0,
     }
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
       [
@@ -502,7 +503,7 @@ export const useNodesInteractions = () => {
       newNode.extent = prevNode.extent
       if (prevNode.parentId) {
         newNode.data.isInIteration = true
-        newNode.zIndex = 1001
+        newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
       }
 
       const newEdge: Edge = {
@@ -518,7 +519,7 @@ export const useNodesInteractions = () => {
           isInIteration: !!prevNode.parentId,
           _connectedNodeIsSelected: true,
         },
-        zIndex: prevNode.parentId ? 1001 : 0,
+        zIndex: prevNode.parentId ? ITERATION_CHILDREN_Z_INDEX : 0,
       }
       const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
         [
@@ -568,7 +569,7 @@ export const useNodesInteractions = () => {
       newNode.extent = nextNode.extent
       if (nextNode.parentId) {
         newNode.data.isInIteration = true
-        newNode.zIndex = 1001
+        newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
       }
       if (nextNode.data.isIterationStart)
         newNode.data.isIterationStart = true
@@ -589,7 +590,7 @@ export const useNodesInteractions = () => {
             isInIteration: !!nextNode.parentId,
             _connectedNodeIsSelected: true,
           },
-          zIndex: nextNode.parentId ? 1001 : 0,
+          zIndex: nextNode.parentId ? ITERATION_CHILDREN_Z_INDEX : 0,
         }
       }
 
@@ -661,7 +662,7 @@ export const useNodesInteractions = () => {
       newNode.extent = prevNode.extent
       if (prevNode.parentId) {
         newNode.data.isInIteration = true
-        newNode.zIndex = 1001
+        newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
       }
 
       const currentEdgeIndex = edges.findIndex(edge => edge.source === prevNodeId && edge.target === nextNodeId)
@@ -678,7 +679,7 @@ export const useNodesInteractions = () => {
           isInIteration: !!prevNode.parentId,
           _connectedNodeIsSelected: true,
         },
-        zIndex: prevNode.parentId ? 1001 : 0,
+        zIndex: prevNode.parentId ? ITERATION_CHILDREN_Z_INDEX : 0,
       }
       let newNextEdge: Edge | null = null
       if (nodeType !== BlockEnum.IfElse && nodeType !== BlockEnum.QuestionClassifier) {
@@ -695,7 +696,7 @@ export const useNodesInteractions = () => {
             isInIteration: !!nextNode.parentId,
             _connectedNodeIsSelected: true,
           },
-          zIndex: nextNode.parentId ? 1001 : 0,
+          zIndex: nextNode.parentId ? ITERATION_CHILDREN_Z_INDEX : 0,
         }
       }
       const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(

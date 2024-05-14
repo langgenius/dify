@@ -39,7 +39,7 @@ export const NodeTargetHandle = memo(({
   const { getNodesReadOnly } = useNodesReadOnly()
   const connected = data._connectedTargetHandleIds?.includes(handleId)
   const availablePrevNodes = nodesExtraData[data.type].availablePrevNodes.filter((node) => {
-    if (data.isInIteration && node === BlockEnum.Iteration)
+    if (data.isInIteration && (node === BlockEnum.Iteration || node === BlockEnum.End))
       return false
     return true
   })
@@ -123,7 +123,7 @@ export const NodeSourceHandle = memo(({
   const nodesExtraData = useNodesExtraData()
   const { getNodesReadOnly } = useNodesReadOnly()
   const availableNextNodes = nodesExtraData[data.type].availableNextNodes.filter((node) => {
-    if (data.isInIteration && node === BlockEnum.Iteration)
+    if (data.isInIteration && (node === BlockEnum.Iteration || node === BlockEnum.End))
       return false
     return true
   })

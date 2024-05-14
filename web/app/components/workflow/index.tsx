@@ -64,7 +64,10 @@ import {
   initialEdges,
   initialNodes,
 } from './utils'
-import { WORKFLOW_DATA_UPDATE } from './constants'
+import {
+  ITERATION_CHILDREN_Z_INDEX,
+  WORKFLOW_DATA_UPDATE,
+} from './constants'
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
@@ -250,6 +253,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         onSelectionDrag={handleSelectionDrag}
         onPaneContextMenu={handlePaneContextMenu}
         connectionLineComponent={CustomConnectionLine}
+        connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
         deleteKeyCode={null}

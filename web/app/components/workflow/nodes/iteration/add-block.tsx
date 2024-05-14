@@ -40,11 +40,15 @@ const AddBlock = ({
   const store = useStoreApi()
   const nodesExtraData = useNodesExtraData()
   const { nodesReadOnly } = useNodesReadOnly()
-  const availableNextNodes = nodesExtraData[BlockEnum.Start].availableNextNodes
+  const availableNextNodes = nodesExtraData[BlockEnum.Start].availableNextNodes.filter((nodeType) => {
+    if (nodeType === BlockEnum.Iteration || nodeType === BlockEnum.End)
+      return false
+    return true
+  })
   const availablePrevBlocks = useMemo(() => {
     if (iterationNodeData.startNodeType) {
       return nodesExtraData[iterationNodeData.startNodeType].availablePrevNodes.filter((nodeType) => {
-        if (nodeType === BlockEnum.Iteration)
+        if (nodeType === BlockEnum.Iteration || nodeType === BlockEnum.End)
           return false
         return true
       })
@@ -96,7 +100,6 @@ const AddBlock = ({
         `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
         open && '!bg-gray-50',
       )}>
-        <div className='absolute -left-[2px] top-1/2 -translate-y-1/2 w-0.5 h-2 bg-primary-500'></div>
         <Plus className='mr-1 w-4 h-4' />
         {t('workflow.common.addBlock')}
       </div>
@@ -119,6 +122,7 @@ const AddBlock = ({
             />
           )
         }
+        <div className='absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-2 bg-primary-500'></div>
       </div>
       {
         !iterationNodeData.startNodeType && (

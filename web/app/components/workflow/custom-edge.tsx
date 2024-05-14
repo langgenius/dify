@@ -3,6 +3,7 @@ import {
   useCallback,
   useState,
 } from 'react'
+import cn from 'classnames'
 import { intersection } from 'lodash-es'
 import type { EdgeProps } from 'reactflow'
 import {
@@ -23,6 +24,7 @@ import type {
 import {
   BlockEnum,
 } from './types'
+import { ITERATION_CHILDREN_Z_INDEX } from './constants'
 
 const CustomEdge = ({
   id,
@@ -94,12 +96,12 @@ const CustomEdge = ({
       />
       <EdgeLabelRenderer>
         <div
-          className={`
-            nopan nodrag hover:scale-125
-            ${data?._hovering ? 'block' : 'hidden'}
-            ${open && '!block'}
-            ${data.isInIteration && 'z-[1001]'}
-          `}
+          className={cn(
+            'nopan nodrag hover:scale-125',
+            data?._hovering ? 'block' : 'hidden',
+            open && '!block',
+            data.isInIteration && `z-[${ITERATION_CHILDREN_Z_INDEX}]`,
+          )}
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
