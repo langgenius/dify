@@ -89,7 +89,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.type !== BlockEnum.VariableAssigner && !data._isCandidate && !data.isIterationStart && (
+          data.type !== BlockEnum.VariableAssigner && !data._isCandidate && (
             <NodeTargetHandle
               id={id}
               data={data}

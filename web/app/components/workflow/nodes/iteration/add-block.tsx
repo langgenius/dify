@@ -70,7 +70,7 @@ const AddBlock = ({
       },
       position: {
         x: 85,
-        y: 87,
+        y: 85,
       },
       zIndex: 1001,
       parentId: iterationNodeId,
@@ -104,7 +104,7 @@ const AddBlock = ({
   }, [nodesReadOnly, t])
 
   return (
-    <div className='relative flex items-center pt-[52px] pl-6 z-10'>
+    <div className='absolute top-12 left-6 flex items-center h-8 z-10'>
       <TooltipPlus popupContent={t('workflow.blocks.iteration-start')}>
         <div className='flex items-center justify-center w-6 h-6 rounded-full border-[0.5px] border-black/[0.02] shadow-md bg-primary-500'>
           <IterationStart className='w-4 h-4 text-white' />

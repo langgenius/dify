@@ -43,7 +43,9 @@ export const NodeTargetHandle = memo(({
       return false
     return true
   })
-  const isConnectable = !!availablePrevNodes.length
+  const isConnectable = !!availablePrevNodes.length && (
+    !data.isIterationStart
+  )
 
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)

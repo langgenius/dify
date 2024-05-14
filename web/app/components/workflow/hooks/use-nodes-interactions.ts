@@ -589,6 +589,7 @@ export const useNodesInteractions = () => {
             isInIteration: !!nextNode.parentId,
             _connectedNodeIsSelected: true,
           },
+          zIndex: nextNode.parentId ? 1001 : 0,
         }
       }
 
