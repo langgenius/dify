@@ -52,6 +52,8 @@ const translation = {
     jinjaEditorPlaceholder: '输入 “/” 或 “{” 插入变量',
     viewOnly: '只读',
     showRunHistory: '显示运行历史',
+    enableJinja: '开启支持 Jinja 模板',
+    learnMore: '了解更多',
     copy: '拷贝',
     duplicate: '复制',
     addBlock: '添加节点',
@@ -271,6 +273,9 @@ const translation = {
     code: {
       inputVars: '输入变量',
       outputVars: '输出变量',
+      advancedDependencies: '高级依赖',
+      advancedDependenciesTip: '在这里添加一些预加载需要消耗较多时间或非默认内置的依赖包',
+      searchDependencies: '搜索依赖',
     },
     templateTransform: {
       inputVars: '输入变量',

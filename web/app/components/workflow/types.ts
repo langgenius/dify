@@ -131,10 +131,17 @@ export enum PromptRole {
   assistant = 'assistant',
 }
 
+export enum EditionType {
+  basic = 'basic',
+  jinja2 = 'jinja2',
+}
+
 export type PromptItem = {
   id?: string
   role?: PromptRole
   text: string
+  edition_type?: EditionType
+  jinja2_text?: string
 }
 
 export enum MemoryRole {

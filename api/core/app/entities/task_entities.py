@@ -246,6 +246,24 @@ class NodeStartStreamResponse(StreamResponse):
     workflow_run_id: str
     data: Data
 
+    def to_ignore_detail_dict(self):
+        return {
+            "event": self.event.value,
+            "task_id": self.task_id,
+            "workflow_run_id": self.workflow_run_id,
+            "data": {
+                "id": self.data.id,
+                "node_id": self.data.node_id,
+                "node_type": self.data.node_type,
+                "title": self.data.title,
+                "index": self.data.index,
+                "predecessor_node_id": self.data.predecessor_node_id,
+                "inputs": None,
+                "created_at": self.data.created_at,
+                "extras": {}
+            }
+        }
+
 
 class NodeFinishStreamResponse(StreamResponse):
     """
@@ -275,6 +293,31 @@ class NodeFinishStreamResponse(StreamResponse):
     event: StreamEvent = StreamEvent.NODE_FINISHED
     workflow_run_id: str
     data: Data
+
+    def to_ignore_detail_dict(self):
+        return {
+            "event": self.event.value,
+            "task_id": self.task_id,
+            "workflow_run_id": self.workflow_run_id,
+            "data": {
+                "id": self.data.id,
+                "node_id": self.data.node_id,
+                "node_type": self.data.node_type,
+                "title": self.data.title,
+                "index": self.data.index,
+                "predecessor_node_id": self.data.predecessor_node_id,
+                "inputs": None,
+                "process_data": None,
+                "outputs": None,
+                "status": self.data.status,
+                "error": None,
+                "elapsed_time": self.data.elapsed_time,
+                "execution_metadata": None,
+                "created_at": self.data.created_at,
+                "finished_at": self.data.finished_at,
+                "files": []
+            }
+        }
 
 
 class TextChunkStreamResponse(StreamResponse):

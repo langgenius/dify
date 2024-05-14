@@ -1,7 +1,9 @@
 import json
 import re
 from base64 import b64encode
+from typing import Optional
 
+from core.helper.code_executor.entities import CodeDependency
 from core.helper.code_executor.template_transformer import TemplateTransformer
 
 PYTHON_RUNNER = """# declare main function here
@@ -25,32 +27,17 @@ result = f'''<<RESULT>>
 print(result)
 """
 
-PYTHON_PRELOAD = """
-# prepare general imports
-import json
-import datetime
-import math
-import random
-import re
-import string
-import sys
-import time
-import traceback
-import uuid
-import os
-import base64
-import hashlib
-import hmac
-import binascii
-import collections
-import functools
-import operator
-import itertools
-"""
+PYTHON_PRELOAD = """"""
+
+PYTHON_STANDARD_PACKAGES = set([
+    'json', 'datetime', 'math', 'random', 're', 'string', 'sys', 'time', 'traceback', 'uuid', 'os', 'base64',
+    'hashlib', 'hmac', 'binascii', 'collections', 'functools', 'operator', 'itertools', 'uuid', 
+])
 
 class PythonTemplateTransformer(TemplateTransformer):
     @classmethod
-    def transform_caller(cls, code: str, inputs: dict) -> tuple[str, str]:
+    def transform_caller(cls, code: str, inputs: dict, 
+                         dependencies: Optional[list[CodeDependency]] = None) -> tuple[str, str, list[CodeDependency]]:
         """
         Transform code to python runner
         :param code: code
@@ -65,7 +52,18 @@ class PythonTemplateTransformer(TemplateTransformer):
         runner = PYTHON_RUNNER.replace('{{code}}', code)
         runner = runner.replace('{{inputs}}', inputs_str)
 
-        return runner, PYTHON_PRELOAD
+        # add standard packages
+        if dependencies is None:
+            dependencies = []
+
+        for package in PYTHON_STANDARD_PACKAGES:
+            if package not in dependencies:
+                dependencies.append(CodeDependency(name=package, version=''))
+
+        # deduplicate
+        dependencies = list({dep.name: dep for dep in dependencies if dep.name}.values())
+
+        return runner, PYTHON_PRELOAD, dependencies
     
     @classmethod
     def transform_response(cls, response: str) -> dict:

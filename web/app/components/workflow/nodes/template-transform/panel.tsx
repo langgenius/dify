@@ -26,6 +26,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
   const {
     readOnly,
     inputs,
+    availableVars,
     handleVarListChange,
     handleVarNameChange,
     handleAddVariable,
@@ -65,7 +66,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
         </Field>
         <Split />
         <CodeEditor
-          nodeId={id}
+          availableVars={availableVars}
           varList={inputs.variables}
           onAddVar={handleAddVariable}
           isInNode
