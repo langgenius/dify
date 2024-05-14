@@ -131,6 +131,23 @@ class ApiToolProvider(db.Model):
     def tenant(self) -> Tenant:
         return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
 
+class ToolLabelBind(db.Model):
+    """
+    The table stores the labels for tools.
+    """
+    __tablename__ = 'tool_label_binds'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='tool_label_bind_pkey'),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    # tool id
+    tool_id = db.Column(db.String(64), nullable=False)
+    # tool type
+    tool_type = db.Column(db.String(40), nullable=False)
+    # label name
+    label_name = db.Column(db.String(40), nullable=False)
+
 class WorkflowToolProvider(db.Model):
     """
     The table stores the workflow providers.
@@ -157,6 +174,8 @@ class WorkflowToolProvider(db.Model):
     description = db.Column(db.Text, nullable=False)
     # parameter configuration
     parameter_configuration = db.Column(db.Text, nullable=False, server_default='[]')
+    # privacy policy
+    privacy_policy = db.Column(db.String(255), nullable=True, server_default='')
 
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))

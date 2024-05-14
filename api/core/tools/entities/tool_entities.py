@@ -369,3 +369,10 @@ class ToolInvokeMeta(BaseModel):
             'error': self.error,
             'tool_config': self.tool_config,
         }
+    
+class ToolLabel(BaseModel):
+    """
+    Tool label
+    """
+    name: str = Field(..., description="The name of the tool")
+    label: I18nObject = Field(..., description="The label of the tool")
