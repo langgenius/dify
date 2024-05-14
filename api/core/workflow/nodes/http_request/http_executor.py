@@ -55,7 +55,7 @@ class HttpExecutorResponse:
         """
         get content
         """
-        if isinstance(self.response, (httpx.Response, requests.Response)):
+        if isinstance(self.response, httpx.Response | requests.Response):
             return self.response.text
         else:
             raise ValueError(f'Invalid response type {type(self.response)}')
@@ -65,7 +65,7 @@ class HttpExecutorResponse:
         """
         get body
         """
-        if isinstance(self.response, (httpx.Response, requests.Response)):
+        if isinstance(self.response, httpx.Response | requests.Response):
             return self.response.content
         else:
             raise ValueError(f'Invalid response type {type(self.response)}')
@@ -75,7 +75,7 @@ class HttpExecutorResponse:
         """
         get status code
         """
-        if isinstance(self.response, (httpx.Response, requests.Response)):
+        if isinstance(self.response, httpx.Response | requests.Response):
             return self.response.status_code
         else:
             raise ValueError(f'Invalid response type {type(self.response)}')
