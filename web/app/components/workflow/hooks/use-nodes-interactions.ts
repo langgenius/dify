@@ -520,16 +520,22 @@ export const useNodesInteractions = () => {
         },
         zIndex: prevNode.parentId ? 1001 : 0,
       }
-
+      const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
+        [
+          { type: 'add', edge: newEdge },
+        ],
+        nodes,
+      )
       const newNodes = produce(nodes, (draft: Node[]) => {
         draft.forEach((node) => {
           node.data.selected = false
 
-          if (node.id === prevNode.id)
-            node.data._connectedSourceHandleIds?.push(prevNodeSourceHandle!)
-
-          if (node.data.type === BlockEnum.Iteration && prevNode.parentId === node.id)
-            node.data._children?.push(newNode.id)
+          if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
+            node.data = {
+              ...node.data,
+              ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+            }
+          }
         })
         draft.push(newNode)
       })
@@ -548,7 +554,8 @@ export const useNodesInteractions = () => {
     if (!prevNodeId && nextNodeId) {
       const nextNodeIndex = nodes.findIndex(node => node.id === nextNodeId)
       const nextNode = nodes[nextNodeIndex]!
-      newNode.data._connectedSourceHandleIds = [sourceHandle]
+      if ((nodeType !== BlockEnum.IfElse) && (nodeType !== BlockEnum.QuestionClassifier))
+        newNode.data._connectedSourceHandleIds = [sourceHandle]
       newNode.data._connectedTargetHandleIds = []
       newNode.position = {
         x: nextNode.position.x,
@@ -563,21 +570,34 @@ export const useNodesInteractions = () => {
       if (nextNode.data.isIterationStart)
         newNode.data.isIterationStart = true
 
-      const newEdge = {
-        id: `${newNode.id}-${nextNodeId}`,
-        type: 'custom',
-        source: newNode.id,
-        sourceHandle,
-        target: nextNodeId,
-        targetHandle: nextNodeTargetHandle,
-        data: {
-          sourceType: newNode.data.type,
-          targetType: nextNode.data.type,
-          isInIteration: !!nextNode.parentId,
-          _connectedNodeIsSelected: true,
-        },
-        zIndex: nextNode.parentId ? 1001 : 0,
+      let newEdge
+
+      if ((nodeType !== BlockEnum.IfElse) && (nodeType !== BlockEnum.QuestionClassifier)) {
+        newEdge = {
+          id: `${newNode.id}-${nextNodeId}`,
+          type: 'custom',
+          source: newNode.id,
+          sourceHandle,
+          target: nextNodeId,
+          targetHandle: nextNodeTargetHandle,
+          data: {
+            sourceType: newNode.data.type,
+            targetType: nextNode.data.type,
+            _connectedNodeIsSelected: true,
+          },
+        }
       }
+
+      let nodesConnectedSourceOrTargetHandleIdsMap: Record<string, any>
+      if (newEdge) {
+        nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
+          [
+            { type: 'add', edge: newEdge },
+          ],
+          nodes,
+        )
+      }
+
       const afterNodesInSameBranch = getAfterNodesInSameBranch(nextNodeId!)
       const afterNodesInSameBranchIds = afterNodesInSameBranch.map(node => node.id)
       const newNodes = produce(nodes, (draft) => {
@@ -587,33 +607,28 @@ export const useNodesInteractions = () => {
           if (afterNodesInSameBranchIds.includes(node.id))
             node.position.x += NODE_WIDTH_X_OFFSET
 
-          if (node.id === nextNodeId)
-            node.data._connectedTargetHandleIds?.push(nextNodeTargetHandle!)
-
-          if (node.data.type === BlockEnum.Iteration && nextNode.parentId === node.id)
-            node.data._children?.push(newNode.id)
-
-          if (node.data.type === BlockEnum.Iteration && node.data.start_node_id === nextNodeId) {
-            node.data.start_node_id = newNode.id
-            node.data.startNodeType = newNode.data.type
+          if (nodesConnectedSourceOrTargetHandleIdsMap?.[node.id]) {
+            node.data = {
+              ...node.data,
+              ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+            }
           }
-
-          if (node.id === nextNodeId && node.data.isIterationStart)
-            node.data.isIterationStart = false
         })
         draft.push(newNode)
       })
       setNodes(newNodes)
-      const newEdges = produce(edges, (draft) => {
-        draft.forEach((item) => {
-          item.data = {
-            ...item.data,
-            _connectedNodeIsSelected: false,
-          }
+      if (newEdge) {
+        const newEdges = produce(edges, (draft) => {
+          draft.forEach((item) => {
+            item.data = {
+              ...item.data,
+              _connectedNodeIsSelected: false,
+            }
+          })
+          draft.push(newEdge)
         })
-        draft.push(newEdge)
-      })
-      setEdges(newEdges)
+        setEdges(newEdges)
+      }
     }
     if (prevNodeId && nextNodeId) {
       const prevNode = nodes.find(node => node.id === prevNodeId)!
@@ -854,14 +869,14 @@ export const useNodesInteractions = () => {
     } = store.getState()
 
     const nodes = getNodes()
-    const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.End)
+    const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start)
 
     if (bundledNodes.length) {
       setClipboardElements(bundledNodes)
       return
     }
 
-    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.End)
+    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
 
     if (selectedNode)
       setClipboardElements([selectedNode])
@@ -936,7 +951,7 @@ export const useNodesInteractions = () => {
     } = store.getState()
     const nodes = getNodes()
 
-    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start && node.data.type !== BlockEnum.End)
+    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
 
     if (selectedNode) {
       const nodeType = selectedNode.data.type
