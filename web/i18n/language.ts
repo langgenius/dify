@@ -34,14 +34,14 @@ export const languages = [
   {
     value: 'zh-Hans',
     name: '简体中文',
-    prompt_name: 'Chinese',
+    prompt_name: 'Chinese Simplified',
     example: '你好，Dify！',
     supported: true,
   },
   {
     value: 'zh-Hant',
     name: '繁體中文',
-    prompt_name: 'Chinese',
+    prompt_name: 'Chinese Traditional',
     example: '你好，Dify！',
     supported: true,
   },
