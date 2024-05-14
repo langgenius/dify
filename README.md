@@ -213,7 +213,7 @@ wget -O docker-compose.yaml https://github.com/langgenius/dify/raw/0.6.5/docker/
 
 - 6. Upgrade completed
 ```bash
- docker-compose up -d
+ docker compose up -d
  ```
  
 ## Next steps
