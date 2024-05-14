@@ -61,6 +61,11 @@ const translation = {
     pointerMode: '指针模式',
     handMode: '手模式',
     model: '模型',
+    workflowAsTool: '发布为工具',
+    configureRequired: '需要进行配置',
+    configure: '配置',
+    manageInTools: '访问工具页',
+    workflowAsToolTip: '工作流已更新，工具需要重新配置。',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',

@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRouter } from 'next/navigation'
 import dayjs from 'dayjs'
 import classNames from 'classnames'
 import type { ModelAndParameter } from '../configuration/debug/types'
@@ -16,10 +17,12 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
+import Indicator from '@/app/components/header/indicator'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useGetLanguage } from '@/context/i18n'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
+import { ArrowUpRight, ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PlayCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { Tools } from '@/app/components/base/icons/src/vender/line/others'
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import { LeftIndent02 } from '@/app/components/base/icons/src/vender/line/editor'
 import { FileText } from '@/app/components/base/icons/src/vender/line/files'
@@ -52,6 +55,7 @@ const AppPublisher = ({
   crossAxisOffset = 0,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
+  const router = useRouter()
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const appDetail = useAppStore(state => state.appDetail)
@@ -122,7 +126,7 @@ const AppPublisher = ({
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
-        <div className='w-[320px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl'>
+        <div className='w-[336px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl'>
           <div className='p-4 pt-3'>
             <div className='flex items-center h-6 text-xs font-medium text-gray-500 uppercase'>
               {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
@@ -202,6 +206,43 @@ const AppPublisher = ({
                 </SuggestedAction>
               )}
             <SuggestedAction disabled={!publishedAt} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
+            {appDetail?.mode === 'workflow' && (
+              <div className='mt-2 pt-2 border-t-[0.5px] border-t-black/5'>
+                <div className={classNames(
+                  'bg-gray-100 rounded-lg transition-colors',
+                  !publishedAt ? 'shadow-xs opacity-30 cursor-not-allowed' : 'cursor-pointer',
+                )}>
+                  <div className='flex justify-start items-center gap-2 px-2.5 py-2' onClick={() => {}}>
+                    <Tools className='relative w-4 h-4'/>
+                    <div title={t('workflow.common.workflowAsTool') || ''} className='grow shrink basis-0 text-[13px] font-medium leading-[18px] truncate'>{t('workflow.common.workflowAsTool')}</div>
+                    {!appDetail?.isTool && (
+                      <span className='shrink-0 px-1 border border-black/8 rounded-[5px] bg-white text-[10px] font-medium leading-[18px] text-gray-500'>{t('workflow.common.configureRequired').toLocaleUpperCase()}</span>
+                    )}
+                  </div>
+                  {appDetail?.isTool && (
+                    <div className='px-2.5 py-2 border-t-[0.5px] border-black/5'>
+                      <div className='flex justify-between'>
+                        <Button
+                          className='px-2 w-[140px] py-0 h-6 shadow-xs rounded-md text-xs font-medium text-gray-700 border-[0.5px] bg-white border-gray-200'
+                          onClick={() => {}}
+                        >
+                          {t('workflow.common.configure')}
+                          <Indicator className='ml-1' color={'yellow'} />
+                        </Button>
+                        <Button
+                          className='px-2 w-[140px] py-0 h-6 shadow-xs rounded-md text-xs font-medium text-gray-700 border-[0.5px] bg-white border-gray-200'
+                          onClick={() => router.push('/tools')}
+                        >
+                          {t('workflow.common.manageInTools')}
+                          <ArrowUpRight className='ml-1' />
+                        </Button>
+                      </div>
+                      <div className='mt-1 text-xs leading-[18px] text-[#dc6803]'>{t('workflow.common.workflowAsToolTip')}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </PortalToFollowElemContent>

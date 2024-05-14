@@ -61,6 +61,11 @@ const translation = {
     pointerMode: 'Pointer Mode',
     handMode: 'Hand Mode',
     model: 'Model',
+    workflowAsTool: 'Workflow as a Tool',
+    configureRequired: 'Configure Required',
+    configure: 'Configure',
+    manageInTools: 'Manage in Tools',
+    workflowAsToolTip: 'After the update, parameters changed, reconfiguration required.',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
