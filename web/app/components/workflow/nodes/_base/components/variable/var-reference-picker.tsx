@@ -6,7 +6,7 @@ import cn from 'classnames'
 import produce from 'immer'
 import VarReferencePopup from './var-reference-popup'
 import { getNodeInfoById, isSystemVar, toNodeOutputVars } from './utils'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -24,7 +24,6 @@ import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/typ
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-
 const TRIGGER_DEFAULT_WIDTH = 227
 
 type Props = {
@@ -39,6 +38,8 @@ type Props = {
   defaultVarKindType?: VarKindType
   onlyLeafNodeVar?: boolean
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
+  availableNodes?: Node[]
+  availableVars?: NodeOutPutVar[]
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -53,6 +54,8 @@ const VarReferencePicker: FC<Props> = ({
   defaultVarKindType = VarKindType.constant,
   onlyLeafNodeVar,
   filterVar = () => true,
+  availableNodes: passedInAvailableNodes,
+  availableVars,
 }) => {
   const { t } = useTranslation()
   const triggerRef = useRef<HTMLDivElement>(null)
@@ -67,9 +70,9 @@ const VarReferencePicker: FC<Props> = ({
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
   const isConstant = isSupportConstantValue && varKindType === VarKindType.constant
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
-  const availableNodes = onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId)
+  const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId))
   const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
-  const outputVars = toNodeOutputVars(availableNodes, isChatMode, filterVar)
+  const outputVars = availableVars || toNodeOutputVars(availableNodes, isChatMode, filterVar)
   const [open, setOpen] = useState(false)
   useEffect(() => {
     onOpen()

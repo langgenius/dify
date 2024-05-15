@@ -1,16 +1,19 @@
 import { useCallback } from 'react'
 import produce from 'immer'
 import {
+  useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
 import { VarType } from '../../types'
 import type { ValueSelector, Var } from '../../types'
 import useNodeCrud from '../_base/hooks/use-node-crud'
+import { toNodeOutputVars } from '../_base/components/variable/utils'
 import type { IterationNodeType } from './types'
 
 const useConfig = (id: string, payload: IterationNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
+  const isChatMode = useIsChatMode()
 
   const { inputs, setInputs } = useNodeCrud<IterationNodeType>(id, payload)
 
@@ -28,13 +31,23 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   // output
   const { getIterationNodeChildren } = useWorkflow()
   const iterationChildrenNodes = getIterationNodeChildren(id)
-  console.log(iterationChildrenNodes.map(i => i.data.title))
+  const childrenNodeVars = toNodeOutputVars(iterationChildrenNodes, isChatMode)
+
+  const handleOutputVarChange = useCallback((output: ValueSelector | string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.output_selector = output as ValueSelector || []
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
 
   return {
     readOnly,
     inputs,
     filterInputVar,
     handleInputChange,
+    childrenNodeVars,
+    iterationChildrenNodes,
+    handleOutputVarChange,
   }
 }
 

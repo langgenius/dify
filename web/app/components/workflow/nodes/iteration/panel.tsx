@@ -22,6 +22,9 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     inputs,
     filterInputVar,
     handleInputChange,
+    childrenNodeVars,
+    iterationChildrenNodes,
+    handleOutputVarChange,
   } = useConfig(id, data)
 
   return (
@@ -49,9 +52,10 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
             readonly={readOnly}
             nodeId={id}
             isShowNodeName
-            value={inputs.iterator_selector || []}
-            onChange={handleInputChange}
-            filterVar={filterInputVar}
+            value={inputs.output_selector || []}
+            onChange={handleOutputVarChange}
+            availableNodes={iterationChildrenNodes}
+            availableVars={childrenNodeVars}
           />
         </Field>
       </div>
