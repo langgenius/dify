@@ -34,6 +34,7 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import type { SystemFeatures } from '@/types/feature'
 
 export const login: Fetcher<CommonResponse & { data: string }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse & { data: string }>
@@ -270,4 +271,8 @@ type RetrievalMethodsRes = {
 }
 export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> = (url) => {
   return get<RetrievalMethodsRes>(url)
+}
+
+export const getSystemFeatures = () => {
+  return get<SystemFeatures>('/system-features')
 }

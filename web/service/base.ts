@@ -10,6 +10,7 @@ import type {
   WorkflowFinishedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
+import { removeAccessToken } from '@/app/components/share/utils'
 const TIME_OUT = 100000
 
 const ContentType = {
@@ -95,6 +96,10 @@ function unicodeToChar(text: string) {
   return text.replace(/\\u[0-9a-f]{4}/g, (_match, p1) => {
     return String.fromCharCode(parseInt(p1, 16))
   })
+}
+
+function requiredWebSSOLogin() {
+  globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}`
 }
 
 export function format(text: string) {
@@ -308,6 +313,15 @@ const baseFetch = <T>(
                   return bodyJson.then((data: ResponseError) => {
                     if (!silent)
                       Toast.notify({ type: 'error', message: data.message })
+
+                    if (data.code === 'web_sso_auth_required')
+                      requiredWebSSOLogin()
+
+                    if (data.code === 'unauthorized') {
+                      removeAccessToken()
+                      globalThis.location.reload()
+                    }
+
                     return Promise.reject(data)
                   })
                 }
@@ -467,6 +481,16 @@ export const ssePost = (
       if (!/^(2|3)\d{2}$/.test(String(res.status))) {
         res.json().then((data: any) => {
           Toast.notify({ type: 'error', message: data.message || 'Server Error' })
+
+          if (isPublicAPI) {
+            if (data.code === 'web_sso_auth_required')
+              requiredWebSSOLogin()
+
+            if (data.code === 'unauthorized') {
+              removeAccessToken()
+              globalThis.location.reload()
+            }
+          }
         })
         onError?.('Server Error')
         return
