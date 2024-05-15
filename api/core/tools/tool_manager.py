@@ -19,7 +19,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.entities.user_entities import UserToolProvider, UserToolProviderTypeLiteral
 from core.tools.errors import ToolProviderNotFoundError
-from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
+from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.tool.api_tool import ApiTool
@@ -466,7 +466,7 @@ class ToolManager:
 
     @classmethod
     def get_api_provider_controller(cls, tenant_id: str, provider_id: str) -> tuple[
-        ApiBasedToolProviderController, dict[str, Any]]:
+        ApiToolProviderController, dict[str, Any]]:
         """
             get the api provider
 
@@ -482,7 +482,7 @@ class ToolManager:
         if provider is None:
             raise ToolProviderNotFoundError(f'api provider {provider_id} not found')
 
-        controller = ApiBasedToolProviderController.from_db(
+        controller = ApiToolProviderController.from_db(
             provider,
             ApiProviderAuthType.API_KEY if provider.credentials['auth_type'] == 'api_key' else 
             ApiProviderAuthType.NONE
@@ -513,7 +513,7 @@ class ToolManager:
             credentials = {}
 
         # package tool provider controller
-        controller = ApiBasedToolProviderController.from_db(
+        controller = ApiToolProviderController.from_db(
             provider, ApiProviderAuthType.API_KEY if credentials['auth_type'] == 'api_key' else ApiProviderAuthType.NONE
         )
         # init tool configuration

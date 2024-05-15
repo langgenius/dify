@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderType
 
 
-class ApiBasedToolBundle(BaseModel):
+class ApiToolBundle(BaseModel):
     """
     This class is used to store the schema information of an api based tool. such as the url, the method, the parameters, etc.
     """

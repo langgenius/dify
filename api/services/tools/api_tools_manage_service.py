@@ -5,7 +5,7 @@ from httpx import get
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_bundle import ApiBasedToolBundle
+from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ApiProviderSchemaType,
@@ -13,7 +13,8 @@ from core.tools.entities.tool_entities import (
     ToolProviderCredentials,
 )
 from core.tools.entities.user_entities import UserTool, UserToolProvider
-from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
+from core.tools.provider.api_tool_provider import ApiToolProviderController
+from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolConfigurationManager
 from core.tools.utils.parser import ApiBasedToolSchemaParser
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 class ApiToolManageService:
     @staticmethod
-    def parser_api_schema(schema: str) -> list[ApiBasedToolBundle]:
+    def parser_api_schema(schema: str) -> list[ApiToolBundle]:
         """
             parse api schema to tool bundle
         """
@@ -94,7 +95,7 @@ class ApiToolManageService:
             raise ValueError(f'invalid schema: {str(e)}')
 
     @staticmethod
-    def convert_schema_to_tool_bundles(schema: str, extra_info: dict = None) -> list[ApiBasedToolBundle]:
+    def convert_schema_to_tool_bundles(schema: str, extra_info: dict = None) -> list[ApiToolBundle]:
         """
             convert schema to tool bundles
 
@@ -155,7 +156,7 @@ class ApiToolManageService:
         auth_type = ApiProviderAuthType.value_of(credentials['auth_type'])
 
         # create provider entity
-        provider_controller = ApiBasedToolProviderController.from_db(db_provider, auth_type)
+        provider_controller = ApiToolProviderController.from_db(db_provider, auth_type)
         # load tools into provider entity
         provider_controller.load_bundled_tools(tool_bundles)
 
@@ -212,8 +213,14 @@ class ApiToolManageService:
         if provider is None:
             raise ValueError(f'you have not added provider {provider}')
         
+        controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
+        labels = ToolLabelManager.get_tool_labels(controller)
+        
         return [
-            ToolTransformService.tool_to_user_tool(tool_bundle) for tool_bundle in provider.tools
+            ToolTransformService.tool_to_user_tool(
+                tool_bundle,
+                labels=labels,
+            ) for tool_bundle in provider.tools
         ]
 
     @staticmethod
@@ -257,7 +264,7 @@ class ApiToolManageService:
         auth_type = ApiProviderAuthType.value_of(credentials['auth_type'])
 
         # create provider entity
-        provider_controller = ApiBasedToolProviderController.from_db(provider, auth_type)
+        provider_controller = ApiToolProviderController.from_db(provider, auth_type)
         # load tools into provider entity
         provider_controller.load_bundled_tools(tool_bundles)
 
@@ -360,7 +367,7 @@ class ApiToolManageService:
         auth_type = ApiProviderAuthType.value_of(credentials['auth_type'])
 
         # create provider entity
-        provider_controller = ApiBasedToolProviderController.from_db(db_provider, auth_type)
+        provider_controller = ApiToolProviderController.from_db(db_provider, auth_type)
         # load tools into provider entity
         provider_controller.load_bundled_tools(tool_bundles)
 
@@ -408,6 +415,7 @@ class ApiToolManageService:
         for provider in db_providers:
             # convert provider controller to user provider
             provider_controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
+            labels = ToolLabelManager.get_tool_labels(provider_controller)
             user_provider = ToolTransformService.api_provider_to_user_provider(
                 provider_controller,
                 db_provider=provider,
@@ -426,6 +434,7 @@ class ApiToolManageService:
                     tenant_id=tenant_id,
                     tool=tool, 
                     credentials=user_provider.original_credentials, 
+                    labels=labels
                 ))
 
             result.append(user_provider)

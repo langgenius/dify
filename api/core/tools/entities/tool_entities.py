@@ -10,11 +10,11 @@ class ToolProviderType(Enum):
     """
         Enum class for tool provider
     """
-    BUILT_IN = "built-in"
+    BUILT_IN = "builtin"
+    WORKFLOW = "workflow"
+    API = "api"
+    APP = "app"
     DATASET_RETRIEVAL = "dataset-retrieval"
-    APP_BASED = "app-based"
-    WORKFLOW_BASED = "workflow-based"
-    API_BASED = "api-based"
 
     @classmethod
     def value_of(cls, value: str) -> 'ToolProviderType':

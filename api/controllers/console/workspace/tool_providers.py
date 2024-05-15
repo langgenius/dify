@@ -13,7 +13,8 @@ from libs.helper import uuid_value
 from libs.login import login_required
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-from services.tools.tools_manage_service import ToolManageService
+from services.tools.tool_labels_service import ToolLabelsService
+from services.tools.tools_manage_service import ToolCommonService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 
@@ -29,7 +30,7 @@ class ToolProviderListApi(Resource):
         req.add_argument('type', type=str, choices=['builtin', 'model', 'api', 'workflow'], required=False, nullable=True, location='args')
         args = req.parse_args()
 
-        return ToolManageService.list_tool_providers(user_id, tenant_id, args.get('type', None))
+        return ToolCommonService.list_tool_providers(user_id, tenant_id, args.get('type', None))
 
 class ToolBuiltinProviderListToolsApi(Resource):
     @setup_required
@@ -318,6 +319,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
         reqparser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         reqparser.add_argument('parameters', type=list[dict], required=True, nullable=False, location='json')
         reqparser.add_argument('privacy_policy', type=str, required=False, nullable=True, location='json', default='')
+        reqparser.add_argument('labels', type=list[str], required=False, nullable=True, location='json')
         
         args = reqparser.parse_args()
 
@@ -433,6 +435,13 @@ class ToolWorkflowListApi(Resource):
             user_id,
             tenant_id,
         )])
+    
+class ToolLabelsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        return jsonable_encoder(ToolLabelsService.list_tool_labels())
 
 # tool provider
 api.add_resource(ToolProviderListApi, '/workspaces/current/tool-providers')
@@ -464,3 +473,5 @@ api.add_resource(ToolWorkflowProviderListToolApi, '/workspaces/current/tool-prov
 api.add_resource(ToolBuiltinListApi, '/workspaces/current/tools/builtin')
 api.add_resource(ToolApiListApi, '/workspaces/current/tools/api')
 api.add_resource(ToolWorkflowListApi, '/workspaces/current/tools/workflow')
+
+api.add_resource(ToolLabelsApi, '/workspaces/current/tool-labels')

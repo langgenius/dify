@@ -52,8 +52,8 @@ class WorkflowToolProviderController(ToolProviderController):
         return controller
 
     @property
-    def app_type(self) -> ToolProviderType:
-        return ToolProviderType.WORKFLOW_BASED
+    def provider_type(self) -> ToolProviderType:
+        return ToolProviderType.WORKFLOW
     
     def _get_db_provider_tool(self, db_provider: WorkflowToolProvider, app: App) -> WorkflowTool:
         """

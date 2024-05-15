@@ -67,7 +67,7 @@ class ToolProviderController(BaseModel, ABC):
         return tool.parameters
 
     @property
-    def app_type(self) -> ToolProviderType:
+    def provider_type(self) -> ToolProviderType:
         """
             returns the type of the provider
 

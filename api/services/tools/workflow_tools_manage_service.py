@@ -4,6 +4,7 @@ from datetime import datetime
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.user_entities import UserToolProvider
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
+from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationSync
 from extensions.ext_database import db
 from models.model import App
@@ -67,7 +68,7 @@ class WorkflowToolManageService:
             workflow_tool_provider.description = description
             workflow_tool_provider.parameter_configuration = json.dumps(parameters)
             workflow_tool_provider.privacy_policy = privacy_policy
-            
+
             workflow_tool_provider.updated_at = datetime.now()
 
         try:
@@ -99,13 +100,18 @@ class WorkflowToolManageService:
             for provider in db_tools
         ]
 
+        labels = ToolLabelManager.get_tools_labels(tools)
+
         result = []
 
         for tool in tools:
             user_tool_provider = ToolTransformService.workflow_provider_to_user_provider(tool)
             ToolTransformService.repack_provider(user_tool_provider)
             user_tool_provider.tools = [
-                ToolTransformService.tool_to_user_tool(tool.get_tools(user_id, tenant_id)[0])
+                ToolTransformService.tool_to_user_tool(
+                    tool.get_tools(user_id, tenant_id)[0],
+                    labels=labels.get(tool.provider_id, [])
+                )
             ]
             result.append(user_tool_provider)
 
@@ -172,7 +178,10 @@ class WorkflowToolManageService:
             'icon': json.loads(db_tool.icon),
             'description': db_tool.description,
             'parameters': jsonable_encoder(db_tool.parameter_configurations),
-            'tool': ToolTransformService.tool_to_user_tool(tool.get_tools(user_id, tenant_id)[0]),
+            'tool': ToolTransformService.tool_to_user_tool(
+                tool.get_tools(user_id, tenant_id)[0],
+                labels=ToolLabelManager.get_tool_labels(tool)
+            ),
             'synced': synced
         }
     
@@ -196,5 +205,8 @@ class WorkflowToolManageService:
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
 
         return [
-            ToolTransformService.tool_to_user_tool(tool.get_tools(user_id, tenant_id)[0])
+            ToolTransformService.tool_to_user_tool(
+                tool.get_tools(user_id, tenant_id)[0],
+                labels=ToolLabelManager.get_tool_labels(tool)
+            )
         ]

@@ -6,6 +6,7 @@ from core.tools.entities.user_entities import UserTool, UserToolProvider
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 from core.tools.provider.tool_provider import ToolProviderController
+from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolConfigurationManager
 from extensions.ext_database import db
@@ -42,7 +43,10 @@ class BuiltinToolManageService:
         result = []
         for tool in tools:
             result.append(ToolTransformService.tool_to_user_tool(
-                tool=tool, credentials=credentials, tenant_id=tenant_id
+                tool=tool, 
+                credentials=credentials, 
+                tenant_id=tenant_id,
+                labels=ToolLabelManager.get_tool_labels(provider_controller)
             ))
 
         return result
@@ -213,6 +217,7 @@ class BuiltinToolManageService:
                     tenant_id=tenant_id,
                     tool=tool, 
                     credentials=user_builtin_provider.original_credentials, 
+                    labels=ToolLabelManager.get_tool_labels(provider_controller)
                 ))
 
             result.append(user_builtin_provider)

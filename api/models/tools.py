@@ -3,7 +3,7 @@ import json
 from sqlalchemy import ForeignKey
 
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_bundle import ApiBasedToolBundle
+from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
 from models import StringUUID
@@ -116,8 +116,8 @@ class ApiToolProvider(db.Model):
         return ApiProviderSchemaType.value_of(self.schema_type_str)
     
     @property
-    def tools(self) -> list[ApiBasedToolBundle]:
-        return [ApiBasedToolBundle(**tool) for tool in json.loads(self.tools_str)]
+    def tools(self) -> list[ApiToolBundle]:
+        return [ApiToolBundle(**tool) for tool in json.loads(self.tools_str)]
     
     @property
     def credentials(self) -> dict:
@@ -138,6 +138,7 @@ class ToolLabelBind(db.Model):
     __tablename__ = 'tool_label_binds'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tool_label_bind_pkey'),
+        db.UniqueConstraint('tool_id', 'label_name', name='unique_tool_label_bind'),
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))

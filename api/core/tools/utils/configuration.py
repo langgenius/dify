@@ -73,7 +73,7 @@ class ToolConfigurationManager(BaseModel):
         """
         cache = ToolProviderCredentialsCache(
             tenant_id=self.tenant_id, 
-            identity_id=f'{self.provider_controller.app_type.value}.{self.provider_controller.identity.name}',
+            identity_id=f'{self.provider_controller.provider_type.value}.{self.provider_controller.identity.name}',
             cache_type=ToolProviderCredentialsCacheType.PROVIDER
         )
         cached_credentials = cache.get()
@@ -96,7 +96,7 @@ class ToolConfigurationManager(BaseModel):
     def delete_tool_credentials_cache(self):
         cache = ToolProviderCredentialsCache(
             tenant_id=self.tenant_id, 
-            identity_id=f'{self.provider_controller.app_type.value}.{self.provider_controller.identity.name}',
+            identity_id=f'{self.provider_controller.provider_type.value}.{self.provider_controller.identity.name}',
             cache_type=ToolProviderCredentialsCacheType.PROVIDER
         )
         cache.delete()

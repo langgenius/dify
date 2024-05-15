@@ -5,10 +5,15 @@ from typing import Optional, Union
 from flask import current_app
 
 from core.model_runtime.entities.common_entities import I18nObject
-from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.entities.tool_entities import ApiProviderAuthType, ToolParameter, ToolProviderCredentials
+from core.tools.entities.tool_bundle import ApiToolBundle
+from core.tools.entities.tool_entities import (
+    ApiProviderAuthType,
+    ToolParameter,
+    ToolProviderCredentials,
+    ToolProviderType,
+)
 from core.tools.entities.user_entities import UserTool, UserToolProvider
-from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
+from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool.tool import Tool
@@ -27,9 +32,9 @@ class ToolTransformService:
         url_prefix = (current_app.config.get("CONSOLE_API_URL")
                       + "/console/api/workspaces/current/tool-provider/")
         
-        if provider_type == UserToolProvider.ProviderType.BUILTIN.value:
+        if provider_type == ToolProviderType.BUILT_IN.value:
             return url_prefix + 'builtin/' + provider_name + '/icon'
-        elif provider_type in [UserToolProvider.ProviderType.API.value, UserToolProvider.ProviderType.WORKFLOW.value]:
+        elif provider_type in [ToolProviderType.API.value, ToolProviderType.WORKFLOW.value]:
             try:
                 return json.loads(icon)
             except:
@@ -82,7 +87,7 @@ class ToolTransformService:
                 en_US=provider_controller.identity.label.en_US,
                 zh_Hans=provider_controller.identity.label.zh_Hans,
             ),
-            type=UserToolProvider.ProviderType.BUILTIN,
+            type=ToolProviderType.BUILT_IN,
             masked_credentials={},
             is_team_authorization=False,
             tools=[]
@@ -121,12 +126,12 @@ class ToolTransformService:
     @staticmethod
     def api_provider_to_controller(
         db_provider: ApiToolProvider,
-    ) -> ApiBasedToolProviderController:
+    ) -> ApiToolProviderController:
         """
         convert provider controller to user provider
         """
         # package tool provider controller
-        controller = ApiBasedToolProviderController.from_db(
+        controller = ApiToolProviderController.from_db(
             db_provider=db_provider,
             auth_type=ApiProviderAuthType.API_KEY if db_provider.credentials['auth_type'] == 'api_key' else 
             ApiProviderAuthType.NONE
@@ -145,7 +150,7 @@ class ToolTransformService:
     
     @staticmethod
     def workflow_provider_to_user_provider(
-        provider_controller: WorkflowToolProviderController
+        provider_controller: WorkflowToolProviderController,
     ):
         """
         convert provider controller to user provider
@@ -163,15 +168,15 @@ class ToolTransformService:
                 en_US=provider_controller.identity.label.en_US,
                 zh_Hans=provider_controller.identity.label.zh_Hans,
             ),
-            type=UserToolProvider.ProviderType.WORKFLOW,
+            type=ToolProviderType.WORKFLOW,
             masked_credentials={},
             is_team_authorization=True,
-            tools=[]
+            tools=[],
         )
 
     @staticmethod
     def api_provider_to_user_provider(
-        provider_controller: ApiBasedToolProviderController,
+        provider_controller: ApiToolProviderController,
         db_provider: ApiToolProvider,
         decrypt_credentials: bool = True
     ) -> UserToolProvider:
@@ -198,7 +203,7 @@ class ToolTransformService:
                 en_US=db_provider.name,
                 zh_Hans=db_provider.name,
             ),
-            type=UserToolProvider.ProviderType.API,
+            type=ToolProviderType.API,
             masked_credentials={},
             is_team_authorization=True,
             tools=[]
@@ -221,7 +226,10 @@ class ToolTransformService:
     
     @staticmethod
     def tool_to_user_tool(
-        tool: Union[ApiBasedToolBundle, WorkflowTool, Tool], credentials: dict = None, tenant_id: str = None
+        tool: Union[ApiToolBundle, WorkflowTool, Tool], 
+        credentials: dict = None, 
+        tenant_id: str = None,
+        labels: list[str] = None
     ) -> UserTool:
         """
         convert tool to user tool
@@ -255,12 +263,13 @@ class ToolTransformService:
                 name=tool.identity.name,
                 label=tool.identity.label,
                 description=tool.description.human,
-                parameters=current_parameters
+                parameters=current_parameters,
+                labels=labels
             )
 
             return user_tool
         
-        if isinstance(tool, ApiBasedToolBundle):
+        if isinstance(tool, ApiToolBundle):
             return UserTool(
                 author=tool.author,
                 name=tool.operation_id,
@@ -272,5 +281,6 @@ class ToolTransformService:
                     en_US=tool.summary or '',
                     zh_Hans=tool.summary or ''
                 ),
-                parameters=tool.parameters
+                parameters=tool.parameters,
+                labels=labels
             )
