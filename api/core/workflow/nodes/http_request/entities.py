@@ -40,9 +40,9 @@ class HttpRequestNodeData(BaseNodeData):
         data: Union[None, str]
 
     class Timeout(BaseModel):
-        connect: int = MAX_CONNECT_TIMEOUT
-        read:  int = MAX_READ_TIMEOUT
-        write:  int = MAX_WRITE_TIMEOUT
+        connect: Optional[int] = MAX_CONNECT_TIMEOUT
+        read:  Optional[int] = MAX_READ_TIMEOUT
+        write:  Optional[int] = MAX_WRITE_TIMEOUT
 
     method: Literal['get', 'post', 'put', 'patch', 'delete', 'head']
     url: str

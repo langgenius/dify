@@ -15,6 +15,7 @@ help:
 supported_model_types:
   - llm
   - text-embedding
+  - rerank
   - speech2text
 configurate_methods:
   - customizable-model
