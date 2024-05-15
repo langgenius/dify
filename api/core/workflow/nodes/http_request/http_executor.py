@@ -25,7 +25,10 @@ class HttpExecutorResponse:
     response: Union[httpx.Response, requests.Response]
 
     def __init__(self, response: Union[httpx.Response, requests.Response] = None):
-        self.headers = response.headers
+        self.headers = {}
+        if isinstance(response, httpx.Response | requests.Response):
+            for k, v in response.headers.items():
+                self.headers[k] = v
         self.response = response
 
     @property
