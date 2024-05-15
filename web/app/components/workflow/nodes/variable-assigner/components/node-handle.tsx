@@ -13,6 +13,7 @@ const NodeHandle = ({
 }: NodeHandleProps) => {
   return (
     <Handle
+      id='target'
       type='target'
       position={Position.Left}
       className={cn(

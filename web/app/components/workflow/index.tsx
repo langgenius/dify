@@ -92,7 +92,7 @@ const Workflow: FC<WorkflowProps> = memo(({
 }) => {
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
-  const [nodes, setNodes, onNodesChange] = useNodesState(originalNodes)
+  const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const controlMode = useStore(s => s.controlMode)

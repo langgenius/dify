@@ -34,8 +34,23 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   const variables = originVariables.filter(item => item.length > 0)
 
   useClickAway(() => {
-    handleNodeDataUpdate({ id, data: { _showVariablePicker: false } })
-  }, ref)
+    if (data._holdVariablePicker) {
+      handleNodeDataUpdate({
+        id,
+        data: {
+          _holdVariablePicker: false,
+        },
+      })
+    }
+    else {
+      handleNodeDataUpdate({
+        id,
+        data: {
+          _showVariablePicker: false,
+        },
+      })
+    }
+  }, ref, ['pointerdown'])
 
   return (
     <div className='relative mb-1 py-1' ref={ref}>

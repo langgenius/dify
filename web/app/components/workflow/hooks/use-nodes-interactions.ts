@@ -217,6 +217,11 @@ export const useNodesInteractions = () => {
       const newNodes = produce(nodes, (draft) => {
         if (!availableNodes.includes(draft[currentNodeIndex].data.type))
           draft[currentNodeIndex].data._isInvalidConnection = true
+
+        // if (draft[currentNodeIndex].data.type === BlockEnum.VariableAssigner && connectingNode.data.type !== BlockEnum.VariableAssigner) {
+        //   draft[currentNodeIndex].data._showVariablePicker = true
+        //   draft[currentNodeIndex].data._holdVariablePicker = true
+        // }
       })
       setNodes(newNodes)
     }
@@ -338,7 +343,7 @@ export const useNodesInteractions = () => {
     const needDeleteEdges = edges.filter((edge) => {
       if (
         (edge.source === source && edge.sourceHandle === sourceHandle)
-        || (edge.target === target && edge.targetHandle === targetHandle)
+        || (edge.target === target && edge.targetHandle === targetHandle && targetNode?.data.type !== BlockEnum.VariableAssigner)
       )
         return true
 

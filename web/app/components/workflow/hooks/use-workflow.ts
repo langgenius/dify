@@ -111,7 +111,11 @@ export const useWorkflow = () => {
       edges,
     } = store.getState()
     const nodes = getNodes()
-    const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+    let startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+    const currentNode = nodes.find(node => node.id === nodeId)
+
+    if (currentNode?.parentId)
+      startNode = nodes.find(node => node.parentId === currentNode.parentId && node.data.isIterationStart)
 
     if (!startNode)
       return []
@@ -306,6 +310,7 @@ export const useWorkflow = () => {
     if (sourceNode && targetNode) {
       const sourceNodeAvailableNextNodes = nodesExtraData[sourceNode.data.type].availableNextNodes
       const targetNodeAvailablePrevNodes = [...nodesExtraData[targetNode.data.type].availablePrevNodes, BlockEnum.Start]
+
       if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
         return false
 
