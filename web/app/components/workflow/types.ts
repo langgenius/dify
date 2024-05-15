@@ -1,6 +1,7 @@
 import type {
   Edge as ReactFlowEdge,
   Node as ReactFlowNode,
+  Viewport,
 } from 'reactflow'
 import type { TransferMethod } from '@/types/app'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
@@ -36,6 +37,8 @@ export type CommonNodeType<T = {}> = {
   _isSingleRun?: boolean
   _runningStatus?: NodeRunningStatus
   _singleRunningStatus?: NodeRunningStatus
+  _isCandidate?: boolean
+  _isBundled?: boolean
   selected?: boolean
   title: string
   desc: string
@@ -47,6 +50,7 @@ export type CommonEdgeType = {
   _connectedNodeIsHovering?: boolean
   _connectedNodeIsSelected?: boolean
   _runned?: boolean
+  _isBundled?: boolean
   sourceType: BlockEnum
   targetType: BlockEnum
 }
@@ -59,6 +63,12 @@ export type NodePanelProps<T> = {
   data: CommonNodeType<T>
 }
 export type Edge = ReactFlowEdge<CommonEdgeType>
+
+export type WorkflowDataUpdator = {
+  nodes: Node[]
+  edges: Edge[]
+  viewport: Viewport
+}
 
 export type ValueSelector = string[] // [nodeId, key | obj key path]
 
@@ -121,10 +131,17 @@ export enum PromptRole {
   assistant = 'assistant',
 }
 
+export enum EditionType {
+  basic = 'basic',
+  jinja2 = 'jinja2',
+}
+
 export type PromptItem = {
   id?: string
   role?: PromptRole
   text: string
+  edition_type?: EditionType
+  jinja2_text?: string
 }
 
 export enum MemoryRole {

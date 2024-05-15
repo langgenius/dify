@@ -3,8 +3,10 @@ import type { CommonNodeType, Memory, ModelConfig, PromptItem, ValueSelector, Va
 
 export type LLMNodeType = CommonNodeType & {
   model: ModelConfig
-  variables: Variable[]
   prompt_template: PromptItem[] | PromptItem
+  prompt_config?: {
+    jinja2_variables?: Variable[]
+  }
   memory?: Memory
   context: {
     enabled: boolean

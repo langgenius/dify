@@ -12,7 +12,6 @@ import cn from 'classnames'
 import CopyBtn from '@/app/components/app/chat/copy-btn'
 import SVGBtn from '@/app/components/app/chat/svg'
 import Flowchart from '@/app/components/app/chat/mermaid'
-import s from '@/app/components/app/chat/style.module.css'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -113,7 +112,7 @@ export function Markdown(props: { content: string; className?: string }) {
                         />
                       }
                       <CopyBtn
-                        className={cn(s.copyBtn, 'mr-1')}
+                        className='mr-1'
                         value={String(children).replace(/\n$/, '')}
                         isPlain
                       />

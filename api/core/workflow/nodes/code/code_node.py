@@ -1,7 +1,8 @@
 import os
 from typing import Optional, Union, cast
 
-from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor
+from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
@@ -39,7 +40,7 @@ class CodeNode(BaseNode):
         :param filters: filter by node config parameters.
         :return:
         """
-        if filters and filters.get("code_language") == "javascript":
+        if filters and filters.get("code_language") == CodeLanguage.JAVASCRIPT:
             return {
                 "type": "code",
                 "config": {
@@ -53,7 +54,7 @@ class CodeNode(BaseNode):
                             "value_selector": []
                         }
                     ],
-                    "code_language": "javascript",
+                    "code_language": CodeLanguage.JAVASCRIPT,
                     "code": JAVASCRIPT_DEFAULT_CODE,
                     "outputs": {
                         "result": {
@@ -61,7 +62,8 @@ class CodeNode(BaseNode):
                             "children": None
                         }
                     }
-                }
+                },
+                "available_dependencies": []
             }
 
         return {
@@ -77,15 +79,18 @@ class CodeNode(BaseNode):
                         "value_selector": []
                     }
                 ],
-                "code_language": "python3",
+                "code_language": CodeLanguage.PYTHON3,
                 "code": PYTHON_DEFAULT_CODE,
                 "outputs": {
                     "result": {
                         "type": "string",
                         "children": None
                     }
-                }
-            }
+                },
+                "dependencies": [
+                ]
+            },
+            "available_dependencies": jsonable_encoder(CodeExecutor.list_dependencies('python3'))
         }
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
@@ -115,7 +120,8 @@ class CodeNode(BaseNode):
             result = CodeExecutor.execute_workflow_code_template(
                 language=code_language,
                 code=code,
-                inputs=variables
+                inputs=variables,
+                dependencies=node_data.dependencies
             )
 
             # Transform result
@@ -141,10 +147,10 @@ class CodeNode(BaseNode):
         :return:
         """
         if not isinstance(value, str):
-            raise ValueError(f"{variable} in output form must be a string")
+            raise ValueError(f"Output variable `{variable}` must be a string")
 
         if len(value) > MAX_STRING_LENGTH:
-            raise ValueError(f'{variable} in output form must be less than {MAX_STRING_LENGTH} characters')
+            raise ValueError(f'The length of output variable `{variable}` must be less than {MAX_STRING_LENGTH} characters')
 
         return value.replace('\x00', '')
 
@@ -156,15 +162,15 @@ class CodeNode(BaseNode):
         :return:
         """
         if not isinstance(value, int | float):
-            raise ValueError(f"{variable} in output form must be a number")
+            raise ValueError(f"Output variable `{variable}` must be a number")
 
         if value > MAX_NUMBER or value < MIN_NUMBER:
-            raise ValueError(f'{variable} in input form is out of range.')
+            raise ValueError(f'Output variable `{variable}` is out of range, it must be between {MIN_NUMBER} and {MAX_NUMBER}.')
 
         if isinstance(value, float):
             # raise error if precision is too high
             if len(str(value).split('.')[1]) > MAX_PRECISION:
-                raise ValueError(f'{variable} in output form has too high precision.')
+                raise ValueError(f'Output variable `{variable}` has too high precision, it must be less than {MAX_PRECISION} digits.')
 
         return value
 
@@ -271,7 +277,7 @@ class CodeNode(BaseNode):
 
                 if len(result[output_name]) > MAX_NUMBER_ARRAY_LENGTH:
                     raise ValueError(
-                        f'{prefix}{dot}{output_name} in output form must be less than {MAX_NUMBER_ARRAY_LENGTH} characters.'
+                        f'The length of output variable `{prefix}{dot}{output_name}` must be less than {MAX_NUMBER_ARRAY_LENGTH} elements.'
                     )
 
                 transformed_result[output_name] = [
@@ -290,7 +296,7 @@ class CodeNode(BaseNode):
 
                 if len(result[output_name]) > MAX_STRING_ARRAY_LENGTH:
                     raise ValueError(
-                        f'{prefix}{dot}{output_name} in output form must be less than {MAX_STRING_ARRAY_LENGTH} characters.'
+                        f'The length of output variable `{prefix}{dot}{output_name}` must be less than {MAX_STRING_ARRAY_LENGTH} elements.'
                     )
 
                 transformed_result[output_name] = [
@@ -309,7 +315,7 @@ class CodeNode(BaseNode):
 
                 if len(result[output_name]) > MAX_OBJECT_ARRAY_LENGTH:
                     raise ValueError(
-                        f'{prefix}{dot}{output_name} in output form must be less than {MAX_OBJECT_ARRAY_LENGTH} characters.'
+                        f'The length of output variable `{prefix}{dot}{output_name}` must be less than {MAX_OBJECT_ARRAY_LENGTH} elements.'
                     )
                 
                 for i, value in enumerate(result[output_name]):

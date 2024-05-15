@@ -16,15 +16,11 @@ import {
 } from 'reactflow'
 import type {
   Connection,
-  Viewport,
 } from 'reactflow'
 import {
   getLayoutByDagre,
-  initialEdges,
-  initialNodes,
 } from '../utils'
 import type {
-  Edge,
   Node,
   ValueSelector,
 } from '../types'
@@ -39,7 +35,6 @@ import {
 import {
   AUTO_LAYOUT_OFFSET,
   SUPPORT_OUTPUT_VARS_NODE,
-  WORKFLOW_DATA_UPDATE,
 } from '../constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useNodesExtraData } from './use-nodes-data'
@@ -58,7 +53,6 @@ import {
   fetchAllCustomTools,
 } from '@/service/tools'
 import I18n from '@/context/i18n'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -73,7 +67,6 @@ export const useWorkflow = () => {
   const workflowStore = useWorkflowStore()
   const nodesExtraData = useNodesExtraData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { eventEmitter } = useEventEmitterContextContext()
 
   const setPanelWidth = useCallback((width: number) => {
     localStorage.setItem('workflow-node-panel-width', `${width}`)
@@ -323,23 +316,6 @@ export const useWorkflow = () => {
     return dayjs(time).locale(locale === 'zh-Hans' ? 'zh-cn' : locale).fromNow()
   }, [locale])
 
-  const renderTreeFromRecord = useCallback((nodes: Node[], edges: Edge[], viewport?: Viewport) => {
-    const { setViewport } = reactflow
-
-    const nodesMap = nodes.map(node => ({ ...node, data: { ...node.data, selected: false } }))
-
-    eventEmitter?.emit({
-      type: WORKFLOW_DATA_UPDATE,
-      payload: {
-        nodes: initialNodes(nodesMap, edges),
-        edges: initialEdges(edges, nodesMap),
-      },
-    } as any)
-
-    if (viewport)
-      setViewport(viewport)
-  }, [reactflow, eventEmitter])
-
   const getNode = useCallback((nodeId?: string) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
@@ -369,7 +345,6 @@ export const useWorkflow = () => {
     isNodeVarsUsedInNodes,
     isValidConnection,
     formatTimeFromNow,
-    renderTreeFromRecord,
     getNode,
     getBeforeNodeById,
     enableShortcuts,
@@ -410,6 +385,7 @@ export const useWorkflowInit = () => {
   } = useWorkflowTemplate()
   const { handleFetchAllTools } = useFetchToolsData()
   const appDetail = useAppStore(state => state.appDetail)!
+  const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
   workflowStore.setState({ appId: appDetail.id })
@@ -419,6 +395,7 @@ export const useWorkflowInit = () => {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
 
       setData(res)
+      setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)
     }
     catch (error: any) {
@@ -443,7 +420,7 @@ export const useWorkflowInit = () => {
         })
       }
     }
-  }, [appDetail, nodesTemplate, edgesTemplate, workflowStore])
+  }, [appDetail, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
 
   useEffect(() => {
     handleGetInitialWorkflowData()
@@ -510,11 +487,11 @@ export const useNodesReadOnly = () => {
       isRestoring,
     } = workflowStore.getState()
 
-    return workflowRunningData || historyWorkflowData || isRestoring
+    return workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring
   }, [workflowStore])
 
   return {
-    nodesReadOnly: !!(workflowRunningData || historyWorkflowData || isRestoring),
+    nodesReadOnly: !!(workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring),
     getNodesReadOnly,
   }
 }

@@ -6,16 +6,12 @@
 - azuredalle
 - stability
 - wikipedia
-- model.openai
-- model.google
-- model.anthropic
 - yahoo
 - arxiv
 - pubmed
 - stablediffusion
 - webscraper
 - jina
-- model.zhipuai
 - aippt
 - youtube
 - code
@@ -30,3 +26,4 @@
 - qrcode
 - dingtalk
 - feishu
+- slack

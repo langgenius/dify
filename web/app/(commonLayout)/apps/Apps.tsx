@@ -1,11 +1,12 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import useSWRInfinite from 'swr/infinite'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
 import AppCard from './AppCard'
 import NewAppCard from './NewAppCard'
+import useAppsQueryState from './hooks/useAppsQueryState'
 import type { AppListResponse } from '@/models/app'
 import { fetchAppList } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
@@ -54,10 +55,15 @@ const Apps = () => {
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'all',
   })
-  const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
-  const [tagIDs, setTagIDs] = useState<string[]>([])
-  const [keywords, setKeywords] = useState('')
-  const [searchKeywords, setSearchKeywords] = useState('')
+  const { query: { tagIDs = [], keywords = '' }, setQuery } = useAppsQueryState()
+  const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
+  const [searchKeywords, setSearchKeywords] = useState(keywords)
+  const setKeywords = useCallback((keywords: string) => {
+    setQuery(prev => ({ ...prev, keywords }))
+  }, [setQuery])
+  const setTagIDs = useCallback((tagIDs: string[]) => {
+    setQuery(prev => ({ ...prev, tagIDs }))
+  }, [setQuery])
 
   const { data, isLoading, setSize, mutate } = useSWRInfinite(
     (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, tagIDs, searchKeywords),
@@ -81,17 +87,18 @@ const Apps = () => {
     }
   }, [])
 
+  const hasMore = data?.at(-1)?.has_more ?? true
   useEffect(() => {
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isLoading)
+        if (entries[0].isIntersecting && !isLoading && hasMore)
           setSize((size: number) => size + 1)
       }, { rootMargin: '100px' })
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, setSize, anchorRef, mutate])
+  }, [isLoading, setSize, anchorRef, mutate, hasMore])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)

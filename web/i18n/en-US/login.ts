@@ -31,6 +31,7 @@ const translation = {
   tos: 'Terms of Service',
   pp: 'Privacy Policy',
   tosDesc: 'By signing up, you agree to our',
+  goToInit: 'If you have not initialized the account, please go to the initialization page',
   donthave: 'Don\'t have?',
   invalidInvitationCode: 'Invalid invitation code',
   accountAlreadyInited: 'Account already initialized',
@@ -39,6 +40,7 @@ const translation = {
     emailInValid: 'Please enter a valid email address',
     nameEmpty: 'Name is required',
     passwordEmpty: 'Password is required',
+    passwordLengthInValid: 'Password must be at least 8 characters',
     passwordInvalid: 'Password must contain letters and numbers, and the length must be greater than 8',
   },
   license: {

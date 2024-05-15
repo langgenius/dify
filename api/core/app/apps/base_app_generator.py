@@ -13,7 +13,9 @@ class BaseAppGenerator:
         for variable_config in variables:
             variable = variable_config.variable
 
-            if variable not in user_inputs or not user_inputs[variable]:
+            if (variable not in user_inputs
+                    or user_inputs[variable] is None
+                    or (isinstance(user_inputs[variable], str) and user_inputs[variable] == '')):
                 if variable_config.required:
                     raise ValueError(f"{variable} is required in input form")
                 else:
@@ -22,7 +24,7 @@ class BaseAppGenerator:
 
             value = user_inputs[variable]
 
-            if value:
+            if value is not None:
                 if variable_config.type != VariableEntity.Type.NUMBER and not isinstance(value, str):
                     raise ValueError(f"{variable} in input form must be a string")
                 elif variable_config.type == VariableEntity.Type.NUMBER and isinstance(value, str):
@@ -44,7 +46,7 @@ class BaseAppGenerator:
             if value and isinstance(value, str):
                 filtered_inputs[variable] = value.replace('\x00', '')
             else:
-                filtered_inputs[variable] = value if value else None
+                filtered_inputs[variable] = value if value is not None else None
 
         return filtered_inputs
 
