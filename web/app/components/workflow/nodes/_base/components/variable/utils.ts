@@ -12,6 +12,7 @@ import type { HttpNodeType } from '../../../http/types'
 import { VarType as ToolVarType } from '../../../tool/types'
 import type { ToolNodeType } from '../../../tool/types'
 import type { ParameterExtractorNodeType } from '../../../parameter-extractor/types'
+import type { IterationNodeType } from '../../../iteration/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -163,6 +164,16 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
           type,
         }
       })
+      break
+    }
+
+    case BlockEnum.Iteration: {
+      res.vars = [
+        {
+          variable: 'result',
+          type: VarType.array,
+        },
+      ]
       break
     }
   }
@@ -351,6 +362,11 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res.push(...varInInstructions)
       break
     }
+
+    case BlockEnum.Iteration: {
+      res = [(data as IterationNodeType).iterator_selector]
+      break
+    }
   }
   return res || []
 }
@@ -512,6 +528,13 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
         payload.instruction = replaceOldVarInText(payload.instruction, oldVarSelector, newVarSelector)
         break
       }
+      case BlockEnum.Iteration: {
+        const payload = data as IterationNodeType
+        if (payload.iterator_selector.join('.') === oldVarSelector.join('.'))
+          payload.iterator_selector = newVarSelector
+
+        break
+      }
     }
   })
   return newNode
@@ -614,6 +637,11 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
         })
       }
 
+      break
+    }
+
+    case BlockEnum.Iteration: {
+      res.push([id, 'result'])
       break
     }
   }
