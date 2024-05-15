@@ -211,22 +211,30 @@ class Config:
         # ------------------------
         self.STORAGE_TYPE = get_env('STORAGE_TYPE')
         self.STORAGE_LOCAL_PATH = get_env('STORAGE_LOCAL_PATH')
+
+        # S3 Storage settings
         self.S3_ENDPOINT = get_env('S3_ENDPOINT')
         self.S3_BUCKET_NAME = get_env('S3_BUCKET_NAME')
         self.S3_ACCESS_KEY = get_env('S3_ACCESS_KEY')
         self.S3_SECRET_KEY = get_env('S3_SECRET_KEY')
         self.S3_REGION = get_env('S3_REGION')
         self.S3_ADDRESS_STYLE = get_env('S3_ADDRESS_STYLE')
+
+        # Azure Blob Storage settings
         self.AZURE_BLOB_ACCOUNT_NAME = get_env('AZURE_BLOB_ACCOUNT_NAME')
         self.AZURE_BLOB_ACCOUNT_KEY = get_env('AZURE_BLOB_ACCOUNT_KEY')
         self.AZURE_BLOB_CONTAINER_NAME = get_env('AZURE_BLOB_CONTAINER_NAME')
         self.AZURE_BLOB_ACCOUNT_URL = get_env('AZURE_BLOB_ACCOUNT_URL')
+
+        # Google Cloud Storage settings
         self.ALIYUN_OSS_BUCKET_NAME=get_env('ALIYUN_OSS_BUCKET_NAME')
         self.ALIYUN_OSS_ACCESS_KEY=get_env('ALIYUN_OSS_ACCESS_KEY')
         self.ALIYUN_OSS_SECRET_KEY=get_env('ALIYUN_OSS_SECRET_KEY')
         self.ALIYUN_OSS_ENDPOINT=get_env('ALIYUN_OSS_ENDPOINT')
         self.ALIYUN_OSS_REGION=get_env('ALIYUN_OSS_REGION')
         self.ALIYUN_OSS_AUTH_VERSION=get_env('ALIYUN_OSS_AUTH_VERSION')
+
+        # Google Cloud Storage settings
         self.GOOGLE_STORAGE_BUCKET_NAME = get_env('GOOGLE_STORAGE_BUCKET_NAME')
         self.GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 = get_env('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')
 
@@ -236,6 +244,7 @@ class Config:
         # ------------------------
         self.VECTOR_STORE = get_env('VECTOR_STORE')
         self.KEYWORD_STORE = get_env('KEYWORD_STORE')
+
         # qdrant settings
         self.QDRANT_URL = get_env('QDRANT_URL')
         self.QDRANT_API_KEY = get_env('QDRANT_API_KEY')
@@ -378,6 +387,9 @@ class Config:
         self.HOSTED_FETCH_APP_TEMPLATES_MODE = get_env('HOSTED_FETCH_APP_TEMPLATES_MODE')
         self.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = get_env('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN')
 
+        # Model Load Balancing Configurations.
+        self.MODEL_LB_ENABLED = get_bool_env('MODEL_LB_ENABLED')
+
         # Platform Billing Configurations.
         self.BILLING_ENABLED = get_bool_env('BILLING_ENABLED')
 
@@ -387,4 +399,3 @@ class Config:
         # ------------------------
         self.ENTERPRISE_ENABLED = get_bool_env('ENTERPRISE_ENABLED')
         self.CAN_REPLACE_LOGO = get_bool_env('CAN_REPLACE_LOGO')
-        self.MODEL_LB_ENABLED = get_bool_env('MODEL_LB_ENABLED')
