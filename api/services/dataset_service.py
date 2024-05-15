@@ -452,6 +452,27 @@ class DocumentService:
         db.session.commit()
 
     @staticmethod
+    def rename_document(dataset_id: str, document_id: str, name: str) -> Document:
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise ValueError('Dataset not found.')
+
+        document = DocumentService.get_document(dataset_id, document_id)
+
+        if not document:
+            raise ValueError('Document not found.')
+
+        if document.tenant_id != current_user.current_tenant_id:
+            raise ValueError('No permission.')
+
+        document.name = name
+
+        db.session.add(document)
+        db.session.commit()
+
+        return document
+
+    @staticmethod
     def pause_document(document):
         if document.indexing_status not in ["waiting", "parsing", "cleaning", "splitting", "indexing"]:
             raise DocumentIndexingError()
