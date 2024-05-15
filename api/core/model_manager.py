@@ -442,8 +442,8 @@ class LBModelManager:
                 redis_client.set(cache_key, current_index)
 
             redis_client.expire(cache_key, 3600)
-            if current_index >= max_index:
-                current_index = current_index % max_index + 1
+            if current_index > max_index:
+                current_index = current_index % max_index
 
             real_index = current_index - 1
             if real_index > max_index:
@@ -468,7 +468,7 @@ class LBModelManager:
 
         return None
 
-    def cooldown(self, config: ModelLoadBalancingConfiguration, expire: int = 60):
+    def cooldown(self, config: ModelLoadBalancingConfiguration, expire: int = 60) -> None:
         """
         Cooldown model load balancing config
         :param config: model load balancing config
