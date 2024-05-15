@@ -1,7 +1,6 @@
 import {
   memo,
   useCallback,
-  useMemo,
 } from 'react'
 import produce from 'immer'
 import cn from 'classnames'
@@ -11,7 +10,7 @@ import {
   generateNewNode,
 } from '../../utils'
 import {
-  useNodesExtraData,
+  useAvailableBlocks,
   useNodesReadOnly,
 } from '../../hooks'
 import { NODES_INITIAL_DATA } from '../../constants'
@@ -38,24 +37,9 @@ const AddBlock = ({
 }: AddBlockProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
-  const nodesExtraData = useNodesExtraData()
   const { nodesReadOnly } = useNodesReadOnly()
-  const availableNextNodes = nodesExtraData[BlockEnum.Start].availableNextNodes.filter((nodeType) => {
-    if (nodeType === BlockEnum.Iteration || nodeType === BlockEnum.End)
-      return false
-    return true
-  })
-  const availablePrevBlocks = useMemo(() => {
-    if (iterationNodeData.startNodeType) {
-      return nodesExtraData[iterationNodeData.startNodeType].availablePrevNodes.filter((nodeType) => {
-        if (nodeType === BlockEnum.Iteration || nodeType === BlockEnum.End)
-          return false
-        return true
-      })
-    }
-
-    return []
-  }, [nodesExtraData, iterationNodeData.startNodeType])
+  const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, true)
+  const { availablePrevBlocks } = useAvailableBlocks(iterationNodeData.startNodeType, true)
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     const {
@@ -132,7 +116,7 @@ const AddBlock = ({
             trigger={renderTriggerElement}
             triggerInnerClassName='inline-flex'
             popupClassName='!min-w-[256px]'
-            availableBlocksTypes={availableNextNodes}
+            availableBlocksTypes={availableNextBlocks}
           />
         )
       }

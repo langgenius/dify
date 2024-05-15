@@ -13,16 +13,13 @@ import {
   getBezierPath,
 } from 'reactflow'
 import {
-  useNodesExtraData,
+  useAvailableBlocks,
   useNodesInteractions,
 } from './hooks'
 import BlockSelector from './block-selector'
 import type {
   Edge,
   OnSelectBlock,
-} from './types'
-import {
-  BlockEnum,
 } from './types'
 import { ITERATION_CHILDREN_Z_INDEX } from './constants'
 
@@ -54,17 +51,9 @@ const CustomEdge = ({
   })
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
-  const nodesExtraData = useNodesExtraData()
-  const availablePrevNodes = (nodesExtraData[(data as Edge['data'])!.targetType]?.availablePrevNodes || []).filter((nodeType) => {
-    if ((data as Edge['data'])?.isInIteration && nodeType === BlockEnum.Iteration)
-      return false
-    return true
-  })
-  const availableNextNodes = (nodesExtraData[(data as Edge['data'])!.sourceType]?.availableNextNodes || []).filter((nodeType) => {
-    if ((data as Edge['data'])?.isInIteration && nodeType === BlockEnum.Iteration)
-      return false
-    return true
-  })
+  const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration)
+  const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration)
+
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
@@ -113,7 +102,7 @@ const CustomEdge = ({
             onOpenChange={handleOpenChange}
             asChild
             onSelect={handleInsert}
-            availableBlocksTypes={intersection(availablePrevNodes, availableNextNodes)}
+            availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks)}
             triggerClassName={() => 'hover:scale-150 transition-all'}
           />
         </div>
