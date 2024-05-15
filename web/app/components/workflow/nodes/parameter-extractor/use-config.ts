@@ -59,8 +59,6 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
       draft.parameters = newParams
     })
     setInputs(newInputs)
-    // if (moreInfo)
-    //   debugger
 
     if (moreInfo && moreInfo?.type === ChangeType.changeVarName && moreInfo.payload)
       handleOutVarRenameChange(id, [id, moreInfo.payload.beforeKey], [id, moreInfo.payload.afterKey!])
@@ -171,6 +169,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const {
     isShowSingleRun,
     hideSingleRun,
+    getInputVars,
     runningStatus,
     handleRun,
     handleStop,
@@ -185,13 +184,19 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     },
   })
 
-  const query = runInputData.query
-  const setQuery = useCallback((newQuery: string) => {
-    setRunInputData({
-      ...runInputData,
-      query: newQuery,
-    })
-  }, [runInputData, setRunInputData])
+  const varInputs = getInputVars([inputs.instruction])
+  const inputVarValues = (() => {
+    const vars: Record<string, any> = {}
+    Object.keys(runInputData)
+      .forEach((key) => {
+        vars[key] = runInputData[key]
+      })
+    return vars
+  })()
+
+  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
+    setRunInputData(newPayload)
+  }, [setRunInputData])
 
   return {
     readOnly,
@@ -210,14 +215,15 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     availableVars,
     availableNodes,
     handleMemoryChange,
-    query,
-    setQuery,
+    varInputs,
+    inputVarValues,
     isShowSingleRun,
     hideSingleRun,
     runningStatus,
     handleRun,
     handleStop,
     runResult,
+    setInputVarValues,
   }
 }
 

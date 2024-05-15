@@ -46,14 +46,15 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     handleMemoryChange,
     availableVars,
     availableNodes,
-    query,
-    setQuery,
+    inputVarValues,
+    varInputs,
     isShowSingleRun,
     hideSingleRun,
     runningStatus,
     handleRun,
     handleStop,
     runResult,
+    setInputVarValues,
   } = useConfig(id, data)
 
   const model = inputs.model
@@ -189,9 +190,9 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                 variable: 'query',
                 type: InputVarType.paragraph,
                 required: true,
-              }],
-              values: { query },
-              onChange: keyValue => setQuery((keyValue as any).query),
+              }, ...varInputs],
+              values: inputVarValues,
+              onChange: setInputVarValues,
             },
           ]}
           runningStatus={runningStatus}
