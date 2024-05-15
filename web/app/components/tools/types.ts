@@ -27,6 +27,7 @@ export enum CollectionType {
   builtIn = 'builtin',
   custom = 'api',
   model = 'model',
+  workflow = 'workflow',
 }
 
 export type Emoji = {
@@ -45,6 +46,7 @@ export type Collection = {
   team_credentials: Record<string, any>
   is_team_authorization: boolean
   allow_delete: boolean
+  labels: string[]
 }
 
 export type ToolParameter = {

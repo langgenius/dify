@@ -2,8 +2,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import React, { useEffect } from 'react'
-import Tools from '@/app/components/tools'
-import { LOC } from '@/app/components/tools/types'
+import ToolProviderList from '@/app/components/tools/provider-list'
 
 const Layout: FC = () => {
   const { t } = useTranslation()
@@ -12,12 +11,6 @@ const Layout: FC = () => {
     document.title = `${t('tools.title')} - Dify`
   }, [])
 
-  return (
-    <div className='overflow-hidden' style={{
-      height: 'calc(100vh - 56px)',
-    }}>
-      <Tools loc={LOC.tools} />
-    </div>
-  )
+  return <ToolProviderList />
 }
 export default React.memo(Layout)

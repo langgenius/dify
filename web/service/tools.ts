@@ -1,6 +1,7 @@
 import { get, post } from './base'
 import type { Collection, CustomCollectionBackend, CustomParamSchema, Tool, ToolCredential } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { Label } from '@/app/components/tools/labels/constant'
 
 export const fetchCollectionList = () => {
   return get<Collection[]>('/workspaces/current/tool-providers')
@@ -97,4 +98,8 @@ export const fetchAllBuiltInTools = () => {
 
 export const fetchAllCustomTools = () => {
   return get<ToolWithProvider[]>('/workspaces/current/tools/api')
+}
+
+export const fetchLabelList = () => {
+  return get<Label[]>('/workspaces/current/tool-labels')
 }

@@ -5,6 +5,7 @@ const translation = {
     all: 'All',
     builtIn: 'Built-in',
     custom: 'Custom',
+    workflow: 'Workflow',
   },
   contribute: {
     line1: 'I\'m interested in ',
