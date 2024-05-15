@@ -28,6 +28,7 @@ DEFAULTS = {
     'STORAGE_LOCAL_PATH': 'storage',
     'CHECK_UPDATE_URL': 'https://updates.dify.ai',
     'DEPLOY_ENV': 'PRODUCTION',
+    'SQLALCHEMY_DATABASE_URI_SCHEME': 'postgresql',
     'SQLALCHEMY_POOL_SIZE': 30,
     'SQLALCHEMY_MAX_OVERFLOW': 10,
     'SQLALCHEMY_POOL_RECYCLE': 3600,
@@ -165,10 +166,11 @@ class Config:
             key: get_env(key) for key in
             ['DB_USERNAME', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_CHARSET']
         }
+        self.SQLALCHEMY_DATABASE_URI_SCHEME = get_env('SQLALCHEMY_DATABASE_URI_SCHEME')
 
         db_extras = f"?client_encoding={db_credentials['DB_CHARSET']}" if db_credentials['DB_CHARSET'] else ""
 
-        self.SQLALCHEMY_DATABASE_URI = f"postgresql://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
+        self.SQLALCHEMY_DATABASE_URI = f"{self.SQLALCHEMY_DATABASE_URI_SCHEME}://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
         self.SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
             'max_overflow': int(get_env('SQLALCHEMY_MAX_OVERFLOW')),
