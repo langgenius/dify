@@ -69,7 +69,7 @@ class ToolTransformService:
     def builtin_provider_to_user_provider(
         provider_controller: BuiltinToolProviderController,
         db_provider: Optional[BuiltinToolProvider],
-        decrypt_credentials: bool = True
+        decrypt_credentials: bool = True,
     ) -> UserToolProvider:
         """
         convert provider controller to user provider
@@ -90,7 +90,8 @@ class ToolTransformService:
             type=ToolProviderType.BUILT_IN,
             masked_credentials={},
             is_team_authorization=False,
-            tools=[]
+            tools=[],
+            labels=provider_controller.tool_labels
         )
 
         # get credentials schema
@@ -151,6 +152,7 @@ class ToolTransformService:
     @staticmethod
     def workflow_provider_to_user_provider(
         provider_controller: WorkflowToolProviderController,
+        labels: list[str] = None
     ):
         """
         convert provider controller to user provider
@@ -172,13 +174,15 @@ class ToolTransformService:
             masked_credentials={},
             is_team_authorization=True,
             tools=[],
+            labels=labels or []
         )
 
     @staticmethod
     def api_provider_to_user_provider(
         provider_controller: ApiToolProviderController,
         db_provider: ApiToolProvider,
-        decrypt_credentials: bool = True
+        decrypt_credentials: bool = True,
+        labels: list[str] = None
     ) -> UserToolProvider:
         """
         convert provider controller to user provider
@@ -206,7 +210,8 @@ class ToolTransformService:
             type=ToolProviderType.API,
             masked_credentials={},
             is_team_authorization=True,
-            tools=[]
+            tools=[],
+            labels=labels or []
         )
 
         if decrypt_credentials:

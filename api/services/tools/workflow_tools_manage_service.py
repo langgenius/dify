@@ -111,7 +111,10 @@ class WorkflowToolManageService:
         result = []
 
         for tool in tools:
-            user_tool_provider = ToolTransformService.workflow_provider_to_user_provider(tool)
+            user_tool_provider = ToolTransformService.workflow_provider_to_user_provider(
+                provider_controller=tool,
+                labels=labels.get(tool.provider_id, [])
+            )
             ToolTransformService.repack_provider(user_tool_provider)
             user_tool_provider.tools = [
                 ToolTransformService.tool_to_user_tool(

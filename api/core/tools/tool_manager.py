@@ -25,6 +25,7 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 from core.tools.tool.api_tool import ApiTool
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
+from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import (
     ToolConfigurationManager,
     ToolParameterConfigurationManager,
@@ -436,31 +437,41 @@ class ToolManager:
         if 'api' in filters:
             db_api_providers: list[ApiToolProvider] = db.session.query(ApiToolProvider). \
                 filter(ApiToolProvider.tenant_id == tenant_id).all()
+            
+            api_provider_controllers = [{
+                'provider': provider,
+                'controller': ToolTransformService.api_provider_to_controller(provider)
+            } for provider in db_api_providers]
 
-            for db_api_provider in db_api_providers:
-                provider_controller = ToolTransformService.api_provider_to_controller(
-                    db_provider=db_api_provider,
-                )
+            # get labels
+            labels = ToolLabelManager.get_tools_labels([x['controller'] for x in api_provider_controllers])
+
+            for api_provider_controller in api_provider_controllers:
                 user_provider = ToolTransformService.api_provider_to_user_provider(
-                    provider_controller=provider_controller,
-                    db_provider=db_api_provider,
-                    decrypt_credentials=False
+                    provider_controller=provider_controller['controller'],
+                    db_provider=api_provider_controller['provider'],
+                    decrypt_credentials=False,
+                    labels=labels.get(api_provider_controller['controller'].provider_id, [])
                 )
-                result_providers[f'api_provider.{db_api_provider.name}'] = user_provider
+                result_providers[f'api_provider.{user_provider.name}'] = user_provider
 
         if 'workflow' in filters:
             # get workflow providers
             workflow_providers: list[WorkflowToolProvider] = db.session.query(WorkflowToolProvider). \
                 filter(WorkflowToolProvider.tenant_id == tenant_id).all()
             
-            for db_workflow_provider in workflow_providers:
-                provider_controller = ToolTransformService.workflow_provider_to_controller(
-                    db_provider=db_workflow_provider,
-                )
+            workflow_provider_controllers = [
+                ToolTransformService.workflow_provider_to_controller(db_provider=provider)
+                for provider in workflow_providers
+            ]
+            labels = ToolLabelManager.get_tools_labels(workflow_provider_controllers)
+
+            for provider_controller in workflow_provider_controllers:
                 user_provider = ToolTransformService.workflow_provider_to_user_provider(
                     provider_controller=provider_controller,
+                    labels=labels.get(provider_controller.provider_id, []),
                 )
-                result_providers[f'workflow_provider.{db_workflow_provider.name}'] = user_provider
+                result_providers[f'workflow_provider.{user_provider.name}'] = user_provider
 
         return BuiltinToolProviderSort.sort(list(result_providers.values()))
 

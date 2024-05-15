@@ -32,6 +32,7 @@ class UserToolProvider(BaseModel):
     is_team_authorization: bool = False
     allow_delete: bool = True
     tools: list[UserTool] = None
+    labels: list[str] = None
 
     def to_dict(self) -> dict:
         return {
@@ -46,6 +47,7 @@ class UserToolProvider(BaseModel):
             'is_team_authorization': self.is_team_authorization,
             'allow_delete': self.allow_delete,
             'tools': self.tools,
+            'labels': self.labels,
         }
 
 class UserToolProviderCredentials(BaseModel):
