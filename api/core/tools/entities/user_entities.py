@@ -22,7 +22,6 @@ class UserToolProvider(BaseModel):
         BUILTIN = "builtin"
         APP = "app"
         API = "api"
-        MODEL = "model"
         WORKFLOW = "workflow"
 
     id: str

@@ -13,7 +13,6 @@ from libs.helper import uuid_value
 from libs.login import login_required
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-from services.tools.model_tools_manage_service import ModelToolManageService
 from services.tools.tools_manage_service import ToolManageService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
@@ -106,31 +105,6 @@ class ToolBuiltinProviderIconApi(Resource):
         icon_bytes, mimetype = BuiltinToolManageService.get_builtin_tool_provider_icon(provider)
         icon_cache_max_age = int(current_app.config.get('TOOL_ICON_CACHE_MAX_AGE'))
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
-
-class ToolModelProviderIconApi(Resource):
-    @setup_required
-    def get(self, provider):
-        icon_bytes, mimetype = ModelToolManageService.get_model_tool_provider_icon(provider)
-        return send_file(io.BytesIO(icon_bytes), mimetype=mimetype)
-    
-class ToolModelProviderListToolsApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument('provider', type=str, required=True, nullable=False, location='args')
-
-        args = parser.parse_args()
-
-        return jsonable_encoder(ModelToolManageService.list_model_tool_provider_tools(
-            user_id,
-            tenant_id,
-            args['provider'],
-        ))
 
 class ToolApiProviderAddApi(Resource):
     @setup_required
@@ -468,10 +442,6 @@ api.add_resource(ToolBuiltinProviderUpdateApi, '/workspaces/current/tool-provide
 api.add_resource(ToolBuiltinProviderGetCredentialsApi, '/workspaces/current/tool-provider/builtin/<provider>/credentials')
 api.add_resource(ToolBuiltinProviderCredentialsSchemaApi, '/workspaces/current/tool-provider/builtin/<provider>/credentials_schema')
 api.add_resource(ToolBuiltinProviderIconApi, '/workspaces/current/tool-provider/builtin/<provider>/icon')
-
-# model tool provider
-api.add_resource(ToolModelProviderIconApi, '/workspaces/current/tool-provider/model/<provider>/icon')
-api.add_resource(ToolModelProviderListToolsApi, '/workspaces/current/tool-provider/model/tools')
 
 # api tool provider
 api.add_resource(ToolApiProviderAddApi, '/workspaces/current/tool-provider/api/add')
