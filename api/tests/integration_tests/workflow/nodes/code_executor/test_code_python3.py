@@ -1,3 +1,4 @@
+import json
 from textwrap import dedent
 
 from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
@@ -25,3 +26,11 @@ def test_python3_with_code_template():
     result = CodeExecutor.execute_workflow_code_template(
         language=CODE_LANGUAGE, code=Python3CodeProvider.get_default_code(), inputs={'arg1': 'Hello', 'arg2': 'World'})
     assert result == {'result': 'HelloWorld'}
+
+
+def test_python3_list_default_available_packages():
+    packages = Python3CodeProvider.get_default_available_packages()
+    assert len(packages) > 0
+
+    # check JSON serializable
+    assert str(json.dumps(packages)).find('requests') >= 0

@@ -25,3 +25,10 @@ def test_javascript_with_code_template():
     result = CodeExecutor.execute_workflow_code_template(
         language=CODE_LANGUAGE, code=JavascriptCodeProvider.get_default_code(), inputs={'arg1': 'Hello', 'arg2': 'World'})
     assert result == {'result': 'HelloWorld'}
+
+
+def test_javascript_list_default_available_packages():
+    packages = JavascriptCodeProvider.get_default_available_packages()
+
+    # no default packages available for javascript
+    assert len(packages) == 0
