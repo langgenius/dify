@@ -10,6 +10,7 @@ import type {
   WorkflowFinishedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
+import { removeAccessToken } from '@/app/components/share/utils'
 const TIME_OUT = 100000
 
 const ContentType = {
@@ -313,8 +314,13 @@ const baseFetch = <T>(
                     if (!silent)
                       Toast.notify({ type: 'error', message: data.message })
 
-                    if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized')
+                    if (data.code === 'web_sso_auth_required')
                       requiredWebSSOLogin()
+
+                    if (data.code === 'unauthorized') {
+                      removeAccessToken()
+                      globalThis.location.reload()
+                    }
 
                     return Promise.reject(data)
                   })
@@ -476,8 +482,15 @@ export const ssePost = (
         res.json().then((data: any) => {
           Toast.notify({ type: 'error', message: data.message || 'Server Error' })
 
-          if (data.code === 'web_sso_auth_required' || data.code === 'unauthorized')
-            requiredWebSSOLogin()
+          if (isPublicAPI) {
+            if (data.code === 'web_sso_auth_required')
+              requiredWebSSOLogin()
+
+            if (data.code === 'unauthorized') {
+              removeAccessToken()
+              globalThis.location.reload()
+            }
+          }
         })
         onError?.('Server Error')
         return

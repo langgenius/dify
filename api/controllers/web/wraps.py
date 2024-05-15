@@ -2,7 +2,7 @@ from functools import wraps
 
 from flask import request
 from flask_restful import Resource
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
 from controllers.web.error import WebSSOAuthRequiredError
 from extensions.ext_database import db
@@ -25,45 +25,47 @@ def validate_jwt_token(view=None):
 
 
 def decode_jwt_token():
-    auth_header = request.headers.get('Authorization')
-    if auth_header is None:
-        raise Unauthorized('Authorization header is missing.')
-
-    if ' ' not in auth_header:
-        raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-    
-    auth_scheme, tk = auth_header.split(None, 1)
-    auth_scheme = auth_scheme.lower()
-
-    if auth_scheme != 'bearer':
-        raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-    decoded = PassportService().verify(tk)
-    app_code = decoded.get('app_code')
-    app_model = db.session.query(App).filter(App.id == decoded['app_id']).first()
-    site = db.session.query(Site).filter(Site.code == app_code).first()
-    if not app_model:
-        raise NotFound()
-    if not app_code or not site:
-        raise Unauthorized('Site URL is no longer valid.')
-    if app_model.enable_site is False:
-        raise Unauthorized('Site is disabled.')
-    end_user = db.session.query(EndUser).filter(EndUser.id == decoded['end_user_id']).first()
-    if not end_user:
-        raise NotFound()
-
-    _validate_web_sso_enforced(decoded)
-
-    return app_model, end_user
-
-
-def _validate_web_sso_enforced(token: dict):
     system_features = FeatureService.get_system_features()
-    if not system_features.sso_enforced_for_web:
-        return
 
-    source = token.get('token_source')
-    if not source or source != 'sso':
-        raise WebSSOAuthRequiredError()
+    try:
+        auth_header = request.headers.get('Authorization')
+        if auth_header is None:
+            raise Unauthorized('Authorization header is missing.')
+
+        if ' ' not in auth_header:
+            raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+
+        auth_scheme, tk = auth_header.split(None, 1)
+        auth_scheme = auth_scheme.lower()
+
+        if auth_scheme != 'bearer':
+            raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+        decoded = PassportService().verify(tk)
+        app_code = decoded.get('app_code')
+        app_model = db.session.query(App).filter(App.id == decoded['app_id']).first()
+        site = db.session.query(Site).filter(Site.code == app_code).first()
+        if not app_model:
+            raise NotFound()
+        if not app_code or not site:
+            raise BadRequest('Site URL is no longer valid.')
+        if app_model.enable_site is False:
+            raise BadRequest('Site is disabled.')
+        end_user = db.session.query(EndUser).filter(EndUser.id == decoded['end_user_id']).first()
+        if not end_user:
+            raise NotFound()
+
+        # Check if SSO is enforced for web, and if the token source is not SSO, raise an error and redirect to SSO login
+        if system_features.sso_enforced_for_web:
+            source = decoded.get('token_source')
+            if not source or source != 'sso':
+                raise WebSSOAuthRequiredError()
+
+        return app_model, end_user
+    except Unauthorized as e:
+        if system_features.sso_enforced_for_web:
+            raise WebSSOAuthRequiredError()
+
+        raise Unauthorized(e.description)
 
 
 class WebApiResource(Resource):
