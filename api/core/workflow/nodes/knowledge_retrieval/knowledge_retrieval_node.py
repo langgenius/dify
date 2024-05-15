@@ -146,7 +146,6 @@ class KnowledgeRetrievalNode(BaseNode):
                 if 'score' in item.metadata and item.metadata['score']:
                     document_score_list[item.metadata['doc_id']] = item.metadata['score']
 
-            document_context_list = []
             index_node_ids = [document.metadata['doc_id'] for document in all_documents]
             segments = DocumentSegment.query.filter(
                 DocumentSegment.dataset_id.in_(dataset_ids),
@@ -160,11 +159,6 @@ class KnowledgeRetrievalNode(BaseNode):
                 sorted_segments = sorted(segments,
                                          key=lambda segment: index_node_id_to_position.get(segment.index_node_id,
                                                                                            float('inf')))
-                for segment in sorted_segments:
-                    if segment.answer:
-                        document_context_list.append(f'question:{segment.content} answer:{segment.answer}')
-                    else:
-                        document_context_list.append(segment.content)
 
                 for segment in sorted_segments:
                     dataset = Dataset.query.filter_by(
