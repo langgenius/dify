@@ -10,7 +10,6 @@ from flask import current_app
 
 from core.agent.entities import AgentToolEntity
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.provider_manager import ProviderManager
 from core.tools import *
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
@@ -22,7 +21,6 @@ from core.tools.errors import ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
-from core.tools.provider.model_tool_provider import ModelToolProviderController
 from core.tools.tool.api_tool import ApiTool
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
@@ -158,19 +156,6 @@ class ToolManager:
             return api_provider.get_tool(tool_name).fork_tool_runtime(meta={
                 'tenant_id': tenant_id,
                 'credentials': decrypted_credentials,
-            })
-        elif provider_type == 'model':
-            if tenant_id is None:
-                raise ValueError('tenant id is required for model provider')
-            # get model provider
-            model_provider = cls.get_model_provider(tenant_id, provider_name)
-
-            # get tool
-            model_tool = model_provider.get_tool(tool_name)
-
-            return model_tool.fork_tool_runtime(meta={
-                'tenant_id': tenant_id,
-                'credentials': model_tool.model_configuration['model_instance'].credentials
             })
         elif provider_type == 'app':
             raise NotImplementedError('app provider not implemented')
@@ -367,49 +352,6 @@ class ToolManager:
         cls._builtin_providers = {}
         cls._builtin_providers_loaded = False
 
-    # @classmethod
-    # def list_model_providers(cls, tenant_id: str = None) -> list[ModelToolProviderController]:
-    #     """
-    #         list all the model providers
-
-    #         :return: the list of the model providers
-    #     """
-    #     tenant_id = tenant_id or 'ffffffff-ffff-ffff-ffff-ffffffffffff'
-    #     # get configurations
-    #     model_configurations = ModelToolConfigurationManager.get_all_configuration()
-    #     # get all providers
-    #     provider_manager = ProviderManager()
-    #     configurations = provider_manager.get_configurations(tenant_id).values()
-    #     # get model providers
-    #     model_providers: list[ModelToolProviderController] = []
-    #     for configuration in configurations:
-    #         # all the model tool should be configurated
-    #         if configuration.provider.provider not in model_configurations:
-    #             continue
-    #         if not ModelToolProviderController.is_configuration_valid(configuration):
-    #             continue
-    #         model_providers.append(ModelToolProviderController.from_db(configuration))
-
-    #     return model_providers
-
-    @classmethod
-    def get_model_provider(cls, tenant_id: str, provider_name: str) -> ModelToolProviderController:
-        """
-            get the model provider
-
-            :param provider_name: the name of the provider
-
-            :return: the provider
-        """
-        # get configurations
-        provider_manager = ProviderManager()
-        configurations = provider_manager.get_configurations(tenant_id)
-        configuration = configurations.get(provider_name)
-        if configuration is None:
-            raise ToolProviderNotFoundError(f'model provider {provider_name} not found')
-
-        return ModelToolProviderController.from_db(configuration)
-
     @classmethod
     def get_tool_label(cls, tool_name: str) -> Union[I18nObject, None]:
         """
@@ -454,15 +396,6 @@ class ToolManager:
             )
 
             result_providers[provider.identity.name] = user_provider
-
-        # # get model tool providers
-        # model_providers = cls.list_model_providers(tenant_id=tenant_id)
-        # # append model providers
-        # for provider in model_providers:
-        #     user_provider = ToolTransformService.model_provider_to_user_provider(
-        #         db_provider=provider,
-        #     )
-        #     result_providers[f'model_provider.{provider.identity.name}'] = user_provider
 
         # get db api providers
         db_api_providers: list[ApiToolProvider] = db.session.query(ApiToolProvider). \
