@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import produce from 'immer'
-import type { Memory, ValueSelector, Var } from '../../types'
-import { VarType } from '../../types'
+import type { Memory, MoreInfo, ValueSelector, Var } from '../../types'
+import { ChangeType, VarType } from '../../types'
 import { useStore } from '../../store'
 import {
   useIsChatMode,
   useNodesReadOnly,
+
+  useWorkflow,
 } from '../../hooks'
 import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { Param, ParameterExtractorNodeType } from './types'
@@ -19,6 +21,7 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 
 const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
+  const { handleOutVarRenameChange } = useWorkflow()
   const isChatMode = useIsChatMode()
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)[payload.type]
@@ -51,12 +54,17 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handleExactParamsChange = useCallback((newParams: Param[]) => {
+  const handleExactParamsChange = useCallback((newParams: Param[], moreInfo?: MoreInfo) => {
     const newInputs = produce(inputs, (draft) => {
       draft.parameters = newParams
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+    // if (moreInfo)
+    //   debugger
+
+    if (moreInfo && moreInfo?.type === ChangeType.changeVarName && moreInfo.payload)
+      handleOutVarRenameChange(id, [id, moreInfo.payload.beforeKey], [id, moreInfo.payload.afterKey!])
+  }, [handleOutVarRenameChange, id, inputs, setInputs])
 
   const addExtractParameter = useCallback((payload: Param) => {
     const newInputs = produce(inputs, (draft) => {

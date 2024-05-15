@@ -14,6 +14,7 @@ import Select from '@/app/components/base/select'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
+import { ChangeType, type MoreInfo } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 const errorI18nPrefix = 'workflow.errorMsg'
@@ -28,7 +29,7 @@ const DEFAULT_PARAM: Param = {
 type Props = {
   type: 'add' | 'edit'
   payload?: Param
-  onSave: (payload: Param) => void
+  onSave: (payload: Param, moreInfo?: MoreInfo) => void
   onCancel?: () => void
 }
 
@@ -41,9 +42,18 @@ const AddExtractParameter: FC<Props> = ({
   const { t } = useTranslation()
   const isAdd = type === 'add'
   const [param, setParam] = useState<Param>(isAdd ? DEFAULT_PARAM : payload as Param)
-
+  const [renameInfo, setRenameInfo] = useState<MoreInfo | undefined>(undefined)
   const handleParamChange = useCallback((key: string) => {
     return (value: any) => {
+      setRenameInfo(key === 'name'
+        ? {
+          type: ChangeType.changeVarName,
+          payload: {
+            beforeKey: param.name,
+            afterKey: value,
+          },
+        }
+        : undefined)
       setParam((prev) => {
         return {
           ...prev,
@@ -51,7 +61,7 @@ const AddExtractParameter: FC<Props> = ({
         }
       })
     }
-  }, [])
+  }, [param.name])
 
   const [isShowModal, {
     setTrue: doShowModal,
@@ -93,9 +103,9 @@ const AddExtractParameter: FC<Props> = ({
     if (!checkValid())
       return
 
-    onSave(param)
+    onSave(param, renameInfo)
     hideModal()
-  }, [checkValid, onSave, param, hideModal])
+  }, [checkValid, onSave, param, hideModal, renameInfo])
 
   return (
     <div>

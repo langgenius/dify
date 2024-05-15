@@ -7,13 +7,14 @@ import type { Param } from '../../types'
 import ListNoDataPlaceholder from '../../../_base/components/list-no-data-placeholder'
 import Item from './item'
 import EditParam from './update'
+import type { MoreInfo } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 
 type Props = {
   readonly: boolean
   list: Param[]
-  onChange: (list: Param[]) => void
+  onChange: (list: Param[], moreInfo?: MoreInfo) => void
 }
 
 const List: FC<Props> = ({
@@ -27,14 +28,14 @@ const List: FC<Props> = ({
   }] = useBoolean(false)
 
   const handleItemChange = useCallback((index: number) => {
-    return (payload: Param) => {
+    return (payload: Param, moreInfo?: MoreInfo) => {
       const newList = list.map((item, i) => {
         if (i === index)
           return payload
 
         return item
       })
-      onChange(newList)
+      onChange(newList, moreInfo)
       hideEditModal()
     }
   }, [hideEditModal, list, onChange])
