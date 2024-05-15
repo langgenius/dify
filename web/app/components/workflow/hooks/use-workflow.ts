@@ -237,6 +237,15 @@ export const useWorkflow = () => {
     return getIncomers(node, nodes, edges)
   }, [store])
 
+  const getIterationNodeChildren = useCallback((nodeId: string) => {
+    const {
+      getNodes,
+    } = store.getState()
+    const nodes = getNodes()
+
+    return nodes.filter(node => node.parentId === nodeId)
+  }, [store])
+
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
     const { getNodes, setNodes } = store.getState()
     const afterNodes = getAfterNodesInSameBranch(nodeId)
@@ -357,6 +366,7 @@ export const useWorkflow = () => {
     formatTimeFromNow,
     getNode,
     getBeforeNodeById,
+    getIterationNodeChildren,
     enableShortcuts,
     disableShortcuts,
   }
