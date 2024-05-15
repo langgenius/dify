@@ -464,9 +464,6 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly())
       return
 
-    if (nodeType === BlockEnum.VariableAssigner)
-      targetHandle = 'varNotSet'
-
     const {
       getNodes,
       setNodes,
@@ -481,6 +478,7 @@ export const useNodesInteractions = () => {
         title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
         ...(toolDefaultValue || {}),
         selected: true,
+        _showVariablePicker: nodeType === BlockEnum.VariableAssigner,
       },
       position: {
         x: 0,
