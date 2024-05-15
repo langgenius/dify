@@ -317,6 +317,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
         reqparser.add_argument('description', type=str, required=True, nullable=False, location='json')
         reqparser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         reqparser.add_argument('parameters', type=list[dict], required=True, nullable=False, location='json')
+        reqparser.add_argument('privacy_policy', type=str, required=False, nullable=True, location='json', default='')
         
         args = reqparser.parse_args()
 
@@ -331,6 +332,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
             args['icon'],
             args['description'],
             args['parameters'],
+            args['privacy_policy'],
         )
 
 class ToolWorkflowProviderDeleteApi(Resource):

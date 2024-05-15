@@ -19,7 +19,7 @@ class WorkflowToolManageService:
     @classmethod
     def update_workflow_tool(cls, user_id: str, tenant_id: str, workflow_app_id: str, 
                              name: str, icon: dict, description: str, 
-                             parameters: list[dict]) -> dict:
+                             parameters: list[dict], privacy_policy: str = '') -> dict:
         """
         Update a workflow tool.
         :param user_id: the user id
@@ -58,14 +58,16 @@ class WorkflowToolManageService:
                 name=name,
                 icon=json.dumps(icon),
                 description=description,
-                parameter_configuration=json.dumps(parameters)
+                parameter_configuration=json.dumps(parameters),
+                privacy_policy=privacy_policy,
             )
         else:
             workflow_tool_provider.name = name
             workflow_tool_provider.icon = json.dumps(icon)
             workflow_tool_provider.description = description
             workflow_tool_provider.parameter_configuration = json.dumps(parameters)
-
+            workflow_tool_provider.privacy_policy = privacy_policy
+            
             workflow_tool_provider.updated_at = datetime.now()
 
         try:
