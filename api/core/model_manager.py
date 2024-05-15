@@ -437,11 +437,13 @@ class LBModelManager:
 
         while True:
             current_index = redis_client.incr(cache_key)
-            if current_index > max_index:
-                current_index = current_index % max_index
+            if current_index >= 10000000:
+                current_index = 1
                 redis_client.set(cache_key, current_index)
 
             redis_client.expire(cache_key, 3600)
+            if current_index >= max_index:
+                current_index = current_index % max_index + 1
 
             real_index = current_index - 1
             if real_index > max_index:
