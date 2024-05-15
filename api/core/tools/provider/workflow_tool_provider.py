@@ -8,10 +8,10 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolParameterOption,
     ToolProviderType,
-    WorkflowToolParameterConfiguration,
 )
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.workflow_tool import WorkflowTool
+from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationSync
 from extensions.ext_database import db
 from models.model import App
 from models.tools import WorkflowToolProvider
@@ -68,30 +68,14 @@ class WorkflowToolProviderController(ToolProviderController):
 
         # fetch start node
         graph: dict = workflow.graph_dict
+        parameters = db_provider.parameter_configurations
+        variables = WorkflowToolConfigurationSync.get_workflow_graph_variables(graph)
 
-        nodes = graph.get('nodes', [])
-        start_node = next(filter(lambda x: x.get('data', {}).get('type') == 'start', nodes), None)
-
-        if not start_node:
-            raise ValueError('start node not found')
+        WorkflowToolConfigurationSync.check_is_synced(
+            variables=variables,
+            tool_configurations=parameters
+        )
         
-        variables = [
-            VariableEntity(**variable) for variable in start_node.get('data', {}).get('variables', [])
-        ]
-        variable_names = [variable.variable for variable in variables]
-
-        # fetch parameter configuration
-        parameters = [
-            WorkflowToolParameterConfiguration(**parameter) for parameter in db_provider.parameter_configurations
-        ]
-
-        if len(parameters) != len(variables):
-            raise ValueError('parameter configuration mismatch, please republish the tool to update')
-        
-        for parameter in parameters:
-            if parameter.name not in variable_names:
-                raise ValueError('parameter configuration mismatch, please republish the tool to update')
-
         def fetch_workflow_variable(variable_name: str) -> VariableEntity:
             return next(filter(lambda x: x.variable == variable_name, variables), None)
 

@@ -1,8 +1,10 @@
 import json
 from datetime import datetime
 
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.user_entities import UserToolProvider
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
+from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationSync
 from extensions.ext_database import db
 from models.model import App
 from models.tools import WorkflowToolProvider
@@ -142,15 +144,34 @@ class WorkflowToolManageService:
 
         if db_tool is None:
             raise ValueError(f'Tool {workflow_app_id} not found')
+        
+        workflow_app: App = db.session.query(App).filter(
+            App.id == workflow_app_id,
+            App.tenant_id == tenant_id
+        ).first()
+
+        if workflow_app is None:
+            raise ValueError(f'App {workflow_app_id} not found')
 
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
+
+        synced = False
+        try:
+            WorkflowToolConfigurationSync.check_is_synced(
+                WorkflowToolConfigurationSync.get_workflow_graph_variables(workflow_app.workflow.graph_dict),
+                db_tool.parameter_configurations
+            )
+            synced = True
+        except Exception as e:
+            pass
 
         return {
             'name': db_tool.name,
             'icon': json.loads(db_tool.icon),
             'description': db_tool.description,
-            'parameters': db_tool.parameter_configurations,
-            'tool': ToolTransformService.tool_to_user_tool(tool.get_tools(user_id, tenant_id)[0])
+            'parameters': jsonable_encoder(db_tool.parameter_configurations),
+            'tool': ToolTransformService.tool_to_user_tool(tool.get_tools(user_id, tenant_id)[0]),
+            'synced': synced
         }
     
     @classmethod

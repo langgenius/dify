@@ -4,7 +4,7 @@ from sqlalchemy import ForeignKey
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiBasedToolBundle
-from core.tools.entities.tool_entities import ApiProviderSchemaType
+from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
 from models import StringUUID
 from models.model import Account, App, Tenant
@@ -193,8 +193,11 @@ class WorkflowToolProvider(db.Model):
         return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
     
     @property
-    def parameter_configurations(self) -> list:
-        return json.loads(self.parameter_configuration)
+    def parameter_configurations(self) -> list[WorkflowToolParameterConfiguration]:
+        return [
+            WorkflowToolParameterConfiguration(**config)
+            for config in json.loads(self.parameter_configuration)
+        ]
     
     @property
     def app(self) -> App:
