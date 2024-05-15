@@ -31,6 +31,7 @@ def test_python3_with_code_template():
 def test_python3_list_default_available_packages():
     packages = Python3CodeProvider.get_default_available_packages()
     assert len(packages) > 0
+    assert {'requests', 'httpx'}.issubset(p['name'] for p in packages)
 
     # check JSON serializable
-    assert str(json.dumps(packages)).find('requests') >= 0
+    assert len(str(json.dumps(packages))) > 0
