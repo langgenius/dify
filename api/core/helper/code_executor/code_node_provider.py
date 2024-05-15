@@ -3,7 +3,6 @@ from abc import abstractmethod
 from pydantic import BaseModel
 
 from core.helper.code_executor.code_executor import CodeExecutor
-from core.helper.code_executor.entities import CodeDependency
 
 
 class CodeNodeProvider(BaseModel):
@@ -25,8 +24,8 @@ class CodeNodeProvider(BaseModel):
         pass
 
     @classmethod
-    def get_default_available_packages(cls) -> list[CodeDependency]:
-        return CodeExecutor.list_dependencies(cls.get_language())
+    def get_default_available_packages(cls) -> list[dict]:
+        return [p.dict() for p in CodeExecutor.list_dependencies(cls.get_language())]
 
     @classmethod
     def get_default_config(cls) -> dict:
