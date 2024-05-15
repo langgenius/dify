@@ -509,9 +509,7 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
         const payload = data as ParameterExtractorNodeType
         if (payload.query.join('.') === oldVarSelector.join('.'))
           payload.query = newVarSelector
-        const varInInstructions = matchNotSystemVars([payload.instruction || ''])
-        if (varInInstructions.includes(oldVarSelector))
-          payload.instruction = replaceOldVarInText(payload.instruction, oldVarSelector, newVarSelector)
+        payload.instruction = replaceOldVarInText(payload.instruction, oldVarSelector, newVarSelector)
         break
       }
     }
