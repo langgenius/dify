@@ -385,6 +385,10 @@ const translation = {
       instruction: '指令',
       advancedSetting: '高级设置',
     },
+    iteration: {
+      input: '输入',
+      output: '输出变量',
+    },
   },
   tracing: {
     stopBy: '由{{user}}终止',

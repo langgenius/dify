@@ -7,6 +7,8 @@ const i18nPrefix = 'workflow.errorMsg'
 const nodeDefault: NodeDefault<IterationNodeType> = {
   defaultValue: {
     start_node_id: '',
+    iterator_selector: [],
+    output_selector: [],
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode

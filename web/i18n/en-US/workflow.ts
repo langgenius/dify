@@ -385,6 +385,10 @@ const translation = {
       instruction: 'Instruction',
       advancedSetting: 'Advanced Setting',
     },
+    iteration: {
+      input: 'Input',
+      output: 'Output Variables',
+    },
   },
   tracing: {
     stopBy: 'Stop by {{user}}',
