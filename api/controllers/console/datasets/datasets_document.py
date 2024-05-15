@@ -1,10 +1,12 @@
 import logging
+from argparse import ArgumentTypeError
 from datetime import datetime, timezone
 
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal, marshal_with, reqparse
 from sqlalchemy import asc, desc
+from transformers.hf_argparser import string_to_bool
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -141,7 +143,10 @@ class DatasetDocumentListApi(Resource):
         limit = request.args.get('limit', default=20, type=int)
         search = request.args.get('keyword', default=None, type=str)
         sort = request.args.get('sort', default='-created_at', type=str)
-        fetch = request.args.get('fetch', default=False, type=bool)
+        try:
+            fetch = string_to_bool(request.args.get('fetch', default='false'))
+        except (ArgumentTypeError, ValueError, Exception) as e:
+            fetch = False
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound('Dataset not found.')
