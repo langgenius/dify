@@ -130,7 +130,7 @@ const Editor: FC<Props> = ({
                     }
                     hideArrow
                   >
-                    <div className={cn(editionType === EditionType.jinja2 && 'border-black/5 bg-white', 'mb-1 flex h-[22px] items-center px-1.5 rounded-[5px] border border-transparent hover:border-black/5 space-x-0.5')}>
+                    <div className={cn(editionType === EditionType.jinja2 && 'border-black/5 bg-white', 'flex h-[22px] items-center px-1.5 rounded-[5px] border border-transparent hover:border-black/5 space-x-0.5')}>
                       <Jinja className='w-6 h-3 text-gray-300' />
                       <Switch
                         size='sm'
