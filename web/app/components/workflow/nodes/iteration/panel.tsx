@@ -4,10 +4,12 @@ import { useTranslation } from 'react-i18next'
 
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import Split from '../_base/components/split'
+import ResultPanel from '../../run/result-panel'
 import type { IterationNodeType } from './types'
 import useConfig from './use-config'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
+import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 
 const i18nPrefix = 'workflow.nodes.iteration'
 
@@ -25,6 +27,14 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     childrenNodeVars,
     iterationChildrenNodes,
     handleOutputVarChange,
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runResult,
+    inputVarValues,
+    setInputVarValues,
   } = useConfig(id, data)
 
   return (
@@ -59,6 +69,23 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           />
         </Field>
       </div>
+      {isShowSingleRun && (
+        <BeforeRunForm
+          nodeName={inputs.title}
+          onHide={hideSingleRun}
+          forms={[
+            {
+              inputs: [],
+              values: inputVarValues,
+              onChange: setInputVarValues,
+            },
+          ]}
+          runningStatus={runningStatus}
+          onRun={handleRun}
+          onStop={handleStop}
+          result={<ResultPanel {...runResult} showSteps={false} />}
+        />
+      )}
     </div>
   )
 }

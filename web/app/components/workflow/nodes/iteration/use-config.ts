@@ -9,6 +9,7 @@ import { VarType } from '../../types'
 import type { ValueSelector, Var } from '../../types'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { toNodeOutputVars } from '../_base/components/variable/utils'
+import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { IterationNodeType } from './types'
 
 const useConfig = (id: string, payload: IterationNodeType) => {
@@ -40,6 +41,43 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  // single run
+  const {
+    isShowSingleRun,
+    hideSingleRun,
+    getInputVars,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runInputData,
+    setRunInputData,
+    runResult,
+  } = useOneStepRun<IterationNodeType>({
+    id,
+    data: inputs,
+    defaultRunInputData: {
+      '#iterator#': [],
+    },
+  })
+
+  const inputVarValues = (() => {
+    const vars: Record<string, any> = {}
+    Object.keys(runInputData)
+      .filter(key => !['#iterator#'].includes(key))
+      .forEach((key) => {
+        vars[key] = runInputData[key]
+      })
+    return vars
+  })()
+
+  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
+    const newVars = {
+      ...newPayload,
+      '#iterator#': runInputData['#iterator#'],
+    }
+    setRunInputData(newVars)
+  }, [runInputData, setRunInputData])
+
   return {
     readOnly,
     inputs,
@@ -48,6 +86,14 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     childrenNodeVars,
     iterationChildrenNodes,
     handleOutputVarChange,
+    isShowSingleRun,
+    hideSingleRun,
+    runningStatus,
+    handleRun,
+    handleStop,
+    runResult,
+    inputVarValues,
+    setInputVarValues,
   }
 }
 
