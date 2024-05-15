@@ -62,7 +62,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         <div className='flex flex-col'>
           <div className='text-gray-900'>{t(`${prefixCustomize}.way1.step1`)}</div>
           <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step1Tip`)}</div>
-          <a href={`https://github.com/langgenius/${isChatApp ? 'webapp-conversation' : 'webapp-text-generator'}`} target='_blank' rel='noopener noreferrer'>
+          <a href={`https://github.com/iechor/${isChatApp ? 'webapp-conversation' : 'webapp-text-generator'}`} target='_blank' rel='noopener noreferrer'>
             <Button className='text-gray-800 text-sm w-fit'><GithubIcon className='text-gray-800 mr-2' />{t(`${prefixCustomize}.way1.step1Operation`)}</Button>
           </a>
         </div>
@@ -87,7 +87,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
           <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step3Tip`)}</div>
           <pre className='overflow-x-scroll box-border py-3 px-4 bg-gray-100 text-xs font-medium rounded-lg select-text'>
             NEXT_PUBLIC_APP_ID={`'${appId}'`} <br />
-            NEXT_PUBLIC_APP_KEY={'\'<Web API Key From Dify>\''} <br />
+            NEXT_PUBLIC_APP_KEY={'\'<Web API Key From iEchor>\''} <br />
             NEXT_PUBLIC_API_URL={`'${api_base_url}'`}
           </pre>
         </div>
@@ -101,8 +101,8 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         className='w-36 mt-2'
         onClick={() =>
           window.open(
-            `https://docs.dify.ai/${locale !== LanguagesSupported[1]
-              ? 'user-guide/launching-dify-apps/developing-with-apis'
+            `https://docs.iechor.com/${locale !== LanguagesSupported[1]
+              ? 'user-guide/launching-iechor-apps/developing-with-apis'
               : `v/${locale.toLowerCase()}/guides/application-publishing/developing-with-apis`
             }`,
             '_blank',

@@ -204,7 +204,7 @@ const translation = {
   },
   automatic: {
     title: '自動アプリケーションオーケストレーション',
-    description: 'シナリオを説明してください。Difyがアプリケーションをあなたのためにオーケストレートします。',
+    description: 'シナリオを説明してください。iEchorがアプリケーションをあなたのためにオーケストレートします。',
     intendedAudience: '誰が想定されるターゲットですか？',
     intendedAudiencePlaceHolder: '例：学生',
     solveProblem: 'どのような問題をAIが解決できると期待していますか？',

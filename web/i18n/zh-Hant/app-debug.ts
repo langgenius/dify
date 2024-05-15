@@ -201,7 +201,7 @@ const translation = {
   },
   automatic: {
     title: '自動編排',
-    description: '描述您的場景，Dify 將為您編排一個應用。',
+    description: '描述您的場景，iEchor 將為您編排一個應用。',
     intendedAudience: '目標使用者是誰？',
     intendedAudiencePlaceHolder: '例如：學生',
     solveProblem: '希望 AI 為他們解決什麼問題？',

@@ -201,7 +201,7 @@ const translation = {
   },
   automatic: {
     title: 'Automatisierte Anwendungsorchestrierung',
-    description: 'Beschreiben Sie Ihr Szenario, Dify wird eine Anwendung für Sie orchestrieren.',
+    description: 'Beschreiben Sie Ihr Szenario, iEchor wird eine Anwendung für Sie orchestrieren.',
     intendedAudience: 'Wer ist die Zielgruppe?',
     intendedAudiencePlaceHolder: 'z.B. Student',
     solveProblem: 'Welche Probleme hoffen sie, dass KI für sie lösen kann?',

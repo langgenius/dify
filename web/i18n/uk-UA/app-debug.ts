@@ -201,7 +201,7 @@ const translation = {
   },
   automatic: {
     title: 'Автоматизована оркестрація застосунків',
-    description: 'Опишіть свій сценарій, Dify збере для вас застосунок.',
+    description: 'Опишіть свій сценарій, iEchor збере для вас застосунок.',
     intendedAudience: 'Хто є цільовою аудиторією?',
     intendedAudiencePlaceHolder: 'напр. Студент',
     solveProblem: 'Які проблеми вони сподіваються вирішити за допомогою AI?',
@@ -233,7 +233,7 @@ const translation = {
   completionSubTitle: 'Префікс команди', // Prefix Prompt
   promptTip: 'Запити керують відповідями ШІ, надаючи інструкції та обмеження. Вставте змінні, як-от {{input}}. Цей запит не буде видно користувачам.',
   formattingChangedTitle: 'Змінено форматування', // Formatting changed
-  formattingChangedText: 'Змінення форматування призведе до скидання області налагодження. Ви впевнені?', // Modifying the formatting will reset the debug area, are you sure?
+  formattingChangedText: 'Змінення форматування призведе до скидання області налагодження. Ви впевнені?', // Moiechoring the formatting will reset the debug area, are you sure?
   variableTitle: 'Змінні', // Variables
   variableTip: 'Користувачі заповнюють змінні у формі, автоматично замінюючи змінні в команді.',
   notSetVar: 'Змінні дозволяють користувачам вводити підказки або вступні зауваження під час заповнення форм. Ви можете спробувати ввести "{{input}}" у слова підказки.',
@@ -368,7 +368,7 @@ const translation = {
     top_kTip: 'Використовується для фільтрації фрагментів, найбільш схожих на запитання користувачів. Система також динамічно регулюватиме значення K у відповідності з max_tokens обраної моделі.',
     score_threshold: 'Поріг оцінки', // Score Threshold
     score_thresholdTip: 'Використовується для встановлення порогу схожості для фільтрації фрагментів.',
-    retrieveChangeTip: 'Зміна  режиму індексування та режиму отримання може вплинути на застосунки, пов’язані з цими знаннями.', // Modifying...
+    retrieveChangeTip: 'Зміна  режиму індексування та режиму отримання може вплинути на застосунки, пов’язані з цими знаннями.', // Moiechoring...
   },
   debugAsSingleModel: 'Налагодження як одна модель', // Debug as Single Model
   debugAsMultipleModel: 'Налагодження як багато моделей', // Debug as Multiple Models

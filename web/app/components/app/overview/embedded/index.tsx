@@ -30,7 +30,7 @@ const OPTION_MAP = {
   scripts: {
     getContent: (url: string, token: string, isTestEnv?: boolean) =>
       `<script>
- window.difyChatbotConfig = {
+ window.iechorChatbotConfig = {
   token: '${token}'${isTestEnv
   ? `,
   isDev: true`
@@ -89,7 +89,7 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken, className }: Props
   }
 
   const navigateToChromeUrl = () => {
-    window.open('https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf', '_blank')
+    window.open('https://chrome.google.com/webstore/detail/iechor-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf', '_blank')
   }
 
   useEffect(() => {

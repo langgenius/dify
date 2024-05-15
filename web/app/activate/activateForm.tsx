@@ -111,7 +111,7 @@ const ActivateForm = () => {
           </div>
           <div className="w-full mx-auto mt-6">
             <Button type='primary' className='w-full !fone-medium !text-sm'>
-              <a href="https://dify.ai">{t('login.explore')}</a>
+              <a href="https://iechor.com">{t('login.explore')}</a>
             </Button>
           </div>
         </div>
@@ -209,7 +209,7 @@ const ActivateForm = () => {
                 <Link
                   className='text-primary-600'
                   target='_blank' rel='noopener noreferrer'
-                  href={`https://docs.dify.ai/${language !== LanguagesSupported[1] ? 'user-agreement' : `v/${locale.toLowerCase()}/policies`}/open-source`}
+                  href={`https://docs.iechor.com/${language !== LanguagesSupported[1] ? 'user-agreement' : `v/${locale.toLowerCase()}/policies`}/open-source`}
                 >{t('login.license.link')}</Link>
               </div>
             </div>

@@ -1,7 +1,7 @@
 const translation = {
   list: {
     title: 'Documents',
-    desc: 'All files of the Knowledge are shown here, and the entire Knowledge can be linked to Dify citations or indexed via the Chat plugin.',
+    desc: 'All files of the Knowledge are shown here, and the entire Knowledge can be linked to iEchor citations or indexed via the Chat plugin.',
     addFile: 'add file',
     addPages: 'Add Pages',
     table: {
@@ -49,7 +49,7 @@ const translation = {
         tip: 'You can upload files, sync from the website, or from webb apps like Notion, GitHub, etc.',
       },
       sync: {
-        tip: 'Dify will periodically download files from your Notion and complete processing.',
+        tip: 'iEchor will periodically download files from your Notion and complete processing.',
       },
     },
     delete: {

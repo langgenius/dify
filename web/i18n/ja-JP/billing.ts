@@ -70,7 +70,7 @@ const translation = {
       title: '注釈クォータ制限',
       tooltip: '手動での編集と応答の注釈付けにより、アプリのカスタマイズ可能な高品質な質問応答機能が提供されます（チャットアプリのみ適用）。',
     },
-    ragAPIRequestTooltip: 'Difyのナレッジベース処理機能のみを呼び出すAPI呼び出しの数を指します。',
+    ragAPIRequestTooltip: 'iEchorのナレッジベース処理機能のみを呼び出すAPI呼び出しの数を指します。',
     receiptInfo: 'チームオーナーとチーム管理者のみが購読および請求情報を表示できます',
   },
   plans: {

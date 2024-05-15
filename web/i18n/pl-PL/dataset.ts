@@ -12,7 +12,7 @@ const translation = {
   datasetDeleted: 'Wiedza usunięta',
   datasetDeleteFailed: 'Nie udało się usunąć Wiedzy',
   didYouKnow: 'Czy wiedziałeś?',
-  intro1: 'Wiedzę można zintegrować z aplikacją Dify ',
+  intro1: 'Wiedzę można zintegrować z aplikacją iEchor ',
   intro2: 'jako kontekst',
   intro3: ',',
   intro4: 'lub ',

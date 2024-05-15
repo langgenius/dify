@@ -1,5 +1,5 @@
 export { default as DiagonalDividingLine } from './DiagonalDividingLine'
-export { default as Dify } from './Dify'
+export { default as iEchor } from './iEchor'
 export { default as Github } from './Github'
 export { default as Line3 } from './Line3'
 export { default as MessageChatSquare } from './MessageChatSquare'

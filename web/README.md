@@ -1,4 +1,4 @@
-# Dify Frontend
+# iEchor Frontend
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
@@ -13,7 +13,7 @@ npm install
 yarn install --frozen-lockfile
 ```
 
-Then, configure the environment variables. Create a file named `.env.local` in the current directory and copy the contents from `.env.example`. Modify the values of these environment variables according to your requirements:
+Then, configure the environment variables. Create a file named `.env.local` in the current directory and copy the contents from `.env.example`. Moiechor the values of these environment variables according to your requirements:
 ```
 # For production release, change this to PRODUCTION
 NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
@@ -21,11 +21,11 @@ NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
 NEXT_PUBLIC_EDITION=SELF_HOSTED
 # The base URL of console application, refers to the Console base URL of WEB service if console domain is
 # different from api or web app domain.
-# example: http://cloud.dify.ai/console/api
+# example: http://cloud.iechor.com/console/api
 NEXT_PUBLIC_API_PREFIX=http://localhost:5001/console/api
 # The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from
 # console or api domain.
-# example: http://udify.app/api
+# example: http://uiechor.app/api
 NEXT_PUBLIC_PUBLIC_API_PREFIX=http://localhost:5001/api
 
 # SENTRY
@@ -65,7 +65,7 @@ npm run start --port=3001 --host=0.0.0.0
 If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
 
 ## Documentation
-Visit https://docs.dify.ai/getting-started/readme to view the full documentation.
+Visit https://docs.iechor.com/getting-started/readme to view the full documentation.
 
 ## Community
-The Dify community can be found on [Discord community](https://discord.gg/5AEfbxcd9k), where you can ask questions, voice ideas, and share your projects.
+The iEchor community can be found on [Discord community](https://discord.gg/5AEfbxcd9k), where you can ask questions, voice ideas, and share your projects.

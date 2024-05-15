@@ -11,7 +11,7 @@ const translation = {
   datasetDeleted: 'Cunoștințe șterse',
   datasetDeleteFailed: 'Eșec la ștergerea Cunoștințelor',
   didYouKnow: 'Știați că?',
-  intro1: 'Cunoștințele pot fi integrate în aplicația Dify ',
+  intro1: 'Cunoștințele pot fi integrate în aplicația iEchor ',
   intro2: 'ca un context',
   intro3: ',',
   intro4: 'sau ele ',

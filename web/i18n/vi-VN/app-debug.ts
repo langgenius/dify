@@ -201,7 +201,7 @@ const translation = {
   },
   automatic: {
     title: 'Tự động hóa triển khai ứng dụng',
-    description: 'Mô tả tình huống của bạn, Dify sẽ tự động hóa một ứng dụng cho bạn.',
+    description: 'Mô tả tình huống của bạn, iEchor sẽ tự động hóa một ứng dụng cho bạn.',
     intendedAudience: 'Ai là đối tượng mục tiêu?',
     intendedAudiencePlaceHolder: 'ví dụ: Sinh viên',
     solveProblem: 'Họ hy vọng AI có thể giải quyết vấn đề gì cho họ?',

@@ -6,7 +6,7 @@ const translation = {
   },
   webapp: {
     title: 'Tùy chỉnh thương hiệu WebApp',
-    removeBrand: 'Xóa Được hỗ trợ bởi Dify',
+    removeBrand: 'Xóa Được hỗ trợ bởi iEchor',
     changeLogo: 'Thay đổi Hình ảnh Thương hiệu Được hỗ trợ bởi',
     changeLogoTip: 'Định dạng SVG hoặc PNG với kích thước tối thiểu là 40x40px',
   },

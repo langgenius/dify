@@ -1,6 +1,6 @@
 /** this file is used to embed the chatbot in a website
- * the difyChatbotConfig should be defined in the html file before this script is included
- * the difyChatbotConfig should contain the token of the chatbot
+ * the iechorChatbotConfig should be defined in the html file before this script is included
+ * the iechorChatbotConfig should contain the token of the chatbot
  * the token can be found in the chatbot settings page
  */
 
@@ -9,13 +9,13 @@
 document.body.onload = embedChatbot;
 
 async function embedChatbot () {
-  const difyChatbotConfig = window.difyChatbotConfig;
-  if (!difyChatbotConfig || !difyChatbotConfig.token) {
-    console.error('difyChatbotConfig is empty or token is not provided')
+  const iechorChatbotConfig = window.iechorChatbotConfig;
+  if (!iechorChatbotConfig || !iechorChatbotConfig.token) {
+    console.error('iechorChatbotConfig is empty or token is not provided')
     return;
   }
-  const isDev = !!difyChatbotConfig.isDev
-  const baseUrl = difyChatbotConfig.baseUrl || `https://${isDev ? 'dev.' : ''}udify.app`
+  const isDev = !!iechorChatbotConfig.isDev
+  const baseUrl = iechorChatbotConfig.baseUrl || `https://${isDev ? 'dev.' : ''}uiechor.app`
   const openIcon = `<svg
             id="openIcon"
             width="24"
@@ -52,18 +52,18 @@ async function embedChatbot () {
   function createIframe () {
     const iframe = document.createElement('iframe');
     iframe.allow = "fullscreen;microphone"
-    iframe.title = "dify chatbot bubble window"
-    iframe.id = 'dify-chatbot-bubble-window'
-    iframe.src = `${baseUrl}/chatbot/${difyChatbotConfig.token}`
+    iframe.title = "iechor chatbot bubble window"
+    iframe.id = 'iechor-chatbot-bubble-window'
+    iframe.src = `${baseUrl}/chatbot/${iechorChatbotConfig.token}`
     iframe.style.cssText = 'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; bottom: 5rem; right: 1rem; width: 24rem; max-width: calc(100vw - 2rem); height: 40rem; max-height: calc(100vh - 6rem);border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;'
     document.body.appendChild(iframe);
   }
 
-  const targetButton = document.getElementById('dify-chatbot-bubble-button')
+  const targetButton = document.getElementById('iechor-chatbot-bubble-button')
   if (!targetButton) {
     // create button
     const containerDiv = document.createElement("div");
-    containerDiv.id = 'dify-chatbot-bubble-button'
+    containerDiv.id = 'iechor-chatbot-bubble-button'
     containerDiv.style.cssText = `position: fixed; bottom: 1rem; right: 1rem; width: 50px; height: 50px; border-radius: 25px; background-color: #155EEF; box-shadow: rgba(0, 0, 0, 0.2) 0px 4px 8px 0px; cursor: pointer; z-index: 2147483647; transition: all 0.2s ease-in-out 0s; left: unset; transform: scale(1); :hover {transform: scale(1.1);}`;
     const displayDiv = document.createElement('div');
     displayDiv.style.cssText = 'display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; z-index: 2147483647;';
@@ -72,7 +72,7 @@ async function embedChatbot () {
     document.body.appendChild(containerDiv);
     // add click event to control iframe display
     containerDiv.addEventListener('click', function () {
-      const targetIframe = document.getElementById('dify-chatbot-bubble-window')
+      const targetIframe = document.getElementById('iechor-chatbot-bubble-window')
       if (!targetIframe) {
         createIframe()
         displayDiv.innerHTML = closeIcon

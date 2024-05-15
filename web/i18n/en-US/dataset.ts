@@ -11,7 +11,7 @@ const translation = {
   datasetDeleted: 'Knowledge deleted',
   datasetDeleteFailed: 'Failed to delete Knowledge',
   didYouKnow: 'Did you know?',
-  intro1: 'The Knowledge can be integrated into the Dify application ',
+  intro1: 'The Knowledge can be integrated into the iEchor application ',
   intro2: 'as a context',
   intro3: ',',
   intro4: 'or it ',

@@ -1,12 +1,11 @@
 # base image
 FROM node:20.11-alpine3.19 AS base
-LABEL maintainer="takatost@gmail.com"
+LABEL maintainer="iechor@iechor.com"
 
 # if you located in China, you can use aliyun mirror to speed up
 # RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 RUN apk add --no-cache tzdata
-
 
 # install packages
 FROM base as packages
@@ -29,7 +28,6 @@ COPY . .
 
 RUN yarn build
 
-
 # production stage
 FROM base as production
 
@@ -42,18 +40,15 @@ ENV PORT 3000
 
 # set timezone
 ENV TZ UTC
-RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime \
-    && echo ${TZ} > /etc/timezone
+RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime && echo ${TZ} >/etc/timezone
 
 # global runtime packages
-RUN yarn global add pm2 \
-    && yarn cache clean
+RUN yarn global add pm2 && yarn cache clean
 
 WORKDIR /app/web
 COPY --from=builder /app/web/public ./public
 COPY --from=builder /app/web/.next/standalone ./
 COPY --from=builder /app/web/.next/static ./.next/static
-
 
 COPY docker/pm2.json ./pm2.json
 COPY docker/entrypoint.sh ./entrypoint.sh

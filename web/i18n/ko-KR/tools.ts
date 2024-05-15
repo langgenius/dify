@@ -7,7 +7,7 @@ const translation = {
     custom: '커스텀',
   },
   contribute: {
-    line1: '저는 Dify에',
+    line1: '저는 iEchor에',
     line2: '도구를 기여하는데 관심이 있습니다.',
     viewGuide: '가이드 보기',
   },

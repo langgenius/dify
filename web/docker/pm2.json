@@ -1,7 +1,7 @@
 {
   "apps": [
     {
-      "name": "dify-web",
+      "name": "iechor-web",
       "script": "/app/web/server.js",
       "cwd": "/app/web",
       "exec_mode": "cluster",

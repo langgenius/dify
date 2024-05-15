@@ -9,7 +9,7 @@ const translation = {
     advanced: 'Expert Mode',
     switchBack: 'Switch back',
     advancedWarning: {
-      title: 'You have switched to Expert Mode, and once you modify the PROMPT, you CANNOT return to the basic mode.',
+      title: 'You have switched to Expert Mode, and once you moiechor the PROMPT, you CANNOT return to the basic mode.',
       description: 'In Expert Mode, you can edit whole PROMPT.',
       learnMore: 'Learn more',
       ok: 'OK',
@@ -201,7 +201,7 @@ const translation = {
   },
   automatic: {
     title: 'Automated application orchestration',
-    description: 'Describe your scenario, Dify will orchestrate an application for you.',
+    description: 'Describe your scenario, iEchor will orchestrate an application for you.',
     intendedAudience: 'Who is the intended audience?',
     intendedAudiencePlaceHolder: 'e.g. Student',
     solveProblem: 'What problems do they hope AI can solve for them?',
@@ -238,7 +238,7 @@ const translation = {
     'Prompts guide AI responses with instructions and constraints. Insert variables like {{input}}. This prompt won\'t be visible to users.',
   formattingChangedTitle: 'Formatting changed',
   formattingChangedText:
-    'Modifying the formatting will reset the debug area, are you sure?',
+    'Moiechoring the formatting will reset the debug area, are you sure?',
   variableTitle: 'Variables',
   variableTip:
     'Users fill variables in a form, automatically replacing variables in the prompt.',
@@ -377,7 +377,7 @@ const translation = {
     top_kTip: 'Used to filter chunks that are most similar to user questions. The system will also dynamically adjust the value of Top K, according to max_tokens of the selected model.',
     score_threshold: 'Score Threshold',
     score_thresholdTip: 'Used to set the similarity threshold for chunks filtering.',
-    retrieveChangeTip: 'Modifying the index mode and retrieval mode may affect applications associated with this Knowledge.',
+    retrieveChangeTip: 'Moiechoring the index mode and retrieval mode may affect applications associated with this Knowledge.',
   },
   debugAsSingleModel: 'Debug as Single Model',
   debugAsMultipleModel: 'Debug as Multiple Models',

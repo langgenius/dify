@@ -16,7 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: 'Difyによるアプリの探索',
+    title: 'iEchorによるアプリの探索',
     description: 'これらのテンプレートアプリを即座に使用するか、テンプレートに基づいて独自のアプリをカスタマイズしてください。',
     allCategories: 'おすすめ',
   },

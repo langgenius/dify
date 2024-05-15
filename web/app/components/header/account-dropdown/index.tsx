@@ -107,7 +107,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                     <Menu.Item>
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
-                        href='https://github.com/langgenius/dify/discussions/categories/feedbacks'
+                        href='https://github.com/iechor/iechor/discussions/categories/feedbacks'
                         target='_blank' rel='noopener noreferrer'>
                         <div>{t('common.userProfile.roadmapAndFeedback')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
@@ -126,7 +126,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
                         href={
-                          locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
+                          locale !== LanguagesSupported[1] ? 'https://docs.iechor.com/' : `https://docs.iechor.com/v/${locale.toLowerCase()}/`
                         }
                         target='_blank' rel='noopener noreferrer'>
                         <div>{t('common.userProfile.helpCenter')}</div>

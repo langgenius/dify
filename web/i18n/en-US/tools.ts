@@ -8,7 +8,7 @@ const translation = {
   },
   contribute: {
     line1: 'I\'m interested in ',
-    line2: 'contributing tools to Dify.',
+    line2: 'contributing tools to iEchor.',
     viewGuide: 'View the guide',
   },
   author: 'By',

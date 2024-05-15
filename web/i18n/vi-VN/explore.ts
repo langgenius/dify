@@ -16,7 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: 'Khám phá Ứng dụng bởi Dify',
+    title: 'Khám phá Ứng dụng bởi iEchor',
     description: 'Sử dụng ngay các ứng dụng mẫu này hoặc tùy chỉnh các ứng dụng của bạn dựa trên các mẫu.',
     allCategories: 'Tất cả danh mục',
   },

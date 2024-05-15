@@ -77,7 +77,7 @@ const Main: FC<IMainProps> = ({
       if (canReplaceLogo)
         document.title = `${siteInfo.title}`
       else
-        document.title = `${siteInfo.title} - Powered by Dify`
+        document.title = `${siteInfo.title} - Powered by iEchor`
     }
   }, [siteInfo?.title, canReplaceLogo])
 
@@ -710,7 +710,7 @@ const Main: FC<IMainProps> = ({
     setIsShowSuggestion(false)
   }
 
-  const difyIcon = (
+  const iechorIcon = (
     <LogoHeader />
   )
 
@@ -728,7 +728,7 @@ const Main: FC<IMainProps> = ({
       <Header
         title={siteInfo.title}
         icon=''
-        customerIcon={difyIcon}
+        customerIcon={iechorIcon}
         icon_background={siteInfo.icon_background || ''}
         isEmbedScene={true}
         isMobile={isMobile}

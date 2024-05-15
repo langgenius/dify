@@ -72,7 +72,7 @@ const translation = {
       title: 'Annotation Quota Limits',
       tooltip: 'Manual editing and annotation of responses provides customizable high-quality question-answering abilities for apps. (Applicable only in chat apps)',
     },
-    ragAPIRequestTooltip: 'Refers to the number of API calls invoking only the knowledge base processing capabilities of Dify.',
+    ragAPIRequestTooltip: 'Refers to the number of API calls invoking only the knowledge base processing capabilities of iEchor.',
     receiptInfo: 'Only team owner and team admin can subscribe and view billing information',
   },
   plans: {

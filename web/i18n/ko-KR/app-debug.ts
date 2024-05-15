@@ -201,7 +201,7 @@ const translation = {
   },
   automatic: {
     title: '자동 어플리케이션 오케스트레이션',
-    description: '시나리오를 설명하세요. Dify가 어플리케이션을 자동으로 오케스트레이션 합니다.',
+    description: '시나리오를 설명하세요. iEchor가 어플리케이션을 자동으로 오케스트레이션 합니다.',
     intendedAudience: '누가 대상이 되는지 설명하세요.',
     intendedAudiencePlaceHolder: '예: 학생',
     solveProblem: '어떤 문제를 AI가 해결할 것으로 예상하나요?',

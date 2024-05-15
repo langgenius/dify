@@ -39,13 +39,13 @@ export default function AccountAbout({
           <div className='mb-3 text-center text-xs font-normal text-gray-500'>Version {langeniusVersionInfo?.current_version}</div>
           <div className='mb-4 text-center text-xs font-normal text-gray-700'>
             <div>© 2023 LangGenius, Inc., Contributors.</div>
-            <div className='text-[#1C64F2]'>
+            <div className='text-[#c84349]'>
               {
                 IS_CE_EDITION
-                  ? <Link href={'https://github.com/langgenius/dify/blob/main/LICENSE'} target='_blank' rel='noopener noreferrer'>Open Source License</Link>
+                  ? <Link href={'https://github.com/iechor/iechor/blob/main/LICENSE'} target='_blank' rel='noopener noreferrer'>Open Source License</Link>
                   : <>
-                    <Link href='https://dify.ai/privacy' target='_blank' rel='noopener noreferrer'>Privacy Policy</Link>,
-                    <Link href='https://dify.ai/terms' target='_blank' rel='noopener noreferrer'>Terms of Service</Link>
+                    <Link href='https://iechor.com/privacy' target='_blank' rel='noopener noreferrer'>Privacy Policy</Link>,
+                    <Link href='https://iechor.com/terms' target='_blank' rel='noopener noreferrer'>Terms of Service</Link>
                   </>
               }
             </div>
@@ -63,7 +63,7 @@ export default function AccountAbout({
           <div className='flex items-center'>
             <Link
               className={classNames(buttonClassName, 'mr-2')}
-              href={'https://github.com/langgenius/dify/releases'}
+              href={'https://github.com/iechor/iechor/releases'}
               target='_blank' rel='noopener noreferrer'
             >
               {t('common.about.changeLog')}

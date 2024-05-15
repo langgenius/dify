@@ -8,7 +8,7 @@ const translation = {
   },
   contribute: {
     line1: 'Interesuje mnie ',
-    line2: 'współtworzenie narzędzi dla Dify.',
+    line2: 'współtworzenie narzędzi dla iEchor.',
     viewGuide: 'Zobacz przewodnik',
   },
   author: 'Przez',

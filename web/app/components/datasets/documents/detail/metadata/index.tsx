@@ -18,7 +18,7 @@ import { SimpleSelect } from '@/app/components/base/select'
 import Loading from '@/app/components/base/loading'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
 import { asyncRunSafe, getTextWidthWithCanvas } from '@/utils'
-import { modifyDocMetadata } from '@/service/datasets'
+import { moiechorDocMetadata } from '@/service/datasets'
 import type { CommonResponse } from '@/models/common'
 import type { DocType, FullDocumentDetail } from '@/models/datasets'
 import { CUSTOMIZABLE_DOC_TYPES } from '@/models/datasets'
@@ -288,7 +288,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
 
   const onSave = async () => {
     setSaveLoading(true)
-    const [e] = await asyncRunSafe<CommonResponse>(modifyDocMetadata({
+    const [e] = await asyncRunSafe<CommonResponse>(moiechorDocMetadata({
       datasetId,
       documentId,
       body: {

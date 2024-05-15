@@ -11,7 +11,7 @@ const translation = {
   datasetDeleted: 'Conhecimento excluído',
   datasetDeleteFailed: 'Falha ao excluir o Conhecimento',
   didYouKnow: 'Você sabia?',
-  intro1: 'O Conhecimento pode ser integrado ao aplicativo Dify ',
+  intro1: 'O Conhecimento pode ser integrado ao aplicativo iEchor ',
   intro2: 'como um contexto',
   intro3: ',',
   intro4: 'ou pode ser criado',

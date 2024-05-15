@@ -7,7 +7,7 @@ const translation = {
     nameError: 'Tên không thể trống',
     desc: 'Mô tả Kiến thức',
     descInfo: 'Vui lòng viết mô tả văn bản rõ ràng để chỉ rõ nội dung của Kiến thức. Mô tả này sẽ được sử dụng làm cơ sở cho việc kết hợp khi lựa chọn từ nhiều Kiến thức cho sự suy luận.',
-    descPlaceholder: 'Miêu tả những gì có trong Kiến thức này. Một mô tả chi tiết cho phép AI truy cập nội dung của Kiến thức một cách kịp thời. Nếu trống, Dify sẽ sử dụng chiến lược hit mặc định.',
+    descPlaceholder: 'Miêu tả những gì có trong Kiến thức này. Một mô tả chi tiết cho phép AI truy cập nội dung của Kiến thức một cách kịp thời. Nếu trống, iEchor sẽ sử dụng chiến lược hit mặc định.',
     descWrite: 'Tìm hiểu cách viết mô tả Kiến thức tốt.',
     permissions: 'Quyền hạn',
     permissionsOnlyMe: 'Chỉ mình tôi',

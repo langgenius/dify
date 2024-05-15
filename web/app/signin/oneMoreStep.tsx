@@ -94,7 +94,7 @@ const OneMoreStep = () => {
                   <div className='w-[256px] text-xs font-medium'>
                     <div className='font-medium'>{t('login.sendUsMail')}</div>
                     <div className='text-xs font-medium cursor-pointer text-primary-600'>
-                      <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
+                      <a href="mailto:request-invitation@iechor.ai">request-invitation@iechor.ai</a>
                     </div>
                   </div>
                 }
@@ -161,7 +161,7 @@ const OneMoreStep = () => {
             <Link
               className='text-primary-600'
               target='_blank' rel='noopener noreferrer'
-              href={'https://docs.dify.ai/user-agreement/open-source'}
+              href={'https://docs.iechor.com/user-agreement/open-source'}
             >{t('login.license.link')}</Link>
           </div>
         </div>

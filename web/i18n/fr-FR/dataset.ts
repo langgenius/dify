@@ -11,7 +11,7 @@ const translation = {
   datasetDeleted: 'Connaissance supprimée',
   datasetDeleteFailed: 'Échec de la suppression de la Connaissance',
   didYouKnow: 'Saviez-vous ?',
-  intro1: 'La Connaissance peut être intégrée dans l\'application Dify',
+  intro1: 'La Connaissance peut être intégrée dans l\'application iEchor',
   intro2: 'comme un contexte',
   intro3: ',',
   intro4: 'ou ça ',

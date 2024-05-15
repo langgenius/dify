@@ -12,7 +12,7 @@ import docStyle from '../documents/detail/completed/style.module.css'
 import Textarea from './textarea'
 import s from './style.module.css'
 import HitDetail from './hit-detail'
-import ModifyRetrievalModal from './modify-retrieval-modal'
+import MoiechorRetrievalModal from './moiechor-retrieval-modal'
 import type { HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
@@ -71,7 +71,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
 
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
-  const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
+  const [isShowMoiechorRetrievalModal, setIsShowMoiechorRetrievalModal] = useState(false)
   const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
 
   useEffect(() => {
@@ -94,7 +94,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           setLoading={setSubmitLoading}
           setText={setText}
           text={text}
-          onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
+          onClickRetrievalMethod={() => setIsShowMoiechorRetrievalModal(true)}
           retrievalConfig={retrievalConfig}
           isEconomy={currentDataset?.indexing_technique === 'economy'}
         />
@@ -208,15 +208,15 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           }}
         />}
       </Modal>
-      <Drawer isOpen={isShowModifyRetrievalModal} onClose={() => setIsShowModifyRetrievalModal(false)} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
-        <ModifyRetrievalModal
+      <Drawer isOpen={isShowMoiechorRetrievalModal} onClose={() => setIsShowMoiechorRetrievalModal(false)} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
+        <MoiechorRetrievalModal
           indexMethod={currentDataset?.indexing_technique || ''}
           value={retrievalConfig}
-          isShow={isShowModifyRetrievalModal}
-          onHide={() => setIsShowModifyRetrievalModal(false)}
+          isShow={isShowMoiechorRetrievalModal}
+          onHide={() => setIsShowMoiechorRetrievalModal(false)}
           onSave={(value) => {
             setRetrievalConfig(value)
-            setIsShowModifyRetrievalModal(false)
+            setIsShowMoiechorRetrievalModal(false)
           }}
         />
       </Drawer>
