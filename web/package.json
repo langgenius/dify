@@ -123,11 +123,9 @@
     "uglify-js": "^3.17.4"
   },
   "lint-staged": {
-    "**/*.js?(x)": [
-      "eslint --fix"
-    ],
-    "**/*.ts?(x)": [
-      "eslint --fix"
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --ignore-path ./.gitignore --write "
     ]
   },
   "engines": {
