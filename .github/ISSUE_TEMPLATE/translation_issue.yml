@@ -1,5 +1,6 @@
 name: "🌐 Localization/Translation issue"
 description: Report incorrect translations. [please use English :）]
+title: '🌐 [Localization/Translation]'
 labels:
   - translation
 body:

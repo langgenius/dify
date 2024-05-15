@@ -1,5 +1,6 @@
 name: "📚 Documentation Issue"
 description: Report issues in our documentation
+title: "📚 [Documentation]: ""
 labels:
   - documentation
 body:
