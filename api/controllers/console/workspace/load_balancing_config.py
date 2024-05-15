@@ -1,4 +1,4 @@
-from flask_restful import Resource, marshal_with, reqparse
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console import api
@@ -6,7 +6,6 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from fields.load_balancing_config import load_balancing_config_list_fields
 from libs.login import current_user, login_required
 from models.account import TenantAccountRole
 from services.model_load_balancing_service import ModelLoadBalancingService
@@ -67,7 +66,6 @@ class LoadBalancingConfigListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(load_balancing_config_list_fields)
     def get(self, provider: str):
         tenant_id = current_user.current_tenant_id
 

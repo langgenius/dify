@@ -44,7 +44,7 @@ def lb_model_manager():
 
         return False
 
-    lb_model_manager.is_cooldown = MagicMock(side_effect=is_cooldown)
+    lb_model_manager.in_cooldown = MagicMock(side_effect=is_cooldown)
 
     return lb_model_manager
 
@@ -56,9 +56,9 @@ def test_lb_model_manager_fetch_next(mocker, lb_model_manager):
     config2 = lb_model_manager._load_balancing_configs[1]
     config3 = lb_model_manager._load_balancing_configs[2]
 
-    assert lb_model_manager.is_cooldown(config1) is True
-    assert lb_model_manager.is_cooldown(config2) is False
-    assert lb_model_manager.is_cooldown(config3) is False
+    assert lb_model_manager.in_cooldown(config1) is True
+    assert lb_model_manager.in_cooldown(config2) is False
+    assert lb_model_manager.in_cooldown(config3) is False
 
     start_index = 0
     def incr(key):
