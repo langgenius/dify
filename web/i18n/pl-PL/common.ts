@@ -175,6 +175,8 @@ const translation = {
     adminTip: 'Może tworzyć aplikacje i zarządzać ustawieniami zespołu',
     normal: 'Normalny',
     normalTip: 'Może tylko korzystać z aplikacji, nie może tworzyć aplikacji',
+    editor: 'Edytor',
+    editorTip: 'Może tworzyć i edytować aplikacje, ale nie zarządzać ustawieniami zespołu',
     inviteTeamMember: 'Dodaj członka zespołu',
     inviteTeamMemberTip:
       'Mogą uzyskać bezpośredni dostęp do danych Twojego zespołu po zalogowaniu.',
@@ -193,6 +195,7 @@ const translation = {
     removeFromTeamTip: 'Usunie dostęp do zespołu',
     setAdmin: 'Ustaw jako administratora',
     setMember: 'Ustaw jako zwykłego członka',
+    setEditor: 'Ustaw jako edytora',
     disinvite: 'Anuluj zaproszenie',
     deleteMember: 'Usuń członka',
     you: '(Ty)',

@@ -26,7 +26,7 @@ const navClassName = `
 `
 
 const Header = () => {
-  const { isCurrentWorkspaceManager, langeniusVersionInfo } = useAppContext()
+  const { isCurrentWorkspaceEditor, langeniusVersionInfo } = useAppContext()
   const [showUpgradePanel, setShowUpgradePanel] = useState(false)
   const upgradeBtnRef = useRef<HTMLElement>(null)
   useClickAway(() => {
@@ -71,7 +71,7 @@ const Header = () => {
         <div className='flex items-center'>
           <ExploreNav className={navClassName} />
           <AppNav />
-          {isCurrentWorkspaceManager && <DatasetNav />}
+          {isCurrentWorkspaceEditor && <DatasetNav />}
           <ToolsNav className={navClassName} />
         </div>
       )}
@@ -98,7 +98,7 @@ const Header = () => {
         <div className='w-full flex flex-col p-2 gap-y-1'>
           <ExploreNav className={navClassName} />
           <AppNav />
-          {isCurrentWorkspaceManager && <DatasetNav />}
+          {isCurrentWorkspaceEditor && <DatasetNav />}
           <ToolsNav className={navClassName} />
         </div>
       )}

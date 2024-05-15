@@ -42,6 +42,9 @@ class DefaultModelApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+        
         parser = reqparse.RequestParser()
         parser.add_argument('model_settings', type=list, required=True, nullable=False, location='json')
         args = parser.parse_args()
@@ -95,7 +98,7 @@ class ModelProviderModelApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        if not TenantAccountRole.is_privileged_role(current_user.current_tenant.current_role):
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         tenant_id = current_user.current_tenant_id
@@ -126,7 +129,7 @@ class ModelProviderModelApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, provider: str):
-        if not TenantAccountRole.is_privileged_role(current_user.current_tenant.current_role):
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         tenant_id = current_user.current_tenant_id

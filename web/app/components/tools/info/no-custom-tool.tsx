@@ -4,6 +4,8 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Icon3Dots } from '../../base/icons/src/public/other'
 import { Tools } from '@/app/components/base/icons/src/public/header-nav/tools'
+import { useAppContext } from '@/context/app-context'
+
 type Props = {
   onCreateTool: () => void
 }
@@ -12,6 +14,7 @@ const NoCustomTool: FC<Props> = ({
   onCreateTool,
 }) => {
   const { t } = useTranslation()
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   return (
     <div>
@@ -25,12 +28,14 @@ const NoCustomTool: FC<Props> = ({
         <div className='mt-1 leading-[18px] text-xs font-normal text-gray-500'>
           {t('tools.noCustomTool.content')}
         </div>
-        <div
-          className='mt-2 leading-[18px] text-xs font-medium text-[#155EEF] uppercase cursor-pointer'
-          onClick={onCreateTool}
-        >
-          {t('tools.noCustomTool.createTool')}
-        </div>
+        {isCurrentWorkspaceManager && (
+          <div
+            className='mt-2 leading-[18px] text-xs font-medium text-[#155EEF] uppercase cursor-pointer'
+            onClick={onCreateTool}
+          >
+            {t('tools.noCustomTool.createTool')}
+          </div>
+        )}
       </div>
     </div>
   )

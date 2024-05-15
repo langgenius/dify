@@ -44,6 +44,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { useToastContext } from '@/app/components/base/toast'
 import ConfirmCommon from '@/app/components/base/confirm/common'
+import { useAppContext } from '@/context/app-context'
 
 type ModelModalProps = {
   provider: ModelProvider
@@ -67,7 +68,8 @@ const ModelModal: FC<ModelModalProps> = ({
     providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
     currentCustomConfigrationModelFixedFields,
   )
-  const isEditMode = !!formSchemasValue
+  const { isCurrentWorkspaceManager } = useAppContext()
+  const isEditMode = !!formSchemasValue && isCurrentWorkspaceManager
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const language = useLanguage()
@@ -278,7 +280,7 @@ const ModelModal: FC<ModelModalProps> = ({
                     className='h-9 text-sm font-medium'
                     type='primary'
                     onClick={handleSave}
-                    disabled={loading || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)}
+                    disabled={loading || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined) || !isCurrentWorkspaceManager}
                   >
                     {t('common.operation.save')}
                   </Button>

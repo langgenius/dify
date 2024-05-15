@@ -20,6 +20,7 @@ import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSlider from '@/app/components/base/tab-slider'
 import { createCustomCollection, fetchCollectionList as doFetchCollectionList, fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList } from '@/service/tools'
 import type { AgentTool } from '@/types/app'
+import { useAppContext } from '@/context/app-context'
 
 type Props = {
   loc: LOC
@@ -42,6 +43,7 @@ const Tools: FC<Props> = ({
   const [currCollectionIndex, setCurrCollectionIndex] = useState<number | null>(null)
 
   const [isDetailLoading, setIsDetailLoading] = useState(false)
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   const fetchCollectionList = async () => {
     const list = await doFetchCollectionList()
@@ -158,7 +160,7 @@ const Tools: FC<Props> = ({
       <div className='flex h-full'>
         {/* sidebar */}
         <div className={cn(isInToolsPage ? 'sm:w-[216px] px-4' : 'sm:w-[256px] px-3', 'flex flex-col  w-16 shrink-0 pb-2')}>
-          {isInToolsPage && (
+          {isInToolsPage && isCurrentWorkspaceManager && (
             <Button className='mt-6 flex items-center !h-8 pl-4' type='primary' onClick={handleCreateToolCollection}>
               <Plus className='w-4 h-4 mr-1' />
               <div className='leading-[18px] text-[13px] font-medium truncate'>{t('tools.createCustomTool')}</div>
