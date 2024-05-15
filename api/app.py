@@ -1,5 +1,7 @@
 import os
 
+from extensions.ext_redis import redis_client
+
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     from gevent import monkey
 
@@ -264,6 +266,37 @@ def pool_stat():
         'overflow_connections': engine.pool.overflow(),
         'connection_timeout': engine.pool.timeout(),
         'recycle_time': db.engine.pool._recycle
+    }
+
+
+@app.route('/test')
+def test():
+    max_index = 7
+    cache_key = "model_lb_index:{}:{}:{}:{}".format(
+        'a',
+        'b',
+        'c',
+        'd'
+    )
+    result = redis_client.incr(cache_key)
+    if result >= 20:
+        current_index = 1
+        redis_client.set(cache_key, current_index)
+    else:
+        current_index = result
+
+    redis_client.expire(cache_key, 3600)
+    if current_index >= max_index:
+        current_index = current_index % max_index + 1
+
+    real_index = current_index - 1
+    if real_index > max_index:
+        real_index = 0
+
+    return {
+        'original_index': result,
+        'current_index': current_index,
+        'real_index': real_index
     }
 
 
