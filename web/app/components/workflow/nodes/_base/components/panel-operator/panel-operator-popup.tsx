@@ -108,7 +108,7 @@ const PanelOperatorPopup = ({
         )
       }
       {
-        data.type !== BlockEnum.Start && data.type !== BlockEnum.End && !nodesReadOnly && (
+        data.type !== BlockEnum.Start && !nodesReadOnly && (
           <>
             <div className='p-1'>
               <div
