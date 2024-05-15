@@ -110,7 +110,7 @@ class ApiToolManageService:
     @staticmethod
     def create_api_tool_provider(
         user_id: str, tenant_id: str, provider_name: str, icon: dict, credentials: dict,
-        schema_type: str, schema: str, privacy_policy: str
+        schema_type: str, schema: str, privacy_policy: str, labels: list[str]
     ):
         """
             create api tool provider
@@ -167,6 +167,9 @@ class ApiToolManageService:
 
         db.session.add(db_provider)
         db.session.commit()
+
+        # update labels
+        ToolLabelManager.update_tool_labels(provider_controller, labels)
 
         return { 'result': 'success' }
     
@@ -226,7 +229,7 @@ class ApiToolManageService:
     @staticmethod
     def update_api_tool_provider(
         user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: dict, credentials: dict, 
-        schema_type: str, schema: str, privacy_policy: str
+        schema_type: str, schema: str, privacy_policy: str, labels: list[str]
     ):
         """
             update api tool provider
@@ -286,6 +289,9 @@ class ApiToolManageService:
 
         # delete cache
         tool_configuration.delete_tool_credentials_cache()
+
+        # update labels
+        ToolLabelManager.update_tool_labels(provider_controller, labels)
 
         return { 'result': 'success' }
     

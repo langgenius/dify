@@ -195,6 +195,7 @@ class ToolApiProviderUpdateApi(Resource):
         parser.add_argument('original_provider', type=str, required=True, nullable=False, location='json')
         parser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('privacy_policy', type=str, required=True, nullable=True, location='json')
+        parser.add_argument('labels', type=list[str], required=False, nullable=True, location='json')
 
         args = parser.parse_args()
 
@@ -208,6 +209,7 @@ class ToolApiProviderUpdateApi(Resource):
             args['schema_type'],
             args['schema'],
             args['privacy_policy'],
+            args.get('labels', []),
         )
 
 class ToolApiProviderDeleteApi(Resource):
@@ -335,6 +337,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
             args['description'],
             args['parameters'],
             args['privacy_policy'],
+            args.get('labels', []),
         )
 
 class ToolWorkflowProviderDeleteApi(Resource):

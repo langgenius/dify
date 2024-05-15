@@ -20,7 +20,7 @@ class WorkflowToolManageService:
     @classmethod
     def update_workflow_tool(cls, user_id: str, tenant_id: str, workflow_app_id: str, 
                              name: str, icon: dict, description: str, 
-                             parameters: list[dict], privacy_policy: str = '') -> dict:
+                             parameters: list[dict], privacy_policy: str = '', labels: list[str] = None) -> dict:
         """
         Update a workflow tool.
         :param user_id: the user id
@@ -78,6 +78,12 @@ class WorkflowToolManageService:
 
         db.session.add(workflow_tool_provider)
         db.session.commit()
+
+        if labels is not None:
+            ToolLabelManager.update_tool_labels(
+                ToolTransformService.workflow_provider_to_controller(workflow_tool_provider),
+                labels
+            )
 
         return {
             'result': 'success'
