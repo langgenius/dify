@@ -1,8 +1,10 @@
 import {
   memo,
+  useCallback,
   useState,
 } from 'react'
 import cn from 'classnames'
+import type { VariableAssignerNodeType } from '../../types'
 import AddVariablePopup from './add-variable-popup'
 import {
   PortalToFollowElem,
@@ -10,14 +12,21 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
+import type { Node } from '@/app/components/workflow/types'
 
-type AddVariableProps = {
+export type AddVariableProps = {
   nodeId: string
+  data: Node['data'] & VariableAssignerNodeType
 }
 const AddVariable = ({
   nodeId,
+  data,
 }: AddVariableProps) => {
   const [open, setOpen] = useState(false)
+
+  const handleSelectVariable = useCallback(() => {
+    setOpen(false)
+  }, [])
 
   return (
     <div className={cn(
@@ -46,7 +55,11 @@ const AddVariable = ({
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>
-          <AddVariablePopup nodeId={nodeId} />
+          <AddVariablePopup
+            nodeId={nodeId}
+            data={data}
+            onSelect={handleSelectVariable}
+          />
         </PortalToFollowElemContent>
       </PortalToFollowElem>
     </div>

@@ -25,9 +25,10 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   const { t } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
   const { id, data } = props
-  const { variables: originVariables, output_type } = data
+  const { variables: originVariables } = data
   const { getTreeLeafNodes } = useWorkflow()
   const { handleNodeDataUpdate } = useNodeDataUpdate()
+  const connected = !!data._connectedTargetHandleIds?.includes('target')
 
   const availableNodes = getTreeLeafNodes(id)
   const variables = originVariables.filter(item => item.length > 0)
@@ -41,13 +42,19 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
       {
         data._showVariablePicker && (
           <div className='absolute right-6 top-0 z-[3]'>
-            <AddVariablePopup nodeId={id} />
+            <AddVariablePopup
+              nodeId={id}
+              data={data}
+            />
           </div>
         )
       }
       <div className='relative flex items-center mb-0.5 px-3 h-4 text-xs font-medium text-gray-500 uppercase'>
-        <NodeHandle />
-        <AddVariable nodeId={id} />
+        <NodeHandle connected={connected} />
+        <AddVariable
+          nodeId={id}
+          data={data}
+        />
         {t(`${i18nPrefix}.title`)}
       </div>
       {
@@ -61,7 +68,7 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
       }
       {variables.length > 0 && (
         <>
-          <div className='space-y-0.5'>
+          <div className='space-y-0.5 px-3'>
             {variables.map((item, index) => {
               const node = availableNodes.find(node => node.id === item[0])
               const varName = item[item.length - 1]
@@ -82,20 +89,11 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
                     <Variable02 className='w-3.5 h-3.5' />
                     <div className='max-w-[75px] truncate ml-0.5 text-xs font-medium' title={varName}>{varName}</div>
                   </div>
-                  {/* <div className='ml-0.5 text-xs font-normal text-gray-500'>{output_type}</div> */}
                 </div>
               )
             },
 
             )}
-          </div>
-          <div className='mt-2 flex items-center h-6 justify-between bg-gray-100 rounded-md  px-1 space-x-1 text-xs font-normal text-gray-700'>
-            <div className='text-xs font-medium text-gray-500 uppercase'>
-              {t(`${i18nPrefix}.outputType`)}
-            </div>
-            <div className='text-xs font-normal text-gray-700'>
-              {t(`${i18nPrefix}.type.${output_type}`)}
-            </div>
           </div>
         </>
       )
