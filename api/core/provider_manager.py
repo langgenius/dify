@@ -917,7 +917,7 @@ class ProviderManager:
                     model=provider_model_setting.model_name,
                     model_type=ModelType.value_of(provider_model_setting.model_type),
                     enabled=provider_model_setting.enabled,
-                    load_balancing_configs=load_balancing_configs
+                    load_balancing_configs=load_balancing_configs if len(load_balancing_configs) > 1 else []
                 )
             )
 

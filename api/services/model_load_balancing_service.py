@@ -7,6 +7,7 @@ from typing import Optional
 from core.entities.provider_configuration import ProviderConfiguration
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
+from core.model_manager import LBModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
@@ -74,7 +75,7 @@ class ModelLoadBalancingService:
         )
 
     def get_load_balancing_configs(self, tenant_id: str, provider: str, model: str, model_type: str) \
-            -> list[LoadBalancingModelConfig]:
+            -> list[dict]:
         """
         Get load balancing configurations.
         :param tenant_id: workspace id
@@ -117,7 +118,26 @@ class ModelLoadBalancingService:
             # prepend the inherit configuration
             load_balancing_configs.insert(0, inherit_config)
 
-        return load_balancing_configs
+        # fetch status and ttl for each config
+        datas = []
+        for load_balancing_config in load_balancing_configs:
+            in_cooldown, ttl = LBModelManager.get_config_in_cooldown_and_ttl(
+                tenant_id=tenant_id,
+                provider=provider,
+                model=model,
+                model_type=model_type,
+                config_id=load_balancing_config.id
+            )
+
+            datas.append({
+                'id': load_balancing_config.id,
+                'name': load_balancing_config.name,
+                'enabled': load_balancing_config.enabled,
+                'in_cooldown': in_cooldown,
+                'ttl': ttl
+            })
+
+        return datas
 
     def get_load_balancing_config(self, tenant_id: str, provider: str, model: str, model_type: str, config_id: str) \
             -> Optional[dict]:

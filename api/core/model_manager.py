@@ -442,8 +442,8 @@ class LBModelManager:
                 redis_client.set(cache_key, current_index)
 
             redis_client.expire(cache_key, 3600)
-            if current_index >= max_index:
-                current_index = current_index % max_index + 1
+            if current_index > max_index:
+                current_index = current_index % max_index
 
             real_index = current_index - 1
             if real_index > max_index:
@@ -451,7 +451,7 @@ class LBModelManager:
 
             config = self._load_balancing_configs[real_index]
 
-            if self.is_cooldown(config):
+            if self.in_cooldown(config):
                 cooldown_load_balancing_configs.append(config)
                 if len(cooldown_load_balancing_configs) >= len(self._load_balancing_configs):
                     # all configs are in cooldown
@@ -468,7 +468,7 @@ class LBModelManager:
 
         return None
 
-    def cooldown(self, config: ModelLoadBalancingConfiguration, expire: int = 60):
+    def cooldown(self, config: ModelLoadBalancingConfiguration, expire: int = 60) -> None:
         """
         Cooldown model load balancing config
         :param config: model load balancing config
@@ -485,7 +485,7 @@ class LBModelManager:
 
         redis_client.setex(cooldown_cache_key, expire, 'true')
 
-    def is_cooldown(self, config: ModelLoadBalancingConfiguration) -> bool:
+    def in_cooldown(self, config: ModelLoadBalancingConfiguration) -> bool:
         """
         Check if model load balancing config is in cooldown
         :param config: model load balancing config
@@ -500,3 +500,32 @@ class LBModelManager:
         )
 
         return redis_client.exists(cooldown_cache_key)
+
+    @classmethod
+    def get_config_in_cooldown_and_ttl(cls, tenant_id: str,
+                                       provider: str,
+                                       model_type: ModelType,
+                                       model: str,
+                                       config_id: str) -> tuple[bool, int]:
+        """
+        Get model load balancing config is in cooldown and ttl
+        :param tenant_id: workspace id
+        :param provider: provider name
+        :param model_type: model type
+        :param model: model name
+        :param config_id: model load balancing config id
+        :return:
+        """
+        cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
+            tenant_id,
+            provider,
+            model_type.value,
+            model,
+            config_id
+        )
+
+        ttl = redis_client.ttl(cooldown_cache_key)
+        if ttl == -2:
+            return False, 0
+
+        return True, ttl
