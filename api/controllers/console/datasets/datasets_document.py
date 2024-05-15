@@ -1,4 +1,5 @@
 import logging
+from argparse import ArgumentTypeError
 from datetime import datetime, timezone
 
 from flask import request
@@ -48,6 +49,7 @@ from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
+from transformers.hf_argparser import string_to_bool
 
 
 class DocumentResource(Resource):
@@ -141,7 +143,10 @@ class DatasetDocumentListApi(Resource):
         limit = request.args.get('limit', default=20, type=int)
         search = request.args.get('keyword', default=None, type=str)
         sort = request.args.get('sort', default='-created_at', type=str)
-        fetch = request.args.get('fetch', default=False, type=bool)
+        try:
+            fetch = string_to_bool(request.args.get('fetch', default='false'))
+        except (ArgumentTypeError, ValueError, Exception) as e:
+            fetch = False
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound('Dataset not found.')
