@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import produce from 'immer'
 import {
   useNodesReadOnly,
+  useWorkflow,
 } from '../../hooks'
 import { VarType } from '../../types'
 import type { ValueSelector, Var } from '../../types'
@@ -23,6 +24,11 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
+
+  // output
+  const { getIterationNodeChildren } = useWorkflow()
+  const iterationChildrenNodes = getIterationNodeChildren(id)
+  console.log(iterationChildrenNodes.map(i => i.data.title))
 
   return {
     readOnly,
