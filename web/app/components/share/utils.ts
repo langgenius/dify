@@ -33,3 +33,21 @@ export const setAccessToken = async (sharedToken: string, token: string) => {
   accessTokenJson[sharedToken] = token
   localStorage.setItem('token', JSON.stringify(accessTokenJson))
 }
+
+export const removeAccessToken = () => {
+  const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
+
+  const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
+  let accessTokenJson = { [sharedToken]: '' }
+  try {
+    accessTokenJson = JSON.parse(accessToken)
+  }
+  catch (e) {
+
+  }
+
+  localStorage.removeItem(CONVERSATION_ID_INFO)
+
+  delete accessTokenJson[sharedToken]
+  localStorage.setItem('token', JSON.stringify(accessTokenJson))
+}
