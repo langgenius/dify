@@ -77,9 +77,11 @@ const FormItem: FC<Props> = ({
     }
     return ''
   })()
+
+  const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
   return (
     <div className={`${className}`}>
-      {type !== InputVarType.contexts && <div className='h-8 leading-8 text-[13px] font-medium text-gray-700 truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>}
+      {!isArrayLikeType && <div className='h-8 leading-8 text-[13px] font-medium text-gray-700 truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>}
       <div className='grow'>
         {
           type === InputVarType.textInput && (
@@ -160,7 +162,7 @@ const FormItem: FC<Props> = ({
         }
 
         {
-          type === InputVarType.contexts && (
+          isArrayLikeType && (
             <div className='space-y-2'>
               {(value || []).map((item: any, index: number) => (
                 <CodeEditor

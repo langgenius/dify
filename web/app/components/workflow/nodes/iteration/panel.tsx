@@ -7,7 +7,7 @@ import Split from '../_base/components/split'
 import ResultPanel from '../../run/result-panel'
 import type { IterationNodeType } from './types'
 import useConfig from './use-config'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 
@@ -35,6 +35,9 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     runResult,
     inputVarValues,
     setInputVarValues,
+    usedOutVars,
+    iterator,
+    setIterator,
   } = useConfig(id, data)
 
   return (
@@ -75,9 +78,20 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           onHide={hideSingleRun}
           forms={[
             {
-              inputs: [],
+              inputs: [...usedOutVars],
               values: inputVarValues,
               onChange: setInputVarValues,
+            },
+            {
+              label: t(`${i18nPrefix}.input`)!,
+              inputs: [{
+                label: '',
+                variable: '#iterator#',
+                type: InputVarType.iterator,
+                required: false,
+              }],
+              values: { '#iterator#': iterator },
+              onChange: keyValue => setIterator((keyValue as any)['#iterator#']),
             },
           ]}
           runningStatus={runningStatus}

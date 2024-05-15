@@ -8,7 +8,7 @@ import {
 import { VarType } from '../../types'
 import type { ValueSelector, Var } from '../../types'
 import useNodeCrud from '../_base/hooks/use-node-crud'
-import { toNodeOutputVars } from '../_base/components/variable/utils'
+import { getNodeInfoById, getNodeUsedVars, isSystemVar, toNodeOutputVars } from '../_base/components/variable/utils'
 import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { IterationNodeType } from './types'
 
@@ -30,7 +30,8 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   }, [inputs, setInputs])
 
   // output
-  const { getIterationNodeChildren } = useWorkflow()
+  const { getIterationNodeChildren, getBeforeNodesInSameBranch } = useWorkflow()
+  const beforeNodes = getBeforeNodesInSameBranch(id)
   const iterationChildrenNodes = getIterationNodeChildren(id)
   const childrenNodeVars = toNodeOutputVars(iterationChildrenNodes, isChatMode)
 
@@ -45,7 +46,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   const {
     isShowSingleRun,
     hideSingleRun,
-    getInputVars,
+    toVarInputs,
     runningStatus,
     handleRun,
     handleStop,
@@ -59,6 +60,33 @@ const useConfig = (id: string, payload: IterationNodeType) => {
       '#iterator#': [],
     },
   })
+
+  const usedOutVars = (() => {
+    const vars: ValueSelector[] = []
+    const varObjs: Record<string, boolean> = {}
+    iterationChildrenNodes.forEach((node) => {
+      const nodeVars = getNodeUsedVars(node).filter(item => item && item.length > 0)
+      nodeVars.forEach((varSelector) => {
+        if (!varObjs[varSelector.join('.')]) {
+          varObjs[varSelector.join('.')] = true
+          vars.push(varSelector)
+        }
+      })
+    })
+    const res = toVarInputs(vars.map((item) => {
+      const varInfo = getNodeInfoById(beforeNodes, item[0])
+      return {
+        label: {
+          nodeType: varInfo?.type,
+          nodeName: varInfo?.title || beforeNodes[0]?.data.title, // default start node title
+          variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
+        },
+        variable: `#${item.join('.')}#`,
+        value_selector: item,
+      }
+    }))
+    return res
+  })()
 
   const inputVarValues = (() => {
     const vars: Record<string, any> = {}
@@ -78,6 +106,14 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     setRunInputData(newVars)
   }, [runInputData, setRunInputData])
 
+  const iterator = runInputData['#iterator#']
+  const setIterator = useCallback((newIterator: string[]) => {
+    setRunInputData({
+      ...runInputData,
+      '#iterator#': newIterator,
+    })
+  }, [runInputData, setRunInputData])
+
   return {
     readOnly,
     inputs,
@@ -94,6 +130,9 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     runResult,
     inputVarValues,
     setInputVarValues,
+    usedOutVars,
+    iterator,
+    setIterator,
   }
 }
 
