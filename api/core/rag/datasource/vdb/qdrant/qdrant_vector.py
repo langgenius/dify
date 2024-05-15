@@ -25,7 +25,6 @@ from extensions.ext_redis import redis_client
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
     from qdrant_client.conversions import common_types
-    from qdrant_client.http import models as rest
 
     DictFilter = dict[str, Union[str, int, bool, dict, list]]
     MetadataFilter = Union[DictFilter, common_types.Filter]
