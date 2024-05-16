@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-// import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { ToolsActive } from '@/app/components/base/icons/src/public/header-nav/tools'
 import { Heart02 } from '@/app/components/base/icons/src/vender/solid/education'
