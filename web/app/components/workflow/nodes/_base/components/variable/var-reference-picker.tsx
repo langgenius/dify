@@ -160,10 +160,13 @@ const VarReferencePicker: FC<Props> = ({
             variable: 'index',
             type: VarType.number,
           },
-        ],
+        ].filter((item) => {
+          return filterVar(item, [node.parentId!, item.variable])
+        }),
       }
 
-      vars.push(iterationVar)
+      if (iterationVar.vars.length > 0)
+        vars.push(iterationVar)
     }
     return vars
   })()
