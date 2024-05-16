@@ -929,7 +929,7 @@ class DocumentRenameApi(DocumentResource):
     @login_required
     @account_initialization_required
     @marshal_with(document_fields)
-    def post(self, dataset_id, document_id):
+    def put(self, dataset_id, document_id):
         # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
