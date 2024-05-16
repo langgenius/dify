@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import produce from 'immer'
+import { useStoreApi } from 'reactflow'
 import VarReferencePopup from './var-reference-popup'
 import { getNodeInfoById, isSystemVar, toNodeOutputVars } from './utils'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -58,6 +59,14 @@ const VarReferencePicker: FC<Props> = ({
   availableVars,
 }) => {
   const { t } = useTranslation()
+  const store = useStoreApi()
+  const {
+    getNodes,
+  } = store.getState()
+
+  const node = getNodes().find(n => n.id === nodeId)
+  const isInIteration = !!node?.data.isInIteration
+
   const triggerRef = useRef<HTMLDivElement>(null)
   const [triggerWidth, setTriggerWidth] = useState(TRIGGER_DEFAULT_WIDTH)
   useEffect(() => {
@@ -72,7 +81,31 @@ const VarReferencePicker: FC<Props> = ({
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
   const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId))
   const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
-  const outputVars = availableVars || toNodeOutputVars(availableNodes, isChatMode, filterVar)
+  const outputVars = (() => {
+    if (availableVars)
+      return availableVars
+
+    const vars = toNodeOutputVars(availableNodes, isChatMode, filterVar)
+    if (isInIteration && node?.parentId) {
+      const iterationVar = {
+        nodeId: node.parentId,
+        title: 'Iteration',
+        vars: [
+          {
+            variable: 'item',
+            type: VarType.string, // TODO:
+          },
+          {
+            variable: 'index',
+            type: VarType.number,
+          },
+        ],
+      }
+
+      vars.push(iterationVar)
+    }
+    return vars
+  })()
   const [open, setOpen] = useState(false)
   useEffect(() => {
     onOpen()
@@ -89,13 +122,34 @@ const VarReferencePicker: FC<Props> = ({
     if (isSystemVar(value as ValueSelector))
       return startNode?.data
 
-    return getNodeInfoById(availableNodes, outputVarNodeId)?.data
+    const findInNodes = [...availableNodes]
+    if (isInIteration) {
+      const iterationNode = getNodes().find(n => n.id === node.parentId)
+      if (iterationNode)
+        findInNodes.push(iterationNode)
+    }
+    return getNodeInfoById(findInNodes, outputVarNodeId)?.data
   })()
+
   const varName = hasValue ? `${isSystemVar(value as ValueSelector) ? 'sys.' : ''}${value[value.length - 1]}` : ''
 
   const getVarType = () => {
     if (isConstant)
       return 'undefined'
+
+    const isIterationVar = (() => {
+      if (!isInIteration)
+        return false
+      if (value[0] === node?.parentId && ['item', 'index'].includes(value[1]))
+        return true
+      return false
+    })()
+
+    if (isIterationVar) {
+      if (value[1] === 'item')
+        return VarType.string // TODO
+      return VarType.number
+    }
     const isSystem = isSystemVar(value as ValueSelector)
     const targetVarNodeId = isSystem ? startNode?.id : outputVarNodeId
     const targetVar = allOutputVars.find(v => v.nodeId === targetVarNodeId)
