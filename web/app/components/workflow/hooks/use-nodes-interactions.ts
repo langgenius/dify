@@ -37,8 +37,10 @@ import {
   getTopLeftNodePosition,
 } from '../utils'
 import type { IterationNodeType } from '../nodes/iteration/types'
+import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
 import { useNodesExtraData } from './use-nodes-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { useHelpline } from './use-helpline'
 import {
   useNodesReadOnly,
   useWorkflow,
@@ -56,6 +58,8 @@ export const useNodesInteractions = () => {
     getTreeLeafNodes,
   } = useWorkflow()
   const { getNodesReadOnly } = useNodesReadOnly()
+  const { handleSetHelpline } = useHelpline()
+  const { handleNodeIterationChildDrag } = useNodeIterationInteractions()
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as { x: number; y: number })
   const connectingNodeRef = useRef<{ nodeId: string; handleType: HandleType } | null>(null)
 
@@ -82,100 +86,39 @@ export const useNodesInteractions = () => {
       getNodes,
       setNodes,
     } = store.getState()
-    const {
-      setHelpLineHorizontal,
-      setHelpLineVertical,
-    } = workflowStore.getState()
     e.stopPropagation()
 
     const nodes = getNodes()
 
-    const showHorizontalHelpLineNodes = nodes.filter((n) => {
-      if (n.id === node.id)
-        return false
+    const { restrictPosition } = handleNodeIterationChildDrag(node)
 
-      const nY = Math.ceil(n.position.y)
-      const nodeY = Math.ceil(node.position.y)
-
-      if (nY - nodeY < 5 && nY - nodeY > -5)
-        return true
-
-      return false
-    }).sort((a, b) => a.position.x - b.position.x)
+    const {
+      showHorizontalHelpLineNodes,
+      showVerticalHelpLineNodes,
+    } = handleSetHelpline(node)
     const showHorizontalHelpLineNodesLength = showHorizontalHelpLineNodes.length
-    if (showHorizontalHelpLineNodesLength > 0) {
-      const first = showHorizontalHelpLineNodes[0]
-      const last = showHorizontalHelpLineNodes[showHorizontalHelpLineNodesLength - 1]
-
-      const helpLine = {
-        top: first.position.y,
-        left: first.position.x,
-        width: last.position.x + last.width! - first.position.x,
-      }
-
-      if (node.position.x < first.position.x) {
-        helpLine.left = node.position.x
-        helpLine.width = first.position.x + first.width! - node.position.x
-      }
-
-      if (node.position.x > last.position.x)
-        helpLine.width = node.position.x + node.width! - first.position.x
-
-      setHelpLineHorizontal(helpLine)
-    }
-    else {
-      setHelpLineHorizontal()
-    }
-
-    const showVerticalHelpLineNodes = nodes.filter((n) => {
-      if (n.id === node.id)
-        return false
-
-      const nX = Math.ceil(n.position.x)
-      const nodeX = Math.ceil(node.position.x)
-
-      if (nX - nodeX < 5 && nX - nodeX > -5)
-        return true
-
-      return false
-    }).sort((a, b) => a.position.x - b.position.x)
     const showVerticalHelpLineNodesLength = showVerticalHelpLineNodes.length
-
-    if (showVerticalHelpLineNodesLength > 0) {
-      const first = showVerticalHelpLineNodes[0]
-      const last = showVerticalHelpLineNodes[showVerticalHelpLineNodesLength - 1]
-
-      const helpLine = {
-        top: first.position.y,
-        left: first.position.x,
-        height: last.position.y + last.height! - first.position.y,
-      }
-
-      if (node.position.y < first.position.y) {
-        helpLine.top = node.position.y
-        helpLine.height = first.position.y + first.height! - node.position.y
-      }
-
-      if (node.position.y > last.position.y)
-        helpLine.height = node.position.y + node.height! - first.position.y
-
-      setHelpLineVertical(helpLine)
-    }
-    else {
-      setHelpLineVertical()
-    }
 
     const newNodes = produce(nodes, (draft) => {
       const currentNode = draft.find(n => n.id === node.id)!
 
-      currentNode.position = {
-        x: showVerticalHelpLineNodesLength > 0 ? showVerticalHelpLineNodes[0].position.x : node.position.x,
-        y: showHorizontalHelpLineNodesLength > 0 ? showHorizontalHelpLineNodes[0].position.y : node.position.y,
-      }
+      if (showVerticalHelpLineNodesLength > 0)
+        currentNode.position.x = showVerticalHelpLineNodes[0].position.x
+      else if (restrictPosition.x !== undefined)
+        currentNode.position.x = restrictPosition.x
+      else
+        currentNode.position.x = node.position.x
+
+      if (showHorizontalHelpLineNodesLength > 0)
+        currentNode.position.y = showHorizontalHelpLineNodes[0].position.y
+      else if (restrictPosition.y !== undefined)
+        currentNode.position.y = restrictPosition.y
+      else
+        currentNode.position.y = node.position.y
     })
 
     setNodes(newNodes)
-  }, [store, workflowStore, getNodesReadOnly])
+  }, [store, getNodesReadOnly, handleSetHelpline, handleNodeIterationChildDrag])
 
   const handleNodeDragStop = useCallback<NodeDragHandler>((_, node) => {
     const {
@@ -217,11 +160,6 @@ export const useNodesInteractions = () => {
       const newNodes = produce(nodes, (draft) => {
         if (!availableNodes.includes(draft[currentNodeIndex].data.type))
           draft[currentNodeIndex].data._isInvalidConnection = true
-
-        // if (draft[currentNodeIndex].data.type === BlockEnum.VariableAssigner && connectingNode.data.type !== BlockEnum.VariableAssigner) {
-        //   draft[currentNodeIndex].data._showVariablePicker = true
-        //   draft[currentNodeIndex].data._holdVariablePicker = true
-        // }
       })
       setNodes(newNodes)
     }
@@ -752,7 +690,7 @@ export const useNodesInteractions = () => {
             node.position.x += NODE_WIDTH_X_OFFSET
 
           if (node.data.type === BlockEnum.Iteration && prevNode.parentId === node.id)
-            node.data._children?.push(prevNode.id)
+            node.data._children?.push(newNode.id)
         })
         draft.push(newNode)
       })
@@ -1094,9 +1032,9 @@ export const useNodesInteractions = () => {
     })
 
     if (rightNode! && bottomNode!) {
-      if (width < rightNode!.position.x + rightNode.width! + ITERATION_PADDING)
+      if (width < rightNode!.position.x + rightNode.width! + ITERATION_PADDING.right)
         return
-      if (height < bottomNode.position.y + bottomNode.height! + ITERATION_PADDING)
+      if (height < bottomNode.position.y + bottomNode.height! + ITERATION_PADDING.bottom)
         return
     }
     const newNodes = produce(nodes, (draft) => {
@@ -1114,68 +1052,6 @@ export const useNodesInteractions = () => {
     setNodes(newNodes)
     handleSyncWorkflowDraft()
   }, [store, getNodesReadOnly, handleSyncWorkflowDraft])
-
-  const handleNodeRerender = useCallback((nodeId: string) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-
-    const nodes = getNodes()
-    const currentNode = nodes.find(n => n.id === nodeId)!
-    const childrenNodes = nodes.filter(n => n.parentId === nodeId)
-    let rightNode: Node
-    let bottomNode: Node
-
-    childrenNodes.forEach((n) => {
-      if (rightNode) {
-        if (n.position.x + n.width! > rightNode.position.x + rightNode.width!)
-          rightNode = n
-      }
-      else {
-        rightNode = n
-      }
-      if (bottomNode) {
-        if (n.position.y + n.height! > bottomNode.position.y + bottomNode.height!)
-          bottomNode = n
-      }
-      else {
-        bottomNode = n
-      }
-    })
-
-    const widthShouldExtend = rightNode! && currentNode.width! < rightNode.position.x + rightNode.width!
-    const heightShouldExtend = bottomNode! && currentNode.height! < bottomNode.position.y + bottomNode.height!
-
-    if (widthShouldExtend || heightShouldExtend) {
-      const newNodes = produce(nodes, (draft) => {
-        draft.forEach((n) => {
-          if (n.id === nodeId) {
-            if (widthShouldExtend) {
-              n.data.width = rightNode.position.x + rightNode.width! + ITERATION_PADDING
-              n.width = rightNode.position.x + rightNode.width! + ITERATION_PADDING
-            }
-            if (heightShouldExtend) {
-              n.data.height = bottomNode.position.y + bottomNode.height! + ITERATION_PADDING
-              n.height = bottomNode.position.y + bottomNode.height! + ITERATION_PADDING
-            }
-          }
-        })
-      })
-
-      setNodes(newNodes)
-    }
-  }, [store])
-
-  const handleInterationChildSizeChange = useCallback((nodeId: string) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
-    const currentNode = nodes.find(n => n.id === nodeId)!
-    const parentId = currentNode.parentId
-
-    if (parentId)
-      handleNodeRerender(parentId)
-  }, [store, handleNodeRerender])
 
   return {
     handleNodeDragStart,
@@ -1199,7 +1075,5 @@ export const useNodesInteractions = () => {
     handleNodesDuplicate,
     handleNodesDelete,
     handleNodeResize,
-    handleNodeRerender,
-    handleInterationChildSizeChange,
   }
 }

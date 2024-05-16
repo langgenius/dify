@@ -6,15 +6,10 @@ import type { OnResize } from 'reactflow'
 import { NodeResizeControl } from 'reactflow'
 import { useNodesInteractions } from '../../../hooks'
 
-type IconProps = {
-  className?: string
-}
-const Icon = ({
-  className,
-}: IconProps) => {
+const Icon = () => {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" className={className} width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M10.8919 4.15967C7.81787 5.37996 5.36767 7.83389 4.15234 10.9105" stroke="black" strokeOpacity="0.08" strokeWidth="1.5" strokeLinecap="round"/>
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M5.19009 11.8398C8.26416 10.6196 10.7144 8.16562 11.9297 5.08904" stroke="black" strokeOpacity="0.16" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   )
 }
@@ -32,7 +27,7 @@ const NodeResizer = ({
   }, [nodeId, handleNodeResize])
 
   return (
-    <div className='hidden group-hover:block'>
+    <div className='group-hover:block'>
       <NodeResizeControl
         position='bottom-right'
         className='!border-none !bg-transparent'
@@ -40,7 +35,7 @@ const NodeResizer = ({
         minWidth={272}
         minHeight={176}
       >
-        <div className='absolute bottom-0 right-0 origin-center rotate-180'><Icon /></div>
+        <div className='absolute bottom-[1px] right-[1px]'><Icon /></div>
       </NodeResizeControl>
     </div>
   )

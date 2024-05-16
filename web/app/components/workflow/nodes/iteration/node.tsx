@@ -9,7 +9,7 @@ import {
   useViewport,
 } from 'reactflow'
 import cn from 'classnames'
-import { useNodesInteractions } from '../../hooks'
+import { useNodeIterationInteractions } from './use-interactions'
 import type { IterationNodeType } from './types'
 import AddBlock from './add-block'
 import type { NodeProps } from '@/app/components/workflow/types'
@@ -20,16 +20,16 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
 }) => {
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()
-  const { handleNodeRerender } = useNodesInteractions()
+  const { handleNodeIterationRerender } = useNodeIterationInteractions()
 
   useEffect(() => {
     if (nodesInitialized)
-      handleNodeRerender(id)
-  }, [nodesInitialized, id, handleNodeRerender])
+      handleNodeIterationRerender(id)
+  }, [nodesInitialized, id, handleNodeIterationRerender])
 
   return (
     <div className={cn(
-      'relative min-w-[264px] min-h-[128px] w-full h-full rounded-2xl bg-[#F0F2F7]/90',
+      'relative w-full h-full rounded-2xl bg-[#F0F2F7]/90',
     )}>
       <Background
         id={`iteration-background-${id}`}

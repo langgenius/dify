@@ -16,10 +16,10 @@ import {
   NodeRunningStatus,
 } from '../../types'
 import {
-  useNodesInteractions,
   useNodesReadOnly,
   useToolIcon,
 } from '../../hooks'
+import { useNodeIterationInteractions } from '../iteration/use-interactions'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -44,13 +44,13 @@ const BaseNode: FC<BaseNodeProps> = ({
 }) => {
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
-  const { handleInterationChildSizeChange } = useNodesInteractions()
+  const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
   const toolIcon = useToolIcon(data)
 
   useEffect(() => {
     if (nodeRef.current && data.selected && data.isInIteration) {
       const resizeObserver = new ResizeObserver(() => {
-        handleInterationChildSizeChange(id)
+        handleNodeIterationChildSizeChange(id)
       })
 
       resizeObserver.observe(nodeRef.current)
@@ -59,7 +59,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         resizeObserver.disconnect()
       }
     }
-  }, [data.isInIteration, data.selected, id, handleInterationChildSizeChange])
+  }, [data.isInIteration, data.selected, id, handleNodeIterationChildSizeChange])
 
   const showSelectedBorder = data.selected || data._isBundled
   const {
@@ -178,7 +178,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.desc && (
+          data.desc && data.type !== BlockEnum.Iteration && (
             <div className='px-3 pt-1 pb-2 text-xs leading-[18px] text-gray-500 whitespace-pre-line break-words'>
               {data.desc}
             </div>
