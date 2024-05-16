@@ -161,6 +161,9 @@ const VarReferencePicker: FC<Props> = ({
             type: VarType.number,
           },
         ].filter((item) => {
+          if (item.type === VarType.any)
+            return true
+
           return filterVar(item, [node.parentId!, item.variable])
         }),
       }
