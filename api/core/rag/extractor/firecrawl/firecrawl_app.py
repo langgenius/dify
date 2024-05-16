@@ -69,15 +69,13 @@ class FirecrawlApp:
                 data = crawl_status_response.get('data', [])
                 url_data_list = []
                 for item in data:
-                    if item.get('success', False):
-                        if item.get('data'):
-                            url_data = {
-                                'title': item.get('data').get('metadata').get('title'),
-                                'description': item.get('data').get('metadata').get('description'),
-                                'source_url': item.get('data').get('metadata').get('sourceURL'),
-                                'markdown': item.get('data').get('markdown')
-                            }
-                            url_data_list.append(url_data)
+                    url_data = {
+                        'title': item.get('metadata').get('title'),
+                        'description': item.get('metadata').get('description'),
+                        'source_url': item.get('metadata').get('sourceURL'),
+                        'markdown': item.get('markdown')
+                    }
+                    url_data_list.append(url_data)
                 return {
                     'status': 'completed',
                     'data': url_data_list
