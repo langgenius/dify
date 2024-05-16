@@ -26,6 +26,13 @@ jobs:
       - name: Python dependencies
         run: pip install ruff dotenv-linter
 
+      - name: Ruff fix
+        run: ruff check --fix ./api
+
+      - uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: 'style fixes by ruff'
+
       - name: Ruff check
         run: ruff check ./api
 
