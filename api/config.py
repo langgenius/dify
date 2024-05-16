@@ -32,6 +32,7 @@ DEFAULTS = {
     'SQLALCHEMY_POOL_SIZE': 30,
     'SQLALCHEMY_MAX_OVERFLOW': 10,
     'SQLALCHEMY_POOL_RECYCLE': 3600,
+    'SQLALCHEMY_POOL_PRE_PING': 'False',
     'SQLALCHEMY_ECHO': 'False',
     'SENTRY_TRACES_SAMPLE_RATE': 1.0,
     'SENTRY_PROFILES_SAMPLE_RATE': 1.0,
@@ -174,7 +175,8 @@ class Config:
         self.SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
             'max_overflow': int(get_env('SQLALCHEMY_MAX_OVERFLOW')),
-            'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE'))
+            'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE')),
+            'pool_pre_ping': get_bool_env('SQLALCHEMY_POOL_PRE_PING')
         }
 
         self.SQLALCHEMY_ECHO = get_bool_env('SQLALCHEMY_ECHO')
