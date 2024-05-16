@@ -8,9 +8,11 @@ import ResultPanel from '../../run/result-panel'
 import IterationResultPanel from '../../run/iteration-result-panel'
 import type { IterationNodeType } from './types'
 import useConfig from './use-config'
+import mockIterationRunData from './mock-iteration-run-data'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+
 const i18nPrefix = 'workflow.nodes.iteration'
 
 const Panel: FC<NodePanelProps<IterationNodeType>> = ({
@@ -103,10 +105,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       {true && (
         <IterationResultPanel
           onHide={hideSingleRun}
-          list={[
-            [],
-            [],
-          ]}
+          list={mockIterationRunData}
         />
       )}
     </div>

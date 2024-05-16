@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
 import NodePanel from './node'
 import type { NodeTracing } from '@/types/workflow'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-
 const i18nPrefix = 'workflow.singleRun'
 
 type Props = {
@@ -42,7 +42,7 @@ const IterationResultPanel: FC<Props> = ({
         {/* List */}
         <div className='h-0 grow overflow-y-auto px-4 pb-4 bg-gray-50'>
           {list.map((iteration, index) => (
-            <div key={index} className='my-2'>
+            <div key={index} className={cn('my-4', index === 0 && 'mt-2')}>
               <div className='flex items-center'>
                 <div className='shrink-0 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>{t(`${i18nPrefix}.iteration`)} {index + 1}</div>
                 <div
@@ -54,6 +54,7 @@ const IterationResultPanel: FC<Props> = ({
                 {iteration.map(node => (
                   <NodePanel
                     key={node.id}
+                    className='!px-0 !py-0'
                     nodeInfo={node}
                   />
                 ))}
