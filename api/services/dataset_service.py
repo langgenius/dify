@@ -488,12 +488,16 @@ class DocumentService:
     @staticmethod
     def retry_document(dataset_id: str, documents: list[Document]):
         for document in documents:
+            # add retry flag
+            retry_indexing_cache_key = 'document_{}_is_retried'.format(document.id)
+            cache_result = redis_client.get(retry_indexing_cache_key)
+            if cache_result is not None:
+                raise ValueError("Document is being retried, please try again later")
             # retry document indexing
             document.indexing_status = 'waiting'
             db.session.add(document)
             db.session.commit()
-            # add retry flag
-            retry_indexing_cache_key = 'document_{}_is_retried'.format(document.id)
+
             redis_client.setex(retry_indexing_cache_key, 600, 1)
         # trigger async task
         document_ids = [document.id for document in documents]
@@ -501,6 +505,11 @@ class DocumentService:
 
     @staticmethod
     def sync_website_document(dataset_id: str, document: Document):
+        # add sync flag
+        sync_indexing_cache_key = 'document_{}_is_sync'.format(document.id)
+        cache_result = redis_client.get(sync_indexing_cache_key)
+        if cache_result is not None:
+            raise ValueError("Document is being synced, please try again later")
         # sync document indexing
         document.indexing_status = 'waiting'
         data_source_info = document.data_source_info_dict
@@ -508,8 +517,7 @@ class DocumentService:
         document.data_source_info = json.dumps(data_source_info, ensure_ascii=False)
         db.session.add(document)
         db.session.commit()
-        # add sync flag
-        sync_indexing_cache_key = 'document_{}_is_sync'.format(document.id)
+
         redis_client.setex(sync_indexing_cache_key, 600, 1)
 
         sync_website_document_indexing_task.delay(dataset_id, document.id)
