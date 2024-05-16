@@ -72,6 +72,7 @@ import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import Confirm from '@/app/components/base/confirm/common'
 
 const nodeTypes = {
   custom: CustomNode,
@@ -97,6 +98,8 @@ const Workflow: FC<WorkflowProps> = memo(({
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
+  const showConfirm = useStore(s => s.showConfirm)
+  const { setShowConfirm } = workflowStore.getState()
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -230,6 +233,18 @@ const Workflow: FC<WorkflowProps> = memo(({
       <PanelContextmenu />
       <NodeContextmenu />
       <HelpLine />
+      {
+        !!showConfirm && (
+          <Confirm
+            isShow
+            onCancel={() => setShowConfirm(undefined)}
+            onConfirm={showConfirm.onConfirm}
+            title={showConfirm.title}
+            desc={showConfirm.desc}
+            confirmWrapperClassName='!z-[11]'
+          />
+        )
+      }
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}

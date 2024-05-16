@@ -391,6 +391,8 @@ const translation = {
       advancedSetting: '高级设置',
     },
     iteration: {
+      deleteTitle: '删除迭代节点？',
+      deleteDesc: '删除迭代节点将删除所有子节点',
       input: '输入',
       output: '输出变量',
     },

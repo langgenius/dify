@@ -422,6 +422,30 @@ export const useNodesInteractions = () => {
     const currentNode = nodes[currentNodeIndex]
     if (nodes[currentNodeIndex].data.type === BlockEnum.Start)
       return
+
+    if (currentNode.data.type === BlockEnum.Iteration) {
+      const iterationChildren = nodes.filter(node => node.parentId === currentNode.id)
+
+      if (iterationChildren.length) {
+        const { setShowConfirm, showConfirm } = workflowStore.getState()
+
+        if (!showConfirm) {
+          setShowConfirm({
+            title: t('workflow.nodes.iteration.deleteTitle'),
+            desc: t('workflow.nodes.iteration.deleteDesc') || '',
+            onConfirm: () => {
+              iterationChildren.forEach((child) => {
+                handleNodeDelete(child.id)
+              })
+              handleNodeDelete(nodeId)
+              handleSyncWorkflowDraft()
+              setShowConfirm(undefined)
+            },
+          })
+          return
+        }
+      }
+    }
     const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges)
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(connectedEdges.map(edge => ({ type: 'remove', edge })), nodes)
     const newNodes = produce(nodes, (draft: Node[]) => {
@@ -450,7 +474,7 @@ export const useNodesInteractions = () => {
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft, getNodesReadOnly])
+  }, [store, handleSyncWorkflowDraft, getNodesReadOnly, workflowStore, t])
 
   const handleNodeAdd = useCallback<OnNodeAdd>((
     {

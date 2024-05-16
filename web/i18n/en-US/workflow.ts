@@ -391,6 +391,8 @@ const translation = {
       advancedSetting: 'Advanced Setting',
     },
     iteration: {
+      deleteTitle: 'Delete Iteration Node?',
+      deleteDesc: 'Deleting the iteration node will delete all child nodes',
       input: 'Input',
       output: 'Output Variables',
     },

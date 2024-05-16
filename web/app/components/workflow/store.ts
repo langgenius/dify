@@ -98,6 +98,8 @@ type Shape = {
   setMousePosition: (mousePosition: Shape['mousePosition']) => void
   syncWorkflowDraftHash: string
   setSyncWorkflowDraftHash: (hash: string) => void
+  showConfirm?: { title: string; desc?: string; onConfirm: () => void }
+  setShowConfirm: (showConfirm: Shape['showConfirm']) => void
 }
 
 export const createWorkflowStore = () => {
@@ -168,6 +170,8 @@ export const createWorkflowStore = () => {
     setMousePosition: mousePosition => set(() => ({ mousePosition })),
     syncWorkflowDraftHash: '',
     setSyncWorkflowDraftHash: syncWorkflowDraftHash => set(() => ({ syncWorkflowDraftHash })),
+    showConfirm: undefined,
+    setShowConfirm: showConfirm => set(() => ({ showConfirm })),
   }))
 }
 
