@@ -84,6 +84,9 @@ const translation = {
     testRun: 'Test Run ',
     startRun: 'Start Run',
     running: 'Running',
+    testRunIteration: 'Test Run Iteration',
+    back: 'Back',
+    iteration: 'Iteration',
   },
   tabs: {
     'searchBlock': 'Search block',

@@ -84,6 +84,9 @@ const translation = {
     testRun: '测试运行 ',
     startRun: '开始运行',
     running: '运行中',
+    testRunIteration: '测试运行迭代',
+    back: '返回',
+    iteration: '迭代',
   },
   tabs: {
     'searchBlock': '搜索节点',

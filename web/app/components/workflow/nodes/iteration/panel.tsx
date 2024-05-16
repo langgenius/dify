@@ -5,12 +5,12 @@ import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import Split from '../_base/components/split'
 import ResultPanel from '../../run/result-panel'
+import IterationResultPanel from '../../run/iteration-result-panel'
 import type { IterationNodeType } from './types'
 import useConfig from './use-config'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-
 const i18nPrefix = 'workflow.nodes.iteration'
 
 const Panel: FC<NodePanelProps<IterationNodeType>> = ({
@@ -98,6 +98,15 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           onRun={handleRun}
           onStop={handleStop}
           result={<ResultPanel {...runResult} showSteps={false} />}
+        />
+      )}
+      {true && (
+        <IterationResultPanel
+          onHide={hideSingleRun}
+          list={[
+            [],
+            [],
+          ]}
         />
       )}
     </div>
