@@ -10,6 +10,7 @@ import SearchInput from '@/app/components/base/search-input'
 import { DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
 import { Colors } from '@/app/components/base/icons/src/vender/line/others'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
+import ContributeCard from '@/app/components/tools/provider/contribute'
 import ProviderCard from '@/app/components/tools/provider/card'
 import { fetchCollectionList } from '@/service/tools'
 
@@ -68,6 +69,9 @@ const ProviderList = () => {
           </div>
         </div>
         <div className='grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
+          {activeTab === 'builtin' && (
+            <ContributeCard />
+          )}
           {filteredCollectionList.map(collection => (
             <ProviderCard
               key={collection.id}
