@@ -66,7 +66,7 @@ const VarReferencePicker: FC<Props> = ({
 
   const node = getNodes().find(n => n.id === nodeId)
   const isInIteration = !!node?.data.isInIteration
-
+  const iterationNode = isInIteration ? getNodes().find(n => n.id === node.parentId) : null
   const triggerRef = useRef<HTMLDivElement>(null)
   const [triggerWidth, setTriggerWidth] = useState(TRIGGER_DEFAULT_WIDTH)
   useEffect(() => {
@@ -89,7 +89,7 @@ const VarReferencePicker: FC<Props> = ({
     if (isInIteration && node?.parentId) {
       const iterationVar = {
         nodeId: node.parentId,
-        title: 'Iteration',
+        title: t('workflow.nodes.iteration.iterationContent'),
         vars: [
           {
             variable: 'item',
@@ -115,20 +115,27 @@ const VarReferencePicker: FC<Props> = ({
   const startNode = availableNodes.find((node: any) => {
     return node.data.type === BlockEnum.Start
   })
+
+  const isIterationVar = (() => {
+    if (!isInIteration)
+      return false
+    if (value[0] === node?.parentId && ['item', 'index'].includes(value[1]))
+      return true
+    return false
+  })()
+
   const outputVarNodeId = hasValue ? value[0] : ''
   const outputVarNode = (() => {
     if (!hasValue || isConstant)
       return null
+
+    if (isIterationVar)
+      return iterationNode?.data
+
     if (isSystemVar(value as ValueSelector))
       return startNode?.data
 
-    const findInNodes = [...availableNodes]
-    if (isInIteration) {
-      const iterationNode = getNodes().find(n => n.id === node.parentId)
-      if (iterationNode)
-        findInNodes.push(iterationNode)
-    }
-    return getNodeInfoById(findInNodes, outputVarNodeId)?.data
+    return getNodeInfoById(availableNodes, outputVarNodeId)?.data
   })()
 
   const varName = hasValue ? `${isSystemVar(value as ValueSelector) ? 'sys.' : ''}${value[value.length - 1]}` : ''
@@ -136,14 +143,6 @@ const VarReferencePicker: FC<Props> = ({
   const getVarType = () => {
     if (isConstant)
       return 'undefined'
-
-    const isIterationVar = (() => {
-      if (!isInIteration)
-        return false
-      if (value[0] === node?.parentId && ['item', 'index'].includes(value[1]))
-        return true
-      return false
-    })()
 
     if (isIterationVar) {
       if (value[1] === 'item')

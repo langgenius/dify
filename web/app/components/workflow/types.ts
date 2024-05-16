@@ -184,6 +184,7 @@ export enum VarType {
   arrayNumber = 'array[number]',
   arrayObject = 'array[object]',
   arrayFile = 'array[file]',
+  any = 'any',
 }
 
 export type Var = {
