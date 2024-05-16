@@ -1,14 +1,10 @@
-import json
-
 from flask import current_app
 from flask_restful import fields, marshal_with
 
 from controllers.web import api
 from controllers.web.error import AppUnavailableError
 from controllers.web.wraps import WebApiResource
-from extensions.ext_database import db
-from models.model import App, AppMode, AppModelConfig
-from models.tools import ApiToolProvider
+from models.model import App, AppMode
 from services.app_service import AppService
 
 
