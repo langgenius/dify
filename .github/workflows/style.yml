@@ -23,7 +23,6 @@ jobs:
         with:
            repository: ${{ github.event.pull_request.head.repo.full_name }}
            ref: ${{ github.head_ref }}
-           token: ${{ secrets.PAT }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
