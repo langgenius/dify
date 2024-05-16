@@ -47,8 +47,8 @@ class DataSourceApiKeyAuthBinding(db.Model):
             'tenant_id': self.tenant_id,
             'category': self.category,
             'provider': self.provider,
-            'credentials': json.dumps(self.credentials, ensure_ascii=False),
-            'created_at': self.created_at,
-            'updated_at': self.updated_at,
+            'credentials': json.loads(self.credentials),
+            'created_at': self.created_at.timestamp(),
+            'updated_at': self.updated_at.timestamp(),
             'disabled': self.disabled
         }

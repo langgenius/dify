@@ -146,7 +146,9 @@ class ExtractProcessor:
             if extract_setting.website_info.provider == 'firecrawl':
                 extractor = FirecrawlWebExtractor(
                     url=extract_setting.website_info.url,
-                    job_id=extract_setting.website_info.job_id
+                    job_id=extract_setting.website_info.job_id,
+                    mode=extract_setting.website_info.mode,
+                    only_main_content=extract_setting.website_info.only_main_content
                 )
                 return extractor.extract()
             else:

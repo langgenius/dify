@@ -9,8 +9,8 @@ class FirecrawlApp:
         self.base_url = base_url or 'https://api.firecrawl.dev'
         if self.api_key is None and self.base_url == 'https://api.firecrawl.dev':
             raise ValueError('No API key provided')
-    
-    def scrape_url(self, url, params=None):
+
+    def scrape_url(self, url, params=None) -> dict:
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.api_key}'
@@ -26,10 +26,16 @@ class FirecrawlApp:
         if response.status_code == 200:
             response = response.json()
             if response['success'] == True:
-                return response['data']
+                data = response['data']
+                return {
+                    'title': data.get('metadata').get('title'),
+                    'description': data.get('metadata').get('description'),
+                    'source_url': data.get('metadata').get('sourceURL'),
+                    'markdown': data.get('markdown')
+                }
             else:
                 raise Exception(f'Failed to scrape URL. Error: {response["error"]}')
-            
+
         elif response.status_code in [402, 409, 500]:
             error_message = response.json().get('error', 'Unknown error occurred')
             raise Exception(f'Failed to scrape URL. Status code: {response.status_code}. Error: {error_message}')
@@ -49,12 +55,33 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'start crawl job')
 
-
     def check_crawl_status(self, job_id) -> dict:
         headers = self._prepare_headers()
         response = self._get_request(f'{self.base_url}/v0/crawl/status/{job_id}', headers)
         if response.status_code == 200:
-            return response.json()
+            crawl_status_response = response.json()
+            if crawl_status_response.get('status') != 'completed':
+                return {
+                    'status': crawl_status_response.get('status'),
+                    'data': []
+                }
+            else:
+                data = crawl_status_response.get('data', [])
+                url_data_list = []
+                for item in data:
+                    if item.get('success', False):
+                        if item.get('data'):
+                            url_data = {
+                                'title': item.get('data').get('metadata').get('title'),
+                                'description': item.get('data').get('metadata').get('description'),
+                                'source_url': item.get('data').get('metadata').get('sourceURL'),
+                                'markdown': item.get('data').get('markdown')
+                            }
+                            url_data_list.append(url_data)
+                return {
+                    'status': 'completed',
+                    'data': url_data_list
+                }
         else:
             self._handle_error(response, 'check crawl status')
 

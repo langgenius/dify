@@ -49,6 +49,8 @@ from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.duplicate_document_indexing_task import duplicate_document_indexing_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
 from tasks.retry_document_indexing_task import retry_document_indexing_task
+from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
+
 
 
 class DatasetService:
@@ -498,6 +500,20 @@ class DocumentService:
         retry_document_indexing_task.delay(dataset_id, document_ids)
 
     @staticmethod
+    def sync_website_document(dataset_id: str, document: Document):
+        # sync document indexing
+        document.indexing_status = 'waiting'
+        data_source_info = document.data_source_info_dict
+        data_source_info['mode'] = 'scrape'
+        document.data_source_info = json.dumps(data_source_info, ensure_ascii=False)
+        db.session.add(document)
+        db.session.commit()
+        # add sync flag
+        sync_indexing_cache_key = 'document_{}_is_sync'.format(document.id)
+        redis_client.setex(sync_indexing_cache_key, 600, 1)
+
+        sync_website_document_indexing_task.delay(dataset_id, document.id)
+    @staticmethod
     def get_documents_position(dataset_id):
         document = Document.query.filter_by(dataset_id=dataset_id).order_by(Document.position.desc()).first()
         if document:
@@ -523,8 +539,8 @@ class DocumentService:
                     notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                     for notion_info in notion_info_list:
                         count = count + len(notion_info['pages'])
-                elif document_data["data_source"]["type"] == "website":
-                    website_info = document_data["data_source"]['info_list']['website_info']
+                elif document_data["data_source"]["type"] == "website_crawl":
+                    website_info = document_data["data_source"]['info_list']['website_info_list']
                     count = len(website_info['urls'])
                 batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
                 if count > batch_upload_limit:
@@ -698,8 +714,8 @@ class DocumentService:
                 # delete not selected documents
                 if len(exist_document) > 0:
                     clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
-            elif document_data["data_source"]["type"] == "website":
-                website_info = document_data["data_source"]['info_list']['website_info']
+            elif document_data["data_source"]["type"] == "website_crawl":
+                website_info = document_data["data_source"]['info_list']['website_info_list']
                 urls = website_info['urls']
                 for url in urls:
                     data_source_info = {
@@ -836,8 +852,8 @@ class DocumentService:
                             "notion_page_icon": page['page_icon'],
                             "type": page['type']
                         }
-            elif document_data["data_source"]["type"] == "website":
-                website_info = document_data["data_source"]['info_list']['website_info']
+            elif document_data["data_source"]["type"] == "website_crawl":
+                website_info = document_data["data_source"]['info_list']['website_info_list']
                 urls = website_info['urls']
                 for url in urls:
                     data_source_info = {
@@ -883,8 +899,8 @@ class DocumentService:
                 notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                 for notion_info in notion_info_list:
                     count = count + len(notion_info['pages'])
-            elif document_data["data_source"]["type"] == "website":
-                website_info = document_data["data_source"]['info_list']['website_info']
+            elif document_data["data_source"]["type"] == "website_crawl":
+                website_info = document_data["data_source"]['info_list']['website_info_list']
                 count = len(website_info['urls'])
             batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
             if count > batch_upload_limit:

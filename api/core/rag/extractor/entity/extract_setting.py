@@ -28,6 +28,8 @@ class WebsiteInfo(BaseModel):
     provider: str
     job_id: str
     url: str
+    mode: str
+    only_main_content: bool = False
 
     class Config:
         arbitrary_types_allowed = True
