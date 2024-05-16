@@ -11,11 +11,15 @@ import { getLanguage } from '@/i18n/language'
 import { useStore as useLabelStore } from '@/app/components/tools/labels/store'
 
 type Props = {
+  active: boolean
   collection: Collection
+  onSelect: () => void
 }
 
 const ProviderCard = ({
+  active,
   collection,
+  onSelect,
 }: Props) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
@@ -32,13 +36,11 @@ const ProviderCard = ({
   }, [collection.labels, labelList, language])
 
   return (
-    <div className='group flex col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'>
+    <div className={cn('group flex col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg', active && '!border-primary-400')} onClick={onSelect}>
       <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
         <div className='relative shrink-0'>
           {typeof collection.icon === 'string' && (
-            <div className='p-2 bg-cover bg-center border border-gray-100 rounded-lg'>
-              <div className='w-6 h-6 bg-center bg-contain bg-no-repeat rounded-md' style={{ backgroundImage: `url(${collection.icon})` }}/>
-            </div>
+            <div className='w-10 h-10 bg-center bg-cover bg-no-repeat rounded-md' style={{ backgroundImage: `url(${collection.icon})` }}/>
           )}
           {typeof collection.icon !== 'string' && (
             <AppIcon

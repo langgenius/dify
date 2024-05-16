@@ -1,18 +1,19 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-// import cn from 'classnames'
+import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type { Collection } from './types'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import SearchInput from '@/app/components/base/search-input'
-import { DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
+import { DotsGrid, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { Colors } from '@/app/components/base/icons/src/vender/line/others'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import ContributeCard from '@/app/components/tools/provider/contribute'
 import ProviderCard from '@/app/components/tools/provider/card'
+import ProviderDetail from '@/app/components/tools/provider/detail'
 import { fetchCollectionList } from '@/service/tools'
 
 const ProviderList = () => {
@@ -55,10 +56,15 @@ const ProviderList = () => {
     getProviderList()
   }, [])
 
+  const [currentProvider, setCurrentProvider] = useState<Collection | null>(null)
+
   return (
     <div className='relative flex overflow-hidden bg-gray-100 shrink-0 h-0 grow'>
       <div className='relative flex flex-col overflow-y-auto bg-gray-100 grow'>
-        <div className='sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
+        <div className={cn(
+          'sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2',
+          currentProvider && 'pr-6',
+        )}>
           <TabSliderNew
             value={activeTab}
             onChange={setActiveTab}
@@ -69,20 +75,29 @@ const ProviderList = () => {
             <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
           </div>
         </div>
-        <div className='grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
+        <div className={cn(
+          'grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0',
+          currentProvider && 'pr-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
+        )}>
           {activeTab === 'builtin' && <ContributeCard />}
           {activeTab === 'api' && <CustomCreateCard/>}
           {filteredCollectionList.map(collection => (
             <ProviderCard
+              active={currentProvider?.id === collection.id}
+              onSelect={() => setCurrentProvider(collection)}
               key={collection.id}
               collection={collection}
             />
           ))}
         </div>
       </div>
-      {/* <div className='shrink-0 w-[420px] overflow-y-auto'>
-        <div className='h-[1200px]'>detail</div>
-      </div> */}
+      <div className={cn(
+        'shrink-0 w-0 border-l-[0.5px] border-black/8 overflow-y-auto transition-all duration-200 ease-in-out',
+        currentProvider && 'w-[420px]',
+      )}>
+        {currentProvider && <ProviderDetail collection={currentProvider} onRefreshData={getProviderList} />}
+      </div>
+      <div className='absolute top-5 right-5 p-1 cursor-pointer' onClick={() => setCurrentProvider(null)}><XClose className='w-4 h-4'/></div>
     </div>
   )
 }
