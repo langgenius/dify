@@ -4,8 +4,8 @@ from enum import Enum
 from threading import Lock
 from typing import Literal, Optional
 
-from httpx import get, post
 from pydantic import BaseModel
+from httpx import get, post
 from yarl import URL
 
 from config import get_env
