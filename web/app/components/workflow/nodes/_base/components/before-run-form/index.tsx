@@ -149,8 +149,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           {isRunning && (
             <ResultPanel status='running' showSteps={false} />
           )}
-          {/* {isFinished && ( */}
-          {true && (
+          {isFinished && (
             <>
               {result}
             </>

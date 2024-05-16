@@ -159,6 +159,15 @@ const useOneStepRun = <T>({
       },
     })
   }
+  const showSingleRun = () => {
+    handleNodeDataUpdate({
+      id,
+      data: {
+        ...data,
+        _isSingleRun: true,
+      },
+    })
+  }
   const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
   const isCompleted = runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
 
@@ -268,6 +277,7 @@ const useOneStepRun = <T>({
   return {
     isShowSingleRun,
     hideSingleRun,
+    showSingleRun,
     toVarInputs,
     getInputVars,
     runningStatus,

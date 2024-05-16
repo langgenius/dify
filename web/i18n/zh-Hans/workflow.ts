@@ -398,6 +398,8 @@ const translation = {
       deleteDesc: '删除迭代节点将删除所有子节点',
       input: '输入',
       output: '输出变量',
+      iteration_one: '{{count}}个迭代',
+      iteration_other: '{{count}}个迭代',
     },
   },
   tracing: {

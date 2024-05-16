@@ -398,6 +398,8 @@ const translation = {
       deleteDesc: 'Deleting the iteration node will delete all child nodes',
       input: 'Input',
       output: 'Output Variables',
+      iteration_one: '{{count}} Iteration',
+      iteration_other: '{{count}} Iterations',
     },
   },
   tracing: {

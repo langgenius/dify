@@ -12,11 +12,13 @@ const i18nPrefix = 'workflow.singleRun'
 type Props = {
   list: NodeTracing[][]
   onHide: () => void
+  onBack: () => void
 }
 
 const IterationResultPanel: FC<Props> = ({
   list,
   onHide,
+  onBack,
 }) => {
   const { t } = useTranslation()
 
@@ -34,7 +36,7 @@ const IterationResultPanel: FC<Props> = ({
               <XClose className='w-4 h-4 text-gray-500 ' />
             </div>
           </div>
-          <div className='flex items-center py-2 space-x-1 text-primary-600 cursor-pointer' onClick={onHide}>
+          <div className='flex items-center py-2 space-x-1 text-primary-600 cursor-pointer' onClick={onBack}>
             <ArrowNarrowLeft className='w-4 h-4' />
             <div className='leading-[18px] text-[13px] font-medium'>{t(`${i18nPrefix}.back`)}</div>
           </div>

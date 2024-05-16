@@ -12,6 +12,7 @@ import mockIterationRunData from './mock-iteration-run-data'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import { ArrowNarrowRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const i18nPrefix = 'workflow.nodes.iteration'
 
@@ -31,6 +32,10 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     handleOutputVarChange,
     isShowSingleRun,
     hideSingleRun,
+    isShowIterationDetail,
+    backToSingleRun,
+    showIterationDetail,
+    hideIterationDetail,
     runningStatus,
     handleRun,
     handleStop,
@@ -99,12 +104,24 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           runningStatus={runningStatus}
           onRun={handleRun}
           onStop={handleStop}
-          result={<ResultPanel {...runResult} showSteps={false} />}
+          result={
+            <div className='mt-3'>
+              <div className='px-4'>
+                <div className='flex items-center h-[34px] justify-between px-3 bg-gray-100 border-[0.5px] border-gray-200 rounded-lg cursor-pointer' onClick={showIterationDetail}>
+                  <div className='leading-[18px] text-[13px] font-medium text-gray-700'>{t(`${i18nPrefix}.iteration`, { count: mockIterationRunData.length })}</div>
+                  <ArrowNarrowRight className='w-3.5 h-3.5 text-gray-500' />
+                </div>
+                <Split className='mt-3' />
+              </div>
+              <ResultPanel {...runResult} showSteps={false} />
+            </div>
+          }
         />
       )}
-      {true && (
+      {isShowIterationDetail && (
         <IterationResultPanel
-          onHide={hideSingleRun}
+          onBack={backToSingleRun}
+          onHide={hideIterationDetail}
           list={mockIterationRunData}
         />
       )}

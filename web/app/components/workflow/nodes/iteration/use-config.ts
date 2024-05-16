@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import produce from 'immer'
+import { useBoolean } from 'ahooks'
 import {
   useIsChatMode,
   useNodesReadOnly,
@@ -45,6 +46,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   // single run
   const {
     isShowSingleRun,
+    showSingleRun,
     hideSingleRun,
     toVarInputs,
     runningStatus,
@@ -60,6 +62,25 @@ const useConfig = (id: string, payload: IterationNodeType) => {
       '#iterator#': [''],
     },
   })
+
+  const [isShowIterationDetail, {
+    setTrue: doShowIterationDetail,
+    setFalse: doHideIterationDetail,
+  }] = useBoolean(false)
+
+  const hideIterationDetail = useCallback(() => {
+    hideSingleRun()
+    doHideIterationDetail()
+  }, [doHideIterationDetail, hideSingleRun])
+
+  const showIterationDetail = useCallback(() => {
+    doShowIterationDetail()
+  }, [doShowIterationDetail])
+
+  const backToSingleRun = useCallback(() => {
+    hideIterationDetail()
+    showSingleRun()
+  }, [hideIterationDetail, showSingleRun])
 
   const usedOutVars = (() => {
     const vars: ValueSelector[] = []
@@ -123,7 +144,12 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     iterationChildrenNodes,
     handleOutputVarChange,
     isShowSingleRun,
+    showSingleRun,
     hideSingleRun,
+    isShowIterationDetail,
+    showIterationDetail,
+    hideIterationDetail,
+    backToSingleRun,
     runningStatus,
     handleRun,
     handleStop,
