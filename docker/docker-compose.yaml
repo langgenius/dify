@@ -172,8 +172,8 @@ services:
             # Mount the storage directory to the container, for storing user files.
             - ./volumes/app/storage:/app/api/storage
         # uncomment to expose iechor-api port to host
-        # ports:
-        #   - "5001:5001"
+        ports:
+           - "8085:5001"
         networks:
             - ssrf_proxy_network
             - default
@@ -311,8 +311,8 @@ services:
             # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
             SENTRY_DSN: ''
         # uncomment to expose iechor-web port to host
-        # ports:
-        #   - "3000:3000"
+        ports:
+          - "3000:3000"
 
     # The postgres database.
     db:
@@ -447,22 +447,22 @@ services:
     #     timeout: 3s
     #     retries: 30
 
-    # The nginx reverse proxy.
-    # used for reverse proxying the API service and Web service.
-    nginx:
-        image: nginx:latest
-        restart: always
-        volumes:
-            - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-            - ./nginx/proxy.conf:/etc/nginx/proxy.conf
-            - ./nginx/conf.d:/etc/nginx/conf.d
-            #- ./nginx/ssl:/etc/ssl
-        depends_on:
-            - api
-            - web
-        ports:
-            - '80:80'
-            #- "443:443"
+    # # The nginx reverse proxy.
+    # # used for reverse proxying the API service and Web service.
+    # nginx:
+    #     image: nginx:latest
+    #     restart: always
+    #     volumes:
+    #         - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    #         - ./nginx/proxy.conf:/etc/nginx/proxy.conf
+    #         - ./nginx/conf.d:/etc/nginx/conf.d
+    #         #- ./nginx/ssl:/etc/ssl
+    #     depends_on:
+    #         - api
+    #         - web
+    #     ports:
+    #         - '8085:80'
+    #         #- "443:443"
 networks:
     # create a network between sandbox, api and ssrf_proxy, and can not access outside.
     ssrf_proxy_network:
