@@ -63,90 +63,22 @@ const VarReferencePicker: FC<Props> = ({
   const {
     getNodes,
   } = store.getState()
-
-  const node = getNodes().find(n => n.id === nodeId)
-  const isInIteration = !!node?.data.isInIteration
-  const iterationNode = isInIteration ? getNodes().find(n => n.id === node.parentId) : null
-  const triggerRef = useRef<HTMLDivElement>(null)
-  const [triggerWidth, setTriggerWidth] = useState(TRIGGER_DEFAULT_WIDTH)
-  useEffect(() => {
-    if (triggerRef.current)
-      setTriggerWidth(triggerRef.current.clientWidth)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [triggerRef.current])
-
   const isChatMode = useIsChatMode()
-  const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
-  const isConstant = isSupportConstantValue && varKindType === VarKindType.constant
+
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
   const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId))
   const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
-  const outputVars = (() => {
-    if (availableVars)
-      return availableVars
-
-    const vars = toNodeOutputVars(availableNodes, isChatMode, filterVar)
-    if (isInIteration && node?.parentId) {
-      const iterationVar = {
-        nodeId: node.parentId,
-        title: t('workflow.nodes.iteration.iterationContent'),
-        vars: [
-          {
-            variable: 'item',
-            type: VarType.string, // TODO:
-          },
-          {
-            variable: 'index',
-            type: VarType.number,
-          },
-        ],
-      }
-
-      vars.push(iterationVar)
-    }
-    return vars
-  })()
-  const [open, setOpen] = useState(false)
-  useEffect(() => {
-    onOpen()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
-  const hasValue = !isConstant && value.length > 0
   const startNode = availableNodes.find((node: any) => {
     return node.data.type === BlockEnum.Start
   })
-
-  const isIterationVar = (() => {
-    if (!isInIteration)
-      return false
-    if (value[0] === node?.parentId && ['item', 'index'].includes(value[1]))
-      return true
-    return false
-  })()
-
-  const outputVarNodeId = hasValue ? value[0] : ''
-  const outputVarNode = (() => {
-    if (!hasValue || isConstant)
-      return null
-
-    if (isIterationVar)
-      return iterationNode?.data
-
-    if (isSystemVar(value as ValueSelector))
-      return startNode?.data
-
-    return getNodeInfoById(availableNodes, outputVarNodeId)?.data
-  })()
-
-  const varName = hasValue ? `${isSystemVar(value as ValueSelector) ? 'sys.' : ''}${value[value.length - 1]}` : ''
-
-  const getVarType = () => {
+  const getVarType = (value: ValueSelector, outputVarNodeId: string, isConstant: boolean, isIterationVar: boolean): VarType | 'undefined' => {
     if (isConstant)
       return 'undefined'
 
     if (isIterationVar) {
       if (value[1] === 'item')
-        return VarType.string // TODO
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        return iterationItemType
       return VarType.number
     }
     const isSystem = isSystemVar(value as ValueSelector)
@@ -176,6 +108,95 @@ const VarReferencePicker: FC<Props> = ({
       return type
     }
   }
+
+  const node = getNodes().find(n => n.id === nodeId)
+  const isInIteration = !!node?.data.isInIteration
+  const iterationNode = isInIteration ? getNodes().find(n => n.id === node.parentId) : null
+  const iterationItemType = (() => {
+    if (!isInIteration)
+      return VarType.string
+    const arrType = getVarType(iterationNode?.data.iterator_selector || [], iterationNode?.data.iterator_selector[0] || '', false, false)
+    switch (arrType) {
+      case VarType.arrayString:
+        return VarType.string
+      case VarType.arrayNumber:
+        return VarType.number
+      case VarType.arrayObject:
+        return VarType.object
+      case VarType.array:
+        return VarType.any
+      case VarType.arrayFile:
+        return VarType.object
+      default:
+        return VarType.string
+    }
+  })()
+  const triggerRef = useRef<HTMLDivElement>(null)
+  const [triggerWidth, setTriggerWidth] = useState(TRIGGER_DEFAULT_WIDTH)
+  useEffect(() => {
+    if (triggerRef.current)
+      setTriggerWidth(triggerRef.current.clientWidth)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triggerRef.current])
+
+  const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
+  const isConstant = isSupportConstantValue && varKindType === VarKindType.constant
+
+  const outputVars = (() => {
+    if (availableVars)
+      return availableVars
+
+    const vars = toNodeOutputVars(availableNodes, isChatMode, filterVar)
+    if (isInIteration && node?.parentId) {
+      const iterationVar = {
+        nodeId: node.parentId,
+        title: t('workflow.nodes.iteration.iterationContent'),
+        vars: [
+          {
+            variable: 'item',
+            type: iterationItemType as VarType,
+          },
+          {
+            variable: 'index',
+            type: VarType.number,
+          },
+        ],
+      }
+
+      vars.push(iterationVar)
+    }
+    return vars
+  })()
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    onOpen()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+  const hasValue = !isConstant && value.length > 0
+
+  const isIterationVar = (() => {
+    if (!isInIteration)
+      return false
+    if (value[0] === node?.parentId && ['item', 'index'].includes(value[1]))
+      return true
+    return false
+  })()
+
+  const outputVarNodeId = hasValue ? value[0] : ''
+  const outputVarNode = (() => {
+    if (!hasValue || isConstant)
+      return null
+
+    if (isIterationVar)
+      return iterationNode?.data
+
+    if (isSystemVar(value as ValueSelector))
+      return startNode?.data
+
+    return getNodeInfoById(availableNodes, outputVarNodeId)?.data
+  })()
+
+  const varName = hasValue ? `${isSystemVar(value as ValueSelector) ? 'sys.' : ''}${value[value.length - 1]}` : ''
 
   const varKindTypes = [
     {
@@ -232,7 +253,7 @@ const VarReferencePicker: FC<Props> = ({
       onChange([], varKindType)
   }, [onChange, varKindType])
 
-  const type = getVarType()
+  const type = getVarType(value as ValueSelector, outputVarNodeId, !!isConstant, isIterationVar)
   // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 17 buff
   const availableWidth = triggerWidth - 56
   const [maxNodeNameWidth, maxVarNameWidth, maxTypeWidth] = (() => {
