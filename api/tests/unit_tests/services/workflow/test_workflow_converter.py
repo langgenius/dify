@@ -71,7 +71,7 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
         id=api_based_extension_id,
         name="api-1",
         api_key="encrypted_api_key",
-        api_endpoint="https://dify.ai",
+        api_endpoint="https://iechor.com",
     )
 
     workflow_converter = WorkflowConverter()
@@ -141,7 +141,7 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
         id=api_based_extension_id,
         name="api-1",
         api_key="encrypted_api_key",
-        api_endpoint="https://dify.ai",
+        api_endpoint="https://iechor.com",
     )
 
     workflow_converter = WorkflowConverter()

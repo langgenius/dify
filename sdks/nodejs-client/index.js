@@ -1,5 +1,5 @@
 import axios from "axios";
-export const BASE_URL = "https://api.dify.ai/v1";
+export const BASE_URL = "https://api.iechor.com/v1";
 
 export const routes = {
   application: {
@@ -44,7 +44,7 @@ export const routes = {
   },
 };
 
-export class DifyClient {
+export class iEchorClient {
   constructor(apiKey, baseUrl = BASE_URL) {
     this.apiKey = apiKey;
     this.baseUrl = baseUrl;
@@ -131,7 +131,7 @@ export class DifyClient {
   }
 }
 
-export class CompletionClient extends DifyClient {
+export class CompletionClient extends iEchorClient {
   createCompletionMessage(inputs, user, stream = false, files = null) {
     const data = {
       inputs,
@@ -164,7 +164,7 @@ export class CompletionClient extends DifyClient {
   }
 }
 
-export class ChatClient extends DifyClient {
+export class ChatClient extends iEchorClient {
   createChatMessage(
     inputs,
     query,

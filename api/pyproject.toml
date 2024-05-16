@@ -40,7 +40,7 @@ ignore = [
 
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii"
-AZURE_OPENAI_API_BASE = "https://difyai-openai.openai.azure.com"
+AZURE_OPENAI_API_BASE = "https://iechorai-openai.openai.azure.com"
 AZURE_OPENAI_API_KEY = "xxxxb1707exxxxxxxxxxaaxxxxxf94"
 ANTHROPIC_API_KEY = "sk-ant-api11-IamNotARealKeyJustForMockTestKawaiiiiiiiiii-NotBaka-ASkksz"
 CHATGLM_API_BASE = "http://a.abc.com:11451"
@@ -57,4 +57,4 @@ HUGGINGFACE_EMBEDDINGS_ENDPOINT_URL = "c"
 MOCK_SWITCH = "true"
 CODE_MAX_STRING_LENGTH = "80000"
 CODE_EXECUTION_ENDPOINT="http://127.0.0.1:8194"
-CODE_EXECUTION_API_KEY="dify-sandbox"
+CODE_EXECUTION_API_KEY="iechor-sandbox"

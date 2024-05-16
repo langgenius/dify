@@ -58,7 +58,7 @@ else:
     time.tzset()
 
 
-class DifyApp(Flask):
+class iEchorApp(Flask):
     pass
 
 
@@ -76,7 +76,7 @@ config_type = os.getenv('EDITION', default='SELF_HOSTED')  # ce edition first
 
 
 def create_app() -> Flask:
-    app = DifyApp(__name__)
+    app = iEchorApp(__name__)
     app.config.from_object(Config())
 
     app.secret_key = app.config['SECRET_KEY']

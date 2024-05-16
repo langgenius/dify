@@ -248,7 +248,7 @@ def upgrade():
     op.create_table('dify_setups',
     sa.Column('version', sa.String(length=255), nullable=False),
     sa.Column('setup_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
-    sa.PrimaryKeyConstraint('version', name='dify_setup_pkey')
+    sa.PrimaryKeyConstraint('version', name='iechor_setup_pkey')
     )
     op.create_table('document_segments',
     sa.Column('id', postgresql.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),

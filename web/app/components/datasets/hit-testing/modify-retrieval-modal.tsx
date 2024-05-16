@@ -20,7 +20,7 @@ type Props = {
   onSave: (value: RetrievalConfig) => void
 }
 
-const MoiechorRetrievalModal: FC<Props> = ({
+const ModifyRetrievalModal: FC<Props> = ({
   indexMethod,
   value,
   isShow,
@@ -120,4 +120,4 @@ const MoiechorRetrievalModal: FC<Props> = ({
     </div>
   )
 }
-export default React.memo(MoiechorRetrievalModal)
+export default React.memo(ModifyRetrievalModal)

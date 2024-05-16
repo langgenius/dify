@@ -59,7 +59,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
             self._tts_invoke(
                 model=model,
                 credentials=credentials,
-                content_text='Hello Dify!',
+                content_text='Hello iEchor!',
                 voice=self._get_model_default_voice(model, credentials),
             )
         except Exception as ex:

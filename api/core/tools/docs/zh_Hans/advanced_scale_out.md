@@ -1,6 +1,6 @@
 # 高级接入Tool
 
-在开始高级接入之前，请确保你已经阅读过[快速接入](./tool_scale_out.md)，并对Dify的工具接入流程有了基本的了解。
+在开始高级接入之前，请确保你已经阅读过[快速接入](./tool_scale_out.md)，并对iEchor的工具接入流程有了基本的了解。
 
 ## 工具接口
 
@@ -8,12 +8,12 @@
 
 ### 消息返回
 
-Dify支持`文本` `链接` `图片` `文件BLOB` 等多种消息类型，你可以通过以下几个接口返回不同类型的消息给LLM和用户。
+iEchor支持`文本` `链接` `图片` `文件BLOB` 等多种消息类型，你可以通过以下几个接口返回不同类型的消息给LLM和用户。
 
 注意，在下面的接口中的部分参数将在后面的章节中介绍。
 
 #### 图片URL
-只需要传递图片的URL即可，Dify会自动下载图片并返回给用户。
+只需要传递图片的URL即可，iEchor会自动下载图片并返回给用户。
 
 ```python
     def create_image_message(self, image: str, save_as: str = '') -> ToolInvokeMessage:
@@ -55,7 +55,7 @@ Dify支持`文本` `链接` `图片` `文件BLOB` 等多种消息类型，你可
 如果你需要返回文件的原始数据，如图片、音频、视频、PPT、Word、Excel等，可以使用以下接口。
 
 - `blob` 文件的原始数据，bytes类型
-- `meta` 文件的元数据，如果你知道该文件的类型，最好传递一个`mime_type`，否则Dify将使用`octet/stream`作为默认类型
+- `meta` 文件的元数据，如果你知道该文件的类型，最好传递一个`mime_type`，否则iEchor将使用`octet/stream`作为默认类型
 
 ```python
     def create_blob_message(self, blob: bytes, meta: dict = None, save_as: str = '') -> ToolInvokeMessage:
@@ -77,7 +77,7 @@ Dify支持`文本` `链接` `图片` `文件BLOB` 等多种消息类型，你可
 
 #### 文本总结工具
 
-该工具需要传入user_id和需要进行总结的文本，返回一个总结后的文本，Dify会使用当前工作空间的默认模型对长文本进行总结。
+该工具需要传入user_id和需要进行总结的文本，返回一个总结后的文本，iEchor会使用当前工作空间的默认模型对长文本进行总结。
 
 ```python
     def summary(self, user_id: str, content: str) -> str:
@@ -92,7 +92,7 @@ Dify支持`文本` `链接` `图片` `文件BLOB` 等多种消息类型，你可
 
 #### 网页爬取工具
 
-该工具需要传入需要爬取的网页链接和一个user_agent（可为空），返回一个包含该网页信息的字符串，其中`user_agent`是可选参数，可以用来识别工具，如果不传递，Dify将使用默认的`user_agent`。
+该工具需要传入需要爬取的网页链接和一个user_agent（可为空），返回一个包含该网页信息的字符串，其中`user_agent`是可选参数，可以用来识别工具，如果不传递，iEchor将使用默认的`user_agent`。
 
 ```python
     def get_url(self, url: str, user_agent: str = None) -> str:

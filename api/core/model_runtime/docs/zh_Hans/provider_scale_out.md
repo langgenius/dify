@@ -14,7 +14,7 @@
 
   与 `predefined-model` 配置方式一致，只需要配置统一的供应商凭据即可，模型通过凭据信息从供应商获取。
 
-  如OpenAI，我们可以基于gpt-turbo-3.5来Fine Tune多个模型，而他们都位于同一个**api_key**下，当配置为 `fetch-from-remote` 时，开发者只需要配置统一的**api_key**即可让DifyRuntime获取到开发者所有的微调模型并接入Dify。
+  如OpenAI，我们可以基于gpt-turbo-3.5来Fine Tune多个模型，而他们都位于同一个**api_key**下，当配置为 `fetch-from-remote` 时，开发者只需要配置统一的**api_key**即可让iEchorRuntime获取到开发者所有的微调模型并接入iEchor。
 
 这三种配置方式**支持共存**，即存在供应商支持 `predefined-model` + `customizable-model` 或 `predefined-model` + `fetch-from-remote` 等，也就是配置了供应商统一凭据可以使用预定义模型和从远程获取的模型，若新增了模型，则可以在此基础上额外使用自定义的模型。
 
@@ -135,7 +135,7 @@ class XinferenceProvider(Provider):
 
 ##### 预定义模型供应商
 
-供应商需要继承 `__base.model_provider.ModelProvider` 基类，实现 `validate_provider_credentials` 供应商统一凭据校验方法即可，可参考 [AnthropicProvider](https://github.com/langgenius/dify-runtime/blob/main/lib/model_providers/anthropic/anthropic.py)。
+供应商需要继承 `__base.model_provider.ModelProvider` 基类，实现 `validate_provider_credentials` 供应商统一凭据校验方法即可，可参考 [AnthropicProvider](https://github.com/iechor/iechor-runtime/blob/main/lib/model_providers/anthropic/anthropic.py)。
 
 ```python
 def validate_provider_credentials(self, credentials: dict) -> None:

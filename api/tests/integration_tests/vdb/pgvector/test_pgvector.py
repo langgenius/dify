@@ -17,7 +17,7 @@ class TestPGVector(AbstractVectorTest):
                 port=5433,
                 user="postgres",
                 password="difyai123456",
-                database="dify",
+                database="iechor",
             ),
         )
 

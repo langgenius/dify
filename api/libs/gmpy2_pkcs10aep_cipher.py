@@ -57,7 +57,7 @@ class PKCS1OAEP_Cipher:
          randfunc : callable
                 A function that returns random bytes.
 
-        :attention: Modify the mask generation function only if you know what you are doing.
+        :attention: modify the mask generation function only if you know what you are doing.
                     Sender and receiver must use the same one.
         """
         self._key = key

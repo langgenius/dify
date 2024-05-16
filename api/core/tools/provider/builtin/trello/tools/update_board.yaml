@@ -10,7 +10,7 @@ description:
     en_US: Updates a Trello board's settings based on the provided ID and parameters. Allows for changing the board's name, description, status, and other preferences.
     zh_Hans: 根据提供的 ID 和参数更新 Trello 看板的设置。允许更改看板的名称、描述、状态和其他偏好设置。
     pt_BR: Atualiza as configurações de um quadro Trello com base no ID fornecido e nos parâmetros. Permite alterar o nome, descrição, status e outras preferências do quadro.
-  llm: Modify a Trello board's attributes like its name, description, and visibility settings using the board's ID. This tool streamlines board customization and management.
+  llm: modify a Trello board's attributes like its name, description, and visibility settings using the board's ID. This tool streamlines board customization and management.
 parameters:
   - name: boardId
     type: string

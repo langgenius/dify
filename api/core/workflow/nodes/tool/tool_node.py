@@ -1,7 +1,7 @@
 from os import path
 from typing import cast
 
-from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.callback_handler.workflow_tool_callback_handler import iEchorWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_engine import ToolEngine
@@ -57,7 +57,7 @@ class ToolNode(BaseNode):
                 tool_parameters=parameters,
                 user_id=self.user_id,
                 workflow_id=self.workflow_id, 
-                workflow_tool_callback=DifyWorkflowCallbackHandler()
+                workflow_tool_callback=iEchorWorkflowCallbackHandler()
             )
         except Exception as e:
             return NodeRunResult(

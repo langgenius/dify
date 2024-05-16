@@ -1,7 +1,7 @@
 # Variables
-DOCKER_REGISTRY=langgenius
-WEB_IMAGE=$(DOCKER_REGISTRY)/dify-web
-API_IMAGE=$(DOCKER_REGISTRY)/dify-api
+DOCKER_REGISTRY=iechor
+WEB_IMAGE=$(DOCKER_REGISTRY)/iechor-web
+API_IMAGE=$(DOCKER_REGISTRY)/iechor-api
 VERSION=latest
 
 # Build Docker images

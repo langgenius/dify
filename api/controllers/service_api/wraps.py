@@ -113,7 +113,7 @@ def cloud_edition_billing_resource_check(resource: str,
 
 def cloud_edition_billing_knowledge_limit_check(resource: str,
                                                 api_token_type: str,
-                                                error_msg: str = "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."):
+                                                error_msg: str = "To unlock this feature and elevate your iEchor experience, please upgrade to a paid plan."):
     def interceptor(view):
         @wraps(view)
         def decorated(*args, **kwargs):

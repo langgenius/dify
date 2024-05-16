@@ -1,6 +1,6 @@
 identity:
   name: stability_text2image
-  author: Dify
+  author: iEchor
   label:
     en_US: StableDiffusion
     zh_Hans: 稳定扩散

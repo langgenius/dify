@@ -1,6 +1,6 @@
 # Model Runtime
 
-该模块提供了各模型的调用、鉴权接口，并为 Dify 提供了统一的模型供应商的信息和凭据表单规则。
+该模块提供了各模型的调用、鉴权接口，并为 iEchor 提供了统一的模型供应商的信息和凭据表单规则。
 
 - 一方面将模型和上下游解耦，方便开发者对模型横向扩展，
 - 另一方面提供了只需在后端定义供应商和模型，即可在前端页面直接展示，无需修改前端逻辑。
@@ -61,7 +61,7 @@ Model Runtime 分三层：
   - 如[**Xinference**](https://github.com/xorbitsai/inference)这类本地部署的供应商，需要定义如**server_url**这类的地址凭据，有时候还需要定义**model_uid**之类的模型类型凭据，就像下面这样，当在供应商层定义了这些凭据后，就可以在前端页面上直接展示，无需修改前端逻辑。
   ![Alt text](docs/zh_Hans/images/index/image.png)
 
-  当配置好凭据后，就可以通过DifyRuntime的外部接口直接获取到对应供应商所需要的**Schema**（凭据表单规则），从而在可以在不修改前端逻辑的情况下，提供新的供应商/模型的支持。
+  当配置好凭据后，就可以通过iEchorRuntime的外部接口直接获取到对应供应商所需要的**Schema**（凭据表单规则），从而在可以在不修改前端逻辑的情况下，提供新的供应商/模型的支持。
 
 - 最底层为模型层
 
@@ -69,9 +69,9 @@ Model Runtime 分三层：
 
   在这里我们需要先区分模型参数与模型凭据。
 
-  - 模型参数(**在本层定义**)：这是一类经常需要变动，随时调整的参数，如 LLM 的 **max_tokens**、**temperature** 等，这些参数是由用户在前端页面上进行调整的，因此需要在后端定义参数的规则，以便前端页面进行展示和调整。在DifyRuntime中，他们的参数名一般为**model_parameters: dict[str, any]**。
+  - 模型参数(**在本层定义**)：这是一类经常需要变动，随时调整的参数，如 LLM 的 **max_tokens**、**temperature** 等，这些参数是由用户在前端页面上进行调整的，因此需要在后端定义参数的规则，以便前端页面进行展示和调整。在iEchorRuntime中，他们的参数名一般为**model_parameters: dict[str, any]**。
 
-  - 模型凭据(**在供应商层定义**)：这是一类不经常变动，一般在配置好后就不会再变动的参数，如 **api_key**、**server_url** 等。在DifyRuntime中，他们的参数名一般为**credentials: dict[str, any]**，Provider层的credentials会直接被传递到这一层，不需要再单独定义。
+  - 模型凭据(**在供应商层定义**)：这是一类不经常变动，一般在配置好后就不会再变动的参数，如 **api_key**、**server_url** 等。在iEchorRuntime中，他们的参数名一般为**credentials: dict[str, any]**，Provider层的credentials会直接被传递到这一层，不需要再单独定义。
 
 ## 下一步
 

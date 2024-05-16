@@ -4,7 +4,7 @@ from flask import current_app, session
 from flask_restful import Resource, reqparse
 
 from libs.helper import str_len
-from models.model import DifySetup
+from models.model import iEchorSetup
 from services.account_service import TenantService
 
 from . import api
@@ -42,7 +42,7 @@ class InitValidateAPI(Resource):
 def get_init_validate_status():
     if current_app.config['EDITION'] == 'SELF_HOSTED':
         if os.environ.get('INIT_PASSWORD'):
-            return session.get('is_init_validated') or DifySetup.query.first()
+            return session.get('is_init_validated') or iEchorSetup.query.first()
     
     return True
 

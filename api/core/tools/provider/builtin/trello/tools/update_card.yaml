@@ -10,7 +10,7 @@ description:
     en_US: Updates specified attributes of a Trello card, such as its name, description, list ID, and board ID, by providing the card's unique ID.
     zh_Hans: 通过提供卡片的唯一 ID，更新 Trello 卡片的特定属性，如其名称、描述、列表 ID 和看板 ID。
     pt_BR: Atualiza atributos específicos de um cartão Trello, como seu nome, descrição, ID da lista e ID do quadro, fornecendo o ID único do cartão.
-  llm: Modify a Trello card's key details, including name, description, and its placement on the board, by using the card's ID. Enables precise and targeted updates to card information.
+  llm: modify a Trello card's key details, including name, description, and its placement on the board, by using the card's ID. Enables precise and targeted updates to card information.
 parameters:
   - name: id
     type: string

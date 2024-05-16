@@ -17,10 +17,10 @@ from . import StringUUID
 from .account import Account, Tenant
 
 
-class DifySetup(db.Model):
+class iEchorSetup(db.Model):
     __tablename__ = 'dify_setups'
     __table_args__ = (
-        db.PrimaryKeyConstraint('version', name='dify_setup_pkey'),
+        db.PrimaryKeyConstraint('version', name='iechor_setup_pkey'),
     )
 
     version = db.Column(db.String(255), nullable=False)

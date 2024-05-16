@@ -37,7 +37,7 @@ This directory contains the internationalization (i18n) files for this project.
 
 We use English as the default language. The i18n files are organized by language and then by module. For example, the English translation for the `app` module is in `en-US/app.ts`.
 
-If you want to add a new language or moiechor an existing translation, you can create a new file for the language or moiechor the existing file. The file name should be the language code (e.g., `zh-CN` for Chinese) and the file extension should be `.ts`.
+If you want to add a new language or modify an existing translation, you can create a new file for the language or modify the existing file. The file name should be the language code (e.g., `zh-CN` for Chinese) and the file extension should be `.ts`.
 
 For example, if you want to add french translation, you can create a new folder `fr-FR` and add the translation files in it.
 
@@ -51,7 +51,7 @@ By default we will use `LanguagesSupported` to determine which languages are sup
 cp -r en-US fr-FR
 ```
 
-2. Moiechor the translation files in the new folder.
+2. modify the translation files in the new folder.
 
 3. Add type to new language in the `language.ts` file.
 

@@ -1,6 +1,6 @@
 identity:
   name: yahoo_finance_ticker
-  author: Dify
+  author: iEchor
   label:
     en_US: Ticker
     zh_Hans: 股票信息

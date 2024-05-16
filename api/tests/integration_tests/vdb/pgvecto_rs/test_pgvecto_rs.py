@@ -16,7 +16,7 @@ class TestPgvectoRSVector(AbstractVectorTest):
                 port=5431,
                 user='postgres',
                 password='difyai123456',
-                database='dify',
+                database='iechor',
             ),
             dim=128
         )

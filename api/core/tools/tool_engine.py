@@ -3,8 +3,8 @@ from datetime import datetime, timezone
 from typing import Union
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
-from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.callback_handler.agent_tool_callback_handler import iEchorAgentCallbackHandler
+from core.callback_handler.workflow_tool_callback_handler import iEchorWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, ToolInvokeMeta, ToolParameter
 from core.tools.errors import (
@@ -29,7 +29,7 @@ class ToolEngine:
     @staticmethod
     def agent_invoke(tool: Tool, tool_parameters: Union[str, dict],
                      user_id: str, tenant_id: str, message: Message, invoke_from: InvokeFrom,
-                     agent_tool_callback: DifyAgentCallbackHandler) \
+                     agent_tool_callback: iEchorAgentCallbackHandler) \
                         -> tuple[str, list[tuple[MessageFile, bool]], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
@@ -115,7 +115,7 @@ class ToolEngine:
     @staticmethod
     def workflow_invoke(tool: Tool, tool_parameters: dict,
                         user_id: str, workflow_id: str, 
-                        workflow_tool_callback: DifyWorkflowCallbackHandler) \
+                        workflow_tool_callback: iEchorWorkflowCallbackHandler) \
                               -> list[ToolInvokeMessage]:
         """
         Workflow invokes the tool with the given arguments.

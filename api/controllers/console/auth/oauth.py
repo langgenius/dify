@@ -100,7 +100,7 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
 
     if not account:
         # Create account
-        account_name = user_info.name if user_info.name else 'Dify'
+        account_name = user_info.name if user_info.name else 'iEchor'
         account = RegisterService.register(
             email=user_info.email,
             name=account_name,

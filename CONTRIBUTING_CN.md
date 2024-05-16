@@ -1,18 +1,18 @@
-所以你想为 Dify 做贡献 - 这太棒了，我们迫不及待地想看到你的贡献。作为一家人员和资金有限的初创公司，我们有着雄心勃勃的目标，希望设计出最直观的工作流程来构建和管理 LLM 应用程序。社区的任何帮助都是宝贵的。
+所以你想为 iEchor 做贡献 - 这太棒了，我们迫不及待地想看到你的贡献。作为一家人员和资金有限的初创公司，我们有着雄心勃勃的目标，希望设计出最直观的工作流程来构建和管理 LLM 应用程序。社区的任何帮助都是宝贵的。
 
 考虑到我们的现状，我们需要灵活快速地交付，但我们也希望确保像你这样的贡献者在贡献过程中获得尽可能顺畅的体验。我们为此编写了这份贡献指南，旨在让你熟悉代码库和我们与贡献者的合作方式，以便你能快速进入有趣的部分。
 
-这份指南，就像 Dify 本身一样，是一个不断改进的工作。如果有时它落后于实际项目，我们非常感谢你的理解，并欢迎任何反馈以供我们改进。
+这份指南，就像 iEchor 本身一样，是一个不断改进的工作。如果有时它落后于实际项目，我们非常感谢你的理解，并欢迎任何反馈以供我们改进。
 
-在许可方面，请花一分钟阅读我们简短的[许可证和贡献者协议](./LICENSE)。社区还遵守[行为准则](https://github.com/langgenius/.github/blob/main/CODE_OF_CONDUCT.md)。
+在许可方面，请花一分钟阅读我们简短的[许可证和贡献者协议](./LICENSE)。社区还遵守[行为准则](https://github.com/iechor/.github/blob/main/CODE_OF_CONDUCT.md)。
 
 ## 在开始之前
 
-[查找](https://github.com/langgenius/dify/issues?q=is:issue+is:closed)现有问题，或[创建](https://github.com/langgenius/dify/issues/new/choose)一个新问题。我们将问题分为两类：
+[查找](https://github.com/iechor/iechor/issues?q=is:issue+is:closed)现有问题，或[创建](https://github.com/iechor/iechor/issues/new/choose)一个新问题。我们将问题分为两类：
 
 ### 功能请求：
 
-* 如果您要提出新的功能请求，请解释所提议的功能的目标，并尽可能提供详细的上下文。[@perzeusss](https://github.com/perzeuss)制作了一个很好的[功能请求助手](https://udify.app/chat/MK2kVSnw1gakVwMX)，可以帮助您起草需求。随时尝试一下。
+* 如果您要提出新的功能请求，请解释所提议的功能的目标，并尽可能提供详细的上下文。[@perzeusss](https://github.com/perzeuss)制作了一个很好的[功能请求助手](https://uiechor.app/chat/MK2kVSnw1gakVwMX)，可以帮助您起草需求。随时尝试一下。
 
 * 如果您想从现有问题中选择一个，请在其下方留下评论表示您的意愿。
 
@@ -34,7 +34,7 @@
   | Feature Type                                                 | Priority        |
   | ------------------------------------------------------------ | --------------- |
   | High-Priority Features as being labeled by a team member     | High Priority   |
-  | Popular feature requests from our [community feedback board](https://github.com/langgenius/dify/discussions/categories/feedbacks) | Medium Priority |
+  | Popular feature requests from our [community feedback board](https://github.com/iechor/iechor/discussions/categories/feedbacks) | Medium Priority |
   | Non-core features and minor enhancements                     | Low Priority    |
   | Valuable but not immediate                                   | Future-Feature  |
 
@@ -52,7 +52,7 @@
 
 ## 安装
 
-以下是设置Dify进行开发的步骤：
+以下是设置iEchor进行开发的步骤：
 
 ### 1. Fork该仓库
 
@@ -61,12 +61,12 @@
 从终端克隆fork的仓库：
 
 ```
-git clone git@github.com:<github_username>/dify.git
+git clone git@github.com:<github_username>/iechor.git
 ```
 
 ### 3. 验证依赖项
 
-Dify 依赖以下工具和库：
+iEchor 依赖以下工具和库：
 
 - [Docker](https://www.docker.com/)
 - [Docker Compose](https://docs.docker.com/compose/install/)
@@ -76,25 +76,25 @@ Dify 依赖以下工具和库：
 
 ### 4. 安装
 
-Dify由后端和前端组成。通过`cd api/`导航到后端目录，然后按照[后端README](api/README.md)进行安装。在另一个终端中，通过`cd web/`导航到前端目录，然后按照[前端README](web/README.md)进行安装。
+iEchor由后端和前端组成。通过`cd api/`导航到后端目录，然后按照[后端README](api/README.md)进行安装。在另一个终端中，通过`cd web/`导航到前端目录，然后按照[前端README](web/README.md)进行安装。
 
-查看[安装常见问题解答](https://docs.dify.ai/getting-started/faq/install-faq)以获取常见问题列表和故障排除步骤。
+查看[安装常见问题解答](https://docs.iechor.com/getting-started/faq/install-faq)以获取常见问题列表和故障排除步骤。
 
-### 5. 在浏览器中访问Dify
+### 5. 在浏览器中访问iEchor
 
-为了验证您的设置，打开浏览器并访问[http://localhost:3000](http://localhost:3000)（默认或您自定义的URL和端口）。现在您应该看到Dify正在运行。
+为了验证您的设置，打开浏览器并访问[http://localhost:3000](http://localhost:3000)（默认或您自定义的URL和端口）。现在您应该看到iEchor正在运行。
 
 ## 开发
 
-如果您要添加模型提供程序，请参考[此指南](https://github.com/langgenius/dify/blob/main/api/core/model_runtime/README.md)。
+如果您要添加模型提供程序，请参考[此指南](https://github.com/iechor/iechor/blob/main/api/core/model_runtime/README.md)。
 
 如果您要向Agent或Workflow添加工具提供程序，请参考[此指南](./api/core/tools/README.md)。
 
-为了帮助您快速了解您的贡献在哪个部分，以下是Dify后端和前端的简要注释大纲：
+为了帮助您快速了解您的贡献在哪个部分，以下是iEchor后端和前端的简要注释大纲：
 
 ### 后端
 
-Dify的后端使用Python编写，使用[Flask](https://flask.palletsprojects.com/en/3.0.x/)框架。它使用[SQLAlchemy](https://www.sqlalchemy.org/)作为ORM，使用[Celery](https://docs.celeryq.dev/en/stable/getting-started/introduction.html)作为任务队列。授权逻辑通过Flask-login进行处理。
+iEchor的后端使用Python编写，使用[Flask](https://flask.palletsprojects.com/en/3.0.x/)框架。它使用[SQLAlchemy](https://www.sqlalchemy.org/)作为ORM，使用[Celery](https://docs.celeryq.dev/en/stable/getting-started/introduction.html)作为任务队列。授权逻辑通过Flask-login进行处理。
 
 ```
 [api/]
@@ -148,7 +148,7 @@ Dify的后端使用Python编写，使用[Flask](https://flask.palletsprojects.co
 
 最后，是时候向我们的仓库提交一个拉取请求（PR）了。对于重要的功能，我们首先将它们合并到 `deploy/dev` 分支进行测试，然后再合并到 `main` 分支。如果你遇到合并冲突或者不知道如何提交拉取请求的问题，请查看 [GitHub 的拉取请求教程](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests)。
 
-就是这样！一旦你的 PR 被合并，你将成为我们 [README](https://github.com/langgenius/dify/blob/main/README.md) 中的贡献者。
+就是这样！一旦你的 PR 被合并，你将成为我们 [README](https://github.com/iechor/iechor/blob/main/README.md) 中的贡献者。
 
 ## 获取帮助
 

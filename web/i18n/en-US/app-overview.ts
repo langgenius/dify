@@ -73,9 +73,9 @@ const translation = {
         title: 'Customize AI WebApp',
         explanation: 'You can customize the frontend of the Web App to fit your scenario and style needs.',
         way1: {
-          name: 'Fork the client code, moiechor it and deploy to Vercel (recommended)',
-          step1: 'Fork the client code and moiechor it',
-          step1Tip: 'Click here to fork the source code into your GitHub account and moiechor the code',
+          name: 'Fork the client code, modify it and deploy to Vercel (recommended)',
+          step1: 'Fork the client code and modify it',
+          step1Tip: 'Click here to fork the source code into your GitHub account and modify the code',
           step1Operation: 'iEchor-WebClient',
           step2: 'Deploy to Vercel',
           step2Tip: 'Click here to import the repository into Vercel and deploy',

@@ -1,30 +1,30 @@
-import { DifyClient, BASE_URL, routes } from ".";
+import { iEchorClient, BASE_URL, routes } from ".";
 
 import axios from 'axios'
 
 jest.mock('axios')
 
 describe('Client', () => {
-  let difyClient
+  let iechorClient
   beforeEach(() => {
-    difyClient = new DifyClient('test')
+    iechorClient = new iEchorClient('test')
   })
 
   test('should create a client', () => {
-    expect(difyClient).toBeDefined();
+    expect(iechorClient).toBeDefined();
   })
   // test updateApiKey
   test('should update the api key', () => {
-    difyClient.updateApiKey('test2');
-    expect(difyClient.apiKey).toBe('test2');
+    iechorClient.updateApiKey('test2');
+    expect(iechorClient.apiKey).toBe('test2');
   })
 });
 
 describe('Send Requests', () => {
-  let difyClient
+  let iechorClient
 
   beforeEach(() => {
-    difyClient = new DifyClient('test')
+    iechorClient = new iEchorClient('test')
   })
 
   afterEach(() => {
@@ -37,7 +37,7 @@ describe('Send Requests', () => {
     const expectedResponse = { data: 'response' }
     axios.mockResolvedValue(expectedResponse)
 
-    await difyClient.sendRequest(method, endpoint)
+    await iechorClient.sendRequest(method, endpoint)
 
     expect(axios).toHaveBeenCalledWith({
       method,
@@ -45,7 +45,7 @@ describe('Send Requests', () => {
       data: null,
       params: null,
       headers: {
-        Authorization: `Bearer ${difyClient.apiKey}`,
+        Authorization: `Bearer ${iechorClient.apiKey}`,
         'Content-Type': 'application/json',
       },
       responseType: 'json',
@@ -59,7 +59,7 @@ describe('Send Requests', () => {
     const errorMessage = 'Request failed with status code 404'
     axios.mockRejectedValue(new Error(errorMessage))
 
-    await expect(difyClient.sendRequest(method, endpoint)).rejects.toThrow(
+    await expect(iechorClient.sendRequest(method, endpoint)).rejects.toThrow(
       errorMessage
     )
   })

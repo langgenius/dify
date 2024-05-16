@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from dify_client.client import ChatClient, CompletionClient, DifyClient
+from iechor_client.client import ChatClient, CompletionClient, iEchorClient
 
 API_KEY = os.environ.get("API_KEY")
 APP_ID = os.environ.get("APP_ID")
@@ -72,16 +72,16 @@ class TestCompletionClient(unittest.TestCase):
         self.assertIn("answer", response.text)
 
 
-class TestDifyClient(unittest.TestCase):
+class TestiEchorClient(unittest.TestCase):
     def setUp(self):
-        self.dify_client = DifyClient(API_KEY)
+        self.iechor_client = iEchorClient(API_KEY)
 
     def test_message_feedback(self):
-        response = self.dify_client.message_feedback("your_message_id", 'like', "test_user")
+        response = self.iechor_client.message_feedback("your_message_id", 'like', "test_user")
         self.assertIn("success", response.text)
 
     def test_get_application_parameters(self):
-        response = self.dify_client.get_application_parameters("test_user")
+        response = self.iechor_client.get_application_parameters("test_user")
         self.assertIn("user_input_form", response.text)
 
     def test_file_upload(self):
@@ -93,7 +93,7 @@ class TestDifyClient(unittest.TestCase):
             files = {
                 "file": (file_name, file, mime_type)
             }
-            response = self.dify_client.file_upload("test_user", files)
+            response = self.iechor_client.file_upload("test_user", files)
             self.assertIn("name", response.text)
 
 

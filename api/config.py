@@ -10,7 +10,7 @@ DEFAULTS = {
     'DB_PASSWORD': '',
     'DB_HOST': 'localhost',
     'DB_PORT': '5432',
-    'DB_DATABASE': 'dify',
+    'DB_DATABASE': 'iechor',
     'DB_CHARSET': '',
     'REDIS_HOST': 'localhost',
     'REDIS_PORT': '6379',
@@ -18,15 +18,15 @@ DEFAULTS = {
     'REDIS_USE_SSL': 'False',
     'OAUTH_REDIRECT_PATH': '/console/api/oauth/authorize',
     'OAUTH_REDIRECT_INDEX_PATH': '/',
-    'CONSOLE_WEB_URL': 'https://cloud.dify.ai',
-    'CONSOLE_API_URL': 'https://cloud.dify.ai',
-    'SERVICE_API_URL': 'https://api.dify.ai',
-    'APP_WEB_URL': 'https://udify.app',
+    'CONSOLE_WEB_URL': 'https://cloud.iechor.com',
+    'CONSOLE_API_URL': 'https://cloud.iechor.com',
+    'SERVICE_API_URL': 'https://api.iechor.com',
+    'APP_WEB_URL': 'https://uiechor.app',
     'FILES_URL': '',
     'S3_ADDRESS_STYLE': 'auto',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
-    'CHECK_UPDATE_URL': 'https://updates.dify.ai',
+    'CHECK_UPDATE_URL': 'https://updates.iechor.com',
     'DEPLOY_ENV': 'PRODUCTION',
     'SQLALCHEMY_DATABASE_URI_SCHEME': 'postgresql',
     'SQLALCHEMY_POOL_SIZE': 30,
@@ -58,7 +58,7 @@ DEFAULTS = {
     'HOSTED_MODERATION_ENABLED': 'False',
     'HOSTED_MODERATION_PROVIDERS': '',
     'HOSTED_FETCH_APP_TEMPLATES_MODE': 'remote',
-    'HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN': 'https://tmpl.dify.ai',
+    'HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN': 'https://tmpl.iechor.com',
     'CLEAN_DAY_SETTING': 30,
     'UPLOAD_FILE_SIZE_LIMIT': 15,
     'UPLOAD_FILE_BATCH_LIMIT': 5,
@@ -68,11 +68,11 @@ DEFAULTS = {
     'INVITE_EXPIRY_HOURS': 72,
     'BILLING_ENABLED': 'False',
     'CAN_REPLACE_LOGO': 'False',
-    'ETL_TYPE': 'dify',
+    'ETL_TYPE': 'iechor',
     'KEYWORD_STORE': 'jieba',
     'BATCH_UPLOAD_LIMIT': 20,
     'CODE_EXECUTION_ENDPOINT': 'http://sandbox:8194',
-    'CODE_EXECUTION_API_KEY': 'dify-sandbox',
+    'CODE_EXECUTION_API_KEY': 'iechor-sandbox',
     'TOOL_ICON_CACHE_MAX_AGE': 3600,
     'MILVUS_DATABASE': 'default',
     'KEYWORD_DATA_SOURCE_TYPE': 'database',
@@ -357,7 +357,7 @@ class Config:
         self.HOSTED_MODERATION_ENABLED = get_bool_env('HOSTED_MODERATION_ENABLED')
         self.HOSTED_MODERATION_PROVIDERS = get_env('HOSTED_MODERATION_PROVIDERS')
 
-        # fetch app templates mode, remote, builtin, db(only for dify SaaS), default: remote
+        # fetch app templates mode, remote, builtin, db(only for iechor SaaS), default: remote
         self.HOSTED_FETCH_APP_TEMPLATES_MODE = get_env('HOSTED_FETCH_APP_TEMPLATES_MODE')
         self.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = get_env('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN')
 

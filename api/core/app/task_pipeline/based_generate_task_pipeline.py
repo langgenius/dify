@@ -84,7 +84,7 @@ class BasedGenerateTaskPipeline:
         :return:
         """
         if isinstance(e, QuotaExceededError):
-            return ("Your quota for Dify Hosted Model Provider has been exhausted. "
+            return ("Your quota for iEchor Hosted Model Provider has been exhausted. "
                     "Please go to Settings -> Model Provider to complete your own provider credentials.")
 
         message = getattr(e, 'description', str(e))

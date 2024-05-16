@@ -16,5 +16,5 @@ def init_app(app):
             traces_sample_rate=app.config.get('SENTRY_TRACES_SAMPLE_RATE', 1.0),
             profiles_sample_rate=app.config.get('SENTRY_PROFILES_SAMPLE_RATE', 1.0),
             environment=app.config.get('DEPLOY_ENV'),
-            release=f"dify-{app.config.get('CURRENT_VERSION')}-{app.config.get('COMMIT_SHA')}"
+            release=f"iechor-{app.config.get('CURRENT_VERSION')}-{app.config.get('COMMIT_SHA')}"
         )

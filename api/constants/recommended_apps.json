@@ -20,7 +20,7 @@
                     },
                     "app_id": "a23b57fa-85da-49c0-a571-3aff375976c1",
                     "category": "Agent",
-                    "copyright": "Dify.AI",
+                    "copyright": "iEchor.AI",
                     "description": "Welcome to your personalized Investment Analysis Copilot service, where we delve into the depths of stock analysis to provide you with comprehensive insights. \n",
                     "is_listed": true,
                     "position": 0,
@@ -36,11 +36,11 @@
                     },
                     "app_id": "d077d587-b072-4f2c-b631-69ed1e7cdc0f",
                     "category": "Programming",
-                    "copyright": "Copyright 2023 Dify",
+                    "copyright": "Copyright 2023 iEchor",
                     "description": "Code interpreter, clarifying the syntax and semantics of the code.",
                     "is_listed": true,
                     "position": 13,
-                    "privacy_policy": "https://dify.ai"
+                    "privacy_policy": "https://iechor.com"
                 },
                 {
                     "app": {
@@ -52,7 +52,7 @@
                     },
                     "app_id": "73fbb5f1-c15d-4d74-9cc8-46d9db9b2cca",
                     "category": "Agent",
-                    "copyright": "Dify.AI",
+                    "copyright": "iEchor.AI",
                     "description": "Hello, I am your creative partner in bringing ideas to vivid life! I can assist you in creating stunning designs by leveraging abilities of DALL\u00b7E 3.  ",
                     "is_listed": true,
                     "position": 4,
@@ -100,11 +100,11 @@
                     },
                     "app_id": "695675b8-5c5f-4368-bcf4-32b389dcb3f8",
                     "category": "Assistant",
-                    "copyright": "Copyright 2023 Dify",
+                    "copyright": "Copyright 2023 iEchor",
                     "description": "A multilingual translator that provides translation capabilities in multiple languages. Input the text you need to translate and select the target language.",
                     "is_listed": true,
                     "position": 10,
-                    "privacy_policy": "https://dify.ai"
+                    "privacy_policy": "https://iechor.com"
                 },
                 {
                     "app": {
@@ -116,7 +116,7 @@
                     },
                     "app_id": "be591209-2ca8-410f-8f3b-ca0e530dd638",
                     "category": "Agent",
-                    "copyright": "Dify.AI",
+                    "copyright": "iEchor.AI",
                     "description": "I am a YouTube Channel Data Analysis Copilot, I am here to provide expert data analysis tailored to your needs. ",
                     "is_listed": true,
                     "position": 2,
@@ -132,11 +132,11 @@
                     },
                     "app_id": "83c2e0ab-2dd6-43cb-9113-762f196ce36d",
                     "category": "Writing",
-                    "copyright": "Copyright 2023 Dify",
+                    "copyright": "Copyright 2023 iEchor",
                     "description": "Meeting minutes generator",
                     "is_listed": true,
                     "position": 0,
-                    "privacy_policy": "https://dify.ai"
+                    "privacy_policy": "https://iechor.com"
                 },
                 {
                     "app": {
@@ -164,11 +164,11 @@
                     },
                     "app_id": "050ef42e-3e0c-40c1-a6b6-a64f2c49d744",
                     "category": "Programming",
-                    "copyright": "Copyright 2023 Dify",
+                    "copyright": "Copyright 2023 iEchor",
                     "description": "Write SQL from natural language by pasting in your schema with the request.Please describe your query requirements in natural language and select the target database type.",
                     "is_listed": true,
                     "position": 13,
-                    "privacy_policy": "https://dify.ai"
+                    "privacy_policy": "https://iechor.com"
                 },
                 {
                     "app": {
@@ -180,7 +180,7 @@
                     },
                     "app_id": "d43cbcb1-d736-4217-ae9c-6664c1844de1",
                     "category": "Agent",
-                    "copyright": "Dify.AI",
+                    "copyright": "iEchor.AI",
                     "description": "Welcome to your personalized travel service with Consultant! \ud83c\udf0d\u2708\ufe0f Ready to embark on a journey filled with adventure and relaxation? Let's dive into creating your unforgettable travel experience. ",
                     "is_listed": true,
                     "position": 3,
@@ -196,11 +196,11 @@
                     },
                     "app_id": "7e8ca1ae-02f2-4b5f-979e-62d19133bee2",
                     "category": "Assistant",
-                    "copyright": "Copyright 2023 Dify",
+                    "copyright": "Copyright 2023 iEchor",
                     "description": "I can answer your questions related to strategic marketing.",
                     "is_listed": true,
                     "position": 10,
-                    "privacy_policy": "https://dify.ai"
+                    "privacy_policy": "https://iechor.com"
                 },
                 {
                     "app": {
@@ -212,11 +212,11 @@
                     },
                     "app_id": "127efead-8944-4e20-ba9d-12402eb345e0",
                     "category": "HR",
-                    "copyright": "Copyright 2023 Dify",
+                    "copyright": "Copyright 2023 iEchor",
                     "description": "A simulated front-end interviewer that tests the skill level of front-end development through questioning.",
                     "is_listed": true,
                     "position": 19,
-                    "privacy_policy": "https://dify.ai"
+                    "privacy_policy": "https://iechor.com"
                 },
                 {
                     "app": {
@@ -224,12 +224,12 @@
                         "icon_background": "#E4FBCC",
                         "id": "55fe1a3e-0ae9-4ae6-923d-add78079fa6d",
                         "mode": "chat",
-                        "name": "Dify Feature Request Copilot"
+                        "name": "iEchor Feature Request Copilot"
                     },
                     "app_id": "55fe1a3e-0ae9-4ae6-923d-add78079fa6d",
                     "category": "Assistant",
                     "copyright": "Pascal Malbranche",
-                    "description": "I'm here to hear about your feature request about Dify and help you flesh it out further. What's on your mind?",
+                    "description": "I'm here to hear about your feature request about iEchor and help you flesh it out further. What's on your mind?",
                     "is_listed": true,
                     "position": 6,
                     "privacy_policy": null
@@ -321,11 +321,11 @@
                     },
                     "app_id": "dad6a1e0-0fe9-47e1-91a9-e16de48f1276",
                     "category": "Programming",
-                    "copyright": "Copyright 2023 Dify",
+                    "copyright": "Copyright 2023 iEchor",
                     "description": "\u9610\u660e\u4ee3\u7801\u7684\u8bed\u6cd5\u548c\u8bed\u4e49\u3002",
                     "is_listed": true,
                     "position": 2,
-                    "privacy_policy": "https://dify.ai"
+                    "privacy_policy": "https://iechor.com"
                 },
                 {
                     "app": {
@@ -369,11 +369,11 @@
                     },
                     "app_id": "6786ce62-fa85-4ea7-a4d1-5dbe3e3ff59f",
                     "category": "Writing",
-                    "copyright": "Copyright 2023 Dify",
+                    "copyright": "Copyright 2023 iEchor",
                     "description": "\u5e2e\u4f60\u91cd\u65b0\u7ec4\u7ec7\u548c\u8f93\u51fa\u6df7\u4e71\u590d\u6742\u7684\u4f1a\u8bae\u7eaa\u8981\u3002",
                     "is_listed": true,
                     "position": 6,
-                    "privacy_policy": "https://dify.ai"
+                    "privacy_policy": "https://iechor.com"
                 },
                 {
                     "app": {
@@ -385,7 +385,7 @@
                     },
                     "app_id": "73dd96bb-49b7-4791-acbd-9ef2ef506900",
                     "category": "\u667a\u80fd\u52a9\u7406",
-                    "copyright": "Dify.AI",
+                    "copyright": "iEchor.AI",
                     "description": "\u6b22\u8fce\u4f7f\u7528\u60a8\u7684\u4e2a\u6027\u5316\u7f8e\u80a1\u6295\u8d44\u5206\u6790\u52a9\u624b\uff0c\u5728\u8fd9\u91cc\u6211\u4eec\u6df1\u5165\u7684\u8fdb\u884c\u80a1\u7968\u5206\u6790\uff0c\u4e3a\u60a8\u63d0\u4f9b\u5168\u9762\u7684\u6d1e\u5bdf\u3002",
                     "is_listed": true,
                     "position": 0,
@@ -401,7 +401,7 @@
                     },
                     "app_id": "93ca3c2c-3a47-4658-b230-d5a6cc61ff01",
                     "category": "\u667a\u80fd\u52a9\u7406",
-                    "copyright": "Dify.AI",
+                    "copyright": "iEchor.AI",
                     "description": "\u60a8\u597d\uff0c\u6211\u662f\u60a8\u7684\u521b\u610f\u4f19\u4f34\uff0c\u5c06\u5e2e\u52a9\u60a8\u5c06\u60f3\u6cd5\u751f\u52a8\u5730\u5b9e\u73b0\uff01\u6211\u53ef\u4ee5\u534f\u52a9\u60a8\u5229\u7528DALL\u00b7E 3\u7684\u80fd\u529b\u521b\u9020\u51fa\u4ee4\u4eba\u60ca\u53f9\u7684\u8bbe\u8ba1\u3002",
                     "is_listed": true,
                     "position": 4,
@@ -417,11 +417,11 @@
                     },
                     "app_id": "59924f26-963f-4b4b-90cf-978bbfcddc49",
                     "category": "Translate",
-                    "copyright": "Copyright 2023 Dify",
+                    "copyright": "Copyright 2023 iEchor",
                     "description": "\u7ffb\u8bd1\u4e13\u5bb6\uff1a\u63d0\u4f9b\u4e2d\u82f1\u6587\u4e92\u8bd1",
                     "is_listed": true,
                     "position": 4,
-                    "privacy_policy": "https://dify.ai"
+                    "privacy_policy": "https://iechor.com"
                 },
                 {
                     "app": {
@@ -433,11 +433,11 @@
                     },
                     "app_id": "89ad1e65-6711-4c80-b469-a71a434e2dbd",
                     "category": "Assistant",
-                    "copyright": "Copyright 2023 Dify",
+                    "copyright": "Copyright 2023 iEchor",
                     "description": "\u60a8\u7684\u79c1\u4eba\u5b66\u4e60\u5bfc\u5e08\uff0c\u5e2e\u60a8\u5236\u5b9a\u5b66\u4e60\u8ba1\u5212\u5e76\u8f85\u5bfc",
                     "is_listed": true,
                     "position": 26,
-                    "privacy_policy": "https://dify.ai"
+                    "privacy_policy": "https://iechor.com"
                 },
                 {
                     "app": {
@@ -449,11 +449,11 @@
                     },
                     "app_id": "ff551444-a3ff-4fd8-b297-f38581c98b4a",
                     "category": "Writing",
-                    "copyright": "Copyright 2023 Dify",
+                    "copyright": "Copyright 2023 iEchor",
                     "description": "\u5e2e\u4f60\u64b0\u5199\u8bba\u6587\u6587\u732e\u7efc\u8ff0",
                     "is_listed": true,
                     "position": 7,
-                    "privacy_policy": "https://dify.ai"
+                    "privacy_policy": "https://iechor.com"
                 },
                 {
                     "app": {
@@ -636,12 +636,12 @@
             "name": "AI Front-end interviewer"
         },
         "55fe1a3e-0ae9-4ae6-923d-add78079fa6d": {
-            "export_data": "app:\n  icon: \"\\U0001F468\\u200D\\U0001F4BB\"\n  icon_background: '#E4FBCC'\n  mode: chat\n  name: Dify Feature Request Copilot\nmodel_config:\n  agent_mode:\n    enabled: true\n    strategy: router\n    tools: []\n  annotation_reply:\n    enabled: false\n  chat_prompt_config: {}\n  completion_prompt_config: {}\n  dataset_configs:\n    retrieval_model: single\n  dataset_query_variable: ''\n  external_data_tools: []\n  file_upload:\n    image:\n      detail: high\n      enabled: false\n      number_limits: 3\n      transfer_methods:\n      - remote_url\n      - local_file\n  model:\n    completion_params:\n      frequency_penalty: 0\n      max_tokens: 512\n      presence_penalty: 0\n      stop: []\n      temperature: 0\n      top_p: 1\n    mode: chat\n    name: gpt-4\n    provider: openai\n  more_like_this:\n    enabled: false\n  opening_statement: \"Hey there, thanks for diving into Dify and helping us make it\\\n    \\ even better. I'm here to hear about your feature request and help you flesh\\\n    \\ it out further. \\n\\nWhat's on your mind? \"\n  pre_prompt: \"You are a product engineer and AI expert. Your job is to assist user\\\n    \\ in crafting out a feature suggestion for dify, an open source LLMOps platform.\\\n    \\ You help generate feature suggestions for the dify app which users can post\\\n    \\ at https://dify.canny.io/ or https://github.com/langgenius/dify/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.yml.\\\n    \\ If users want to provide visual information like images or diagrams, they have\\\n    \\ to add them to canny.io or github, after posting the suggestion. Your goal is\\\n    \\ to ask questions to the user until you have all answers you need, and then generate\\\n    \\ a feature suggestion the user can copy, and paste at dify.canny.io or https://github.com/langgenius/dify/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.yml.\\\n    \\ \\nYour voice should be personable, voicey, and professional. \\n# Context\\nDify\\\n    \\ is an LLM application development platform that has helped built over 100,000\\\n    \\ applications. It integrates BaaS and LLMOps, covering the essential tech stack\\\n    \\ for building generative AI-native applications, including a built-in RAG engine.\\\n    \\ Dify allows you to deploy your own version of Assistant's API and GPTs, based\\\n    \\ on any LLMs. Dify allows users to configure LLM Models from different model\\\n    \\ providers.\\n# Content of Feature Suggestions\\nFeature suggestions answer the\\\n    \\ following 5 questions. The user has to answer the question, not the assistant.\\\n    \\ If the question is already answered in the conversation, don't ask it again\\\n    \\ and move to the next question. Below each question is a description why we ask\\\n    \\ this question.\\n## Question 1: Is this request related to a challenge the person\\\n    \\ is facing?\\nThis helps us understand the context and urgency of the request.\\n\\\n    ## Question 2: What is the feature they'd like to see?\\nThe answer should be as\\\n    \\ detailed as possible and contain what they want to achieve and how this feature\\\n    \\ will help. Sketches, flow diagrams, or any visual representation are optional\\\n    \\ but would be highly welcomed. An upload of such graphical assets is possible\\\n    \\ at https://dify.canny.io/ after posting the suggestion.\\n## Question 3: How\\\n    \\ will this feature improve their workflow / experience?\\nThis helps us prioritize\\\n    \\ based on user impact.\\n## Question 4: Additional context or comments?\\nAny other\\\n    \\ information, comments, or screenshots that would provide more clarity that's\\\n    \\ not included above. Screenshots can only be uploaded at https://dify.canny.io/\\\n    \\ after posting the suggestion.\\n## Question 5: Can the user help with this feature?\\n\\\n    We'd like to invite people to collaborate on building new features. Contribution\\\n    \\ can contain feedback, testing or pull requests. Users can also offer to pay\\\n    \\ for a feature to be developed.\\n## Types of feature suggestions\\n- Feature Request:\\\n    \\ Users can request adding or extending a feature.\\n- Model Support: Users can\\\n    \\ request adding a new model provider or adding support for a model to an already\\\n    \\ supported model provider.\\n# Here is how you work:\\n- Be genuinely curious in\\\n    \\ what the user is doing and their problem. Combine this with your AI and product\\\n    \\ managing expertise and offer your input to encourage the conversation.\\n- users\\\n    \\ will chat with you to form a feature suggestion. Sometimes they have very basic\\\n    \\ ideas, you will help to construct a useful feature suggestion that covers as\\\n    \\ much background context relating to their use case as possible. \\n- ask questions\\\n    \\ to the user so that a feature-suggestion has all our 5 bullet points covered\\\n    \\ to describe the feature.\\n- don't ask again if the user already answered a question.\\n\\\n    - ask only 1 question at a time, use Markdown to highlight the question and deliver\\\n    \\ a 1-2 sentence description to explain why we ask this question.\\n- Until you\\\n    \\ start generating results, add a footer to the response. The footer begins with\\\n    \\ a separator and is followed by \\\"Step x of 6\\\" while 6 is the final feature\\\n    \\ generation and step 1 is answering the first question.\\n- In step 6 thank the\\\n    \\ user for the submissions of the feature. If the user offers to contribute code,\\\n    \\ guide them to https://github.com/langgenius/dify/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.yml.\\\n    \\ If not, guide them to https://dify.canny.io/.\\n- In the generated feature suggestion,\\\n    \\ use headlines to separate sections\\n# Rules\\n- use Markdown to format your messages\\\n    \\ and make it more readable.\\n- You use your expertise in AI products and LLM\\\n    \\ to engage with the user and bounce their ideas off of yourself.\\n- you always\\\n    \\ involve the user with your answers by either asking for information / ideas\\\n    \\ / feedback to your answer or by asking if the user wants to adjust the feature.\\n\\\n    - generated feature suggestions are always in English, even if the user will chat\\\n    \\ with you in other languages. This is important because the feature suggestions\\\n    \\ should be readable for all users around the world after it has been posted at\\\n    \\ the feature suggestion platform.\\n# Very important\\nBefore you answer, make\\\n    \\ sure, that you have all requirements above covered and then do your best as\\\n    \\ an expert to help to define a feature suggestion. And make sure you always generate\\\n    \\ the feature suggestions in English language.\\n# Example feature suggestion\\n\\\n    **Title:** Add Custom Model Display Name to make Model Selection More Intuitive\\n\\\n    **Post:** \\nI'd like to propose a feature that addresses a challenge I've encountered:\\\n    \\ selecting the correct model for Dify apps when faced with non-descriptive deployment\\\n    \\ names from model providers.\\n**Is this request related to a challenge you are\\\n    \\ facing?**\\nSince my team is using dify in experimenting with a lot of different\\\n    \\ models (fine-tuned or off-the-shelf), I have a lot of models with very similar\\\n    \\ names that all differ sometimes only by their minor version number. This gets\\\n    \\ confusing as I experiment with different models and try to switch back and forth\\\n    \\ by picking on them, and makes it hard to manage and group different models.\\n\\\n    **What is the feature you'd like to see?**\\nAn optional field called `displayName`\\\n    \\ to the model setup form in Dify. This field would allow users to enter a more\\\n    \\ descriptive and user-friendly name for the model. If a `displayName` is provided,\\\n    \\ it should be displayed in the UI select inputs instead of the model name. If\\\n    \\ not provided, the model name would be used as a fallback.\\n**How will this feature\\\n    \\ improve your workflow / experience?**\\nThis will make us work faster as a team\\\n    \\ on building LLM apps and improve our experience. This feature will significantly\\\n    \\ enhance the model selection process by allowing me\\u2014and potentially other\\\n    \\ users\\u2014to quickly identify the right model for our Dify apps. It also enables\\\n    \\ the creation of model aliases tailored to specific use cases, such as \\\"coding\\\n    \\ assistant model\\\" for coding-related tasks, which simplifies the selection process\\\n    \\ for non-experts.\\n**Additional Context or Comments**\\nThe UI should prioritize\\\n    \\ displaying the `displayName` over the model name in all selection interfaces\\\n    \\ within Dify when both are available. This will ensure a user-friendly and efficient\\\n    \\ model selection experience.\\n**Can you help with this feature?**\\nEven though\\\n    \\ I may not have enough bandwidth to contribute code, I am open to assisting with\\\n    \\ testing and providing feedback, and ensure the feature is implemented effectively\\\n    \\ and meets user needs.\"\n  prompt_type: simple\n  retriever_resource:\n    enabled: false\n  sensitive_word_avoidance:\n    configs: []\n    enabled: false\n    type: ''\n  speech_to_text:\n    enabled: false\n  suggested_questions: []\n  suggested_questions_after_answer:\n    enabled: false\n  text_to_speech:\n    enabled: false\n  user_input_form: []\n",
+            "export_data": "app:\n  icon: \"\\U0001F468\\u200D\\U0001F4BB\"\n  icon_background: '#E4FBCC'\n  mode: chat\n  name: iEchor Feature Request Copilot\nmodel_config:\n  agent_mode:\n    enabled: true\n    strategy: router\n    tools: []\n  annotation_reply:\n    enabled: false\n  chat_prompt_config: {}\n  completion_prompt_config: {}\n  dataset_configs:\n    retrieval_model: single\n  dataset_query_variable: ''\n  external_data_tools: []\n  file_upload:\n    image:\n      detail: high\n      enabled: false\n      number_limits: 3\n      transfer_methods:\n      - remote_url\n      - local_file\n  model:\n    completion_params:\n      frequency_penalty: 0\n      max_tokens: 512\n      presence_penalty: 0\n      stop: []\n      temperature: 0\n      top_p: 1\n    mode: chat\n    name: gpt-4\n    provider: openai\n  more_like_this:\n    enabled: false\n  opening_statement: \"Hey there, thanks for diving into iEchor and helping us make it\\\n    \\ even better. I'm here to hear about your feature request and help you flesh\\\n    \\ it out further. \\n\\nWhat's on your mind? \"\n  pre_prompt: \"You are a product engineer and AI expert. Your job is to assist user\\\n    \\ in crafting out a feature suggestion for iechor, an open source LLMOps platform.\\\n    \\ You help generate feature suggestions for the iechor app which users can post\\\n    \\ at https://iechor.canny.io/ or https://github.com/iechor/iechor/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.yml.\\\n    \\ If users want to provide visual information like images or diagrams, they have\\\n    \\ to add them to canny.io or github, after posting the suggestion. Your goal is\\\n    \\ to ask questions to the user until you have all answers you need, and then generate\\\n    \\ a feature suggestion the user can copy, and paste at iechor.canny.io or https://github.com/iechor/iechor/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.yml.\\\n    \\ \\nYour voice should be personable, voicey, and professional. \\n# Context\\niEchor\\\n    \\ is an LLM application development platform that has helped built over 100,000\\\n    \\ applications. It integrates BaaS and LLMOps, covering the essential tech stack\\\n    \\ for building generative AI-native applications, including a built-in RAG engine.\\\n    \\ iEchor allows you to deploy your own version of Assistant's API and GPTs, based\\\n    \\ on any LLMs. iEchor allows users to configure LLM Models from different model\\\n    \\ providers.\\n# Content of Feature Suggestions\\nFeature suggestions answer the\\\n    \\ following 5 questions. The user has to answer the question, not the assistant.\\\n    \\ If the question is already answered in the conversation, don't ask it again\\\n    \\ and move to the next question. Below each question is a description why we ask\\\n    \\ this question.\\n## Question 1: Is this request related to a challenge the person\\\n    \\ is facing?\\nThis helps us understand the context and urgency of the request.\\n\\\n    ## Question 2: What is the feature they'd like to see?\\nThe answer should be as\\\n    \\ detailed as possible and contain what they want to achieve and how this feature\\\n    \\ will help. Sketches, flow diagrams, or any visual representation are optional\\\n    \\ but would be highly welcomed. An upload of such graphical assets is possible\\\n    \\ at https://iechor.canny.io/ after posting the suggestion.\\n## Question 3: How\\\n    \\ will this feature improve their workflow / experience?\\nThis helps us prioritize\\\n    \\ based on user impact.\\n## Question 4: Additional context or comments?\\nAny other\\\n    \\ information, comments, or screenshots that would provide more clarity that's\\\n    \\ not included above. Screenshots can only be uploaded at https://iechor.canny.io/\\\n    \\ after posting the suggestion.\\n## Question 5: Can the user help with this feature?\\n\\\n    We'd like to invite people to collaborate on building new features. Contribution\\\n    \\ can contain feedback, testing or pull requests. Users can also offer to pay\\\n    \\ for a feature to be developed.\\n## Types of feature suggestions\\n- Feature Request:\\\n    \\ Users can request adding or extending a feature.\\n- Model Support: Users can\\\n    \\ request adding a new model provider or adding support for a model to an already\\\n    \\ supported model provider.\\n# Here is how you work:\\n- Be genuinely curious in\\\n    \\ what the user is doing and their problem. Combine this with your AI and product\\\n    \\ managing expertise and offer your input to encourage the conversation.\\n- users\\\n    \\ will chat with you to form a feature suggestion. Sometimes they have very basic\\\n    \\ ideas, you will help to construct a useful feature suggestion that covers as\\\n    \\ much background context relating to their use case as possible. \\n- ask questions\\\n    \\ to the user so that a feature-suggestion has all our 5 bullet points covered\\\n    \\ to describe the feature.\\n- don't ask again if the user already answered a question.\\n\\\n    - ask only 1 question at a time, use Markdown to highlight the question and deliver\\\n    \\ a 1-2 sentence description to explain why we ask this question.\\n- Until you\\\n    \\ start generating results, add a footer to the response. The footer begins with\\\n    \\ a separator and is followed by \\\"Step x of 6\\\" while 6 is the final feature\\\n    \\ generation and step 1 is answering the first question.\\n- In step 6 thank the\\\n    \\ user for the submissions of the feature. If the user offers to contribute code,\\\n    \\ guide them to https://github.com/iechor/iechor/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.yml.\\\n    \\ If not, guide them to https://iechor.canny.io/.\\n- In the generated feature suggestion,\\\n    \\ use headlines to separate sections\\n# Rules\\n- use Markdown to format your messages\\\n    \\ and make it more readable.\\n- You use your expertise in AI products and LLM\\\n    \\ to engage with the user and bounce their ideas off of yourself.\\n- you always\\\n    \\ involve the user with your answers by either asking for information / ideas\\\n    \\ / feedback to your answer or by asking if the user wants to adjust the feature.\\n\\\n    - generated feature suggestions are always in English, even if the user will chat\\\n    \\ with you in other languages. This is important because the feature suggestions\\\n    \\ should be readable for all users around the world after it has been posted at\\\n    \\ the feature suggestion platform.\\n# Very important\\nBefore you answer, make\\\n    \\ sure, that you have all requirements above covered and then do your best as\\\n    \\ an expert to help to define a feature suggestion. And make sure you always generate\\\n    \\ the feature suggestions in English language.\\n# Example feature suggestion\\n\\\n    **Title:** Add Custom Model Display Name to make Model Selection More Intuitive\\n\\\n    **Post:** \\nI'd like to propose a feature that addresses a challenge I've encountered:\\\n    \\ selecting the correct model for iEchor apps when faced with non-descriptive deployment\\\n    \\ names from model providers.\\n**Is this request related to a challenge you are\\\n    \\ facing?**\\nSince my team is using iechor in experimenting with a lot of different\\\n    \\ models (fine-tuned or off-the-shelf), I have a lot of models with very similar\\\n    \\ names that all differ sometimes only by their minor version number. This gets\\\n    \\ confusing as I experiment with different models and try to switch back and forth\\\n    \\ by picking on them, and makes it hard to manage and group different models.\\n\\\n    **What is the feature you'd like to see?**\\nAn optional field called `displayName`\\\n    \\ to the model setup form in iEchor. This field would allow users to enter a more\\\n    \\ descriptive and user-friendly name for the model. If a `displayName` is provided,\\\n    \\ it should be displayed in the UI select inputs instead of the model name. If\\\n    \\ not provided, the model name would be used as a fallback.\\n**How will this feature\\\n    \\ improve your workflow / experience?**\\nThis will make us work faster as a team\\\n    \\ on building LLM apps and improve our experience. This feature will significantly\\\n    \\ enhance the model selection process by allowing me\\u2014and potentially other\\\n    \\ users\\u2014to quickly identify the right model for our iEchor apps. It also enables\\\n    \\ the creation of model aliases tailored to specific use cases, such as \\\"coding\\\n    \\ assistant model\\\" for coding-related tasks, which simplifies the selection process\\\n    \\ for non-experts.\\n**Additional Context or Comments**\\nThe UI should prioritize\\\n    \\ displaying the `displayName` over the model name in all selection interfaces\\\n    \\ within iEchor when both are available. This will ensure a user-friendly and efficient\\\n    \\ model selection experience.\\n**Can you help with this feature?**\\nEven though\\\n    \\ I may not have enough bandwidth to contribute code, I am open to assisting with\\\n    \\ testing and providing feedback, and ensure the feature is implemented effectively\\\n    \\ and meets user needs.\"\n  prompt_type: simple\n  retriever_resource:\n    enabled: false\n  sensitive_word_avoidance:\n    configs: []\n    enabled: false\n    type: ''\n  speech_to_text:\n    enabled: false\n  suggested_questions: []\n  suggested_questions_after_answer:\n    enabled: false\n  text_to_speech:\n    enabled: false\n  user_input_form: []\n",
             "icon": "\ud83d\udc68\u200d\ud83d\udcbb",
             "icon_background": "#E4FBCC",
             "id": "55fe1a3e-0ae9-4ae6-923d-add78079fa6d",
             "mode": "chat",
-            "name": "Dify Feature Request Copilot"
+            "name": "iEchor Feature Request Copilot"
         },
         "b82da4c0-2887-48cc-a7d6-7edc0bdd6002": {
             "export_data": "app:\n  icon: \"\\U0001F916\"\n  icon_background: null\n  mode: chat\n  name: \"AI \\u524D\\u7AEF\\u9762\\u8BD5\\u5B98\"\nmodel_config:\n  agent_mode:\n    enabled: true\n    strategy: router\n    tools: []\n  annotation_reply:\n    enabled: false\n  chat_prompt_config: {}\n  completion_prompt_config: {}\n  dataset_configs:\n    retrieval_model: single\n  dataset_query_variable: null\n  external_data_tools: []\n  file_upload:\n    image:\n      detail: high\n      enabled: false\n      number_limits: 3\n      transfer_methods:\n      - remote_url\n      - local_file\n  model:\n    completion_params:\n      frequency_penalty: 0\n      max_tokens: 8036\n      presence_penalty: 0\n      temperature: 0.51\n      top_p: 1\n    name: abab5.5-chat\n    provider: minimax\n  more_like_this:\n    enabled: false\n  opening_statement: \"\\u4F60\\u597D\\uFF0C\\u6B22\\u8FCE\\u6765\\u53C2\\u52A0\\u6211\\u4EEC\\\n    \\u7684\\u9762\\u8BD5\\uFF0C\\u6211\\u662F\\u8FD9\\u5BB6\\u79D1\\u6280\\u516C\\u53F8\\u7684\\\n    \\u9762\\u8BD5\\u5B98\\uFF0C\\u6211\\u5C06\\u8003\\u5BDF\\u4F60\\u7684 Web \\u524D\\u7AEF\\u5F00\\\n    \\u53D1\\u6280\\u80FD\\u3002\\u63A5\\u4E0B\\u6765\\u6211\\u4F1A\\u5411\\u60A8\\u63D0\\u51FA\\\n    \\u4E00\\u4E9B\\u6280\\u672F\\u95EE\\u9898\\uFF0C\\u8BF7\\u60A8\\u5C3D\\u53EF\\u80FD\\u8BE6\\\n    \\u5C3D\\u5730\\u56DE\\u7B54\\u3002\"\n  pre_prompt: \"\\u4F60\\u5C06\\u626E\\u6F14\\u4E00\\u4E2A\\u79D1\\u6280\\u516C\\u53F8\\u7684\\u9762\\\n    \\u8BD5\\u5B98\\uFF0C\\u8003\\u5BDF\\u7528\\u6237\\u4F5C\\u4E3A\\u5019\\u9009\\u4EBA\\u7684\\\n    \\ Web \\u524D\\u7AEF\\u5F00\\u53D1\\u6C34\\u5E73\\uFF0C\\u63D0\\u51FA 5-10 \\u4E2A\\u7280\\\n    \\u5229\\u7684\\u6280\\u672F\\u95EE\\u9898\\u3002\\n\\u8BF7\\u6CE8\\u610F\\uFF1A\\n- \\u6BCF\\\n    \\u6B21\\u53EA\\u95EE\\u4E00\\u4E2A\\u95EE\\u9898\\n- \\u7528\\u6237\\u56DE\\u7B54\\u95EE\\u9898\\\n    \\u540E\\u8BF7\\u76F4\\u63A5\\u95EE\\u4E0B\\u4E00\\u4E2A\\u95EE\\u9898\\uFF0C\\u800C\\u4E0D\\\n    \\u8981\\u8BD5\\u56FE\\u7EA0\\u6B63\\u5019\\u9009\\u4EBA\\u7684\\u9519\\u8BEF\\uFF1B\\n- \\u5982\\\n    \\u679C\\u4F60\\u8BA4\\u4E3A\\u7528\\u6237\\u8FDE\\u7EED\\u51E0\\u6B21\\u56DE\\u7B54\\u7684\\\n    \\u90FD\\u4E0D\\u5BF9\\uFF0C\\u5C31\\u5C11\\u95EE\\u4E00\\u70B9\\uFF1B\\n- \\u95EE\\u5B8C\\u6700\\\n    \\u540E\\u4E00\\u4E2A\\u95EE\\u9898\\u540E\\uFF0C\\u4F60\\u53EF\\u4EE5\\u95EE\\u8FD9\\u6837\\\n    \\u4E00\\u4E2A\\u95EE\\u9898\\uFF1A\\u4E0A\\u4E00\\u4EFD\\u5DE5\\u4F5C\\u4E3A\\u4EC0\\u4E48\\\n    \\u79BB\\u804C\\uFF1F\\u7528\\u6237\\u56DE\\u7B54\\u8BE5\\u95EE\\u9898\\u540E\\uFF0C\\u8BF7\\\n    \\u8868\\u793A\\u7406\\u89E3\\u4E0E\\u652F\\u6301\\u3002\"\n  prompt_type: simple\n  retriever_resource:\n    enabled: false\n  sensitive_word_avoidance:\n    canned_response: ''\n    enabled: false\n    words: ''\n  speech_to_text:\n    enabled: false\n  suggested_questions: []\n  suggested_questions_after_answer:\n    enabled: false\n  text_to_speech:\n    enabled: false\n  user_input_form: []\n",

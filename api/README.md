@@ -1,4 +1,4 @@
-# Dify Backend API
+# iEchor Backend API
 
 ## Usage
 
@@ -8,7 +8,7 @@
 
    ```bash
    cd ../docker
-   docker-compose -f docker-compose.middleware.yaml -p dify up -d
+   docker-compose -f docker-compose.middleware.yaml -p iechor up -d
    cd ../api
    ```
 2. Copy `.env.example` to `.env`
@@ -19,8 +19,8 @@
    ```
 4. If you use Anaconda, create a new environment and activate it
    ```bash
-   conda create --name dify python=3.10
-   conda activate dify
+   conda create --name iechor python=3.10
+   conda activate iechor
    ```
 5. Install dependencies
    ```bash

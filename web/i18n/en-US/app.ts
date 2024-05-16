@@ -36,7 +36,7 @@ const translation = {
     basic: 'Basic',
     basicTip: 'For beginners, can switch to Chatflow later',
     basicFor: 'FOR BEGINNERS',
-    basicDescription: 'Basic Orchestrate allows for the orchestration of a Chatbot app using simple settings, without the ability to moiechor built-in prompts. It is suitable for beginners.',
+    basicDescription: 'Basic Orchestrate allows for the orchestration of a Chatbot app using simple settings, without the ability to modify built-in prompts. It is suitable for beginners.',
     advanced: 'Chatflow',
     advancedFor: 'For advanced users',
     advancedDescription: 'Workflow Orchestrate orchestrates Chatbots in the form of workflows, offering a high degree of customization, including the ability to edit built-in prompts. It is suitable for experienced users.',

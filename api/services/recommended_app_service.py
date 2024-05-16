@@ -28,9 +28,9 @@ class RecommendedAppService:
         mode = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_MODE', 'remote')
         if mode == 'remote':
             try:
-                result = cls._fetch_recommended_apps_from_dify_official(language)
+                result = cls._fetch_recommended_apps_from_iechor_official(language)
             except Exception as e:
-                logger.warning(f'fetch recommended apps from dify official failed: {e}, switch to built-in.')
+                logger.warning(f'fetch recommended apps from iechor official failed: {e}, switch to built-in.')
                 result = cls._fetch_recommended_apps_from_builtin(language)
         elif mode == 'db':
             result = cls._fetch_recommended_apps_from_db(language)
@@ -97,13 +97,13 @@ class RecommendedAppService:
         return {'recommended_apps': recommended_apps_result, 'categories': list(categories)}
 
     @classmethod
-    def _fetch_recommended_apps_from_dify_official(cls, language: str) -> dict:
+    def _fetch_recommended_apps_from_iechor_official(cls, language: str) -> dict:
         """
-        Fetch recommended apps from dify official.
+        Fetch recommended apps from iechor official.
         :param language: language
         :return:
         """
-        domain = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN', 'https://tmpl.dify.ai')
+        domain = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN', 'https://tmpl.iechor.com')
         url = f'{domain}/apps?language={language}'
         response = requests.get(url, timeout=(3, 10))
         if response.status_code != 200:
@@ -131,9 +131,9 @@ class RecommendedAppService:
         mode = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_MODE', 'remote')
         if mode == 'remote':
             try:
-                result = cls._fetch_recommended_app_detail_from_dify_official(app_id)
+                result = cls._fetch_recommended_app_detail_from_iechor_official(app_id)
             except Exception as e:
-                logger.warning(f'fetch recommended app detail from dify official failed: {e}, switch to built-in.')
+                logger.warning(f'fetch recommended app detail from iechor official failed: {e}, switch to built-in.')
                 result = cls._fetch_recommended_app_detail_from_builtin(app_id)
         elif mode == 'db':
             result = cls._fetch_recommended_app_detail_from_db(app_id)
@@ -145,13 +145,13 @@ class RecommendedAppService:
         return result
 
     @classmethod
-    def _fetch_recommended_app_detail_from_dify_official(cls, app_id: str) -> Optional[dict]:
+    def _fetch_recommended_app_detail_from_iechor_official(cls, app_id: str) -> Optional[dict]:
         """
-        Fetch recommended app detail from dify official.
+        Fetch recommended app detail from iechor official.
         :param app_id: App ID
         :return:
         """
-        domain = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN', 'https://tmpl.dify.ai')
+        domain = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN', 'https://tmpl.iechor.com')
         url = f'{domain}/apps/{app_id}'
         response = requests.get(url, timeout=(3, 10))
         if response.status_code != 200:
@@ -231,9 +231,9 @@ class RecommendedAppService:
         }
         for language in languages:
             try:
-                result = cls._fetch_recommended_apps_from_dify_official(language)
+                result = cls._fetch_recommended_apps_from_iechor_official(language)
             except Exception as e:
-                logger.warning(f'fetch recommended apps from dify official failed: {e}, skip.')
+                logger.warning(f'fetch recommended apps from iechor official failed: {e}, skip.')
                 continue
 
             templates['recommended_apps'][language] = result
@@ -242,7 +242,7 @@ class RecommendedAppService:
                 app_id = recommended_app.get('app_id')
 
                 # get app detail
-                app_detail = cls._fetch_recommended_app_detail_from_dify_official(app_id)
+                app_detail = cls._fetch_recommended_app_detail_from_iechor_official(app_id)
                 if not app_detail:
                     continue
 

@@ -1,18 +1,18 @@
 {
-  "name": "dify-client",
+  "name": "iechor-client",
   "version": "2.3.1",
-  "description": "This is the Node.js SDK for the Dify.AI API, which allows you to easily integrate Dify.AI into your Node.js applications.",
+  "description": "This is the Node.js SDK for the iEchor.AI API, which allows you to easily integrate iEchor.com into your Node.js applications.",
   "main": "index.js",
   "type": "module",
   "types":"index.d.ts",
   "keywords": [
-    "Dify",
-    "Dify.AI",
+    "iEchor",
+    "iEchor.com",
     "LLM"
   ],
-  "author": "Joel",
+  "author": "Johnson.chen",
   "contributors": [
-    "<crazywoola> <<427733928@qq.com>> (https://github.com/crazywoola)"
+    "<xingqiangchen> <<joy6677@qq.com>> (https://github.com/chenxingqiang)"
   ],
   "license": "MIT",
   "scripts": {

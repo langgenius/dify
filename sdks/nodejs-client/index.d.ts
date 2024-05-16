@@ -23,7 +23,7 @@ interface ChatMessageConfig {
   files?: File[] | null;
 }
 
-export declare class DifyClient {
+export declare class iEchorClient {
   constructor(apiKey: string, baseUrl?: string);
 
   updateApiKey(apiKey: string): void;
@@ -44,7 +44,7 @@ export declare class DifyClient {
   fileUpload(data: FormData): Promise<any>;
 }
 
-export declare class CompletionClient extends DifyClient {
+export declare class CompletionClient extends iEchorClient {
   createCompletionMessage(
     inputs: any,
     user: User,
@@ -53,7 +53,7 @@ export declare class CompletionClient extends DifyClient {
   ): Promise<any>;
 }
 
-export declare class ChatClient extends DifyClient {
+export declare class ChatClient extends iEchorClient {
   createChatMessage(config: ChatMessageConfig): Promise<any>;
 
   getConversationMessages(

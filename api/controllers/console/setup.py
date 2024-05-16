@@ -6,7 +6,7 @@ from flask_restful import Resource, reqparse
 from extensions.ext_database import db
 from libs.helper import email, str_len
 from libs.password import valid_password
-from models.model import DifySetup
+from models.model import iEchorSetup
 from services.account_service import AccountService, RegisterService, TenantService
 
 from . import api
@@ -67,10 +67,10 @@ class SetupApi(Resource):
 
 
 def setup():
-    dify_setup = DifySetup(
+    iechor_setup = iEchorSetup(
         version=current_app.config['CURRENT_VERSION']
     )
-    db.session.add(dify_setup)
+    db.session.add(iechor_setup)
 
 
 def setup_required(view):
@@ -90,7 +90,7 @@ def setup_required(view):
 
 def get_setup_status():
     if current_app.config['EDITION'] == 'SELF_HOSTED':
-        return DifySetup.query.first()
+        return iEchorSetup.query.first()
     else:
         return True
 

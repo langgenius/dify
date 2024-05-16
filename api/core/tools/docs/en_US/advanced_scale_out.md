@@ -1,6 +1,6 @@
 # Advanced Tool Integration
 
-Before starting with this advanced guide, please make sure you have a basic understanding of the tool integration process in Dify. Check out [Quick Integration](./tool_scale_out.md) for a quick runthrough.
+Before starting with this advanced guide, please make sure you have a basic understanding of the tool integration process in iEchor. Check out [Quick Integration](./tool_scale_out.md) for a quick runthrough.
 
 ## Tool Interface
 
@@ -8,12 +8,12 @@ We have defined a series of helper methods in the `Tool` class to help developer
 
 ### Message Return
 
-Dify supports various message types such as `text`, `link`, `image`, and `file BLOB`. You can return different types of messages to the LLM and users through the following interfaces.
+iEchor supports various message types such as `text`, `link`, `image`, and `file BLOB`. You can return different types of messages to the LLM and users through the following interfaces.
 
 Please note, some parameters in the following interfaces will be introduced in later sections.
 
 #### Image URL
-You only need to pass the URL of the image, and Dify will automatically download the image and return it to the user.
+You only need to pass the URL of the image, and iEchor will automatically download the image and return it to the user.
 
 ```python
     def create_image_message(self, image: str, save_as: str = '') -> ToolInvokeMessage:
@@ -55,7 +55,7 @@ If you need to return a text message, you can use the following interface.
 If you need to return the raw data of a file, such as images, audio, video, PPT, Word, Excel, etc., you can use the following interface.
 
 - `blob` The raw data of the file, of bytes type
-- `meta` The metadata of the file, if you know the type of the file, it is best to pass a `mime_type`, otherwise Dify will use `octet/stream` as the default type
+- `meta` The metadata of the file, if you know the type of the file, it is best to pass a `mime_type`, otherwise iEchor will use `octet/stream` as the default type
 
 ```python
     def create_blob_message(self, blob: bytes, meta: dict = None, save_as: str = '') -> ToolInvokeMessage:
@@ -77,7 +77,7 @@ To help developers quickly implement these two needs, we provide the following t
 
 #### Text Summary Tool
 
-This tool takes in an user_id and the text to be summarized, and returns the summarized text. Dify will use the default model of the current workspace to summarize the long text.
+This tool takes in an user_id and the text to be summarized, and returns the summarized text. iEchor will use the default model of the current workspace to summarize the long text.
 
 ```python
     def summary(self, user_id: str, content: str) -> str:
@@ -92,7 +92,7 @@ This tool takes in an user_id and the text to be summarized, and returns the sum
 
 #### Web Page Crawling Tool
 
-This tool takes in web page link to be crawled and a user_agent (which can be empty), and returns a string containing the information of the web page. The `user_agent` is an optional parameter that can be used to identify the tool. If not passed, Dify will use the default `user_agent`.
+This tool takes in web page link to be crawled and a user_agent (which can be empty), and returns a string containing the information of the web page. The `user_agent` is an optional parameter that can be used to identify the tool. If not passed, iEchor will use the default `user_agent`.
 
 ```python
     def get_url(self, url: str, user_agent: str = None) -> str:

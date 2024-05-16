@@ -4,14 +4,14 @@ require 'vendor/autoload.php';
 
 use GuzzleHttp\Client;
 
-class DifyClient {
+class iEchorClient {
     protected $api_key;
     protected $base_url;
     protected $client;
 
     public function __construct($api_key) {
         $this->api_key = $api_key;
-        $this->base_url = "https://api.dify.ai/v1/";
+        $this->base_url = "https://api.iechor.com/v1/";
         $this->client = new Client([
             'base_uri' => $this->base_url,
             'headers' => [
@@ -82,7 +82,7 @@ class DifyClient {
     }
 }
 
-class CompletionClient extends DifyClient {
+class CompletionClient extends iEchorClient {
     public function create_completion_message($inputs, $response_mode, $user, $files = null) {
         $data = [
             'inputs' => $inputs,
@@ -94,7 +94,7 @@ class CompletionClient extends DifyClient {
     }
 }
 
-class ChatClient extends DifyClient {
+class ChatClient extends iEchorClient {
     public function create_chat_message($inputs, $query, $user, $response_mode = 'blocking', $conversation_id = null, $files = null) {
         $data = [
             'inputs' => $inputs,

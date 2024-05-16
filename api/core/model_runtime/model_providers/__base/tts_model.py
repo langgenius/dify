@@ -147,11 +147,11 @@ class TTSModel(AIModel):
                 return True
             else:
                 raise InvokeBadRequestError("ffmpeg is not installed, "
-                                            "details: https://docs.dify.ai/getting-started/install-self-hosted"
+                                            "details: https://docs.iechor.com/getting-started/install-self-hosted"
                                             "/install-faq#id-14.-what-to-do-if-this-error-occurs-in-text-to-speech")
         except Exception:
             raise InvokeBadRequestError("ffmpeg is not installed, "
-                                        "details: https://docs.dify.ai/getting-started/install-self-hosted"
+                                        "details: https://docs.iechor.com/getting-started/install-self-hosted"
                                         "/install-faq#id-14.-what-to-do-if-this-error-occurs-in-text-to-speech")
 
     # Todo: To improve the streaming function

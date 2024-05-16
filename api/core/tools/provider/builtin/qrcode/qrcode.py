@@ -10,7 +10,7 @@ class QRCodeProvider(BuiltinToolProviderController):
         try:
             QRCodeGeneratorTool().invoke(user_id='',
                                          tool_parameters={
-                                            'content': 'Dify 123 😊'
+                                            'content': 'iEchor 123 😊'
                                         })
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

@@ -1,1 +1,1 @@
-recursive-include dify_client *.py
+recursive-include iechor_client *.py

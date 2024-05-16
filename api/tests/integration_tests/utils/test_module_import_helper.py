@@ -28,5 +28,5 @@ def test_lazy_loading_subclass_from_source():
         script_path=os.path.join(current_path, 'lazy_load_class.py'),
         parent_type=ParentClass,
         use_lazy_loader=True)
-    instance = clz('dify')
-    assert instance.get_name() == 'dify'
+    instance = clz('iechor')
+    assert instance.get_name() == 'iechor'

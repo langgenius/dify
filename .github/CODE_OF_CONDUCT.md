@@ -1,4 +1,4 @@
-# Dify Code of Conduct
+# iEchor Code of Conduct
 
 ## Our Pledge
 

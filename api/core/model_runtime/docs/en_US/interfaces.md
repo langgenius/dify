@@ -59,7 +59,7 @@ All models need to uniformly implement the following 2 methods:
 
 - Invocation Error Mapping Table
 
-  When there is an exception in model invocation, it needs to be mapped to the `InvokeError` type specified by Runtime. This facilitates Dify's ability to handle different errors with appropriate follow-up actions.
+  When there is an exception in model invocation, it needs to be mapped to the `InvokeError` type specified by Runtime. This facilitates iEchor's ability to handle different errors with appropriate follow-up actions.
 
   Runtime Errors:
 

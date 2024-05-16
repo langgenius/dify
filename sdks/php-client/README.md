@@ -1,6 +1,6 @@
-# Dify PHP SDK
+# iEchor PHP SDK
 
-This is the PHP SDK for the Dify API, which allows you to easily integrate Dify into your PHP applications.
+This is the PHP SDK for the iEchor API, which allows you to easily integrate iEchor into your PHP applications.
 
 ## Requirements
 
@@ -16,13 +16,13 @@ After installing the SDK, you can use it in your project like this:
 
 require 'vendor/autoload.php';
 
-use YourVendorName\DifyPHP\DifyClient;
-use YourVendorName\DifyPHP\CompletionClient;
-use YourVendorName\DifyPHP\ChatClient;
+use YourVendorName\iEchorPHP\iEchorClient;
+use YourVendorName\iEchorPHP\CompletionClient;
+use YourVendorName\iEchorPHP\ChatClient;
 
 $apiKey = 'your-api-key-here';
 
-$difyClient = new DifyClient($apiKey);
+$iechorClient = new iEchorClient($apiKey);
 
 // Create a completion client
 $completionClient = new CompletionClient($apiKey);
@@ -61,15 +61,15 @@ $fileForUpload = [
         'name' => 'filename.jpg'
     ]
 ];
-$response = $difyClient->file_upload("user_id", $fileForUpload);
+$response = $iechorClient->file_upload("user_id", $fileForUpload);
 $result = json_decode($response->getBody(), true);
 echo 'upload_file_id: ' . $result['id'];
 
 // Fetch application parameters
-$response = $difyClient->get_application_parameters("user_id");
+$response = $iechorClient->get_application_parameters("user_id");
 
 // Provide feedback for a message
-$response = $difyClient->message_feedback($message_id, $rating, "user_id");
+$response = $iechorClient->message_feedback($message_id, $rating, "user_id");
 
 // Other available methods:
 // - get_conversation_messages()
@@ -77,7 +77,7 @@ $response = $difyClient->message_feedback($message_id, $rating, "user_id");
 // - rename_conversation()
 ```
 
-Replace 'your-api-key-here' with your actual Dify API key.
+Replace 'your-api-key-here' with your actual iEchor API key.
 
 ## License
 

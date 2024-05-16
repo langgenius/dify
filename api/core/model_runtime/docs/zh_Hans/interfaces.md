@@ -68,7 +68,7 @@ class XinferenceProvider(Provider):
 
 - 调用异常错误映射表
 
-  当模型调用异常时需要映射到 Runtime 指定的 `InvokeError` 类型，方便 Dify 针对不同错误做不同后续处理。
+  当模型调用异常时需要映射到 Runtime 指定的 `InvokeError` 类型，方便 iEchor 针对不同错误做不同后续处理。
 
   Runtime Errors:
 
@@ -221,7 +221,7 @@ class XinferenceProvider(Provider):
 
 ​当供应商支持增加自定义 LLM 时，可实现此方法让自定义模型可获取模型规则，默认返回 None。
 
-对于`OpenAI`供应商下的大部分微调模型，可以通过其微调模型名称获取到其基类模型，如`gpt-3.5-turbo-1106`，然后返回基类模型的预定义参数规则，参考[openai](https://github.com/langgenius/dify/blob/feat/model-runtime/api/core/model_runtime/model_providers/openai/llm/llm.py#L801)
+对于`OpenAI`供应商下的大部分微调模型，可以通过其微调模型名称获取到其基类模型，如`gpt-3.5-turbo-1106`，然后返回基类模型的预定义参数规则，参考[openai](https://github.com/iechor/iechor/blob/feat/model-runtime/api/core/model_runtime/model_providers/openai/llm/llm.py#L801)
 的具体实现
 
 ### TextEmbedding

@@ -1,6 +1,6 @@
 const translation = {
   title: 'Knowledge settings',
-  desc: 'Here you can moiechor the properties and working methods of the Knowledge.',
+  desc: 'Here you can modify the properties and working methods of the Knowledge.',
   form: {
     name: 'Knowledge Name',
     namePlaceholder: 'Please enter the Knowledge name',
