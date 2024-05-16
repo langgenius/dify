@@ -261,11 +261,16 @@ class HttpExecutor:
         """
             do http request depending on api bundle
         """
+        # the write_timeout parameter is not commonly needed or relevant for the DELETE method in requests
+        timeouts = (self.timeout.connect, self.timeout.read, self.timeout.write)
+        if self.method == 'delete':
+            timeouts = (self.timeout.connect, self.timeout.read)
+
         kwargs = {
             'url': self.server_url,
             'headers': headers,
             'params': self.params,
-            'timeout': (self.timeout.connect, self.timeout.read, self.timeout.write),
+            'timeout': timeouts,
             'follow_redirects': True
         }
 
