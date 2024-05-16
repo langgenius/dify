@@ -27,13 +27,11 @@ type BeforeRunFormProps = {
 }
 
 function formatValue(value: string | any, type: InputVarType) {
-  const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(type)
-
   if (type === InputVarType.number)
     return parseFloat(value)
   if (type === InputVarType.json)
     return JSON.parse(value)
-  if (isArrayLikeType) {
+  if (type === InputVarType.contexts) {
     return value.map((item: any) => {
       return JSON.parse(item)
     })

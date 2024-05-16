@@ -57,7 +57,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     id,
     data: inputs,
     defaultRunInputData: {
-      '#iterator#': [],
+      '#iterator#': [''],
     },
   })
 
