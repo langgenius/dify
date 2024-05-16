@@ -20,9 +20,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-           repository: ${{ github.event.pull_request.head.repo.full_name }}
-           ref: ${{ github.head_ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -35,9 +32,7 @@ jobs:
       - name: Ruff fix
         run: ruff check --fix ./api
 
-      - uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: 'style fixes by ruff'
+      - uses: autofix-ci/action@d3e591514b99d0fca6779455ff8338516663f7cc
 
       - name: Ruff check
         run: ruff check ./api
