@@ -922,7 +922,12 @@ export const useNodesInteractions = () => {
 
     const {
       getNodes,
+      edges,
     } = store.getState()
+
+    const edgeSelected = edges.some(edge => edge.selected)
+    if (edgeSelected)
+      return
 
     const nodes = getNodes()
     const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start)
