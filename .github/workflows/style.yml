@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   python-style:
-    name: Python Style
+    name: autofix.ci
     runs-on: ubuntu-latest
     permissions:
       contents: write
