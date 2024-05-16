@@ -1,10 +1,11 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import { CollectionType } from '../types'
-import type { Collection } from '../types'
+import type { Collection, Tool } from '../types'
+import ToolItem from './tool-item'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
 import AppIcon from '@/app/components/base/app-icon'
@@ -13,10 +14,11 @@ import Indicator from '@/app/components/header/indicator'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import Toast from '@/app/components/base/toast'
-import { removeBuiltInToolCredential, updateBuiltInToolCredential } from '@/service/tools'
+import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, removeBuiltInToolCredential, updateBuiltInToolCredential } from '@/service/tools'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ConfigurateMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import Loading from '@/app/components/base/loading'
 
 type Props = {
   collection: Collection
@@ -31,9 +33,10 @@ const ProviderDetail = ({
   const { locale } = useContext(I18n)
   const language = getLanguage(locale)
 
-  const needAuth = collection?.allow_delete || collection?.type === CollectionType.model
+  const needAuth = collection.allow_delete || collection.type === CollectionType.model
   const isAuthed = collection.is_team_authorization
-  const isModel = collection?.type === CollectionType.model
+  const isBuiltIn = collection.type === CollectionType.builtIn
+  const isModel = collection.type === CollectionType.model
 
   const [showSettingAuth, setShowSettingAuth] = useState(false)
   const { setShowModelModal } = useModalContext()
@@ -58,6 +61,32 @@ const ProviderDetail = ({
       setShowSettingAuth(true)
     }
   }
+
+  const [isDetailLoading, setIsDetailLoading] = useState(false)
+  const [toolList, setToolList] = useState<Tool[]>([])
+  const getProviderToolList = useCallback(async () => {
+    setIsDetailLoading(true)
+    try {
+      if (collection.type === CollectionType.builtIn) {
+        const list = await fetchBuiltInToolList(collection.name)
+        setToolList(list)
+      }
+      else if (collection.type === CollectionType.model) {
+        const list = await fetchModelToolList(collection.name)
+        setToolList(list)
+      }
+      else {
+        const list = await fetchCustomToolList(collection.name)
+        setToolList(list)
+      }
+    }
+    catch (e) { }
+    setIsDetailLoading(false)
+  }, [collection.name, collection.type])
+
+  useEffect(() => {
+    getProviderToolList()
+  }, [collection.name, collection.type, getProviderToolList])
 
   return (
     <div className='px-6 py-3'>
@@ -105,6 +134,34 @@ const ProviderDetail = ({
             <Settings01 className='mr-1 w-4 h-4 text-gray-500' />
             <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
           </Button>
+        )}
+      </div>
+      <div className='pt-3'>
+        {isDetailLoading && <div className='flex h-[200px]'><Loading type='app'/></div>}
+        {!isDetailLoading && (
+          <div className='text-xs font-medium leading-6 text-gray-500'>
+            <span className=''>{t('tools.includeToolNum', { num: toolList.length }).toLocaleUpperCase()}</span>
+            {needAuth && (isBuiltIn || isModel) && !isAuthed && (
+              <>
+                <span className='px-1'>·</span>
+                <span className='text-[#DC6803]'>{t('tools.auth.setup').toLocaleUpperCase()}</span>
+              </>
+            )}
+          </div>
+        )}
+        {!isDetailLoading && (
+          <div className='mt-1'>
+            {toolList.map(tool => (
+              <ToolItem
+                key={tool.name}
+                disabled={needAuth && (isBuiltIn || isModel) && !isAuthed}
+                collection={collection}
+                tool={tool}
+                isBuiltIn={isBuiltIn}
+                isModel={isModel}
+              />
+            ))}
+          </div>
         )}
       </div>
       {showSettingAuth && (

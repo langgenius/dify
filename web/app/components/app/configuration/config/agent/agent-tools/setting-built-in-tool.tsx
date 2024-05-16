@@ -150,7 +150,7 @@ const SettingBuiltInTool: FC<Props> = ({
       onHide={onHide}
       title={(
         <div className='flex'>
-          {collection.icon === 'string'
+          {typeof collection.icon === 'string'
             ? (
               <div
                 className='w-6 h-6 bg-cover bg-center rounded-md'
@@ -189,8 +189,8 @@ const SettingBuiltInTool: FC<Props> = ({
           </>)}
         </div>
       )}
-      panelClassName='mt-[65px] !w-[480px]'
-      maxWidthClassName='!max-w-[480px]'
+      panelClassName='mt-[65px] !w-[405px]'
+      maxWidthClassName='!max-w-[405px]'
       height='calc(100vh - 65px)'
       headerClassName='!border-b-black/5'
       body={
@@ -212,7 +212,7 @@ const SettingBuiltInTool: FC<Props> = ({
             </div>)}
         </div>
       }
-      isShowMask={true}
+      isShowMask={false}
       clickOutsideNotOpen={false}
     />
   )
