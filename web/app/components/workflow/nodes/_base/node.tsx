@@ -5,6 +5,7 @@ import type {
 import {
   cloneElement,
   memo,
+  useEffect,
   useMemo,
   useRef,
 } from 'react'
@@ -15,6 +16,7 @@ import {
   NodeRunningStatus,
 } from '../../types'
 import {
+  useNodesInteractions,
   useNodesReadOnly,
   useToolIcon,
 } from '../../hooks'
@@ -42,7 +44,22 @@ const BaseNode: FC<BaseNodeProps> = ({
 }) => {
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
+  const { handleInterationChildSizeChange } = useNodesInteractions()
   const toolIcon = useToolIcon(data)
+
+  useEffect(() => {
+    if (nodeRef.current && data.selected && data.isInIteration) {
+      const resizeObserver = new ResizeObserver(() => {
+        handleInterationChildSizeChange(id)
+      })
+
+      resizeObserver.observe(nodeRef.current)
+
+      return () => {
+        resizeObserver.disconnect()
+      }
+    }
+  }, [data.isInIteration, data.selected, id, handleInterationChildSizeChange])
 
   const showSelectedBorder = data.selected || data._isBundled
   const {

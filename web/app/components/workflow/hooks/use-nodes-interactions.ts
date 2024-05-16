@@ -1078,14 +1078,14 @@ export const useNodesInteractions = () => {
 
     childrenNodes.forEach((n) => {
       if (rightNode) {
-        if (n.position.x > rightNode.position.x)
+        if (n.position.x + n.width! > rightNode.position.x + rightNode.width!)
           rightNode = n
       }
       else {
         rightNode = n
       }
       if (bottomNode) {
-        if (n.position.y > bottomNode.position.y)
+        if (n.position.y + n.height! > bottomNode.position.y + bottomNode.height!)
           bottomNode = n
       }
       else {
@@ -1123,20 +1123,20 @@ export const useNodesInteractions = () => {
 
     const nodes = getNodes()
     const currentNode = nodes.find(n => n.id === nodeId)!
-    const childrenNodes = nodes.filter(n => currentNode.data._children?.includes(n.id))
+    const childrenNodes = nodes.filter(n => n.parentId === nodeId)
     let rightNode: Node
     let bottomNode: Node
 
     childrenNodes.forEach((n) => {
       if (rightNode) {
-        if (n.position.x > rightNode.position.x)
+        if (n.position.x + n.width! > rightNode.position.x + rightNode.width!)
           rightNode = n
       }
       else {
         rightNode = n
       }
       if (bottomNode) {
-        if (n.position.y > bottomNode.position.y)
+        if (n.position.y + n.height! > bottomNode.position.y + bottomNode.height!)
           bottomNode = n
       }
       else {
@@ -1167,6 +1167,16 @@ export const useNodesInteractions = () => {
     }
   }, [store])
 
+  const handleInterationChildSizeChange = useCallback((nodeId: string) => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(n => n.id === nodeId)!
+    const parentId = currentNode.parentId
+
+    if (parentId)
+      handleNodeRerender(parentId)
+  }, [store, handleNodeRerender])
+
   return {
     handleNodeDragStart,
     handleNodeDrag,
@@ -1190,5 +1200,6 @@ export const useNodesInteractions = () => {
     handleNodesDelete,
     handleNodeResize,
     handleNodeRerender,
+    handleInterationChildSizeChange,
   }
 }
