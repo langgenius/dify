@@ -121,7 +121,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 raise ValueError("failed to invoke llm")
             
             usage_dict = {}
-            react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks)
+            react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict)
             scratchpad = AgentScratchpadUnit(
                 agent_response='',
                 thought='',
@@ -189,7 +189,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
             if not scratchpad.action:
                 # failed to extract action, return final answer directly
-                final_answer = scratchpad.agent_response or ''
+                final_answer = ''
             else:
                 if scratchpad.action.action_name.lower() == "final answer":
                     # action is final answer, return final answer directly
