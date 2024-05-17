@@ -63,6 +63,9 @@ class LoadBalancingCredentialsValidateApi(Resource):
         # validate model load balancing credentials
         model_load_balancing_service = ModelLoadBalancingService()
 
+        result = True
+        error = None
+
         try:
             model_load_balancing_service.validate_load_balancing_credentials(
                 tenant_id=tenant_id,
@@ -72,9 +75,15 @@ class LoadBalancingCredentialsValidateApi(Resource):
                 credentials=args['credentials']
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            result = False
+            error = str(ex)
 
-        return {'result': 'success'}, 200
+        response = {'result': 'success' if result else 'error'}
+
+        if not result:
+            response['error'] = error
+
+        return response
 
 
 class LoadBalancingConfigCredentialsValidateApi(Resource):
@@ -97,6 +106,9 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
         # validate model load balancing config credentials
         model_load_balancing_service = ModelLoadBalancingService()
 
+        result = True
+        error = None
+
         try:
             model_load_balancing_service.validate_load_balancing_credentials(
                 tenant_id=tenant_id,
@@ -107,9 +119,15 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
                 config_id=config_id,
             )
         except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+            result = False
+            error = str(ex)
 
-        return {'result': 'success'}, 200
+        response = {'result': 'success' if result else 'error'}
+
+        if not result:
+            response['error'] = error
+
+        return response
 
 
 # Load Balancing Config
