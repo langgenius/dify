@@ -2,6 +2,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel
 
+from core.helper.code_executor.code_executor import CodeLanguage
 from core.helper.code_executor.entities import CodeDependency
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.variable_entities import VariableSelector
@@ -16,7 +17,7 @@ class CodeNodeData(BaseNodeData):
         children: Optional[dict[str, 'Output']]
 
     variables: list[VariableSelector]
-    code_language: Literal['python3', 'javascript']
+    code_language: Literal[CodeLanguage.PYTHON3, CodeLanguage.JAVASCRIPT]
     code: str
     outputs: dict[str, Output]
     dependencies: Optional[list[CodeDependency]] = None
