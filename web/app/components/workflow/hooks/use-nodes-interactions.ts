@@ -359,29 +359,41 @@ export const useNodesInteractions = () => {
     const nodes = getNodes()
     const currentNodeIndex = nodes.findIndex(node => node.id === nodeId)
     const currentNode = nodes[currentNodeIndex]
-    if (nodes[currentNodeIndex].data.type === BlockEnum.Start)
+
+    if (!currentNode)
+      return
+
+    if (currentNode.data.type === BlockEnum.Start)
       return
 
     if (currentNode.data.type === BlockEnum.Iteration) {
       const iterationChildren = nodes.filter(node => node.parentId === currentNode.id)
 
       if (iterationChildren.length) {
-        const { setShowConfirm, showConfirm } = workflowStore.getState()
-
-        if (!showConfirm) {
-          setShowConfirm({
-            title: t('workflow.nodes.iteration.deleteTitle'),
-            desc: t('workflow.nodes.iteration.deleteDesc') || '',
-            onConfirm: () => {
-              iterationChildren.forEach((child) => {
-                handleNodeDelete(child.id)
-              })
-              handleNodeDelete(nodeId)
-              handleSyncWorkflowDraft()
-              setShowConfirm(undefined)
-            },
+        if (currentNode.data._isBundled) {
+          iterationChildren.forEach((child) => {
+            handleNodeDelete(child.id)
           })
-          return
+          return handleNodeDelete(nodeId)
+        }
+        else {
+          const { setShowConfirm, showConfirm } = workflowStore.getState()
+
+          if (!showConfirm) {
+            setShowConfirm({
+              title: t('workflow.nodes.iteration.deleteTitle'),
+              desc: t('workflow.nodes.iteration.deleteDesc') || '',
+              onConfirm: () => {
+                iterationChildren.forEach((child) => {
+                  handleNodeDelete(child.id)
+                })
+                handleNodeDelete(nodeId)
+                handleSyncWorkflowDraft()
+                setShowConfirm(undefined)
+              },
+            })
+            return
+          }
         }
       }
     }
@@ -851,7 +863,7 @@ export const useNodesInteractions = () => {
     } = store.getState()
 
     const nodes = getNodes()
-    const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start)
+    const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start && !node.data.isInIteration)
 
     if (bundledNodes.length) {
       setClipboardElements(bundledNodes)
@@ -910,12 +922,19 @@ export const useNodesInteractions = () => {
             x: nodeToPaste.position.x + offsetX,
             y: nodeToPaste.position.y + offsetY,
           },
-          parentId: nodeToPaste.parentId,
           extent: nodeToPaste.extent,
           zIndex: nodeToPaste.zIndex,
         })
         newNode.id = newNode.id + index
+
+        const newIterationChildren: Node[] = []
+        if (nodeToPaste.data.type === BlockEnum.Iteration)
+          newNode.data._children = []
+
         nodesToPaste.push(newNode)
+
+        if (newIterationChildren.length)
+          nodesToPaste.push(...newIterationChildren)
       })
 
       setNodes([...nodes, ...nodesToPaste])
@@ -984,6 +1003,7 @@ export const useNodesInteractions = () => {
 
     if (bundledNodes.length) {
       bundledNodes.forEach(node => handleNodeDelete(node.id))
+
       return
     }
 
