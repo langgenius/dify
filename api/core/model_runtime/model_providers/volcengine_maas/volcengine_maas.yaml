@@ -76,9 +76,6 @@ model_credential_schema:
         en_US: Enter your Endpoint ID
         zh_Hans: 输入您的 Endpoint ID
     - variable: base_model_name
-      show_on:
-        - variable: __model_type
-          value: llm
       label:
         en_US: Base Model
         zh_Hans: 基础模型
@@ -86,11 +83,53 @@ model_credential_schema:
       required: true
       options:
         - label:
+            en_US: Doubao-pro-4k
+          value: Doubao-pro-4k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-lite-4k
+          value: Doubao-lite-4k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-pro-32k
+          value: Doubao-pro-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-lite-32k
+          value: Doubao-lite-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-pro-128k
+          value: Doubao-pro-128k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Doubao-lite-128k
+          value: Doubao-lite-128k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
             en_US: Skylark2-pro-4k
           value: Skylark2-pro-4k
           show_on:
             - variable: __model_type
               value: llm
+        - label:
+            en_US: Doubao-embedding
+          value: Doubao-embedding
+          show_on:
+            - variable: __model_type
+              value: text-embedding
         - label:
             en_US: Custom
             zh_Hans: 自定义
@@ -122,8 +161,6 @@ model_credential_schema:
     - variable: context_size
       required: true
       show_on:
-        - variable: __model_type
-          value: llm
         - variable: base_model_name
           value: Custom
       label:
