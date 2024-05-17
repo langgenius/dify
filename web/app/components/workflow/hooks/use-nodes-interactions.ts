@@ -979,10 +979,6 @@ export const useNodesInteractions = () => {
       edges,
     } = store.getState()
 
-    const edgeSelected = edges.some(edge => edge.selected)
-    if (edgeSelected)
-      return
-
     const nodes = getNodes()
     const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start)
 
@@ -990,6 +986,10 @@ export const useNodesInteractions = () => {
       bundledNodes.forEach(node => handleNodeDelete(node.id))
       return
     }
+
+    const edgeSelected = edges.some(edge => edge.selected)
+    if (edgeSelected)
+      return
 
     const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
 

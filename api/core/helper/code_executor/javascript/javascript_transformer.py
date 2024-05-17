@@ -22,6 +22,7 @@ console.log(result)
 
 NODEJS_PRELOAD = """"""
 
+
 class NodeJsTemplateTransformer(TemplateTransformer):
     @classmethod
     def transform_caller(cls, code: str, inputs: dict, 
