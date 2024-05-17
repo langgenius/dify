@@ -337,7 +337,7 @@ const translation = {
       aggregationGroup: '聚合分组',
       addGroup: '添加分组',
       outputVars: {
-        output: '指派的变量值',
+        varDescribe: '{{groupName}}的输出变量',
       },
     },
     tool: {

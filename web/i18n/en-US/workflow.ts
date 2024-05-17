@@ -337,7 +337,7 @@ const translation = {
       aggregationGroup: 'Aggregation Group',
       addGroup: 'Add Group',
       outputVars: {
-        output: 'Assigned variable value',
+        varDescribe: '{{groupName}} output',
       },
     },
     tool: {

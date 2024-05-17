@@ -89,11 +89,16 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
           <div className='px-4 pt-4 pb-2'>
             <OutputVars>
               <>
-                <VarItem
-                  name='output'
-                  type={inputs.output_type}
-                  description={t(`${i18nPrefix}.outputVars.output`)}
-                />
+                {inputs.advanced_settings?.groups.map((item, index) => (
+                  <VarItem
+                    key={index}
+                    name={`${item.group_name}.output`}
+                    type={item.output_type}
+                    description={t(`${i18nPrefix}.outputVars.varDescribe`, {
+                      groupName: item.group_name,
+                    })}
+                  />
+                ))}
               </>
             </OutputVars>
           </div>

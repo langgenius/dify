@@ -40,7 +40,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
         draft.advanced_settings.groups = [{
           output_type: draft.output_type,
           variables: draft.variables,
-          group_name: 'Group 1',
+          group_name: 'Group1',
         }]
       }
       else {
@@ -59,7 +59,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       draft.advanced_settings.groups.push({
         output_type: VarType.any,
         variables: [],
-        group_name: `Group ${draft.advanced_settings.groups.length + 1}`,
+        group_name: `Group${draft.advanced_settings.groups.length + 1}`,
       })
     })
     setInputs(newInputs)
