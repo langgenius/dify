@@ -125,6 +125,7 @@ class ToolApiProviderAddApi(Resource):
         parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
         parser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('privacy_policy', type=str, required=False, nullable=True, location='json')
+        parser.add_argument('labels', type=list[str], required=False, nullable=True, location='json', default=[])
 
         args = parser.parse_args()
 
@@ -137,6 +138,7 @@ class ToolApiProviderAddApi(Resource):
             args['schema_type'],
             args['schema'],
             args.get('privacy_policy', ''),
+            args.get('labels', []),
         )
 
 class ToolApiProviderGetRemoteSchemaApi(Resource):

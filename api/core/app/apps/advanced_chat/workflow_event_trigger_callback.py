@@ -149,7 +149,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         """
         Publish iteration next
         """
-        self._queue_manager.push(
+        self._queue_manager._publish(
             QueueIterationNextEvent(
                 node_id=node_id,
                 index=index,
@@ -163,7 +163,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         """
         Publish iteration completed
         """
-        self._queue_manager.push(
+        self._queue_manager._publish(
             QueueIterationCompletedEvent(
                 node_id=node_id,
                 outputs=outputs

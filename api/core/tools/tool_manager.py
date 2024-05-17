@@ -448,7 +448,7 @@ class ToolManager:
 
             for api_provider_controller in api_provider_controllers:
                 user_provider = ToolTransformService.api_provider_to_user_provider(
-                    provider_controller=provider_controller['controller'],
+                    provider_controller=api_provider_controller['controller'],
                     db_provider=api_provider_controller['provider'],
                     decrypt_credentials=False,
                     labels=labels.get(api_provider_controller['controller'].provider_id, [])
