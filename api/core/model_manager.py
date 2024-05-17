@@ -93,7 +93,7 @@ class ModelInstance:
                     model_type=model_type,
                     model=model,
                     load_balancing_configs=current_model_setting.load_balancing_configs,
-                    managed_credentials=credentials
+                    managed_credentials=credentials if configuration.custom_configuration.provider else None
                 )
 
                 return lb_model_manager

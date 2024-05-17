@@ -12,6 +12,7 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
 from models.account import TenantAccountRole
+from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider_service import ModelProviderService
 
 
@@ -104,21 +105,54 @@ class ModelProviderModelApi(Resource):
         parser.add_argument('model', type=str, required=True, nullable=False, location='json')
         parser.add_argument('model_type', type=str, required=True, nullable=False,
                             choices=[mt.value for mt in ModelType], location='json')
-        parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('credentials', type=dict, required=False, nullable=True, location='json')
+        parser.add_argument('load_balancing', type=dict, required=False, nullable=True, location='json')
         args = parser.parse_args()
 
-        model_provider_service = ModelProviderService()
+        model_load_balancing_service = ModelLoadBalancingService()
 
-        try:
-            model_provider_service.save_model_credentials(
+        if ('load_balancing' in args and args['load_balancing'] and
+                'enabled' in args['load_balancing'] and args['load_balancing']['enabled']):
+            if 'configs' not in args['load_balancing']:
+                raise ValueError('invalid load balancing configs')
+
+            # save load balancing configs
+            model_load_balancing_service.update_load_balancing_configs(
                 tenant_id=tenant_id,
                 provider=provider,
                 model=args['model'],
                 model_type=args['model_type'],
-                credentials=args['credentials']
+                configs=args['load_balancing']['configs']
             )
-        except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+
+            # enable load balancing
+            model_load_balancing_service.enable_model_load_balancing(
+                tenant_id=tenant_id,
+                provider=provider,
+                model=args['model'],
+                model_type=args['model_type']
+            )
+        else:
+            # disable load balancing
+            model_load_balancing_service.disable_model_load_balancing(
+                tenant_id=tenant_id,
+                provider=provider,
+                model=args['model'],
+                model_type=args['model_type']
+            )
+
+            model_provider_service = ModelProviderService()
+
+            try:
+                model_provider_service.save_model_credentials(
+                    tenant_id=tenant_id,
+                    provider=provider,
+                    model=args['model'],
+                    model_type=args['model_type'],
+                    credentials=args['credentials']
+                )
+            except CredentialsValidateFailedError as ex:
+                raise ValueError(str(ex))
 
         return {'result': 'success'}, 200
 
@@ -170,8 +204,20 @@ class ModelProviderModelCredentialApi(Resource):
             model=args['model']
         )
 
+        model_load_balancing_service = ModelLoadBalancingService()
+        is_load_balancing_enabled, load_balancing_configs = model_load_balancing_service.get_load_balancing_configs(
+            tenant_id=tenant_id,
+            provider=provider,
+            model=args['model'],
+            model_type=args['model_type']
+        )
+
         return {
-            "credentials": credentials
+            "credentials": credentials,
+            "load_balancing": {
+                "enabled": is_load_balancing_enabled,
+                "configs": load_balancing_configs
+            }
         }
 
 

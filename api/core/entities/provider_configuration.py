@@ -490,6 +490,21 @@ class ProviderConfiguration(BaseModel):
 
         return model_setting
 
+    def get_provider_model_setting(self, model_type: ModelType, model: str) -> Optional[ProviderModelSetting]:
+        """
+        Get provider model setting.
+        :param model_type: model type
+        :param model: model name
+        :return:
+        """
+        return db.session.query(ProviderModelSetting) \
+            .filter(
+            ProviderModelSetting.tenant_id == self.tenant_id,
+            ProviderModelSetting.provider_name == self.provider.provider,
+            ProviderModelSetting.model_type == model_type.to_origin_model_type(),
+            ProviderModelSetting.model_name == model
+        ).first()
+
     def enable_model_load_balancing(self, model_type: ModelType, model: str) -> ProviderModelSetting:
         """
         Enable model load balancing.
