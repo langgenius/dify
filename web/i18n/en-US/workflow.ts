@@ -326,7 +326,6 @@ const translation = {
     variableAssigner: {
       title: 'Assign variables',
       outputType: 'Output Type',
-      outputVarType: 'Output Variable Type',
       varNotSet: 'Variable not set',
       noVarTip: 'Add the variables to be assigned',
       type: {

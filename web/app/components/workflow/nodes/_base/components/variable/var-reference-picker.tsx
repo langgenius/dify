@@ -25,6 +25,7 @@ import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/typ
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
+import AddButton from '@/app/components/base/button/add-button'
 const TRIGGER_DEFAULT_WIDTH = 227
 
 type Props = {
@@ -41,6 +42,7 @@ type Props = {
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
   availableNodes?: Node[]
   availableVars?: NodeOutPutVar[]
+  isAddBtnTrigger?: boolean
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -57,6 +59,7 @@ const VarReferencePicker: FC<Props> = ({
   filterVar = () => true,
   availableNodes: passedInAvailableNodes,
   availableVars,
+  isAddBtnTrigger,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -276,86 +279,92 @@ const VarReferencePicker: FC<Props> = ({
       <PortalToFollowElem
         open={open}
         onOpenChange={setOpen}
-        placement='bottom-start'
+        placement={isAddBtnTrigger ? 'bottom-end' : 'bottom-start'}
       >
         <PortalToFollowElemTrigger onClick={() => {
           if (readonly)
             return
           !isConstant ? setOpen(!open) : setControlFocus(Date.now())
         }} className='!flex'>
-          <div ref={triggerRef} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8 p-1 rounded-lg bg-gray-100 border')}>
-            {isSupportConstantValue
-              ? <div onClick={(e) => {
-                e.stopPropagation()
-                setOpen(false)
-                setControlFocus(Date.now())
-              }} className='mr-1 flex items-center space-x-1'>
-                <TypeSelector
-                  noLeft
-                  triggerClassName='!text-xs'
-                  readonly={readonly}
-                  DropDownIcon={ChevronDown}
-                  value={varKindType}
-                  options={varKindTypes}
-                  onChange={handleVarKindTypeChange}
-                />
-                <div className='h-4 w-px bg-black/5'></div>
+          {isAddBtnTrigger
+            ? (
+              <div>
+                <AddButton onClick={() => { }}></AddButton>
               </div>
-              : (!hasValue && <div className='ml-1.5 mr-1'>
-                <Variable02 className='w-3.5 h-3.5 text-gray-400' />
-              </div>)}
-            {isConstant
-              ? (
-                <input
-                  type='text'
-                  className='w-full h-8 leading-8 pl-0.5 bg-transparent text-[13px] font-normal text-gray-900 placeholder:text-gray-400 focus:outline-none overflow-hidden'
-                  value={isConstant ? value : ''}
-                  onChange={handleStaticChange}
-                  onFocus={() => setIsFocus(true)}
-                  onBlur={() => setIsFocus(false)}
-                  readOnly={readonly}
-                />
-              )
-              : (
-                <div className={cn('inline-flex h-full items-center px-1.5 rounded-[5px]', hasValue && 'bg-white')}>
-                  {hasValue
-                    ? (
-                      <>
-                        {isShowNodeName && (
-                          <div className='flex items-center'>
-                            <div className='p-[1px]'>
-                              <VarBlockIcon
-                                className='!text-gray-900'
-                                type={outputVarNode?.type || BlockEnum.Start}
-                              />
-                            </div>
-                            <div className='mx-0.5 text-xs font-medium text-gray-700 truncate' title={outputVarNode?.title} style={{
-                              maxWidth: maxNodeNameWidth,
-                            }}>{outputVarNode?.title}</div>
-                            <Line3 className='mr-0.5'></Line3>
-                          </div>
-                        )}
-                        <div className='flex items-center text-primary-600'>
-                          {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
-                          <div className='ml-0.5 text-xs font-medium truncate' title={varName} style={{
-                            maxWidth: maxVarNameWidth,
-                          }}>{varName}</div>
-                        </div>
-                        <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize truncate' title={type} style={{
-                          maxWidth: maxTypeWidth,
-                        }}>{type}</div>
-                      </>
-                    )
-                    : <div className='text-[13px] font-normal text-gray-400'>{t('workflow.common.setVarValuePlaceholder')}</div>}
+            )
+            : (<div ref={triggerRef} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8 p-1 rounded-lg bg-gray-100 border')}>
+              {isSupportConstantValue
+                ? <div onClick={(e) => {
+                  e.stopPropagation()
+                  setOpen(false)
+                  setControlFocus(Date.now())
+                }} className='mr-1 flex items-center space-x-1'>
+                  <TypeSelector
+                    noLeft
+                    triggerClassName='!text-xs'
+                    readonly={readonly}
+                    DropDownIcon={ChevronDown}
+                    value={varKindType}
+                    options={varKindTypes}
+                    onChange={handleVarKindTypeChange}
+                  />
+                  <div className='h-4 w-px bg-black/5'></div>
                 </div>
-              )}
-            {(hasValue && !readonly) && (<div
-              className='invisible group-hover/wrap:visible absolute h-5 right-1 top-[50%] translate-y-[-50%] group p-1 rounded-md hover:bg-black/5 cursor-pointer'
-              onClick={handleClearVar}
-            >
-              <XClose className='w-3.5 h-3.5 text-gray-500 group-hover:text-gray-800' />
+                : (!hasValue && <div className='ml-1.5 mr-1'>
+                  <Variable02 className='w-3.5 h-3.5 text-gray-400' />
+                </div>)}
+              {isConstant
+                ? (
+                  <input
+                    type='text'
+                    className='w-full h-8 leading-8 pl-0.5 bg-transparent text-[13px] font-normal text-gray-900 placeholder:text-gray-400 focus:outline-none overflow-hidden'
+                    value={isConstant ? value : ''}
+                    onChange={handleStaticChange}
+                    onFocus={() => setIsFocus(true)}
+                    onBlur={() => setIsFocus(false)}
+                    readOnly={readonly}
+                  />
+                )
+                : (
+                  <div className={cn('inline-flex h-full items-center px-1.5 rounded-[5px]', hasValue && 'bg-white')}>
+                    {hasValue
+                      ? (
+                        <>
+                          {isShowNodeName && (
+                            <div className='flex items-center'>
+                              <div className='p-[1px]'>
+                                <VarBlockIcon
+                                  className='!text-gray-900'
+                                  type={outputVarNode?.type || BlockEnum.Start}
+                                />
+                              </div>
+                              <div className='mx-0.5 text-xs font-medium text-gray-700 truncate' title={outputVarNode?.title} style={{
+                                maxWidth: maxNodeNameWidth,
+                              }}>{outputVarNode?.title}</div>
+                              <Line3 className='mr-0.5'></Line3>
+                            </div>
+                          )}
+                          <div className='flex items-center text-primary-600'>
+                            {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
+                            <div className='ml-0.5 text-xs font-medium truncate' title={varName} style={{
+                              maxWidth: maxVarNameWidth,
+                            }}>{varName}</div>
+                          </div>
+                          <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize truncate' title={type} style={{
+                            maxWidth: maxTypeWidth,
+                          }}>{type}</div>
+                        </>
+                      )
+                      : <div className='text-[13px] font-normal text-gray-400'>{t('workflow.common.setVarValuePlaceholder')}</div>}
+                  </div>
+                )}
+              {(hasValue && !readonly) && (<div
+                className='invisible group-hover/wrap:visible absolute h-5 right-1 top-[50%] translate-y-[-50%] group p-1 rounded-md hover:bg-black/5 cursor-pointer'
+                onClick={handleClearVar}
+              >
+                <XClose className='w-3.5 h-3.5 text-gray-500 group-hover:text-gray-800' />
+              </div>)}
             </div>)}
-          </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{
           zIndex: 100,
@@ -364,7 +373,7 @@ const VarReferencePicker: FC<Props> = ({
             <VarReferencePopup
               vars={outputVars}
               onChange={handleVarReferenceChange}
-              itemWidth={triggerWidth}
+              itemWidth={isAddBtnTrigger ? 260 : triggerWidth}
             />
           )}
         </PortalToFollowElemContent>

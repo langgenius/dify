@@ -5,6 +5,8 @@ import type { VariableAssignerNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+
 import {
   useNodesReadOnly,
   useWorkflow,
@@ -37,7 +39,15 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const { handleVarListChange, handleAddVariable } = useVarList({
+  const handleAddVariable = useCallback((value: ValueSelector | string, _varKindType: VarKindType) => {
+    // TODO: advanced add variable
+    const newInputs = produce(inputs, (draft: VariableAssignerNodeType) => {
+      draft.variables.push(value as ValueSelector)
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const { handleVarListChange } = useVarList({
     id,
     inputs,
     setInputs,
