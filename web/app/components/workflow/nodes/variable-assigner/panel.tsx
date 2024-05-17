@@ -1,15 +1,12 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
-import VarList from './components/var-list'
 import type { VariableAssignerNodeType } from './types'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
+import VarGroupItem from './components/var-group-item'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
@@ -21,40 +18,39 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
   const {
     readOnly,
     inputs,
-    handleVarListChange,
-    handleAddVariable,
-    filterVar,
+    handleListOrTypeChange,
     isEnableGroup,
   } = useConfig(id, data)
 
   return (
     <div className='mt-2'>
       <div className='px-4 pb-4 space-y-4'>
-        <Field
-          title={t(`${i18nPrefix}.title`)}
-          operations={
-            !readOnly
-              ? <VarReferencePicker
-                isAddBtnTrigger
-                readonly={false}
+        {!isEnableGroup
+          ? (
+            <VarGroupItem
+              readOnly={readOnly}
+              nodeId={id}
+              payload={{
+                output_type: inputs.output_type,
+                variables: inputs.variables,
+              }}
+              onChange={handleListOrTypeChange}
+              groupEnabled={false}
+            />
+          )
+          : (<div>
+            {inputs.advanced_settings?.groups.map((item, index) => (
+              <VarGroupItem
+                key={index}
+                readOnly={readOnly}
                 nodeId={id}
-                isShowNodeName
-                value={[]}
-                onChange={handleAddVariable}
-                defaultVarKindType={VarKindType.variable}
-                filterVar={filterVar}
+                payload={item}
+                onChange={handleListOrTypeChange}
+                groupEnabled
               />
-              : undefined
-          }
-        >
-          <VarList
-            readonly={readOnly}
-            nodeId={id}
-            list={inputs.variables}
-            onChange={handleVarListChange}
-            filterVar={filterVar}
-          />
-        </Field>
+            ))}
+          </div>)}
+
       </div>
       {isEnableGroup && (
         <>
