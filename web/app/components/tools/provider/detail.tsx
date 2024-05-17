@@ -3,8 +3,8 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
-import { CollectionType } from '../types'
-import type { Collection, Tool } from '../types'
+import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
+import type { Collection, CustomCollectionBackend, Tool } from '../types'
 import ToolItem from './tool-item'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
@@ -13,8 +13,18 @@ import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
+import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import Toast from '@/app/components/base/toast'
-import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, removeBuiltInToolCredential, updateBuiltInToolCredential } from '@/service/tools'
+import {
+  fetchBuiltInToolList,
+  fetchCustomCollection,
+  fetchCustomToolList,
+  fetchModelToolList,
+  removeBuiltInToolCredential,
+  removeCustomCollection,
+  updateBuiltInToolCredential,
+  updateCustomCollection,
+} from '@/service/tools'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ConfigurateMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -38,6 +48,9 @@ const ProviderDetail = ({
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
 
+  const [isDetailLoading, setIsDetailLoading] = useState(false)
+
+  // built in provider
   const [showSettingAuth, setShowSettingAuth] = useState(false)
   const { setShowModelModal } = useModalContext()
   const { modelProviders: providers } = useProviderContext()
@@ -61,8 +74,41 @@ const ProviderDetail = ({
       setShowSettingAuth(true)
     }
   }
+  // custom provider
+  const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
+  const [customCollection, setCustomCollection] = useState<CustomCollectionBackend | null>(null)
+  const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
+    await updateCustomCollection(data)
+    onRefreshData()
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+    setIsShowEditCustomCollectionModal(false)
+  }
+  const doRemoveCustomToolCollection = async () => {
+    await removeCustomCollection(collection?.name as string)
+    onRefreshData()
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+    setIsShowEditCustomCollectionModal(false)
+  }
+  const getCustomProvider = useCallback(async () => {
+    setIsDetailLoading(true)
+    const res = await fetchCustomCollection(collection.name)
+    if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
+      if (res.credentials.api_key_value)
+        res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
+    }
+    setCustomCollection({
+      ...res,
+      provider: collection.name,
+    })
+    setIsDetailLoading(false)
+  }, [collection.name])
 
-  const [isDetailLoading, setIsDetailLoading] = useState(false)
   const [toolList, setToolList] = useState<Tool[]>([])
   const getProviderToolList = useCallback(async () => {
     setIsDetailLoading(true)
@@ -85,8 +131,10 @@ const ProviderDetail = ({
   }, [collection.name, collection.type])
 
   useEffect(() => {
+    if (collection.type === CollectionType.custom)
+      getCustomProvider()
     getProviderToolList()
-  }, [collection.name, collection.type, getProviderToolList])
+  }, [collection.name, collection.type, getCustomProvider, getProviderToolList])
 
   return (
     <div className='px-6 py-3'>
@@ -126,16 +174,17 @@ const ProviderDetail = ({
             </div>
           </Button>
         )}
-        {collection.type === CollectionType.custom && (
+        {collection.type === CollectionType.custom && !isDetailLoading && (
           <Button
             className={cn('shrink-0 my-3 w-full flex items-center bg-white')}
-            // onClick={() => onShowEditCustomCollection()}
+            onClick={() => setIsShowEditCustomCollectionModal(true)}
           >
             <Settings01 className='mr-1 w-4 h-4 text-gray-500' />
             <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
           </Button>
         )}
       </div>
+      {/* Tools */}
       <div className='pt-3'>
         {isDetailLoading && <div className='flex h-[200px]'><Loading type='app'/></div>}
         {!isDetailLoading && (
@@ -186,6 +235,14 @@ const ProviderDetail = ({
             await onRefreshData()
             setShowSettingAuth(false)
           }}
+        />
+      )}
+      {isShowEditCollectionToolModal && (
+        <EditCustomToolModal
+          payload={customCollection}
+          onHide={() => setIsShowEditCustomCollectionModal(false)}
+          onEdit={doUpdateCustomToolCollection}
+          onRemove={doRemoveCustomToolCollection}
         />
       )}
     </div>

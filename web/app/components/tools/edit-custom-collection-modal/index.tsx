@@ -154,6 +154,7 @@ const EditCustomCollectionModal: FC<Props> = ({
     <>
       <Drawer
         isShow
+        positionCenter={isAdd}
         onHide={onHide}
         title={t(`tools.createTool.${isAdd ? 'title' : 'editTitle'}`)!}
         panelClassName='mt-2 !w-[640px]'
@@ -275,7 +276,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                 )
               }
               <div className='flex space-x-2 '>
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
+                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700 bg-white' onClick={onHide}>{t('common.operation.cancel')}</Button>
                 <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
               </div>
             </div>
@@ -295,6 +296,7 @@ const EditCustomCollectionModal: FC<Props> = ({
       />}
       {credentialsModalShow && (
         <ConfigCredentials
+          positionCenter={isAdd}
           credential={credential}
           onChange={setCredential}
           onHide={() => setCredentialsModalShow(false)}
@@ -302,6 +304,7 @@ const EditCustomCollectionModal: FC<Props> = ({
       }
       {isShowTestApi && (
         <TestApi
+          positionCenter={isAdd}
           tool={currTool as CustomParamSchema}
           customCollection={customCollection}
           onHide={() => setIsShowTestApi(false)}

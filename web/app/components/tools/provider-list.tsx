@@ -56,7 +56,13 @@ const ProviderList = () => {
     getProviderList()
   }, [])
 
-  const [currentProvider, setCurrentProvider] = useState<Collection | null>(null)
+  const [currentProvider, setCurrentProvider] = useState<Collection | undefined>()
+  useEffect(() => {
+    if (currentProvider && collectionList.length > 0) {
+      const newCurrentProvider = collectionList.find(collection => collection.id === currentProvider.id)
+      setCurrentProvider(newCurrentProvider)
+    }
+  }, [collectionList, currentProvider])
 
   return (
     <div className='relative flex overflow-hidden bg-gray-100 shrink-0 h-0 grow'>
@@ -80,7 +86,7 @@ const ProviderList = () => {
           currentProvider && 'pr-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
         )}>
           {activeTab === 'builtin' && <ContributeCard />}
-          {activeTab === 'api' && <CustomCreateCard/>}
+          {activeTab === 'api' && <CustomCreateCard onRefreshData={getProviderList}/>}
           {filteredCollectionList.map(collection => (
             <ProviderCard
               active={currentProvider?.id === collection.id}
@@ -97,7 +103,7 @@ const ProviderList = () => {
       )}>
         {currentProvider && <ProviderDetail collection={currentProvider} onRefreshData={getProviderList} />}
       </div>
-      <div className='absolute top-5 right-5 p-1 cursor-pointer' onClick={() => setCurrentProvider(null)}><XClose className='w-4 h-4'/></div>
+      <div className='absolute top-5 right-5 p-1 cursor-pointer' onClick={() => setCurrentProvider(undefined)}><XClose className='w-4 h-4'/></div>
     </div>
   )
 }
