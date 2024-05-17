@@ -189,7 +189,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
             if not scratchpad.action:
                 # failed to extract action, return final answer directly
-                final_answer = scratchpad.agent_response or ''
+                final_answer = ''
             else:
                 if scratchpad.action.action_name.lower() == "final answer":
                     # action is final answer, return final answer directly
