@@ -207,6 +207,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 # search stream_generate_routes if node id is answer start at node
                 if not self._task_state.current_stream_generate_state and event.node_id in self._stream_generate_routes:
                     self._task_state.current_stream_generate_state = self._stream_generate_routes[event.node_id]
+                    self._task_state.current_stream_generate_state.current_route_position = 0
 
                     # generate stream outputs when node started
                     yield from self._generate_stream_outputs_when_node_started()
@@ -347,7 +348,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             id=self._message.id,
             **extras
         )
-
+    
     def _get_stream_generate_routes(self) -> dict[str, ChatflowStreamGenerateRoute]:
         """
         Get stream generate routes.
@@ -377,7 +378,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 )
 
         return stream_generate_routes
-
+    
     def _get_answer_start_at_node_ids(self, graph: dict, target_node_id: str) \
             -> list[str]:
         """
@@ -406,6 +407,12 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 continue
 
             node_type = source_node.get('data', {}).get('type')
+            node_iteration_id = source_node.get('data', {}).get('iteration_id')
+            iteration_start_node_id = None
+            if node_iteration_id:
+                iteration_node = next((node for node in nodes if node.get('id') == node_iteration_id), None)
+                iteration_start_node_id = iteration_node.get('data', {}).get('start_node_id')
+
             if node_type in [
                 NodeType.ANSWER.value,
                 NodeType.IF_ELSE.value,
@@ -413,7 +420,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             ]:
                 start_node_id = target_node_id
                 start_node_ids.append(start_node_id)
-            elif node_type == NodeType.START.value:
+            elif node_type == NodeType.START.value or \
+                node_iteration_id is not None and iteration_start_node_id == source_node.get('id'):
                 start_node_id = source_node_id
                 start_node_ids.append(start_node_id)
             else:
