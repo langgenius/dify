@@ -82,7 +82,7 @@ const CustomWebAppBrand = () => {
       url: '/workspaces/custom-config',
       body: {
         remove_webapp_brand: false,
-        replace_webapp_logo: null,
+        replace_webapp_logo: '',
       },
     })
     mutateCurrentWorkspace()
@@ -93,7 +93,6 @@ const CustomWebAppBrand = () => {
       url: '/workspaces/custom-config',
       body: {
         remove_webapp_brand: checked,
-        replace_webapp_logo: webappLogo,
       },
     })
     mutateCurrentWorkspace()
