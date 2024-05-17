@@ -9,7 +9,7 @@ from core.model_runtime.entities.llm_entities import LLMResultChunk
 
 class CotAgentOutputParser:
     @classmethod
-    def handle_react_stream_output(cls, llm_response: Generator[LLMResultChunk, None, None]) -> \
+    def handle_react_stream_output(cls, llm_response: Generator[LLMResultChunk, None, None], usage_dict: dict) -> \
         Generator[Union[str, AgentScratchpadUnit.Action], None, None]:
         def parse_action(json_str):
             try:
@@ -58,6 +58,8 @@ class CotAgentOutputParser:
         thought_idx = 0
 
         for response in llm_response:
+            if response.delta.usage:
+                usage_dict['usage'] = response.delta.usage
             response = response.delta.message.content
             if not isinstance(response, str):
                 continue
