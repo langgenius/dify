@@ -61,7 +61,7 @@ const translation = {
     pointerMode: 'Pointer Mode',
     handMode: 'Hand Mode',
     model: 'Model',
-    workflowAsTool: 'Workflow as a Tool',
+    workflowAsTool: 'Workflow as Tool',
     configureRequired: 'Configure Required',
     configure: 'Configure',
     manageInTools: 'Manage in Tools',

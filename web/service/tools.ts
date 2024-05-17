@@ -103,3 +103,7 @@ export const fetchAllCustomTools = () => {
 export const fetchLabelList = () => {
   return get<Label[]>('/workspaces/current/tool-labels')
 }
+
+export const fetchWorkflowToolDetail = (appID: string) => {
+  return get<CustomCollectionBackend>(`/workspaces/current/tool-provider/workflow/get?workflow_app_id=${appID}`)
+}

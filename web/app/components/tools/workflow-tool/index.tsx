@@ -125,7 +125,7 @@ const WorkflowToolAsModal: FC<Props> = ({
       <Drawer
         isShow
         onHide={onHide}
-        title={t(`tools.createTool.${isAdd ? 'title' : 'editTitle'}`)!}
+        title={t('workflow.common.workflowAsTool')!}
         panelClassName='mt-2 !w-[640px]'
         maxWidthClassName='!max-w-[640px]'
         height='calc(100vh - 16px)'
