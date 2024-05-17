@@ -7,7 +7,7 @@ const i18nPrefix = 'workflow'
 
 const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
   defaultValue: {
-    output_type: VarType.string,
+    output_type: VarType.any,
     variables: [],
   },
   getAvailablePrevNodes(isChatMode: boolean) {

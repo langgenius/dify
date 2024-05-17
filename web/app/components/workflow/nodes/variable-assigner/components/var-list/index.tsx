@@ -15,7 +15,6 @@ type Props = {
   list: ValueSelector[]
   onChange: (list: ValueSelector[]) => void
   onOpen?: (index: number) => void
-  onlyLeafNodeVar?: boolean
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
 }
 
@@ -25,7 +24,6 @@ const VarList: FC<Props> = ({
   list,
   onChange,
   onOpen = () => { },
-  onlyLeafNodeVar,
   filterVar,
 }) => {
   const { t } = useTranslation()
@@ -71,7 +69,6 @@ const VarList: FC<Props> = ({
             value={item}
             onChange={handleVarReferenceChange(index)}
             onOpen={handleOpen(index)}
-            onlyLeafNodeVar={onlyLeafNodeVar}
             filterVar={filterVar}
             defaultVarKindType={VarKindType.variable}
           />

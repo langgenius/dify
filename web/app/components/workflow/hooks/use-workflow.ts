@@ -26,6 +26,8 @@ import type {
 } from '../types'
 import {
   BlockEnum,
+
+  VarType,
   WorkflowRunningStatus,
 } from '../types'
 import {
@@ -36,7 +38,7 @@ import {
   AUTO_LAYOUT_OFFSET,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
-import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
+import { findUsedVarNodes, getNodeOutputVars, isSystemVar, toNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useNodesExtraData } from './use-nodes-data'
 import { useWorkflowTemplate } from './use-workflow-template'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -533,4 +535,41 @@ export const useToolIcon = (data: Node['data']) => {
   }, [data, buildInTools, customTools])
 
   return toolIcon
+}
+
+export const useVarType = (nodeId: string) => {
+  const isChatMode = useIsChatMode()
+  const { getBeforeNodesInSameBranch } = useWorkflow()
+  const availableNodes = getBeforeNodesInSameBranch(nodeId)
+  const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
+
+  const getVarType = useCallback((varSelector: ValueSelector) => {
+    const targetVar = allOutputVars.find(v => v.nodeId === varSelector[0])
+    if (!targetVar)
+      return VarType.any
+
+    const isSystem = isSystemVar(varSelector)
+
+    let type: VarType = VarType.any
+    let curr: any = targetVar.vars
+    if (isSystem)
+      return curr.find((v: any) => v.variable === varSelector.join('.'))?.type;
+
+    (varSelector as ValueSelector).slice(1).forEach((key, i) => {
+      const isLast = i === varSelector.length - 2
+      curr = curr.find((v: any) => v.variable === key)
+      if (isLast) {
+        type = curr?.type
+      }
+      else {
+        if (curr.type === VarType.object)
+          curr = curr.children
+      }
+    })
+    return type
+  }, [allOutputVars])
+
+  return {
+    getVarType,
+  }
 }

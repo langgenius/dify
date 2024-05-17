@@ -34,7 +34,7 @@ type Props = {
   isShowNodeName: boolean
   readonly: boolean
   value: ValueSelector | string
-  onChange: (value: ValueSelector | string, varKindType: VarKindType) => void
+  onChange: (value: ValueSelector | string, varKindType: VarKindType, varInfo?: Var) => void
   onOpen?: () => void
   isSupportConstantValue?: boolean
   defaultVarKindType?: VarKindType
@@ -236,7 +236,7 @@ const VarReferencePicker: FC<Props> = ({
     }
   }, [controlFocus])
 
-  const handleVarReferenceChange = useCallback((value: ValueSelector) => {
+  const handleVarReferenceChange = useCallback((value: ValueSelector, varInfo: Var) => {
     // sys var not passed to backend
     const newValue = produce(value, (draft) => {
       if (draft[1] && draft[1].startsWith('sys')) {
@@ -247,7 +247,7 @@ const VarReferencePicker: FC<Props> = ({
         })
       }
     })
-    onChange(newValue, varKindType)
+    onChange(newValue, varKindType, varInfo)
     setOpen(false)
   }, [onChange, varKindType])
 

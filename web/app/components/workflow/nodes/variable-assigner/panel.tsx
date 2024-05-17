@@ -23,8 +23,8 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
     inputs,
     handleVarListChange,
     handleAddVariable,
-    handleOnVarOpen,
     filterVar,
+    isEnableGroup,
   } = useConfig(id, data)
 
   return (
@@ -42,6 +42,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
                 value={[]}
                 onChange={handleAddVariable}
                 defaultVarKindType={VarKindType.variable}
+                filterVar={filterVar}
               />
               : undefined
           }
@@ -51,24 +52,26 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
             nodeId={id}
             list={inputs.variables}
             onChange={handleVarListChange}
-            onOpen={handleOnVarOpen}
-            onlyLeafNodeVar
             filterVar={filterVar}
           />
         </Field>
       </div>
-      <Split />
-      <div className='px-4 pt-4 pb-2'>
-        <OutputVars>
-          <>
-            <VarItem
-              name='output'
-              type={inputs.output_type}
-              description={t(`${i18nPrefix}.outputVars.output`)}
-            />
-          </>
-        </OutputVars>
-      </div>
+      {isEnableGroup && (
+        <>
+          <Split />
+          <div className='px-4 pt-4 pb-2'>
+            <OutputVars>
+              <>
+                <VarItem
+                  name='output'
+                  type={inputs.output_type}
+                  description={t(`${i18nPrefix}.outputVars.output`)}
+                />
+              </>
+            </OutputVars>
+          </div>
+        </>
+      )}
     </div>
   )
 }
