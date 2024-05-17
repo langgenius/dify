@@ -61,7 +61,7 @@ const VarGroupItem: FC<Props> = ({
   }, [payload.output_type])
   return (
     <Field
-      title={t(`${i18nPrefix}.title`)}
+      title={groupEnabled ? payload.group_name! : t(`${i18nPrefix}.title`)}
       operations={
         <div className='flex items-center h-6  space-x-2'>
           {payload.variables.length > 0 && (

@@ -1,12 +1,15 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
+import Field from '../_base/components/field'
 import useConfig from './use-config'
 import type { VariableAssignerNodeType } from './types'
 import VarGroupItem from './components/var-group-item'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Switch from '@/app/components/base/switch'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
@@ -20,6 +23,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
     inputs,
     handleListOrTypeChange,
     isEnableGroup,
+    handleGroupEnabledChange,
   } = useConfig(id, data)
 
   return (
@@ -50,7 +54,21 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
               />
             ))}
           </div>)}
-
+      </div>
+      <Split />
+      <div className={cn('px-4 pt-4', isEnableGroup ? 'pb-4' : 'pb-2')}>
+        <Field
+          title={t(`${i18nPrefix}.aggregationGroup`)}
+          tooltip={'TODO'}
+          operations={
+            <Switch
+              defaultValue={isEnableGroup}
+              onChange={handleGroupEnabledChange}
+              size='md'
+              disabled={readOnly}
+            />
+          }
+        />
       </div>
       {isEnableGroup && (
         <>

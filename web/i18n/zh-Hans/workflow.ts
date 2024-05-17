@@ -334,6 +334,7 @@ const translation = {
         object: 'Object',
         array: 'Array',
       },
+      aggregationGroup: '聚合分组',
       outputVars: {
         output: '指派的变量值',
       },

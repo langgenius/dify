@@ -334,6 +334,7 @@ const translation = {
         object: 'Object',
         array: 'Array',
       },
+      aggregationGroup: 'Aggregation Group',
       outputVars: {
         output: 'Assigned variable value',
       },
