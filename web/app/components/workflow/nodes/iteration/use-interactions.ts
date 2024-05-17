@@ -1,10 +1,19 @@
 import { useCallback } from 'react'
 import produce from 'immer'
+import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
-import type { Node } from '../../types'
-import { ITERATION_PADDING } from '../../constants'
+import type {
+  BlockEnum,
+  Node,
+} from '../../types'
+import { generateNewNode } from '../../utils'
+import {
+  ITERATION_PADDING,
+  NODES_INITIAL_DATA,
+} from '../../constants'
 
 export const useNodeIterationInteractions = () => {
+  const { t } = useTranslation()
   const store = useStoreApi()
 
   const handleNodeIterationRerender = useCallback((nodeId: string) => {
@@ -95,9 +104,39 @@ export const useNodeIterationInteractions = () => {
       handleNodeIterationRerender(parentId)
   }, [store, handleNodeIterationRerender])
 
+  const handleNodeIterationChildrenCopy = useCallback((nodeId: string, newNodeId: string) => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const childrenNodes = nodes.filter(n => n.parentId === nodeId)
+
+    return childrenNodes.map((child, index) => {
+      const childNodeType = child.data.type as BlockEnum
+      const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
+      const newNode = generateNewNode({
+        data: {
+          ...NODES_INITIAL_DATA[childNodeType],
+          ...child.data,
+          selected: false,
+          _isBundled: false,
+          _connectedSourceHandleIds: [],
+          _connectedTargetHandleIds: [],
+          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${childNodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${childNodeType}`),
+        },
+        position: child.position,
+        positionAbsolute: child.positionAbsolute,
+        parentId: newNodeId,
+        extent: child.extent,
+        zIndex: child.zIndex,
+      })
+      newNode.id = `${newNodeId}${newNode.id + index}`
+      return newNode
+    })
+  }, [store, t])
+
   return {
     handleNodeIterationRerender,
     handleNodeIterationChildDrag,
     handleNodeIterationChildSizeChange,
+    handleNodeIterationChildrenCopy,
   }
 }

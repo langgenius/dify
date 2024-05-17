@@ -60,7 +60,10 @@ export const useNodesInteractions = () => {
   } = useWorkflow()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleSetHelpline } = useHelpline()
-  const { handleNodeIterationChildDrag } = useNodeIterationInteractions()
+  const {
+    handleNodeIterationChildDrag,
+    handleNodeIterationChildrenCopy,
+  } = useNodeIterationInteractions()
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as { x: number; y: number })
   const connectingNodeRef = useRef<{ nodeId: string; handleType: HandleType } | null>(null)
 
@@ -927,20 +930,30 @@ export const useNodesInteractions = () => {
         })
         newNode.id = newNode.id + index
 
-        const newIterationChildren: Node[] = []
-        if (nodeToPaste.data.type === BlockEnum.Iteration)
-          newNode.data._children = []
+        let newChildren: Node[] = []
+        if (nodeToPaste.data.type === BlockEnum.Iteration) {
+          newNode.data._children = [];
+          (newNode.data as IterationNodeType).start_node_id = ''
+
+          newChildren = handleNodeIterationChildrenCopy(nodeToPaste.id, newNode.id)
+
+          newChildren.forEach((child) => {
+            newNode.data._children?.push(child.id)
+            if (child.data.isIterationStart)
+              (newNode.data as IterationNodeType).start_node_id = child.id
+          })
+        }
 
         nodesToPaste.push(newNode)
 
-        if (newIterationChildren.length)
-          nodesToPaste.push(...newIterationChildren)
+        if (newChildren.length)
+          nodesToPaste.push(...newChildren)
       })
 
       setNodes([...nodes, ...nodesToPaste])
       handleSyncWorkflowDraft()
     }
-  }, [t, getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, reactflow])
+  }, [t, getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, reactflow, handleNodeIterationChildrenCopy])
 
   const handleNodesDuplicate = useCallback(() => {
     if (getNodesReadOnly())
