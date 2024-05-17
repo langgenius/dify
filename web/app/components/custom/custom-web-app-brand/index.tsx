@@ -29,6 +29,7 @@ const CustomWebAppBrand = () => {
     isCurrentWorkspaceManager,
   } = useAppContext()
   const [fileId, setFileId] = useState('')
+  const [imgKey, setImgKey] = useState(Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)
   const isSandbox = enableBilling && plan.type === Plan.sandbox
   const uploading = uploadProgress > 0 && uploadProgress < 100
@@ -73,6 +74,7 @@ const CustomWebAppBrand = () => {
     })
     mutateCurrentWorkspace()
     setFileId('')
+    setImgKey(Date.now())
   }
 
   const handleRestore = async () => {
@@ -121,7 +123,7 @@ const CustomWebAppBrand = () => {
                 POWERED BY
                 {
                   webappLogo
-                    ? <img key={webappLogo} src={webappLogo} alt='logo' className='ml-2 block w-auto h-5' />
+                    ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='ml-2 block w-auto h-5' />
                     : <LogoSite className='ml-2 !h-5' />
                 }
               </div>

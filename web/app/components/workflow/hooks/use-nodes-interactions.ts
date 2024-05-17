@@ -466,8 +466,7 @@ export const useNodesInteractions = () => {
       const prevNode = nodes[prevNodeIndex]
       const outgoers = getOutgoers(prevNode, nodes, edges).sort((a, b) => a.position.y - b.position.y)
       const lastOutgoer = outgoers[outgoers.length - 1]
-      if (prevNode.data.type === BlockEnum.KnowledgeRetrieval)
-        targetHandle = prevNodeId
+
       newNode.data._connectedTargetHandleIds = [targetHandle]
       newNode.data._connectedSourceHandleIds = []
       newNode.position = {
@@ -593,8 +592,7 @@ export const useNodesInteractions = () => {
     if (prevNodeId && nextNodeId) {
       const prevNode = nodes.find(node => node.id === prevNodeId)!
       const nextNode = nodes.find(node => node.id === nextNodeId)!
-      if (prevNode.data.type === BlockEnum.KnowledgeRetrieval)
-        targetHandle = prevNodeId
+
       newNode.data._connectedTargetHandleIds = [targetHandle]
       newNode.data._connectedSourceHandleIds = [sourceHandle]
       newNode.position = {
@@ -925,10 +923,6 @@ export const useNodesInteractions = () => {
       edges,
     } = store.getState()
 
-    const edgeSelected = edges.some(edge => edge.selected)
-    if (edgeSelected)
-      return
-
     const nodes = getNodes()
     const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start)
 
@@ -936,6 +930,10 @@ export const useNodesInteractions = () => {
       bundledNodes.forEach(node => handleNodeDelete(node.id))
       return
     }
+
+    const edgeSelected = edges.some(edge => edge.selected)
+    if (edgeSelected)
+      return
 
     const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
 
