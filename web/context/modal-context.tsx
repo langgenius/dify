@@ -11,7 +11,7 @@ import ExternalDataToolModal from '@/app/components/app/configuration/tools/exte
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import ModelModal from '@/app/components/header/account-setting/model-provider-page/model-modal'
 import type {
-  ConfigurateMethodEnum,
+  ConfigurationMethodEnum,
   CustomConfigrationModelFixedFields,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -32,7 +32,7 @@ export type ModalState<T> = {
 
 export type ModelModalType = {
   currentProvider: ModelProvider
-  currentConfigurateMethod: ConfigurateMethodEnum
+  currentConfigurateMethod: ConfigurationMethodEnum
   currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields
 }
 const ModalContext = createContext<{
@@ -50,7 +50,7 @@ const ModalContext = createContext<{
       setShowExternalDataToolModal: () => { },
       setShowPricingModal: () => { },
       setShowAnnotationFullModal: () => { },
-      setShowModelModal: () => {},
+      setShowModelModal: () => { },
     })
 
 export const useModalContext = () => useContext(ModalContext)

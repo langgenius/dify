@@ -16,7 +16,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import {
-  ConfigurateMethodEnum,
+  ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   FormTypeEnum,
 } from '../declarations'
@@ -47,7 +47,7 @@ import ConfirmCommon from '@/app/components/base/confirm/common'
 
 type ModelModalProps = {
   provider: ModelProvider
-  configurateMethod: ConfigurateMethodEnum
+  configurateMethod: ConfigurationMethodEnum
   currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields
   onCancel: () => void
   onSave: () => void
@@ -60,7 +60,7 @@ const ModelModal: FC<ModelModalProps> = ({
   onCancel,
   onSave,
 }) => {
-  const providerFormSchemaPredefined = configurateMethod === ConfigurateMethodEnum.predefinedModel
+  const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
   const formSchemasValue = useProviderCrenditialsFormSchemasValue(
     provider.provider,
     configurateMethod,
@@ -217,7 +217,7 @@ const ModelModal: FC<ModelModalProps> = ({
   }
 
   const renderTitlePrefix = () => {
-    const prefix = configurateMethod === ConfigurateMethodEnum.customizableModel ? t('common.operation.add') : t('common.operation.setup')
+    const prefix = configurateMethod === ConfigurationMethodEnum.customizableModel ? t('common.operation.add') : t('common.operation.setup')
 
     return `${prefix} ${provider.label[language] || provider.label.en_US}`
   }

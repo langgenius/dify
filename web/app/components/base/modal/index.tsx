@@ -1,16 +1,17 @@
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
+import classNames from 'classnames'
 // https://headlessui.com/react/dialog
 
 type IModal = {
   className?: string
   wrapperClassName?: string
   isShow: boolean
-  onClose: () => void
+  onClose?: () => void
   title?: React.ReactNode
   description?: React.ReactNode
-  children: React.ReactNode
+  children?: React.ReactNode
   closable?: boolean
   overflowVisible?: boolean
 }
@@ -19,7 +20,7 @@ export default function Modal({
   className,
   wrapperClassName,
   isShow,
-  onClose,
+  onClose = () => { },
   title,
   description,
   children,
@@ -28,7 +29,7 @@ export default function Modal({
 }: IModal) {
   return (
     <Transition appear show={isShow} as={Fragment}>
-      <Dialog as="div" className={`relative z-10 ${wrapperClassName}`} onClose={onClose}>
+      <Dialog as="div" className={classNames('modal-dialog', wrapperClassName)} onClose={onClose}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -58,7 +59,11 @@ export default function Modal({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={`w-full max-w-md transform ${overflowVisible ? 'overflow-visible' : 'overflow-hidden'} rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all ${className}`}>
+              <Dialog.Panel className={classNames(
+                'modal-panel',
+                overflowVisible ? 'overflow-visible' : 'overflow-hidden',
+                className,
+              )}>
                 {title && <Dialog.Title
                   as="h3"
                   className="text-lg font-medium leading-6 text-gray-900"

@@ -78,6 +78,13 @@ module.exports = {
         '2xl': '0px 24px 48px -12px rgba(16, 24, 40, 0.18)',
         '3xl': '0px 32px 64px -12px rgba(16, 24, 40, 0.14)',
       },
+      opacity: {
+        2: '0.02',
+        8: '0.08',
+      },
+      fontSize: {
+        '2xs': '0.625rem',
+      },
     },
   },
   plugins: [

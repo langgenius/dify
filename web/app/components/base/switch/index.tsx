@@ -8,9 +8,10 @@ type SwitchProps = {
   size?: 'sm' | 'md' | 'lg' | 'l'
   defaultValue?: boolean
   disabled?: boolean
+  className?: string
 }
 
-const Switch = ({ onChange, size = 'lg', defaultValue = false, disabled = false }: SwitchProps) => {
+const Switch = ({ onChange, size = 'lg', defaultValue = false, disabled = false, className }: SwitchProps) => {
   const [enabled, setEnabled] = useState(defaultValue)
   useEffect(() => {
     setEnabled(defaultValue)
@@ -49,6 +50,7 @@ const Switch = ({ onChange, size = 'lg', defaultValue = false, disabled = false 
         enabled ? 'bg-blue-600' : 'bg-gray-200',
         'relative inline-flex  flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
         disabled ? '!opacity-50 !cursor-not-allowed' : '',
+        className,
       )}
     >
       <span

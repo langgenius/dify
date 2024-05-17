@@ -4,7 +4,7 @@ import type {
   ModelProvider,
   TypeWithI18N,
 } from '../declarations'
-import { ConfigurateMethodEnum } from '../declarations'
+import { ConfigurationMethodEnum } from '../declarations'
 import {
   DEFAULT_BACKGROUND_COLOR,
   MODEL_PROVIDER_QUOTA_GET_FREE,
@@ -25,7 +25,7 @@ import { IS_CE_EDITION } from '@/config'
 
 type ProviderCardProps = {
   provider: ModelProvider
-  onOpenModal: (configurateMethod: ConfigurateMethodEnum) => void
+  onOpenModal: (configurateMethod: ConfigurationMethodEnum) => void
 }
 
 const TIP_MAP: { [k: string]: TypeWithI18N } = {
@@ -54,7 +54,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
     updateModelProviders()
   }
   const handleFreeQuota = useFreeQuota(handleFreeQuotaSuccess)
-  const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
+  const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
   const canGetFreeQuota = MODEL_PROVIDER_QUOTA_GET_FREE.includes(provider.provider) && !IS_CE_EDITION && provider.system_configuration.enabled
 
   return (
@@ -111,7 +111,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
         <div className={`hidden group-hover:grid grid-cols-${configurateMethods.length} gap-1`}>
           {
             configurateMethods.map((method) => {
-              if (method === ConfigurateMethodEnum.predefinedModel) {
+              if (method === ConfigurationMethodEnum.predefinedModel) {
                 return (
                   <Button
                     key={method}

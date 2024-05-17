@@ -8,7 +8,7 @@ import type {
   ModelProvider,
 } from './declarations'
 import {
-  ConfigurateMethodEnum,
+  ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
 } from './declarations'
@@ -57,7 +57,7 @@ const ModelProviderPage = () => {
 
   const handleOpenModal = (
     provider: ModelProvider,
-    configurateMethod: ConfigurateMethodEnum,
+    configurateMethod: ConfigurationMethodEnum,
     customConfigrationModelFixedFields?: CustomConfigrationModelFixedFields,
   ) => {
     setShowModelModal({
@@ -69,13 +69,13 @@ const ModelProviderPage = () => {
       onSaveCallback: () => {
         updateModelProviders()
 
-        if (configurateMethod === ConfigurateMethodEnum.predefinedModel) {
+        if (configurateMethod === ConfigurationMethodEnum.predefinedModel) {
           provider.supported_model_types.forEach((type) => {
             updateModelList(type)
           })
         }
 
-        if (configurateMethod === ConfigurateMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+        if (configurateMethod === ConfigurationMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
           eventEmitter?.emit({
             type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
             payload: provider.provider,
@@ -117,7 +117,7 @@ const ModelProviderPage = () => {
                 <ProviderAddedCard
                   key={provider.provider}
                   provider={provider}
-                  onOpenModal={(configurateMethod: ConfigurateMethodEnum, currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields) => handleOpenModal(provider, configurateMethod, currentCustomConfigrationModelFixedFields)}
+                  onOpenModal={(configurateMethod: ConfigurationMethodEnum, currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields) => handleOpenModal(provider, configurateMethod, currentCustomConfigrationModelFixedFields)}
                 />
               ))
             }
@@ -137,7 +137,7 @@ const ModelProviderPage = () => {
                   <ProviderCard
                     key={provider.provider}
                     provider={provider}
-                    onOpenModal={(configurateMethod: ConfigurateMethodEnum) => handleOpenModal(provider, configurateMethod)}
+                    onOpenModal={(configurateMethod: ConfigurationMethodEnum) => handleOpenModal(provider, configurateMethod)}
                   />
                 ))
               }

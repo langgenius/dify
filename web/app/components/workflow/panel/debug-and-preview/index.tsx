@@ -20,7 +20,7 @@ export type ChatWrapperRefType = {
 }
 const DebugAndPreview = () => {
   const { t } = useTranslation()
-  const chatRef = useRef({ handleRestart: () => {} })
+  const chatRef = useRef({ handleRestart: () => { } })
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { handleNodeCancelRunningStatus } = useNodesInteractions()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractions()
@@ -40,7 +40,7 @@ const DebugAndPreview = () => {
   return (
     <div
       className={cn(
-        'flex flex-col w-[400px] rounded-l-2xl h-full border border-black/[0.02]',
+        'flex flex-col w-[400px] rounded-l-2xl h-full border border-black/2',
       )}
       style={{
         background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',

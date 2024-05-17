@@ -14,7 +14,7 @@ import type {
   ModelTypeEnum,
 } from './declarations'
 import {
-  ConfigurateMethodEnum,
+  ConfigurationMethodEnum,
   ModelStatusEnum,
 } from './declarations'
 import I18n from '@/context/i18n'
@@ -64,25 +64,25 @@ export const useLanguage = () => {
 
 export const useProviderCrenditialsFormSchemasValue = (
   provider: string,
-  configurateMethod: ConfigurateMethodEnum,
+  configurateMethod: ConfigurationMethodEnum,
   configured?: boolean,
   currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields,
 ) => {
   const { data: predefinedFormSchemasValue } = useSWR(
-    (configurateMethod === ConfigurateMethodEnum.predefinedModel && configured)
+    (configurateMethod === ConfigurationMethodEnum.predefinedModel && configured)
       ? `/workspaces/current/model-providers/${provider}/credentials`
       : null,
     fetchModelProviderCredentials,
   )
   const { data: customFormSchemasValue } = useSWR(
-    (configurateMethod === ConfigurateMethodEnum.customizableModel && currentCustomConfigrationModelFixedFields)
+    (configurateMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigrationModelFixedFields)
       ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigrationModelFixedFields?.__model_name}&model_type=${currentCustomConfigrationModelFixedFields?.__model_type}`
       : null,
     fetchModelProviderCredentials,
   )
 
   const value = useMemo(() => {
-    return configurateMethod === ConfigurateMethodEnum.predefinedModel
+    return configurateMethod === ConfigurationMethodEnum.predefinedModel
       ? predefinedFormSchemasValue?.credentials
       : customFormSchemasValue?.credentials
         ? {
