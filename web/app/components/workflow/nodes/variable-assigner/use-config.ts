@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import produce from 'immer'
+import { VarType } from '../../types'
 import type { VarGroupItem, VariableAssignerNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
@@ -17,6 +18,18 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       ...inputs,
       ...payload,
     })
+  }, [inputs, setInputs])
+
+  const handleListOrTypeChangeInGroup = useCallback((index: number) => {
+    return (payload: VarGroupItem) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.advanced_settings.groups[index] = {
+          ...draft.advanced_settings.groups[index],
+          ...payload,
+        }
+      })
+      setInputs(newInputs)
+    }
   }, [inputs, setInputs])
 
   const handleGroupEnabledChange = useCallback((value: boolean) => {
@@ -41,12 +54,25 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleAddGroup = useCallback(() => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.advanced_settings.groups.push({
+        output_type: VarType.any,
+        variables: [],
+        group_name: `Group ${draft.advanced_settings.groups.length + 1}`,
+      })
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     readOnly,
     inputs,
     handleListOrTypeChange,
     isEnableGroup,
     handleGroupEnabledChange,
+    handleAddGroup,
+    handleListOrTypeChangeInGroup,
   }
 }
 

@@ -10,6 +10,7 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import Switch from '@/app/components/base/switch'
+import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
@@ -24,6 +25,8 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
     handleListOrTypeChange,
     isEnableGroup,
     handleGroupEnabledChange,
+    handleAddGroup,
+    handleListOrTypeChangeInGroup,
   } = useConfig(id, data)
 
   return (
@@ -43,16 +46,26 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
             />
           )
           : (<div>
-            {inputs.advanced_settings?.groups.map((item, index) => (
-              <VarGroupItem
-                key={index}
-                readOnly={readOnly}
-                nodeId={id}
-                payload={item}
-                onChange={handleListOrTypeChange}
-                groupEnabled
-              />
-            ))}
+            <div className='space-y-2'>
+              {inputs.advanced_settings?.groups.map((item, index) => (
+                <div key={index}>
+                  <VarGroupItem
+                    readOnly={readOnly}
+                    nodeId={id}
+                    payload={item}
+                    onChange={handleListOrTypeChangeInGroup(index)}
+                    groupEnabled
+                  />
+                  {index !== inputs.advanced_settings?.groups.length - 1 && <Split className='my-4' />}
+                </div>
+
+              ))}
+            </div>
+            <AddButton
+              className='mt-2'
+              text={t(`${i18nPrefix}.addGroup`)}
+              onClick={handleAddGroup}
+            />
           </div>)}
       </div>
       <Split />
