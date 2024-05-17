@@ -29,7 +29,7 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
 
   return (
     <div className={cn(
-      'relative w-full h-full rounded-2xl bg-[#F0F2F7]/90',
+      'relative min-w-[258px] min-h-[118px] w-full h-full rounded-2xl bg-[#F0F2F7]/90',
     )}>
       <Background
         id={`iteration-background-${id}`}
