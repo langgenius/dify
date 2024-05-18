@@ -4,6 +4,29 @@ WEB_IMAGE=$(DOCKER_REGISTRY)/dify-web
 API_IMAGE=$(DOCKER_REGISTRY)/dify-api
 VERSION=latest
 
+up-middleware:
+	docker-compose -f docker/docker-compose.middleware.yaml up -d
+
+down-middleware:
+	docker-compose -f docker/docker-compose.middleware.yaml down
+
+logs-middleware:
+	docker-compose -f docker/docker-compose.middleware.yaml logs -f
+
+# start the application
+start-front:
+	@echo "Running web Docker container..."
+	docker rm dify-web
+	docker run --name dify-web -p 3000:3000 $(WEB_IMAGE):$(VERSION)
+	@echo "Web Docker container started successfully."
+
+start-backend:
+	@echo "Running API Docker container..."
+	docker rm dify-api
+	docker run --name dify-api --env-file ./api/.env -p 5001:5001 $(API_IMAGE):$(VERSION)
+	@echo "API Docker container started successfully."
+
+# ...
 # Build Docker images
 build-web:
 	@echo "Building web Docker image: $(WEB_IMAGE):$(VERSION)..."
