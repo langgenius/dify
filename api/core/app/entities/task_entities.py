@@ -511,3 +511,19 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
 
     workflow_run_id: str
     data: Data
+
+class WorkflowIterationState(BaseModel):
+    """
+    WorkflowIterationState entity
+    """
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+        parent_iteration_id: Optional[str] = None
+        iteration_id: str
+        current_index: int
+        iteration_steps_boundary: list[int] = None
+        node_execution_id: str
+
+    current_iterations: dict[str, Data] = None

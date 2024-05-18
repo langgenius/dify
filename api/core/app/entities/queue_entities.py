@@ -57,7 +57,7 @@ class QueueIterationStartEvent(AppQueueEvent):
     event = QueueEvent.ITERATION_START
     node_id: str
 
-    node_run_index: int = 1
+    node_run_index: int
     predecessor_node_id: Optional[str] = None
 
 class QueueIterationNextEvent(AppQueueEvent):
@@ -68,6 +68,7 @@ class QueueIterationNextEvent(AppQueueEvent):
 
     index: int
     node_id: str
+    node_run_index: int
     output: Optional[Any] # output for the current iteration
 
     @validator('output', pre=True, always=True)
@@ -88,6 +89,7 @@ class QueueIterationCompletedEvent(AppQueueEvent):
     event = QueueEvent.ITERATION_COMPLETED
 
     node_id: str
+    node_run_index: int
     outputs: list[Any]
 
 class QueueTextChunkEvent(AppQueueEvent):

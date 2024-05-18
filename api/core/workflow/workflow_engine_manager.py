@@ -219,6 +219,7 @@ class WorkflowEngineManager:
                     self._workflow_iteration_started(
                         current_iteration_node=current_iteration_node,
                         workflow_run_state=workflow_run_state,
+                        predecessor_node_id=predecessor_node.node_id if predecessor_node else None,
                         callbacks=callbacks
                     )
                     # move to start node of iteration
@@ -417,6 +418,7 @@ class WorkflowEngineManager:
 
     def _workflow_iteration_started(self, current_iteration_node: BaseIterationNode,
                                     workflow_run_state: WorkflowRunState,
+                                    predecessor_node_id: Optional[str] = None,
                                     callbacks: list[BaseWorkflowCallback] = None) -> None:
         """
         Workflow iteration started
@@ -429,7 +431,8 @@ class WorkflowEngineManager:
             for callback in callbacks:
                 callback.on_workflow_iteration_started(
                     node_id=current_iteration_node.node_id,
-                    node_run_index=workflow_run_state.workflow_node_steps
+                    node_run_index=workflow_run_state.workflow_node_steps,
+                    predecessor_node_id=predecessor_node_id
                 )
 
         # add steps
@@ -449,6 +452,7 @@ class WorkflowEngineManager:
                     callback.on_workflow_iteration_next(
                         node_id=current_iteration_node.node_id,
                         index=workflow_run_state.current_iteration_state.index,
+                        node_run_index=workflow_run_state.workflow_node_steps,
                         output=workflow_run_state.current_iteration_state.get_current_output()
                     )
         # clear ran nodes
@@ -465,6 +469,7 @@ class WorkflowEngineManager:
                 for callback in callbacks:
                     callback.on_workflow_iteration_completed(
                         node_id=current_iteration_node.node_id,
+                        node_run_index=workflow_run_state.workflow_node_steps,
                         outputs=workflow_run_state.current_iteration_state.outputs
                     )
 

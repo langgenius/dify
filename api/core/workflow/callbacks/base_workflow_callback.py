@@ -84,7 +84,9 @@ class BaseWorkflowCallback(ABC):
 
     @abstractmethod
     def on_workflow_iteration_next(self, node_id: str, index: int, 
-                                   output: Optional[Any]) -> None:
+                                   node_run_index: int,
+                                   output: Optional[Any],
+                                   ) -> None:
         """
         Publish iteration next
         """
@@ -92,6 +94,7 @@ class BaseWorkflowCallback(ABC):
 
     @abstractmethod
     def on_workflow_iteration_completed(self, node_id: str, 
+                                        node_run_index: int,
                                         outputs: list[Any]) -> None:
         """
         Publish iteration completed

@@ -12,6 +12,7 @@ from core.app.entities.task_entities import (
     IterationNodeNextStreamResponse,
     IterationNodeStartStreamResponse,
     NodeExecutionInfo,
+    WorkflowIterationState,
 )
 from core.app.task_pipeline.workflow_cycle_state_manager import WorkflowCycleStateManager
 from core.workflow.entities.node_entities import NodeType
@@ -25,6 +26,14 @@ from models.workflow import (
 
 
 class WorkflowIterationCycleManage(WorkflowCycleStateManager):
+    _iteration_state: WorkflowIterationState = None
+
+    def _init_iteration_state(self) -> WorkflowIterationState:
+        if not self._iteration_state:
+            self._iteration_state = WorkflowIterationState(
+                current_iterations={}
+            )
+
     def _handle_iteration_to_stream_response(self, task_id: str, event: QueueIterationStartEvent | QueueIterationNextEvent | QueueIterationCompletedEvent) \
     -> Union[IterationNodeStartStreamResponse, IterationNodeNextStreamResponse, IterationNodeCompletedStreamResponse]:
         """
@@ -93,6 +102,9 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
             created_by_role=workflow_run.created_by_role,
             created_by=workflow_run.created_by,
             execution_metadata=json.dumps({
+                'started_run_index': node_run_index + 1,
+                'current_index': 0,
+                'steps_boundary': [],
             })
         )
 
@@ -112,6 +124,8 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
             return self._handle_iteration_completed(event)
     
     def _handle_iteration_started(self, event: QueueIterationStartEvent) -> WorkflowNodeExecution:
+        self._init_iteration_state()
+
         workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == self._task_state.workflow_run_id).first()
         workflow_node_execution = self._init_iteration_execution_from_workflow_run(
             workflow_run=workflow_run,
@@ -131,12 +145,53 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
         self._task_state.ran_node_execution_infos[event.node_id] = latest_node_execution_info
         self._task_state.latest_node_execution_info = latest_node_execution_info
 
+        self._iteration_state.current_iterations[event.node_id] = WorkflowIterationState.Data(
+            parent_iteration_id=None,
+            iteration_id=event.node_id,
+            current_index=0,
+            iteration_steps_boundary=[],
+            node_execution_id=workflow_node_execution.id
+        )
+
         db.session.close()
 
         return workflow_node_execution
     
     def _handle_iteration_next(self, event: QueueIterationNextEvent) -> WorkflowNodeExecution:
-        pass
+        if event.node_id not in self._iteration_state.current_iterations:
+            return
+        current_iteration = self._iteration_state.current_iterations[event.node_id]
+        current_iteration.current_index = event.index
+        current_iteration.iteration_steps_boundary.append(event.node_run_index)
+        workflow_node_execution: WorkflowNodeExecution = db.session.query(WorkflowNodeExecution).filter(
+            WorkflowNodeExecution.id == current_iteration.node_execution_id
+        ).first()
+
+        workflow_node_execution.execution_metadata = json.dumps({
+            'started_run_index': event.node_run_index + 1,
+            'current_index': event.index,
+            'steps_boundary': current_iteration.iteration_steps_boundary
+        })
+
+        db.session.commit()
+        db.session.close()
 
     def _handle_iteration_completed(self, event: QueueIterationCompletedEvent) -> WorkflowNodeExecution:
-        pass
+        if event.node_id not in self._iteration_state.current_iterations:
+            return
+        
+        current_iteration = self._iteration_state.current_iterations[event.node_id]
+        workflow_node_execution: WorkflowNodeExecution = db.session.query(WorkflowNodeExecution).filter(
+            WorkflowNodeExecution.id == current_iteration.node_execution_id
+        ).first()
+
+        workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
+        workflow_node_execution.outputs = json.dumps({
+            'output': event.outputs
+        })
+
+        db.session.commit()
+        db.session.close()
+
+        # remove current iteration
+        self._iteration_state.current_iterations.pop(event.node_id, None)
