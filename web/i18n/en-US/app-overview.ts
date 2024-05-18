@@ -50,6 +50,9 @@ const translation = {
           privacyPolicy: 'Privacy Policy',
           privacyPolicyPlaceholder: 'Enter the privacy policy link',
           privacyPolicyTip: 'Helps visitors understand the data the application collects, see Dify\'s <privacyPolicyLink>Privacy Policy</privacyPolicyLink>.',
+          customDisclaimer: 'Custom Disclaimer',
+          customDisclaimerPlaceholder: 'Enter the custom disclaimer text',
+          customDisclaimerTip: 'Custom disclaimer text will be displayed on the client side, providing additional information about the application',
         },
       },
       embedded: {

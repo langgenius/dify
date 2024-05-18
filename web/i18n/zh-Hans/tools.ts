@@ -71,6 +71,8 @@ const translation = {
     },
     privacyPolicy: '隐私协议',
     privacyPolicyPlaceholder: '请输入隐私协议',
+    customDisclaimer: '自定义免责声明',
+    customDisclaimerPlaceholder: '请输入自定义免责声明',
   },
   test: {
     title: '测试',
