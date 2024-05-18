@@ -50,6 +50,9 @@ const translation = {
           privacyPolicy: 'Політика конфіденційності',
           privacyPolicyPlaceholder: 'Введіть посилання на політику конфіденційності',
           privacyPolicyTip: 'Допомагає відвідувачам зрозуміти дані, зібрані додатком, див. <privacyPolicyLink>Політику конфіденційності</privacyPolicyLink> Dify.',
+          customDisclaimer: 'Відмова від відповідальності',
+          customDisclaimerPlaceholder: 'Введіть відмову від відповідальності',
+          customDisclaimerTip: 'Відображається на клієнтському боці, щоб визначити відповідальність за використання додатка',
         },
       },
       embedded: {

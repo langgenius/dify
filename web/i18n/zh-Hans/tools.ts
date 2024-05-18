@@ -87,6 +87,8 @@ const translation = {
       description: '描述',
       descriptionPlaceholder: '参数描述',
     },
+    customDisclaimer: '自定义免责声明',
+    customDisclaimerPlaceholder: '请输入自定义免责声明',
   },
   test: {
     title: '测试',

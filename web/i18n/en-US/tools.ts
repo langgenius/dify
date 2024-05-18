@@ -87,6 +87,8 @@ const translation = {
       description: 'Description',
       descriptionPlaceholder: 'Parameter description',
     },
+    customDisclaimer: 'Custom disclaimer',
+    customDisclaimerPlaceholder: 'Please enter custom disclaimer',
   },
   test: {
     title: 'Test',

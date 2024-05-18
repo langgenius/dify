@@ -929,6 +929,7 @@ const Main: FC<IMainProps> = ({
                       image_file_size_limit: fileUploadConfigResponse ? fileUploadConfigResponse.image_file_size_limit : visionConfig.image_file_size_limit,
                     }}
                     allToolIcons={appMeta?.tool_icons || {}}
+                    customDisclaimer={siteInfo.custom_disclaimer}
                   />
                 </div>
               </div>)

@@ -177,7 +177,7 @@ class ToolManageService:
     @staticmethod
     def create_api_tool_provider(
         user_id: str, tenant_id: str, provider_name: str, icon: dict, credentials: dict,
-        schema_type: str, schema: str, privacy_policy: str
+        schema_type: str, schema: str, privacy_policy: str, custom_disclaimer: str
     ):
         """
             create api tool provider
@@ -213,7 +213,8 @@ class ToolManageService:
             schema_type_str=schema_type,
             tools_str=json.dumps(jsonable_encoder(tool_bundles)),
             credentials_str={},
-            privacy_policy=privacy_policy
+            privacy_policy=privacy_policy,
+            custom_disclaimer=custom_disclaimer
         )
 
         if 'auth_type' not in credentials:
@@ -364,7 +365,7 @@ class ToolManageService:
     @staticmethod
     def update_api_tool_provider(
         user_id: str, tenant_id: str, provider_name: str, original_provider: str, icon: dict, credentials: dict, 
-        schema_type: str, schema: str, privacy_policy: str
+        schema_type: str, schema: str, privacy_policy: str, custom_disclaimer: str
     ):
         """
             update api tool provider
@@ -394,6 +395,7 @@ class ToolManageService:
         provider.schema_type_str = ApiProviderSchemaType.OPENAPI.value
         provider.tools_str = json.dumps(jsonable_encoder(tool_bundles))
         provider.privacy_policy = privacy_policy
+        provider.custom_disclaimer = custom_disclaimer
 
         if 'auth_type' not in credentials:
             raise ValueError('auth_type is required')
