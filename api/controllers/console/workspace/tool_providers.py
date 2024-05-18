@@ -124,8 +124,9 @@ class ToolApiProviderAddApi(Resource):
         parser.add_argument('schema', type=str, required=True, nullable=False, location='json')
         parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
         parser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
-        parser.add_argument('privacy_policy', type=str, required=False, nullable=True, location='json')
+        parser.add_argument('privacy_policy', type=str, required=False, nullable=True, location='json')<<<<<<< HEAD
         parser.add_argument('labels', type=list[str], required=False, nullable=True, location='json', default=[])
+        parser.add_argument('custom_disclaimer', type=str, required=False, nullable=True, location='json')
 
         args = parser.parse_args()
 
@@ -138,6 +139,7 @@ class ToolApiProviderAddApi(Resource):
             args['schema_type'],
             args['schema'],
             args.get('privacy_policy', ''),
+            args.get('custom_disclaimer', ''),
             args.get('labels', []),
         )
 
@@ -198,6 +200,7 @@ class ToolApiProviderUpdateApi(Resource):
         parser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('privacy_policy', type=str, required=True, nullable=True, location='json')
         parser.add_argument('labels', type=list[str], required=False, nullable=True, location='json')
+        parser.add_argument('custom_disclaimer', type=str, required=True, nullable=True, location='json')
 
         args = parser.parse_args()
 
@@ -211,6 +214,7 @@ class ToolApiProviderUpdateApi(Resource):
             args['schema_type'],
             args['schema'],
             args['privacy_policy'],
+            args['custom_disclaimer'],
             args.get('labels', []),
         )
 

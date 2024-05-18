@@ -50,6 +50,9 @@ const translation = {
           privacyPolicy: 'プライバシーポリシー',
           privacyPolicyPlaceholder: 'プライバシーポリシーリンクを入力してください',
           privacyPolicyTip: '訪問者がアプリケーションが収集するデータを理解し、Difyの<privacyPolicyLink>プライバシーポリシー</privacyPolicyLink>を参照できるようにします。',
+          customDisclaimer: 'カスタム免責事項',
+          customDisclaimerPlaceholder: '免責事項を入力してください',
+          customDisclaimerTip: 'アプリケーションの使用に関する免責事項を提供します。',
         },
       },
       embedded: {
