@@ -230,6 +230,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     workflow_node_execution=workflow_node_execution
                 )
             elif isinstance(event, QueueIterationStartEvent | QueueIterationNextEvent | QueueIterationCompletedEvent):
+                self._handle_iteration_operation(event)
                 yield self._handle_iteration_to_stream_response(self._application_generate_entity.task_id, event)
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
                 workflow_run = self._handle_workflow_finished(event)
@@ -269,10 +270,6 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 self._handle_retriever_resources(event)
             elif isinstance(event, QueueAnnotationReplyEvent):
                 self._handle_annotation_reply(event)
-            # elif isinstance(event, QueueMessageFileEvent):
-            #     response = self._message_file_to_stream_response(event)
-            #     if response:
-            #         yield response
             elif isinstance(event, QueueTextChunkEvent):
                 delta_text = event.text
                 if delta_text is None:

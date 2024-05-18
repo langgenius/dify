@@ -57,6 +57,9 @@ class QueueIterationStartEvent(AppQueueEvent):
     event = QueueEvent.ITERATION_START
     node_id: str
 
+    node_run_index: int = 1
+    predecessor_node_id: Optional[str] = None
+
 class QueueIterationNextEvent(AppQueueEvent):
     """
     QueueIterationNextEvent entity

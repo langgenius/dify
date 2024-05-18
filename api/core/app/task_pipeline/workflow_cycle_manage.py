@@ -1,13 +1,10 @@
 import json
 import time
 from datetime import datetime, timezone
-from typing import Any, Optional, Union, cast
+from typing import Optional, Union, cast
 
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
-    QueueIterationCompletedEvent,
-    QueueIterationNextEvent,
-    QueueIterationStartEvent,
     QueueNodeFailedEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
@@ -16,21 +13,17 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import (
-    AdvancedChatTaskState,
-    IterationNodeCompletedStreamResponse,
-    IterationNodeNextStreamResponse,
-    IterationNodeStartStreamResponse,
     NodeExecutionInfo,
     NodeFinishStreamResponse,
     NodeStartStreamResponse,
     WorkflowFinishStreamResponse,
     WorkflowStartStreamResponse,
-    WorkflowTaskState,
 )
+from core.app.task_pipeline.workflow_iteration_cycle_manage import WorkflowIterationCycleManage
 from core.file.file_obj import FileVar
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.tool_manager import ToolManager
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType, SystemVariable
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
@@ -48,13 +41,7 @@ from models.workflow import (
 )
 
 
-class WorkflowCycleManage:
-    _application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity]
-    _workflow: Workflow
-    _user: Union[Account, EndUser]
-    _task_state: Union[AdvancedChatTaskState, WorkflowTaskState]
-    _workflow_system_variables: dict[SystemVariable, Any]
-
+class WorkflowCycleManage(WorkflowIterationCycleManage):
     def _init_workflow_run(self, workflow: Workflow,
                            triggered_from: WorkflowRunTriggeredFrom,
                            user: Union[Account, EndUser],
@@ -400,51 +387,6 @@ class WorkflowCycleManage:
                 files=self._fetch_files_from_node_outputs(workflow_node_execution.outputs_dict)
             )
         )
-    
-    def _handle_iteration_to_stream_response(self, task_id: str, event: QueueIterationStartEvent | QueueIterationNextEvent | QueueIterationCompletedEvent) \
-        -> Union[IterationNodeStartStreamResponse, IterationNodeNextStreamResponse, IterationNodeCompletedStreamResponse]:
-        """
-        Handle iteration to stream response
-        :param task_id: task id
-        :param event: iteration event
-        :return:
-        """
-        if isinstance(event, QueueIterationStartEvent):
-            return IterationNodeStartStreamResponse(
-                task_id=task_id,
-                workflow_run_id=self._task_state.workflow_run_id,
-                data=IterationNodeStartStreamResponse.Data(
-                    id=event.node_id,
-                    node_id=event.node_id,
-                    created_at=int(time.time()),
-                    extras={}
-                )
-            )
-        elif isinstance(event, QueueIterationNextEvent):
-            return IterationNodeNextStreamResponse(
-                task_id=task_id,
-                workflow_run_id=self._task_state.workflow_run_id,
-                data=IterationNodeNextStreamResponse.Data(
-                    id=event.node_id,
-                    node_id=event.node_id,
-                    index=event.index,
-                    output=event.output,
-                    created_at=int(time.time()),
-                    extras={}
-                )
-            )
-        elif isinstance(event, QueueIterationCompletedEvent):
-            return IterationNodeCompletedStreamResponse(
-                task_id=task_id,
-                workflow_run_id=self._task_state.workflow_run_id,
-                data=IterationNodeCompletedStreamResponse.Data(
-                    id=event.node_id,
-                    node_id=event.node_id,
-                    outputs=event.outputs,
-                    created_at=int(time.time()),
-                    extras={}
-                )
-            )
 
     def _handle_workflow_start(self) -> WorkflowRun:
         self._task_state.start_at = time.perf_counter()
@@ -526,7 +468,7 @@ class WorkflowCycleManage:
         db.session.close()
 
         return workflow_node_execution
-    
+
     def _handle_workflow_finished(self, event: QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent) \
             -> Optional[WorkflowRun]:
         workflow_run = db.session.query(WorkflowRun).filter(

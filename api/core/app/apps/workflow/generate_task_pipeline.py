@@ -88,7 +88,9 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             SystemVariable.USER_ID: user_id
         }
 
-        self._task_state = WorkflowTaskState()
+        self._task_state = WorkflowTaskState(
+            iteration_nested_node_ids=[]
+        )
         self._stream_generate_nodes = self._get_stream_generate_nodes()
 
     def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
@@ -195,6 +197,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                     workflow_node_execution=workflow_node_execution
                 )
             elif isinstance(event, QueueIterationStartEvent | QueueIterationNextEvent | QueueIterationCompletedEvent):
+                self._handle_iteration_operation(event)
                 yield self._handle_iteration_to_stream_response(self._application_generate_entity.task_id, event)
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
                 workflow_run = self._handle_workflow_finished(event)

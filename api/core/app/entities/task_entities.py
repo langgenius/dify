@@ -65,6 +65,7 @@ class WorkflowTaskState(TaskState):
 
     current_stream_generate_state: Optional[WorkflowStreamGenerateNodes] = None
 
+    iteration_nested_node_ids: list[str] = None
 
 class AdvancedChatTaskState(WorkflowTaskState):
     """
