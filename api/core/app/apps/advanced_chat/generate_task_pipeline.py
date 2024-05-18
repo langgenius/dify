@@ -499,7 +499,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
         route_chunks = self._task_state.current_stream_generate_state.generate_route[
                        self._task_state.current_stream_generate_state.current_route_position:]
-        pass
+        
         for route_chunk in route_chunks:
             if route_chunk.type == 'text':
                 route_chunk = cast(TextGenerateRouteChunk, route_chunk)
