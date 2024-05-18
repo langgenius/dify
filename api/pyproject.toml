@@ -9,9 +9,9 @@ line-length = 120
 [tool.ruff.lint]
 ignore-init-module-imports = true
 select = [
+    "B", # flake8-bugbear rules
     "F", # pyflakes rules
-    "I001", # unsorted-imports
-    "I002", # missing-required-import
+    "I", # isort rules
     "UP",   # pyupgrade rules
     "RUF019", # unnecessary-key-check
 ]
@@ -22,6 +22,12 @@ ignore = [
     "F841", # unused-variable
     "UP007", # non-pep604-annotation
     "UP032", # f-string
+    "B005", # strip-with-multi-characters
+    "B006", # mutable-argument-default
+    "B007", # unused-loop-control-variable
+    "B026", # star-arg-unpacking-after-keyword-arg
+    "B904", # raise-without-from-inside-except
+    "B905", # zip-without-explicit-strict
 ]
 
 [tool.ruff.lint.per-file-ignores]
