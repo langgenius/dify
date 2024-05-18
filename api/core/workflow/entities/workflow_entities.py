@@ -65,5 +65,5 @@ class WorkflowRunState:
         self.workflow_nodes_and_results = []
 
         self.current_iteration_state = None
-        self.workflow_node_steps = 0
+        self.workflow_node_steps = 1
         self.workflow_node_runs = []

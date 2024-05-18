@@ -73,7 +73,10 @@ class BaseWorkflowCallback(ABC):
         raise NotImplementedError
     
     @abstractmethod
-    def on_workflow_iteration_started(self, node_id: str) -> None:
+    def on_workflow_iteration_started(self, 
+                                      node_id: str,
+                                      node_run_index: int = 1,
+                                      predecessor_node_id: Optional[str] = None) -> None:
         """
         Publish iteration started
         """

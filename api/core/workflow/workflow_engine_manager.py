@@ -429,7 +429,11 @@ class WorkflowEngineManager:
             for callback in callbacks:
                 callback.on_workflow_iteration_started(
                     node_id=current_iteration_node.node_id,
+                    node_run_index=workflow_run_state.workflow_node_steps
                 )
+
+        # add steps
+        workflow_run_state.workflow_node_steps += 1
 
     def _workflow_iteration_next(self, current_iteration_node: BaseIterationNode,
                                  workflow_run_state: WorkflowRunState, 
@@ -595,7 +599,7 @@ class WorkflowEngineManager:
                     node_id=node.node_id,
                     node_type=node.node_type,
                     node_data=node.node_data,
-                    node_run_index=len(workflow_run_state.workflow_nodes_and_results) + 1,
+                    node_run_index=workflow_run_state.workflow_node_steps,
                     predecessor_node_id=predecessor_node.node_id if predecessor_node else None
                 )
 
