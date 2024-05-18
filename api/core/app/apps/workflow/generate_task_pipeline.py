@@ -61,6 +61,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
     _task_state: WorkflowTaskState
     _application_generate_entity: WorkflowAppGenerateEntity
     _workflow_system_variables: dict[SystemVariable, Any]
+    _iteration_nested_relations: dict[str, list[str]]
 
     def __init__(self, application_generate_entity: WorkflowAppGenerateEntity,
                  workflow: Workflow,
@@ -92,6 +93,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             iteration_nested_node_ids=[]
         )
         self._stream_generate_nodes = self._get_stream_generate_nodes()
+        self._iteration_nested_relations = self._get_iteration_nested_relations(self._workflow.graph_dict)
 
     def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
         """
@@ -197,6 +199,13 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                     workflow_node_execution=workflow_node_execution
                 )
             elif isinstance(event, QueueIterationStartEvent | QueueIterationNextEvent | QueueIterationCompletedEvent):
+                if isinstance(event, QueueIterationNextEvent):
+                    # clear ran node execution infos of current iteration
+                    iteration_relations = self._iteration_nested_relations.get(event.node_id)
+                    if iteration_relations:
+                        for node_id in iteration_relations:
+                            self._task_state.ran_node_execution_infos.pop(node_id, None)
+
                 self._handle_iteration_operation(event)
                 yield self._handle_iteration_to_stream_response(self._application_generate_entity.task_id, event)
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
@@ -339,13 +348,20 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 continue
 
             node_type = source_node.get('data', {}).get('type')
+            node_iteration_id = source_node.get('data', {}).get('iteration_id')
+            iteration_start_node_id = None
+            if node_iteration_id:
+                iteration_node = next((node for node in nodes if node.get('id') == node_iteration_id), None)
+                iteration_start_node_id = iteration_node.get('data', {}).get('start_node_id')
+
             if node_type in [
                 NodeType.IF_ELSE.value,
                 NodeType.QUESTION_CLASSIFIER.value
             ]:
                 start_node_id = target_node_id
                 start_node_ids.append(start_node_id)
-            elif node_type == NodeType.START.value:
+            elif node_type == NodeType.START.value or \
+                node_iteration_id is not None and iteration_start_node_id == source_node.get('id'):
                 start_node_id = source_node_id
                 start_node_ids.append(start_node_id)
             else:
@@ -419,3 +435,24 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             return False
 
         return True
+
+    def _get_iteration_nested_relations(self, graph: dict) -> dict[str, list[str]]:
+        """
+        Get iteration nested relations.
+        :param graph: graph
+        :return:
+        """
+        nodes = graph.get('nodes')
+
+        iteration_ids = [node.get('id') for node in nodes 
+                         if node.get('data', {}).get('type') in [
+                             NodeType.ITERATION.value,
+                             NodeType.LOOP.value,
+                        ]]
+
+        return {
+            iteration_id: [
+                node.get('id') for node in nodes if node.get('data', {}).get('iteration_id') == iteration_id
+            ] for iteration_id in iteration_ids
+        }
+    
