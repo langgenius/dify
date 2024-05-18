@@ -1,6 +1,6 @@
-import type { AppMode } from './app'
 import type { DataSourceNotionPage } from './common'
-import type { RetrievalConfig } from '@/types/app'
+import type { AppMode, RetrievalConfig } from '@/types/app'
+import type { Tag } from '@/app/components/base/tag-management/constant'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -28,6 +28,7 @@ export type DataSet = {
   embedding_available: boolean
   retrieval_model_dict: RetrievalConfig
   retrieval_model: RetrievalConfig
+  tags: Tag[]
 }
 
 export type CustomFile = File & {
@@ -410,4 +411,9 @@ export type SegmentUpdator = {
 export enum DocForm {
   TEXT = 'text_model',
   QA = 'qa_model',
+}
+
+export type ErrorDocsResponse = {
+  data: IndexingStatusResponse[]
+  total: number
 }

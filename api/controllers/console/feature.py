@@ -14,4 +14,10 @@ class FeatureApi(Resource):
         return FeatureService.get_features(current_user.current_tenant_id).dict()
 
 
+class SystemFeatureApi(Resource):
+    def get(self):
+        return FeatureService.get_system_features().dict()
+
+
 api.add_resource(FeatureApi, '/features')
+api.add_resource(SystemFeatureApi, '/system-features')

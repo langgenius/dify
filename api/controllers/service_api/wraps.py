@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from functools import wraps
 from typing import Optional
@@ -12,7 +12,7 @@ from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from extensions.ext_database import db
 from libs.login import _get_user
-from models.account import Account, Tenant, TenantAccountJoin
+from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
 
@@ -45,6 +45,10 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                 raise NotFound()
 
             if not app_model.enable_api:
+                raise NotFound()
+
+            tenant = db.session.query(Tenant).filter(Tenant.id == app_model.tenant_id).first()
+            if tenant.status == TenantStatus.ARCHIVE:
                 raise NotFound()
 
             kwargs['app_model'] = app_model
@@ -137,6 +141,7 @@ def validate_dataset_token(view=None):
                 .filter(Tenant.id == api_token.tenant_id) \
                 .filter(TenantAccountJoin.tenant_id == Tenant.id) \
                 .filter(TenantAccountJoin.role.in_(['owner'])) \
+                .filter(Tenant.status == TenantStatus.NORMAL) \
                 .one_or_none() # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
                 tenant, ta = tenant_account_join
@@ -183,7 +188,7 @@ def validate_and_get_api_token(scope=None):
     if not api_token:
         raise Unauthorized("Access token is invalid")
 
-    api_token.last_used_at = datetime.utcnow()
+    api_token.last_used_at = datetime.now(timezone.utc).replace(tzinfo=None)
     db.session.commit()
 
     return api_token

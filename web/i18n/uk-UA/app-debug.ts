@@ -260,18 +260,32 @@ const translation = {
     queryNoBeEmpty: 'Запит має бути встановлений у підказці', // Query must be set in the prompt
   },
   variableConig: {
-    modalTitle: 'Налаштування поля', // Field settings
-    description: 'Налаштування для змінної {{varName}}', // Setting for variable {{varName}}
-    fieldType: 'Тип поля', // Field type
-    string: 'Короткий текст', // Short Text
-    paragraph: 'Абзац', // Paragraph
-    select: 'Вибрати', // Select
-    notSet: 'Не налаштовано, спробуйте ввести {{input}} у префіксну підказку', // Not set, try typing {{input}} in the prefix prompt
-    stringTitle: 'Опції текстового поля форми', // Form text box options
-    maxLength: 'Максимальна довжина', // Max length
-    options: 'Опції', // Options
-    addOption: 'Додати опцію', // Add option
-    apiBasedVar: 'Змінна на основі API', // API-based Variable
+    'addModalTitle': 'Додати Поле Введення',
+    'editModalTitle': 'Редагувати Поле Введення',
+    'description': 'Налаштування для змінної {{varName}}',
+    'fieldType': 'Тип поля',
+    'string': 'Короткий текст',
+    'text-input': 'Короткий текст',
+    'paragraph': 'Параграф',
+    'select': 'Вибрати',
+    'number': 'Число',
+    'notSet': 'Не встановлено, спробуйте ввести {{input}} у префіксній підказці',
+    'stringTitle': 'Параметри поля введення форми',
+    'maxLength': 'Максимальна довжина',
+    'options': 'Опції',
+    'addOption': 'Додати опцію',
+    'apiBasedVar': 'Змінна на основі API',
+    'varName': 'Назва змінної',
+    'labelName': 'Назва мітки',
+    'inputPlaceholder': 'Будь ласка, введіть',
+    'required': 'Обов\'язково',
+    'errorMsg': {
+      varNameRequired: 'Потрібно вказати назву змінної',
+      labelNameRequired: 'Потрібно вказати назву мітки',
+      varNameCanBeRepeat: 'Назва змінної не може повторюватися',
+      atLeastOneOption: 'Потрібно щонайменше одну опцію',
+      optionRepeat: 'Є повторні опції',
+    },
   },
   vision: {
     name: 'Зображення', // Vision
@@ -307,7 +321,7 @@ const translation = {
   openingStatement: {
     title: 'Вступ до розмови', // Conversation Opener
     add: 'Додати', // Add
-    writeOpner: 'Напишіть вступне повідомлення', // Write opener
+    writeOpener: 'Напишіть вступне повідомлення', // Write opener
     placeholder: 'Напишіть тут своє вступне повідомлення, ви можете використовувати змінні, спробуйте ввести {{variable}}.', // Write your opener message here...
     openingQuestion: 'Відкриваючі питання', // Opening Questions
     noDataPlaceHolder: 'Початок розмови з користувачем може допомогти ШІ встановити більш тісний зв’язок з ним у розмовних застосунках.', // ... conversational applications.
@@ -339,6 +353,7 @@ const translation = {
   result: 'Вихідний текст', // Output Text
   datasetConfig: {
     settingTitle: 'Налаштування пошуку', // Retrieval settings
+    knowledgeTip: 'Клацніть кнопку “+”, щоб додати знання',
     retrieveOneWay: {
       title: 'Односторонній пошук', // N-to-1 retrieval
       description: 'На основі намірів користувача та описів Знань Агент самостійно вибирає найкращі Знання для запитів. Найкраще підходить для застосунків з окремими, обмеженими Знаннями.',

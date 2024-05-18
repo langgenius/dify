@@ -50,6 +50,9 @@ const translation = {
           privacyPolicy: '隐私政策',
           privacyPolicyPlaceholder: '请输入隐私政策链接',
           privacyPolicyTip: '帮助访问者了解该应用收集的数据，可参考 Dify 的<privacyPolicyLink>隐私政策</privacyPolicyLink>。',
+          customDisclaimer: '自定义免责声明',
+          customDisclaimerPlaceholder: '请输入免责声明',
+          customDisclaimerTip: '在应用中展示免责声明，可用于告知用户 AI 的局限性。',
         },
       },
       embedded: {
@@ -120,6 +123,10 @@ const translation = {
     avgSessionInteractions: {
       title: '平均会话互动数',
       explanation: '反应每个会话用户的持续沟通次数，如果用户与 AI 问答了 10 轮，即为 10。该指标反映了用户粘性。仅在对话型应用提供。',
+    },
+    avgUserInteractions: {
+      title: '平均用户调用次数',
+      explanation: '反应每天用户的使用次数。该指标反映了用户粘性。',
     },
     userSatisfactionRate: {
       title: '用户满意度',

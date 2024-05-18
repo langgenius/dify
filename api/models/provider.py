@@ -1,8 +1,7 @@
 from enum import Enum
 
-from sqlalchemy.dialects.postgresql import UUID
-
 from extensions.ext_database import db
+from models import StringUUID
 
 
 class ProviderType(Enum):
@@ -46,8 +45,8 @@ class Provider(db.Model):
         db.UniqueConstraint('tenant_id', 'provider_name', 'provider_type', 'quota_type', name='unique_provider_name_type_quota')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(40), nullable=False)
     provider_type = db.Column(db.String(40), nullable=False, server_default=db.text("'custom'::character varying"))
     encrypted_config = db.Column(db.Text, nullable=True)
@@ -93,8 +92,8 @@ class ProviderModel(db.Model):
         db.UniqueConstraint('tenant_id', 'provider_name', 'model_name', 'model_type', name='unique_provider_model_name')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(40), nullable=False)
     model_name = db.Column(db.String(255), nullable=False)
     model_type = db.Column(db.String(40), nullable=False)
@@ -111,10 +110,10 @@ class TenantDefaultModel(db.Model):
         db.Index('tenant_default_model_tenant_id_provider_type_idx', 'tenant_id', 'provider_name', 'model_type'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(40), nullable=False)
-    model_name = db.Column(db.String(40), nullable=False)
+    model_name = db.Column(db.String(255), nullable=False)
     model_type = db.Column(db.String(40), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
@@ -127,8 +126,8 @@ class TenantPreferredModelProvider(db.Model):
         db.Index('tenant_preferred_model_provider_tenant_provider_idx', 'tenant_id', 'provider_name'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(40), nullable=False)
     preferred_provider_type = db.Column(db.String(40), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
@@ -142,10 +141,10 @@ class ProviderOrder(db.Model):
         db.Index('provider_order_tenant_provider_idx', 'tenant_id', 'provider_name'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
     provider_name = db.Column(db.String(40), nullable=False)
-    account_id = db.Column(UUID, nullable=False)
+    account_id = db.Column(StringUUID, nullable=False)
     payment_product_id = db.Column(db.String(191), nullable=False)
     payment_id = db.Column(db.String(191))
     transaction_id = db.Column(db.String(191))

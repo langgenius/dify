@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import type {
   Model,
   ModelItem,
@@ -13,6 +14,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type TriggerProps = {
   open?: boolean
@@ -23,6 +25,7 @@ export type TriggerProps = {
   modelId?: string
   hasDeprecated?: boolean
   modelDisabled?: boolean
+  isInWorkflow?: boolean
 }
 const Trigger: FC<TriggerProps> = ({
   disabled,
@@ -32,6 +35,7 @@ const Trigger: FC<TriggerProps> = ({
   modelId,
   hasDeprecated,
   modelDisabled,
+  isInWorkflow,
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
@@ -39,10 +43,12 @@ const Trigger: FC<TriggerProps> = ({
 
   return (
     <div
-      className={`
-        flex items-center px-2 h-8 rounded-lg border cursor-pointer hover:border-[1.5px]
-        ${disabled ? 'border-[#F79009] bg-[#FFFAEB]' : 'border-[#444CE7] bg-primary-50'}
-      `}
+      className={cn(
+        'relative flex items-center px-2 h-8 rounded-lg  cursor-pointer',
+        !isInWorkflow && 'border hover:border-[1.5px]',
+        !isInWorkflow && (disabled ? 'border-[#F79009] bg-[#FFFAEB]' : 'border-[#444CE7] bg-primary-50'),
+        isInWorkflow && 'pr-[30px] bg-gray-100 border border-gray-100  hover:border-gray-200',
+      )}
     >
       {
         currentProvider && (
@@ -68,9 +74,9 @@ const Trigger: FC<TriggerProps> = ({
             className='mr-1.5 text-gray-900'
             modelItem={currentModel}
             showMode
-            modeClassName='!text-[#444CE7] !border-[#A4BCFD]'
+            modeClassName={cn(!isInWorkflow ? '!text-[#444CE7] !border-[#A4BCFD]' : '!text-gray-500 !border-black/8')}
             showFeatures
-            featuresClassName='!text-[#444CE7] !border-[#A4BCFD]'
+            featuresClassName={cn(!isInWorkflow ? '!text-[#444CE7] !border-[#A4BCFD]' : '!text-gray-500 !border-black/8')}
           />
         )
       }
@@ -97,9 +103,10 @@ const Trigger: FC<TriggerProps> = ({
             </TooltipPlus>
           )
           : (
-            <SlidersH className='w-4 h-4 text-indigo-600' />
+            <SlidersH className={cn(!isInWorkflow ? 'text-indigo-600' : 'text-gray-500', 'shrink-0 w-4 h-4')} />
           )
       }
+      {isInWorkflow && (<ChevronDown className='absolute top-[9px] right-2 w-3.5 h-3.5 text-gray-500' />)}
     </div>
   )
 }

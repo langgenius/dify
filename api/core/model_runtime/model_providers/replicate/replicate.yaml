@@ -35,7 +35,7 @@ model_credential_schema:
       label:
         en_US: Model Version
       type: text-input
-      required: true
+      required: false
       placeholder:
-        zh_Hans: 在此输入您的模型版本
-        en_US: Enter your model version
+        zh_Hans: 在此输入您的模型版本，默认为最新版本
+        en_US: Enter your model version, default to the latest version

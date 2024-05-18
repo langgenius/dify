@@ -6,6 +6,7 @@ from werkzeug.exceptions import Forbidden
 from controllers.web import api
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
+from models.account import TenantStatus
 from models.model import Site
 from services.feature_service import FeatureService
 
@@ -30,6 +31,7 @@ class AppSiteApi(WebApiResource):
         'description': fields.String,
         'copyright': fields.String,
         'privacy_policy': fields.String,
+        'custom_disclaimer': fields.String,
         'default_language': fields.String,
         'prompt_public': fields.Boolean
     }
@@ -52,6 +54,9 @@ class AppSiteApi(WebApiResource):
         site = db.session.query(Site).filter(Site.app_id == app_model.id).first()
 
         if not site:
+            raise Forbidden()
+
+        if app_model.tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden()
 
         can_replace_logo = FeatureService.get_features(app_model.tenant_id).can_replace_logo
@@ -83,7 +88,3 @@ class AppSiteInfo:
                 'remove_webapp_brand': remove_webapp_brand,
                 'replace_webapp_logo': replace_webapp_logo,
             }
-
-        if app.enable_site and site.prompt_public:
-            app_model_config = app.app_model_config
-            self.model_config = app_model_config

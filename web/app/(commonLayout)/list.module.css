@@ -1,5 +1,5 @@
 .listItem {
-  @apply col-span-1 bg-white border-2 border-solid border-transparent rounded-lg shadow-xs min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg;
+  @apply col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-xs min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg;
 }
 
 .listItem.newItemCard {
@@ -157,18 +157,6 @@
 
 .solidCompletionIcon {
   background-image: url("./apps/assets/completion-solid.svg");
-}
-
-.docIcon {
-  background-image: url("./datasets/assets/doc.svg");
-}
-
-.textIcon {
-  background-image: url("./datasets/assets/text.svg");
-}
-
-.applicationIcon {
-  background-image: url("./datasets/assets/application.svg");
 }
 
 .newItemCardHeading {

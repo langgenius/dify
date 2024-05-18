@@ -138,7 +138,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 endpoint_url,
                 headers=headers,
                 json=data,
-                timeout=(10, 60)
+                timeout=(10, 300)
             )
 
             if response.status_code != 200:
@@ -149,6 +149,11 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 json_result = response.json()
             except json.JSONDecodeError as e:
                 raise CredentialsValidateFailedError('Credentials validation failed: JSON decode error')
+
+            if (completion_type is LLMMode.CHAT and json_result['object'] == ''):
+                json_result['object'] = 'chat.completion'
+            elif (completion_type is LLMMode.COMPLETION and json_result['object'] == ''):
+                json_result['object'] = 'text_completion'
 
             if (completion_type is LLMMode.CHAT
                     and ('object' not in json_result or json_result['object'] != 'chat.completion')):
@@ -167,23 +172,28 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         """
             generate custom model entities from credentials
         """
-        support_function_call = False
         features = []
+
         function_calling_type = credentials.get('function_calling_type', 'no_call')
-        if function_calling_type == 'function_call':
-            features = [ModelFeature.TOOL_CALL]
-            support_function_call = True
-        endpoint_url = credentials["endpoint_url"]
-        # if not endpoint_url.endswith('/'):
-        #     endpoint_url += '/'
-        # if 'https://api.openai.com/v1/' == endpoint_url:
-        #     features = [ModelFeature.STREAM_TOOL_CALL]
+        if function_calling_type in ['function_call']:
+            features.append(ModelFeature.TOOL_CALL)
+        elif function_calling_type in ['tool_call']:
+            features.append(ModelFeature.MULTI_TOOL_CALL)
+
+        stream_function_calling = credentials.get('stream_function_calling', 'supported')
+        if stream_function_calling == 'supported':
+            features.append(ModelFeature.STREAM_TOOL_CALL)
+
+        vision_support = credentials.get('vision_support', 'not_support')
+        if vision_support == 'support':
+            features.append(ModelFeature.VISION)
+
         entity = AIModelEntity(
             model=model,
             label=I18nObject(en_US=model),
             model_type=ModelType.LLM,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            features=features if support_function_call else [],
+            features=features,
             model_properties={
                 ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size', "4096")),
                 ModelPropertyKey.MODE: credentials.get('mode'),
@@ -324,7 +334,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             endpoint_url,
             headers=headers,
             json=data,
-            timeout=(10, 60),
+            timeout=(10, 300),
             stream=stream
         )
 
@@ -378,13 +388,50 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         delimiter = credentials.get("stream_mode_delimiter", "\n\n")
         delimiter = codecs.decode(delimiter, "unicode_escape")
 
+        tools_calls: list[AssistantPromptMessage.ToolCall] = []
+
+        def increase_tool_call(new_tool_calls: list[AssistantPromptMessage.ToolCall]):
+            def get_tool_call(tool_call_id: str):
+                if not tool_call_id:
+                    return tools_calls[-1]
+
+                tool_call = next((tool_call for tool_call in tools_calls if tool_call.id == tool_call_id), None)
+                if tool_call is None:
+                    tool_call = AssistantPromptMessage.ToolCall(
+                        id=tool_call_id,
+                        type="function",
+                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                            name="",
+                            arguments=""
+                        )
+                    )
+                    tools_calls.append(tool_call)
+
+                return tool_call
+
+            for new_tool_call in new_tool_calls:
+                # get tool call
+                tool_call = get_tool_call(new_tool_call.function.name)
+                # update tool call
+                if new_tool_call.id:
+                    tool_call.id = new_tool_call.id
+                if new_tool_call.type:
+                    tool_call.type = new_tool_call.type
+                if new_tool_call.function.name:
+                    tool_call.function.name = new_tool_call.function.name
+                if new_tool_call.function.arguments:
+                    tool_call.function.arguments += new_tool_call.function.arguments
+
+        finish_reason = 'Unknown'
+
         for chunk in response.iter_lines(decode_unicode=True, delimiter=delimiter):
+            chunk = chunk.strip()
             if chunk:
                 # ignore sse comments
                 if chunk.startswith(':'):
                     continue
                 decoded_chunk = chunk.strip().lstrip('data: ').lstrip()
-                chunk_json = None
+
                 try:
                     chunk_json = json.loads(decoded_chunk)
                 # stream ended
@@ -405,24 +452,35 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 if 'delta' in choice:
                     delta = choice['delta']
                     delta_content = delta.get('content')
-                    if delta_content is None or delta_content == '':
-                        continue
 
-                    assistant_message_tool_calls = delta.get('tool_calls', None)
+                    assistant_message_tool_calls = None
+
+                    if 'tool_calls' in delta and credentials.get('function_calling_type', 'no_call') == 'tool_call':
+                        assistant_message_tool_calls = delta.get('tool_calls', None)
+                    elif 'function_call' in delta and credentials.get('function_calling_type', 'no_call') == 'function_call':
+                        assistant_message_tool_calls = [{
+                            'id': 'tool_call_id',
+                            'type': 'function',
+                            'function': delta.get('function_call', {})
+                        }]
+
                     # assistant_message_function_call = delta.delta.function_call
 
                     # extract tool calls from response
                     if assistant_message_tool_calls:
                         tool_calls = self._extract_response_tool_calls(assistant_message_tool_calls)
-                    # function_call = self._extract_response_function_call(assistant_message_function_call)
-                    # tool_calls = [function_call] if function_call else []
+                        increase_tool_call(tool_calls)
+
+                    if delta_content is None or delta_content == '':
+                        continue
 
                     # transform assistant message to prompt message
                     assistant_prompt_message = AssistantPromptMessage(
                         content=delta_content,
-                        tool_calls=tool_calls if assistant_message_tool_calls else []
                     )
 
+                    # reset tool calls
+                    tool_calls = []
                     full_assistant_content += delta_content
                 elif 'text' in choice:
                     choice_text = choice.get('text', '')
@@ -435,24 +493,35 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 else:
                     continue
 
-                # check payload indicator for completion
-                if finish_reason is not None:
-                    yield create_final_llm_result_chunk(
+                yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    delta=LLMResultChunkDelta(
                         index=chunk_index,
                         message=assistant_prompt_message,
-                        finish_reason=finish_reason
                     )
-                else:
-                    yield LLMResultChunk(
-                        model=model,
-                        prompt_messages=prompt_messages,
-                        delta=LLMResultChunkDelta(
-                            index=chunk_index,
-                            message=assistant_prompt_message,
-                        )
-                    )
+                )
 
             chunk_index += 1
+
+        if tools_calls:
+            yield LLMResultChunk(
+                model=model,
+                prompt_messages=prompt_messages,
+                delta=LLMResultChunkDelta(
+                    index=chunk_index,
+                    message=AssistantPromptMessage(
+                        tool_calls=tools_calls,
+                        content=""
+                    ),
+                )
+            )
+
+        yield create_final_llm_result_chunk(
+            index=chunk_index,
+            message=AssistantPromptMessage(content=""),
+            finish_reason=finish_reason
+        )
 
     def _handle_generate_response(self, model: str, credentials: dict, response: requests.Response,
                                   prompt_messages: list[PromptMessage]) -> LLMResult:
@@ -573,7 +642,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
         return message_dict
 
-    def _num_tokens_from_string(self, model: str, text: str,
+    def _num_tokens_from_string(self, model: str, text: Union[str, list[PromptMessageContent]],
                                 tools: Optional[list[PromptMessageTool]] = None) -> int:
         """
         Approximate num tokens for model with gpt2 tokenizer.
@@ -583,7 +652,16 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         :param tools: tools for tool calling
         :return: number of tokens
         """
-        num_tokens = self._get_num_tokens_by_gpt2(text)
+        if isinstance(text, str):
+            full_text = text
+        else:
+            full_text = ''
+            for message_content in text:
+                if message_content.type == PromptMessageContentType.TEXT:
+                    message_content = cast(PromptMessageContent, message_content)
+                    full_text += message_content.data
+
+        num_tokens = self._get_num_tokens_by_gpt2(full_text)
 
         if tools:
             num_tokens += self._num_tokens_for_tools(tools)
@@ -701,13 +779,13 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         if response_tool_calls:
             for response_tool_call in response_tool_calls:
                 function = AssistantPromptMessage.ToolCall.ToolCallFunction(
-                    name=response_tool_call["function"]["name"],
-                    arguments=response_tool_call["function"]["arguments"]
+                    name=response_tool_call.get("function", {}).get("name", ""),
+                    arguments=response_tool_call.get("function", {}).get("arguments", "")
                 )
 
                 tool_call = AssistantPromptMessage.ToolCall(
-                    id=response_tool_call["id"],
-                    type=response_tool_call["type"],
+                    id=response_tool_call.get("id", ""),
+                    type=response_tool_call.get("type", ""),
                     function=function
                 )
                 tool_calls.append(tool_call)
@@ -725,12 +803,12 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         tool_call = None
         if response_function_call:
             function = AssistantPromptMessage.ToolCall.ToolCallFunction(
-                name=response_function_call['name'],
-                arguments=response_function_call['arguments']
+                name=response_function_call.get('name', ''),
+                arguments=response_function_call.get('arguments', '')
             )
 
             tool_call = AssistantPromptMessage.ToolCall(
-                id=response_function_call['name'],
+                id=response_function_call.get('id', ''),
                 type="function",
                 function=function
             )

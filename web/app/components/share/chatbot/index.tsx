@@ -729,7 +729,7 @@ const Main: FC<IMainProps> = ({
         title={siteInfo.title}
         icon=''
         customerIcon={difyIcon}
-        icon_background={siteInfo.icon_background}
+        icon_background={siteInfo.icon_background || ''}
         isEmbedScene={true}
         isMobile={isMobile}
         onCreateNewChat={() => handleConversationIdChange('-1')}
@@ -800,6 +800,7 @@ const Main: FC<IMainProps> = ({
                     answerIcon={<LogoAvatar className='relative shrink-0' />}
                     visionConfig={visionConfig}
                     allToolIcons={appMeta?.tool_icons || {}}
+                    customDisclaimer={siteInfo.custom_disclaimer}
                   />
                 </div>
               </div>)

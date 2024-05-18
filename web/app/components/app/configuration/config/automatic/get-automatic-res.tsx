@@ -115,7 +115,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       return true
     }
 
-    // alway display prompt panel on desktop mode
+    // always display prompt panel on desktop mode
     return true
   }
 
@@ -186,7 +186,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               )
               : ''}
 
-            {(mode === AppType.chat && res?.opening_statement) && (
+            {(mode !== AppType.completion && res?.opening_statement) && (
               <div className='mt-7'>
                 <GroupName name={t('appDebug.feature.groupChat.title')} />
                 <OpeningStatement

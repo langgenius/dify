@@ -34,6 +34,8 @@ const translation = {
     log: 'ログ',
     learnMore: '詳細を見る',
     params: 'パラメータ',
+    duplicate: '重複',
+    rename: '名前の変更',
   },
   placeholder: {
     input: '入力してください',
@@ -42,6 +44,7 @@ const translation = {
   voice: {
     language: {
       zhHans: '中国語',
+      zhHant: '繁体字中国語',
       enUS: '英語',
       deDE: 'ドイツ語',
       frFR: 'フランス語',
@@ -54,6 +57,8 @@ const translation = {
       ptBR: 'ポルトガル語',
       ruRU: 'ロシア語',
       ukUA: 'ウクライナ語',
+      viVN: 'ベトナム語',
+      plPL: 'ポーランド語',
     },
   },
   unit: {
@@ -117,7 +122,7 @@ const translation = {
     workspace: 'ワークスペース',
     createWorkspace: 'ワークスペースを作成',
     helpCenter: 'ヘルプ',
-    roadmapAndFeedback: 'ロードマップとフィードバック',
+    roadmapAndFeedback: 'フィードバック',
     community: 'コミュニティ',
     about: 'Difyについて',
     logout: 'ログアウト',
@@ -351,6 +356,7 @@ const translation = {
     promptEng: 'Orchestrate',
     apiAccess: 'APIアクセス',
     logAndAnn: 'ログ＆アナウンス',
+    logs: 'ログ',
   },
   environment: {
     testing: 'テスト',
@@ -428,6 +434,10 @@ const translation = {
         title: '変数＆外部ツール',
         desc: '変数＆外部ツールを挿入',
       },
+      outputToolDisabledItem: {
+        title: '変数',
+        desc: '変数を挿入',
+      },
       modal: {
         add: '新しい変数',
         addTool: '新しいツール',
@@ -450,6 +460,21 @@ const translation = {
     pasteImageLinkInputPlaceholder: 'ここに画像リンクを貼り付けてください',
     pasteImageLinkInvalid: '無効な画像リンク',
     imageUpload: '画像アップロード',
+  },
+  tag: {
+    placeholder: 'すべてのタグ',
+    addNew: '新しいタグを追加',
+    noTag: 'タグなし',
+    noTagYet: 'まだタグがありません',
+    addTag: 'タグを追加',
+    editTag: 'タグを編集',
+    manageTags: 'タグの管理',
+    selectorPlaceholder: '検索または作成する文字を入力',
+    create: '作成',
+    delete: 'タグを削除',
+    deleteTip: 'タグは使用されています、削除しますか',
+    created: 'タグは正常に作成されました',
+    failed: 'タグの作成に失敗しました',
   },
 }
 

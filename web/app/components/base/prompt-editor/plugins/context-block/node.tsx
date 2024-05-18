@@ -3,29 +3,31 @@ import { DecoratorNode } from 'lexical'
 import ContextBlockComponent from './component'
 import type { Dataset } from './index'
 
-export type SerializedNode = SerializedLexicalNode & { datasets: Dataset[]; onAddContext: () => void }
+export type SerializedNode = SerializedLexicalNode & { datasets: Dataset[]; onAddContext: () => void; canNotAddContext: boolean }
 
 export class ContextBlockNode extends DecoratorNode<JSX.Element> {
   __datasets: Dataset[]
   __onAddContext: () => void
+  __canNotAddContext: boolean
 
   static getType(): string {
     return 'context-block'
   }
 
   static clone(node: ContextBlockNode): ContextBlockNode {
-    return new ContextBlockNode(node.__datasets, node.__onAddContext)
+    return new ContextBlockNode(node.__datasets, node.__onAddContext, node.getKey(), node.__canNotAddContext)
   }
 
   isInline(): boolean {
     return true
   }
 
-  constructor(datasets: Dataset[], onAddContext: () => void, key?: NodeKey) {
+  constructor(datasets: Dataset[], onAddContext: () => void, key?: NodeKey, canNotAddContext?: boolean) {
     super(key)
 
     this.__datasets = datasets
     this.__onAddContext = onAddContext
+    this.__canNotAddContext = canNotAddContext || false
   }
 
   createDOM(): HTMLElement {
@@ -44,6 +46,7 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
         nodeKey={this.getKey()}
         datasets={this.getDatasets()}
         onAddContext={this.getOnAddContext()}
+        canNotAddContext={this.getCanNotAddContext()}
       />
     )
   }
@@ -60,8 +63,14 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
     return self.__onAddContext
   }
 
+  getCanNotAddContext(): boolean {
+    const self = this.getLatest()
+
+    return self.__canNotAddContext
+  }
+
   static importJSON(serializedNode: SerializedNode): ContextBlockNode {
-    const node = $createContextBlockNode(serializedNode.datasets, serializedNode.onAddContext)
+    const node = $createContextBlockNode(serializedNode.datasets, serializedNode.onAddContext, serializedNode.canNotAddContext)
 
     return node
   }
@@ -72,6 +81,7 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
       version: 1,
       datasets: this.getDatasets(),
       onAddContext: this.getOnAddContext(),
+      canNotAddContext: this.getCanNotAddContext(),
     }
   }
 
@@ -79,8 +89,8 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
     return '{{#context#}}'
   }
 }
-export function $createContextBlockNode(datasets: Dataset[], onAddContext: () => void): ContextBlockNode {
-  return new ContextBlockNode(datasets, onAddContext)
+export function $createContextBlockNode(datasets: Dataset[], onAddContext: () => void, canNotAddContext?: boolean): ContextBlockNode {
+  return new ContextBlockNode(datasets, onAddContext, undefined, canNotAddContext)
 }
 
 export function $isContextBlockNode(

@@ -24,11 +24,11 @@ class ModelInstance:
     """
 
     def __init__(self, provider_model_bundle: ProviderModelBundle, model: str) -> None:
-        self._provider_model_bundle = provider_model_bundle
+        self.provider_model_bundle = provider_model_bundle
         self.model = model
         self.provider = provider_model_bundle.configuration.provider.provider
         self.credentials = self._fetch_credentials_from_bundle(provider_model_bundle, model)
-        self.model_type_instance = self._provider_model_bundle.model_type_instance
+        self.model_type_instance = self.provider_model_bundle.model_type_instance
 
     def _fetch_credentials_from_bundle(self, provider_model_bundle: ProviderModelBundle, model: str) -> dict:
         """

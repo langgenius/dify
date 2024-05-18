@@ -67,6 +67,7 @@ export type IChatProps = {
   visionConfig?: VisionSettings
   supportAnnotation?: boolean
   allToolIcons?: Record<string, string | Emoji>
+  customDisclaimer?: string
 }
 
 const Chat: FC<IChatProps> = ({
@@ -102,6 +103,7 @@ const Chat: FC<IChatProps> = ({
   supportAnnotation,
   onChatListChange,
   allToolIcons,
+  customDisclaimer,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -260,11 +262,7 @@ const Chat: FC<IChatProps> = ({
         return {
           ...item,
           content: item.content,
-          annotation: {
-            ...(item.annotation || {}),
-            id: '',
-            logAnnotation: undefined, // remove log
-          } as Annotation,
+          annotation: undefined,
         }
       }
       return item
@@ -303,6 +301,7 @@ const Chat: FC<IChatProps> = ({
               onAnnotationAdded={handleAnnotationAdded}
               onAnnotationRemoved={handleAnnotationRemoved}
               allToolIcons={allToolIcons}
+              isShowPromptLog={isShowPromptLog}
             />
           }
           return (
@@ -319,74 +318,71 @@ const Chat: FC<IChatProps> = ({
           )
         })}
       </div>
-      {
-        !isHideSendInput && (
-          <div className={cn(!feedbackDisabled && '!left-3.5 !right-3.5', 'absolute z-10 bottom-0 left-0 right-0')}>
-            {/* Thinking is sync and can not be stopped */}
-            {(isResponding && canStopResponding && ((!!chatList[chatList.length - 1]?.content) || (chatList[chatList.length - 1]?.agent_thoughts && chatList[chatList.length - 1].agent_thoughts!.length > 0))) && (
-              <div className='flex justify-center mb-4'>
-                <Button className='flex items-center space-x-1 bg-white' onClick={() => abortResponding?.()}>
-                  {stopIcon}
-                  <span className='text-xs text-gray-500 font-normal'>{t('appDebug.operation.stopResponding')}</span>
-                </Button>
+      {!isHideSendInput && (
+        <div className={cn(!feedbackDisabled && '!left-3.5 !right-3.5', 'absolute z-10 bottom-0 left-0 right-0')}>
+          {/* Thinking is sync and can not be stopped */}
+          {(isResponding && canStopResponding && ((!!chatList[chatList.length - 1]?.content) || (chatList[chatList.length - 1]?.agent_thoughts && chatList[chatList.length - 1].agent_thoughts!.length > 0))) && (
+            <div className='flex justify-center mb-4'>
+              <Button className='flex items-center space-x-1 bg-white' onClick={() => abortResponding?.()}>
+                {stopIcon}
+                <span className='text-xs text-gray-500 font-normal'>{t('appDebug.operation.stopResponding')}</span>
+              </Button>
+            </div>
+          )}
+          {isShowSuggestion && (
+            <div className='pt-2'>
+              <div className='flex items-center justify-center mb-2.5'>
+                <div className='grow h-[1px]'
+                  style={{
+                    background: 'linear-gradient(270deg, #F3F4F6 0%, rgba(243, 244, 246, 0) 100%)',
+                  }}></div>
+                <div className='shrink-0 flex items-center px-3 space-x-1'>
+                  {TryToAskIcon}
+                  <span className='text-xs text-gray-500 font-medium'>{t('appDebug.feature.suggestedQuestionsAfterAnswer.tryToAsk')}</span>
+                </div>
+                <div className='grow h-[1px]'
+                  style={{
+                    background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, #F3F4F6 100%)',
+                  }}></div>
               </div>
-            )}
-            {
-              isShowSuggestion && (
-                <div className='pt-2'>
-                  <div className='flex items-center justify-center mb-2.5'>
-                    <div className='grow h-[1px]'
-                      style={{
-                        background: 'linear-gradient(270deg, #F3F4F6 0%, rgba(243, 244, 246, 0) 100%)',
-                      }}></div>
-                    <div className='shrink-0 flex items-center px-3 space-x-1'>
-                      {TryToAskIcon}
-                      <span className='text-xs text-gray-500 font-medium'>{t('appDebug.feature.suggestedQuestionsAfterAnswer.tryToAsk')}</span>
-                    </div>
-                    <div className='grow h-[1px]'
-                      style={{
-                        background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, #F3F4F6 100%)',
-                      }}></div>
+              {/* has scrollbar would hide part of first item */}
+              <div ref={suggestionListRef} className={cn(!hasScrollbar && 'justify-center', 'flex overflow-x-auto pb-2')}>
+                {suggestionList?.map((item, index) => (
+                  <div key={item} className='shrink-0 flex justify-center mr-2'>
+                    <Button
+                      key={index}
+                      onClick={() => onQueryChange(item)}
+                    >
+                      <span className='text-primary-600 text-xs font-medium'>{item}</span>
+                    </Button>
                   </div>
-                  {/* has scrollbar would hide part of first item */}
-                  <div ref={suggestionListRef} className={cn(!hasScrollbar && 'justify-center', 'flex overflow-x-auto pb-2')}>
-                    {suggestionList?.map((item, index) => (
-                      <div key={item} className='shrink-0 flex justify-center mr-2'>
-                        <Button
-                          key={index}
-                          onClick={() => onQueryChange(item)}
-                        >
-                          <span className='text-primary-600 text-xs font-medium'>{item}</span>
-                        </Button>
-                      </div>
-                    ))}
+                ))}
+              </div>
+            </div>
+          )}
+          <div className='relative'>
+            <div className={cn('relative p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto', isDragActive && 'border-primary-600')}>
+              {visionConfig?.enabled && (
+                <>
+                  <div className='absolute bottom-2 left-2 flex items-center'>
+                    <ChatImageUploader
+                      settings={visionConfig}
+                      onUpload={onUpload}
+                      disabled={files.length >= visionConfig.number_limits}
+                    />
+                    <div className='mx-1 w-[1px] h-4 bg-black/5' />
                   </div>
-                </div>)
-            }
-            <div className={cn('p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto', isDragActive && 'border-primary-600')}>
-              {
-                visionConfig?.enabled && (
-                  <>
-                    <div className='absolute bottom-2 left-2 flex items-center'>
-                      <ChatImageUploader
-                        settings={visionConfig}
-                        onUpload={onUpload}
-                        disabled={files.length >= visionConfig.number_limits}
-                      />
-                      <div className='mx-1 w-[1px] h-4 bg-black/5' />
-                    </div>
-                    <div className='pl-[52px]'>
-                      <ImageList
-                        list={files}
-                        onRemove={onRemove}
-                        onReUpload={onReUpload}
-                        onImageLinkLoadSuccess={onImageLinkLoadSuccess}
-                        onImageLinkLoadError={onImageLinkLoadError}
-                      />
-                    </div>
-                  </>
-                )
-              }
+                  <div className='pl-[52px]'>
+                    <ImageList
+                      list={files}
+                      onRemove={onRemove}
+                      onReUpload={onReUpload}
+                      onImageLinkLoadSuccess={onImageLinkLoadSuccess}
+                      onImageLinkLoadError={onImageLinkLoadError}
+                    />
+                  </div>
+                </>
+              )}
               <Textarea
                 className={`
                   block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none
@@ -403,56 +399,56 @@ const Chat: FC<IChatProps> = ({
                 onDrop={onDrop}
                 autoSize
               />
-              <div className="absolute bottom-2 right-2 flex items-center h-8">
-                <div className={`${s.count} mr-4 h-5 leading-5 text-sm bg-gray-50 text-gray-500`}>{query.trim().length}</div>
-                {
-                  query
+            </div>
+            <div className="absolute bottom-2 right-2 flex items-center h-8">
+              <div className={`${s.count} mr-4 h-5 leading-5 text-sm bg-gray-50 text-gray-500`}>{query.trim().length}</div>
+              {
+                query
+                  ? (
+                    <div className='flex justify-center items-center w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg' onClick={() => onQueryChange('')}>
+                      <XCircle className='w-4 h-4 text-[#98A2B3]' />
+                    </div>
+                  )
+                  : isShowSpeechToText
                     ? (
-                      <div className='flex justify-center items-center w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg' onClick={() => onQueryChange('')}>
-                        <XCircle className='w-4 h-4 text-[#98A2B3]' />
+                      <div
+                        className='group flex justify-center items-center w-8 h-8 hover:bg-primary-50 rounded-lg cursor-pointer'
+                        onClick={handleVoiceInputShow}
+                      >
+                        <Microphone01 className='block w-4 h-4 text-gray-500 group-hover:hidden' />
+                        <Microphone01Solid className='hidden w-4 h-4 text-primary-600 group-hover:block' />
                       </div>
                     )
-                    : isShowSpeechToText
-                      ? (
-                        <div
-                          className='group flex justify-center items-center w-8 h-8 hover:bg-primary-50 rounded-lg cursor-pointer'
-                          onClick={handleVoiceInputShow}
-                        >
-                          <Microphone01 className='block w-4 h-4 text-gray-500 group-hover:hidden' />
-                          <Microphone01Solid className='hidden w-4 h-4 text-primary-600 group-hover:block' />
-                        </div>
-                      )
-                      : null
-                }
-                <div className='mx-2 w-[1px] h-4 bg-black opacity-5' />
-                {isMobile
-                  ? sendBtn
-                  : (
-                    <TooltipPlus
-                      popupContent={
-                        <div>
-                          <div>{t('common.operation.send')} Enter</div>
-                          <div>{t('common.operation.lineBreak')} Shift Enter</div>
-                        </div>
-                      }
-                    >
-                      {sendBtn}
-                    </TooltipPlus>
-                  )}
-              </div>
-              {
-                voiceInputShow && (
-                  <VoiceInput
-                    onCancel={() => setVoiceInputShow(false)}
-                    onConverted={text => onQueryChange(text)}
-                  />
-                )
+                    : null
               }
+              <div className='mx-2 w-[1px] h-4 bg-black opacity-5' />
+              {isMobile
+                ? sendBtn
+                : (
+                  <TooltipPlus
+                    popupContent={
+                      <div>
+                        <div>{t('common.operation.send')} Enter</div>
+                        <div>{t('common.operation.lineBreak')} Shift Enter</div>
+                      </div>
+                    }
+                  >
+                    {sendBtn}
+                  </TooltipPlus>
+                )}
             </div>
+            {voiceInputShow && (
+              <VoiceInput
+                onCancel={() => setVoiceInputShow(false)}
+                onConverted={text => onQueryChange(text)}
+              />
+            )}
           </div>
-        )
-      }
-
+          {customDisclaimer && <div className='text-xs text-gray-500 mt-1 text-center'>
+            {customDisclaimer}
+          </div>}
+        </div>
+      )}
     </div>
   )
 }

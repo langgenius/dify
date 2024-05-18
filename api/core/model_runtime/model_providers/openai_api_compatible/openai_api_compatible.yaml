@@ -87,13 +87,50 @@ model_credential_schema:
       options:
         - value: function_call
           label:
+            en_US: Function Call
+            zh_Hans: Function Call
+        - value: tool_call
+          label:
+            en_US: Tool Call
+            zh_Hans: Tool Call
+        - value: no_call
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+    - variable: stream_function_calling
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        en_US: Stream function calling
+      type: select
+      required: false
+      default: not_supported
+      options:
+        - value: supported
+          label:
             en_US: Support
             zh_Hans: 支持
-#        - value: tool_call
-#          label:
-#            en_US: Tool Call
-#            zh_Hans: Tool Call
-        - value: no_call
+        - value: not_supported
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+    - variable: vision_support
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: Vision 支持
+        en_US: Vision Support
+      type: select
+      required: false
+      default: no_support
+      options:
+        - value: support
+          label:
+            en_US: Support
+            zh_Hans: 支持
+        - value: no_support
           label:
             en_US: Not Support
             zh_Hans: 不支持

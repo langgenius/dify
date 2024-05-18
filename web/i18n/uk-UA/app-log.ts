@@ -1,68 +1,90 @@
 const translation = {
-  title: 'Журнали', // Logs
-  description: 'Журнали фіксують стан роботи застосунку, включаючи введення користувача та відповіді ШІ.', // The logs record...
-  dateTimeFormat: 'MM/DD/YYYY hh:mm A', // (Keep date format as is)
+  title: 'Журнали',
+  description: 'Журнали фіксують робочий статус додатка, включаючи введення користувачів та відповіді штучного інтелекту.',
+  dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
-      time: 'Час', // Time
-      endUser: 'Кінцевий користувач', // End User
-      input: 'Введення', // Input
-      output: 'Виведення', // Output
-      summary: 'Заголовок', // Title
-      messageCount: 'Кількість повідомлень', // Message Count
-      userRate: 'Оцінка користувача', // User Rate
-      adminRate: 'Оцінка адміністратора', // Op. Rate
+      time: 'Час',
+      endUser: 'Кінцевий Користувач',
+      input: 'Введення',
+      output: 'Виведення',
+      summary: 'Заголовок',
+      messageCount: 'Кількість Повідомлень',
+      userRate: 'Рейтинг Користувача',
+      adminRate: 'Рейтинг Оператора',
+      startTime: 'ЧАС ПОЧАТКУ',
+      status: 'СТАТУС',
+      runtime: 'ЧАС ВИКОНАННЯ',
+      tokens: 'ТОКЕНИ',
+      user: 'КІНЦЕВИЙ КОРИСТУВАЧ',
+      version: 'ВЕРСІЯ',
     },
     pagination: {
-      previous: 'Назад', // Prev
-      next: 'Далі', // Next
+      previous: 'Попередня',
+      next: 'Наступна',
     },
     empty: {
-      noChat: 'Ще немає розмови', // No conversation yet
-      noOutput: 'Відповіді немає', // No output
+      noChat: 'Ще немає розмов',
+      noOutput: 'Немає виводу',
       element: {
-        title: 'Хто-небудь тут є?', // Is anyone there?
-        content: 'Спостерігайте й коментуйте взаємодію між кінцевими користувачами та програмами штучного інтелекту, щоб постійно покращувати точність ШІ. Ви можете спробувати <shareLink>поділитися</shareLink> або <testLink>тестувати</testLink> веб-програму самостійно, а потім повернутися на цю сторінку.',
+        title: 'Хтось тут?',
+        content: 'Спостерігайте та анотуйте взаємодії між кінцевими користувачами та додатками штучного інтелекту тут, щоб постійно покращувати точність штучного інтелекту. Ви можете спробувати <shareLink>поділитися</shareLink> або <testLink>протестувати</testLink> веб-додаток самостійно, а потім повернутися на цю сторінку.',
       },
     },
   },
   detail: {
-    time: 'Час', // Time
-    conversationId: 'Ідентифікатор розмови', // Conversation ID
-    promptTemplate: 'Шаблон підказки', // Prompt Template
-    promptTemplateBeforeChat: 'Шаблон підказки перед чатом · як системне повідомлення', // Prompt Template Before Chat...
-    annotationTip: 'Покращення, позначені {{user}}', // Improvements Marked by {{user}}
+    time: 'Час',
+    conversationId: 'ID Розмови',
+    promptTemplate: 'Шаблон Запитання',
+    promptTemplateBeforeChat: 'Шаблон Запитання Перед Чатом · Як Системне Повідомлення',
+    annotationTip: 'Покращення Позначені Користувачем {{user}}',
     timeConsuming: '',
-    second: 'с', // s (seconds)
-    tokenCost: 'Витрачені токени', // Token spent
-    loading: 'Завантаження', // loading
+    second: 'с',
+    tokenCost: 'Витрати Токенів',
+    loading: 'завантаження',
     operation: {
-      like: 'Вподобати', // like
-      dislike: 'Не вподобати', // dislike
-      addAnnotation: 'Додати покращення', // Add Improvement
-      editAnnotation: 'Редагувати покращення', // Edit Improvement
-      annotationPlaceholder: 'Введіть очікувану відповідь, яку ви хочете, щоб відповів ШІ. ',
+      like: 'подобається',
+      dislike: 'не подобається',
+      addAnnotation: 'Додати Покращення',
+      editAnnotation: 'Редагувати Покращення',
+      annotationPlaceholder: 'Введіть очікувану відповідь, яку ви хочете, щоб штучний інтелект повертав, це може бути використано для налаштування моделі та постійного покращення якості генерації тексту в майбутньому.',
     },
-    variables: 'Змінні', // Variables
-    uploadImages: 'Завантажені зображення', // Uploaded Images
+    variables: 'Змінні',
+    uploadImages: 'Завантажені Зображення',
   },
   filter: {
     period: {
-      today: 'Сьогодні', // Today
-      last7days: 'Останні 7 днів', // Last 7 Days
-      last4weeks: 'Останні 4 тижні', // Last 4 weeks
-      last3months: 'Останні 3 місяці', // Last 3 months
-      last12months: 'Останні 12 місяців', // Last 12 months
-      monthToDate: 'Місяць до дати', // Month to date
-      quarterToDate: 'Квартал до дати', // Quarter to date
-      yearToDate: 'Рік до дати', // Year to date
-      allTime: 'Увесь час', // All time
+      today: 'Сьогодні',
+      last7days: 'Останні 7 днів',
+      last4weeks: 'Останні 4 тижні',
+      last3months: 'Останні 3 місяці',
+      last12months: 'Останні 12 місяців',
+      monthToDate: 'Місяць до сьогодні',
+      quarterToDate: 'Квартал до сьогодні',
+      yearToDate: 'Рік до сьогодні',
+      allTime: 'За весь час',
     },
     annotation: {
-      all: 'Усі', // All
-      annotated: 'Анотовані покращення ({{count}} елементів)', // Annotated Improvements...
-      not_annotated: 'Не анотований', // Not Annotated
+      all: 'Всі',
+      annotated: 'Покращення з Анотацією ({{count}} елементів)',
+      not_annotated: 'Без Анотації',
     },
+  },
+  workflowTitle: 'Журнали Робочого Процесу',
+  workflowSubtitle: 'Журнал зареєстрував роботу Автоматизації.',
+  runDetail: {
+    title: 'Журнал Розмови',
+    workflowTitle: 'Деталі Журналу',
+  },
+  promptLog: 'Журнал Запитань',
+  agentLog: 'Журнал агента',
+  viewLog: 'Переглянути журнал',
+  agentLogDetail: {
+    agentMode: 'Режим агента',
+    toolUsed: 'Використаний інструмент',
+    iterations: 'Ітерації',
+    iteration: 'Ітерація',
+    finalProcessing: 'Остаточна обробка',
   },
 }
 

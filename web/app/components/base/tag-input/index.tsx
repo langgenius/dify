@@ -13,6 +13,7 @@ type TagInputProps = {
   disableRemove?: boolean
   disableAdd?: boolean
   customizedConfirmKey?: 'Enter' | 'Tab'
+  isInWorkflow?: boolean
 }
 
 const TagInput: FC<TagInputProps> = ({
@@ -21,6 +22,7 @@ const TagInput: FC<TagInputProps> = ({
   disableAdd,
   disableRemove,
   customizedConfirmKey = 'Enter',
+  isInWorkflow,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -54,7 +56,9 @@ const TagInput: FC<TagInputProps> = ({
       }
 
       onChange([...items, valueTrimed])
-      setValue('')
+      setTimeout(() => {
+        setValue('')
+      })
     }
   }
 
@@ -64,7 +68,7 @@ const TagInput: FC<TagInputProps> = ({
   }
 
   return (
-    <div className={cn('flex flex-wrap', isSpecialMode ? 'bg-gray-100 min-w-[200px] rounded-lg pb-1 pl-1' : '')}>
+    <div className={cn('flex flex-wrap', !isInWorkflow && 'min-w-[200px]', isSpecialMode ? 'bg-gray-100 rounded-lg pb-1 pl-1' : '')}>
       {
         items.map((item, index) => (
           <div
@@ -86,10 +90,13 @@ const TagInput: FC<TagInputProps> = ({
         !disableAdd && (
           <AutosizeInput
             inputClassName={cn('outline-none appearance-none placeholder:text-gray-300 caret-primary-600 hover:placeholder:text-gray-400', isSpecialMode ? 'bg-transparent' : '')}
-            className={`
-              mt-1 py-1 rounded-lg border border-transparent text-sm max-w-[300px] overflow-hidden
+            className={cn(
+              !isInWorkflow && 'max-w-[300px]',
+              isInWorkflow && 'max-w-[146px]',
+              `
+              mt-1 py-1 rounded-lg border border-transparent text-sm  overflow-hidden
               ${focused && 'px-2 border !border-dashed !border-gray-200'}
-            `}
+            `)}
             onFocus={() => setFocused(true)}
             onBlur={handleBlur}
             value={value}

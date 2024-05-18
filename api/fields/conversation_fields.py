@@ -1,5 +1,6 @@
 from flask_restful import fields
 
+from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
 
 
@@ -8,31 +9,25 @@ class MessageTextField(fields.Raw):
         return value[0]['text'] if value else ''
 
 
-account_fields = {
-    'id': fields.String,
-    'name': fields.String,
-    'email': fields.String
-}
-
 feedback_fields = {
     'rating': fields.String,
     'content': fields.String,
     'from_source': fields.String,
     'from_end_user_id': fields.String,
-    'from_account': fields.Nested(account_fields, allow_null=True),
+    'from_account': fields.Nested(simple_account_fields, allow_null=True),
 }
 
 annotation_fields = {
     'id': fields.String,
     'question': fields.String,
     'content': fields.String,
-    'account': fields.Nested(account_fields, allow_null=True),
+    'account': fields.Nested(simple_account_fields, allow_null=True),
     'created_at': TimestampField
 }
 
 annotation_hit_history_fields = {
     'annotation_id': fields.String(attribute='id'),
-    'annotation_create_account': fields.Nested(account_fields, allow_null=True),
+    'annotation_create_account': fields.Nested(simple_account_fields, allow_null=True),
     'created_at': TimestampField
 }
 
@@ -64,18 +59,22 @@ message_detail_fields = {
     'query': fields.String,
     'message': fields.Raw,
     'message_tokens': fields.Integer,
-    'answer': fields.String,
+    'answer': fields.String(attribute='re_sign_file_url_answer'),
     'answer_tokens': fields.Integer,
     'provider_response_latency': fields.Float,
     'from_source': fields.String,
     'from_end_user_id': fields.String,
     'from_account_id': fields.String,
     'feedbacks': fields.List(fields.Nested(feedback_fields)),
+    'workflow_run_id': fields.String,
     'annotation': fields.Nested(annotation_fields, allow_null=True),
     'annotation_hit_history': fields.Nested(annotation_hit_history_fields, allow_null=True),
     'created_at': TimestampField,
     'agent_thoughts': fields.List(fields.Nested(agent_thought_fields)),
     'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
+    'metadata': fields.Raw(attribute='message_metadata_dict'),
+    'status': fields.String,
+    'error': fields.String,
 }
 
 feedback_stat_fields = {

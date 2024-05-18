@@ -27,6 +27,7 @@ const DebugWithMultipleModel = () => {
     checkCanSend,
   } = useDebugWithMultipleModelContext()
   const { eventEmitter } = useEventEmitterContextContext()
+  const isChatMode = mode === 'chat' || mode === 'agent-chat'
 
   const handleSend = useCallback((message: string, files?: VisionFile[]) => {
     if (checkCanSend && !checkCanSend())
@@ -97,7 +98,7 @@ const DebugWithMultipleModel = () => {
         className={`
           grow mb-3 relative px-6 overflow-auto
         `}
-        style={{ height: mode === 'chat' ? 'calc(100% - 60px)' : '100%' }}
+        style={{ height: isChatMode ? 'calc(100% - 60px)' : '100%' }}
       >
         {
           multipleModelConfigs.map((modelConfig, index) => (
@@ -121,7 +122,7 @@ const DebugWithMultipleModel = () => {
         }
       </div>
       {
-        mode === 'chat' && (
+        isChatMode && (
           <div className='shrink-0 pb-4 px-6'>
             <ChatInput
               onSend={handleSend}

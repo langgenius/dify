@@ -7,6 +7,7 @@ import classNames from 'classnames'
 import type { INavSelectorProps } from './nav-selector'
 import NavSelector from './nav-selector'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type INavProps = {
   icon: React.ReactNode
@@ -14,6 +15,7 @@ type INavProps = {
   text: string
   activeSegment: string | string[]
   link: string
+  isApp: boolean
 } & INavSelectorProps
 
 const Nav = ({
@@ -27,7 +29,9 @@ const Nav = ({
   createText,
   onCreate,
   onLoadmore,
+  isApp,
 }: INavProps) => {
+  const setAppDetail = useAppStore(state => state.setAppDetail)
   const [hovered, setHovered] = useState(false)
   const segment = useSelectedLayoutSegment()
   const isActived = Array.isArray(activeSegment) ? activeSegment.includes(segment!) : segment === activeSegment
@@ -40,6 +44,7 @@ const Nav = ({
     `}>
       <Link href={link}>
         <div
+          onClick={() => setAppDetail()}
           className={classNames(`
             flex items-center h-7 px-2.5 cursor-pointer rounded-[10px]
             ${isActived ? 'text-primary-600' : 'text-gray-500'}
@@ -65,6 +70,7 @@ const Nav = ({
           <>
             <div className='font-light text-gray-300 '>/</div>
             <NavSelector
+              isApp={isApp}
               curNav={curNav}
               navs={navs}
               createText={createText}

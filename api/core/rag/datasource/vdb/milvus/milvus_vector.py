@@ -20,16 +20,17 @@ class MilvusConfig(BaseModel):
     password: str
     secure: bool = False
     batch_size: int = 100
+    database: str = "default"
 
     @root_validator()
     def validate_config(cls, values: dict) -> dict:
-        if not values['host']:
+        if not values.get('host'):
             raise ValueError("config MILVUS_HOST is required")
-        if not values['port']:
+        if not values.get('port'):
             raise ValueError("config MILVUS_PORT is required")
-        if not values['user']:
+        if not values.get('user'):
             raise ValueError("config MILVUS_USER is required")
-        if not values['password']:
+        if not values.get('password'):
             raise ValueError("config MILVUS_PASSWORD is required")
         return values
 
@@ -39,7 +40,8 @@ class MilvusConfig(BaseModel):
             'port': self.port,
             'user': self.user,
             'password': self.password,
-            'secure': self.secure
+            'secure': self.secure,
+            'db_name': self.database,
         }
 
 
@@ -108,19 +110,37 @@ class MilvusVector(BaseVector):
             return None
 
     def delete_by_metadata_field(self, key: str, value: str):
+        alias = uuid4().hex
+        if self._client_config.secure:
+            uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        else:
+            uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
 
-        ids = self.get_ids_by_metadata_field(key, value)
-        if ids:
-            self._client.delete(collection_name=self._collection_name, pks=ids)
+        from pymilvus import utility
+        if utility.has_collection(self._collection_name, using=alias):
 
-    def delete_by_ids(self, doc_ids: list[str]) -> None:
+            ids = self.get_ids_by_metadata_field(key, value)
+            if ids:
+                self._client.delete(collection_name=self._collection_name, pks=ids)
 
-        result = self._client.query(collection_name=self._collection_name,
-                                    filter=f'metadata["doc_id"] in {doc_ids}',
-                                    output_fields=["id"])
-        if result:
-            ids = [item["id"] for item in result]
-            self._client.delete(collection_name=self._collection_name, pks=ids)
+    def delete_by_ids(self, ids: list[str]) -> None:
+        alias = uuid4().hex
+        if self._client_config.secure:
+            uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        else:
+            uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
+
+        from pymilvus import utility
+        if utility.has_collection(self._collection_name, using=alias):
+
+            result = self._client.query(collection_name=self._collection_name,
+                                        filter=f'metadata["doc_id"] in {ids}',
+                                        output_fields=["id"])
+            if result:
+                ids = [item["id"] for item in result]
+                self._client.delete(collection_name=self._collection_name, pks=ids)
 
     def delete(self) -> None:
         alias = uuid4().hex
@@ -128,7 +148,8 @@ class MilvusVector(BaseVector):
             uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
         else:
             uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
-        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password,
+                            db_name=self._client_config.database)
 
         from pymilvus import utility
         if utility.has_collection(self._collection_name, using=alias):
@@ -140,7 +161,8 @@ class MilvusVector(BaseVector):
             uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
         else:
             uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
-        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password,
+                            db_name=self._client_config.database)
 
         from pymilvus import utility
         if not utility.has_collection(self._collection_name, using=alias):
@@ -192,7 +214,7 @@ class MilvusVector(BaseVector):
             else:
                 uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
             connections.connect(alias=alias, uri=uri, user=self._client_config.user,
-                                password=self._client_config.password)
+                                password=self._client_config.password, db_name=self._client_config.database)
             if not utility.has_collection(self._collection_name, using=alias):
                 from pymilvus import CollectionSchema, DataType, FieldSchema
                 from pymilvus.orm.types import infer_dtype_bydata
@@ -237,5 +259,5 @@ class MilvusVector(BaseVector):
             uri = "https://" + str(config.host) + ":" + str(config.port)
         else:
             uri = "http://" + str(config.host) + ":" + str(config.port)
-        client = MilvusClient(uri=uri, user=config.user, password=config.password)
+        client = MilvusClient(uri=uri, user=config.user, password=config.password,db_name=config.database)
         return client

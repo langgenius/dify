@@ -201,7 +201,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
             endpoint_url,
             headers=headers,
             json=data,
-            timeout=(10, 60),
+            timeout=(10, 300),
             stream=stream
         )
 
@@ -451,7 +451,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                                           "more creatively. (Default: 0.8)"),
                     default=0.1,
                     min=0,
-                    max=2
+                    max=1
                 ),
                 ParameterRule(
                     name=DefaultParameterName.TOP_P.value,

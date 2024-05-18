@@ -267,6 +267,19 @@ const EditCustomCollectionModal: FC<Props> = ({
                   className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('tools.createTool.privacyPolicyPlaceholder') || ''} />
               </div>
 
+              <div>
+                <div className={fieldNameClassNames}>{t('tools.createTool.customDisclaimer')}</div>
+                <input
+                  value={customCollection.custom_disclaimer}
+                  onChange={(e) => {
+                    const newCollection = produce(customCollection, (draft) => {
+                      draft.custom_disclaimer = e.target.value
+                    })
+                    setCustomCollection(newCollection)
+                  }}
+                  className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('tools.createTool.customDisclaimerPlaceholder') || ''} />
+              </div>
+
             </div>
             <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 shrink-0 flex py-4 px-6 rounded-b-[10px] bg-gray-50 border-t border-black/5')} >
               {

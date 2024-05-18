@@ -12,6 +12,7 @@ class BingSearchTool(BuiltinTool):
 
     def _invoke_bing(self, 
                      user_id: str,
+                     server_url: str,
                      subscription_key: str, query: str, limit: int, 
                      result_type: str, market: str, lang: str, 
                      filters: list[str]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
@@ -26,7 +27,7 @@ class BingSearchTool(BuiltinTool):
         }
 
         query = quote(query)
-        server_url = f'{self.url}?q={query}&mkt={market_code}&count={limit}&responseFilter={",".join(filters)}'
+        server_url = f'{server_url}?q={query}&mkt={market_code}&count={limit}&responseFilter={",".join(filters)}'
         response = get(server_url, headers=headers)
 
         if response.status_code != 200:
@@ -43,27 +44,31 @@ class BingSearchTool(BuiltinTool):
             results = []
             if search_results:
                 for result in search_results:
+                    url = f': {result["url"]}' if "url" in result else ""
                     results.append(self.create_text_message(
-                        text=f'{result["name"]}: {result["url"]}'
+                        text=f'{result["name"]}{url}'
                     ))
 
 
             if entities:
                 for entity in entities:
+                    url = f': {entity["url"]}' if "url" in entity else ""
                     results.append(self.create_text_message(
-                        text=f'{entity["name"]}: {entity["url"]}'
+                        text=f'{entity.get("name", "")}{url}'
                     ))
 
             if news:
                 for news_item in news:
+                    url = f': {news_item["url"]}' if "url" in news_item else ""
                     results.append(self.create_text_message(
-                        text=f'{news_item["name"]}: {news_item["url"]}'
+                        text=f'{news_item.get("name", "")}{url}'
                     ))
 
             if related_searches:
                 for related in related_searches:
+                    url = f': {related["displayText"]}' if "displayText" in related else ""
                     results.append(self.create_text_message(
-                        text=f'{related["displayText"]}: {related["webSearchUrl"]}'
+                        text=f'{related.get("displayText", "")}{url}'
                     ))
                     
             return results
@@ -72,7 +77,7 @@ class BingSearchTool(BuiltinTool):
             text = ''
             if search_results:
                 for i, result in enumerate(search_results):
-                    text += f'{i+1}: {result["name"]} - {result["snippet"]}\n'
+                    text += f'{i+1}: {result.get("name", "")} - {result.get("snippet", "")}\n'
 
             if computation and 'expression' in computation and 'value' in computation:
                 text += '\nComputation:\n'
@@ -81,17 +86,20 @@ class BingSearchTool(BuiltinTool):
             if entities:
                 text += '\nEntities:\n'
                 for entity in entities:
-                    text += f'{entity["name"]} - {entity["url"]}\n'
+                    url = f'- {entity["url"]}' if "url" in entity else ""
+                    text += f'{entity.get("name", "")}{url}\n'
 
             if news:
                 text += '\nNews:\n'
                 for news_item in news:
-                    text += f'{news_item["name"]} - {news_item["url"]}\n'
+                    url = f'- {news_item["url"]}' if "url" in news_item else ""
+                    text += f'{news_item.get("name", "")}{url}\n'
 
             if related_searches:
                 text += '\n\nRelated Searches:\n'
                 for related in related_searches:
-                    text += f'{related["displayText"]} - {related["webSearchUrl"]}\n'
+                    url = f'- {related["webSearchUrl"]}' if "webSearchUrl" in related else ""
+                    text += f'{related.get("displayText", "")}{url}\n'
 
             return self.create_text_message(text=self.summary(user_id=user_id, content=text))
         
@@ -136,6 +144,7 @@ class BingSearchTool(BuiltinTool):
         
         self._invoke_bing(
             user_id='test',
+            server_url=server_url,
             subscription_key=key,
             query=query,
             limit=limit,
@@ -188,6 +197,7 @@ class BingSearchTool(BuiltinTool):
         
         return self._invoke_bing(
             user_id=user_id,
+            server_url=server_url,
             subscription_key=key,
             query=query,
             limit=limit,

@@ -1,4 +1,4 @@
-from typing import Generator, List
+from collections.abc import Generator
 
 import google.generativeai.types.content_types as content_types
 import google.generativeai.types.generation_types as generation_config_types
@@ -6,6 +6,7 @@ import google.generativeai.types.safety_types as safety_types
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from google.ai import generativelanguage as glm
+from google.ai.generativelanguage_v1beta.types import content as gag_content
 from google.generativeai import GenerativeModel
 from google.generativeai.client import _ClientManager, configure
 from google.generativeai.types import GenerateContentResponse
@@ -13,7 +14,7 @@ from google.generativeai.types.generation_types import BaseGenerateContentRespon
 
 current_api_key = ''
 
-class MockGoogleResponseClass(object):
+class MockGoogleResponseClass:
     _done = False
 
     def __iter__(self):
@@ -29,7 +30,7 @@ class MockGoogleResponseClass(object):
 
                     }),
                     chunks=[]
-                )                
+                )
             else:
                 yield GenerateContentResponse(
                     done=False,
@@ -40,10 +41,18 @@ class MockGoogleResponseClass(object):
                     chunks=[]
                 )
 
-class MockGoogleResponseCandidateClass(object):
+class MockGoogleResponseCandidateClass:
     finish_reason = 'stop'
 
-class MockGoogleClass(object):
+    @property
+    def content(self) -> gag_content.Content:
+        return gag_content.Content(
+            parts=[
+                gag_content.Part(text='it\'s google!')
+            ]
+        )
+
+class MockGoogleClass:
     @staticmethod
     def generate_content_sync() -> GenerateContentResponse:
         return GenerateContentResponse(
@@ -82,7 +91,7 @@ class MockGoogleClass(object):
         return 'it\'s google!'
     
     @property
-    def generative_response_candidates(self) -> List[MockGoogleResponseCandidateClass]:
+    def generative_response_candidates(self) -> list[MockGoogleResponseCandidateClass]:
         return [MockGoogleResponseCandidateClass()]
     
     def make_client(self: _ClientManager, name: str):

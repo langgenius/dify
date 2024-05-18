@@ -17,7 +17,7 @@ const BasicContent: FC<BasicContentProps> = ({
   if (annotation?.logAnnotation)
     return <Markdown content={annotation?.logAnnotation.content || ''} />
 
-  return <Markdown content={content} />
+  return <Markdown content={content} className={`${item.isError && '!text-[#F04438]'}`} />
 }
 
 export default memo(BasicContent)

@@ -22,9 +22,17 @@ from core.model_runtime.utils import helper
 class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
     MODEL_SUFFIX_MAP = {
         'fuyu-8b': 'vlm/adept/fuyu-8b',
+        'mistralai/mistral-large': '',
         'mistralai/mixtral-8x7b-instruct-v0.1': '',
+        'mistralai/mixtral-8x22b-instruct-v0.1': '',
         'google/gemma-7b': '',
-        'meta/llama2-70b': ''
+        'google/codegemma-7b': '',
+        'snowflake/arctic':'',
+        'meta/llama2-70b': '',
+        'meta/llama3-8b-instruct': '',
+        'meta/llama3-70b-instruct': '',
+        'google/recurrentgemma-2b': ''
+        
     }
 
     def _invoke(self, model: str, credentials: dict,
@@ -130,7 +138,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 endpoint_url,
                 headers=headers,
                 json=data,
-                timeout=(10, 60)
+                timeout=(10, 300)
             )
 
             if response.status_code != 200:
@@ -231,7 +239,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
             endpoint_url,
             headers=headers,
             json=data,
-            timeout=(10, 60),
+            timeout=(10, 300),
             stream=stream
         )
 

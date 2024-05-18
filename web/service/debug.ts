@@ -99,5 +99,5 @@ export const fetchTextGenerationMessge = ({
   appId,
   messageId,
 }: { appId: string; messageId: string }) => {
-  return get<Promise<{ message: [] }>>(`/apps/${appId}/messages/${messageId}`)
+  return get<Promise<any>>(`/apps/${appId}/messages/${messageId}`)
 }

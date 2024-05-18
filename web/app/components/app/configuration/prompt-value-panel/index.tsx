@@ -54,7 +54,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     if (isAdvancedMode) {
       if (modelModeType === ModelModeType.chat)
         return chatPromptConfig.prompt.every(({ text }) => !text)
-      return !completionPromptConfig.prompt.text
+      return !completionPromptConfig.prompt?.text
     }
 
     else { return !modelConfig.configs.prompt_template }
@@ -149,7 +149,15 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                             onChange={(e) => { handleInputValueChange(key, e.target.value) }}
                           />
                         )}
-
+                        {type === 'number' && (
+                          <input
+                            className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+                            placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                            type="number"
+                            value={inputs[key] ? `${inputs[key]}` : ''}
+                            onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                          />
+                        )}
                       </div>
                     ))}
                   </div>

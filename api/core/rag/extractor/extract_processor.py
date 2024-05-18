@@ -1,6 +1,8 @@
+import re
 import tempfile
 from pathlib import Path
 from typing import Union
+from urllib.parse import unquote
 
 import requests
 from flask import current_app
@@ -16,6 +18,7 @@ from core.rag.extractor.pdf_extractor import PdfExtractor
 from core.rag.extractor.text_extractor import TextExtractor
 from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
 from core.rag.extractor.unstructured.unstructured_eml_extractor import UnstructuredEmailExtractor
+from core.rag.extractor.unstructured.unstructured_epub_extractor import UnstructuredEpubExtractor
 from core.rag.extractor.unstructured.unstructured_markdown_extractor import UnstructuredMarkdownExtractor
 from core.rag.extractor.unstructured.unstructured_msg_extractor import UnstructuredMsgExtractor
 from core.rag.extractor.unstructured.unstructured_ppt_extractor import UnstructuredPPTExtractor
@@ -54,6 +57,17 @@ class ExtractProcessor:
 
         with tempfile.TemporaryDirectory() as temp_dir:
             suffix = Path(url).suffix
+            if not suffix and suffix != '.':
+                # get content-type
+                if response.headers.get('Content-Type'):
+                    suffix = '.' + response.headers.get('Content-Type').split('/')[-1]
+                else:
+                    content_disposition = response.headers.get('Content-Disposition')
+                    filename_match = re.search(r'filename="([^"]+)"', content_disposition)
+                    if filename_match:
+                        filename = unquote(filename_match.group(1))
+                        suffix = '.' + re.search(r'\.(\w+)$', filename).group(1)
+
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
             with open(file_path, 'wb') as file:
                 file.write(response.content)
@@ -83,7 +97,7 @@ class ExtractProcessor:
                 etl_type = current_app.config['ETL_TYPE']
                 unstructured_api_url = current_app.config['UNSTRUCTURED_API_URL']
                 if etl_type == 'Unstructured':
-                    if file_extension == '.xlsx':
+                    if file_extension == '.xlsx' or file_extension == '.xls':
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == '.pdf':
                         extractor = PdfExtractor(file_path)
@@ -106,12 +120,14 @@ class ExtractProcessor:
                         extractor = UnstructuredPPTXExtractor(file_path, unstructured_api_url)
                     elif file_extension == '.xml':
                         extractor = UnstructuredXmlExtractor(file_path, unstructured_api_url)
+                    elif file_extension == 'epub':
+                        extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url)
                     else:
                         # txt
                         extractor = UnstructuredTextExtractor(file_path, unstructured_api_url) if is_automatic \
                             else TextExtractor(file_path, autodetect_encoding=True)
                 else:
-                    if file_extension == '.xlsx':
+                    if file_extension == '.xlsx' or file_extension == '.xls':
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == '.pdf':
                         extractor = PdfExtractor(file_path)
@@ -123,6 +139,8 @@ class ExtractProcessor:
                         extractor = WordExtractor(file_path)
                     elif file_extension == '.csv':
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
+                    elif file_extension == 'epub':
+                        extractor = UnstructuredEpubExtractor(file_path)
                     else:
                         # txt
                         extractor = TextExtractor(file_path, autodetect_encoding=True)
