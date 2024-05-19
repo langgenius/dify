@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
-import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
+import { AuthHeaderPrefix, AuthType, CollectionType, MOCK_WORKFLOW_TOOL } from '../types'
 import type { Collection, CustomCollectionBackend, Tool } from '../types'
 import ToolItem from './tool-item'
 import I18n from '@/context/i18n'
@@ -11,15 +11,18 @@ import { getLanguage } from '@/i18n/language'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
-import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
+import { LinkExternal02, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
+import WorkflowToolModal from '@/app/components/tools/workflow-tool'
 import Toast from '@/app/components/base/toast'
 import {
   fetchBuiltInToolList,
   fetchCustomCollection,
   fetchCustomToolList,
   fetchModelToolList,
+  // fetchWorkflowToolDetail,
+  fetchWorkflowToolList,
   removeBuiltInToolCredential,
   removeCustomCollection,
   updateBuiltInToolCredential,
@@ -75,8 +78,8 @@ const ProviderDetail = ({
     }
   }
   // custom provider
-  const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const [customCollection, setCustomCollection] = useState<CustomCollectionBackend | null>(null)
+  const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await updateCustomCollection(data)
     onRefreshData()
@@ -108,7 +111,18 @@ const ProviderDetail = ({
     })
     setIsDetailLoading(false)
   }, [collection.name])
+  // workflow provider
+  const [isShowEditWorkflowToolModal, setIsShowEditWorkflowToolModal] = useState(false)
+  const getWorkflowToolProvider = useCallback(async () => {
+    setIsDetailLoading(true)
+    // const res = await fetchWorkflowToolDetail(collection.id)
+    // setCustomCollection(res)
+    // TODO workflow-tool
+    setCustomCollection(MOCK_WORKFLOW_TOOL as any)
+    setIsDetailLoading(false)
+  }, [collection.id])
 
+  // ToolList
   const [toolList, setToolList] = useState<Tool[]>([])
   const getProviderToolList = useCallback(async () => {
     setIsDetailLoading(true)
@@ -121,6 +135,10 @@ const ProviderDetail = ({
         const list = await fetchModelToolList(collection.name)
         setToolList(list)
       }
+      else if (collection.type === CollectionType.workflow) {
+        const list = await fetchWorkflowToolList(collection.id)
+        setToolList(list)
+      }
       else {
         const list = await fetchCustomToolList(collection.name)
         setToolList(list)
@@ -128,13 +146,15 @@ const ProviderDetail = ({
     }
     catch (e) { }
     setIsDetailLoading(false)
-  }, [collection.name, collection.type])
+  }, [collection.name, collection.type, collection.id])
 
   useEffect(() => {
     if (collection.type === CollectionType.custom)
       getCustomProvider()
+    if (collection.type === CollectionType.workflow)
+      getWorkflowToolProvider()
     getProviderToolList()
-  }, [collection.name, collection.type, getCustomProvider, getProviderToolList])
+  }, [collection.name, collection.type, getCustomProvider, getProviderToolList, getWorkflowToolProvider])
 
   return (
     <div className='px-6 py-3'>
@@ -182,6 +202,25 @@ const ProviderDetail = ({
             <Settings01 className='mr-1 w-4 h-4 text-gray-500' />
             <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
           </Button>
+        )}
+        {collection.type === CollectionType.workflow && !isDetailLoading && (
+          <>
+            <Button
+              type='primary'
+              className={cn('shrink-0 my-3 w-[183px] flex items-center')}
+            >
+              <a className='flex items-center text-white' href={`/app/${customCollection?.id}/workflow`} rel='noreferrer' target='_blank'>
+                <div className='leading-5 text-sm font-medium'>{t('tools.openInStudio')}</div>
+                <LinkExternal02 className='ml-1 w-4 h-4' />
+              </a>
+            </Button>
+            <Button
+              className={cn('shrink-0 my-3 w-[183px] flex items-center bg-white')}
+              onClick={() => setIsShowEditWorkflowToolModal(true)}
+            >
+              <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
+            </Button>
+          </>
         )}
       </div>
       {/* Tools */}
@@ -243,6 +282,12 @@ const ProviderDetail = ({
           onHide={() => setIsShowEditCustomCollectionModal(false)}
           onEdit={doUpdateCustomToolCollection}
           onRemove={doRemoveCustomToolCollection}
+        />
+      )}
+      {isShowEditWorkflowToolModal && (
+        <WorkflowToolModal
+          payload={customCollection}
+          onHide={() => setIsShowEditWorkflowToolModal(false)}
         />
       )}
     </div>

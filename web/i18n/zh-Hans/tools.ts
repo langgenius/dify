@@ -128,6 +128,7 @@ const translation = {
   toolRemoved: '工具已被移除',
   notAuthorized: '工具未授权',
   howToGet: '如何获取',
+  openInStudio: '在工作室中打开',
 }
 
 export default translation

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type { Collection } from './types'
+import { MOCK_WORKFLOW_TOOL } from './types'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import LabelFilter from '@/app/components/tools/labels/filter'
@@ -50,7 +51,8 @@ const ProviderList = () => {
   }, [activeTab, tagFilterValue, keywords, collectionList])
   const getProviderList = async () => {
     const list = await fetchCollectionList()
-    setCollectionList(list)
+    // TODO workflow-tool
+    setCollectionList([...list, MOCK_WORKFLOW_TOOL as Collection])
   }
   useEffect(() => {
     getProviderList()

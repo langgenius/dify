@@ -128,6 +128,7 @@ const translation = {
   toolRemoved: 'Tool removed',
   notAuthorized: 'Tool not authorized',
   howToGet: 'How to get',
+  openInStudio: 'Open in Studio',
 }
 
 export default translation
