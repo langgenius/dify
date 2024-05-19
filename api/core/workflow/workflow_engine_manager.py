@@ -94,20 +94,17 @@ class WorkflowEngineManager:
                      user_inputs: dict,
                      system_inputs: Optional[dict] = None,
                      callbacks: list[BaseWorkflowCallback] = None,
-                     call_depth: Optional[int] = 1) -> None:
+                     call_depth: Optional[int] = 1,
+                     variable_pool: Optional[VariablePool] = None) -> None:
         """
-        Run workflow
         :param workflow: Workflow instance
         :param user_id: user id
         :param user_from: user from
         :param user_inputs: user variables inputs
         :param system_inputs: system inputs, like: query, files
         :param callbacks: workflow callbacks
-        :return:
+        :param call_depth: call depth
         """
-        if call_depth > WORKFLOW_CALL_MAX_DEPTH:
-            raise ValueError('Max workflow call depth reached.')
-
         # fetch workflow graph
         graph = workflow.graph_dict
         if not graph:
@@ -121,24 +118,60 @@ class WorkflowEngineManager:
 
         if not isinstance(graph.get('edges'), list):
             raise ValueError('edges in workflow graph must be a list')
-
-        # init workflow run
-        if callbacks:
-            for callback in callbacks:
-                callback.on_workflow_run_started()
+        
+        # init variable pool
+        if not variable_pool:
+            variable_pool = VariablePool(
+                system_variables=system_inputs,
+                user_inputs=user_inputs
+            )
 
         # init workflow run state
         workflow_run_state = WorkflowRunState(
             workflow=workflow,
             start_at=time.perf_counter(),
-            variable_pool=VariablePool(
-                system_variables=system_inputs,
-                user_inputs=user_inputs
-            ),
+            variable_pool=variable_pool,
             user_id=user_id,
             user_from=user_from,
             invoke_from=invoke_from
         )
+
+        # run workflow
+        self._run_workflow(
+            workflow=workflow,
+            workflow_run_state=workflow_run_state,
+            callbacks=callbacks,
+            call_depth=call_depth,
+        )
+
+    def _run_workflow(self, workflow: Workflow,
+                     workflow_run_state: WorkflowRunState,
+                     callbacks: list[BaseWorkflowCallback] = None,
+                     call_depth: Optional[int] = 1,
+                     start_at: Optional[str] = None,
+                     end_at: Optional[str] = None) -> None:
+        """
+        Run workflow
+        :param workflow: Workflow instance
+        :param user_id: user id
+        :param user_from: user from
+        :param user_inputs: user variables inputs
+        :param system_inputs: system inputs, like: query, files
+        :param callbacks: workflow callbacks
+        :param call_depth: call depth
+        :param start_at: force specific start node
+        :param end_at: force specific end node
+        :return:
+        """
+        graph = workflow.graph_dict
+
+        if call_depth > WORKFLOW_CALL_MAX_DEPTH:
+            raise ValueError('Max workflow call depth reached.')
+
+        # init workflow run
+        if callbacks:
+            for callback in callbacks:
+                callback.on_workflow_run_started()
 
         try:
             predecessor_node: BaseNode = None
@@ -150,7 +183,9 @@ class WorkflowEngineManager:
                     workflow_run_state=workflow_run_state,
                     graph=graph,
                     predecessor_node=predecessor_node,
-                    callbacks=callbacks
+                    callbacks=callbacks,
+                    start_at=start_at,
+                    end_at=end_at
                 )
 
                 if not next_node:
@@ -332,49 +367,14 @@ class WorkflowEngineManager:
             except NotImplementedError:
                 variable_mapping = {}
 
-            for variable_key, variable_selector in variable_mapping.items():
-                if variable_key not in user_inputs:
-                    raise ValueError(f'Variable key {variable_key} not found in user inputs.')
-
-                # fetch variable node id from variable selector
-                variable_node_id = variable_selector[0]
-                variable_key_list = variable_selector[1:]
-
-                # get value
-                value = user_inputs.get(variable_key)
-
-                # temp fix for image type
-                if node_type == NodeType.LLM:
-                    new_value = []
-                    if isinstance(value, list):
-                        node_data = node_instance.node_data
-                        node_data = cast(LLMNodeData, node_data)
-
-                        detail = node_data.vision.configs.detail if node_data.vision.configs else None
-
-                        for item in value:
-                            if isinstance(item, dict) and 'type' in item and item['type'] == 'image':
-                                transfer_method = FileTransferMethod.value_of(item.get('transfer_method'))
-                                file = FileVar(
-                                    tenant_id=workflow.tenant_id,
-                                    type=FileType.IMAGE,
-                                    transfer_method=transfer_method,
-                                    url=item.get('url') if transfer_method == FileTransferMethod.REMOTE_URL else None,
-                                    related_id=item.get(
-                                        'upload_file_id') if transfer_method == FileTransferMethod.LOCAL_FILE else None,
-                                    extra_config=FileExtraConfig(image_config={'detail': detail} if detail else None),
-                                )
-                                new_value.append(file)
-
-                    if new_value:
-                        value = new_value
-
-                # append variable and value to variable pool
-                variable_pool.append_variable(
-                    node_id=variable_node_id,
-                    variable_key_list=variable_key_list,
-                    value=value
-                )
+            self._mapping_user_inputs_to_variable_pool(
+                variable_mapping=variable_mapping,
+                user_inputs=user_inputs,
+                variable_pool=variable_pool,
+                tenant_id=workflow.tenant_id,
+                node_instance=node_instance
+            )
+            
             # run node
             node_run_result = node_instance.run(
                 variable_pool=variable_pool
@@ -391,6 +391,100 @@ class WorkflowEngineManager:
             )
 
         return node_instance, node_run_result
+
+    def single_step_run_iteration_workflow_node(self, workflow: Workflow,
+                                            node_id: str,
+                                            user_id: str,
+                                            user_inputs: dict,
+                                            callbacks: list[BaseWorkflowCallback] = None,
+    ) -> None:
+        """
+        Single iteration run workflow node
+        """
+        # fetch node info from workflow graph
+        graph = workflow.graph_dict
+        if not graph:
+            raise ValueError('workflow graph not found')
+
+        nodes = graph.get('nodes')
+        if not nodes:
+            raise ValueError('nodes not found in workflow graph')
+
+        for node in nodes:
+            if node.get('id') == node_id:
+                if node.get('data', {}).get('type') in [
+                    NodeType.ITERATION.value,
+                    NodeType.LOOP.value,
+                ]:
+                    node_config = node
+                else:
+                    raise ValueError('node id is not an iteration node')
+        
+        # init variable pool
+        variable_pool = VariablePool(
+            system_variables={},
+            user_inputs={}
+        )
+
+        # variable selector to variable mapping
+        iteration_nested_nodes = [
+            node for node in nodes if node.get('data', {}).get('iteration_id') == node_id
+        ]
+
+        for node_config in iteration_nested_nodes:
+            # mapping user inputs to variable pool
+            node_cls = node_classes.get(NodeType.value_of(node_config.get('data', {}).get('type')))
+            try:
+                variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(node_config)
+            except NotImplementedError:
+                variable_mapping = {}
+
+            # append variables to variable pool
+            node_instance = node_cls(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                workflow_id=workflow.id,
+                user_id=user_id,
+                user_from=UserFrom.ACCOUNT,
+                config=node_config
+            )
+
+            self._mapping_user_inputs_to_variable_pool(
+                variable_mapping=variable_mapping,
+                user_inputs=user_inputs,
+                variable_pool=variable_pool,
+                tenant_id=workflow.tenant_id,
+                node_instance=node_instance
+            )
+
+        # fetch end node of iteration
+        end_node_id = None
+        for edge in graph.get('edges'):
+            if edge.get('source') == node_id:
+                end_node_id = edge.get('target')
+                break
+
+        if not end_node_id:
+            raise ValueError('end node of iteration not found')
+
+        # init workflow run state
+        workflow_run_state = WorkflowRunState(
+            workflow=workflow,
+            start_at=time.perf_counter(),
+            variable_pool=variable_pool,
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER
+        )
+
+        # run workflow
+        self._run_workflow(
+            workflow=workflow,
+            workflow_run_state=workflow_run_state,
+            callbacks=callbacks,
+            call_depth=1,
+            start_at=node_id
+        )
 
     def _workflow_run_success(self, callbacks: list[BaseWorkflowCallback] = None) -> None:
         """
@@ -477,7 +571,9 @@ class WorkflowEngineManager:
     def _get_next_overall_node(self, workflow_run_state: WorkflowRunState,
                        graph: dict,
                        predecessor_node: Optional[BaseNode] = None,
-                       callbacks: list[BaseWorkflowCallback] = None) -> Optional[BaseNode]:
+                       callbacks: list[BaseWorkflowCallback] = None,
+                       start_at: Optional[str] = None,
+                       end_at: Optional[str] = None) -> Optional[BaseNode]:
         """
         Get next node
         multiple target nodes in the future.
@@ -492,8 +588,15 @@ class WorkflowEngineManager:
 
         if not predecessor_node:
             for node_config in nodes:
-                if node_config.get('data', {}).get('type', '') == NodeType.START.value:
-                    return StartNode(
+                node_cls = None
+                if start_at:
+                    if node_config.get('id') == start_at:
+                        node_cls = node_classes.get(NodeType.value_of(node_config.get('data', {}).get('type')))
+                else:
+                    if node_config.get('data', {}).get('type', '') == NodeType.START.value:
+                        node_cls = StartNode
+                if node_cls:
+                    return node_cls(
                         tenant_id=workflow_run_state.tenant_id,
                         app_id=workflow_run_state.app_id,
                         workflow_id=workflow_run_state.workflow_id,
@@ -503,6 +606,7 @@ class WorkflowEngineManager:
                         config=node_config,
                         callbacks=callbacks
                     )
+                
         else:
             edges = graph.get('edges')
             source_node_id = predecessor_node.node_id
@@ -528,6 +632,9 @@ class WorkflowEngineManager:
                 return None
 
             target_node_id = outgoing_edge.get('target')
+
+            if end_at and target_node_id == end_at:
+                return None
 
             # fetch target node from target node id
             target_node_config = None
@@ -748,3 +855,53 @@ class WorkflowEngineManager:
                     new_value[key] = new_val
 
         return new_value
+
+    def _mapping_user_inputs_to_variable_pool(self, 
+                                              variable_mapping: dict,
+                                              user_inputs: dict,
+                                              variable_pool: VariablePool,
+                                              tenant_id: str,
+                                              node_instance: BaseNode):
+        for variable_key, variable_selector in variable_mapping.items():
+            if variable_key not in user_inputs:
+                raise ValueError(f'Variable key {variable_key} not found in user inputs.')
+
+            # fetch variable node id from variable selector
+            variable_node_id = variable_selector[0]
+            variable_key_list = variable_selector[1:]
+
+            # get value
+            value = user_inputs.get(variable_key)
+
+            # temp fix for image type
+            if node_instance.node_type == NodeType.LLM:
+                new_value = []
+                if isinstance(value, list):
+                    node_data = node_instance.node_data
+                    node_data = cast(LLMNodeData, node_data)
+
+                    detail = node_data.vision.configs.detail if node_data.vision.configs else None
+
+                    for item in value:
+                        if isinstance(item, dict) and 'type' in item and item['type'] == 'image':
+                            transfer_method = FileTransferMethod.value_of(item.get('transfer_method'))
+                            file = FileVar(
+                                tenant_id=tenant_id,
+                                type=FileType.IMAGE,
+                                transfer_method=transfer_method,
+                                url=item.get('url') if transfer_method == FileTransferMethod.REMOTE_URL else None,
+                                related_id=item.get(
+                                    'upload_file_id') if transfer_method == FileTransferMethod.LOCAL_FILE else None,
+                                extra_config=FileExtraConfig(image_config={'detail': detail} if detail else None),
+                            )
+                            new_value.append(file)
+
+                if new_value:
+                    value = new_value
+
+            # append variable and value to variable pool
+            variable_pool.append_variable(
+                node_id=variable_node_id,
+                variable_key_list=variable_key_list,
+                value=value
+            )
