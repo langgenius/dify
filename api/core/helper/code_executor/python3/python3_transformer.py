@@ -31,7 +31,7 @@ class Python3TemplateTransformer(TemplateTransformer):
     @classmethod
     def get_runner_script(cls) -> str:
         runner_script = dedent(f"""
-            # declare main function here
+            # declare main function
             {cls._code_placeholder}
             
             import json

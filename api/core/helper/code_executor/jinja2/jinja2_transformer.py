@@ -23,7 +23,7 @@ class Jinja2TemplateTransformer(TemplateTransformer):
     @classmethod
     def get_runner_script(cls) -> str:
         runner_script = dedent(f"""
-            # declare main function here
+            # declare main function
             def main(**inputs):
                 import jinja2
                 template = jinja2.Template('''{cls._code_placeholder}''')
