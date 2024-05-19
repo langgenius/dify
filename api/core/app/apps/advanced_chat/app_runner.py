@@ -113,7 +113,8 @@ class AdvancedChatAppRunner(AppRunner):
             callbacks=workflow_callbacks
         )
 
-    def single_iteration_run(self, app_id: str, queue_manager: AppQueueManager,
+    def single_iteration_run(self, app_id: str, workflow_id: str,
+                             queue_manager: AppQueueManager,
                              inputs: dict, node_id: str, user_id: str) -> None:
         """
         Single iteration run
@@ -122,10 +123,7 @@ class AdvancedChatAppRunner(AppRunner):
         if not app_record:
             raise ValueError("App not found")
         
-        if not app_record.workflow_id:
-            raise ValueError("Workflow not initialized")
-
-        workflow = self.get_workflow(app_model=app_record, workflow_id=app_record.workflow_id)
+        workflow = self.get_workflow(app_model=app_record, workflow_id=workflow_id)
         if not workflow:
             raise ValueError("Workflow not initialized")
         

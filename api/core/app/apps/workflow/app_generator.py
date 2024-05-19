@@ -159,7 +159,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         if not node_id:
             raise ValueError('node_id is required')
         
-        if not args.get('inputs'):
+        if args.get('inputs') is None:
             raise ValueError('inputs is required')
         
         extras = {
@@ -211,10 +211,21 @@ class WorkflowAppGenerator(BaseAppGenerator):
             try:
                 # workflow app
                 runner = WorkflowAppRunner()
-                runner.run(
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager
-                )
+                if application_generate_entity.single_iteration_run:
+                    single_iteration_run = application_generate_entity.single_iteration_run
+                    runner.single_iteration_run(
+                        app_id=application_generate_entity.app_config.app_id,
+                        workflow_id=application_generate_entity.app_config.workflow_id,
+                        queue_manager=queue_manager,
+                        inputs=single_iteration_run.inputs,
+                        node_id=single_iteration_run.node_id,
+                        user_id=application_generate_entity.user_id
+                    )
+                else:
+                    runner.run(
+                        application_generate_entity=application_generate_entity,
+                        queue_manager=queue_manager
+                    )
             except GenerateTaskStoppedException:
                 pass
             except InvokeAuthorizationError:

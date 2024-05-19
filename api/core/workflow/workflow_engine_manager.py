@@ -136,6 +136,11 @@ class WorkflowEngineManager:
             invoke_from=invoke_from
         )
 
+        # init workflow run
+        if callbacks:
+            for callback in callbacks:
+                callback.on_workflow_run_started()
+
         # run workflow
         self._run_workflow(
             workflow=workflow,
@@ -167,11 +172,6 @@ class WorkflowEngineManager:
 
         if call_depth > WORKFLOW_CALL_MAX_DEPTH:
             raise ValueError('Max workflow call depth reached.')
-
-        # init workflow run
-        if callbacks:
-            for callback in callbacks:
-                callback.on_workflow_run_started()
 
         try:
             predecessor_node: BaseNode = None
@@ -213,14 +213,17 @@ class WorkflowEngineManager:
                                 callbacks=callbacks
                             )
                             # iteration has ended
-                            iteration_node_id = current_iteration_node.node_id
+                            next_node = self._get_next_overall_node(
+                                workflow_run_state=workflow_run_state,
+                                graph=graph,
+                                predecessor_node=current_iteration_node,
+                                callbacks=callbacks,
+                                start_at=start_at,
+                                end_at=end_at
+                            )
                             current_iteration_node = None
                             workflow_run_state.current_iteration_state = None
-                            # get next id
-                            outgoing_edges = [edge for edge in graph.get('edges') if edge.get('source') == iteration_node_id]
-                            if outgoing_edges:
-                                # continue overall process
-                                next_node = self._get_node(workflow_run_state, graph, outgoing_edges[0].get('target'))
+                            # continue overall process
                         elif isinstance(next_iteration, str):
                             # move to next iteration
                             next_node_id = next_iteration
@@ -428,8 +431,15 @@ class WorkflowEngineManager:
 
         # variable selector to variable mapping
         iteration_nested_nodes = [
-            node for node in nodes if node.get('data', {}).get('iteration_id') == node_id
+            node for node in nodes 
+            if node.get('data', {}).get('iteration_id') == node_id or node.get('id') == node_id
         ]
+        iteration_nested_node_ids = [node.get('id') for node in iteration_nested_nodes]
+
+        # init workflow run
+        if callbacks:
+            for callback in callbacks:
+                callback.on_workflow_run_started()
 
         for node_config in iteration_nested_nodes:
             # mapping user inputs to variable pool
@@ -439,6 +449,18 @@ class WorkflowEngineManager:
             except NotImplementedError:
                 variable_mapping = {}
 
+            # remove iteration variables
+            variable_mapping = {
+                key: value for key, value in variable_mapping.items() 
+                if value[0] != node_id
+            }
+
+            # remove variable out from iteration
+            variable_mapping = {
+                key: value for key, value in variable_mapping.items() 
+                if value[0] not in iteration_nested_node_ids
+            }
+
             # append variables to variable pool
             node_instance = node_cls(
                 tenant_id=workflow.tenant_id,
@@ -446,6 +468,7 @@ class WorkflowEngineManager:
                 workflow_id=workflow.id,
                 user_id=user_id,
                 user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
                 config=node_config
             )
 
@@ -483,7 +506,8 @@ class WorkflowEngineManager:
             workflow_run_state=workflow_run_state,
             callbacks=callbacks,
             call_depth=1,
-            start_at=node_id
+            start_at=node_id,
+            end_at=end_node_id
         )
 
     def _workflow_run_success(self, callbacks: list[BaseWorkflowCallback] = None) -> None:

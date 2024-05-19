@@ -36,7 +36,7 @@ class IterationNode(BaseIterationNode):
         self._next_iteration(variable_pool, state)
 
         node_data = cast(IterationNodeData, self.node_data)
-        if self._reached_iteration_limit(state):
+        if self._reached_iteration_limit(variable_pool, state):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={
@@ -80,13 +80,13 @@ class IterationNode(BaseIterationNode):
         state.index += 1
         self._set_current_iteration_variable(variable_pool, state)
 
-    def _reached_iteration_limit(self, state: IterationState):
+    def _reached_iteration_limit(self, variable_pool: VariablePool, state: IterationState):
         """
         Check if iteration limit is reached.
         :return: True if iteration limit is reached, False otherwise
         """
         node_data = cast(IterationNodeData, self.node_data)
-        iterator = node_data.iterator_selector
+        iterator =  variable_pool.get_variable_value(node_data.iterator_selector)
 
         if iterator is None or not isinstance(iterator, list):
             return True
@@ -115,5 +115,4 @@ class IterationNode(BaseIterationNode):
         """
         return {
             'input_selector': node_data.iterator_selector,
-            'output_selector': node_data.output_selector
         }
