@@ -83,6 +83,36 @@ class WorkflowAppRunner:
             call_depth=application_generate_entity.call_depth
         )
 
+    def single_iteration_run(self, app_id: str, queue_manager: AppQueueManager,
+                             inputs: dict, node_id: str, user_id: str) -> None:
+        """
+        Single iteration run
+        """
+        app_record: App = db.session.query(App).filter(App.id == app_id).first()
+        if not app_record:
+            raise ValueError("App not found")
+        
+        if not app_record.workflow_id:
+            raise ValueError("Workflow not initialized")
+
+        workflow = self.get_workflow(app_model=app_record, workflow_id=app_record.workflow_id)
+        if not workflow:
+            raise ValueError("Workflow not initialized")
+        
+        workflow_callbacks = [WorkflowEventTriggerCallback(
+            queue_manager=queue_manager,
+            workflow=workflow
+        )]
+
+        workflow_engine_manager = WorkflowEngineManager()
+        workflow_engine_manager.single_step_run_iteration_workflow_node(
+            workflow=workflow,
+            node_id=node_id,
+            user_id=user_id,
+            user_inputs=inputs,
+            callbacks=workflow_callbacks
+        )
+
     def get_workflow(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
         """
         Get workflow

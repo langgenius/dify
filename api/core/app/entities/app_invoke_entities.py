@@ -129,6 +129,14 @@ class AdvancedChatAppGenerateEntity(AppGenerateEntity):
     conversation_id: Optional[str] = None
     query: Optional[str] = None
 
+    class SingleIterationRunEntity(BaseModel):
+        """
+        Single Iteration Run Entity.
+        """
+        node_id: str
+        inputs: dict
+
+    single_iteration_run: Optional[SingleIterationRunEntity] = None
 
 class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
@@ -136,3 +144,12 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
     # app config
     app_config: WorkflowUIBasedAppConfig
+
+    class SingleIterationRunEntity(BaseModel):
+        """
+        Single Iteration Run Entity.
+        """
+        node_id: str
+        inputs: dict
+
+    single_iteration_run: Optional[SingleIterationRunEntity] = None
