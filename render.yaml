@@ -17,8 +17,8 @@ services:
   - key: BITBANK_API_SECRET
     sync: false
   region: singapore
-  dockerContext: ./api
-  dockerfilePath: ./api/Dockerfile
+  dockerContext: .
+  dockerfilePath: ./Dockerfile
   rootDir: api
   buildFilter:
     paths:
