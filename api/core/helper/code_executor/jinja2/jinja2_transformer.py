@@ -23,21 +23,23 @@ class Jinja2TemplateTransformer(TemplateTransformer):
     @classmethod
     def get_runner_script(cls) -> str:
         runner_script = dedent(f"""
-            import jinja2
+            # declare main function here
+            def main(**inputs):
+                import jinja2
+                template = jinja2.Template('''{cls._code_placeholder}''')
+                return template.render(**inputs)
+                
             import json
             from base64 import b64decode
             
-            template = jinja2.Template('''{cls._code_placeholder}''')
+            # decode and prepare input dict
+            inputs_obj = json.loads(b64decode('{cls._inputs_placeholder}').decode('utf-8'))
             
-            def main(**inputs):
-                return template.render(**inputs)
+            # execute main function
+            output = main(**inputs_obj)
             
-            # execute main function, and return the result
-            inputs = b64decode('{cls._inputs_placeholder}').decode('utf-8')
-            output = main(**json.loads(inputs))
-            
+            # convert output and print
             result = f'''<<RESULT>>{{output}}<<RESULT>>'''
-            
             print(result)
             
             """)
