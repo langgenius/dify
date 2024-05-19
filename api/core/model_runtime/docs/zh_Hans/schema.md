@@ -52,7 +52,7 @@
   - `voices` (list)  可选音色列表。
     - `mode` (string)  音色模型。（模型类型 `tts` 可用）
     - `name` (string)  音色模型显示名称。（模型类型 `tts` 可用）
-    - `lanuage` (string)  音色模型支持语言。（模型类型 `tts` 可用）
+    - `language` (string)  音色模型支持语言。（模型类型 `tts` 可用）
   - `word_limit` (int)  单次转换字数限制，默认按段落分段（模型类型 `tts` 可用）
   - `audio_type` (string)  支持音频文件扩展格式，如：mp3,wav（模型类型 `tts` 可用）
   - `max_workers` (int)  支持文字音频转换并发任务数（模型类型 `tts` 可用）
