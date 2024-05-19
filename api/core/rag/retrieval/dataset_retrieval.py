@@ -124,7 +124,7 @@ class DatasetRetrieval:
 
         document_score_list = {}
         for item in all_documents:
-            if 'score' in item.metadata and item.metadata['score']:
+            if item.metadata.get('score'):
                 document_score_list[item.metadata['doc_id']] = item.metadata['score']
 
         document_context_list = []
