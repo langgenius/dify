@@ -222,6 +222,7 @@ class WorkflowEngineManager:
                         predecessor_node_id=predecessor_node.node_id if predecessor_node else None,
                         callbacks=callbacks
                     )
+                    predecessor_node = next_node
                     # move to start node of iteration
                     next_node_id = next_node.get_next_iteration_start_id(
                         variable_pool=workflow_run_state.variable_pool,

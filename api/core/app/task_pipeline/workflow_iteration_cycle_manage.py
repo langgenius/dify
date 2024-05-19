@@ -150,7 +150,8 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
             iteration_id=event.node_id,
             current_index=0,
             iteration_steps_boundary=[],
-            node_execution_id=workflow_node_execution.id
+            node_execution_id=workflow_node_execution.id,
+            started_at=time.perf_counter()
         )
 
         db.session.close()
@@ -189,6 +190,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
         workflow_node_execution.outputs = json.dumps({
             'output': event.outputs
         })
+        workflow_node_execution.elapsed_time = time.perf_counter() - current_iteration.started_at
 
         db.session.commit()
         db.session.close()

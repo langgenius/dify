@@ -525,5 +525,6 @@ class WorkflowIterationState(BaseModel):
         current_index: int
         iteration_steps_boundary: list[int] = None
         node_execution_id: str
+        started_at: float
 
     current_iterations: dict[str, Data] = None
