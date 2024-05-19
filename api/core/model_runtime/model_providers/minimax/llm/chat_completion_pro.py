@@ -43,7 +43,7 @@ class MinimaxChatCompletionPro:
         if 'top_p' in model_parameters and type(model_parameters['top_p']) == float:
             extra_kwargs['top_p'] = model_parameters['top_p']
 
-        if 'plugin_web_search' in model_parameters and model_parameters['plugin_web_search']:
+        if model_parameters.get('plugin_web_search'):
             extra_kwargs['plugins'] = [
                 'plugin_web_search'
             ]
@@ -158,7 +158,7 @@ class MinimaxChatCompletionPro:
                 self._handle_error(code, msg)
 
             # final chunk
-            if data['reply'] or 'usage' in data and data['usage']:
+            if data['reply'] or data.get('usage'):
                 total_tokens = data['usage']['total_tokens']
                 minimax_message = MinimaxMessage(
                     role=MinimaxMessage.Role.ASSISTANT.value,
