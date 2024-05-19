@@ -6,6 +6,7 @@ services:
     restart: always
     environment:
       # The password for the default postgres user.
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: difyai123456
       # The name of the default postgres database.
       POSTGRES_DB: dify
@@ -14,7 +15,7 @@ services:
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5400:5432"
 
   # The redis cache.
   redis:

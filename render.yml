@@ -1,0 +1,26 @@
+version: "1"
+services:
+- type: web
+  name: python-server
+  runtime: docker
+  repo: https://github.com/betalabjp/dify
+  plan: starter
+  envVars:
+  - key: SLACK_WEBHOOK_URL
+    sync: false
+  - key: COINCHECK_API_KEY
+    sync: false
+  - key: COINCHECK_API_SECRET
+    sync: false
+  - key: BITBANK_API_KEY
+    sync: false
+  - key: BITBANK_API_SECRET
+    sync: false
+  region: singapore
+  dockerContext: ./api
+  dockerfilePath: ./api/Dockerfile
+  rootDir: api
+  buildFilter:
+    paths:
+      - render.yaml
+
