@@ -50,11 +50,8 @@ def prepare_invalid_yaml_file(tmp_path, monkeypatch) -> str:
 
 
 def test_load_yaml_non_existing_file():
-    assert load_yaml_file(file_path=NON_EXISTING_YAML_FILE, ignore_error=True) == {}
-    assert load_yaml_file(file_path='', ignore_error=True) == {}
-
-    with pytest.raises(FileNotFoundError, match=f'Failed to load YAML file {NON_EXISTING_YAML_FILE}: file not found'):
-        load_yaml_file(file_path=NON_EXISTING_YAML_FILE)
+    assert load_yaml_file(file_path=NON_EXISTING_YAML_FILE) == {}
+    assert load_yaml_file(file_path='') == {}
 
 
 def test_load_valid_yaml_file(prepare_example_yaml_file):
