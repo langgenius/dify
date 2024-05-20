@@ -80,7 +80,7 @@ CODE_EXECUTION_API_KEY="dify-sandbox"
 
 
 [tool.poetry]
-name = "difi api"
+name = "api"
 version = "0.1.0"
 description = ""
 authors = ["Dify <no-reply@langgenius.com>"]
