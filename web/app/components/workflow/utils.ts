@@ -148,14 +148,14 @@ export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
     if (!edge.targetHandle)
       edge.targetHandle = 'target'
 
-    if (!edge.data?.sourceType && edge.source) {
+    if (!edge.data?.sourceType && edge.source && nodesMap[edge.source]) {
       edge.data = {
         ...edge.data,
         sourceType: nodesMap[edge.source].data.type!,
       } as any
     }
 
-    if (!edge.data?.targetType && edge.target) {
+    if (!edge.data?.targetType && edge.target && nodesMap[edge.target]) {
       edge.data = {
         ...edge.data,
         targetType: nodesMap[edge.target].data.type!,
@@ -405,4 +405,12 @@ export const getTopLeftNodePosition = (nodes: Node[]) => {
     x: minX,
     y: minY,
   }
+}
+
+export const isEventTargetInputArea = (target: HTMLElement) => {
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')
+    return true
+
+  if (target.contentEditable === 'true')
+    return true
 }
