@@ -1,7 +1,7 @@
 """add workflow tool
 
-Revision ID: 5fda94355fce
-Revises: 3c7cac9521c6
+Revision ID: 7bdef072e63a 
+Revises: 5fda94355fce
 Create Date: 2024-05-04 09:47:19.366961
 
 """
@@ -11,8 +11,8 @@ from alembic import op
 import models as models
 
 # revision identifiers, used by Alembic.
-revision = '5fda94355fce'
-down_revision = '47cc7df8c4f3'
+revision = '7bdef072e63a'
+down_revision = '5fda94355fce'
 branch_labels = None
 depends_on = None
 
