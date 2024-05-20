@@ -5,7 +5,7 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from extensions.ext_database import db
-from models.tools import ToolLabelBind
+from models.tools import ToolLabelBinding
 
 
 class ToolLabelManager:
@@ -30,13 +30,13 @@ class ToolLabelManager:
             raise ValueError('Unsupported tool type')
 
         # delete old labels
-        db.session.query(ToolLabelBind).filter(
-            ToolLabelBind.tool_id == provider_id
+        db.session.query(ToolLabelBinding).filter(
+            ToolLabelBinding.tool_id == provider_id
         ).delete()
 
         # insert new labels
         for label in labels:
-            db.session.add(ToolLabelBind(
+            db.session.add(ToolLabelBinding(
                 tool_id=provider_id,
                 tool_type=ToolProviderType.API.value,
                 label_name=label,
@@ -56,8 +56,8 @@ class ToolLabelManager:
         else:
             raise ValueError('Unsupported tool type')
 
-        labels: list[ToolLabelBind] = db.session.query(ToolLabelBind.label_name).filter(
-            ToolLabelBind.tool_id == provider_id
+        labels: list[ToolLabelBinding] = db.session.query(ToolLabelBinding.label_name).filter(
+            ToolLabelBinding.tool_id == provider_id
         ).all()
 
         return [label.label_name for label in labels]
@@ -82,8 +82,8 @@ class ToolLabelManager:
             
         provider_ids = [controller.provider_id for controller in tool_providers]
 
-        labels: list[ToolLabelBind] = db.session.query(ToolLabelBind).filter(
-            ToolLabelBind.tool_id.in_(provider_ids)
+        labels: list[ToolLabelBinding] = db.session.query(ToolLabelBinding).filter(
+            ToolLabelBinding.tool_id.in_(provider_ids)
         ).all()
 
         tool_labels = {

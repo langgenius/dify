@@ -133,7 +133,7 @@ class ApiToolProvider(db.Model):
     def tenant(self) -> Tenant:
         return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
 
-class ToolLabelBind(db.Model):
+class ToolLabelBinding(db.Model):
     """
     The table stores the labels for tools.
     """
