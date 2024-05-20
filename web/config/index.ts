@@ -6,6 +6,7 @@ import { env } from '@/env'
 // NEXT_PUBLIC_API_PREFIX=/console/api NEXT_PUBLIC_PUBLIC_API_PREFIX=/api yarn run start
 
 export const API_PREFIX: string = env.NEXT_PUBLIC_API_PREFIX
+export const apiPrefix = env.NEXT_PUBLIC_API_PREFIX
 export const PUBLIC_API_PREFIX: string = env.NEXT_PUBLIC_PUBLIC_API_PREFIX
 
 export const IS_CE_EDITION = env.NEXT_PUBLIC_EDITION === 'SELF_HOSTED'
