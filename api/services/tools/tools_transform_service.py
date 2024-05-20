@@ -5,6 +5,7 @@ from typing import Optional, Union
 from flask import current_app
 
 from core.model_runtime.entities.common_entities import I18nObject
+from core.tools.entities.api_entities import UserTool, UserToolProvider
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
@@ -12,7 +13,6 @@ from core.tools.entities.tool_entities import (
     ToolProviderCredentials,
     ToolProviderType,
 )
-from core.tools.entities.user_entities import UserTool, UserToolProvider
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController

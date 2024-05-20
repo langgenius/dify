@@ -13,12 +13,12 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools import *
+from core.tools.entities.api_entities import UserToolProvider, UserToolProviderTypeLiteral
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolParameter,
 )
-from core.tools.entities.user_entities import UserToolProvider, UserToolProviderTypeLiteral
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
@@ -388,7 +388,6 @@ class ToolManager:
 
             :return: the label of the tool
         """
-        cls._builtin_tools_labels
         if len(cls._builtin_tools_labels) == 0:
             # init the builtin providers
             cls.load_builtin_providers_cache()

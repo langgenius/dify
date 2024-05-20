@@ -8,9 +8,9 @@ import httpx
 import requests
 
 import core.helper.ssrf_proxy as ssrf_proxy
+from core.tools.entities.api_entities import UserToolProvider
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
-from core.tools.entities.user_entities import UserToolProvider
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.tool.tool import Tool
 

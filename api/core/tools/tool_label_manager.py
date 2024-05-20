@@ -1,5 +1,5 @@
-from core.tools.entities.default import default_tool_label_list
 from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.values import default_tool_label_list
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.provider.tool_provider import ToolProviderController

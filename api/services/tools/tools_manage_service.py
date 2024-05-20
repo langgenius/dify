@@ -1,6 +1,6 @@
 import logging
 
-from core.tools.entities.user_entities import UserToolProviderTypeLiteral
+from core.tools.entities.api_entities import UserToolProviderTypeLiteral
 from core.tools.tool_manager import ToolManager
 from services.tools.tools_transform_service import ToolTransformService
 

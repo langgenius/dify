@@ -80,6 +80,7 @@ DEFAULTS = {
     'KEYWORD_DATA_SOURCE_TYPE': 'database',
     'INNER_API': 'False',
     'ENTERPRISE_ENABLED': 'False',
+    'INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH': 1000,
 }
 
 
@@ -393,6 +394,9 @@ class Config:
         self.MODEL_LB_ENABLED = get_bool_env('MODEL_LB_ENABLED')
 
         # Platform Billing Configurations.
+        self.ETL_TYPE = get_env('ETL_TYPE')
+        self.UNSTRUCTURED_API_URL = get_env('UNSTRUCTURED_API_URL')
+        self.UNSTRUCTURED_API_KEY = get_env('UNSTRUCTURED_API_KEY')
         self.BILLING_ENABLED = get_bool_env('BILLING_ENABLED')
 
         # ------------------------
@@ -401,3 +405,8 @@ class Config:
         # ------------------------
         self.ENTERPRISE_ENABLED = get_bool_env('ENTERPRISE_ENABLED')
         self.CAN_REPLACE_LOGO = get_bool_env('CAN_REPLACE_LOGO')
+
+        # ------------------------
+        # Indexing Configurations.
+        # ------------------------
+        self.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH = get_env('INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH')
