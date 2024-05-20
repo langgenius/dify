@@ -96,6 +96,7 @@ class ExtractProcessor:
                 file_extension = input_file.suffix.lower()
                 etl_type = current_app.config['ETL_TYPE']
                 unstructured_api_url = current_app.config['UNSTRUCTURED_API_URL']
+                unstructured_api_key = current_app.config['UNSTRUCTURED_API_KEY']
                 if etl_type == 'Unstructured':
                     if file_extension == '.xlsx' or file_extension == '.xls':
                         extractor = ExcelExtractor(file_path)
@@ -115,7 +116,7 @@ class ExtractProcessor:
                     elif file_extension == '.eml':
                         extractor = UnstructuredEmailExtractor(file_path, unstructured_api_url)
                     elif file_extension == '.ppt':
-                        extractor = UnstructuredPPTExtractor(file_path, unstructured_api_url)
+                        extractor = UnstructuredPPTExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == '.pptx':
                         extractor = UnstructuredPPTXExtractor(file_path, unstructured_api_url)
                     elif file_extension == '.xml':
