@@ -64,11 +64,20 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   }, [inputs, setInputs])
 
   const handleAddGroup = useCallback(() => {
+    let maxInGroupName = 1
+    inputs.advanced_settings.groups.forEach((item) => {
+      const match = item.group_name.match(/(\d+)$/)
+      if (match) {
+        const num = parseInt(match[1], 10)
+        if (num > maxInGroupName)
+          maxInGroupName = num
+      }
+    })
     const newInputs = produce(inputs, (draft) => {
       draft.advanced_settings.groups.push({
         output_type: VarType.any,
         variables: [],
-        group_name: `Group${draft.advanced_settings.groups.length + 1}`,
+        group_name: `Group${maxInGroupName + 1}`,
       })
     })
     setInputs(newInputs)
