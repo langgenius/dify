@@ -1,15 +1,14 @@
+import base64
 import json
 import logging
 from collections.abc import Generator
 from typing import Optional, Union
-import base64
-
-from google.oauth2 import service_account
-from google.cloud import aiplatform
-import vertexai.generative_models as glm
-from vertexai.generative_models import HarmBlockThreshold, HarmCategory
 
 import google.api_core.exceptions as exceptions
+import vertexai.generative_models as glm
+from google.cloud import aiplatform
+from google.oauth2 import service_account
+from vertexai.generative_models import HarmBlockThreshold, HarmCategory
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
