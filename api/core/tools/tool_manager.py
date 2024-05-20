@@ -541,6 +541,9 @@ class ToolManager:
                 "content": "\ud83d\ude01"
             }
 
+        # add tool labels
+        labels = ToolLabelManager.get_tool_labels(controller)
+
         return jsonable_encoder({
             'schema_type': provider.schema_type,
             'schema': provider.schema,
@@ -549,7 +552,8 @@ class ToolManager:
             'description': provider.description,
             'credentials': masked_credentials,
             'privacy_policy': provider.privacy_policy,
-            'custom_disclaimer': provider.custom_disclaimer
+            'custom_disclaimer': provider.custom_disclaimer,
+            'labels': labels,
         })
 
     @classmethod
