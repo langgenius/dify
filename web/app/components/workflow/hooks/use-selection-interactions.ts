@@ -101,9 +101,40 @@ export const useSelectionInteractions = () => {
     setNodes(newNodes)
   }, [store, workflowStore])
 
+  const handleSelectionCancel = useCallback(() => {
+    const {
+      getNodes,
+      setNodes,
+      edges,
+      setEdges,
+    } = store.getState()
+
+    store.setState({
+      userSelectionRect: null,
+      userSelectionActive: true,
+    })
+
+    const nodes = getNodes()
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        if (node.data._isBundled)
+          node.data._isBundled = false
+      })
+    })
+    setNodes(newNodes)
+    const newEdges = produce(edges, (draft) => {
+      draft.forEach((edge) => {
+        if (edge.data._isBundled)
+          edge.data._isBundled = false
+      })
+    })
+    setEdges(newEdges)
+  }, [store])
+
   return {
     handleSelectionStart,
     handleSelectionChange,
     handleSelectionDrag,
+    handleSelectionCancel,
   }
 }

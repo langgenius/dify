@@ -4,7 +4,7 @@ class RetrievalResourceConfigManager:
         show_retrieve_source = False
         retriever_resource_dict = config.get('retriever_resource')
         if retriever_resource_dict:
-            if 'enabled' in retriever_resource_dict and retriever_resource_dict['enabled']:
+            if retriever_resource_dict.get('enabled'):
                 show_retrieve_source = True
 
         return show_retrieve_source

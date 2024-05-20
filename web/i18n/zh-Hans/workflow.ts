@@ -273,6 +273,9 @@ const translation = {
     code: {
       inputVars: '输入变量',
       outputVars: '输出变量',
+      advancedDependencies: '高级依赖',
+      advancedDependenciesTip: '在这里添加一些预加载需要消耗较多时间或非默认内置的依赖包',
+      searchDependencies: '搜索依赖',
     },
     templateTransform: {
       inputVars: '输入变量',
