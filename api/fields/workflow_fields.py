@@ -12,4 +12,5 @@ workflow_fields = {
     'created_at': TimestampField,
     'updated_by': fields.Nested(simple_account_fields, attribute='updated_by_account', allow_null=True),
     'updated_at': TimestampField,
+    'tool_published': fields.Boolean,
 }

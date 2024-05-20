@@ -170,6 +170,12 @@ class Workflow(db.Model):
 
         return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
 
+    @property
+    def tool_published(self) -> bool:
+        from models.tools import WorkflowToolProvider
+        return db.session.query(WorkflowToolProvider).filter(
+            WorkflowToolProvider.app_id == self.app_id
+        ).first() is not None
 
 class WorkflowRunTriggeredFrom(Enum):
     """
