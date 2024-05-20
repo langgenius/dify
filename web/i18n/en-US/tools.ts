@@ -71,6 +71,8 @@ const translation = {
     },
     privacyPolicy: 'Privacy policy',
     privacyPolicyPlaceholder: 'Please enter privacy policy',
+    customDisclaimer: 'Custom disclaimer',
+    customDisclaimerPlaceholder: 'Please enter custom disclaimer',
   },
   test: {
     title: 'Test',

@@ -161,12 +161,12 @@ class CustomConfigWorkspaceApi(Resource):
         parser.add_argument('replace_webapp_logo', type=str,  location='json')
         args = parser.parse_args()
 
+        tenant = db.session.query(Tenant).filter(Tenant.id == current_user.current_tenant_id).one_or_404()
+
         custom_config_dict = {
             'remove_webapp_brand': args['remove_webapp_brand'],
-            'replace_webapp_logo': args['replace_webapp_logo'],
+            'replace_webapp_logo': args['replace_webapp_logo'] if args['replace_webapp_logo'] is not None else tenant.custom_config_dict.get('replace_webapp_logo') ,
         }
-
-        tenant = db.session.query(Tenant).filter(Tenant.id == current_user.current_tenant_id).one_or_404()
 
         tenant.custom_config_dict = custom_config_dict
         db.session.commit()

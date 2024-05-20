@@ -487,7 +487,8 @@ class ToolManager:
             'icon': icon,
             'description': provider.description,
             'credentials': masked_credentials,
-            'privacy_policy': provider.privacy_policy
+            'privacy_policy': provider.privacy_policy,
+            'custom_disclaimer': provider.custom_disclaimer
         })
 
     @classmethod

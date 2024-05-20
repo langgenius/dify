@@ -1,12 +1,14 @@
 import json
 import re
 from base64 import b64encode
+from textwrap import dedent
 from typing import Optional
 
 from core.helper.code_executor.entities import CodeDependency
 from core.helper.code_executor.template_transformer import TemplateTransformer
 
-PYTHON_RUNNER = """# declare main function here
+PYTHON_RUNNER = dedent("""
+# declare main function here
 {{code}}
 
 from json import loads, dumps
@@ -25,16 +27,17 @@ result = f'''<<RESULT>>
 <<RESULT>>'''
 
 print(result)
-"""
+""")
 
 PYTHON_PRELOAD = """"""
 
-PYTHON_STANDARD_PACKAGES = set([
+PYTHON_STANDARD_PACKAGES = {
     'json', 'datetime', 'math', 'random', 're', 'string', 'sys', 'time', 'traceback', 'uuid', 'os', 'base64',
-    'hashlib', 'hmac', 'binascii', 'collections', 'functools', 'operator', 'itertools', 'uuid', 
-])
+    'hashlib', 'hmac', 'binascii', 'collections', 'functools', 'operator', 'itertools', 'uuid',
+}
 
-class PythonTemplateTransformer(TemplateTransformer):
+
+class Python3TemplateTransformer(TemplateTransformer):
     @classmethod
     def transform_caller(cls, code: str, inputs: dict, 
                          dependencies: Optional[list[CodeDependency]] = None) -> tuple[str, str, list[CodeDependency]]:
