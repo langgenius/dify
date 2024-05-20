@@ -4,8 +4,8 @@ from typing import Any
 
 from yaml import FullLoader, load
 
+from core.tools.entities.api_entities import UserToolProviderCredentials
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderCredentials, ToolProviderType
-from core.tools.entities.user_entities import UserToolProviderCredentials
 from core.tools.entities.values import ToolLabelEnum, default_tool_label_dict
 from core.tools.errors import (
     ToolNotFoundError,

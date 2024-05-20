@@ -1,8 +1,8 @@
 
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
+from core.tools.entities.api_entities import UserToolProvider
 from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.entities.user_entities import UserToolProvider
 from core.tools.tool.tool import Tool
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
 from core.tools.utils.web_reader_tool import get_url

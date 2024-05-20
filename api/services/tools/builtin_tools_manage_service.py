@@ -2,7 +2,7 @@ import json
 import logging
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.tools.entities.user_entities import UserTool, UserToolProvider
+from core.tools.entities.api_entities import UserTool, UserToolProvider
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 from core.tools.provider.tool_provider import ToolProviderController

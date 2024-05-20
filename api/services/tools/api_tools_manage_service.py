@@ -4,6 +4,7 @@ import logging
 from httpx import get
 
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.entities.api_entities import UserTool, UserToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
@@ -12,7 +13,6 @@ from core.tools.entities.tool_entities import (
     ToolCredentialsOption,
     ToolProviderCredentials,
 )
-from core.tools.entities.user_entities import UserTool, UserToolProvider
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager

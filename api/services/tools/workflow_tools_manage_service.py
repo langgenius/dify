@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.tools.entities.user_entities import UserToolProvider
+from core.tools.entities.api_entities import UserToolProvider
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationSync
