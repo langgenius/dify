@@ -91,8 +91,11 @@ const translation = {
   tabs: {
     'searchBlock': 'Search block',
     'blocks': 'Blocks',
-    'builtInTool': 'Built-in Tool',
-    'customTool': 'Custom Tool',
+    'tools': 'Tools',
+    'allTool': 'All',
+    'builtInTool': 'Built-in',
+    'customTool': 'Custom',
+    'workflowTool': 'Workflow',
     'question-understand': 'Question Understand',
     'logic': 'Logic',
     'transform': 'Transform',

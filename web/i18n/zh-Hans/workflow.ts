@@ -91,8 +91,11 @@ const translation = {
   tabs: {
     'searchBlock': '搜索节点',
     'blocks': '节点',
-    'builtInTool': '内置工具',
-    'customTool': '自定义工具',
+    'tools': '工具',
+    'allTool': '全部',
+    'builtInTool': '内置',
+    'customTool': '自定义',
+    'workflowTool': '工作流',
     'question-understand': '问题理解',
     'logic': '逻辑',
     'transform': '转换',

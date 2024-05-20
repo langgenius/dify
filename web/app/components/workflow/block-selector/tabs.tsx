@@ -3,12 +3,13 @@ import {
   memo,
   useState,
 } from 'react'
+import cn from 'classnames'
 import type { BlockEnum } from '../types'
 import { useTabs } from './hooks'
 import type { ToolDefaultValue } from './types'
 import { TabsEnum } from './types'
-import Tools from './tools'
 import Blocks from './blocks'
+import AllTools from './all-tools'
 
 export type TabsProps = {
   searchText: string
@@ -30,12 +31,12 @@ const Tabs: FC<TabsProps> = ({
           tabs.map(tab => (
             <div
               key={tab.key}
-              className={`
-              relative mr-4 h-[34px] leading-[34px] text-[13px] font-medium cursor-pointer
-              ${activeTab === tab.key
-              ? 'text-gray-700 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:bg-primary-600'
-              : 'text-gray-500'}
-              `}
+              className={cn(
+                'relative mr-4 h-[34px] leading-[34px] text-[13px] font-medium cursor-pointer',
+                activeTab === tab.key
+                  ? 'text-gray-700 after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:bg-primary-600'
+                  : 'text-gray-500',
+              )}
               onClick={() => setActiveTab(tab.key)}
             >
               {tab.name}
@@ -53,17 +54,8 @@ const Tabs: FC<TabsProps> = ({
         )
       }
       {
-        activeTab === TabsEnum.BuiltInTool && (
-          <Tools
-            onSelect={onSelect}
-            searchText={searchText}
-          />
-        )
-      }
-      {
-        activeTab === TabsEnum.CustomTool && (
-          <Tools
-            isCustom
+        activeTab === TabsEnum.Tools && (
+          <AllTools
             searchText={searchText}
             onSelect={onSelect}
           />

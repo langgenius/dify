@@ -102,7 +102,10 @@ const BaseNode: FC<BaseNodeProps> = ({
       >
         {
           data.type === BlockEnum.Iteration && (
-            <NodeResizer nodeId={id} />
+            <NodeResizer
+              nodeId={id}
+              nodeData={data}
+            />
           )
         }
         {

@@ -2,9 +2,11 @@ import {
   memo,
   useCallback,
 } from 'react'
+import cn from 'classnames'
 import type { OnResize } from 'reactflow'
 import { NodeResizeControl } from 'reactflow'
 import { useNodesInteractions } from '../../../hooks'
+import type { CommonNodeType } from '../../../types'
 
 const Icon = () => {
   return (
@@ -16,9 +18,11 @@ const Icon = () => {
 
 type NodeResizerProps = {
   nodeId: string
+  nodeData: CommonNodeType
 }
 const NodeResizer = ({
   nodeId,
+  nodeData,
 }: NodeResizerProps) => {
   const { handleNodeResize } = useNodesInteractions()
 
@@ -27,7 +31,10 @@ const NodeResizer = ({
   }, [nodeId, handleNodeResize])
 
   return (
-    <div className='group-hover:block'>
+    <div className={cn(
+      'hidden group-hover:block',
+      nodeData.selected && '!block',
+    )}>
       <NodeResizeControl
         position='bottom-right'
         className='!border-none !bg-transparent'
