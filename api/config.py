@@ -79,6 +79,7 @@ DEFAULTS = {
     'KEYWORD_DATA_SOURCE_TYPE': 'database',
     'INNER_API': 'False',
     'ENTERPRISE_ENABLED': 'False',
+    'INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH': 1000,
 }
 
 
@@ -379,3 +380,8 @@ class Config:
 
         self.KEYWORD_DATA_SOURCE_TYPE = get_env('KEYWORD_DATA_SOURCE_TYPE')
         self.ENTERPRISE_ENABLED = get_bool_env('ENTERPRISE_ENABLED')
+
+        # ------------------------
+        # Indexing Configurations.
+        # ------------------------
+        self.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH = get_env('INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH')
