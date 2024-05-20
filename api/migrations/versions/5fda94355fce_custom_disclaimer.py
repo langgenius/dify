@@ -1,7 +1,7 @@
 """Custom Disclaimer
 
 Revision ID: 5fda94355fce
-Revises: 47cc7df8c4f3
+Revises: 4e99a8df00ff
 Create Date: 2024-05-10 20:04:45.806549
 
 """
@@ -12,7 +12,7 @@ import models as models
 
 # revision identifiers, used by Alembic.
 revision = '5fda94355fce'
-down_revision = '47cc7df8c4f3'
+down_revision = '4e99a8df00ff'
 branch_labels = None
 depends_on = None
 
