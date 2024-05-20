@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import { AuthHeaderPrefix, AuthType, CollectionType, MOCK_WORKFLOW_TOOL } from '../types'
-import type { Collection, CustomCollectionBackend, Tool } from '../types'
+import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProvider } from '../types'
 import ToolItem from './tool-item'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
@@ -17,6 +17,7 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import WorkflowToolModal from '@/app/components/tools/workflow-tool'
 import Toast from '@/app/components/base/toast'
 import {
+  deleteWorkflowTool,
   fetchBuiltInToolList,
   fetchCustomCollection,
   fetchCustomToolList,
@@ -25,6 +26,7 @@ import {
   fetchWorkflowToolList,
   removeBuiltInToolCredential,
   removeCustomCollection,
+  saveWorkflowToolProvider,
   updateBuiltInToolCredential,
   updateCustomCollection,
 } from '@/service/tools'
@@ -121,6 +123,26 @@ const ProviderDetail = ({
     setCustomCollection(MOCK_WORKFLOW_TOOL as any)
     setIsDetailLoading(false)
   }, [collection.id])
+  const removeWorkflowToolProvider = async () => {
+    if (!customCollection)
+      return
+    await deleteWorkflowTool(customCollection.id)
+    onRefreshData()
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+    setIsShowEditWorkflowToolModal(false)
+  }
+  const updateWorkflowToolProvider = async (data: WorkflowToolProvider) => {
+    await saveWorkflowToolProvider(data)
+    onRefreshData()
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+    setIsShowEditWorkflowToolModal(false)
+  }
 
   // ToolList
   const [toolList, setToolList] = useState<Tool[]>([])
@@ -228,7 +250,8 @@ const ProviderDetail = ({
         {isDetailLoading && <div className='flex h-[200px]'><Loading type='app'/></div>}
         {!isDetailLoading && (
           <div className='text-xs font-medium leading-6 text-gray-500'>
-            <span className=''>{t('tools.includeToolNum', { num: toolList.length }).toLocaleUpperCase()}</span>
+            {collection.type === CollectionType.workflow && <span className=''>{t('tools.createTool.toolInput.title').toLocaleUpperCase()}</span>}
+            {collection.type !== CollectionType.workflow && <span className=''>{t('tools.includeToolNum', { num: toolList.length }).toLocaleUpperCase()}</span>}
             {needAuth && (isBuiltIn || isModel) && !isAuthed && (
               <>
                 <span className='px-1'>·</span>
@@ -288,6 +311,8 @@ const ProviderDetail = ({
         <WorkflowToolModal
           payload={customCollection}
           onHide={() => setIsShowEditWorkflowToolModal(false)}
+          onRemove={removeWorkflowToolProvider}
+          onSave={updateWorkflowToolProvider}
         />
       )}
     </div>

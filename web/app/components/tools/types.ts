@@ -106,6 +106,7 @@ export type ParamItem = {
   label: TypeWithI18N
   human_description: TypeWithI18N
   type: string
+  form: string
   required: boolean
   default: string
   min?: number
@@ -124,6 +125,26 @@ export type CustomParamSchema = {
   parameters: ParamItem[]
 }
 
+export type WorkflowToolProviderParameter = {
+  name: string
+  form: string
+  description: string
+}
+
+export type WorkflowToolProvider = {
+  id: string
+  type?: string
+  name: string
+  label?: TypeWithI18N
+  description: TypeWithI18N
+  icon: Emoji
+  synced?: boolean
+  parameters: WorkflowToolProviderParameter[]
+  labels: string[]
+  privacy_policy: string
+  tools?: ParamItem[]
+}
+
 export const MOCK_WORKFLOW_TOOL = {
   id: '67f1d351-4fa0-4b1c-9eca-d10988caa174',
   type: 'workflow',
@@ -138,11 +159,16 @@ export const MOCK_WORKFLOW_TOOL = {
     content: '🕵️',
     background: '#FEF7C3',
   },
-  author: 'KVOJJJin',
-  allow_delete: true,
-  is_team_authorization: true,
-  team_credentials: {},
+  parameters: [
+    {
+      name: 'a',
+      description: 'a parameter',
+      form: 'llm',
+    },
+  ],
+  synced: true,
   labels: [],
+  privacy_policy: '',
   tools: [
     {
       author: 'Yeuoly Yeuoly Chou',
@@ -182,4 +208,8 @@ export const MOCK_WORKFLOW_TOOL = {
       ],
     },
   ],
+  author: 'KVOJJJin',
+  allow_delete: true,
+  is_team_authorization: true,
+  team_credentials: {},
 }

@@ -1,5 +1,5 @@
 import { get, post } from './base'
-import type { Collection, CustomCollectionBackend, CustomParamSchema, Tool, ToolCredential } from '@/app/components/tools/types'
+import type { Collection, CustomCollectionBackend, CustomParamSchema, Tool, ToolCredential, WorkflowToolProvider } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { Label } from '@/app/components/tools/labels/constant'
 
@@ -108,6 +108,20 @@ export const fetchLabelList = () => {
   return get<Label[]>('/workspaces/current/tool-labels')
 }
 
+export const saveWorkflowToolProvider = (payload: WorkflowToolProvider) => {
+  return post('/workspaces/current/tool-provider/workflow/update', {
+    body: { ...payload },
+  })
+}
+
 export const fetchWorkflowToolDetail = (appID: string) => {
-  return get<CustomCollectionBackend>(`/workspaces/current/tool-provider/workflow/get?workflow_app_id=${appID}`)
+  return get<WorkflowToolProvider>(`/workspaces/current/tool-provider/workflow/get?workflow_app_id=${appID}`)
+}
+
+export const deleteWorkflowTool = (appID: string) => {
+  return post('/workspaces/current/tool-provider/workflow/delete', {
+    body: {
+      workflow_app_id: appID,
+    },
+  })
 }

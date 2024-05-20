@@ -88,6 +88,7 @@ const WorkflowToolConfigureButton = ({
         <WorkflowToolModal
           payload={null}
           onHide={() => setShowModal(false)}
+          onSave={() => {}}
         />
       )}
     </>
