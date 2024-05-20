@@ -42,4 +42,4 @@ default_tool_label_dict = {
 }
 
 default_tool_labels = [v for k, v in default_tool_label_dict.items()]
-default_tool_label_list = [label.name for label in default_tool_labels]
+default_tool_label_name_list = [label.name for label in default_tool_labels]

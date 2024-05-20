@@ -1,5 +1,5 @@
 from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.entities.values import default_tool_label_list
+from core.tools.entities.values import default_tool_label_name_list
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.provider.tool_provider import ToolProviderController
@@ -14,7 +14,7 @@ class ToolLabelManager:
         """
         Filter tool labels
         """
-        tool_labels = [label for label in tool_labels if label in default_tool_label_list]
+        tool_labels = [label for label in tool_labels if label in default_tool_label_name_list]
         return list(set(tool_labels))
     
     @classmethod

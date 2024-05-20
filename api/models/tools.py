@@ -137,7 +137,7 @@ class ToolLabelBind(db.Model):
     """
     The table stores the labels for tools.
     """
-    __tablename__ = 'tool_label_binds'
+    __tablename__ = 'tool_label_bindings'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tool_label_bind_pkey'),
         db.UniqueConstraint('tool_id', 'label_name', name='unique_tool_label_bind'),
