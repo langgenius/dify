@@ -797,7 +797,7 @@ class Message(db.Model):
                 if message_file.transfer_method == 'local_file':
                     upload_file = (db.session.query(UploadFile)
                                    .filter(
-                        UploadFile.id == message_file.related_id
+                        UploadFile.id == message_file.upload_file_id
                     ).first())
 
                     url = UploadFileParser.get_image_data(

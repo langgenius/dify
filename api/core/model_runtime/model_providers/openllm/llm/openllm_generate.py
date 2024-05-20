@@ -180,7 +180,7 @@ class OpenLLMGenerate:
                 completion_usage += len(token_ids)
                 message = OpenLLMGenerateMessage(content=text, role=OpenLLMGenerateMessage.Role.ASSISTANT.value)
 
-                if 'finish_reason' in choice and choice['finish_reason']:
+                if choice.get('finish_reason'):
                     finish_reason = choice['finish_reason']
                     prompt_token_ids = data['prompt_token_ids']
                     message.stop_reason = finish_reason

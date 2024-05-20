@@ -418,7 +418,7 @@ class IndexingRunner:
             if separator:
                 separator = separator.replace('\\n', '\n')
 
-            if 'chunk_overlap' in segmentation and segmentation['chunk_overlap']:
+            if segmentation.get('chunk_overlap'):
                 chunk_overlap = segmentation['chunk_overlap']
             else:
                 chunk_overlap = 0

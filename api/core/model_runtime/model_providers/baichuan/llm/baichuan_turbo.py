@@ -89,7 +89,7 @@ class BaichuanModel:
             # save stop reason temporarily
             stop_reason = ''
             for choice in choices:
-                if 'finish_reason' in choice and choice['finish_reason']:
+                if choice.get('finish_reason'):
                     stop_reason = choice['finish_reason']
 
                 if len(choice['delta']['content']) == 0:
