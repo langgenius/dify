@@ -21,7 +21,11 @@ class NodeType(Enum):
     QUESTION_CLASSIFIER = 'question-classifier'
     HTTP_REQUEST = 'http-request'
     TOOL = 'tool'
+    VARIABLE_AGGREGATOR = 'variable-aggregator'
     VARIABLE_ASSIGNER = 'variable-assigner'
+    LOOP = 'loop'
+    ITERATION = 'iteration'
+    PARAMETER_EXTRACTOR = 'parameter-extractor'
 
     @classmethod
     def value_of(cls, value: str) -> 'NodeType':

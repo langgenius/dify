@@ -10,10 +10,11 @@ class ToolProviderType(Enum):
     """
         Enum class for tool provider
     """
-    BUILT_IN = "built-in"
+    BUILT_IN = "builtin"
+    WORKFLOW = "workflow"
+    API = "api"
+    APP = "app"
     DATASET_RETRIEVAL = "dataset-retrieval"
-    APP_BASED = "app-based"
-    API_BASED = "api-based"
 
     @classmethod
     def value_of(cls, value: str) -> 'ToolProviderType':
@@ -332,6 +333,15 @@ class ModelToolProviderConfiguration(BaseModel):
     models: list[ModelToolConfiguration] = Field(..., description="The models of the model tool")
     label: I18nObject = Field(..., description="The label of the model tool")
 
+
+class WorkflowToolParameterConfiguration(BaseModel):
+    """
+    Workflow tool configuration
+    """
+    name: str = Field(..., description="The name of the parameter")
+    description: str = Field(..., description="The description of the parameter")
+    form: ToolParameter.ToolParameterForm = Field(..., description="The form of the parameter")
+
 class ToolInvokeMeta(BaseModel):
     """
     Tool invoke meta
@@ -360,3 +370,10 @@ class ToolInvokeMeta(BaseModel):
             'error': self.error,
             'tool_config': self.tool_config,
         }
+    
+class ToolLabel(BaseModel):
+    """
+    Tool label
+    """
+    name: str = Field(..., description="The name of the tool")
+    label: I18nObject = Field(..., description="The label of the tool")

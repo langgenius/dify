@@ -1,8 +1,11 @@
-from typing import Optional
+from typing import Any, Optional
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
+    QueueIterationCompletedEvent,
+    QueueIterationNextEvent,
+    QueueIterationStartEvent,
     QueueNodeFailedEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
@@ -130,6 +133,53 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
             ), PublishFrom.APPLICATION_MANAGER
         )
 
+    def on_workflow_iteration_started(self, 
+                                      node_id: str,
+                                      node_run_index: int = 1,
+                                      predecessor_node_id: Optional[str] = None) -> None:
+        """
+        Publish iteration started
+        """
+        self._queue_manager.publish(
+            QueueIterationStartEvent(
+                node_id=node_id,
+                node_run_index=node_run_index,
+                predecessor_node_id=predecessor_node_id
+            ),
+            PublishFrom.APPLICATION_MANAGER
+        )
+
+    def on_workflow_iteration_next(self, node_id: str, index: int, 
+                                   node_run_index: int,
+                                   output: Optional[Any]) -> None:
+        """
+        Publish iteration next
+        """
+        self._queue_manager.publish(
+            QueueIterationNextEvent(
+                node_id=node_id,
+                index=index,
+                node_run_index=node_run_index,
+                output=output
+            ),
+            PublishFrom.APPLICATION_MANAGER
+        )
+
+    def on_workflow_iteration_completed(self, node_id: str, 
+                                        node_run_index: int,
+                                        outputs: list[Any]) -> None:
+        """
+        Publish iteration completed
+        """
+        self._queue_manager.publish(
+            QueueIterationCompletedEvent(
+                node_id=node_id,
+                node_run_index=node_run_index,
+                outputs=outputs
+            ),
+            PublishFrom.APPLICATION_MANAGER
+        )
+        
     def on_event(self, event: AppQueueEvent) -> None:
         """
         Publish event

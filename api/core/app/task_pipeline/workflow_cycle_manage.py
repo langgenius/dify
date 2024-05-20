@@ -1,9 +1,9 @@
 import json
 import time
 from datetime import datetime, timezone
-from typing import Any, Optional, Union, cast
+from typing import Optional, Union, cast
 
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     QueueNodeFailedEvent,
     QueueNodeStartedEvent,
@@ -13,18 +13,17 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import (
-    AdvancedChatTaskState,
     NodeExecutionInfo,
     NodeFinishStreamResponse,
     NodeStartStreamResponse,
     WorkflowFinishStreamResponse,
     WorkflowStartStreamResponse,
-    WorkflowTaskState,
 )
+from core.app.task_pipeline.workflow_iteration_cycle_manage import WorkflowIterationCycleManage
 from core.file.file_obj import FileVar
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.tool_manager import ToolManager
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType, SystemVariable
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
@@ -42,13 +41,7 @@ from models.workflow import (
 )
 
 
-class WorkflowCycleManage:
-    _application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity]
-    _workflow: Workflow
-    _user: Union[Account, EndUser]
-    _task_state: Union[AdvancedChatTaskState, WorkflowTaskState]
-    _workflow_system_variables: dict[SystemVariable, Any]
-
+class WorkflowCycleManage(WorkflowIterationCycleManage):
     def _init_workflow_run(self, workflow: Workflow,
                            triggered_from: WorkflowRunTriggeredFrom,
                            user: Union[Account, EndUser],

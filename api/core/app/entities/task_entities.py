@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -65,6 +65,7 @@ class WorkflowTaskState(TaskState):
 
     current_stream_generate_state: Optional[WorkflowStreamGenerateNodes] = None
 
+    iteration_nested_node_ids: list[str] = None
 
 class AdvancedChatTaskState(WorkflowTaskState):
     """
@@ -91,6 +92,9 @@ class StreamEvent(Enum):
     WORKFLOW_FINISHED = "workflow_finished"
     NODE_STARTED = "node_started"
     NODE_FINISHED = "node_finished"
+    ITERATION_STARTED = "iteration_started"
+    ITERATION_NEXT = "iteration_next"
+    ITERATION_COMPLETED = "iteration_completed"
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
 
@@ -319,6 +323,59 @@ class NodeFinishStreamResponse(StreamResponse):
             }
         }
 
+class IterationNodeStartStreamResponse(StreamResponse):
+    """
+    NodeStartStreamResponse entity
+    """
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+        id: str
+        node_id: str
+        created_at: int
+        extras: dict = {}
+
+    event: StreamEvent = StreamEvent.ITERATION_STARTED
+    workflow_run_id: str
+    data: Data
+
+class IterationNodeNextStreamResponse(StreamResponse):
+    """
+    NodeStartStreamResponse entity
+    """
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+        id: str
+        node_id: str
+        index: int
+        created_at: int
+        output: Optional[Any]
+        extras: dict = {}
+
+    event: StreamEvent = StreamEvent.ITERATION_NEXT
+    workflow_run_id: str
+    data: Data
+
+class IterationNodeCompletedStreamResponse(StreamResponse):
+    """
+    NodeStartStreamResponse entity
+    """
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+        id: str
+        node_id: str
+        outputs: Optional[list[Any]]
+        created_at: int
+        extras: dict = {}
+
+    event: StreamEvent = StreamEvent.ITERATION_COMPLETED
+    workflow_run_id: str
+    data: Data
 
 class TextChunkStreamResponse(StreamResponse):
     """
@@ -454,3 +511,20 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
 
     workflow_run_id: str
     data: Data
+
+class WorkflowIterationState(BaseModel):
+    """
+    WorkflowIterationState entity
+    """
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+        parent_iteration_id: Optional[str] = None
+        iteration_id: str
+        current_index: int
+        iteration_steps_boundary: list[int] = None
+        node_execution_id: str
+        started_at: float
+
+    current_iterations: dict[str, Data] = None

@@ -20,7 +20,7 @@ from core.tools.tool.tool import Tool
 
 class BuiltinToolProviderController(ToolProviderController):
     def __init__(self, **data: Any) -> None:
-        if self.app_type == ToolProviderType.API_BASED or self.app_type == ToolProviderType.APP_BASED:
+        if self.provider_type == ToolProviderType.API or self.provider_type == ToolProviderType.APP:
             super().__init__(**data)
             return
         
@@ -131,13 +131,22 @@ class BuiltinToolProviderController(ToolProviderController):
             len(self.credentials_schema) != 0
 
     @property
-    def app_type(self) -> ToolProviderType:
+    def provider_type(self) -> ToolProviderType:
         """
             returns the type of the provider
 
             :return: type of the provider
         """
         return ToolProviderType.BUILT_IN
+    
+    @property
+    def tool_labels(self) -> list[str]:
+        """
+            returns the labels of the provider
+
+            :return: labels of the provider
+        """
+        return []
 
     def validate_parameters(self, tool_id: int, tool_name: str, tool_parameters: dict[str, Any]) -> None:
         """

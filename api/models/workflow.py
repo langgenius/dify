@@ -2,7 +2,6 @@ import json
 from enum import Enum
 from typing import Optional, Union
 
-from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
 from libs import helper
 from models import StringUUID
@@ -473,6 +472,7 @@ class WorkflowNodeExecution(db.Model):
 
     @property
     def extras(self):
+        from core.tools.tool_manager import ToolManager
         extras = {}
         if self.execution_metadata_dict:
             from core.workflow.entities.node_entities import NodeType

@@ -102,6 +102,32 @@ class WorkflowLoggingCallback(BaseWorkflowCallback):
 
         self.print_text(text, color="pink", end="")
 
+    def on_workflow_iteration_started(self, 
+                                      node_id: str,
+                                      node_run_index: int = 1,
+                                      predecessor_node_id: Optional[str] = None) -> None:
+        """
+        Publish iteration started
+        """
+        self.print_text("\n[on_workflow_iteration_started]", color='blue')
+        self.print_text(f"Node ID: {node_id}", color='blue')
+
+    def on_workflow_iteration_next(self, node_id: str, index: int, 
+                                   node_run_index: int,
+                                   output: Optional[dict]) -> None:
+        """
+        Publish iteration next
+        """
+        self.print_text("\n[on_workflow_iteration_next]", color='blue')
+
+    def on_workflow_iteration_completed(self, node_id: str, 
+                                        node_run_index: int,
+                                        outputs: list[dict]) -> None:
+        """
+        Publish iteration completed
+        """
+        self.print_text("\n[on_workflow_iteration_completed]", color='blue')
+
     def on_event(self, event: AppQueueEvent) -> None:
         """
         Publish event
