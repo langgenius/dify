@@ -361,7 +361,6 @@ class ToolManager:
 
             :return: the label of the tool
         """
-        cls._builtin_tools_labels
         if len(cls._builtin_tools_labels) == 0:
             # init the builtin providers
             cls.load_builtin_providers_cache()
