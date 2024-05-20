@@ -12,6 +12,7 @@ import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppIcon from '@/app/components/base/app-icon'
+import LabelSelector from '@/app/components/tools/labels/selector'
 
 type Props = {
   isAdd?: boolean
@@ -38,8 +39,12 @@ const WorkflowToolAsModal: FC<Props> = ({
   const [description, setDescription] = useState(isAdd ? payload.description : payload.description[language])
   const [parameters, setParameters] = useState<WorkflowToolProviderParameter[]>(payload.parameters)
   const [labels, setLabels] = useState<string[]>(payload.labels)
+  const handleLabelSelect = (value: string[]) => {
+    setLabels(value)
+  }
   const [privacyPolicy, setPrivacyPolicy] = useState(payload.privacy_policy)
 
+  // TODO workflow-tool
   const onConfirm = () => {
     onSave({
       id: payload.id,
@@ -116,10 +121,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               {/* Labels */}
               <div>
                 <div className='py-2 leading-5 text-sm font-medium text-gray-900'>{t('tools.createTool.toolInput.label')}</div>
-                <input
-                  value={labels.join(',')}
-                  onChange={() => {}}
-                  className='grow w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs' placeholder={t('tools.createTool.toolInput.labelPlaceholder') || ''} />
+                <LabelSelector value={labels} onChange={handleLabelSelect} />
               </div>
               {/* Privacy Policy */}
               <div>

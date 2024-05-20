@@ -99,6 +99,7 @@ export type CustomCollectionBackend = {
   custom_disclaimer: string
   tools?: ParamItem[]
   id: string
+  labels: string[]
 }
 
 export type ParamItem = {

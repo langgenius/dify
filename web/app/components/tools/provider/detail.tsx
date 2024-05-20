@@ -109,6 +109,7 @@ const ProviderDetail = ({
     }
     setCustomCollection({
       ...res,
+      labels: collection.labels,
       provider: collection.name,
     })
     setIsDetailLoading(false)
