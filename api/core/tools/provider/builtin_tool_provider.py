@@ -6,6 +6,7 @@ from yaml import FullLoader, load
 
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderCredentials, ToolProviderType
 from core.tools.entities.user_entities import UserToolProviderCredentials
+from core.tools.entities.values import ToolLabelEnum, default_tool_label_dict
 from core.tools.errors import (
     ToolNotFoundError,
     ToolParameterValidationError,
@@ -145,6 +146,13 @@ class BuiltinToolProviderController(ToolProviderController):
             returns the labels of the provider
 
             :return: labels of the provider
+        """
+        label_enums = self._get_tool_labels()
+        return [default_tool_label_dict[label].name for label in label_enums]
+    
+    def _get_tool_labels(self) -> list[ToolLabelEnum]:
+        """
+            returns the labels of the provider
         """
         return []
 

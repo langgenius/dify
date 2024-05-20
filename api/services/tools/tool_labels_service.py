@@ -1,5 +1,5 @@
-from core.tools.entities.default import default_tool_labels
 from core.tools.entities.tool_entities import ToolLabel
+from core.tools.entities.values import default_tool_labels
 
 
 class ToolLabelsService:
