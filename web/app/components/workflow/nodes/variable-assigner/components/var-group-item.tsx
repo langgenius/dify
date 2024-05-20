@@ -10,6 +10,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { VarType } from '@/app/components/workflow/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 
@@ -24,6 +25,8 @@ type Props = {
   onChange: (newPayload: Payload) => void
   groupEnabled: boolean
   onGroupNameChange?: (value: string) => void
+  canRemove?: boolean
+  onRemove?: () => void
 }
 
 const VarGroupItem: FC<Props> = ({
@@ -33,6 +36,8 @@ const VarGroupItem: FC<Props> = ({
   onChange,
   groupEnabled,
   onGroupNameChange,
+  canRemove,
+  onRemove,
 }) => {
   const { t } = useTranslation()
 
@@ -61,7 +66,22 @@ const VarGroupItem: FC<Props> = ({
   }, [payload.output_type])
   return (
     <Field
-      title={groupEnabled ? payload.group_name! : t(`${i18nPrefix}.title`)}
+      className='group'
+      title={groupEnabled
+        ? <div className='flex items-center'>
+          <div>{payload.group_name}</div>
+          {canRemove && (
+            <div
+              className='group-hover:block hidden ml-0.5 p-1 rounded-md text-gray-500 cursor-pointer hover:bg-[#FEE4E2] hover:text-[#D92D20]'
+              onClick={onRemove}
+            >
+              <Trash03
+                className='w-4 h-4'
+              />
+            </div>
+          )}
+        </div>
+        : t(`${i18nPrefix}.title`)!}
       operations={
         <div className='flex items-center h-6  space-x-2'>
           {payload.variables.length > 0 && (

@@ -32,6 +32,15 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     }
   }, [inputs, setInputs])
 
+  const handleGroupRemoved = useCallback((index: number) => {
+    return () => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.advanced_settings.groups.splice(index, 1)
+      })
+      setInputs(newInputs)
+    }
+  }, [inputs, setInputs])
+
   const handleGroupEnabledChange = useCallback((value: boolean) => {
     const newInputs = produce(inputs, (draft) => {
       if (!draft.advanced_settings)
@@ -73,6 +82,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     handleGroupEnabledChange,
     handleAddGroup,
     handleListOrTypeChangeInGroup,
+    handleGroupRemoved,
   }
 }
 
