@@ -253,7 +253,8 @@ class WorkflowToolManageService:
                 tool.get_tools(user_id, tenant_id)[0],
                 labels=ToolLabelManager.get_tool_labels(tool)
             ),
-            'synced': synced
+            'synced': synced,
+            'privacy_policy': db_tool.privacy_policy
         }
     
     @classmethod
@@ -302,7 +303,8 @@ class WorkflowToolManageService:
                 tool.get_tools(user_id, tenant_id)[0],
                 labels=ToolLabelManager.get_tool_labels(tool)
             ),
-            'synced': synced
+            'synced': synced,
+            'privacy_policy': db_tool.privacy_policy
         }
     
     @classmethod
