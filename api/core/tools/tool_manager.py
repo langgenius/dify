@@ -166,7 +166,7 @@ class ToolManager:
         elif provider_type == 'workflow':
             workflow_provider = db.session.query(WorkflowToolProvider).filter(
                 WorkflowToolProvider.tenant_id == tenant_id,
-                WorkflowToolProvider.app_id == provider_id
+                WorkflowToolProvider.id == provider_id
             ).first()
 
             if workflow_provider is None:
