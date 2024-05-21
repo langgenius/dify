@@ -121,6 +121,7 @@ const ProviderDetail = ({
     const res = await fetchWorkflowToolDetail(collection.id)
     const payload = {
       ...res,
+      id: collection.id,
       parameters: res.tool?.parameters.map((item) => {
         return {
           name: item.name,
@@ -243,7 +244,7 @@ const ProviderDetail = ({
               type='primary'
               className={cn('shrink-0 my-3 w-[183px] flex items-center')}
             >
-              <a className='flex items-center text-white' href={`/app/${customCollection?.id}/workflow`} rel='noreferrer' target='_blank'>
+              <a className='flex items-center text-white' href={`/app/${collection.id}/workflow`} rel='noreferrer' target='_blank'>
                 <div className='leading-5 text-sm font-medium'>{t('tools.openInStudio')}</div>
                 <LinkExternal02 className='ml-1 w-4 h-4' />
               </a>
