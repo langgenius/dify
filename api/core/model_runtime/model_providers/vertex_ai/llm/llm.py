@@ -171,8 +171,6 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         location = credentials["vertex_location"]
         aiplatform.init(credentials=service_accountSA, project=project_id, location=location)
 
-      
-
         history = []
         system_instruction = GEMINI_BLOCK_MODE_PROMPT
         # hack for gemini-pro-vision, which currently does not support multi-turn chat

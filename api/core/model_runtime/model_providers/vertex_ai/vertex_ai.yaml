@@ -15,6 +15,7 @@ help:
     en_US: https://cloud.google.com/vertex-ai/
 supported_model_types:
   - llm
+  - text-embedding
 configurate_methods:
   - predefined-model
 provider_credential_schema:
