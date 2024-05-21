@@ -451,7 +451,7 @@ class WorkflowEngineManager:
 
             # remove iteration variables
             variable_mapping = {
-                key: value for key, value in variable_mapping.items() 
+                f'{node_config.get("id")}.{key}': value for key, value in variable_mapping.items() 
                 if value[0] != node_id
             }
 
