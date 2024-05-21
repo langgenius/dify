@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
+import { v4 as uuid4 } from 'uuid'
 import type { ValueSelector } from '../../types'
 import { VarType } from '../../types'
 import type { VarGroupItem, VariableAssignerNodeType } from './types'
@@ -27,8 +28,9 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     })
   }, [inputs, setInputs])
 
-  const handleListOrTypeChangeInGroup = useCallback((index: number) => {
+  const handleListOrTypeChangeInGroup = useCallback((groupId: string) => {
     return (payload: VarGroupItem) => {
+      const index = inputs.advanced_settings.groups.findIndex(item => item.groupId === groupId)
       const newInputs = produce(inputs, (draft) => {
         draft.advanced_settings.groups[index] = {
           ...draft.advanced_settings.groups[index],
@@ -47,8 +49,9 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   const [removedVars, setRemovedVars] = useState<ValueSelector[]>([])
   const [removeType, setRemoveType] = useState<'group' | 'enableChanged'>('group')
   const [removedGroupIndex, setRemovedGroupIndex] = useState<number>(-1)
-  const handleGroupRemoved = useCallback((index: number) => {
+  const handleGroupRemoved = useCallback((groupId: string) => {
     return () => {
+      const index = inputs.advanced_settings.groups.findIndex(item => item.groupId === groupId)
       if (isVarUsedInNodes([id, inputs.advanced_settings.groups[index].group_name, 'output'])) {
         showRemoveVarConfirm()
         setRemovedVars([[id, inputs.advanced_settings.groups[index].group_name, 'output']])
@@ -74,6 +77,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
             output_type: draft.output_type,
             variables: draft.variables,
             group_name: DEFAULT_GROUP_NAME,
+            groupId: uuid4(),
           }]
 
           handleOutVarRenameChange(id, [id, 'output'], [id, DEFAULT_GROUP_NAME, 'output'])
@@ -116,13 +120,15 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
         output_type: VarType.any,
         variables: [],
         group_name: `Group${maxInGroupName + 1}`,
+        groupId: uuid4(),
       })
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handleVarGroupNameChange = useCallback((index: number) => {
+  const handleVarGroupNameChange = useCallback((groupId: string) => {
     return (name: string) => {
+      const index = inputs.advanced_settings.groups.findIndex(item => item.groupId === groupId)
       const newInputs = produce(inputs, (draft) => {
         draft.advanced_settings.groups[index].group_name = name
       })

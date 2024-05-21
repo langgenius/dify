@@ -9,15 +9,16 @@ import {
   useStore,
 } from '../../../store'
 import {
-  useIsChatMode,
   useNodeDataUpdate,
 } from '../../../hooks'
 import type {
   ValueSelector,
 } from '../../../types'
-import { useVariableAssigner } from '../../variable-assigner/hooks'
+import {
+  useGetAvailableVars,
+  useVariableAssigner,
+} from '../../variable-assigner/hooks'
 import AddVariablePopup from './add-variable-popup'
-import { toNodeOutputVars } from './variable/utils'
 
 type AddVariablePopupWithPositionProps = {
   nodeId: string
@@ -28,18 +29,19 @@ const AddVariablePopupWithPosition = ({
   nodeData,
 }: AddVariablePopupWithPositionProps) => {
   const ref = useRef(null)
-  const isChatMode = useIsChatMode()
   const showAssignVariablePopup = useStore(s => s.showAssignVariablePopup)
   const setShowAssignVariablePopup = useStore(s => s.setShowAssignVariablePopup)
+  const hoveringAssignVariableGroupId = useStore(s => s.hoveringAssignVariableGroupId)
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const { handleAddVariableInAddVariablePopupWithPosition } = useVariableAssigner()
+  const getAvailableVars = useGetAvailableVars()
 
   const availableVars = useMemo(() => {
     if (!showAssignVariablePopup)
       return []
 
-    return toNodeOutputVars([{ id: showAssignVariablePopup.nodeId, data: showAssignVariablePopup.nodeData }], isChatMode, () => true)
-  }, [isChatMode, showAssignVariablePopup])
+    return getAvailableVars(showAssignVariablePopup.variableAssignerNodeId, hoveringAssignVariableGroupId || 'target')
+  }, [showAssignVariablePopup, getAvailableVars, hoveringAssignVariableGroupId])
 
   useClickAway(() => {
     if (nodeData._holdAddVariablePopup) {

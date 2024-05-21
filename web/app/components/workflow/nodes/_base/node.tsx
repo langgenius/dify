@@ -79,7 +79,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     <div
       className={cn(
         'flex border-[2px] rounded-2xl',
-        (showSelectedBorder && !data._isInvalidConnection) ? 'border-primary-600' : 'border-transparent',
+        showSelectedBorder ? 'border-primary-600' : 'border-transparent',
       )}
       ref={nodeRef}
       style={{
@@ -97,7 +97,6 @@ const BaseNode: FC<BaseNodeProps> = ({
           showRunningBorder && '!border-primary-500',
           showSuccessBorder && '!border-[#12B76A]',
           showFailedBorder && '!border-[#F04438]',
-          data._isInvalidConnection && '!border-[#F04438]',
           data._isBundled && '!shadow-lg',
         )}
       >

@@ -115,6 +115,10 @@ type Shape = {
   setShowAssignVariablePopup: (showAssignVariablePopup: Shape['showAssignVariablePopup']) => void
   hoveringAssignVariableGroupId?: string
   setHoveringAssignVariableGroupId: (hoveringAssignVariableGroupId?: string) => void
+  connectingNodePayload?: { nodeId: string; handleType: string }
+  setConnectingNodePayload: (startConnectingPayload?: Shape['connectingNodePayload']) => void
+  enteringNodePayload?: { nodeId: string }
+  setEnteringNodePayload: (enteringNodePayload?: Shape['enteringNodePayload']) => void
 }
 
 export const createWorkflowStore = () => {
@@ -195,6 +199,10 @@ export const createWorkflowStore = () => {
     setShowAssignVariablePopup: showAssignVariablePopup => set(() => ({ showAssignVariablePopup })),
     hoveringAssignVariableGroupId: undefined,
     setHoveringAssignVariableGroupId: hoveringAssignVariableGroupId => set(() => ({ hoveringAssignVariableGroupId })),
+    connectingNodePayload: undefined,
+    setConnectingNodePayload: connectingNodePayload => set(() => ({ connectingNodePayload })),
+    enteringNodePayload: undefined,
+    setEnteringNodePayload: enteringNodePayload => set(() => ({ enteringNodePayload })),
   }))
 }
 

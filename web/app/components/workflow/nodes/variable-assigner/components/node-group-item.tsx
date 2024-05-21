@@ -32,6 +32,7 @@ const NodeGroupItem = ({
   item,
 }: NodeGroupItemProps) => {
   const { t } = useTranslation()
+  const connectingNodePayload = useStore(s => s.connectingNodePayload)
   const hoveringAssignVariableGroupId = useStore(s => s.hoveringAssignVariableGroupId)
   const nodes = useNodes()
   const {
@@ -40,7 +41,8 @@ const NodeGroupItem = ({
   } = useVariableAssigner()
   const getAvailableVars = useGetAvailableVars()
   const availableVars = getAvailableVars(item.variableAssignerNodeId, item.targetHandleId)
-  const showSelectionBorder = item.groupEnabled && item.variableAssignerNodeData._isEntering && hoveringAssignVariableGroupId === item.targetHandleId
+  const showSelectionBorder = connectingNodePayload && item.groupEnabled && hoveringAssignVariableGroupId === item.targetHandleId
+  const connected = item.variableAssignerNodeData._connectedTargetHandleIds?.includes(item.targetHandleId)
 
   return (
     <div
@@ -53,6 +55,7 @@ const NodeGroupItem = ({
     >
       <div className='flex items-center justify-between h-4 text-[10px] font-medium text-gray-500'>
         <NodeHandle
+          connected={connected}
           variableAssignerNodeId={item.variableAssignerNodeId}
           handleId={item.targetHandleId}
           availableVars={availableVars}

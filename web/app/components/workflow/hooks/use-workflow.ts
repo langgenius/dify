@@ -85,14 +85,16 @@ export const useWorkflow = () => {
     } = store.getState()
     const { setViewport } = reactflow
     const nodes = getNodes()
-    const layout = getLayoutByDagre(nodes, edges)
+    const layout = getLayoutByDagre(nodes.filter(node => !node.parentId), edges)
 
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
-        const nodeWithPosition = layout.node(node.id)
-        node.position = {
-          x: nodeWithPosition.x + AUTO_LAYOUT_OFFSET.x,
-          y: nodeWithPosition.y + AUTO_LAYOUT_OFFSET.y,
+        if (!node.parentId) {
+          const nodeWithPosition = layout.node(node.id)
+          node.position = {
+            x: nodeWithPosition.x + AUTO_LAYOUT_OFFSET.x,
+            y: nodeWithPosition.y + AUTO_LAYOUT_OFFSET.y,
+          }
         }
       })
     })

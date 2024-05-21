@@ -81,7 +81,7 @@ export const NodeTargetHandle = memo(({
         onClick={handleHandleClick}
       >
         {
-          !connected && isConnectable && !data._isInvalidConnection && !getNodesReadOnly() && (
+          !connected && isConnectable && !getNodesReadOnly() && (
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}
@@ -162,7 +162,7 @@ export const NodeSourceHandle = memo(({
         onClick={handleHandleClick}
       >
         {
-          !connected && isConnectable && !data._isInvalidConnection && !getNodesReadOnly() && (
+          !connected && isConnectable && !getNodesReadOnly() && (
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}

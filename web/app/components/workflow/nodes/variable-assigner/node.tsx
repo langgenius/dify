@@ -32,7 +32,7 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
     return advanced_settings.groups.map((group) => {
       return {
         groupEnabled: true,
-        targetHandleId: group.group_name,
+        targetHandleId: group.groupId,
         title: group.group_name,
         type: group.output_type,
         variables: group.variables,

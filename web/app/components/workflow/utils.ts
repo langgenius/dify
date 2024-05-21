@@ -297,8 +297,10 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
   let maxDepth = 1
 
   const traverse = (root: Node, depth: number) => {
-    if (depth > maxDepth)
+    if (depth > maxDepth) {
       maxDepth = depth
+      return
+    }
 
     const outgoers = getOutgoers(root, nodes, edges)
 

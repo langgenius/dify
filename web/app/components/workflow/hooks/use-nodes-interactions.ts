@@ -3,7 +3,6 @@ import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import type {
-  HandleType,
   NodeDragHandler,
   NodeMouseHandler,
   OnConnect,
@@ -40,7 +39,6 @@ import {
 } from '../utils'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
-import { useNodesExtraData } from './use-nodes-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useHelpline } from './use-helpline'
 import {
@@ -53,7 +51,6 @@ export const useNodesInteractions = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
-  const nodesExtraData = useNodesExtraData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     getAfterNodesInSameBranch,
@@ -65,8 +62,6 @@ export const useNodesInteractions = () => {
     handleNodeIterationChildrenCopy,
   } = useNodeIterationInteractions()
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as { x: number; y: number })
-  const connectingNodeRef = useRef<{ nodeId: string; handleType: HandleType } | null>(null)
-  const enteringNodeRef = useRef<{ nodeId: string } | null>(null)
 
   const handleNodeDragStart = useCallback<NodeDragHandler>((_, node) => {
     workflowStore.setState({ nodeAnimation: false })
@@ -153,38 +148,31 @@ export const useNodesInteractions = () => {
       setEdges,
     } = store.getState()
     const nodes = getNodes()
+    const {
+      connectingNodePayload,
+      setEnteringNodePayload,
+    } = workflowStore.getState()
 
-    if (connectingNodeRef.current) {
-      const connectingNode: Node = nodes.find(n => n.id === connectingNodeRef.current!.nodeId)!
+    if (connectingNodePayload) {
+      const connectingNode: Node = nodes.find(n => n.id === connectingNodePayload.nodeId)!
       const sameLevel = connectingNode.parentId === node.parentId
 
       if (sameLevel) {
-        enteringNodeRef.current = {
+        setEnteringNodePayload({
           nodeId: node.id,
-        }
-      }
-      const handleType = connectingNodeRef.current.handleType
-      const currentNodeIndex = nodes.findIndex(n => n.id === node.id)
-      const availablePrevNodes = nodesExtraData[connectingNode.data.type].availablePrevNodes
-      const availableNextNodes = nodesExtraData[connectingNode.data.type].availableNextNodes
-      const availableNodes = handleType === 'source' ? availableNextNodes : [...availablePrevNodes, BlockEnum.Start]
-
-      const fromType = connectingNodeRef.current.handleType
-      const fromNode = nodes.find(n => n.id === connectingNodeRef.current!.nodeId)!
-
-      const newNodes = produce(nodes, (draft) => {
-        if (!availableNodes.includes(draft[currentNodeIndex].data.type))
-          draft[currentNodeIndex].data._isInvalidConnection = true
-
-        draft.forEach((n) => {
-          if (n.id === node.id && fromType === 'source' && node.data.type === BlockEnum.VariableAssigner && sameLevel)
-            n.data._isEntering = true
-
-          if (n.id === node.id && fromType === 'target' && fromNode.data.type === BlockEnum.VariableAssigner && sameLevel)
-            n.data._isEntering = true
         })
-      })
-      setNodes(newNodes)
+        const fromType = connectingNodePayload.handleType
+
+        const newNodes = produce(nodes, (draft) => {
+          draft.forEach((n) => {
+            if (n.id === node.id && fromType === 'source' && node.data.type === BlockEnum.VariableAssigner) {
+              if (!node.data.advanced_settings?.group_enabled)
+                n.data._isEntering = true
+            }
+          })
+        })
+        setNodes(newNodes)
+      }
     }
     const newEdges = produce(edges, (draft) => {
       const connectedEdges = getConnectedEdges([node], edges)
@@ -196,14 +184,16 @@ export const useNodesInteractions = () => {
       })
     })
     setEdges(newEdges)
-  }, [store, nodesExtraData, getNodesReadOnly])
+  }, [store, workflowStore, getNodesReadOnly])
 
   const handleNodeLeave = useCallback<NodeMouseHandler>(() => {
-    enteringNodeRef.current = null
-
     if (getNodesReadOnly())
       return
 
+    const {
+      setEnteringNodePayload,
+    } = workflowStore.getState()
+    setEnteringNodePayload(undefined)
     const {
       getNodes,
       setNodes,
@@ -212,7 +202,6 @@ export const useNodesInteractions = () => {
     } = store.getState()
     const newNodes = produce(getNodes(), (draft) => {
       draft.forEach((node) => {
-        node.data._isInvalidConnection = false
         node.data._isEntering = false
       })
     })
@@ -223,7 +212,7 @@ export const useNodesInteractions = () => {
       })
     })
     setEdges(newEdges)
-  }, [store, getNodesReadOnly])
+  }, [store, workflowStore, getNodesReadOnly])
 
   const handleNodeSelect = useCallback((nodeId: string, cancelSelection?: boolean) => {
     const {
@@ -286,6 +275,8 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly())
       return
 
+    const { connectingNodePayload } = workflowStore.getState()
+
     const {
       getNodes,
       setNodes,
@@ -295,10 +286,12 @@ export const useNodesInteractions = () => {
     const nodes = getNodes()
     const targetNode = nodes.find(node => node.id === target!)
     const sourceNode = nodes.find(node => node.id === source!)
+    const connectingNode = nodes.find(node => node.id === connectingNodePayload?.nodeId)
+
+    if (connectingNode?.data.type === BlockEnum.VariableAssigner && connectingNodePayload?.handleType === 'target')
+      return
 
     if (targetNode?.parentId !== sourceNode?.parentId)
-      return
-    if (targetNode?.data.type === BlockEnum.VariableAssigner)
       return
 
     const needDeleteEdges = edges.filter((edge) => {
@@ -352,84 +345,87 @@ export const useNodesInteractions = () => {
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft, getNodesReadOnly])
+  }, [store, workflowStore, handleSyncWorkflowDraft, getNodesReadOnly])
 
   const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType }) => {
     if (getNodesReadOnly())
       return
 
     if (nodeId && handleType) {
-      connectingNodeRef.current = {
+      const { setConnectingNodePayload } = workflowStore.getState()
+      setConnectingNodePayload({
         nodeId,
         handleType,
-      }
+      })
     }
-  }, [getNodesReadOnly])
+  }, [workflowStore, getNodesReadOnly])
 
   const handleNodeConnectEnd = useCallback<OnConnectEnd>((e: any) => {
     if (getNodesReadOnly())
       return
 
-    if (connectingNodeRef.current && enteringNodeRef.current) {
-      const { setShowAssignVariablePopup } = workflowStore.getState()
+    const {
+      connectingNodePayload,
+      setConnectingNodePayload,
+      enteringNodePayload,
+      setEnteringNodePayload,
+    } = workflowStore.getState()
+    if (connectingNodePayload && enteringNodePayload) {
+      const {
+        setShowAssignVariablePopup,
+        hoveringAssignVariableGroupId,
+      } = workflowStore.getState()
       const { screenToFlowPosition } = reactflow
       const {
         getNodes,
         setNodes,
       } = store.getState()
       const nodes = getNodes()
-      const fromType = connectingNodeRef.current.handleType
-      const fromNode = nodes.find(n => n.id === connectingNodeRef.current!.nodeId)!
-      const toNode = nodes.find(n => n.id === enteringNodeRef.current!.nodeId)!
+      const fromType = connectingNodePayload.handleType
+      const fromNode = nodes.find(n => n.id === connectingNodePayload.nodeId)!
+      const toNode = nodes.find(n => n.id === enteringNodePayload.nodeId)!
 
       if (fromNode.parentId !== toNode.parentId)
         return
 
       const { x, y } = screenToFlowPosition({ x: e.x, y: e.y })
 
-      if (fromType === 'target' && fromNode.data.type === BlockEnum.VariableAssigner) {
-        const newNodes = produce(nodes, (draft) => {
-          draft.forEach((node) => {
-            if (node.id === toNode.id) {
-              node.data._showAddVariablePopup = true
-              node.data._holdAddVariablePopup = true
-            }
-          })
-        })
-        setNodes(newNodes)
-        setShowAssignVariablePopup({
-          nodeId: toNode.id,
-          nodeData: toNode.data,
-          variableAssignerNodeId: fromNode.id,
-          variableAssignerNodeData: fromNode.data,
-          x: x - toNode.position.x,
-          y: y - toNode.position.y,
-        })
-      }
-
       if (fromType === 'source' && toNode.data.type === BlockEnum.VariableAssigner) {
-        const newNodes = produce(nodes, (draft) => {
-          draft.forEach((node) => {
-            if (node.id === toNode.id) {
-              node.data._showAddVariablePopup = true
-              node.data._holdAddVariablePopup = true
-            }
+        const groupEnabled = toNode.data.advanced_settings?.group_enabled
+
+        if (
+          (groupEnabled && hoveringAssignVariableGroupId)
+          || !groupEnabled
+        ) {
+          const newNodes = produce(nodes, (draft) => {
+            draft.forEach((node) => {
+              if (node.id === toNode.id) {
+                node.data._showAddVariablePopup = true
+                node.data._holdAddVariablePopup = true
+              }
+            })
           })
-        })
-        setNodes(newNodes)
-        setShowAssignVariablePopup({
-          nodeId: fromNode.id,
-          nodeData: fromNode.data,
-          variableAssignerNodeId: toNode.id,
-          variableAssignerNodeData: toNode.data,
-          x: x - toNode.positionAbsolute!.x,
-          y: y - toNode.positionAbsolute!.y,
-        })
+          setNodes(newNodes)
+          setShowAssignVariablePopup({
+            nodeId: fromNode.id,
+            nodeData: fromNode.data,
+            variableAssignerNodeId: toNode.id,
+            variableAssignerNodeData: toNode.data,
+            x: x - toNode.positionAbsolute!.x,
+            y: y - toNode.positionAbsolute!.y,
+          })
+          handleNodeConnect({
+            source: fromNode.id,
+            sourceHandle: fromType,
+            target: toNode.id,
+            targetHandle: hoveringAssignVariableGroupId || 'target',
+          })
+        }
       }
+      setConnectingNodePayload(undefined)
+      setEnteringNodePayload(undefined)
     }
-    connectingNodeRef.current = null
-    enteringNodeRef.current = null
-  }, [store, getNodesReadOnly, workflowStore, reactflow])
+  }, [store, handleNodeConnect, getNodesReadOnly, workflowStore, reactflow])
 
   const handleNodeDelete = useCallback((nodeId: string) => {
     if (getNodesReadOnly())
@@ -545,7 +541,7 @@ export const useNodesInteractions = () => {
         ...(toolDefaultValue || {}),
         selected: true,
         _showAddVariablePopup: nodeType === BlockEnum.VariableAssigner,
-        _holdAddVariablePopup: nodeType === BlockEnum.VariableAssigner,
+        _holdAddVariablePopup: false,
       },
       position: {
         x: 0,

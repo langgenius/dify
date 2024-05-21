@@ -9,6 +9,7 @@ export type VariableAssignerNodeType = CommonNodeType & VarGroupItem & {
     group_enabled: boolean
     groups: ({
       group_name: string
+      groupId: string
     } & VarGroupItem)[]
   }
 }

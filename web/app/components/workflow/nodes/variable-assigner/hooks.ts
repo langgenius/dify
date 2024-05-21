@@ -150,15 +150,21 @@ export const useVariableAssigner = () => {
   }, [store])
 
   const handleGroupItemMouseEnter = useCallback((groupId: string) => {
-    const { setHoveringAssignVariableGroupId } = workflowStore.getState()
+    const {
+      setHoveringAssignVariableGroupId,
+    } = workflowStore.getState()
 
     setHoveringAssignVariableGroupId(groupId)
   }, [workflowStore])
 
   const handleGroupItemMouseLeave = useCallback(() => {
-    const { setHoveringAssignVariableGroupId } = workflowStore.getState()
+    const {
+      connectingNodePayload,
+      setHoveringAssignVariableGroupId,
+    } = workflowStore.getState()
 
-    setHoveringAssignVariableGroupId(undefined)
+    if (connectingNodePayload)
+      setHoveringAssignVariableGroupId(undefined)
   }, [workflowStore])
 
   return {

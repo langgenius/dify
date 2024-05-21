@@ -54,16 +54,16 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
           : (<div>
             <div className='space-y-2'>
               {inputs.advanced_settings?.groups.map((item, index) => (
-                <div key={index}>
+                <div key={item.groupId}>
                   <VarGroupItem
                     readOnly={readOnly}
                     nodeId={id}
                     payload={item}
-                    onChange={handleListOrTypeChangeInGroup(index)}
+                    onChange={handleListOrTypeChangeInGroup(item.groupId)}
                     groupEnabled
                     canRemove={!readOnly && inputs.advanced_settings?.groups.length > 1}
-                    onRemove={handleGroupRemoved(index)}
-                    onGroupNameChange={handleVarGroupNameChange(index)}
+                    onRemove={handleGroupRemoved(item.groupId)}
+                    onGroupNameChange={handleVarGroupNameChange(item.groupId)}
                   />
                   {index !== inputs.advanced_settings?.groups.length - 1 && <Split className='my-4' />}
                 </div>
