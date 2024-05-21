@@ -158,7 +158,7 @@ class ToolTransformService:
         convert provider controller to user provider
         """
         return UserToolProvider(
-            id=provider_controller.identity.name,
+            id=provider_controller.provider_id,
             author=provider_controller.identity.author,
             name=provider_controller.identity.name,
             description=I18nObject(
