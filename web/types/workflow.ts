@@ -50,6 +50,7 @@ export type FetchWorkflowDraftResponse = {
   }
   hash: string
   updated_at: number
+  tool_published: boolean
 }
 
 export type NodeTracingListResponse = {
@@ -123,6 +124,48 @@ export type NodeFinishedResponse = {
       total_price: number
       currency: string
     }
+    created_at: number
+  }
+}
+
+export type IterationStartedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    id: string
+    node_id: string
+    metadata: {
+      iterator_length: number
+    }
+    created_at: number
+    extras?: any
+  }
+}
+
+export type IterationNextedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    id: string
+    node_id: string
+    index: number
+    output: any
+    extras?: any
+    created_at: number
+  }
+}
+
+export type IterationFinishedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    id: string
+    node_id: string
+    outputs: any
+    extras?: any
     created_at: number
   }
 }

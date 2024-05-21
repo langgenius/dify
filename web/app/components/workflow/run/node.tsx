@@ -12,12 +12,14 @@ import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows
 import type { NodeTracing } from '@/types/workflow'
 
 type Props = {
+  className?: string
   nodeInfo: NodeTracing
   hideInfo?: boolean
   hideProcessDetail?: boolean
 }
 
 const NodePanel: FC<Props> = ({
+  className,
   nodeInfo,
   hideInfo = false,
   hideProcessDetail,
@@ -52,7 +54,7 @@ const NodePanel: FC<Props> = ({
   }, [nodeInfo.expand, setCollapseState])
 
   return (
-    <div className={cn('px-4 py-1', hideInfo && '!p-0')}>
+    <div className={cn('px-4 py-1', className, hideInfo && '!p-0')}>
       <div className={cn('group transition-all bg-white border border-gray-100 rounded-2xl shadow-xs hover:shadow-md', hideInfo && '!rounded-lg')}>
         <div
           className={cn(

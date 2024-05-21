@@ -1,41 +1,25 @@
 import {
   memo,
   useCallback,
-  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import type { ToolWithProvider } from '../types'
-import { useStore } from '../store'
 import type { ToolDefaultValue } from './types'
 import Tooltip from '@/app/components/base/tooltip'
 import { useGetLanguage } from '@/context/i18n'
 
 type ToolsProps = {
-  isCustom?: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
-  searchText: string
+  tools: ToolWithProvider[]
 }
 const Blocks = ({
-  isCustom,
-  searchText,
   onSelect,
+  tools,
 }: ToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-
-  const tools = useMemo(() => {
-    const currentTools = isCustom ? customTools : buildInTools
-
-    return currentTools.filter((toolWithProvider) => {
-      return toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(searchText.toLowerCase())
-      })
-    })
-  }, [isCustom, customTools, buildInTools, searchText, language])
 
   const renderGroup = useCallback((toolWithProvider: ToolWithProvider) => {
     const list = toolWithProvider.tools

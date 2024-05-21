@@ -67,7 +67,7 @@ const PanelOperatorPopup = ({
     return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
   }, [data, nodesExtraData, language, buildInTools, customTools])
 
-  const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly
+  const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly && data.type !== BlockEnum.Iteration
 
   return (
     <div className='w-[240px] border-[0.5px] border-gray-200 rounded-lg shadow-xl bg-white'>
@@ -97,7 +97,7 @@ const PanelOperatorPopup = ({
                 showChangeBlock && (
                   <ChangeBlock
                     nodeId={id}
-                    nodeType={data.type}
+                    nodeData={data}
                     sourceHandle={edge?.sourceHandle || 'source'}
                   />
                 )

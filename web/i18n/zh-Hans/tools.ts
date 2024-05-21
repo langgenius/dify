@@ -1,10 +1,12 @@
 const translation = {
   title: '工具',
   createCustomTool: '创建自定义工具',
+  customToolTip: '了解更多关于 Dify 自定义工具的信息',
   type: {
     all: '全部',
     builtIn: '内置',
     custom: '自定义',
+    workflow: '工作流',
   },
   contribute: {
     line1: '我有兴趣为 ',
@@ -27,6 +29,8 @@ const translation = {
     editTitle: '编辑自定义工具',
     name: '名称',
     toolNamePlaceHolder: '输入工具名称',
+    description: '工具描述',
+    descriptionPlaceholder: '输入工具描述',
     schema: 'Schema',
     schemaPlaceHolder: '在此处输入您的 OpenAPI schema',
     viewSchemaSpec: '查看 OpenAPI-Swagger 规范',
@@ -71,6 +75,20 @@ const translation = {
     },
     privacyPolicy: '隐私协议',
     privacyPolicyPlaceholder: '请输入隐私协议',
+    toolInput: {
+      title: '工具入参',
+      name: '名称',
+      required: '必须',
+      method: '方式',
+      methodSetting: '用户输入',
+      methodSettingTip: '用户在工具配置中填写',
+      methodParameter: 'LLM 填入',
+      methodParameterTip: 'LLM 在推理过程中填写',
+      label: '标签',
+      labelPlaceholder: '选择标签(可选)',
+      description: '描述',
+      descriptionPlaceholder: '参数描述',
+    },
     customDisclaimer: '自定义免责声明',
     customDisclaimerPlaceholder: '请输入自定义免责声明',
   },
@@ -112,6 +130,7 @@ const translation = {
   toolRemoved: '工具已被移除',
   notAuthorized: '工具未授权',
   howToGet: '如何获取',
+  openInStudio: '在工作室中打开',
 }
 
 export default translation

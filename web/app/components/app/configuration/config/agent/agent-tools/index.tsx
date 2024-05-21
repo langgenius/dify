@@ -6,7 +6,7 @@ import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
-import ChooseTool from './choose-tool'
+// import ChooseTool from './choose-tool'
 import SettingBuiltInTool from './setting-built-in-tool'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Tooltip from '@/app/components/base/tooltip'
@@ -22,6 +22,7 @@ import { MAX_TOOLS_NUM } from '@/config'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
+import AddToolModal from '@/app/components/tools/add-tool-modal'
 
 type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } | null
 const AgentTools: FC = () => {
@@ -197,11 +198,12 @@ const AgentTools: FC = () => {
         </div >
       </Panel >
       {isShowChooseTool && (
-        <ChooseTool
-          show
-          onHide={() => setIsShowChooseTool(false)}
-          selectedProviderId={selectedProviderId}
-        />
+        // <ChooseTool
+        //   show
+        //   onHide={() => setIsShowChooseTool(false)}
+        //   selectedProviderId={selectedProviderId}
+        // />
+        <AddToolModal onHide={() => setIsShowChooseTool(false)} />
       )}
       {
         isShowSettingTool && (

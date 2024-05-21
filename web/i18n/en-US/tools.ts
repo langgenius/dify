@@ -1,10 +1,12 @@
 const translation = {
   title: 'Tools',
   createCustomTool: 'Create Custom Tool',
+  customToolTip: 'Learn more about Dify custom tools',
   type: {
     all: 'All',
     builtIn: 'Built-in',
     custom: 'Custom',
+    workflow: 'Workflow',
   },
   contribute: {
     line1: 'I\'m interested in ',
@@ -27,6 +29,8 @@ const translation = {
     editTitle: 'Edit Custom Tool',
     name: 'Name',
     toolNamePlaceHolder: 'Enter the tool name',
+    description: 'Description',
+    descriptionPlaceholder: 'Enter the tool description',
     schema: 'Schema',
     schemaPlaceHolder: 'Enter your OpenAPI schema here',
     viewSchemaSpec: 'View the OpenAPI-Swagger Specification',
@@ -71,6 +75,20 @@ const translation = {
     },
     privacyPolicy: 'Privacy policy',
     privacyPolicyPlaceholder: 'Please enter privacy policy',
+    toolInput: {
+      title: 'Tool Input',
+      name: 'Name',
+      required: 'Required',
+      method: 'Method',
+      methodSetting: 'Setting',
+      methodSettingTip: 'User fills in the tool configuration',
+      methodParameter: 'Parameter',
+      methodParameterTip: 'LLM fills during inference',
+      label: 'Label',
+      labelPlaceholder: 'Choose labels(optional)',
+      description: 'Description',
+      descriptionPlaceholder: 'Parameter description',
+    },
     customDisclaimer: 'Custom disclaimer',
     customDisclaimerPlaceholder: 'Please enter custom disclaimer',
   },
@@ -112,6 +130,7 @@ const translation = {
   toolRemoved: 'Tool removed',
   notAuthorized: 'Tool not authorized',
   howToGet: 'How to get',
+  openInStudio: 'Open in Studio',
 }
 
 export default translation

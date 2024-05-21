@@ -17,6 +17,7 @@ import type {
 } from './types'
 import { BlockEnum } from './types'
 import {
+  ITERATION_NODE_Z_INDEX,
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from './constants'
@@ -93,6 +94,16 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
     })
   }
 
+  const iterationNodeMap = nodes.reduce((acc, node) => {
+    if (node.parentId) {
+      if (acc[node.parentId])
+        acc[node.parentId].push(node.id)
+      else
+        acc[node.parentId] = [node.id]
+    }
+    return acc
+  }, {} as Record<string, string[]>)
+
   return nodes.map((node) => {
     node.type = 'custom'
 
@@ -118,6 +129,9 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
         return topic
       })
     }
+
+    if (node.data.type === BlockEnum.Iteration)
+      node.data._children = iterationNodeMap[node.id] || []
 
     return node
   })
@@ -204,6 +218,8 @@ export const canRunBySingle = (nodeType: BlockEnum) => {
     || nodeType === BlockEnum.QuestionClassifier
     || nodeType === BlockEnum.HttpRequest
     || nodeType === BlockEnum.Tool
+    || nodeType === BlockEnum.ParameterExtractor
+    || nodeType === BlockEnum.Iteration
 }
 
 type ConnectedSourceOrTargetNodesChange = {
@@ -254,7 +270,7 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
   return nodesConnectedSourceOrTargetHandleIdsMap
 }
 
-export const generateNewNode = ({ data, position, id }: Pick<Node, 'data' | 'position'> & { id?: string }) => {
+export const generateNewNode = ({ data, position, id, zIndex, ...rest }: Omit<Node, 'id'> & { id?: string }) => {
   return {
     id: id || `${Date.now()}`,
     type: 'custom',
@@ -262,6 +278,8 @@ export const generateNewNode = ({ data, position, id }: Pick<Node, 'data' | 'pos
     position,
     targetPosition: Position.Left,
     sourcePosition: Position.Right,
+    zIndex: data.type === BlockEnum.Iteration ? ITERATION_NODE_Z_INDEX : zIndex,
+    ...rest,
   } as Node
 }
 
@@ -279,8 +297,10 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
   let maxDepth = 1
 
   const traverse = (root: Node, depth: number) => {
-    if (depth > maxDepth)
+    if (depth > maxDepth) {
       maxDepth = depth
+      return
+    }
 
     const outgoers = getOutgoers(root, nodes, edges)
 

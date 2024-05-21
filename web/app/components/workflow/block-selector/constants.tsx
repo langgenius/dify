@@ -40,6 +40,11 @@ export const BLOCKS: Block[] = [
     title: 'IF/ELSE',
   },
   {
+    classification: BlockClassificationEnum.Logic,
+    type: BlockEnum.Iteration,
+    title: 'Iteration',
+  },
+  {
     classification: BlockClassificationEnum.Transform,
     type: BlockEnum.Code,
     title: 'Code',
@@ -53,6 +58,11 @@ export const BLOCKS: Block[] = [
     classification: BlockClassificationEnum.Transform,
     type: BlockEnum.VariableAssigner,
     title: 'Variable Assigner',
+  },
+  {
+    classification: BlockClassificationEnum.Transform,
+    type: BlockEnum.ParameterExtractor,
+    title: 'Parameter Extractor',
   },
   {
     classification: BlockClassificationEnum.Utilities,

@@ -21,11 +21,13 @@ import {
   getLayoutByDagre,
 } from '../utils'
 import type {
+  Edge,
   Node,
   ValueSelector,
 } from '../types'
 import {
   BlockEnum,
+  VarType,
   WorkflowRunningStatus,
 } from '../types'
 import {
@@ -36,7 +38,7 @@ import {
   AUTO_LAYOUT_OFFSET,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
-import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
+import { findUsedVarNodes, getNodeOutputVars, isSystemVar, toNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useNodesExtraData } from './use-nodes-data'
 import { useWorkflowTemplate } from './use-workflow-template'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -51,6 +53,7 @@ import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import {
   fetchAllBuiltInTools,
   fetchAllCustomTools,
+  fetchAllWorkflowTools,
 } from '@/service/tools'
 import I18n from '@/context/i18n'
 
@@ -82,14 +85,16 @@ export const useWorkflow = () => {
     } = store.getState()
     const { setViewport } = reactflow
     const nodes = getNodes()
-    const layout = getLayoutByDagre(nodes, edges)
+    const layout = getLayoutByDagre(nodes.filter(node => !node.parentId), edges)
 
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
-        const nodeWithPosition = layout.node(node.id)
-        node.position = {
-          x: nodeWithPosition.x + AUTO_LAYOUT_OFFSET.x,
-          y: nodeWithPosition.y + AUTO_LAYOUT_OFFSET.y,
+        if (!node.parentId) {
+          const nodeWithPosition = layout.node(node.id)
+          node.position = {
+            x: nodeWithPosition.x + AUTO_LAYOUT_OFFSET.x,
+            y: nodeWithPosition.y + AUTO_LAYOUT_OFFSET.y,
+          }
         }
       })
     })
@@ -111,7 +116,11 @@ export const useWorkflow = () => {
       edges,
     } = store.getState()
     const nodes = getNodes()
-    const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+    let startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+    const currentNode = nodes.find(node => node.id === nodeId)
+
+    if (currentNode?.parentId)
+      startNode = nodes.find(node => node.parentId === currentNode.parentId && node.data.isIterationStart)
 
     if (!startNode)
       return []
@@ -145,21 +154,31 @@ export const useWorkflow = () => {
     })
   }, [store])
 
-  const getBeforeNodesInSameBranch = useCallback((nodeId: string) => {
+  const getBeforeNodesInSameBranch = useCallback((nodeId: string, newNodes?: Node[], newEdges?: Edge[]) => {
     const {
       getNodes,
       edges,
     } = store.getState()
-    const nodes = getNodes()
+    const nodes = newNodes || getNodes()
     const currentNode = nodes.find(node => node.id === nodeId)
+
     const list: Node[] = []
 
     if (!currentNode)
       return list
 
+    if (currentNode.parentId) {
+      const parentNode = nodes.find(node => node.id === currentNode.parentId)
+      if (parentNode) {
+        const parentList = getBeforeNodesInSameBranch(parentNode.id)
+
+        list.push(...parentList)
+      }
+    }
+
     const traverse = (root: Node, callback: (node: Node) => void) => {
       if (root) {
-        const incomers = getIncomers(root, nodes, edges)
+        const incomers = getIncomers(root, nodes, newEdges || edges)
 
         if (incomers.length) {
           incomers.forEach((node) => {
@@ -227,11 +246,19 @@ export const useWorkflow = () => {
     return getIncomers(node, nodes, edges)
   }, [store])
 
+  const getIterationNodeChildren = useCallback((nodeId: string) => {
+    const {
+      getNodes,
+    } = store.getState()
+    const nodes = getNodes()
+
+    return nodes.filter(node => node.parentId === nodeId)
+  }, [store])
+
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
     const { getNodes, setNodes } = store.getState()
     const afterNodes = getAfterNodesInSameBranch(nodeId)
     const effectNodes = findUsedVarNodes(oldValeSelector, afterNodes)
-    // console.log(effectNodes)
     if (effectNodes.length > 0) {
       const newNodes = getNodes().map((node) => {
         if (effectNodes.find(n => n.id === node.id))
@@ -288,6 +315,7 @@ export const useWorkflow = () => {
     if (sourceNode && targetNode) {
       const sourceNodeAvailableNextNodes = nodesExtraData[sourceNode.data.type].availableNextNodes
       const targetNodeAvailablePrevNodes = [...nodesExtraData[targetNode.data.type].availablePrevNodes, BlockEnum.Start]
+
       if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
         return false
 
@@ -347,6 +375,7 @@ export const useWorkflow = () => {
     formatTimeFromNow,
     getNode,
     getBeforeNodeById,
+    getIterationNodeChildren,
     enableShortcuts,
     disableShortcuts,
   }
@@ -368,6 +397,13 @@ export const useFetchToolsData = () => {
 
       workflowStore.setState({
         customTools: customTools || [],
+      })
+    }
+    if (type === 'workflow') {
+      const workflowTools = await fetchAllWorkflowTools()
+
+      workflowStore.setState({
+        workflowTools: workflowTools || [],
       })
     }
   }, [workflowStore])
@@ -448,11 +484,14 @@ export const useWorkflowInit = () => {
     handleFetchPreloadData()
     handleFetchAllTools('builtin')
     handleFetchAllTools('custom')
+    handleFetchAllTools('workflow')
   }, [handleFetchPreloadData, handleFetchAllTools])
 
   useEffect(() => {
-    if (data)
+    if (data) {
       workflowStore.getState().setDraftUpdatedAt(data.updated_at)
+      workflowStore.getState().setToolPublished(data.tool_published)
+    }
   }, [data, workflowStore])
 
   return {
@@ -509,4 +548,64 @@ export const useToolIcon = (data: Node['data']) => {
   }, [data, buildInTools, customTools])
 
   return toolIcon
+}
+
+export const useVarType = (nodeId: string) => {
+  const isChatMode = useIsChatMode()
+  const { getBeforeNodesInSameBranch } = useWorkflow()
+  const availableNodes = getBeforeNodesInSameBranch(nodeId)
+  const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
+
+  const getVarType = useCallback((varSelector: ValueSelector) => {
+    const targetVar = allOutputVars.find(v => v.nodeId === varSelector[0])
+    if (!targetVar)
+      return VarType.any
+
+    const isSystem = isSystemVar(varSelector)
+
+    let type: VarType = VarType.any
+    let curr: any = targetVar.vars
+    if (isSystem)
+      return curr.find((v: any) => v.variable === varSelector.join('.'))?.type;
+
+    (varSelector as ValueSelector).slice(1).forEach((key, i) => {
+      const isLast = i === varSelector.length - 2
+      curr = curr.find((v: any) => v.variable === key)
+      if (isLast) {
+        type = curr?.type
+      }
+      else {
+        if (curr.type === VarType.object)
+          curr = curr.children
+      }
+    })
+    return type
+  }, [allOutputVars])
+
+  return {
+    getVarType,
+  }
+}
+
+export const useIsNodeInIteration = (iterationId: string) => {
+  const store = useStoreApi()
+
+  const isNodeInIteration = useCallback((nodeId: string) => {
+    const {
+      getNodes,
+    } = store.getState()
+    const nodes = getNodes()
+    const node = nodes.find(node => node.id === nodeId)
+
+    if (!node)
+      return false
+
+    if (node.parentId === iterationId)
+      return true
+
+    return false
+  }, [iterationId, store])
+  return {
+    isNodeInIteration,
+  }
 }

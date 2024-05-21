@@ -239,7 +239,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                       key={`${modelId}-${parameter.name}`}
                       className='mb-4'
                       parameterRule={parameter}
-                      value={completionParams[parameter.name]}
+                      value={completionParams?.[parameter.name]}
                       onChange={v => handleParamChange(parameter.name, v)}
                       onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
                       isInWorkflow={isInWorkflow}

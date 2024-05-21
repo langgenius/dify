@@ -13,9 +13,11 @@ const CustomNode = memo((props: NodeProps) => {
   const NodeComponent = NodeComponentMap[nodeData.type]
 
   return (
-    <BaseNode { ...props }>
-      <NodeComponent />
-    </BaseNode>
+    <>
+      <BaseNode { ...props }>
+        <NodeComponent />
+      </BaseNode>
+    </>
   )
 })
 CustomNode.displayName = 'CustomNode'

@@ -47,6 +47,8 @@ type Shape = {
   setShowInputsPanel: (showInputsPanel: boolean) => void
   inputs: Record<string, string>
   setInputs: (inputs: Record<string, string>) => void
+  toolPublished: boolean
+  setToolPublished: (toolPublished: boolean) => void
   files: RunFile[]
   setFiles: (files: RunFile[]) => void
   backupDraft?: {
@@ -69,6 +71,8 @@ type Shape = {
   setBuildInTools: (tools: ToolWithProvider[]) => void
   customTools: ToolWithProvider[]
   setCustomTools: (tools: ToolWithProvider[]) => void
+  workflowTools: ToolWithProvider[]
+  setWorkflowTools: (tools: ToolWithProvider[]) => void
   clipboardElements: Node[]
   setClipboardElements: (clipboardElements: Node[]) => void
   shortcutsDisabled: boolean
@@ -98,6 +102,23 @@ type Shape = {
   setMousePosition: (mousePosition: Shape['mousePosition']) => void
   syncWorkflowDraftHash: string
   setSyncWorkflowDraftHash: (hash: string) => void
+  showConfirm?: { title: string; desc?: string; onConfirm: () => void }
+  setShowConfirm: (showConfirm: Shape['showConfirm']) => void
+  showAssignVariablePopup?: {
+    nodeId: string
+    nodeData: Node['data']
+    variableAssignerNodeId: string
+    variableAssignerNodeData: Node['data']
+    x: number
+    y: number
+  }
+  setShowAssignVariablePopup: (showAssignVariablePopup: Shape['showAssignVariablePopup']) => void
+  hoveringAssignVariableGroupId?: string
+  setHoveringAssignVariableGroupId: (hoveringAssignVariableGroupId?: string) => void
+  connectingNodePayload?: { nodeId: string; handleType: string }
+  setConnectingNodePayload: (startConnectingPayload?: Shape['connectingNodePayload']) => void
+  enteringNodePayload?: { nodeId: string }
+  setEnteringNodePayload: (enteringNodePayload?: Shape['enteringNodePayload']) => void
 }
 
 export const createWorkflowStore = () => {
@@ -124,6 +145,8 @@ export const createWorkflowStore = () => {
     setShowInputsPanel: showInputsPanel => set(() => ({ showInputsPanel })),
     inputs: {},
     setInputs: inputs => set(() => ({ inputs })),
+    toolPublished: false,
+    setToolPublished: toolPublished => set(() => ({ toolPublished })),
     files: [],
     setFiles: files => set(() => ({ files })),
     backupDraft: undefined,
@@ -143,6 +166,8 @@ export const createWorkflowStore = () => {
     setBuildInTools: buildInTools => set(() => ({ buildInTools })),
     customTools: [],
     setCustomTools: customTools => set(() => ({ customTools })),
+    workflowTools: [],
+    setWorkflowTools: workflowTools => set(() => ({ workflowTools })),
     clipboardElements: [],
     setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
     shortcutsDisabled: false,
@@ -168,6 +193,16 @@ export const createWorkflowStore = () => {
     setMousePosition: mousePosition => set(() => ({ mousePosition })),
     syncWorkflowDraftHash: '',
     setSyncWorkflowDraftHash: syncWorkflowDraftHash => set(() => ({ syncWorkflowDraftHash })),
+    showConfirm: undefined,
+    setShowConfirm: showConfirm => set(() => ({ showConfirm })),
+    showAssignVariablePopup: undefined,
+    setShowAssignVariablePopup: showAssignVariablePopup => set(() => ({ showAssignVariablePopup })),
+    hoveringAssignVariableGroupId: undefined,
+    setHoveringAssignVariableGroupId: hoveringAssignVariableGroupId => set(() => ({ hoveringAssignVariableGroupId })),
+    connectingNodePayload: undefined,
+    setConnectingNodePayload: connectingNodePayload => set(() => ({ connectingNodePayload })),
+    enteringNodePayload: undefined,
+    setEnteringNodePayload: enteringNodePayload => set(() => ({ enteringNodePayload })),
   }))
 }
 
