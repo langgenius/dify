@@ -24,6 +24,7 @@ import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/develop
 import { LeftIndent02 } from '@/app/components/base/icons/src/vender/line/editor'
 import { FileText } from '@/app/components/base/icons/src/vender/line/files'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
+import type { InputVar } from '@/app/components/workflow/types'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -38,6 +39,9 @@ export type AppPublisherProps = {
   onRestore?: () => Promise<any> | any
   onToggle?: (state: boolean) => void
   crossAxisOffset?: number
+  toolPublished?: boolean
+  inputs?: InputVar[]
+  onRefreshData?: () => void
 }
 
 const AppPublisher = ({
@@ -51,6 +55,9 @@ const AppPublisher = ({
   onRestore,
   onToggle,
   crossAxisOffset = 0,
+  toolPublished,
+  inputs,
+  onRefreshData,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
   const [published, setPublished] = useState(false)
@@ -206,8 +213,16 @@ const AppPublisher = ({
             {appDetail?.mode === 'workflow' && (
               <WorkflowToolConfigureButton
                 disabled={!publishedAt}
-                published={!!appDetail?.isTool}
+                published={!!toolPublished}
                 workflowAppId={appDetail?.id}
+                icon={{
+                  content: appDetail?.icon,
+                  background: appDetail?.icon_background,
+                }}
+                name={appDetail?.name}
+                description={appDetail?.description}
+                inputs={inputs}
+                onRefreshData={onRefreshData}
               />
             )}
           </div>

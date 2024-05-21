@@ -50,6 +50,7 @@ export type FetchWorkflowDraftResponse = {
   }
   hash: string
   updated_at: number
+  tool_published: boolean
 }
 
 export type NodeTracingListResponse = {

@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
-// import produce from 'immer'
+import produce from 'immer'
 import type { Emoji, WorkflowToolProvider, WorkflowToolProviderParameter } from '../types'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
@@ -12,6 +12,7 @@ import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppIcon from '@/app/components/base/app-icon'
+import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
 import LabelSelector from '@/app/components/tools/labels/selector'
 
 type Props = {
@@ -38,6 +39,15 @@ const WorkflowToolAsModal: FC<Props> = ({
   const [name, setName] = useState(payload.name)
   const [description, setDescription] = useState(isAdd ? payload.description : payload.description[language])
   const [parameters, setParameters] = useState<WorkflowToolProviderParameter[]>(payload.parameters)
+  const handleParameterChange = (key: string, value: string, index: number) => {
+    const newData = produce(parameters, (draft: WorkflowToolProviderParameter[]) => {
+      if (key === 'description')
+        draft[index].description = value
+      else
+        draft[index].form = value
+    })
+    setParameters(newData)
+  }
   const [labels, setLabels] = useState<string[]>(payload.labels)
   const handleLabelSelect = (value: string[]) => {
     setLabels(value)
@@ -47,11 +57,16 @@ const WorkflowToolAsModal: FC<Props> = ({
   // TODO workflow-tool
   const onConfirm = () => {
     onSave({
+      workflow_app_id: payload.id,
       id: payload.id,
       name,
       description,
       icon: emoji,
-      parameters,
+      parameters: parameters.map(item => ({
+        name: item.name,
+        description: item.description,
+        form: item.form,
+      })),
       labels,
       privacy_policy: privacyPolicy,
     })
@@ -101,17 +116,46 @@ const WorkflowToolAsModal: FC<Props> = ({
                   <table className='w-full leading-[18px] text-xs text-gray-700 font-normal'>
                     <thead className='text-gray-500 uppercase'>
                       <tr className='border-b border-gray-200'>
-                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.toolInput.name')}</th>
-                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.toolInput.method')}</th>
-                        <th className="p-2 pl-3 font-medium w-[236px]">{t('tools.createTool.toolInput.description')}</th>
+                        <th className="p-2 pl-3 font-medium w-[156px]">{t('tools.createTool.toolInput.name')}</th>
+                        <th className="p-2 pl-3 font-medium w-[102px]">{t('tools.createTool.toolInput.method')}</th>
+                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.toolInput.description')}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {parameters.map((item, index) => (
                         <tr key={index} className='border-b last:border-0 border-gray-200'>
-                          <td className="p-2 pl-3">{item.name}</td>
-                          <td className="p-2 pl-3">{item.form}</td>
-                          <td className="p-2 pl-3 text-gray-500 w-[236px]">{item.description}</td>
+                          <td className="p-2 pl-3 max-w-[156px]">
+                            <div className='text-[13px] leading-[18px]'>
+                              <div title={item.name} className='flex'>
+                                <span className='font-medium text-gray-900 truncate'>{item.name}</span>
+                                <span className='shrink-0 pl-1 text-[#ec4a0a] text-xs'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
+                              </div>
+                              <div className='text-gray-500'>{item.type}</div>
+                            </div>
+                          </td>
+                          <td>
+                            {item.name === '__image' && (
+                              <div className={cn(
+                                'flex items-center gap-1 min-h-[56px] px-3 py-2 h-9 bg-white cursor-default',
+                              )}>
+                                <div className={cn('grow text-[13px] leading-[18px] text-gray-700 truncate')}>
+                                  {t('tools.createTool.toolInput.methodParameter')}
+                                </div>
+                              </div>
+                            )}
+                            {item.name !== '__image' && (
+                              <MethodSelector value={item.form} onChange={value => handleParameterChange('form', value, index)}/>
+                            )}
+                          </td>
+                          <td className="p-2 pl-3 text-gray-500 w-[236px]">
+                            <input
+                              type='text'
+                              className='grow text-gray-700 text-[13px] leading-[18px] font-normal bg-white outline-none appearance-none caret-primary-600 placeholder:text-gray-300'
+                              placeholder={t('tools.createTool.toolInput.descriptionPlaceholder')!}
+                              value={item.description}
+                              onChange={e => handleParameterChange('description', e.target.value, index)}
+                            />
+                          </td>
                         </tr>
                       ))}
                     </tbody>

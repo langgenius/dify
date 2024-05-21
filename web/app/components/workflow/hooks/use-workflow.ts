@@ -486,8 +486,10 @@ export const useWorkflowInit = () => {
   }, [handleFetchPreloadData, handleFetchAllTools])
 
   useEffect(() => {
-    if (data)
+    if (data) {
       workflowStore.getState().setDraftUpdatedAt(data.updated_at)
+      workflowStore.getState().setToolPublished(data.tool_published)
+    }
   }, [data, workflowStore])
 
   return {

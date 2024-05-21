@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
-import { AuthHeaderPrefix, AuthType, CollectionType, MOCK_WORKFLOW_TOOL } from '../types'
+import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProvider } from '../types'
 import ToolItem from './tool-item'
 import I18n from '@/context/i18n'
@@ -22,7 +22,7 @@ import {
   fetchCustomCollection,
   fetchCustomToolList,
   fetchModelToolList,
-  // fetchWorkflowToolDetail,
+  fetchWorkflowToolDetail,
   fetchWorkflowToolList,
   removeBuiltInToolCredential,
   removeCustomCollection,
@@ -80,7 +80,7 @@ const ProviderDetail = ({
     }
   }
   // custom provider
-  const [customCollection, setCustomCollection] = useState<CustomCollectionBackend | null>(null)
+  const [customCollection, setCustomCollection] = useState<CustomCollectionBackend | WorkflowToolProvider | null>(null)
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await updateCustomCollection(data)
@@ -118,10 +118,8 @@ const ProviderDetail = ({
   const [isShowEditWorkflowToolModal, setIsShowEditWorkflowToolModal] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
     setIsDetailLoading(true)
-    // const res = await fetchWorkflowToolDetail(collection.id)
-    // setCustomCollection(res)
-    // TODO workflow-tool
-    setCustomCollection(MOCK_WORKFLOW_TOOL as any)
+    const res = await fetchWorkflowToolDetail(collection.id)
+    setCustomCollection(res)
     setIsDetailLoading(false)
   }, [collection.id])
   const removeWorkflowToolProvider = async () => {

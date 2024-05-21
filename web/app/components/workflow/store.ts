@@ -47,6 +47,8 @@ type Shape = {
   setShowInputsPanel: (showInputsPanel: boolean) => void
   inputs: Record<string, string>
   setInputs: (inputs: Record<string, string>) => void
+  toolPublished: boolean
+  setToolPublished: (toolPublished: boolean) => void
   files: RunFile[]
   setFiles: (files: RunFile[]) => void
   backupDraft?: {
@@ -137,6 +139,8 @@ export const createWorkflowStore = () => {
     setShowInputsPanel: showInputsPanel => set(() => ({ showInputsPanel })),
     inputs: {},
     setInputs: inputs => set(() => ({ inputs })),
+    toolPublished: false,
+    setToolPublished: toolPublished => set(() => ({ toolPublished })),
     files: [],
     setFiles: files => set(() => ({ files })),
     backupDraft: undefined,

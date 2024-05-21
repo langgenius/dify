@@ -130,10 +130,13 @@ export type WorkflowToolProviderParameter = {
   name: string
   form: string
   description: string
+  required?: boolean
+  type?: string
 }
 
 export type WorkflowToolProvider = {
   id: string
+  workflow_app_id?: string
   type?: string
   name: string
   label?: TypeWithI18N

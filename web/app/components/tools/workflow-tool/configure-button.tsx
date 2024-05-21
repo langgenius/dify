@@ -1,5 +1,5 @@
 'use client'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
@@ -9,28 +9,77 @@ import { Tools } from '@/app/components/base/icons/src/vender/line/others'
 import Indicator from '@/app/components/header/indicator'
 import WorkflowToolModal from '@/app/components/tools/workflow-tool'
 import Loading from '@/app/components/base/loading'
-import { fetchWorkflowToolDetail } from '@/service/tools'
+import Toast from '@/app/components/base/toast'
+import { fetchWorkflowToolDetail, saveWorkflowToolProvider } from '@/service/tools'
+import type { Emoji, WorkflowToolProvider, WorkflowToolProviderParameter } from '@/app/components/tools/types'
+import type { InputVar } from '@/app/components/workflow/types'
+import { InputVarType } from '@/app/components/workflow/types'
 
 type Props = {
-  workflowAppId: string
   disabled: boolean
   published: boolean
+  workflowAppId: string
+  icon: Emoji
+  name: string
+  description: string
+  inputs?: InputVar[]
+  onRefreshData?: () => void
 }
 
 const WorkflowToolConfigureButton = ({
-  workflowAppId,
   disabled,
   published,
+  workflowAppId,
+  icon,
+  name,
+  description,
+  inputs,
+  onRefreshData,
 }: Props) => {
   const { t } = useTranslation()
   const router = useRouter()
   const [showModal, setShowModal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [detail, setDetail] = useState<WorkflowToolProvider>()
   const [outdated, setOutdated] = useState(false)
+
+  const getParameterType = (type: string) => {
+    if (type === InputVarType.number)
+      return 'Number'
+    else if (type === InputVarType.files)
+      return 'Files'
+    else
+      return 'String'
+  }
+
+  const payload = useMemo(() => {
+    let parameters: WorkflowToolProviderParameter[] = []
+    if (inputs) {
+      parameters = (inputs || []).map((item) => {
+        return {
+          name: item.variable,
+          description: '',
+          form: 'llm',
+          required: item.required,
+          type: getParameterType(item.type),
+        }
+      })
+    }
+    return {
+      workflow_app_id: workflowAppId,
+      name,
+      description,
+      icon,
+      parameters,
+      labels: detail?.labels || [],
+      privacy_policy: detail?.privacy_policy || '',
+    }
+  }, [detail, workflowAppId, icon, name, description, inputs])
 
   const getDetail = useCallback(async (workflowAppId: string) => {
     setIsLoading(true)
     const res = await fetchWorkflowToolDetail(workflowAppId)
+    setDetail(res)
     setOutdated(!res?.synced)
     setIsLoading(false)
   }, [])
@@ -39,6 +88,16 @@ const WorkflowToolConfigureButton = ({
     if (published)
       getDetail(workflowAppId)
   }, [getDetail, published, workflowAppId])
+
+  const updateWorkflowToolProvider = async (data: WorkflowToolProvider) => {
+    await saveWorkflowToolProvider(data)
+    onRefreshData?.()
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+    setShowModal(false)
+  }
 
   return (
     <>
@@ -86,9 +145,10 @@ const WorkflowToolConfigureButton = ({
       </div>
       {showModal && (
         <WorkflowToolModal
-          payload={null}
+          isAdd={!published}
+          payload={payload}
           onHide={() => setShowModal(false)}
-          onSave={() => {}}
+          onSave={updateWorkflowToolProvider}
         />
       )}
     </>

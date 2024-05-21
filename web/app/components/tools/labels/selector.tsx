@@ -13,7 +13,7 @@ import {
 import SearchInput from '@/app/components/base/search-input'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
+import Checkbox from '@/app/components/base/checkbox'
 import type { Label } from '@/app/components/tools/labels/constant'
 import { fetchLabelList } from '@/service/tools'
 import I18n from '@/context/i18n'
@@ -91,20 +91,24 @@ const LabelSelector: FC<LabelSelectorProps> = ({
             </div>
           </div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[1002]'>
-          <div className='relative w-full bg-white rounded-lg border-[0.5px] border-gray-200  shadow-lg'>
+        <PortalToFollowElemContent className='z-[1040]'>
+          <div className='relative w-[591px] bg-white rounded-lg border-[0.5px] border-gray-200  shadow-lg'>
             <div className='p-2 border-b-[0.5px] border-black/5'>
               <SearchInput white value={keywords} onChange={handleKeywordsChange} />
             </div>
-            <div className='p-1'>
+            <div className='p-1 max-h-[264px] overflow-y-auto'>
               {filteredLabelList.map(label => (
                 <div
                   key={label.name}
                   className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'
                   onClick={() => selectLabel(label)}
                 >
+                  <Checkbox
+                    className='shrink-0'
+                    checked={value.includes(label.name)}
+                    onCheck={() => {}}
+                  />
                   <div title={label.label[language]} className='grow text-sm text-gray-700 leading-5 truncate'>{label.label[language]}</div>
-                  {value.includes(label.name) && <Check className='shrink-0 w-4 h-4 text-primary-600'/>}
                 </div>
               ))}
               {!filteredLabelList.length && (

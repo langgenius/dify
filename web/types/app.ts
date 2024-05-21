@@ -314,8 +314,6 @@ export type App = {
   /** api site url */
   api_base_url: string
   tags: Tag[]
-  // TODO workflow-tool
-  isTool?: boolean
 }
 
 /**
