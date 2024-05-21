@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
-import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProvider } from '../types'
+import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
 import ToolItem from './tool-item'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
@@ -23,7 +23,6 @@ import {
   fetchCustomToolList,
   fetchModelToolList,
   fetchWorkflowToolDetail,
-  fetchWorkflowToolList,
   removeBuiltInToolCredential,
   removeCustomCollection,
   saveWorkflowToolProvider,
@@ -80,7 +79,7 @@ const ProviderDetail = ({
     }
   }
   // custom provider
-  const [customCollection, setCustomCollection] = useState<CustomCollectionBackend | WorkflowToolProvider | null>(null)
+  const [customCollection, setCustomCollection] = useState<CustomCollectionBackend | WorkflowToolProviderResponse | null>(null)
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await updateCustomCollection(data)
@@ -121,7 +120,6 @@ const ProviderDetail = ({
     const res = await fetchWorkflowToolDetail(collection.id)
     const payload = {
       ...res,
-      id: collection.id,
       parameters: res.tool?.parameters.map((item) => {
         return {
           name: item.name,
@@ -137,9 +135,7 @@ const ProviderDetail = ({
     setIsDetailLoading(false)
   }, [collection.id])
   const removeWorkflowToolProvider = async () => {
-    if (!customCollection)
-      return
-    await deleteWorkflowTool(customCollection.id)
+    await deleteWorkflowTool(collection.id)
     onRefreshData()
     Toast.notify({
       type: 'success',
@@ -147,7 +143,10 @@ const ProviderDetail = ({
     })
     setIsShowEditWorkflowToolModal(false)
   }
-  const updateWorkflowToolProvider = async (data: WorkflowToolProvider) => {
+  const updateWorkflowToolProvider = async (data: WorkflowToolProviderRequest & Partial<{
+    workflow_app_id: string
+    workflow_tool_id: string
+  }>) => {
     await saveWorkflowToolProvider(data)
     onRefreshData()
     Toast.notify({
@@ -171,8 +170,7 @@ const ProviderDetail = ({
         setToolList(list)
       }
       else if (collection.type === CollectionType.workflow) {
-        const list = await fetchWorkflowToolList(collection.id)
-        setToolList(list)
+        setToolList([])
       }
       else {
         const list = await fetchCustomToolList(collection.name)
@@ -181,7 +179,7 @@ const ProviderDetail = ({
     }
     catch (e) { }
     setIsDetailLoading(false)
-  }, [collection.name, collection.type, collection.id])
+  }, [collection.name, collection.type])
 
   useEffect(() => {
     if (collection.type === CollectionType.custom)
@@ -275,7 +273,7 @@ const ProviderDetail = ({
         )}
         {!isDetailLoading && (
           <div className='mt-1'>
-            {toolList.map(tool => (
+            {collection.type !== CollectionType.workflow && toolList.map(tool => (
               <ToolItem
                 key={tool.name}
                 disabled={needAuth && (isBuiltIn || isModel) && !isAuthed}
@@ -284,6 +282,16 @@ const ProviderDetail = ({
                 isBuiltIn={isBuiltIn}
                 isModel={isModel}
               />
+            ))}
+            {collection.type === CollectionType.workflow && (customCollection as WorkflowToolProviderResponse)?.tool?.parameters.map(item => (
+              <div key={item.name} className='mb-2 px-4 py-3 rounded-xl bg-gray-25 border-[0.5px] border-gray-200'>
+                <div className='flex items-center gap-2'>
+                  <span className='font-medium text-sm text-gray-900'>{item.name}</span>
+                  <span className='text-xs leading-[18px] text-gray-500'>{item.type}</span>
+                  <span className='font-medium text-xs leading-[18px] text-[#ec4a0a]'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
+                </div>
+                <div className='h-[18px] leading-[18px] text-gray-500 text-xs'>{item.llm_description}</div>
+              </div>
             ))}
           </div>
         )}

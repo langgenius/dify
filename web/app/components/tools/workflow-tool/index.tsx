@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import produce from 'immer'
-import type { Emoji, WorkflowToolProvider, WorkflowToolProviderParameter } from '../types'
+import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
@@ -17,7 +17,11 @@ type Props = {
   payload: any
   onHide: () => void
   onRemove?: () => void
-  onSave: (payload: WorkflowToolProvider) => void
+  onCreate?: (payload: WorkflowToolProviderRequest & { workflow_app_id: string }) => void
+  onSave?: (payload: WorkflowToolProviderRequest & Partial<{
+    workflow_app_id: string
+    workflow_tool_id: string
+  }>) => void
 }
 // Add and Edit
 const WorkflowToolAsModal: FC<Props> = ({
@@ -26,6 +30,7 @@ const WorkflowToolAsModal: FC<Props> = ({
   onHide,
   onRemove,
   onSave,
+  onCreate,
 }) => {
   const { t } = useTranslation()
 
@@ -50,9 +55,7 @@ const WorkflowToolAsModal: FC<Props> = ({
   const [privacyPolicy, setPrivacyPolicy] = useState(payload.privacy_policy)
 
   const onConfirm = () => {
-    onSave({
-      workflow_app_id: payload.id,
-      id: payload.id,
+    const requestParams = {
       name,
       description,
       icon: emoji,
@@ -63,7 +66,19 @@ const WorkflowToolAsModal: FC<Props> = ({
       })),
       labels,
       privacy_policy: privacyPolicy,
-    })
+    }
+    if (!isAdd) {
+      onSave?.({
+        ...requestParams,
+        workflow_app_id: payload.workflow_app_id,
+      })
+    }
+    else {
+      onCreate?.({
+        ...requestParams,
+        workflow_app_id: payload.workflow_app_id,
+      })
+    }
   }
 
   return (
@@ -171,7 +186,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
             </div>
             <div className={cn(!isAdd ? 'justify-between' : 'justify-end', 'mt-2 shrink-0 flex py-4 px-6 rounded-b-[10px] bg-gray-50 border-t border-black/5')} >
-              {!isAdd && (
+              {!isAdd && onRemove && (
                 <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onRemove}>{t('common.operation.remove')}</Button>
               )}
               <div className='flex space-x-2 '>

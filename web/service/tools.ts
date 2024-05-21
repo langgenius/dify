@@ -1,5 +1,13 @@
 import { get, post } from './base'
-import type { Collection, CustomCollectionBackend, CustomParamSchema, Tool, ToolCredential, WorkflowToolProvider } from '@/app/components/tools/types'
+import type {
+  Collection,
+  CustomCollectionBackend,
+  CustomParamSchema,
+  Tool,
+  ToolCredential,
+  WorkflowToolProviderRequest,
+  WorkflowToolProviderResponse,
+} from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { Label } from '@/app/components/tools/labels/constant'
 
@@ -20,7 +28,7 @@ export const fetchModelToolList = (collectionName: string) => {
 }
 
 export const fetchWorkflowToolList = (appID: string) => {
-  return get<Tool[]>(`/workspaces/current/tool-provider/workflow/tools?workflow_app_id=${appID}`)
+  return get<Tool[]>(`/workspaces/current/tool-provider/workflow/tools?workflow__id=${appID}`)
 }
 
 export const fetchBuiltInToolCredentialSchema = (collectionName: string) => {
@@ -112,20 +120,33 @@ export const fetchLabelList = () => {
   return get<Label[]>('/workspaces/current/tool-labels')
 }
 
-export const saveWorkflowToolProvider = (payload: WorkflowToolProvider) => {
+export const createWorkflowToolProvider = (payload: WorkflowToolProviderRequest & { workflow_app_id: string }) => {
+  return post('/workspaces/current/tool-provider/workflow/create', {
+    body: { ...payload },
+  })
+}
+
+export const saveWorkflowToolProvider = (payload: WorkflowToolProviderRequest & Partial<{
+  workflow_app_id: string
+  workflow_tool_id: string
+}>) => {
   return post('/workspaces/current/tool-provider/workflow/update', {
     body: { ...payload },
   })
 }
 
-export const fetchWorkflowToolDetail = (appID: string) => {
-  return get<WorkflowToolProvider>(`/workspaces/current/tool-provider/workflow/get?workflow_app_id=${appID}`)
+export const fetchWorkflowToolDetailByAppID = (appID: string) => {
+  return get<WorkflowToolProviderResponse>(`/workspaces/current/tool-provider/workflow/get?workflow_app_id=${appID}`)
 }
 
-export const deleteWorkflowTool = (appID: string) => {
+export const fetchWorkflowToolDetail = (toolID: string) => {
+  return get<WorkflowToolProviderResponse>(`/workspaces/current/tool-provider/workflow/get?workflow_tool_id=${toolID}`)
+}
+
+export const deleteWorkflowTool = (toolID: string) => {
   return post('/workspaces/current/tool-provider/workflow/delete', {
     body: {
-      workflow_app_id: appID,
+      workflow_tool_id: toolID,
     },
   })
 }

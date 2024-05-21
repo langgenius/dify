@@ -10,8 +10,8 @@ import Indicator from '@/app/components/header/indicator'
 import WorkflowToolModal from '@/app/components/tools/workflow-tool'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
-import { fetchWorkflowToolDetail, saveWorkflowToolProvider } from '@/service/tools'
-import type { Emoji, WorkflowToolProvider, WorkflowToolProviderParameter } from '@/app/components/tools/types'
+import { createWorkflowToolProvider, fetchWorkflowToolDetailByAppID, saveWorkflowToolProvider } from '@/service/tools'
+import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
 
@@ -40,7 +40,7 @@ const WorkflowToolConfigureButton = ({
   const router = useRouter()
   const [showModal, setShowModal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [detail, setDetail] = useState<WorkflowToolProvider>()
+  const [detail, setDetail] = useState<WorkflowToolProviderResponse>()
   const [outdated, setOutdated] = useState(false)
 
   const getParameterType = (type: string) => {
@@ -77,7 +77,6 @@ const WorkflowToolConfigureButton = ({
       })
     }
     return {
-      id: workflowAppId,
       workflow_app_id: workflowAppId,
       name,
       description,
@@ -90,7 +89,7 @@ const WorkflowToolConfigureButton = ({
 
   const getDetail = useCallback(async (workflowAppId: string) => {
     setIsLoading(true)
-    const res = await fetchWorkflowToolDetail(workflowAppId)
+    const res = await fetchWorkflowToolDetailByAppID(workflowAppId)
     setDetail(res)
     setOutdated(!res?.synced)
     setIsLoading(false)
@@ -101,7 +100,26 @@ const WorkflowToolConfigureButton = ({
       getDetail(workflowAppId)
   }, [getDetail, published, workflowAppId])
 
-  const updateWorkflowToolProvider = async (data: WorkflowToolProvider) => {
+  const createHandle = async (data: WorkflowToolProviderRequest & { workflow_app_id: string }) => {
+    try {
+      await createWorkflowToolProvider(data)
+      onRefreshData?.()
+      getDetail(workflowAppId)
+      Toast.notify({
+        type: 'success',
+        message: t('common.api.actionSuccess'),
+      })
+      setShowModal(false)
+    }
+    catch (e) {
+      Toast.notify({ type: 'error', message: (e as Error).message })
+    }
+  }
+
+  const updateWorkflowToolProvider = async (data: WorkflowToolProviderRequest & Partial<{
+    workflow_app_id: string
+    workflow_tool_id: string
+  }>) => {
     try {
       await saveWorkflowToolProvider(data)
       onRefreshData?.()
@@ -163,9 +181,10 @@ const WorkflowToolConfigureButton = ({
       </div>
       {showModal && (
         <WorkflowToolModal
-          isAdd
+          isAdd={!published}
           payload={payload}
           onHide={() => setShowModal(false)}
+          onCreate={createHandle}
           onSave={updateWorkflowToolProvider}
         />
       )}

@@ -135,19 +135,23 @@ export type WorkflowToolProviderParameter = {
   type?: string
 }
 
-export type WorkflowToolProvider = {
-  id: string
-  workflow_app_id?: string
-  type?: string
+export type WorkflowToolProviderRequest = {
   name: string
-  label?: TypeWithI18N
-  description: TypeWithI18N
   icon: Emoji
-  synced?: boolean
+  description: string
   parameters: WorkflowToolProviderParameter[]
   labels: string[]
   privacy_policy: string
-  tool?: {
+}
+
+export type WorkflowToolProviderResponse = {
+  workflow_app_id: string
+  workflow_tool_id: string
+  name: string
+  icon: Emoji
+  description: string
+  synced: boolean
+  tool: {
     author: string
     name: string
     label: TypeWithI18N
@@ -155,73 +159,5 @@ export type WorkflowToolProvider = {
     labels: string[]
     parameters: ParamItem[]
   }
-}
-
-export const MOCK_WORKFLOW_TOOL = {
-  id: '67f1d351-4fa0-4b1c-9eca-d10988caa174',
-  type: 'workflow',
-  name: 'WF03',
-  label: { zh_Hans: 'WF03', en_US: 'WF03', pt_BR: 'WF03' },
-  description: {
-    zh_Hans: 'A workflow tool, boy~',
-    en_US: 'A workflow tool, boy~',
-    pt_BR: 'A workflow tool, boy~',
-  },
-  icon: {
-    content: '🕵️',
-    background: '#FEF7C3',
-  },
-  parameters: [
-    {
-      name: 'a',
-      description: 'a parameter',
-      form: 'llm',
-    },
-  ],
-  synced: true,
-  labels: [],
-  privacy_policy: '',
-  tools: [
-    {
-      author: 'Yeuoly Yeuoly Chou',
-      name: 'test_workflow',
-      label: {
-        zh_Hans: 'workflow as tool',
-        pt_BR: 'workflow as tool',
-        en_US: 'workflow as tool',
-      },
-      description: {
-        zh_Hans: 'workflow as tool',
-        pt_BR: 'workflow as tool',
-        en_US: 'workflow as tool',
-      },
-      parameters: [
-        {
-          name: 'a',
-          label: {
-            zh_Hans: 'aa',
-            pt_BR: 'aa',
-            en_US: 'aa',
-          },
-          human_description: {
-            zh_Hans: 'a parameter',
-            pt_BR: 'a parameter',
-            en_US: 'a parameter',
-          },
-          type: 'string',
-          form: 'llm',
-          llm_description: 'a parameter',
-          required: true,
-          default: null,
-          min: null,
-          max: null,
-          options: null,
-        },
-      ],
-    },
-  ],
-  author: 'KVOJJJin',
-  allow_delete: true,
-  is_team_authorization: true,
-  team_credentials: {},
+  privacy_policy: string
 }
