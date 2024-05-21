@@ -5,15 +5,12 @@ import {
 } from 'react'
 import type { NodeProps } from 'reactflow'
 import { useTranslation } from 'react-i18next'
-import { useClickAway } from 'ahooks'
 import {
-  useNodeDataUpdate,
   useWorkflow,
 } from '../../hooks'
 import { BlockEnum } from '../../types'
 import NodeHandle from './components/node-handle'
 import AddVariable from './components/add-variable'
-import AddVariablePopup from './components/add-variable/add-variable-popup'
 import type { VariableAssignerNodeType } from './types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -27,43 +24,13 @@ const Node: FC<NodeProps<VariableAssignerNodeType>> = (props) => {
   const { id, data } = props
   const { variables: originVariables } = data
   const { getTreeLeafNodes } = useWorkflow()
-  const { handleNodeDataUpdate } = useNodeDataUpdate()
   const connected = !!data._connectedTargetHandleIds?.includes('target')
 
   const availableNodes = getTreeLeafNodes(id)
   const variables = originVariables.filter(item => item.length > 0)
 
-  useClickAway(() => {
-    if (data._holdVariablePicker) {
-      handleNodeDataUpdate({
-        id,
-        data: {
-          _holdVariablePicker: false,
-        },
-      })
-    }
-    else {
-      handleNodeDataUpdate({
-        id,
-        data: {
-          _showVariablePicker: false,
-        },
-      })
-    }
-  }, ref, ['pointerdown'])
-
   return (
     <div className='relative mb-1 py-1' ref={ref}>
-      {
-        data._showVariablePicker && (
-          <div className='absolute right-6 top-0 z-[3]'>
-            <AddVariablePopup
-              nodeId={id}
-              data={data}
-            />
-          </div>
-        )
-      }
       <div className='relative flex items-center mb-0.5 px-3 h-4 text-xs font-medium text-gray-500 uppercase'>
         <NodeHandle connected={connected} />
         <AddVariable

@@ -104,6 +104,10 @@ export const fetchAllCustomTools = () => {
   return get<ToolWithProvider[]>('/workspaces/current/tools/api')
 }
 
+export const fetchAllWorkflowTools = () => {
+  return get<ToolWithProvider[]>('/workspaces/current/tools/workflow')
+}
+
 export const fetchLabelList = () => {
   return get<Label[]>('/workspaces/current/tool-labels')
 }

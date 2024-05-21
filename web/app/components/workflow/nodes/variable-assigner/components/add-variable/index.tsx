@@ -5,7 +5,6 @@ import {
 } from 'react'
 import cn from 'classnames'
 import type { VariableAssignerNodeType } from '../../types'
-import AddVariablePopup from './add-variable-popup'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -13,16 +12,22 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
 import type { Node } from '@/app/components/workflow/types'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
 
 export type AddVariableProps = {
   nodeId: string
-  data: Node['data'] & VariableAssignerNodeType
+  data: Node['data']
 }
 const AddVariable = ({
   nodeId,
   data,
 }: AddVariableProps) => {
   const [open, setOpen] = useState(false)
+  const { availableVars } = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar: false,
+    filterVar: () => true,
+  })
 
   const handleSelectVariable = useCallback(() => {
     setOpen(false)
@@ -56,9 +61,10 @@ const AddVariable = ({
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>
           <AddVariablePopup
-            nodeId={nodeId}
-            data={data}
+            variableAssignerNodeId={nodeId}
+            variableAssignerNodeData={data as VariableAssignerNodeType}
             onSelect={handleSelectVariable}
+            availableVars={availableVars}
           />
         </PortalToFollowElemContent>
       </PortalToFollowElem>

@@ -53,6 +53,7 @@ import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import {
   fetchAllBuiltInTools,
   fetchAllCustomTools,
+  fetchAllWorkflowTools,
 } from '@/service/tools'
 import I18n from '@/context/i18n'
 
@@ -396,6 +397,13 @@ export const useFetchToolsData = () => {
         customTools: customTools || [],
       })
     }
+    if (type === 'workflow') {
+      const workflowTools = await fetchAllWorkflowTools()
+
+      workflowStore.setState({
+        workflowTools: workflowTools || [],
+      })
+    }
   }, [workflowStore])
 
   return {
@@ -474,6 +482,7 @@ export const useWorkflowInit = () => {
     handleFetchPreloadData()
     handleFetchAllTools('builtin')
     handleFetchAllTools('custom')
+    handleFetchAllTools('workflow')
   }, [handleFetchPreloadData, handleFetchAllTools])
 
   useEffect(() => {

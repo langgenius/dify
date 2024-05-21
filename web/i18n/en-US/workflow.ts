@@ -342,6 +342,7 @@ const translation = {
       outputVars: {
         varDescribe: '{{groupName}} output',
       },
+      setAssignVariable: 'Set assign variable',
     },
     tool: {
       toAuthorize: 'To authorize',

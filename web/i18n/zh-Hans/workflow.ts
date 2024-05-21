@@ -342,6 +342,7 @@ const translation = {
       outputVars: {
         varDescribe: '{{groupName}}的输出变量',
       },
+      setAssignVariable: '设置赋值变量',
     },
     tool: {
       toAuthorize: '授权',

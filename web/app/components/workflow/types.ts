@@ -42,8 +42,11 @@ export type CommonNodeType<T = {}> = {
   _isCandidate?: boolean
   _isBundled?: boolean
   _children?: string[]
-  _showVariablePicker?: boolean
-  _holdVariablePicker?: boolean
+  _isEntering?: boolean
+  _showAddVariablePopup?: boolean
+  _holdAddVariablePopup?: boolean
+  _iterationLength?: number
+  _iterationIndex?: number
   isIterationStart?: boolean
   isInIteration?: boolean
   selected?: boolean

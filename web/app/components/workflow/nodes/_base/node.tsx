@@ -26,6 +26,7 @@ import {
 } from './components/node-handle'
 import NodeResizer from './components/node-resizer'
 import NodeControl from './components/node-control'
+import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   CheckCircle,
@@ -61,7 +62,7 @@ const BaseNode: FC<BaseNodeProps> = ({
     }
   }, [data.isInIteration, data.selected, id, handleNodeIterationChildSizeChange])
 
-  const showSelectedBorder = data.selected || data._isBundled
+  const showSelectedBorder = data.selected || data._isBundled || data._isEntering
   const {
     showRunningBorder,
     showSuccessBorder,
@@ -100,6 +101,14 @@ const BaseNode: FC<BaseNodeProps> = ({
           data._isBundled && '!shadow-lg',
         )}
       >
+        {
+          data._showAddVariablePopup && (
+            <AddVariablePopupWithPosition
+              nodeId={id}
+              nodeData={data}
+            />
+          )
+        }
         {
           data.type === BlockEnum.Iteration && (
             <NodeResizer
@@ -152,6 +161,13 @@ const BaseNode: FC<BaseNodeProps> = ({
           >
             {data.title}
           </div>
+          {
+            data._iterationLength && data._iterationIndex && (
+              <div className='mr-1.5 text-xs font-medium text-primary-600'>
+                {data._iterationIndex}/{data._iterationLength}
+              </div>
+            )
+          }
           {
             (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
               <Loading02 className='w-3.5 h-3.5 text-primary-600 animate-spin' />
