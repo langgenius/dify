@@ -246,6 +246,8 @@ class WorkflowToolManageService:
 
         return {
             'name': db_tool.name,
+            'workflow_tool_id': db_tool.id,
+            'workflow_app_id': db_tool.app_id,
             'icon': json.loads(db_tool.icon),
             'description': db_tool.description,
             'parameters': jsonable_encoder(db_tool.parameter_configurations),
@@ -296,6 +298,8 @@ class WorkflowToolManageService:
 
         return {
             'name': db_tool.name,
+            'workflow_tool_id': db_tool.id,
+            'workflow_app_id': db_tool.app_id,
             'icon': json.loads(db_tool.icon),
             'description': db_tool.description,
             'parameters': jsonable_encoder(db_tool.parameter_configurations),
