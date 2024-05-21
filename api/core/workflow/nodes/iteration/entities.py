@@ -18,6 +18,12 @@ class IterationState(BaseIterationState):
     outputs: list[Any] = None
     current_output: Optional[Any] = None
 
+    class MetaData(BaseIterationState.MetaData):
+        """
+        Data.
+        """
+        iterator_length: int
+
     def get_last_output(self) -> Optional[Any]:
         """
         Get last output.

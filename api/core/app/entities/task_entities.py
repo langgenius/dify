@@ -335,6 +335,7 @@ class IterationNodeStartStreamResponse(StreamResponse):
         node_id: str
         created_at: int
         extras: dict = {}
+        metadata: dict = {}
 
     event: StreamEvent = StreamEvent.ITERATION_STARTED
     workflow_run_id: str

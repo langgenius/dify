@@ -20,7 +20,12 @@ class IterationNode(BaseIterationNode):
         """
         Run the node.
         """
-        state = IterationState(iteration_node_id=self.node_id, index=-1, outputs=[])
+        iterator = variable_pool.get_variable_value(cast(IterationNodeData, self.node_data).iterator_selector)
+
+        state = IterationState(iteration_node_id=self.node_id, index=-1, outputs=[], metadata=IterationState.MetaData(
+            iterator_length=len(iterator) if iterator is not None else 0
+        ))
+        
         self._set_current_iteration_variable(variable_pool, state)
         return state
 
