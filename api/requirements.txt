@@ -84,3 +84,5 @@ pgvecto-rs==0.1.4
 firecrawl-py==0.0.5
 oss2==2.15.0
 pgvector==0.2.5
+pymysql==1.1.1
+tidb-vector==0.0.9
