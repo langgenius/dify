@@ -354,6 +354,7 @@ class WorkflowEngineManager:
             workflow_id=workflow.id,
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
             config=node_config
         )
 
