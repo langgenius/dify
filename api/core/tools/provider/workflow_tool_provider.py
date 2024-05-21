@@ -44,7 +44,7 @@ class WorkflowToolProviderController(ToolProviderController):
                 'icon': db_provider.icon,
             },
             'credentials_schema': {},
-            'provider_id': db_provider.app_id or '',
+            'provider_id': db_provider.id or '',
         })
         
         # init tools

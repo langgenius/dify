@@ -13,7 +13,7 @@ def handle(sender, **kwargs):
             tool_entity = ToolEntity(**node_data["data"])
             tool_runtime = ToolManager.get_tool_runtime(
                 provider_type=tool_entity.provider_type,
-                provider_name=tool_entity.provider_id,
+                provider_id=tool_entity.provider_id,
                 tool_name=tool_entity.tool_name,
                 tenant_id=app.tenant_id,
             )
