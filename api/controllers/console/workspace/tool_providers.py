@@ -392,14 +392,14 @@ class ToolWorkflowProviderDeleteApi(Resource):
         tenant_id = current_user.current_tenant_id
 
         reqparser = reqparse.RequestParser()
-        reqparser.add_argument('workflow_app_id', type=uuid_value, required=True, nullable=False, location='json')
+        reqparser.add_argument('workflow_tool_id', type=uuid_value, required=True, nullable=False, location='json')
 
         args = reqparser.parse_args()
 
         return WorkflowToolManageService.delete_workflow_tool(
             user_id,
             tenant_id,
-            args['workflow_app_id'],
+            args['workflow_tool_id'],
         )
         
 class ToolWorkflowProviderGetApi(Resource):
