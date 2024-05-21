@@ -411,15 +411,27 @@ class ToolWorkflowProviderGetApi(Resource):
         tenant_id = current_user.current_tenant_id
 
         parser = reqparse.RequestParser()
-        parser.add_argument('workflow_tool_id', type=uuid_value, required=True, nullable=False, location='args')
+        parser.add_argument('workflow_tool_id', type=uuid_value, required=False, nullable=True, location='args')
+        parser.add_argument('workflow_app_id', type=uuid_value, required=False, nullable=True, location='args')
 
         args = parser.parse_args()
 
-        return jsonable_encoder(WorkflowToolManageService.get_workflow_tool(
-            user_id,
-            tenant_id,
-            args['workflow_tool_id'],
-        ))
+        if args.get('workflow_tool_id'):
+            tool = WorkflowToolManageService.get_workflow_tool_by_tool_id(
+                user_id,
+                tenant_id,
+                args['workflow_tool_id'],
+            )
+        elif args.get('workflow_app_id'):
+            tool = WorkflowToolManageService.get_workflow_tool_by_app_id(
+                user_id,
+                tenant_id,
+                args['workflow_app_id'],
+            )
+        else:
+            raise ValueError('incorrect workflow_tool_id or workflow_app_id')
+
+        return jsonable_encoder(tool)
     
 class ToolWorkflowProviderListToolApi(Resource):
     @setup_required

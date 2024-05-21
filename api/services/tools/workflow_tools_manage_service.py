@@ -208,7 +208,7 @@ class WorkflowToolManageService:
         }
 
     @classmethod
-    def get_workflow_tool(cls, user_id: str, tenant_id: str, workflow_tool_id: str) -> dict:
+    def get_workflow_tool_by_tool_id(cls, user_id: str, tenant_id: str, workflow_tool_id: str) -> dict:
         """
         Get a workflow tool.
         :param user_id: the user id
@@ -253,7 +253,58 @@ class WorkflowToolManageService:
                 tool.get_tools(user_id, tenant_id)[0],
                 labels=ToolLabelManager.get_tool_labels(tool)
             ),
-            'synced': synced
+            'synced': synced,
+            'privacy_policy': db_tool.privacy_policy
+        }
+    
+    @classmethod
+    def get_workflow_tool_by_tool_app_id(cls, user_id: str, tenant_id: str, workflow_app_id: str) -> dict:
+        """
+        Get a workflow tool.
+        :param user_id: the user id
+        :param tenant_id: the tenant id
+        :param workflow_app_id: the workflow app id
+        :return: the tool
+        """
+        db_tool: WorkflowToolProvider = db.session.query(WorkflowToolProvider).filter(
+            WorkflowToolProvider.tenant_id == tenant_id,
+            WorkflowToolProvider.app_id == workflow_app_id
+        ).first()
+
+        if db_tool is None:
+            raise ValueError(f'Tool {workflow_app_id} not found')
+        
+        workflow_app: App = db.session.query(App).filter(
+            App.id == db_tool.app_id,
+            App.tenant_id == tenant_id
+        ).first()
+
+        if workflow_app is None:
+            raise ValueError(f'App {db_tool.app_id} not found')
+
+        tool = ToolTransformService.workflow_provider_to_controller(db_tool)
+
+        synced = False
+        try:
+            WorkflowToolConfigurationUtils.check_is_synced(
+                WorkflowToolConfigurationUtils.get_workflow_graph_variables(workflow_app.workflow.graph_dict),
+                db_tool.parameter_configurations
+            )
+            synced = True
+        except Exception as e:
+            pass
+
+        return {
+            'name': db_tool.name,
+            'icon': json.loads(db_tool.icon),
+            'description': db_tool.description,
+            'parameters': jsonable_encoder(db_tool.parameter_configurations),
+            'tool': ToolTransformService.tool_to_user_tool(
+                tool.get_tools(user_id, tenant_id)[0],
+                labels=ToolLabelManager.get_tool_labels(tool)
+            ),
+            'synced': synced,
+            'privacy_policy': db_tool.privacy_policy
         }
     
     @classmethod
