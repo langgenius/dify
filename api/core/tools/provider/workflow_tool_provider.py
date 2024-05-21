@@ -11,7 +11,7 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.workflow_tool import WorkflowTool
-from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationSync
+from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from extensions.ext_database import db
 from models.model import App
 from models.tools import WorkflowToolProvider
@@ -69,9 +69,9 @@ class WorkflowToolProviderController(ToolProviderController):
         # fetch start node
         graph: dict = workflow.graph_dict
         parameters = db_provider.parameter_configurations
-        variables = WorkflowToolConfigurationSync.get_workflow_graph_variables(graph)
+        variables = WorkflowToolConfigurationUtils.get_workflow_graph_variables(graph)
 
-        WorkflowToolConfigurationSync.check_is_synced(
+        WorkflowToolConfigurationUtils.check_is_synced(
             variables=variables,
             tool_configurations=parameters
         )

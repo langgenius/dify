@@ -30,11 +30,6 @@ class WorkflowTool(Tool):
         """
             invoke the tool
         """
-        workflow = self.workflow_entities.get('workflow')
-        app = self.workflow_entities.get('app')
-        if not workflow or not app:
-            raise ValueError('workflow not found')
-        
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 
         generator = WorkflowAppGenerator()

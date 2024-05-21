@@ -5,7 +5,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.api_entities import UserToolProvider
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
-from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationSync
+from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from extensions.ext_database import db
 from models.model import App
 from models.tools import WorkflowToolProvider
@@ -28,6 +28,8 @@ class WorkflowToolManageService:
         :param tool: the tool
         :return: the updated tool
         """
+        WorkflowToolConfigurationUtils.check_parameter_configurations(parameters)
+
         # check if the name is unique
         existing_workflow_tool_provider = db.session.query(WorkflowToolProvider).filter(
             WorkflowToolProvider.tenant_id == tenant_id,
@@ -174,8 +176,8 @@ class WorkflowToolManageService:
 
         synced = False
         try:
-            WorkflowToolConfigurationSync.check_is_synced(
-                WorkflowToolConfigurationSync.get_workflow_graph_variables(workflow_app.workflow.graph_dict),
+            WorkflowToolConfigurationUtils.check_is_synced(
+                WorkflowToolConfigurationUtils.get_workflow_graph_variables(workflow_app.workflow.graph_dict),
                 db_tool.parameter_configurations
             )
             synced = True
