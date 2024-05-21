@@ -2,7 +2,16 @@ from core.app.app_config.entities import VariableEntity
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 
 
-class WorkflowToolConfigurationSync:
+class WorkflowToolConfigurationUtils:
+    @classmethod
+    def check_parameter_configurations(cls, configurations: list[dict]):
+        """
+        check parameter configurations
+        """
+        for configuration in configurations:
+            if not WorkflowToolParameterConfiguration(**configuration):
+                raise ValueError('invalid parameter configuration')
+
     @classmethod
     def get_workflow_graph_variables(cls, graph: dict) -> list[VariableEntity]:
         """
