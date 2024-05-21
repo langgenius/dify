@@ -106,6 +106,7 @@ export type ParamItem = {
   name: string
   label: TypeWithI18N
   human_description: TypeWithI18N
+  llm_description: string
   type: string
   form: string
   required: boolean
@@ -146,7 +147,14 @@ export type WorkflowToolProvider = {
   parameters: WorkflowToolProviderParameter[]
   labels: string[]
   privacy_policy: string
-  tools?: ParamItem[]
+  tool?: {
+    author: string
+    name: string
+    label: TypeWithI18N
+    description: TypeWithI18N
+    labels: string[]
+    parameters: ParamItem[]
+  }
 }
 
 export const MOCK_WORKFLOW_TOOL = {

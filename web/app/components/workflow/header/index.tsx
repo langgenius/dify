@@ -63,7 +63,7 @@ const Header: FC = () => {
         {
           type: InputVarType.files,
           variable: '__image',
-          required: true,
+          required: false,
           label: 'files',
         },
       ]

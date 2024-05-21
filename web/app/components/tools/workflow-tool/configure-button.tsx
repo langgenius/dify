@@ -54,7 +54,7 @@ const WorkflowToolConfigureButton = ({
 
   const payload = useMemo(() => {
     let parameters: WorkflowToolProviderParameter[] = []
-    if (inputs) {
+    if (!published || outdated) {
       parameters = (inputs || []).map((item) => {
         return {
           name: item.variable,
@@ -65,16 +65,28 @@ const WorkflowToolConfigureButton = ({
         }
       })
     }
+    else if (detail && detail.tool) {
+      parameters = detail.tool.parameters.map((item) => {
+        return {
+          name: item.name,
+          description: item.llm_description,
+          form: item.form,
+          required: item.required,
+          type: item.type,
+        }
+      })
+    }
     return {
+      id: workflowAppId,
       workflow_app_id: workflowAppId,
       name,
       description,
       icon,
       parameters,
-      labels: detail?.labels || [],
+      labels: detail?.tool?.labels || [],
       privacy_policy: detail?.privacy_policy || '',
     }
-  }, [detail, workflowAppId, icon, name, description, inputs])
+  }, [detail, outdated, published, workflowAppId, icon, name, description, inputs])
 
   const getDetail = useCallback(async (workflowAppId: string) => {
     setIsLoading(true)
@@ -90,13 +102,19 @@ const WorkflowToolConfigureButton = ({
   }, [getDetail, published, workflowAppId])
 
   const updateWorkflowToolProvider = async (data: WorkflowToolProvider) => {
-    await saveWorkflowToolProvider(data)
-    onRefreshData?.()
-    Toast.notify({
-      type: 'success',
-      message: t('common.api.actionSuccess'),
-    })
-    setShowModal(false)
+    try {
+      await saveWorkflowToolProvider(data)
+      onRefreshData?.()
+      getDetail(workflowAppId)
+      Toast.notify({
+        type: 'success',
+        message: t('common.api.actionSuccess'),
+      })
+      setShowModal(false)
+    }
+    catch (e) {
+      Toast.notify({ type: 'error', message: (e as Error).message })
+    }
   }
 
   return (
@@ -145,7 +163,7 @@ const WorkflowToolConfigureButton = ({
       </div>
       {showModal && (
         <WorkflowToolModal
-          isAdd={!published}
+          isAdd
           payload={payload}
           onHide={() => setShowModal(false)}
           onSave={updateWorkflowToolProvider}

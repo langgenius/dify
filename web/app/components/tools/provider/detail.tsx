@@ -119,7 +119,20 @@ const ProviderDetail = ({
   const getWorkflowToolProvider = useCallback(async () => {
     setIsDetailLoading(true)
     const res = await fetchWorkflowToolDetail(collection.id)
-    setCustomCollection(res)
+    const payload = {
+      ...res,
+      parameters: res.tool?.parameters.map((item) => {
+        return {
+          name: item.name,
+          description: item.llm_description,
+          form: item.form,
+          required: item.required,
+          type: item.type,
+        }
+      }) || [],
+      labels: res.tool?.labels || [],
+    }
+    setCustomCollection(payload)
     setIsDetailLoading(false)
   }, [collection.id])
   const removeWorkflowToolProvider = async () => {

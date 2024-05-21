@@ -2,12 +2,9 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import produce from 'immer'
 import type { Emoji, WorkflowToolProvider, WorkflowToolProviderParameter } from '../types'
-import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
@@ -31,13 +28,11 @@ const WorkflowToolAsModal: FC<Props> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
-  const language = getLanguage(locale)
 
   const [showEmojiPicker, setShowEmojiPicker] = useState<Boolean>(false)
   const [emoji, setEmoji] = useState<Emoji>(payload.icon)
   const [name, setName] = useState(payload.name)
-  const [description, setDescription] = useState(isAdd ? payload.description : payload.description[language])
+  const [description, setDescription] = useState(payload.description)
   const [parameters, setParameters] = useState<WorkflowToolProviderParameter[]>(payload.parameters)
   const handleParameterChange = (key: string, value: string, index: number) => {
     const newData = produce(parameters, (draft: WorkflowToolProviderParameter[]) => {
@@ -54,7 +49,6 @@ const WorkflowToolAsModal: FC<Props> = ({
   }
   const [privacyPolicy, setPrivacyPolicy] = useState(payload.privacy_policy)
 
-  // TODO workflow-tool
   const onConfirm = () => {
     onSave({
       workflow_app_id: payload.id,
