@@ -800,6 +800,7 @@ const Main: FC<IMainProps> = ({
                     answerIcon={<LogoAvatar className='relative shrink-0' />}
                     visionConfig={visionConfig}
                     allToolIcons={appMeta?.tool_icons || {}}
+                    customDisclaimer={siteInfo.custom_disclaimer}
                   />
                 </div>
               </div>)

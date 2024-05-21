@@ -435,6 +435,7 @@ class RecommendedApp(db.Model):
     description = db.Column(db.JSON, nullable=False)
     copyright = db.Column(db.String(255), nullable=False)
     privacy_policy = db.Column(db.String(255), nullable=False)
+    custom_disclaimer = db.Column(db.String(255), nullable=True)
     category = db.Column(db.String(255), nullable=False)
     position = db.Column(db.Integer, nullable=False, default=0)
     is_listed = db.Column(db.Boolean, nullable=False, default=True)
@@ -796,7 +797,7 @@ class Message(db.Model):
                 if message_file.transfer_method == 'local_file':
                     upload_file = (db.session.query(UploadFile)
                                    .filter(
-                        UploadFile.id == message_file.related_id
+                        UploadFile.id == message_file.upload_file_id
                     ).first())
 
                     url = UploadFileParser.get_image_data(
@@ -1042,6 +1043,7 @@ class Site(db.Model):
     default_language = db.Column(db.String(255), nullable=False)
     copyright = db.Column(db.String(255))
     privacy_policy = db.Column(db.String(255))
+    custom_disclaimer = db.Column(db.String(255), nullable=True)
     customize_domain = db.Column(db.String(255))
     customize_token_strategy = db.Column(db.String(255), nullable=False)
     prompt_public = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))

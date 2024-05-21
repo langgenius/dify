@@ -6,11 +6,11 @@ import type { KeyValue } from '../types'
 const UNIQUE_ID_PREFIX = 'key-value-'
 const strToKeyValueList = (value: string) => {
   return value.split('\n').map((item) => {
-    const [key, value] = item.split(':')
+    const [key, ...others] = item.split(':')
     return {
       id: uniqueId(UNIQUE_ID_PREFIX),
       key: key.trim(),
-      value: value?.trim(),
+      value: others.join(':').trim(),
     }
   })
 }

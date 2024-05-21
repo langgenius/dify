@@ -65,7 +65,7 @@ class ToolFileManager:
         """
         extension = guess_extension(mimetype) or '.bin'
         unique_name = uuid4().hex
-        filename = f"/tools/{tenant_id}/{unique_name}{extension}"
+        filename = f"tools/{tenant_id}/{unique_name}{extension}"
         storage.save(filename, file_binary)
 
         tool_file = ToolFile(user_id=user_id, tenant_id=tenant_id,
@@ -90,7 +90,7 @@ class ToolFileManager:
         mimetype = guess_type(file_url)[0] or 'octet/stream'
         extension = guess_extension(mimetype) or '.bin'
         unique_name = uuid4().hex
-        filename = f"/tools/{tenant_id}/{unique_name}{extension}"
+        filename = f"tools/{tenant_id}/{unique_name}{extension}"
         storage.save(filename, blob)
 
         tool_file = ToolFile(user_id=user_id, tenant_id=tenant_id,
