@@ -1,19 +1,14 @@
 import base64
 import json
 import time
-from typing import Optional, Union
 from decimal import Decimal
+from typing import Optional
 
 import tiktoken
-
 from google.cloud import aiplatform
 from google.oauth2 import service_account
 from vertexai.language_models import TextEmbeddingModel as VertexTextEmbeddingModel
 
-from core.model_runtime.entities.model_entities import PriceType
-from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -23,7 +18,11 @@ from core.model_runtime.entities.model_entities import (
     PriceConfig,
     PriceType,
 )
+from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
+from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.vertex_ai._common import _CommonVertexAi
+
 
 class VertexAiTextEmbeddingModel(_CommonVertexAi, TextEmbeddingModel):
     """
