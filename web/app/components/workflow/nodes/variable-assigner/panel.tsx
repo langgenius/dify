@@ -28,6 +28,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
     handleAddGroup,
     handleListOrTypeChangeInGroup,
     handleGroupRemoved,
+    handleVarGroupItemChange,
   } = useConfig(id, data)
 
   return (
@@ -58,6 +59,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
                     groupEnabled
                     canRemove={!readOnly && inputs.advanced_settings?.groups.length > 1}
                     onRemove={handleGroupRemoved(index)}
+                    onGroupNameChange={handleVarGroupItemChange(index)}
                   />
                   {index !== inputs.advanced_settings?.groups.length - 1 && <Split className='my-4' />}
                 </div>

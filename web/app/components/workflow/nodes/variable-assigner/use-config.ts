@@ -83,6 +83,15 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleVarGroupItemChange = useCallback((index: number) => {
+    return (name: string) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.advanced_settings.groups[index].group_name = name
+      })
+      setInputs(newInputs)
+    }
+  }, [inputs, setInputs])
+
   return {
     readOnly,
     inputs,
@@ -92,6 +101,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     handleAddGroup,
     handleListOrTypeChangeInGroup,
     handleGroupRemoved,
+    handleVarGroupItemChange,
   }
 }
 

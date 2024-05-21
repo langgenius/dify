@@ -1,8 +1,9 @@
 'use client'
 import React, { useCallback } from 'react'
-import type { FC } from 'react'
+import type { ChangeEvent, FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
+import { useBoolean } from 'ahooks'
 import type { VarGroupItem as VarGroupItemType } from '../types'
 import VarReferencePicker from '../../_base/components/variable/var-reference-picker'
 import VarList from '../components/var-list'
@@ -11,6 +12,9 @@ import { VarType } from '@/app/components/workflow/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
+import { Folder } from '@/app/components/base/icons/src/vender/line/files'
+import { checkKeys } from '@/utils/var'
+import Toast from '@/app/components/base/toast'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 
@@ -64,12 +68,54 @@ const VarGroupItem: FC<Props> = ({
       return true
     return varPayload.type === payload.output_type
   }, [payload.output_type])
+
+  const [isEditGroupName, {
+    setTrue: setEditGroupName,
+    setFalse: setNotEditGroupName,
+  }] = useBoolean(false)
+
+  const handleGroupNameChange = useCallback((e: ChangeEvent<any>) => {
+    const value = e.target.value
+    const { isValid, errorKey, errorMessageKey } = checkKeys([value], false)
+    if (!isValid) {
+      Toast.notify({
+        type: 'error',
+        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+      })
+      return
+    }
+    onGroupNameChange?.(value)
+  }, [onGroupNameChange, t])
+
   return (
     <Field
       className='group'
       title={groupEnabled
         ? <div className='flex items-center'>
-          <div>{payload.group_name}</div>
+          <div className='flex items-center !normal-case'>
+            <Folder className='mr-0.5 w-3.5 h-3.5' />
+            {(!isEditGroupName)
+              ? (
+                <div className='flex items-center h-6 px-1 rounded-lg cursor-text hover:bg-gray-100' onClick={setEditGroupName}>
+                  {payload.group_name}
+                </div>
+              )
+              : (
+                <input
+                  type='text'
+                  className='h-6 px-1 rounded-lg bg-white border border-gray-300 focus:outline-none'
+                  // style={{
+                  //   width: `${((payload.group_name?.length || 0) + 1) / 2}em`,
+                  // }}
+                  size={payload.group_name?.length} // to fit the input width
+                  autoFocus
+                  value={payload.group_name}
+                  onChange={handleGroupNameChange}
+                  onBlur={setNotEditGroupName}
+                  maxLength={30}
+                />)}
+
+          </div>
           {canRemove && (
             <div
               className='group-hover:block hidden ml-0.5 p-1 rounded-md text-gray-500 cursor-pointer hover:bg-[#FEE4E2] hover:text-[#D92D20]'
