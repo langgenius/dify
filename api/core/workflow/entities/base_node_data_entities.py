@@ -14,3 +14,8 @@ class BaseIterationNodeData(BaseNodeData):
 class BaseIterationState(BaseModel):
     iteration_node_id: str
     index: int
+
+    class MetaData(BaseModel):
+        pass
+
+    metadata: MetaData

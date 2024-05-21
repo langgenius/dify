@@ -136,7 +136,8 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
     def on_workflow_iteration_started(self, 
                                       node_id: str,
                                       node_run_index: int = 1,
-                                      predecessor_node_id: Optional[str] = None) -> None:
+                                      predecessor_node_id: Optional[str] = None,
+                                      metadata: Optional[dict] = None) -> None:
         """
         Publish iteration started
         """
@@ -144,7 +145,8 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
             QueueIterationStartEvent(
                 node_id=node_id,
                 node_run_index=node_run_index,
-                predecessor_node_id=predecessor_node_id
+                predecessor_node_id=predecessor_node_id,
+                metadata=metadata
             ),
             PublishFrom.APPLICATION_MANAGER
         )

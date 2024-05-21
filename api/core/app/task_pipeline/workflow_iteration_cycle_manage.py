@@ -50,7 +50,8 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                     id=event.node_id,
                     node_id=event.node_id,
                     created_at=int(time.time()),
-                    extras={}
+                    extras={},
+                    metadata=event.metadata
                 )
             )
         elif isinstance(event, QueueIterationNextEvent):

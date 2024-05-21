@@ -76,7 +76,8 @@ class BaseWorkflowCallback(ABC):
     def on_workflow_iteration_started(self, 
                                       node_id: str,
                                       node_run_index: int = 1,
-                                      predecessor_node_id: Optional[str] = None) -> None:
+                                      predecessor_node_id: Optional[str] = None,
+                                      metadata: Optional[dict] = None) -> None:
         """
         Publish iteration started
         """
