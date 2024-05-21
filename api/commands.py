@@ -465,12 +465,10 @@ def add_qdrant_doc_id_index(field: str):
             click.echo(click.style('Sorry, no dataset collection bindings found.', fg='red'))
             return
         import qdrant_client
-        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
-        from core.rag.datasource.vdb.field import Field
-        from qdrant_client.http.models import (
-            PayloadSchemaType
-        )
         from qdrant_client.http.exceptions import UnexpectedResponse
+        from qdrant_client.http.models import PayloadSchemaType
+
+        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
         for binding in bindings:
             qdrant_config = QdrantConfig(
                 endpoint=config.get('QDRANT_URL'),
