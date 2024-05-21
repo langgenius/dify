@@ -101,7 +101,7 @@ class ToolManager:
             raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
 
     @classmethod
-    def get_tool_runtime(cls, provider_type: str, provider_name: str, tool_name: str, 
+    def get_tool_runtime(cls, provider_type: str, provider_id: str, tool_name: str, 
                          tenant_id: str, invoke_from: InvokeFrom = InvokeFrom.DEBUGGER) \
         -> Union[BuiltinTool, ApiTool]:
         """
@@ -114,10 +114,10 @@ class ToolManager:
             :return: the tool
         """
         if provider_type == 'builtin':
-            builtin_tool = cls.get_builtin_tool(provider_name, tool_name)
+            builtin_tool = cls.get_builtin_tool(provider_id, tool_name)
 
             # check if the builtin tool need credentials
-            provider_controller = cls.get_builtin_provider(provider_name)
+            provider_controller = cls.get_builtin_provider(provider_id)
             if not provider_controller.need_credentials:
                 return builtin_tool.fork_tool_runtime(meta={
                     'tenant_id': tenant_id,
@@ -128,15 +128,15 @@ class ToolManager:
             # get credentials
             builtin_provider: BuiltinToolProvider = db.session.query(BuiltinToolProvider).filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
-                BuiltinToolProvider.provider == provider_name,
+                BuiltinToolProvider.provider == provider_id,
             ).first()
 
             if builtin_provider is None:
-                raise ToolProviderNotFoundError(f'builtin provider {provider_name} not found')
+                raise ToolProviderNotFoundError(f'builtin provider {provider_id} not found')
 
             # decrypt the credentials
             credentials = builtin_provider.credentials
-            controller = cls.get_builtin_provider(provider_name)
+            controller = cls.get_builtin_provider(provider_id)
             tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
 
             decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
@@ -152,7 +152,7 @@ class ToolManager:
             if tenant_id is None:
                 raise ValueError('tenant id is required for api provider')
 
-            api_provider, credentials = cls.get_api_provider_controller(tenant_id, provider_name)
+            api_provider, credentials = cls.get_api_provider_controller(tenant_id, provider_id)
 
             # decrypt the credentials
             tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=api_provider)
@@ -166,11 +166,11 @@ class ToolManager:
         elif provider_type == 'workflow':
             workflow_provider = db.session.query(WorkflowToolProvider).filter(
                 WorkflowToolProvider.tenant_id == tenant_id,
-                WorkflowToolProvider.name == provider_name
+                WorkflowToolProvider.app_id == provider_id
             ).first()
 
             if workflow_provider is None:
-                raise ToolProviderNotFoundError(f'workflow provider {provider_name} not found')
+                raise ToolProviderNotFoundError(f'workflow provider {provider_id} not found')
 
             controller = ToolTransformService.workflow_provider_to_controller(
                 db_provider=workflow_provider
@@ -237,7 +237,7 @@ class ToolManager:
         """
         tool_entity = cls.get_tool_runtime(
             provider_type=agent_tool.provider_type, 
-            provider_name=agent_tool.provider_id,
+            provider_id=agent_tool.provider_id,
             tool_name=agent_tool.tool_name,
             tenant_id=tenant_id,
             invoke_from=invoke_from
@@ -270,7 +270,7 @@ class ToolManager:
         """
         tool_entity = cls.get_tool_runtime(
             provider_type=workflow_tool.provider_type,
-            provider_name=workflow_tool.provider_id,
+            provider_id=workflow_tool.provider_id,
             tool_name=workflow_tool.tool_name,
             tenant_id=tenant_id,
             invoke_from=invoke_from
