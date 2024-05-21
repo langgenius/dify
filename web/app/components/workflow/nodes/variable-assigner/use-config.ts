@@ -118,14 +118,15 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handleVarGroupItemChange = useCallback((index: number) => {
+  const handleVarGroupNameChange = useCallback((index: number) => {
     return (name: string) => {
       const newInputs = produce(inputs, (draft) => {
         draft.advanced_settings.groups[index].group_name = name
       })
+      handleOutVarRenameChange(id, [id, inputs.advanced_settings.groups[index].group_name, 'output'], [id, name, 'output'])
       setInputs(newInputs)
     }
-  }, [inputs, setInputs])
+  }, [handleOutVarRenameChange, id, inputs, setInputs])
 
   const onRemoveVarConfirm = useCallback(() => {
     removedVars.forEach((v) => {
@@ -158,7 +159,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     handleAddGroup,
     handleListOrTypeChangeInGroup,
     handleGroupRemoved,
-    handleVarGroupItemChange,
+    handleVarGroupNameChange,
     isShowRemoveVarConfirm,
     hideRemoveVarConfirm,
     onRemoveVarConfirm,

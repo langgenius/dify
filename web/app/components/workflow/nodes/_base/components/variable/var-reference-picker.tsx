@@ -99,12 +99,12 @@ const VarReferencePicker: FC<Props> = ({
     else {
       (value as ValueSelector).slice(1).forEach((key, i) => {
         const isLast = i === value.length - 2
-        curr = curr.find((v: any) => v.variable === key)
+        curr = curr?.find((v: any) => v.variable === key)
         if (isLast) {
           type = curr?.type
         }
         else {
-          if (curr.type === VarType.object)
+          if (curr?.type === VarType.object)
             curr = curr.children
         }
       })
@@ -205,7 +205,14 @@ const VarReferencePicker: FC<Props> = ({
     return getNodeInfoById(availableNodes, outputVarNodeId)?.data
   })()
 
-  const varName = hasValue ? `${isSystemVar(value as ValueSelector) ? 'sys.' : ''}${value[value.length - 1]}` : ''
+  const varName = (() => {
+    if (hasValue) {
+      const isSystem = isSystemVar(value as ValueSelector)
+      const varName = value.length >= 3 ? (value as ValueSelector).slice(-2).join('.') : value[value.length - 1]
+      return `${isSystem ? 'sys.' : ''}${varName}`
+    }
+    return ''
+  })()
 
   const varKindTypes = [
     {
