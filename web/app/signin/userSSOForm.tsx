@@ -5,7 +5,7 @@ import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
-import { getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
+import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 import Button from '@/app/components/base/button'
 
 type UserSSOFormProps = {
@@ -47,13 +47,28 @@ const UserSSOForm: FC<UserSSOFormProps> = ({
         setIsLoading(false)
       })
     }
-    else {
+    else if (protocol === 'oidc') {
       getUserOIDCSSOUrl().then((res) => {
         document.cookie = `user-oidc-state=${res.state}`
         router.push(res.url)
       }).finally(() => {
         setIsLoading(false)
       })
+    }
+    else if (protocol === 'oauth2') {
+      getUserOAuth2SSOUrl().then((res) => {
+        document.cookie = `user-oauth2-state=${res.state}`
+        router.push(res.url)
+      }).finally(() => {
+        setIsLoading(false)
+      })
+    }
+    else {
+      Toast.notify({
+        type: 'error',
+        message: 'invalid SSO protocol',
+      })
+      setIsLoading(false)
     }
   }
 
