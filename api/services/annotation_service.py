@@ -31,7 +31,7 @@ class AppAnnotationService:
 
         if not app:
             raise NotFound("App not found")
-        if 'message_id' in args and args['message_id']:
+        if args.get('message_id'):
             message_id = str(args['message_id'])
             # get message info
             message = db.session.query(Message).filter(

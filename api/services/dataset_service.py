@@ -569,7 +569,7 @@ class DocumentService:
 
         documents = []
         batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
-        if 'original_document_id' in document_data and document_data["original_document_id"]:
+        if document_data.get("original_document_id"):
             document = DocumentService.update_document_with_dataset_id(dataset, document_data, account)
             documents.append(document)
         else:
@@ -750,10 +750,10 @@ class DocumentService:
         if document.display_status != 'available':
             raise ValueError("Document is not available")
         # update document name
-        if 'name' in document_data and document_data['name']:
+        if document_data.get('name'):
             document.name = document_data['name']
         # save process rule
-        if 'process_rule' in document_data and document_data['process_rule']:
+        if document_data.get('process_rule'):
             process_rule = document_data["process_rule"]
             if process_rule["mode"] == "custom":
                 dataset_process_rule = DatasetProcessRule(
@@ -773,7 +773,7 @@ class DocumentService:
             db.session.commit()
             document.dataset_process_rule_id = dataset_process_rule.id
         # update document data source
-        if 'data_source' in document_data and document_data['data_source']:
+        if document_data.get('data_source'):
             file_name = ''
             data_source_info = {}
             if document_data["data_source"]["type"] == "upload_file":
@@ -871,7 +871,7 @@ class DocumentService:
                 embedding_model.model
             )
             dataset_collection_binding_id = dataset_collection_binding.id
-            if 'retrieval_model' in document_data and document_data['retrieval_model']:
+            if document_data.get('retrieval_model'):
                 retrieval_model = document_data['retrieval_model']
             else:
                 default_retrieval_model = {
@@ -921,9 +921,9 @@ class DocumentService:
                     and ('process_rule' not in args and not args['process_rule']):
                 raise ValueError("Data source or Process rule is required")
             else:
-                if 'data_source' in args and args['data_source']:
+                if args.get('data_source'):
                     DocumentService.data_source_args_validate(args)
-                if 'process_rule' in args and args['process_rule']:
+                if args.get('process_rule'):
                     DocumentService.process_rule_args_validate(args)
 
     @classmethod
@@ -1266,7 +1266,7 @@ class SegmentService:
             if segment.content == content:
                 if document.doc_form == 'qa_model':
                     segment.answer = args['answer']
-                if 'keywords' in args and args['keywords']:
+                if args.get('keywords'):
                     segment.keywords = args['keywords']
                 segment.enabled = True
                 segment.disabled_at = None

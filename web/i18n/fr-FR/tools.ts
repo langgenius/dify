@@ -71,6 +71,8 @@ const translation = {
     },
     privacyPolicy: 'Politique de confidentialité',
     privacyPolicyPlaceholder: 'Veuillez entrer la politique de confidentialité',
+    customDisclaimer: 'Clause de non-responsabilité personnalisée',
+    customDisclaimerPlaceholder: 'Entrez le texte de la clause de non-responsabilité personnalisée',
   },
   test: {
     title: 'Test',
