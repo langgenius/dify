@@ -113,6 +113,8 @@ type Shape = {
     y: number
   }
   setShowAssignVariablePopup: (showAssignVariablePopup: Shape['showAssignVariablePopup']) => void
+  hoveringAssignVariableGroupId?: string
+  setHoveringAssignVariableGroupId: (hoveringAssignVariableGroupId?: string) => void
 }
 
 export const createWorkflowStore = () => {
@@ -191,6 +193,8 @@ export const createWorkflowStore = () => {
     setShowConfirm: showConfirm => set(() => ({ showConfirm })),
     showAssignVariablePopup: undefined,
     setShowAssignVariablePopup: showAssignVariablePopup => set(() => ({ showAssignVariablePopup })),
+    hoveringAssignVariableGroupId: undefined,
+    setHoveringAssignVariableGroupId: hoveringAssignVariableGroupId => set(() => ({ hoveringAssignVariableGroupId })),
   }))
 }
 

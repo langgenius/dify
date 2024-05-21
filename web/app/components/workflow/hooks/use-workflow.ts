@@ -21,12 +21,12 @@ import {
   getLayoutByDagre,
 } from '../utils'
 import type {
+  Edge,
   Node,
   ValueSelector,
 } from '../types'
 import {
   BlockEnum,
-
   VarType,
   WorkflowRunningStatus,
 } from '../types'
@@ -152,12 +152,12 @@ export const useWorkflow = () => {
     })
   }, [store])
 
-  const getBeforeNodesInSameBranch = useCallback((nodeId: string) => {
+  const getBeforeNodesInSameBranch = useCallback((nodeId: string, newNodes?: Node[], newEdges?: Edge[]) => {
     const {
       getNodes,
       edges,
     } = store.getState()
-    const nodes = getNodes()
+    const nodes = newNodes || getNodes()
     const currentNode = nodes.find(node => node.id === nodeId)
 
     const list: Node[] = []
@@ -176,7 +176,7 @@ export const useWorkflow = () => {
 
     const traverse = (root: Node, callback: (node: Node) => void) => {
       if (root) {
-        const incomers = getIncomers(root, nodes, edges)
+        const incomers = getIncomers(root, nodes, newEdges || edges)
 
         if (incomers.length) {
           incomers.forEach((node) => {

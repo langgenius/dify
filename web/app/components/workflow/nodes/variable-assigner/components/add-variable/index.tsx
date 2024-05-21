@@ -4,38 +4,44 @@ import {
   useState,
 } from 'react'
 import cn from 'classnames'
-import type { VariableAssignerNodeType } from '../../types'
+import { useVariableAssigner } from '../../hooks'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
-import type { Node } from '@/app/components/workflow/types'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/add-variable-popup'
+import type {
+  NodeOutPutVar,
+  ValueSelector,
+} from '@/app/components/workflow/types'
 
 export type AddVariableProps = {
-  nodeId: string
-  data: Node['data']
+  variableAssignerNodeId: string
+  availableVars: NodeOutPutVar[]
+  handleId?: string
 }
 const AddVariable = ({
-  nodeId,
-  data,
+  availableVars,
+  variableAssignerNodeId,
+  handleId,
 }: AddVariableProps) => {
   const [open, setOpen] = useState(false)
-  const { availableVars } = useAvailableVarList(nodeId, {
-    onlyLeafNodeVar: false,
-    filterVar: () => true,
-  })
+  const { handleAssignVariableValueChange } = useVariableAssigner()
 
-  const handleSelectVariable = useCallback(() => {
+  const handleSelectVariable = useCallback((v: ValueSelector) => {
+    handleAssignVariableValueChange(
+      variableAssignerNodeId,
+      v,
+      handleId,
+    )
     setOpen(false)
-  }, [])
+  }, [handleAssignVariableValueChange, variableAssignerNodeId, handleId])
 
   return (
     <div className={cn(
-      'hidden group-hover:flex absolute top-0 -left-[9px] z-[2]',
+      'hidden group-hover:flex absolute top-0 left-0 z-10',
       open && '!flex',
     )}>
       <PortalToFollowElem
@@ -61,8 +67,6 @@ const AddVariable = ({
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>
           <AddVariablePopup
-            variableAssignerNodeId={nodeId}
-            variableAssignerNodeData={data as VariableAssignerNodeType}
             onSelect={handleSelectVariable}
             availableVars={availableVars}
           />

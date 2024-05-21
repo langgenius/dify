@@ -5,12 +5,16 @@ import {
   useRef,
 } from 'react'
 import { useClickAway } from 'ahooks'
-import { useStore } from '../../../store'
+import {
+  useStore,
+} from '../../../store'
 import {
   useIsChatMode,
   useNodeDataUpdate,
 } from '../../../hooks'
-import type { VariableAssignerNodeType } from '../../variable-assigner/types'
+import type {
+  ValueSelector,
+} from '../../../types'
 import { useVariableAssigner } from '../../variable-assigner/hooks'
 import AddVariablePopup from './add-variable-popup'
 import { toNodeOutputVars } from './variable/utils'
@@ -57,11 +61,12 @@ const AddVariablePopupWithPosition = ({
     }
   }, ref)
 
-  const handleAddVariable = useCallback(() => {
+  const handleAddVariable = useCallback((value: ValueSelector) => {
     if (showAssignVariablePopup) {
       handleAddVariableInAddVariablePopupWithPosition(
         showAssignVariablePopup.nodeId,
         showAssignVariablePopup.variableAssignerNodeId,
+        value,
       )
     }
   }, [showAssignVariablePopup, handleAddVariableInAddVariablePopupWithPosition])
@@ -79,8 +84,6 @@ const AddVariablePopupWithPosition = ({
       ref={ref}
     >
       <AddVariablePopup
-        variableAssignerNodeId={showAssignVariablePopup.variableAssignerNodeId}
-        variableAssignerNodeData={showAssignVariablePopup.variableAssignerNodeData as VariableAssignerNodeType}
         availableVars={availableVars}
         onSelect={handleAddVariable}
       />
