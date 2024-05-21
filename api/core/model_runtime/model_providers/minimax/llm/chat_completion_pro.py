@@ -43,6 +43,9 @@ class MinimaxChatCompletionPro:
         if 'top_p' in model_parameters and type(model_parameters['top_p']) == float:
             extra_kwargs['top_p'] = model_parameters['top_p']
 
+        if 'mask_sensitive_info' in model_parameters and type(model_parameters['mask_sensitive_info']) == bool:
+            extra_kwargs['mask_sensitive_info'] = model_parameters['mask_sensitive_info']
+        
         if model_parameters.get('plugin_web_search'):
             extra_kwargs['plugins'] = [
                 'plugin_web_search'
