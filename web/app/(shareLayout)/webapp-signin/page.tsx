@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
-import { fetchSystemFeatures, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
+import { fetchSystemFeatures, fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
 import LogoSite from '@/app/components/base/logo/logo-site'
 import { setAccessToken } from '@/app/components/share/utils'
 
@@ -85,6 +85,13 @@ const WebSSOForm: FC = () => {
     }
     else if (protocal === 'oidc') {
       fetchWebOIDCSSOUrl(appCode, redirectUrl).then((res) => {
+        router.push(res.url)
+      }).finally(() => {
+        setIsLoading(false)
+      })
+    }
+    else if (protocal === 'oauth2') {
+      fetchWebOAuth2SSOUrl(appCode, redirectUrl).then((res) => {
         router.push(res.url)
       }).finally(() => {
         setIsLoading(false)
