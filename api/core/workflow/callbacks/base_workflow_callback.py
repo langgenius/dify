@@ -75,6 +75,7 @@ class BaseWorkflowCallback(ABC):
     @abstractmethod
     def on_workflow_iteration_started(self, 
                                       node_id: str,
+                                      node_type: NodeType,
                                       node_run_index: int = 1,
                                       predecessor_node_id: Optional[str] = None,
                                       metadata: Optional[dict] = None) -> None:
@@ -84,7 +85,9 @@ class BaseWorkflowCallback(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def on_workflow_iteration_next(self, node_id: str, index: int, 
+    def on_workflow_iteration_next(self, node_id: str, 
+                                   node_type: NodeType,
+                                   index: int, 
                                    node_run_index: int,
                                    output: Optional[Any],
                                    ) -> None:
@@ -95,6 +98,7 @@ class BaseWorkflowCallback(ABC):
 
     @abstractmethod
     def on_workflow_iteration_completed(self, node_id: str, 
+                                        node_type: NodeType,
                                         node_run_index: int,
                                         outputs: list[Any]) -> None:
         """

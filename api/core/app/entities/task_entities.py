@@ -333,6 +333,7 @@ class IterationNodeStartStreamResponse(StreamResponse):
         """
         id: str
         node_id: str
+        node_type: str
         created_at: int
         extras: dict = {}
         metadata: dict = {}
@@ -351,6 +352,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
         """
         id: str
         node_id: str
+        node_type: str
         index: int
         created_at: int
         output: Optional[Any]
@@ -370,6 +372,7 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         """
         id: str
         node_id: str
+        node_type: str
         outputs: Optional[list[Any]]
         created_at: int
         extras: dict = {}

@@ -49,6 +49,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                 data=IterationNodeStartStreamResponse.Data(
                     id=event.node_id,
                     node_id=event.node_id,
+                    node_type=event.node_type.value,
                     created_at=int(time.time()),
                     extras={},
                     metadata=event.metadata
@@ -61,6 +62,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                 data=IterationNodeNextStreamResponse.Data(
                     id=event.node_id,
                     node_id=event.node_id,
+                    node_type=event.node_type.value,
                     index=event.index,
                     output=event.output,
                     created_at=int(time.time()),
@@ -74,6 +76,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                 data=IterationNodeCompletedStreamResponse.Data(
                     id=event.node_id,
                     node_id=event.node_id,
+                    node_type=event.node_type.value,
                     outputs=event.outputs,
                     created_at=int(time.time()),
                     extras={}
