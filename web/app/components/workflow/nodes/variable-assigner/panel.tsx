@@ -3,6 +3,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import Field from '../_base/components/field'
+import RemoveEffectVarConfirm from '../_base/components/remove-effect-var-confirm'
 import useConfig from './use-config'
 import type { VariableAssignerNodeType } from './types'
 import VarGroupItem from './components/var-group-item'
@@ -29,6 +30,9 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
     handleListOrTypeChangeInGroup,
     handleGroupRemoved,
     handleVarGroupItemChange,
+    isShowRemoveVarConfirm,
+    hideRemoveVarConfirm,
+    onRemoveVarConfirm,
   } = useConfig(id, data)
 
   return (
@@ -109,6 +113,11 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
           </div>
         </>
       )}
+      <RemoveEffectVarConfirm
+        isShow={isShowRemoveVarConfirm}
+        onCancel={hideRemoveVarConfirm}
+        onConfirm={onRemoveVarConfirm}
+      />
     </div>
   )
 }

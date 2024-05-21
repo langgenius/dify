@@ -102,14 +102,17 @@ const useOneStepRun = <T>({
       return targetVar.vars.find(item => item.variable.split('.')[1] === valueSelector[1])
 
     let curr: any = targetVar.vars
+    if (!curr)
+      return
+
     valueSelector.slice(1).forEach((key, i) => {
       const isLast = i === valueSelector.length - 2
-      curr = curr.find((v: any) => v.variable === key)
+      curr = curr?.find((v: any) => v.variable === key)
       if (isLast) {
         res = curr
       }
       else {
-        if (curr.type === VarType.object)
+        if (curr?.type === VarType.object)
           curr = curr.children
       }
     })
