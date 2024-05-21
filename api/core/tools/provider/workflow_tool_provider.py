@@ -184,6 +184,7 @@ class WorkflowToolProviderController(ToolProviderController):
                 'app': app,
                 'workflow': workflow,
             },
+            version=db_provider.version,
             workflow_call_depth=0
         )
 
