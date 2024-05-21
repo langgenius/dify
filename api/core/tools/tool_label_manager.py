@@ -1,4 +1,3 @@
-from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.entities.values import default_tool_label_name_list
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
@@ -38,7 +37,7 @@ class ToolLabelManager:
         for label in labels:
             db.session.add(ToolLabelBinding(
                 tool_id=provider_id,
-                tool_type=ToolProviderType.API.value,
+                tool_type=controller.provider_type.value,
                 label_name=label,
             ))
 
@@ -57,7 +56,8 @@ class ToolLabelManager:
             raise ValueError('Unsupported tool type')
 
         labels: list[ToolLabelBinding] = db.session.query(ToolLabelBinding.label_name).filter(
-            ToolLabelBinding.tool_id == provider_id
+            ToolLabelBinding.tool_id == provider_id,
+            ToolLabelBinding.tool_type == controller.provider_type.value,
         ).all()
 
         return [label.label_name for label in labels]

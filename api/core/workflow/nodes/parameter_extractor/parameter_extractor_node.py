@@ -49,6 +49,23 @@ class ParameterExtractorNode(LLMNode):
     _model_instance: Optional[ModelInstance] = None
     _model_config: Optional[ModelConfigWithCredentialsEntity] = None
 
+    @classmethod
+    def get_default_config(cls, filters: Optional[dict] = None) -> dict:
+        return {
+            "model": {
+                "prompt_templates": {
+                    "completion_model": {
+                        "conversation_histories_role": {
+                            "user_prefix": "Human",
+                            "assistant_prefix": "Assistant"
+                        },
+                        "stop": ["Human:"]
+                    }
+                }
+            }
+        }
+
+
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
         Run the node.
