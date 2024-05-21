@@ -41,16 +41,18 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     }
   }, [inputs, setInputs])
 
-  const handleGroupEnabledChange = useCallback((value: boolean) => {
+  const handleGroupEnabledChange = useCallback((enabled: boolean) => {
     const newInputs = produce(inputs, (draft) => {
       if (!draft.advanced_settings)
         draft.advanced_settings = { group_enabled: false, groups: [] }
-      if (value) {
-        draft.advanced_settings.groups = [{
-          output_type: draft.output_type,
-          variables: draft.variables,
-          group_name: 'Group1',
-        }]
+      if (enabled) {
+        if (draft.advanced_settings.groups.length === 0) {
+          draft.advanced_settings.groups = [{
+            output_type: draft.output_type,
+            variables: draft.variables,
+            group_name: 'Group1',
+          }]
+        }
       }
       else {
         if (draft.advanced_settings.groups.length > 0) {
@@ -58,7 +60,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
           draft.variables = draft.advanced_settings.groups[0].variables
         }
       }
-      draft.advanced_settings.group_enabled = value
+      draft.advanced_settings.group_enabled = enabled
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
