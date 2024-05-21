@@ -7,10 +7,12 @@ from core.tools.tool.tool import Tool
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser
+from models.workflow import Workflow
 
 
 class WorkflowTool(Tool):
     workflow_app_id: str
+    version: str
     workflow_entities: dict[str, Any]
     workflow_call_depth: int
 
@@ -36,8 +38,8 @@ class WorkflowTool(Tool):
         app = db.session.query(App).filter(App.id == self.workflow_app_id).first()
         if not app:
             raise ValueError('app not found')
-        workflow = app.workflow
-
+        workflow = self._get_workflow(app_id=self.workflow_app_id, version=self.version)
+        
         result = generator.generate(
             app_model=app, 
             workflow=workflow, 
@@ -47,7 +49,7 @@ class WorkflowTool(Tool):
             }, 
             invoke_from=self.runtime.invoke_from,
             stream=False,
-            call_depth=self.workflow_call_depth
+            call_depth=self.workflow_call_depth,
         )
 
         return self.create_text_message(json.dumps(result))
@@ -80,5 +82,26 @@ class WorkflowTool(Tool):
             runtime=Tool.Runtime(**meta),
             workflow_app_id=self.workflow_app_id,
             workflow_entities=self.workflow_entities,
-            workflow_call_depth=self.workflow_call_depth
+            workflow_call_depth=self.workflow_call_depth,
+            version=self.version
         )
+    
+    def _get_workflow(self, app_id: str, version: str) -> Workflow:
+        """
+            get the workflow by app id and version
+        """
+        if not version:
+            workflow = db.session.query(Workflow).filter(
+                Workflow.app_id == app_id, 
+                Workflow.version != 'draft'
+            ).order_by(Workflow.created_at.desc()).first()
+        else:
+            workflow = db.session.query(Workflow).filter(
+                Workflow.app_id == app_id, 
+                Workflow.version == version
+            ).first()
+
+        if not workflow:
+            raise ValueError('workflow not found or not published')
+
+        return workflow

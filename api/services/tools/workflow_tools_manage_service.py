@@ -11,6 +11,7 @@ from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurati
 from extensions.ext_database import db
 from models.model import App
 from models.tools import WorkflowToolProvider
+from models.workflow import Workflow
 from services.tools.tools_transform_service import ToolTransformService
 
 
@@ -52,6 +53,10 @@ class WorkflowToolManageService:
         if app is None:
             raise ValueError(f'App {workflow_app_id} not found')
         
+        workflow: Workflow = app.workflow
+        if workflow is None:
+            raise ValueError(f'Workflow not found for app {workflow_app_id}')
+        
         workflow_tool_provider = WorkflowToolProvider(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -61,6 +66,7 @@ class WorkflowToolManageService:
             description=description,
             parameter_configuration=json.dumps(parameters),
             privacy_policy=privacy_policy,
+            version=workflow.version,
         )
 
         try:
@@ -106,14 +112,26 @@ class WorkflowToolManageService:
 
         if workflow_tool_provider is None:
             raise ValueError(f'Tool {workflow_tool_id} not found')
-        else:
-            workflow_tool_provider.name = name
-            workflow_tool_provider.icon = json.dumps(icon)
-            workflow_tool_provider.description = description
-            workflow_tool_provider.parameter_configuration = json.dumps(parameters)
-            workflow_tool_provider.privacy_policy = privacy_policy
+        
+        app: App = db.session.query(App).filter(
+            App.id == workflow_tool_provider.app_id,
+            App.tenant_id == tenant_id
+        ).first()
 
-            workflow_tool_provider.updated_at = datetime.now()
+        if app is None:
+            raise ValueError(f'App {workflow_tool_provider.app_id} not found')
+        
+        workflow: Workflow = app.workflow
+        if workflow is None:
+            raise ValueError(f'Workflow not found for app {workflow_tool_provider.app_id}')
+        
+        workflow_tool_provider.name = name
+        workflow_tool_provider.icon = json.dumps(icon)
+        workflow_tool_provider.description = description
+        workflow_tool_provider.parameter_configuration = json.dumps(parameters)
+        workflow_tool_provider.privacy_policy = privacy_policy
+        workflow_tool_provider.version = workflow.version
+        workflow_tool_provider.updated_at = datetime.now()
 
         try:
             WorkflowToolProviderController.from_db(workflow_tool_provider)

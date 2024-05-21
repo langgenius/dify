@@ -169,6 +169,8 @@ class WorkflowToolProvider(db.Model):
     icon = db.Column(db.String(255), nullable=False)
     # app id of the workflow provider
     app_id = db.Column(StringUUID, nullable=False)
+    # version of the workflow provider
+    version = db.Column(db.String(255), nullable=False, server_default='')
     # who created this tool
     user_id = db.Column(StringUUID, nullable=False)
     # tenant id
