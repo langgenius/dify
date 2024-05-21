@@ -37,6 +37,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   const { getIterationNodeChildren, getBeforeNodesInSameBranch } = useWorkflow()
   const beforeNodes = getBeforeNodesInSameBranch(id)
   const iterationChildrenNodes = getIterationNodeChildren(id)
+  const canChooseVarNodes = [...beforeNodes, ...iterationChildrenNodes]
   const childrenNodeVars = toNodeOutputVars(iterationChildrenNodes, isChatMode)
 
   const handleOutputVarChange = useCallback((output: ValueSelector | string) => {
@@ -97,8 +98,14 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     iterationChildrenNodes.forEach((node) => {
       const nodeVars = getNodeUsedVars(node).filter(item => item && item.length > 0)
       nodeVars.forEach((varSelector) => {
-        const varSectorStr = varSelector.join('.')
+        if (varSelector[0] === id) { // skip iteration node itself variable: item, index
+          return
+        }
         const isInIteration = isNodeInIteration(varSelector[0])
+        if (isInIteration) // not pass iteration inner variable
+          return
+
+        const varSectorStr = varSelector.join('.')
         if (!varObjs[varSectorStr]) {
           varObjs[varSectorStr] = true
           vars.push(varSelector)
@@ -109,11 +116,11 @@ const useConfig = (id: string, payload: IterationNodeType) => {
       })
     })
     const res = toVarInputs(vars.map((item) => {
-      const varInfo = getNodeInfoById(beforeNodes, item[0])
+      const varInfo = getNodeInfoById(canChooseVarNodes, item[0])
       return {
         label: {
-          nodeType: varInfo?.type,
-          nodeName: varInfo?.title || beforeNodes[0]?.data.title, // default start node title
+          nodeType: varInfo?.data.type,
+          nodeName: varInfo?.data.title || canChooseVarNodes[0]?.data.title, // default start node title
           variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
         },
         variable: `${item.join('.')}`,
@@ -130,8 +137,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     const formattedData: Record<string, any> = {}
     Object.keys(allVarObject).forEach((key) => {
       const [varSectorStr, nodeId] = key.split(DELIMITER)
-      const isInIteration = allVarObject[key].isInIteration
-      formattedData[`${!isInIteration ? `${nodeId}.` : ''}#${varSectorStr}#`] = data[varSectorStr]
+      formattedData[`${nodeId}.#${varSectorStr}#`] = data[varSectorStr]
     })
     formattedData[iteratorInputKey] = data[iteratorInputKey]
     doHandleRun(formattedData)
