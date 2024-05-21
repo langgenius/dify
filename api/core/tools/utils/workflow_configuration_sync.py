@@ -26,7 +26,7 @@ class WorkflowToolConfigurationUtils:
         return [
             VariableEntity(**variable) for variable in start_node.get('data', {}).get('variables', [])
         ]
-
+    
     @classmethod
     def check_is_synced(cls, 
                         variables: list[VariableEntity], 
