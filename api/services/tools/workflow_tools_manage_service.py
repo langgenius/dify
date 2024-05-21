@@ -189,7 +189,7 @@ class WorkflowToolManageService:
         return result
 
     @classmethod
-    def delete_workflow_tool(cls, user_id: str, tenant_id: str, workflow_app_id: str) -> dict:
+    def delete_workflow_tool(cls, user_id: str, tenant_id: str, workflow_tool_id: str) -> dict:
         """
         Delete a workflow tool.
         :param user_id: the user id
@@ -198,7 +198,7 @@ class WorkflowToolManageService:
         """
         db.session.query(WorkflowToolProvider).filter(
             WorkflowToolProvider.tenant_id == tenant_id,
-            WorkflowToolProvider.app_id == workflow_app_id
+            WorkflowToolProvider.id == workflow_tool_id
         ).delete()
 
         db.session.commit()
