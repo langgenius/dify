@@ -584,3 +584,26 @@ export const useVarType = (nodeId: string) => {
     getVarType,
   }
 }
+
+export const useIsNodeInIteration = (iterationId: string) => {
+  const store = useStoreApi()
+
+  const isNodeInIteration = useCallback((nodeId: string) => {
+    const {
+      getNodes,
+    } = store.getState()
+    const nodes = getNodes()
+    const node = nodes.find(node => node.id === nodeId)
+
+    if (!node)
+      return false
+
+    if (node.parentId === iterationId)
+      return true
+
+    return false
+  }, [iterationId, store])
+  return {
+    isNodeInIteration,
+  }
+}

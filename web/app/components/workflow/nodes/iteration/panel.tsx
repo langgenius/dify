@@ -45,6 +45,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     usedOutVars,
     iterator,
     setIterator,
+    iteratorInputKey,
   } = useConfig(id, data)
 
   return (
@@ -93,12 +94,12 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
               label: t(`${i18nPrefix}.input`)!,
               inputs: [{
                 label: '',
-                variable: '#iterator#',
+                variable: iteratorInputKey,
                 type: InputVarType.iterator,
                 required: false,
               }],
-              values: { '#iterator#': iterator },
-              onChange: keyValue => setIterator((keyValue as any)['#iterator#']),
+              values: { [iteratorInputKey]: iterator },
+              onChange: keyValue => setIterator((keyValue as any)[iteratorInputKey]),
             },
           ]}
           runningStatus={runningStatus}

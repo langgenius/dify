@@ -3,6 +3,7 @@ import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import {
   useIsChatMode,
+  useIsNodeInIteration,
   useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
@@ -13,8 +14,10 @@ import { getNodeInfoById, getNodeUsedVars, isSystemVar, toNodeOutputVars } from 
 import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { IterationNodeType } from './types'
 
+const DELIMITER = '@@@@@'
 const useConfig = (id: string, payload: IterationNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
+  const { isNodeInIteration } = useIsNodeInIteration(id)
   const isChatMode = useIsChatMode()
 
   const { inputs, setInputs } = useNodeCrud<IterationNodeType>(id, payload)
@@ -44,13 +47,14 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   }, [inputs, setInputs])
 
   // single run
+  const iteratorInputKey = `${id}.input_selector`
   const {
     isShowSingleRun,
     showSingleRun,
     hideSingleRun,
     toVarInputs,
     runningStatus,
-    handleRun,
+    handleRun: doHandleRun,
     handleStop,
     runInputData,
     setRunInputData,
@@ -59,7 +63,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     id,
     data: inputs,
     defaultRunInputData: {
-      '#iterator#': [''],
+      [iteratorInputKey]: [''],
     },
   })
 
@@ -82,15 +86,23 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     showSingleRun()
   }, [hideIterationDetail, showSingleRun])
 
-  const usedOutVars = (() => {
+  const { usedOutVars, allVarObject } = (() => {
     const vars: ValueSelector[] = []
     const varObjs: Record<string, boolean> = {}
+    const allVarObject: Record<string, {
+      isInIteration: boolean
+    }> = {}
     iterationChildrenNodes.forEach((node) => {
       const nodeVars = getNodeUsedVars(node).filter(item => item && item.length > 0)
       nodeVars.forEach((varSelector) => {
-        if (!varObjs[varSelector.join('.')]) {
-          varObjs[varSelector.join('.')] = true
+        const varSectorStr = varSelector.join('.')
+        const isInIteration = isNodeInIteration(varSelector[0])
+        if (!varObjs[varSectorStr]) {
+          varObjs[varSectorStr] = true
           vars.push(varSelector)
+        }
+        allVarObject[`${varSectorStr}${DELIMITER}${node.id}`] = {
+          isInIteration,
         }
       })
     })
@@ -102,17 +114,31 @@ const useConfig = (id: string, payload: IterationNodeType) => {
           nodeName: varInfo?.title || beforeNodes[0]?.data.title, // default start node title
           variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
         },
-        variable: `#${item.join('.')}#`,
+        variable: `${item.join('.')}`,
         value_selector: item,
       }
     }))
-    return res
+    return {
+      usedOutVars: res,
+      allVarObject,
+    }
   })()
+
+  const handleRun = useCallback((data: Record<string, any>) => {
+    const formattedData: Record<string, any> = {}
+    Object.keys(allVarObject).forEach((key) => {
+      const [varSectorStr, nodeId] = key.split(DELIMITER)
+      const isInIteration = allVarObject[key].isInIteration
+      formattedData[`${!isInIteration ? `${nodeId}.` : ''}#${varSectorStr}#`] = data[varSectorStr]
+    })
+    formattedData[iteratorInputKey] = data[iteratorInputKey]
+    doHandleRun(formattedData)
+  }, [allVarObject, doHandleRun, iteratorInputKey])
 
   const inputVarValues = (() => {
     const vars: Record<string, any> = {}
     Object.keys(runInputData)
-      .filter(key => !['#iterator#'].includes(key))
+      .filter(key => ![iteratorInputKey].includes(key))
       .forEach((key) => {
         vars[key] = runInputData[key]
       })
@@ -122,18 +148,18 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
     const newVars = {
       ...newPayload,
-      '#iterator#': runInputData['#iterator#'],
+      [iteratorInputKey]: runInputData[iteratorInputKey],
     }
     setRunInputData(newVars)
-  }, [runInputData, setRunInputData])
+  }, [iteratorInputKey, runInputData, setRunInputData])
 
-  const iterator = runInputData['#iterator#']
+  const iterator = runInputData[iteratorInputKey]
   const setIterator = useCallback((newIterator: string[]) => {
     setRunInputData({
       ...runInputData,
-      '#iterator#': newIterator,
+      [iteratorInputKey]: newIterator,
     })
-  }, [runInputData, setRunInputData])
+  }, [iteratorInputKey, runInputData, setRunInputData])
 
   return {
     readOnly,
@@ -159,6 +185,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     usedOutVars,
     iterator,
     setIterator,
+    iteratorInputKey,
   }
 }
 

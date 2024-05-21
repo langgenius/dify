@@ -33,6 +33,10 @@ export const singleNodeRun = (appId: string, nodeId: string, params: object) => 
   return post(`apps/${appId}/workflows/draft/nodes/${nodeId}/run`, { body: params })
 }
 
+export const iterationSingleNodeRun = (appId: string, nodeId: string, params: object) => {
+  return post(`apps/${appId}/workflows/draft/iteration/nodes/${nodeId}/run`, { body: params })
+}
+
 export const publishWorkflow = (url: string) => {
   return post<CommonResponse & { created_at: number }>(url)
 }

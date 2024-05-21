@@ -11,7 +11,7 @@ import { getNodeInfoById, isSystemVar, toNodeOutputVars } from '@/app/components
 import type { CommonNodeType, InputVar, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { BlockEnum, InputVarType, NodeRunningStatus, VarType } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { singleNodeRun } from '@/service/workflow'
+import { iterationSingleNodeRun, singleNodeRun } from '@/service/workflow'
 import Toast from '@/app/components/base/toast'
 import LLMDefault from '@/app/components/workflow/nodes/llm/default'
 import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
@@ -89,6 +89,7 @@ const useOneStepRun = <T>({
   const { t } = useTranslation()
   const { getBeforeNodesInSameBranch } = useWorkflow() as any
   const isChatMode = useIsChatMode()
+  const isIteration = data.type === BlockEnum.Iteration
 
   const availableNodes = getBeforeNodesInSameBranch(id)
   const allOutputVars = toNodeOutputVars(getBeforeNodesInSameBranch(id), isChatMode)
@@ -183,8 +184,9 @@ const useOneStepRun = <T>({
       },
     })
     let res: any
+    const action = isIteration ? iterationSingleNodeRun : singleNodeRun
     try {
-      res = await singleNodeRun(appId!, id, { inputs: submitData }) as any
+      res = await action(appId!, id, { inputs: submitData }) as any
       if (res.error)
         throw new Error(res.error)
     }
