@@ -135,6 +135,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
 
     def on_workflow_iteration_started(self, 
                                       node_id: str,
+                                      node_type: NodeType,
                                       node_run_index: int = 1,
                                       predecessor_node_id: Optional[str] = None,
                                       metadata: Optional[dict] = None) -> None:
@@ -144,6 +145,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         self._queue_manager.publish(
             QueueIterationStartEvent(
                 node_id=node_id,
+                node_type=node_type,
                 node_run_index=node_run_index,
                 predecessor_node_id=predecessor_node_id,
                 metadata=metadata
@@ -151,7 +153,9 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
             PublishFrom.APPLICATION_MANAGER
         )
 
-    def on_workflow_iteration_next(self, node_id: str, index: int, 
+    def on_workflow_iteration_next(self, node_id: str, 
+                                   node_type: NodeType,
+                                   index: int, 
                                    node_run_index: int,
                                    output: Optional[Any]) -> None:
         """
@@ -160,6 +164,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         self._queue_manager._publish(
             QueueIterationNextEvent(
                 node_id=node_id,
+                node_type=node_type,
                 index=index,
                 node_run_index=node_run_index,
                 output=output
@@ -168,6 +173,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         )
 
     def on_workflow_iteration_completed(self, node_id: str, 
+                                        node_type: NodeType,
                                         node_run_index: int,
                                         outputs: list[Any]) -> None:
         """
@@ -176,6 +182,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         self._queue_manager._publish(
             QueueIterationCompletedEvent(
                 node_id=node_id,
+                node_type=node_type,
                 node_run_index=node_run_index,
                 outputs=outputs
             ),
