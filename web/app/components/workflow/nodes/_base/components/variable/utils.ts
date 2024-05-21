@@ -139,13 +139,29 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
     case BlockEnum.VariableAssigner: {
       const {
         output_type,
+        advanced_settings,
       } = data as VariableAssignerNodeType
-      res.vars = [
-        {
-          variable: 'output',
-          type: output_type,
-        },
-      ]
+      const isGroup = !!advanced_settings?.group_enabled
+      if (!isGroup) {
+        res.vars = [
+          {
+            variable: 'output',
+            type: output_type,
+          },
+        ]
+      }
+      else {
+        res.vars = advanced_settings?.groups.map((group) => {
+          return {
+            variable: group.group_name,
+            type: VarType.object,
+            children: [{
+              variable: 'output',
+              type: group.output_type,
+            }],
+          }
+        })
+      }
       break
     }
 
