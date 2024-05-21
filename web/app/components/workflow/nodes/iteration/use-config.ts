@@ -63,6 +63,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   } = useOneStepRun<IterationNodeType>({
     id,
     data: inputs,
+    iteratorInputKey,
     defaultRunInputData: {
       [iteratorInputKey]: [''],
     },

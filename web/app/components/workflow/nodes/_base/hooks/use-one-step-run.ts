@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { unionBy } from 'lodash-es'
 import produce from 'immer'
@@ -60,6 +60,7 @@ type Params<T> = {
   data: CommonNodeType<T>
   defaultRunInputData: Record<string, any>
   moreDataForCheckValid?: any
+  iteratorInputKey?: string
 }
 
 const varTypeToInputVarType = (type: VarType, {
@@ -88,6 +89,7 @@ const useOneStepRun = <T>({
   data,
   defaultRunInputData,
   moreDataForCheckValid,
+  iteratorInputKey,
 }: Params<T>) => {
   const { t } = useTranslation()
   const { getBeforeNodesInSameBranch } = useWorkflow() as any
@@ -127,17 +129,14 @@ const useOneStepRun = <T>({
   const checkValid = checkValidFns[data.type]
   const appId = useAppStore.getState().appDetail?.id
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
+  const iterationTimes = iteratorInputKey ? runInputData[iteratorInputKey].length : 0
   const [runResult, setRunResult] = useState<any>(null)
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const [canShowSingleRun, setCanShowSingleRun] = useState(false)
   const isShowSingleRun = data._isSingleRun && canShowSingleRun
   const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[][]>([])
-  const iterationRunResultRef = useRef(iterationRunResult)
-  useEffect(() => {
-    iterationRunResultRef.current = iterationRunResult
-  }, [iterationRunResult])
-  console.log(iterationRunResult)
+
   useEffect(() => {
     if (!checkValid) {
       setCanShowSingleRun(true)
@@ -198,6 +197,8 @@ const useOneStepRun = <T>({
         res = await singleNodeRun(appId!, id, { inputs: submitData }) as any
       }
       else {
+        setIterationRunResult([])
+        let _iterationResult: NodeTracing[][] = []
         ssePost(
           getIterationSingleNodeRunUrl(isChatMode, appId!, id),
           { body: { inputs: submitData } },
@@ -213,25 +214,30 @@ const useOneStepRun = <T>({
                 },
               })
             },
-            onIterationStart: () => {
-              const iterationRunResult = iterationRunResultRef.current
-              const newIterationRunResult = produce(iterationRunResult, (draft) => {
+            onIterationNext: () => {
+              // iteration next trigger time is triggered one more time than iterationTimes
+              if (_iterationResult.length >= iterationTimes!)
+                return
+
+              const newIterationRunResult = produce(_iterationResult, (draft) => {
                 draft.push([])
               })
+              _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
             },
             onNodeStarted: (params) => {
-              const iterationRunResult = iterationRunResultRef.current
-              const newIterationRunResult = produce(iterationRunResult, (draft) => {
+              const newIterationRunResult = produce(_iterationResult, (draft) => {
                 draft[draft.length - 1].push({
                   ...params.data,
                   status: NodeRunningStatus.Running,
                 } as NodeTracing)
               })
+              _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
             },
             onNodeFinished: (params) => {
-              const iterationRunResult = iterationRunResultRef.current
+              const iterationRunResult = _iterationResult
+
               const { data } = params
               const currentIndex = iterationRunResult[iterationRunResult.length - 1].findIndex(trace => trace.node_id === data.node_id)
               const newIterationRunResult = produce(iterationRunResult, (draft) => {
@@ -242,6 +248,7 @@ const useOneStepRun = <T>({
                   } as NodeTracing
                 }
               })
+              _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
             },
             onError: () => {
