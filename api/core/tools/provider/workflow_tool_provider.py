@@ -1,6 +1,7 @@
 from typing import Optional
 
 from core.app.app_config.entities import VariableEntity
+from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.model_runtime.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolDescription,
@@ -13,8 +14,9 @@ from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from extensions.ext_database import db
-from models.model import App
+from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
+from models.workflow import Workflow
 
 
 class WorkflowToolProviderController(ToolProviderController):
@@ -62,12 +64,18 @@ class WorkflowToolProviderController(ToolProviderController):
             :param app: the app
             :return: the tool
         """
-        workflow = app.workflow
+        workflow: Workflow = app.workflow
         if not workflow:
             raise ValueError('workflow not found')
 
         # fetch start node
         graph: dict = workflow.graph_dict
+        features_dict: dict = workflow.features_dict
+        features = WorkflowAppConfigManager.convert_features(
+            config_dict=features_dict,
+            app_mode=AppMode.WORKFLOW
+        )
+
         parameters = db_provider.parameter_configurations
         variables = WorkflowToolConfigurationUtils.get_workflow_graph_variables(graph)
 
@@ -84,54 +92,72 @@ class WorkflowToolProviderController(ToolProviderController):
         workflow_tool_parameters = []
         for parameter in parameters:
             variable = fetch_workflow_variable(parameter.name)
-            if not variable:
-                raise ValueError('variable not found')
+            if variable:
+                parameter_type = None
+                options = None
+                if variable.type in [
+                    VariableEntity.Type.TEXT_INPUT, 
+                    VariableEntity.Type.PARAGRAPH, 
+                    VariableEntity.Type.SELECT
+                ]:
+                    parameter_type = ToolParameter.ToolParameterType.STRING
+                elif variable.type in [
+                    VariableEntity.Type.NUMBER
+                ]:
+                    parameter_type = ToolParameter.ToolParameterType.NUMBER
+                else:
+                    raise ValueError(f'unsupported variable type {variable.type}')
+                
+                if variable.type == VariableEntity.Type.SELECT and variable.options:
+                    options = [
+                        ToolParameterOption(
+                            value=option,
+                            label=I18nObject(
+                                en_US=option,
+                                zh_Hans=option
+                            )
+                        ) for option in variable.options
+                    ]
 
-            parameter_type = None
-            options = None
-            if variable.type in [
-                VariableEntity.Type.TEXT_INPUT, 
-                VariableEntity.Type.PARAGRAPH, 
-                VariableEntity.Type.SELECT
-            ]:
-                parameter_type = ToolParameter.ToolParameterType.STRING
-            elif variable.type in [
-                VariableEntity.Type.NUMBER
-            ]:
-                parameter_type = ToolParameter.ToolParameterType.NUMBER
-            else:
-                raise ValueError(f'unsupported variable type {variable.type}')
-            
-            if variable.type == VariableEntity.Type.SELECT and variable.options:
-                options = [
-                    ToolParameterOption(
-                        value=option,
+                workflow_tool_parameters.append(
+                    ToolParameter(
+                        name=parameter.name,
                         label=I18nObject(
-                            en_US=option,
-                            zh_Hans=option
-                        )
-                    ) for option in variable.options
-                ]
-
-            workflow_tool_parameters.append(
-                ToolParameter(
-                    name=parameter.name,
-                    label=I18nObject(
-                        en_US=variable.label,
-                        zh_Hans=variable.label
-                    ),
-                    human_description=I18nObject(
-                        en_US=parameter.description,
-                        zh_Hans=parameter.description
-                    ),
-                    type=parameter_type,
-                    form=parameter.form,
-                    llm_description=parameter.description,
-                    required=variable.required,
-                    options=options,
-                    default=variable.default
+                            en_US=variable.label,
+                            zh_Hans=variable.label
+                        ),
+                        human_description=I18nObject(
+                            en_US=parameter.description,
+                            zh_Hans=parameter.description
+                        ),
+                        type=parameter_type,
+                        form=parameter.form,
+                        llm_description=parameter.description,
+                        required=variable.required,
+                        options=options,
+                        default=variable.default
+                    )
                 )
-            )
+            elif features.file_upload:
+                workflow_tool_parameters.append(
+                    ToolParameter(
+                        name=parameter.name,
+                        label=I18nObject(
+                            en_US=parameter.name,
+                            zh_Hans=parameter.name
+                        ),
+                        human_description=I18nObject(
+                            en_US=parameter.description,
+                            zh_Hans=parameter.description
+                        ),
+                        type=ToolParameter.ToolParameterType.FILE,
+                        llm_description=parameter.description,
+                        required=False,
+                        form=parameter.form,
+                    )
+                )
+            else:
+                raise ValueError('variable not found')
 
         return WorkflowTool(
             identity=ToolIdentity(
