@@ -62,6 +62,9 @@ class ModelConfigWithCredentialsEntity(BaseModel):
     parameters: dict[str, Any] = {}
     stop: list[str] = []
 
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class AppGenerateEntity(BaseModel):
     """

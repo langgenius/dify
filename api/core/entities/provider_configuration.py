@@ -1018,4 +1018,7 @@ class ProviderModelBundle(BaseModel):
     configuration: ProviderConfiguration
     provider_instance: ModelProvider
     model_type_instance: AIModel
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    # pydantic configs
+    model_config = ConfigDict(arbitrary_types_allowed=True,
+                              protected_namespaces=())
