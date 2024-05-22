@@ -55,6 +55,7 @@ const AddBlock = ({
         ...(toolDefaultValue || {}),
         isIterationStart: true,
         isInIteration: true,
+        iteration_id: iterationNodeId,
       },
       position: {
         x: 85,

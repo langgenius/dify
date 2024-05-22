@@ -23,6 +23,13 @@ const translation = {
   },
   includeToolNum: '包含 {{num}} 个工具',
   addTool: '添加工具',
+  addToolModal: {
+    type: '类型',
+    category: '类别',
+    add: '添加',
+    added: '已添加',
+    manageInTools: '去工具列表管理',
+  },
   createTool: {
     title: '创建自定义工具',
     editAction: '编辑',
