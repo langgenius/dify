@@ -72,6 +72,8 @@ class NodeRunMetadataKey(Enum):
     TOTAL_PRICE = 'total_price'
     CURRENCY = 'currency'
     TOOL_INFO = 'tool_info'
+    ITERATION_ID = 'iteration_id'
+    ITERATION_INDEX = 'iteration_index'
 
 
 class NodeRunResult(BaseModel):

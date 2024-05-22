@@ -540,5 +540,6 @@ class WorkflowIterationState(BaseModel):
         node_execution_id: str
         started_at: float
         inputs: dict = None
+        total_tokens: int = 0
 
     current_iterations: dict[str, Data] = None
