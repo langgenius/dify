@@ -64,7 +64,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                     node_id=event.node_id,
                     node_type=event.node_type.value,
                     index=event.index,
-                    output=event.output,
+                    pre_iteration_output=event.output,
                     created_at=int(time.time()),
                     extras={}
                 )
