@@ -24,6 +24,9 @@ export type NodeTracing = {
     currency: string
     steps_boundary: number[]
   }
+  metadata: {
+    iterator_length: number
+  }
   created_at: number
   created_by: {
     id: string
