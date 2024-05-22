@@ -255,6 +255,7 @@ class WorkflowEngineManager:
                         variable_pool=workflow_run_state.variable_pool
                     )
                     self._workflow_iteration_started(
+                        graph=graph,
                         current_iteration_node=current_iteration_node,
                         workflow_run_state=workflow_run_state,
                         predecessor_node_id=predecessor_node.node_id if predecessor_node else None,
@@ -437,6 +438,9 @@ class WorkflowEngineManager:
         ]
         iteration_nested_node_ids = [node.get('id') for node in iteration_nested_nodes]
 
+        if not iteration_nested_nodes:
+            raise ValueError('iteration has no nested nodes')
+
         # init workflow run
         if callbacks:
             for callback in callbacks:
@@ -536,7 +540,8 @@ class WorkflowEngineManager:
                     error=error
                 )
 
-    def _workflow_iteration_started(self, current_iteration_node: BaseIterationNode,
+    def _workflow_iteration_started(self, graph: dict, 
+                                    current_iteration_node: BaseIterationNode,
                                     workflow_run_state: WorkflowRunState,
                                     predecessor_node_id: Optional[str] = None,
                                     callbacks: list[BaseWorkflowCallback] = None) -> None:
@@ -547,6 +552,15 @@ class WorkflowEngineManager:
         :param callbacks: workflow callbacks
         :return:
         """
+        # get nested nodes
+        iteration_nested_nodes = [
+            node for node in graph.get('nodes')
+            if node.get('data', {}).get('iteration_id') == current_iteration_node.node_id
+        ]
+
+        if not iteration_nested_nodes:
+            raise ValueError('iteration has no nested nodes')
+
         if callbacks:
             if isinstance(workflow_run_state.current_iteration_state, IterationState):
                 for callback in callbacks:
