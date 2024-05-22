@@ -260,7 +260,7 @@ class WorkflowToolManageService:
         }
     
     @classmethod
-    def get_workflow_tool_by_tool_app_id(cls, user_id: str, tenant_id: str, workflow_app_id: str) -> dict:
+    def get_workflow_tool_by_app_id(cls, user_id: str, tenant_id: str, workflow_app_id: str) -> dict:
         """
         Get a workflow tool.
         :param user_id: the user id
