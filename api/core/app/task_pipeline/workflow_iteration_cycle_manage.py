@@ -197,7 +197,17 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
         workflow_node_execution.elapsed_time = time.perf_counter() - current_iteration.started_at
 
         db.session.commit()
-        db.session.close()
 
         # remove current iteration
         self._iteration_state.current_iterations.pop(event.node_id, None)
+
+        # set latest node execution info
+        latest_node_execution_info = NodeExecutionInfo(
+            workflow_node_execution_id=workflow_node_execution.id,
+            node_type=NodeType.ITERATION,
+            start_at=time.perf_counter()
+        )
+
+        self._task_state.latest_node_execution_info = latest_node_execution_info
+        
+        db.session.close()
