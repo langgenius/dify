@@ -31,7 +31,7 @@ class PgvectoRSConfig(BaseModel):
     password: str
     database: str
 
-    @model_validator()
+    @model_validator(mode='before')
     @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values['host']:

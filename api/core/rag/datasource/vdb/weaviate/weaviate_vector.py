@@ -22,7 +22,7 @@ class WeaviateConfig(BaseModel):
     api_key: Optional[str] = None
     batch_size: int = 100
 
-    @model_validator()
+    @model_validator(mode='before')
     @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values['endpoint']:
