@@ -16,6 +16,7 @@ const TracingPanel: FC<TracingPanelProps> = ({ list, onShowIterationDetail }) =>
           key={node.id}
           nodeInfo={node}
           onShowIterationDetail={onShowIterationDetail}
+          justShowIterationNavArrow
         />
       ))}
     </div>
