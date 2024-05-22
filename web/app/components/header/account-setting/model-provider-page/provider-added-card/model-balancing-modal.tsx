@@ -8,7 +8,7 @@ import Modal from '@/app/components/base/modal'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Switch from '@/app/components/base/switch'
 import Indicator from '@/app/components/header/indicator'
-import { Edit02, Plus02, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
+import { Edit02, HelpCircle, Plus02, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
@@ -24,6 +24,8 @@ export type ModelBalancingModalProps = {
 // model balancing config modal
 const ModelBalancingModal = ({ provider, model, open = false, onClose }: ModelBalancingModalProps) => {
   const { t } = useTranslation()
+
+  // const { data: providersData } = useSWR(`/workspaces/current/model-providers/${provider.provider}/models/load-balancing-configs/:config_id`, fetchModelProviders)
 
   return (
     <Modal
@@ -54,7 +56,7 @@ const ModelBalancingModal = ({ provider, model, open = false, onClose }: ModelBa
       }
     >
       <div className='py-2'>
-        <div className={classNames('min-h-16 bg-gray-50 border border-gray-200 rounded-xl', 'border-gray-200 cursor-pointer')}>
+        <div className={classNames('min-h-16 bg-gray-50 border rounded-xl', 'border-gray-200 cursor-pointer')}>
           <div className='flex items-center px-[15px] py-3 gap-2 select-none'>
             <div className='grow-0 flex items-center justify-center w-8 h-8 bg-white border rounded-lg'>
               {Boolean(model) && (
@@ -68,13 +70,18 @@ const ModelBalancingModal = ({ provider, model, open = false, onClose }: ModelBa
           </div>
         </div>
 
-        <div className={classNames('mt-2 bg-gray-50 min-h-16 border border-gray-200 rounded-xl', 'border-primary-400 cursor-default')}>
+        <div className={classNames('mt-2 bg-gray-50 min-h-16 border rounded-xl', 'border-primary-400 cursor-default')}>
           <div className='flex items-center px-[15px] py-3 gap-2 select-none'>
             <div className='grow-0 flex items-center justify-center w-8 h-8 text-primary-600 bg-indigo-50 border border-indigo-100 rounded-lg'>
               <Balance className='w-4 h-4' />
             </div>
             <div className='grow'>
-              <div className='text-sm'>{t('common.modelProvider.loadBalancing')}</div>
+              <div className='flex items-center gap-1 text-sm'>
+                {t('common.modelProvider.loadBalancing')}
+                <TooltipPlus popupContent={t('common.modelProvider.loadBalancingInfo')} popupClassName='max-w-[300px]'>
+                  <HelpCircle className='w-3 h-3 text-gray-400' />
+                </TooltipPlus>
+              </div>
               <div className='text-xs text-gray-500'>Todo</div>
             </div>
           </div>
@@ -146,7 +153,7 @@ const ModelBalancingModal = ({ provider, model, open = false, onClose }: ModelBa
           </div>
 
           <div className='flex items-center px-6 h-[34px] text-xs text-gray-700 bg-black/2 border-t border-t-black/5'>
-            <AlertTriangle className='mr-1 text-[#f79009]' />
+            <AlertTriangle className='mr-1 w-3 h-3 text-[#f79009]' />
             {t('common.modelProvider.loadBalancingLeastKeyWarning')}
           </div>
         </div>

@@ -344,6 +344,7 @@ const translation = {
     apiKeyRateLimit: 'Rate limit was reached, available after {{seconds}}s',
     addConfig: 'Add Config',
     loadBalancingLeastKeyWarning: 'To enable load balancing at least 2 keys must be enabled.',
+    loadBalancingInfo: 'By default, load balancing uses the Round-robin strategy. If rate limiting is triggered, a 1-minute cooldown period will be applied.',
   },
   dataSource: {
     add: 'Add a data source',

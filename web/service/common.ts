@@ -32,6 +32,7 @@ import type {
   ModelItem,
   ModelParameterRule,
   ModelProvider,
+  ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 
@@ -271,3 +272,9 @@ type RetrievalMethodsRes = {
 export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> = (url) => {
   return get<RetrievalMethodsRes>(url)
 }
+
+export const enableModel = (url: string, body: { model: string; model_type: ModelTypeEnum }) =>
+  patch<CommonResponse>(url, { body })
+
+export const disableModel = (url: string, body: { model: string; model_type: ModelTypeEnum }) =>
+  patch<CommonResponse>(url, { body })

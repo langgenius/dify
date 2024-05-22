@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import useSWR from 'swr'
 import { useEffect, useState } from 'react'
 import {
@@ -19,7 +19,7 @@ import { fetchCurrentPlanInfo } from '@/service/billing'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
 import { defaultPlan } from '@/app/components/billing/config'
 
-const ProviderContext = createContext<{
+type ProviderContextState = {
   modelProviders: ModelProvider[]
   textGenerationModelList: Model[]
   supportRetrievalMethods: RETRIEVE_METHOD[]
@@ -33,35 +33,42 @@ const ProviderContext = createContext<{
   enableBilling: boolean
   onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
-  enableModelLoadBalancing: boolean
-}>({
-      modelProviders: [],
-      textGenerationModelList: [],
-      supportRetrievalMethods: [],
-      isAPIKeySet: true,
-      plan: {
-        type: Plan.sandbox,
-        usage: {
-          vectorSpace: 32,
-          buildApps: 12,
-          teamMembers: 1,
-          annotatedResponse: 1,
-        },
-        total: {
-          vectorSpace: 200,
-          buildApps: 50,
-          teamMembers: 1,
-          annotatedResponse: 10,
-        },
-      },
-      isFetchedPlan: false,
-      enableBilling: false,
-      onPlanInfoChanged: () => { },
-      enableReplaceWebAppLogo: false,
-      enableModelLoadBalancing: false,
-    })
+  modelLoadBalancingEnabled: boolean
+}
+const ProviderContext = createContext<ProviderContextState>({
+  modelProviders: [],
+  textGenerationModelList: [],
+  supportRetrievalMethods: [],
+  isAPIKeySet: true,
+  plan: {
+    type: Plan.sandbox,
+    usage: {
+      vectorSpace: 32,
+      buildApps: 12,
+      teamMembers: 1,
+      annotatedResponse: 1,
+    },
+    total: {
+      vectorSpace: 200,
+      buildApps: 50,
+      teamMembers: 1,
+      annotatedResponse: 10,
+    },
+  },
+  isFetchedPlan: false,
+  enableBilling: false,
+  onPlanInfoChanged: () => { },
+  enableReplaceWebAppLogo: false,
+  modelLoadBalancingEnabled: false,
+})
 
 export const useProviderContext = () => useContext(ProviderContext)
+
+// Adding a dangling comma to avoid the generic parsing issue in tsx, see:
+// https://github.com/microsoft/TypeScript/issues/15713
+// eslint-disable-next-line @typescript-eslint/comma-dangle
+export const useProviderContextSelector = <T,>(selector: (state: ProviderContextState) => T): T =>
+  useContextSelector(ProviderContext, selector)
 
 type ProviderContextProviderProps = {
   children: React.ReactNode
@@ -78,7 +85,7 @@ export const ProviderContextProvider = ({
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
   const [enableBilling, setEnableBilling] = useState(true)
   const [enableReplaceWebAppLogo, setEnableReplaceWebAppLogo] = useState(false)
-  const [enableModelLoadBalancing, setEnableModelLoadBalancing] = useState(false)
+  const [modelLoadBalancingEnabled, setModelLoadBalancingEnabled] = useState(false)
 
   const fetchPlan = async () => {
     const data = await fetchCurrentPlanInfo()
@@ -90,7 +97,7 @@ export const ProviderContextProvider = ({
       setIsFetchedPlan(true)
     }
     if (data.model_load_balancing_enabled)
-      setEnableModelLoadBalancing(true)
+      setModelLoadBalancingEnabled(true)
   }
   useEffect(() => {
     fetchPlan()
@@ -107,7 +114,7 @@ export const ProviderContextProvider = ({
       enableBilling,
       onPlanInfoChanged: fetchPlan,
       enableReplaceWebAppLogo,
-      enableModelLoadBalancing,
+      modelLoadBalancingEnabled,
     }}>
       {children}
     </ProviderContext.Provider>
