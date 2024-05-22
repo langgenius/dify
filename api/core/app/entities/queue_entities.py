@@ -47,7 +47,7 @@ class QueueLLMChunkEvent(AppQueueEvent):
     """
     QueueLLMChunkEvent entity
     """
-    event = QueueEvent.LLM_CHUNK
+    event: str = QueueEvent.LLM_CHUNK
     chunk: LLMResultChunk
 
 class QueueIterationStartEvent(AppQueueEvent):
@@ -106,7 +106,7 @@ class QueueTextChunkEvent(AppQueueEvent):
     """
     QueueTextChunkEvent entity
     """
-    event = QueueEvent.TEXT_CHUNK
+    event: str = QueueEvent.TEXT_CHUNK
     text: str
     metadata: Optional[dict] = None
 
@@ -115,7 +115,7 @@ class QueueAgentMessageEvent(AppQueueEvent):
     """
     QueueMessageEvent entity
     """
-    event = QueueEvent.AGENT_MESSAGE
+    event: str = QueueEvent.AGENT_MESSAGE
     chunk: LLMResultChunk
 
     
@@ -123,7 +123,7 @@ class QueueMessageReplaceEvent(AppQueueEvent):
     """
     QueueMessageReplaceEvent entity
     """
-    event = QueueEvent.MESSAGE_REPLACE
+    event: str = QueueEvent.MESSAGE_REPLACE
     text: str
 
 
@@ -131,7 +131,7 @@ class QueueRetrieverResourcesEvent(AppQueueEvent):
     """
     QueueRetrieverResourcesEvent entity
     """
-    event = QueueEvent.RETRIEVER_RESOURCES
+    event: str = QueueEvent.RETRIEVER_RESOURCES
     retriever_resources: list[dict]
 
 
@@ -139,7 +139,7 @@ class QueueAnnotationReplyEvent(AppQueueEvent):
     """
     QueueAnnotationReplyEvent entity
     """
-    event = QueueEvent.ANNOTATION_REPLY
+    event: str = QueueEvent.ANNOTATION_REPLY
     message_annotation_id: str
 
 
@@ -147,7 +147,7 @@ class QueueMessageEndEvent(AppQueueEvent):
     """
     QueueMessageEndEvent entity
     """
-    event = QueueEvent.MESSAGE_END
+    event: str = QueueEvent.MESSAGE_END
     llm_result: Optional[LLMResult] = None
 
 
@@ -155,28 +155,28 @@ class QueueAdvancedChatMessageEndEvent(AppQueueEvent):
     """
     QueueAdvancedChatMessageEndEvent entity
     """
-    event = QueueEvent.ADVANCED_CHAT_MESSAGE_END
+    event: str = QueueEvent.ADVANCED_CHAT_MESSAGE_END
 
 
 class QueueWorkflowStartedEvent(AppQueueEvent):
     """
     QueueWorkflowStartedEvent entity
     """
-    event = QueueEvent.WORKFLOW_STARTED
+    event: str = QueueEvent.WORKFLOW_STARTED
 
 
 class QueueWorkflowSucceededEvent(AppQueueEvent):
     """
     QueueWorkflowSucceededEvent entity
     """
-    event = QueueEvent.WORKFLOW_SUCCEEDED
+    event: str = QueueEvent.WORKFLOW_SUCCEEDED
 
 
 class QueueWorkflowFailedEvent(AppQueueEvent):
     """
     QueueWorkflowFailedEvent entity
     """
-    event = QueueEvent.WORKFLOW_FAILED
+    event: str = QueueEvent.WORKFLOW_FAILED
     error: str
 
 
@@ -184,7 +184,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     """
     QueueNodeStartedEvent entity
     """
-    event = QueueEvent.NODE_STARTED
+    event: str = QueueEvent.NODE_STARTED
 
     node_id: str
     node_type: NodeType
@@ -197,7 +197,7 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     """
     QueueNodeSucceededEvent entity
     """
-    event = QueueEvent.NODE_SUCCEEDED
+    event: str = QueueEvent.NODE_SUCCEEDED
 
     node_id: str
     node_type: NodeType
@@ -215,7 +215,7 @@ class QueueNodeFailedEvent(AppQueueEvent):
     """
     QueueNodeFailedEvent entity
     """
-    event = QueueEvent.NODE_FAILED
+    event: str = QueueEvent.NODE_FAILED
 
     node_id: str
     node_type: NodeType
@@ -232,7 +232,7 @@ class QueueAgentThoughtEvent(AppQueueEvent):
     """
     QueueAgentThoughtEvent entity
     """
-    event = QueueEvent.AGENT_THOUGHT
+    event: str = QueueEvent.AGENT_THOUGHT
     agent_thought_id: str
 
 
@@ -240,7 +240,7 @@ class QueueMessageFileEvent(AppQueueEvent):
     """
     QueueAgentThoughtEvent entity
     """
-    event = QueueEvent.MESSAGE_FILE
+    event: str = QueueEvent.MESSAGE_FILE
     message_file_id: str
 
 
@@ -248,7 +248,7 @@ class QueueErrorEvent(AppQueueEvent):
     """
     QueueErrorEvent entity
     """
-    event = QueueEvent.ERROR
+    event: str = QueueEvent.ERROR
     error: Any = None
 
 
@@ -256,7 +256,7 @@ class QueuePingEvent(AppQueueEvent):
     """
     QueuePingEvent entity
     """
-    event = QueueEvent.PING
+    event: str = QueueEvent.PING
 
 
 class QueueStopEvent(AppQueueEvent):
@@ -272,7 +272,7 @@ class QueueStopEvent(AppQueueEvent):
         OUTPUT_MODERATION = "output-moderation"
         INPUT_MODERATION = "input-moderation"
 
-    event = QueueEvent.STOP
+    event: str = QueueEvent.STOP
     stopped_by: StopBy
 
 
