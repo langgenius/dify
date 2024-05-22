@@ -1,17 +1,21 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import { useBoolean } from 'ahooks'
 import type { WorkflowProcess } from '../../types'
+import IterationResultPanel from '@/app/components/workflow/run/iteration-result-panel'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import NodePanel from '@/app/components/workflow/run/node'
+import type { NodeTracing } from '@/types/workflow'
 
 type WorkflowProcessProps = {
   data: WorkflowProcess
@@ -47,6 +51,27 @@ const WorkflowProcessItem = ({
   useEffect(() => {
     setCollapse(!expand)
   }, [expand])
+
+  const [iterationDetail, setIterationDetail] = useState<NodeTracing[][]>([])
+  const [isShowIterationDetail, {
+    setTrue: doShowIterationDetail,
+    setFalse: doHideIterationDetail,
+  }] = useBoolean(false)
+  const showIterationDetail = useCallback((details: NodeTracing[][]) => {
+    setIterationDetail(details)
+    doShowIterationDetail()
+  }, [doShowIterationDetail])
+
+  if (isShowIterationDetail) {
+    return (
+      <IterationResultPanel
+        onBack={doHideIterationDetail}
+        onHide={doHideIterationDetail}
+        list={iterationDetail}
+        noWrap
+      />
+    )
+  }
 
   return (
     <div
@@ -97,6 +122,7 @@ const WorkflowProcessItem = ({
                     nodeInfo={node}
                     hideInfo={hideInfo}
                     hideProcessDetail={hideProcessDetail}
+                    onShowIterationDetail={showIterationDetail}
                   />
                 </div>
               ))

@@ -32,6 +32,7 @@ export type NodeTracing = {
   finished_at: number
   extras?: any
   expand?: boolean // for UI
+  details?: NodeTracing[][] // iteration detail
 }
 
 export type FetchWorkflowDraftResponse = {
