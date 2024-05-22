@@ -3,9 +3,10 @@ import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import produce from 'immer'
 import cn from 'classnames'
 import { useMount } from 'ahooks'
-import type { Collection, CustomCollectionBackend } from '../types'
+import type { Collection, CustomCollectionBackend, Tool } from '../types'
 import Type from './type'
 import Category from './category'
 import Tools from './tools'
@@ -28,6 +29,8 @@ import {
 } from '@/service/tools'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import Toast from '@/app/components/base/toast'
+import ConfigContext from '@/context/debug-configuration'
+import type { ModelConfig } from '@/models/debug'
 
 type Props = {
   onHide: () => void
@@ -55,7 +58,6 @@ const AddToolModal: FC<Props> = ({
     setToolList([...buildInTools, ...customTools, ...workflowTools])
     setListLoading(false)
   }
-
   const filterdList = useMemo(() => {
     return toolList.filter((toolWithProvider) => {
       if (currentType === 'all')
@@ -74,6 +76,11 @@ const AddToolModal: FC<Props> = ({
     })
   }, [currentType, currentCategory, toolList, keywords, language])
 
+  const {
+    modelConfig,
+    setModelConfig,
+  } = useContext(ConfigContext)
+
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await createCustomCollection(data)
@@ -86,7 +93,28 @@ const AddToolModal: FC<Props> = ({
   }
   const [showSettingAuth, setShowSettingAuth] = useState(false)
   const [collection, setCollection] = useState<Collection>()
-  const authSelecthandle = (provider: Collection) => {
+  const toolSelectHandle = (collection: Collection, tool: Tool) => {
+    const parameters: Record<string, string> = {}
+    if (tool.parameters) {
+      tool.parameters.forEach((item) => {
+        parameters[item.name] = ''
+      })
+    }
+
+    const nexModelConfig = produce(modelConfig, (draft: ModelConfig) => {
+      draft.agentConfig.tools.push({
+        provider_id: collection.id || collection.name,
+        provider_type: collection.type,
+        provider_name: collection.name,
+        tool_name: tool.name,
+        tool_label: tool.label[locale] || tool.label[locale.replaceAll('-', '_')],
+        tool_parameters: parameters,
+        enabled: true,
+      })
+    })
+    setModelConfig(nexModelConfig)
+  }
+  const authSelectHandle = (provider: Collection) => {
     setCollection(provider)
     setShowSettingAuth(true)
   }
@@ -147,7 +175,7 @@ const AddToolModal: FC<Props> = ({
             </div>
           </div>
           <div className='relative grow bg-white rounded-r-xl overflow-y-auto'>
-            <div className='sticky top-0 left-0 right-0 p-2 flex items-center gap-1 bg-white'>
+            <div className='z-10 sticky top-0 left-0 right-0 p-2 flex items-center gap-1 bg-white'>
               <div className='grow'>
                 <SearchInput className='w-full' value={keywords} onChange={handleKeywordsChange} />
               </div>
@@ -164,8 +192,9 @@ const AddToolModal: FC<Props> = ({
             {!listLoading && (
               <Tools
                 tools={filterdList}
-                onSelect={() => {}}
-                onAuthSetup={authSelecthandle}
+                addedTools={(modelConfig?.agentConfig?.tools as any) || []}
+                onSelect={toolSelectHandle}
+                onAuthSetup={authSelectHandle}
               />
             )}
           </div>

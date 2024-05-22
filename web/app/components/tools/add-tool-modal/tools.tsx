@@ -5,8 +5,8 @@ import {
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import { Check, Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { Tag01 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -14,14 +14,19 @@ import Tooltip from '@/app/components/base/tooltip'
 import Button from '@/app/components/base/button'
 import { useGetLanguage } from '@/context/i18n'
 import { useStore as useLabelStore } from '@/app/components/tools/labels/store'
+import type { Tool } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
+import type { AgentTool } from '@/types/app'
+
 type ToolsProps = {
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
-  onAuthSetup: (provider: ToolWithProvider) => void
   tools: ToolWithProvider[]
+  addedTools: AgentTool[]
+  onSelect: (provider: ToolWithProvider, tool: Tool) => void
+  onAuthSetup: (provider: ToolWithProvider) => void
 }
 const Blocks = ({
   tools,
+  addedTools,
   onSelect,
   onAuthSetup,
 }: ToolsProps) => {
@@ -51,6 +56,7 @@ const Blocks = ({
               return label?.label[language]
             }).filter(Boolean).join(', ')
           })()
+          const added = !!addedTools?.find(v => v.provider_id === toolWithProvider.id && v.provider_type === toolWithProvider.type && v.tool_name === tool.name)
           return (
             <Tooltip
               key={tool.name}
@@ -79,23 +85,29 @@ const Blocks = ({
               )}
               noArrow
             >
-              <div
-                className='group/item flex items-center w-full pl-3 pr-1 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
-                // onClick={() => onSelect(BlockEnum.Tool, {
-                //   provider_id: toolWithProvider.id,
-                //   provider_type: toolWithProvider.type,
-                //   provider_name: toolWithProvider.name,
-                //   tool_name: tool.name,
-                //   tool_label: tool.label[language],
-                //   title: tool.label[language],
-                // })}
-              >
+              <div className='group/item flex items-center w-full pl-3 pr-1 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'>
                 <BlockIcon
                   className={cn('mr-2 shrink-0', needAuth && 'opacity-30')}
                   type={BlockEnum.Tool}
                   toolIcon={toolWithProvider.icon}
                 />
                 <div className={cn('grow text-sm text-gray-900 truncate', needAuth && 'opacity-30')}>{tool.label[language]}</div>
+                {!needAuth && added && (
+                  <div className='flex items-center gap-1 rounded-[6px] border border-gray-100 px-2 py-[3px] bg-white text-gray-300 text-xs font-medium leading-[18px]'>
+                    <Check className='w-3 h-3'/>
+                    {t('tools.addToolModal.added').toLocaleUpperCase()}
+                  </div>
+                )}
+                {!needAuth && !added && (
+                  <Button
+                    type='default'
+                    className={cn('hidden shrink-0 items-center !h-6 px-2 py-1 bg-white text-xs font-medium leading-[18px] text-primary-600 group-hover/item:flex')}
+                    onClick={() => onSelect(toolWithProvider, tool)}
+                  >
+                    <Plus className='w-3 h-3'/>
+                    {t('tools.addToolModal.add').toLocaleUpperCase()}
+                  </Button>
+                )}
                 {needAuth && (
                   <Button
                     type='default'
@@ -109,7 +121,7 @@ const Blocks = ({
         })}
       </div>
     )
-  }, [language, t, labelList, onAuthSetup, onSelect])
+  }, [language, t, labelList, addedTools, onAuthSetup, onSelect])
 
   return (
     <div className='p-1 pb-6 max-w-[440px]'>

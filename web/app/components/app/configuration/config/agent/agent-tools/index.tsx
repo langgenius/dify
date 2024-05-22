@@ -6,7 +6,6 @@ import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
-// import ChooseTool from './choose-tool'
 import SettingBuiltInTool from './setting-built-in-tool'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Tooltip from '@/app/components/base/tooltip'
@@ -32,7 +31,6 @@ const AgentTools: FC = () => {
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
   const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
-  const [selectedProviderId, setSelectedProviderId] = useState<string | undefined>(undefined)
   const [isShowSettingTool, setIsShowSettingTool] = useState(false)
   const tools = (modelConfig?.agentConfig?.tools as AgentTool[] || []).map((item) => {
     const collection = collectionList.find(collection => collection.id === item.provider_id && collection.type === item.provider_type)
@@ -79,10 +77,7 @@ const AgentTools: FC = () => {
             {tools.length < MAX_TOOLS_NUM && (
               <>
                 <div className='ml-3 mr-1 h-3.5 w-px bg-gray-200'></div>
-                <OperationBtn type="add" onClick={() => {
-                  setSelectedProviderId(undefined)
-                  setIsShowChooseTool(true)
-                }} />
+                <OperationBtn type="add" onClick={() => setIsShowChooseTool(true)} />
               </>
             )}
           </div>
@@ -131,10 +126,8 @@ const AgentTools: FC = () => {
                         popupContent={t(`tools.${item.isDeleted ? 'toolRemoved' : 'notAuthorized'}`)}
                       >
                         <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
-                          if (item.notAuthor) {
-                            setSelectedProviderId(item.provider_id)
+                          if (item.notAuthor)
                             setIsShowChooseTool(true)
-                          }
                         }}>
                           <AlertTriangle className='w-4 h-4 text-[#F79009]' />
                         </div>
@@ -154,7 +147,6 @@ const AgentTools: FC = () => {
                   )
                   : (
                     <div className='hidden group-hover:flex items-center'>
-                      {/* {item.provider_type === CollectionType.builtIn && ( */}
                       <TooltipPlus
                         popupContent={t('tools.setBuiltInTools.infoAndSetting')}
                       >
@@ -165,7 +157,6 @@ const AgentTools: FC = () => {
                           <InfoCircle className='w-4 h-4 text-gray-500' />
                         </div>
                       </TooltipPlus>
-                      {/* )} */}
 
                       <div className='p-1 rounded-md hover:bg-black/5 cursor-pointer' onClick={() => {
                         const newModelConfig = produce(modelConfig, (draft) => {
@@ -198,11 +189,6 @@ const AgentTools: FC = () => {
         </div >
       </Panel >
       {isShowChooseTool && (
-        // <ChooseTool
-        //   show
-        //   onHide={() => setIsShowChooseTool(false)}
-        //   selectedProviderId={selectedProviderId}
-        // />
         <AddToolModal onHide={() => setIsShowChooseTool(false)} />
       )}
       {
