@@ -23,6 +23,13 @@ const translation = {
   },
   includeToolNum: '{{num}} tools included',
   addTool: 'Add Tool',
+  addToolModal: {
+    type: 'type',
+    category: 'category',
+    add: 'add',
+    added: 'added',
+    manageInTools: 'Manage in Tools',
+  },
   createTool: {
     title: 'Create Custom Tool',
     editAction: 'Configure',

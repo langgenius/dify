@@ -20,6 +20,7 @@ import LabelSelector from '@/app/components/tools/labels/selector'
 
 const fieldNameClassNames = 'py-2 leading-5 text-sm font-medium text-gray-900'
 type Props = {
+  positionLeft?: boolean
   payload: any
   onHide: () => void
   onAdd?: (payload: CustomCollectionBackend) => void
@@ -28,6 +29,7 @@ type Props = {
 }
 // Add and Edit
 const EditCustomCollectionModal: FC<Props> = ({
+  positionLeft,
   payload,
   onHide,
   onAdd,
@@ -115,7 +117,7 @@ const EditCustomCollectionModal: FC<Props> = ({
   const [currTool, setCurrTool] = useState<CustomParamSchema | null>(null)
   const [isShowTestApi, setIsShowTestApi] = useState(false)
 
-  const [labels, setLabels] = useState<string[]>(payload.labels)
+  const [labels, setLabels] = useState<string[]>(payload?.labels || [])
   const handleLabelSelect = (value: string[]) => {
     setLabels(value)
   }
@@ -162,11 +164,11 @@ const EditCustomCollectionModal: FC<Props> = ({
     <>
       <Drawer
         isShow
-        positionCenter={isAdd}
+        positionCenter={isAdd && !positionLeft}
         onHide={onHide}
         title={t(`tools.createTool.${isAdd ? 'title' : 'editTitle'}`)!}
-        panelClassName='mt-2 !w-[640px]'
-        maxWidthClassName='!max-w-[640px]'
+        panelClassName='mt-2 !w-[630px]'
+        maxWidthClassName='!max-w-[630px]'
         height='calc(100vh - 16px)'
         headerClassName='!border-b-black/5'
         body={
