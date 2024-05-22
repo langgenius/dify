@@ -78,8 +78,8 @@ class ParameterExtractorNode(LLMNode):
         
         inputs={
             'query': query,
-            'parameters': node_data.parameters,
-            'instruction': node_data.instruction,
+            'parameters': jsonable_encoder(node_data.parameters),
+            'instruction': jsonable_encoder(node_data.instruction),
         }
         
         model_instance, model_config = self._fetch_model_config(node_data.model)
@@ -125,6 +125,7 @@ class ParameterExtractorNode(LLMNode):
             )
             process_data['usage'] = jsonable_encoder(usage)
             process_data['tool_call'] = jsonable_encoder(tool_call)
+            process_data['llm_text'] = text
         except Exception as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
