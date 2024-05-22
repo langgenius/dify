@@ -170,7 +170,8 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
             iteration_steps_boundary=[],
             node_execution_id=workflow_node_execution.id,
             started_at=time.perf_counter(),
-            inputs=event.inputs
+            inputs=event.inputs,
+            total_tokens=0
         )
 
         db.session.close()
@@ -191,6 +192,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
         if original_node_execution_metadata:
             original_node_execution_metadata['current_index'] = event.index
             original_node_execution_metadata['steps_boundary'] = current_iteration.iteration_steps_boundary
+            original_node_execution_metadata['total_tokens'] = current_iteration.total_tokens
             workflow_node_execution.execution_metadata = json.dumps(original_node_execution_metadata)
 
             db.session.commit()
@@ -211,6 +213,12 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
             'output': event.outputs
         })
         workflow_node_execution.elapsed_time = time.perf_counter() - current_iteration.started_at
+        
+        original_node_execution_metadata = workflow_node_execution.execution_metadata_dict
+        if original_node_execution_metadata:
+            original_node_execution_metadata['steps_boundary'] = current_iteration.iteration_steps_boundary
+            original_node_execution_metadata['total_tokens'] = current_iteration.total_tokens
+            workflow_node_execution.execution_metadata = json.dumps(original_node_execution_metadata)
 
         db.session.commit()
 
@@ -258,7 +266,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     error=error,
                     elapsed_time=time.perf_counter() - current_iteration.started_at,
-                    total_tokens=0,
+                    total_tokens=current_iteration.total_tokens,
                     finished_at=int(time.time()),
                     steps=current_iteration.current_index
                 )
