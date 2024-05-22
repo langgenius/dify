@@ -68,6 +68,9 @@ class CustomModelConfiguration(BaseModel):
     model_type: ModelType
     credentials: dict
 
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class CustomConfiguration(BaseModel):
     """
