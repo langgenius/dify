@@ -205,13 +205,26 @@ const useOneStepRun = <T>({
           {
             onWorkflowStarted: () => {
             },
-            onWorkflowFinished: () => {
+            onWorkflowFinished: (params) => {
               handleNodeDataUpdate({
                 id,
                 data: {
                   ...data,
                   _singleRunningStatus: NodeRunningStatus.Succeeded,
                 },
+              })
+              const { data: iterationData } = params
+              setRunResult({
+                inputs: submitData[iteratorInputKey!],
+                outputs: iterationData.outputs,
+                status: iterationData.status,
+                error: iterationData.error,
+                elapsed_time: iterationData.elapsed_time,
+                total_tokens: iterationData.total_tokens,
+                created_at: iterationData.created_at,
+                created_by: iterationData.created_by.name,
+                finished_at: iterationData.finished_at,
+                steps: iterationData.total_steps,
               })
             },
             onIterationNext: () => {

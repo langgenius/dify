@@ -83,6 +83,11 @@ export type WorkflowFinishedResponse = {
     total_tokens: number
     total_steps: number
     created_at: number
+    created_by: {
+      id: string
+      name: string
+      email: string
+    }
     finished_at: number
   }
 }
