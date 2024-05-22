@@ -72,6 +72,7 @@ export type Tool = {
   label: TypeWithI18N
   description: any
   parameters: ToolParameter[]
+  labels: string[]
 }
 
 export type ToolCredential = {
