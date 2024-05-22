@@ -6,19 +6,18 @@ import {
 } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
-import type { WorkflowProcess } from '../../types'
-import IterationResultPanel from '@/app/components/workflow/run/iteration-result-panel'
+import type { ChatItem, WorkflowProcess } from '../../types'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import NodePanel from '@/app/components/workflow/run/node'
-import type { NodeTracing } from '@/types/workflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type WorkflowProcessProps = {
   data: WorkflowProcess
+  item?: ChatItem
   grayBg?: boolean
   expand?: boolean
   hideInfo?: boolean
@@ -26,6 +25,7 @@ type WorkflowProcessProps = {
 }
 const WorkflowProcessItem = ({
   data,
+  item,
   grayBg,
   expand = false,
   hideInfo = false,
@@ -52,26 +52,15 @@ const WorkflowProcessItem = ({
     setCollapse(!expand)
   }, [expand])
 
-  const [iterationDetail, setIterationDetail] = useState<NodeTracing[][]>([])
-  const [isShowIterationDetail, {
-    setTrue: doShowIterationDetail,
-    setFalse: doHideIterationDetail,
-  }] = useBoolean(false)
-  const showIterationDetail = useCallback((details: NodeTracing[][]) => {
-    setIterationDetail(details)
-    doShowIterationDetail()
-  }, [doShowIterationDetail])
+  const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
+  const setShowMessageLogModal = useAppStore(s => s.setShowMessageLogModal)
+  const setCurrentLogModalActiveTab = useAppStore(s => s.setCurrentLogModalActiveTab)
 
-  if (isShowIterationDetail) {
-    return (
-      <IterationResultPanel
-        onBack={doHideIterationDetail}
-        onHide={doHideIterationDetail}
-        list={iterationDetail}
-        noWrap
-      />
-    )
-  }
+  const showIterationDetail = useCallback(() => {
+    setCurrentLogItem(item)
+    setCurrentLogModalActiveTab('TRACING')
+    setShowMessageLogModal(true)
+  }, [item, setCurrentLogItem, setCurrentLogModalActiveTab, setShowMessageLogModal])
 
   return (
     <div

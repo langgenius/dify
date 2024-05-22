@@ -9,12 +9,14 @@ import Run from '@/app/components/workflow/run'
 
 type MessageLogModalProps = {
   currentLogItem?: IChatItem
+  defaultTab?: string
   width: number
   fixedWidth?: boolean
   onCancel: () => void
 }
 const MessageLogModal: FC<MessageLogModalProps> = ({
   currentLogItem,
+  defaultTab = 'DETAIL',
   width,
   fixedWidth,
   onCancel,
@@ -57,7 +59,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       <span className='absolute right-3 top-4 p-1 cursor-pointer z-20' onClick={onCancel}>
         <XClose className='w-4 h-4 text-gray-500' />
       </span>
-      <Run hideResult activeTab='DETAIL' runID={currentLogItem.workflow_run_id}/>
+      <Run hideResult activeTab={defaultTab as any} runID={currentLogItem.workflow_run_id} />
     </div>
   )
 }
