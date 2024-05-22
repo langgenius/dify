@@ -18,7 +18,7 @@ class VariableAggregatorNode(BaseNode):
         outputs = {}
         inputs = {}
 
-        if not node_data.advanced_setting.group_enabled:
+        if not node_data.advanced_setting or node_data.advanced_setting.group_enabled:
             for variable in node_data.variables:
                 value = variable_pool.get_variable_value(variable)
 
