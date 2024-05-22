@@ -45,7 +45,11 @@ class ArxivAPIWrapper(BaseModel):
     """
 
     arxiv_search: arxiv.Search = arxiv.Search  #: :meta private:
-    arxiv_exceptions = (
+    arxiv_exceptions: (
+        arxiv.ArxivError,
+        arxiv.UnexpectedEmptyPageError,
+        arxiv.HTTPError,
+    ) = (
         arxiv.ArxivError,
         arxiv.UnexpectedEmptyPageError,
         arxiv.HTTPError,
