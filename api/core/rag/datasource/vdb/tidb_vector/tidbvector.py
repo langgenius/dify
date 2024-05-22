@@ -4,7 +4,8 @@ from typing import Any
 
 import sqlalchemy
 from pydantic import BaseModel, root_validator
-from sqlalchemy import create_engine, text as sql_text, insert, Table, Column, TEXT, JSON, DateTime, String
+from sqlalchemy import JSON, TEXT, Column, DateTime, String, Table, create_engine, insert
+from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session, declarative_base
 
 from core.rag.datasource.vdb.vector_base import BaseVector
