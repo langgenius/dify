@@ -22,6 +22,7 @@ export type NodeTracing = {
     total_tokens: number
     total_price: number
     currency: string
+    steps_boundary: number[]
   }
   created_at: number
   created_by: {

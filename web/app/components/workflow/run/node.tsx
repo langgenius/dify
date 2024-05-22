@@ -18,7 +18,7 @@ type Props = {
   nodeInfo: NodeTracing
   hideInfo?: boolean
   hideProcessDetail?: boolean
-  onShowIterationDetail?: () => void
+  onShowIterationDetail?: (detail: NodeTracing[][]) => void
   notShowIterationNav?: boolean
 }
 
@@ -60,8 +60,10 @@ const NodePanel: FC<Props> = ({
   }, [nodeInfo.expand, setCollapseState])
 
   const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration
-  const handleOnShowIterationDetail = () => {
-    onShowIterationDetail?.()
+  const handleOnShowIterationDetail = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    e.nativeEvent.stopImmediatePropagation()
+    onShowIterationDetail?.(nodeInfo.details || [])
   }
   return (
     <div className={cn('px-4 py-1', className, hideInfo && '!p-0')}>
