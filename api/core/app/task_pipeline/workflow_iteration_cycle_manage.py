@@ -100,6 +100,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
         node_type: NodeType,
         node_title: str,
         node_run_index: int = 1,
+        inputs: Optional[dict] = None,
         predecessor_node_id: Optional[str] = None
     ) -> WorkflowNodeExecution:
         workflow_node_execution = WorkflowNodeExecution(
@@ -112,6 +113,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
             index=node_run_index,
             node_id=node_id,
             node_type=node_type.value,
+            inputs=json.dumps(inputs) if inputs else None,
             title=node_title,
             status=WorkflowNodeExecutionStatus.RUNNING.value,
             created_by_role=workflow_run.created_by_role,
@@ -148,6 +150,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
             node_type=NodeType.ITERATION,
             node_title=event.node_id,
             node_run_index=event.node_run_index,
+            inputs=event.inputs,
             predecessor_node_id=event.predecessor_node_id
         )
 
@@ -191,7 +194,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
             workflow_node_execution.execution_metadata = json.dumps(original_node_execution_metadata)
 
             db.session.commit()
-            
+
         db.session.close()
 
     def _handle_iteration_completed(self, event: QueueIterationCompletedEvent) -> WorkflowNodeExecution:
