@@ -93,7 +93,7 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     """
     # app config
     app_config: EasyUIBasedAppConfig
-    model_config: ModelConfigWithCredentialsEntity
+    model_conf: ModelConfigWithCredentialsEntity
 
     query: Optional[str] = None
 
