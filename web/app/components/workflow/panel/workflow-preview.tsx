@@ -119,20 +119,21 @@ const WorkflowPreview = () => {
                 error={workflowRunningData?.result?.error}
                 onClick={() => switchTab('DETAIL')}
               />
-              <SimpleBtn
-                isDisabled={workflowRunningData?.result.status !== WorkflowRunningStatus.Succeeded}
-                className={cn('ml-4 mb-4 inline-flex space-x-1')}
-                onClick={() => {
-                  const content = workflowRunningData?.resultText
-                  if (typeof content === 'string')
-                    copy(content)
-                  else
-                    copy(JSON.stringify(content))
-                  Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-                }}>
-                <Clipboard className='w-3.5 h-3.5' />
-                <div>{t('common.operation.copy')}</div>
-              </SimpleBtn>
+              {(workflowRunningData?.result.status !== WorkflowRunningStatus.Succeeded || !workflowRunningData?.resultText) && (
+                <SimpleBtn
+                  className={cn('ml-4 mb-4 inline-flex space-x-1')}
+                  onClick={() => {
+                    const content = workflowRunningData?.resultText
+                    if (typeof content === 'string')
+                      copy(content)
+                    else
+                      copy(JSON.stringify(content))
+                    Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+                  }}>
+                  <Clipboard className='w-3.5 h-3.5' />
+                  <div>{t('common.operation.copy')}</div>
+                </SimpleBtn>
+              )}
             </>
           )}
           {currentTab === 'DETAIL' && (

@@ -411,14 +411,15 @@ class IndexingRunner:
             # The user-defined segmentation rule
             rules = json.loads(processing_rule.rules)
             segmentation = rules["segmentation"]
-            if segmentation["max_tokens"] < 50 or segmentation["max_tokens"] > 1000:
-                raise ValueError("Custom segment length should be between 50 and 1000.")
+            max_segmentation_tokens_length = int(current_app.config['INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH'])
+            if segmentation["max_tokens"] < 50 or segmentation["max_tokens"] > max_segmentation_tokens_length:
+                raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}.")
 
             separator = segmentation["separator"]
             if separator:
                 separator = separator.replace('\\n', '\n')
 
-            if 'chunk_overlap' in segmentation and segmentation['chunk_overlap']:
+            if segmentation.get('chunk_overlap'):
                 chunk_overlap = segmentation['chunk_overlap']
             else:
                 chunk_overlap = 0

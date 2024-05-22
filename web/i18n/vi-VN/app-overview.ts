@@ -50,6 +50,9 @@ const translation = {
           privacyPolicy: 'Chính sách bảo mật',
           privacyPolicyPlaceholder: 'Nhập liên kết chính sách bảo mật',
           privacyPolicyTip: 'Giúp khách truy cập hiểu được dữ liệu mà ứng dụng thu thập, xem <privacyPolicyLink>Chính sách bảo mật</privacyPolicyLink> của Dify.',
+          customDisclaimer: 'Tùy chỉnh từ chối trách nhiệm',
+          customDisclaimerPlaceholder: 'Nhập liên kết từ chối trách nhiệm',
+          customDisclaimerTip: 'Liên kết này sẽ được hiển thị ở phía máy khách, cung cấp thông tin về trách nhiệm của ứng dụng',
         },
       },
       embedded: {

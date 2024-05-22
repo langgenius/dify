@@ -9,6 +9,8 @@ services:
       MODE: api
       # The log level for the application. Supported values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
       LOG_LEVEL: INFO
+      # enable DEBUG mode to output more logs
+      # DEBUG : true
       # A secret key that is used for securely signing the session cookie and encrypting sensitive information on the database. You can generate a strong key using `openssl rand -base64 42`.
       SECRET_KEY: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
       # The base URL of console application web frontend, refers to the Console base URL of WEB service if console domain is
@@ -88,6 +90,7 @@ services:
       AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
       # The Google storage configurations, only available when STORAGE_TYPE is `google-storage`.
       GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
+      # if you want to use Application Default Credentials, you can leave GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 empty.
       GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
       # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`.
       VECTOR_STORE: weaviate
@@ -164,6 +167,8 @@ services:
       # SSRF Proxy server
       SSRF_PROXY_HTTP_URL: 'http://ssrf_proxy:3128'
       SSRF_PROXY_HTTPS_URL: 'http://ssrf_proxy:3128'
+      # Indexing configuration
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: 1000
     depends_on:
       - db
       - redis
@@ -226,6 +231,7 @@ services:
       AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
       # The Google storage configurations, only available when STORAGE_TYPE is `google-storage`.
       GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
+      # if you want to use Application Default Credentials, you can leave GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 empty.
       GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
       # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`, `pgvector`.
       VECTOR_STORE: weaviate
@@ -237,7 +243,7 @@ services:
       QDRANT_URL: http://qdrant:6333
       # The Qdrant API key.
       QDRANT_API_KEY: difyai123456
-      # The Qdrant clinet timeout setting.
+      # The Qdrant client timeout setting.
       QDRANT_CLIENT_TIMEOUT: 20
       # The Qdrant client enable gRPC mode.
       QDRANT_GRPC_ENABLED: 'false'
@@ -283,6 +289,8 @@ services:
       NOTION_CLIENT_SECRET: you-client-secret
       NOTION_CLIENT_ID: you-client-id
       NOTION_INTERNAL_SECRET: you-internal-secret
+      # Indexing configuration
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: 1000
     depends_on:
       - db
       - redis

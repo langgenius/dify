@@ -98,31 +98,6 @@ class ToolBuiltinProviderIconApi(Resource):
         icon_cache_max_age = int(current_app.config.get('TOOL_ICON_CACHE_MAX_AGE'))
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
-class ToolModelProviderIconApi(Resource):
-    @setup_required
-    def get(self, provider):
-        icon_bytes, mimetype = ToolManageService.get_model_tool_provider_icon(provider)
-        return send_file(io.BytesIO(icon_bytes), mimetype=mimetype)
-    
-class ToolModelProviderListToolsApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
-
-        parser = reqparse.RequestParser()
-        parser.add_argument('provider', type=str, required=True, nullable=False, location='args')
-
-        args = parser.parse_args()
-
-        return jsonable_encoder(ToolManageService.list_model_tool_provider_tools(
-            user_id,
-            tenant_id,
-            args['provider'],
-        ))
-
 class ToolApiProviderAddApi(Resource):
     @setup_required
     @login_required
@@ -141,6 +116,7 @@ class ToolApiProviderAddApi(Resource):
         parser.add_argument('provider', type=str, required=True, nullable=False, location='json')
         parser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('privacy_policy', type=str, required=False, nullable=True, location='json')
+        parser.add_argument('custom_disclaimer', type=str, required=False, nullable=True, location='json')
 
         args = parser.parse_args()
 
@@ -153,6 +129,7 @@ class ToolApiProviderAddApi(Resource):
             args['schema_type'],
             args['schema'],
             args.get('privacy_policy', ''),
+            args.get('custom_disclaimer', ''),
         )
 
 class ToolApiProviderGetRemoteSchemaApi(Resource):
@@ -211,6 +188,7 @@ class ToolApiProviderUpdateApi(Resource):
         parser.add_argument('original_provider', type=str, required=True, nullable=False, location='json')
         parser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('privacy_policy', type=str, required=True, nullable=True, location='json')
+        parser.add_argument('custom_disclaimer', type=str, required=True, nullable=True, location='json')
 
         args = parser.parse_args()
 
@@ -224,6 +202,7 @@ class ToolApiProviderUpdateApi(Resource):
             args['schema_type'],
             args['schema'],
             args['privacy_policy'],
+            args['custom_disclaimer'],
         )
 
 class ToolApiProviderDeleteApi(Resource):
@@ -350,8 +329,6 @@ api.add_resource(ToolBuiltinProviderUpdateApi, '/workspaces/current/tool-provide
 api.add_resource(ToolBuiltinProviderGetCredentialsApi, '/workspaces/current/tool-provider/builtin/<provider>/credentials')
 api.add_resource(ToolBuiltinProviderCredentialsSchemaApi, '/workspaces/current/tool-provider/builtin/<provider>/credentials_schema')
 api.add_resource(ToolBuiltinProviderIconApi, '/workspaces/current/tool-provider/builtin/<provider>/icon')
-api.add_resource(ToolModelProviderIconApi, '/workspaces/current/tool-provider/model/<provider>/icon')
-api.add_resource(ToolModelProviderListToolsApi, '/workspaces/current/tool-provider/model/tools')
 api.add_resource(ToolApiProviderAddApi, '/workspaces/current/tool-provider/api/add')
 api.add_resource(ToolApiProviderGetRemoteSchemaApi, '/workspaces/current/tool-provider/api/remote')
 api.add_resource(ToolApiProviderListToolsApi, '/workspaces/current/tool-provider/api/tools')

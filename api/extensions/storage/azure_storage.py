@@ -14,7 +14,7 @@ class AzureStorage(BaseStorage):
     def __init__(self, app: Flask):
         super().__init__(app)
         app_config = self.app.config
-        self.bucket_name = app_config.get('AZURE_STORAGE_CONTAINER_NAME')
+        self.bucket_name = app_config.get('AZURE_BLOB_CONTAINER_NAME')
         sas_token = generate_account_sas(
             account_name=app_config.get('AZURE_BLOB_ACCOUNT_NAME'),
             account_key=app_config.get('AZURE_BLOB_ACCOUNT_KEY'),

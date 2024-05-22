@@ -21,6 +21,7 @@ def test_validate_credentials():
                 'volc_access_key_id': 'INVALID',
                 'volc_secret_access_key': 'INVALID',
                 'endpoint_id': 'INVALID',
+                'base_model_name': 'Doubao-embedding',
             }
         )
 
@@ -32,6 +33,7 @@ def test_validate_credentials():
             'volc_access_key_id': os.environ.get('VOLC_API_KEY'),
             'volc_secret_access_key': os.environ.get('VOLC_SECRET_KEY'),
             'endpoint_id': os.environ.get('VOLC_EMBEDDING_ENDPOINT_ID'),
+            'base_model_name': 'Doubao-embedding',
         },
     )
 
@@ -47,6 +49,7 @@ def test_invoke_model():
             'volc_access_key_id': os.environ.get('VOLC_API_KEY'),
             'volc_secret_access_key': os.environ.get('VOLC_SECRET_KEY'),
             'endpoint_id': os.environ.get('VOLC_EMBEDDING_ENDPOINT_ID'),
+            'base_model_name': 'Doubao-embedding',
         },
         texts=[
             "hello",
@@ -71,6 +74,7 @@ def test_get_num_tokens():
             'volc_access_key_id': os.environ.get('VOLC_API_KEY'),
             'volc_secret_access_key': os.environ.get('VOLC_SECRET_KEY'),
             'endpoint_id': os.environ.get('VOLC_EMBEDDING_ENDPOINT_ID'),
+            'base_model_name': 'Doubao-embedding',
         },
         texts=[
             "hello",
