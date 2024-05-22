@@ -237,6 +237,8 @@ export const useChat = (
       isAnswer: true,
     }
 
+    let isInIteration = false
+
     handleResponding(true)
     hasStopResponded.current = false
 
@@ -467,7 +469,31 @@ export const useChat = (
             }
           }))
         },
+        onIterationStart: ({ data }) => {
+          responseItem.workflowProcess!.tracing!.push({
+            ...data,
+            status: WorkflowRunningStatus.Running,
+          } as any)
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
+          isInIteration = true
+        },
+        onIterationFinish: ({ data }) => {
+          // const responseItem.workflowProcess!.tracing!.push({
+          //   ...data,
+          //   status: WorkflowRunningStatus.Running,
+          // } as any)
+          isInIteration = false
+        },
         onNodeStarted: ({ data }) => {
+          if (isInIteration)
+            return
+
           responseItem.workflowProcess!.tracing!.push({
             ...data,
             status: WorkflowRunningStatus.Running,
@@ -481,6 +507,9 @@ export const useChat = (
           }))
         },
         onNodeFinished: ({ data }) => {
+          if (isInIteration)
+            return
+
           const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
           responseItem.workflowProcess!.tracing[currentIndex] = data as any
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
