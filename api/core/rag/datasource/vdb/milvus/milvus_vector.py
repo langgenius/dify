@@ -28,7 +28,7 @@ class MilvusConfig(BaseModel):
     batch_size: int = 100
     database: str = "default"
 
-    @model_validator()
+    @model_validator(mode='before')
     @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values.get('host'):
