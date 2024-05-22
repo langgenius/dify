@@ -184,13 +184,14 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
             WorkflowNodeExecution.id == current_iteration.node_execution_id
         ).first()
 
-        workflow_node_execution.execution_metadata = json.dumps({
-            'started_run_index': event.node_run_index + 1,
-            'current_index': event.index,
-            'steps_boundary': current_iteration.iteration_steps_boundary
-        })
+        original_node_execution_metadata = workflow_node_execution.execution_metadata_dict
+        if original_node_execution_metadata:
+            original_node_execution_metadata['current_index'] = event.index
+            original_node_execution_metadata['steps_boundary'] = current_iteration.iteration_steps_boundary
+            workflow_node_execution.execution_metadata = json.dumps(original_node_execution_metadata)
 
-        db.session.commit()
+            db.session.commit()
+            
         db.session.close()
 
     def _handle_iteration_completed(self, event: QueueIterationCompletedEvent) -> WorkflowNodeExecution:
