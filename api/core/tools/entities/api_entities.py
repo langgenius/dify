@@ -13,7 +13,7 @@ class UserTool(BaseModel):
     name: str # identifier
     label: I18nObject # label
     description: I18nObject
-    parameters: Optional[list[ToolParameter]]
+    parameters: Optional[list[ToolParameter]] = None
     labels: list[str] = None
 
 UserToolProviderTypeLiteral = Optional[Literal[

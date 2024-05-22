@@ -21,10 +21,12 @@ class ParameterConfig(BaseModel):
     """
     name: str
     type: Literal['string', 'number', 'bool', 'select', 'array[string]', 'array[number]', 'array[object]']
-    options: Optional[list[str]]
+    options: Optional[list[str]] = None
     description: str
     required: bool
 
+    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
     @validator('name', pre=True, always=True)
     def validate_name(cls, value):
         if not value:
@@ -40,10 +42,12 @@ class ParameterExtractorNodeData(BaseNodeData):
     model: ModelConfig
     query: list[str]
     parameters: list[ParameterConfig]
-    instruction: Optional[str]
-    memory: Optional[MemoryConfig]
+    instruction: Optional[str] = None
+    memory: Optional[MemoryConfig] = None
     reasoning_mode: Literal['function_call', 'prompt']
 
+    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
     @validator('reasoning_mode', pre=True, always=True)
     def set_reasoning_mode(cls, v):
         return v or 'function_call'

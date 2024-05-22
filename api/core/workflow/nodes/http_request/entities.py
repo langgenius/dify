@@ -14,14 +14,18 @@ class HttpRequestNodeData(BaseNodeData):
     Code Node Data.
     """
     class Authorization(BaseModel):
+        # TODO[pydantic]: The `Config` class inherits from another class, please create the `model_config` manually.
+        # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-config for more information.
         class Config(BaseModel):
             type: Literal[None, 'basic', 'bearer', 'custom']
-            api_key: Union[None, str]
-            header: Union[None, str]
+            api_key: Union[None, str] = None
+            header: Union[None, str] = None
 
         type: Literal['no-auth', 'api-key']
         config: Optional[Config]
 
+        # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+        # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
         @validator('config', always=True, pre=True)
         def check_config(cls, v, values):
             """
@@ -37,7 +41,7 @@ class HttpRequestNodeData(BaseNodeData):
 
     class Body(BaseModel):
         type: Literal['none', 'form-data', 'x-www-form-urlencoded', 'raw-text', 'json']
-        data: Union[None, str]
+        data: Union[None, str] = None
 
     class Timeout(BaseModel):
         connect: Optional[int] = MAX_CONNECT_TIMEOUT

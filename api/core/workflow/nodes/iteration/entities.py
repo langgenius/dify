@@ -7,7 +7,7 @@ class IterationNodeData(BaseIterationNodeData):
     """
     Iteration Node Data.
     """
-    parent_loop_id: Optional[str] # redundant field, not used currently
+    parent_loop_id: Optional[str] = None # redundant field, not used currently
     iterator_selector: list[str] # variable selector
     output_selector: list[str] # output selector
 

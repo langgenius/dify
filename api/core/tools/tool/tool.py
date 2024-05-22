@@ -28,6 +28,8 @@ class Tool(BaseModel, ABC):
     description: ToolDescription = None
     is_team_authorization: bool = False
 
+    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
     @validator('parameters', pre=True, always=True)
     def set_parameters(cls, v, values):
         return v or []

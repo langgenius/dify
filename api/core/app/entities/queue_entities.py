@@ -75,8 +75,10 @@ class QueueIterationNextEvent(AppQueueEvent):
     node_type: NodeType
 
     node_run_index: int
-    output: Optional[Any] # output for the current iteration
+    output: Optional[Any] = None # output for the current iteration
 
+    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
     @validator('output', pre=True, always=True)
     def set_output(cls, v):
         """
@@ -247,7 +249,7 @@ class QueueErrorEvent(AppQueueEvent):
     QueueErrorEvent entity
     """
     event = QueueEvent.ERROR
-    error: Any
+    error: Any = None
 
 
 class QueuePingEvent(AppQueueEvent):
