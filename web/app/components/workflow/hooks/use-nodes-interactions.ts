@@ -305,7 +305,7 @@ export const useNodesInteractions = () => {
     })
     const needDeleteEdgesIds = needDeleteEdges.map(edge => edge.id)
     const newEdge = {
-      id: `${source}-${target}`,
+      id: `${source}-${sourceHandle}-${target}-${targetHandle}`,
       type: 'custom',
       source: source!,
       target: target!,
@@ -315,6 +315,7 @@ export const useNodesInteractions = () => {
         sourceType: nodes.find(node => node.id === source)!.data.type,
         targetType: nodes.find(node => node.id === target)!.data.type,
         isInIteration: !!targetNode?.parentId,
+        iteration_id: targetNode?.parentId,
       },
       zIndex: targetNode?.parentId ? ITERATION_CHILDREN_Z_INDEX : 0,
     }
@@ -347,7 +348,7 @@ export const useNodesInteractions = () => {
     handleSyncWorkflowDraft()
   }, [store, workflowStore, handleSyncWorkflowDraft, getNodesReadOnly])
 
-  const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType }) => {
+  const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType, handleId }) => {
     if (getNodesReadOnly())
       return
 
@@ -356,6 +357,7 @@ export const useNodesInteractions = () => {
       setConnectingNodePayload({
         nodeId,
         handleType,
+        handleId,
       })
     }
   }, [workflowStore, getNodesReadOnly])
@@ -381,7 +383,8 @@ export const useNodesInteractions = () => {
         setNodes,
       } = store.getState()
       const nodes = getNodes()
-      const fromType = connectingNodePayload.handleType
+      const fromHandleType = connectingNodePayload.handleType
+      const fromHandleId = connectingNodePayload.handleId
       const fromNode = nodes.find(n => n.id === connectingNodePayload.nodeId)!
       const toNode = nodes.find(n => n.id === enteringNodePayload.nodeId)!
 
@@ -390,7 +393,7 @@ export const useNodesInteractions = () => {
 
       const { x, y } = screenToFlowPosition({ x: e.x, y: e.y })
 
-      if (fromType === 'source' && toNode.data.type === BlockEnum.VariableAssigner) {
+      if (fromHandleType === 'source' && toNode.data.type === BlockEnum.VariableAssigner) {
         const groupEnabled = toNode.data.advanced_settings?.group_enabled
 
         if (
@@ -416,15 +419,15 @@ export const useNodesInteractions = () => {
           })
           handleNodeConnect({
             source: fromNode.id,
-            sourceHandle: fromType,
+            sourceHandle: fromHandleId,
             target: toNode.id,
             targetHandle: hoveringAssignVariableGroupId || 'target',
           })
         }
       }
-      setConnectingNodePayload(undefined)
-      setEnteringNodePayload(undefined)
     }
+    setConnectingNodePayload(undefined)
+    setEnteringNodePayload(undefined)
   }, [store, handleNodeConnect, getNodesReadOnly, workflowStore, reactflow])
 
   const handleNodeDelete = useCallback((nodeId: string) => {
@@ -540,7 +543,7 @@ export const useNodesInteractions = () => {
         title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
         ...(toolDefaultValue || {}),
         selected: true,
-        _showAddVariablePopup: nodeType === BlockEnum.VariableAssigner,
+        _showAddVariablePopup: nodeType === BlockEnum.VariableAssigner && !!prevNodeId,
         _holdAddVariablePopup: false,
       },
       position: {
@@ -564,11 +567,12 @@ export const useNodesInteractions = () => {
       newNode.extent = prevNode.extent
       if (prevNode.parentId) {
         newNode.data.isInIteration = true
+        newNode.data.iteration_id = prevNode.parentId
         newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
       }
 
       const newEdge: Edge = {
-        id: `${prevNodeId}-${newNode.id}`,
+        id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
         type: 'custom',
         source: prevNodeId,
         sourceHandle: prevNodeSourceHandle,
@@ -578,6 +582,7 @@ export const useNodesInteractions = () => {
           sourceType: prevNode.data.type,
           targetType: newNode.data.type,
           isInIteration: !!prevNode.parentId,
+          iteration_id: prevNode.parentId,
           _connectedNodeIsSelected: true,
         },
         zIndex: prevNode.parentId ? ITERATION_CHILDREN_Z_INDEX : 0,
@@ -605,18 +610,6 @@ export const useNodesInteractions = () => {
         draft.push(newNode)
       })
       setNodes(newNodes)
-      if (newNode.data.type === BlockEnum.VariableAssigner) {
-        const { setShowAssignVariablePopup } = workflowStore.getState()
-
-        setShowAssignVariablePopup({
-          nodeId: prevNode.id,
-          nodeData: prevNode.data,
-          variableAssignerNodeId: newNode.id,
-          variableAssignerNodeData: newNode.data,
-          x: -25,
-          y: 44,
-        })
-      }
       const newEdges = produce(edges, (draft) => {
         draft.forEach((item) => {
           item.data = {
@@ -642,6 +635,7 @@ export const useNodesInteractions = () => {
       newNode.extent = nextNode.extent
       if (nextNode.parentId) {
         newNode.data.isInIteration = true
+        newNode.data.iteration_id = nextNode.parentId
         newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
       }
       if (nextNode.data.isIterationStart)
@@ -651,7 +645,7 @@ export const useNodesInteractions = () => {
 
       if ((nodeType !== BlockEnum.IfElse) && (nodeType !== BlockEnum.QuestionClassifier)) {
         newEdge = {
-          id: `${newNode.id}-${nextNodeId}`,
+          id: `${newNode.id}-${sourceHandle}-${nextNodeId}-${nextNodeTargetHandle}`,
           type: 'custom',
           source: newNode.id,
           sourceHandle,
@@ -661,6 +655,7 @@ export const useNodesInteractions = () => {
             sourceType: newNode.data.type,
             targetType: nextNode.data.type,
             isInIteration: !!nextNode.parentId,
+            iteration_id: nextNode.parentId,
             _connectedNodeIsSelected: true,
           },
           zIndex: nextNode.parentId ? ITERATION_CHILDREN_Z_INDEX : 0,
@@ -734,12 +729,13 @@ export const useNodesInteractions = () => {
       newNode.extent = prevNode.extent
       if (prevNode.parentId) {
         newNode.data.isInIteration = true
+        newNode.data.iteration_id = prevNode.parentId
         newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
       }
 
       const currentEdgeIndex = edges.findIndex(edge => edge.source === prevNodeId && edge.target === nextNodeId)
       const newPrevEdge = {
-        id: `${prevNodeId}-${newNode.id}`,
+        id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
         type: 'custom',
         source: prevNodeId,
         sourceHandle: prevNodeSourceHandle,
@@ -749,6 +745,7 @@ export const useNodesInteractions = () => {
           sourceType: prevNode.data.type,
           targetType: newNode.data.type,
           isInIteration: !!prevNode.parentId,
+          iteration_id: prevNode.parentId,
           _connectedNodeIsSelected: true,
         },
         zIndex: prevNode.parentId ? ITERATION_CHILDREN_Z_INDEX : 0,
@@ -756,7 +753,7 @@ export const useNodesInteractions = () => {
       let newNextEdge: Edge | null = null
       if (nodeType !== BlockEnum.IfElse && nodeType !== BlockEnum.QuestionClassifier) {
         newNextEdge = {
-          id: `${newNode.id}-${nextNodeId}`,
+          id: `${newNode.id}-${sourceHandle}-${nextNodeId}-${nextNodeTargetHandle}`,
           type: 'custom',
           source: newNode.id,
           sourceHandle,
@@ -766,6 +763,7 @@ export const useNodesInteractions = () => {
             sourceType: newNode.data.type,
             targetType: nextNode.data.type,
             isInIteration: !!nextNode.parentId,
+            iteration_id: nextNode.parentId,
             _connectedNodeIsSelected: true,
           },
           zIndex: nextNode.parentId ? ITERATION_CHILDREN_Z_INDEX : 0,
@@ -801,7 +799,7 @@ export const useNodesInteractions = () => {
         draft.push(newNode)
       })
       setNodes(newNodes)
-      if (newNode.data.type === BlockEnum.VariableAssigner) {
+      if (newNode.data.type === BlockEnum.VariableAssigner && prevNodeId) {
         const { setShowAssignVariablePopup } = workflowStore.getState()
 
         setShowAssignVariablePopup({
@@ -859,6 +857,7 @@ export const useNodesInteractions = () => {
         _connectedTargetHandleIds: [],
         selected: currentNode.data.selected,
         isInIteration: currentNode.data.isInIteration,
+        iteration_id: currentNode.data.iteration_id,
         isIterationStart: currentNode.data.isIterationStart,
       },
       position: {

@@ -12,8 +12,6 @@ import {
   useWorkflow,
 } from '../../hooks'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../../utils'
-import { ITERATION_CHILDREN_Z_INDEX } from '../../constants'
-import { BlockEnum } from '../../types'
 import type {
   Edge,
   Node,
@@ -25,7 +23,6 @@ import { toNodeOutputVars } from '@/app/components/workflow/nodes/_base/componen
 export const useVariableAssigner = () => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const { getAfterNodesInSameBranch } = useWorkflow()
   const { handleNodeDataUpdate } = useNodeDataUpdate()
 
   const handleAssignVariableValueChange = useCallback((nodeId: string, value: ValueSelector, groupId?: string) => {
@@ -39,7 +36,7 @@ export const useVariableAssigner = () => {
         advanced_settings: {
           ...node.data.advanced_settings,
           groups: node.data.advanced_settings.groups.map((group: any) => {
-            if (group.group_name === groupId) {
+            if (group.groupId === groupId) {
               return {
                 ...group,
                 variables: [...group.variables, value],
@@ -69,36 +66,12 @@ export const useVariableAssigner = () => {
     const {
       getNodes,
       setNodes,
-      edges,
-      setEdges,
     } = store.getState()
     const {
       hoveringAssignVariableGroupId,
       setShowAssignVariablePopup,
     } = workflowStore.getState()
-    const afterNodes = getAfterNodesInSameBranch(nodeId)
-    const lastNode = afterNodes[afterNodes.length - 1]
-    const lastNodeNoConnection = edges.find(edge => edge.source === lastNode.id && edge.target === variableAssignerNodeId)
 
-    if (!lastNodeNoConnection) {
-      const newEdges = produce(edges, (draft) => {
-        draft.push({
-          id: `${lastNode.id}-${variableAssignerNodeId}`,
-          type: 'custom',
-          source: lastNode.id,
-          sourceHandle: 'source',
-          target: variableAssignerNodeId,
-          targetHandle: hoveringAssignVariableGroupId || 'target',
-          data: {
-            sourceType: lastNode.data.type,
-            targetType: BlockEnum.VariableAssigner,
-            isInIteration: !!lastNode.parentId,
-          },
-          zIndex: lastNode.parentId ? ITERATION_CHILDREN_Z_INDEX : 0,
-        })
-      })
-      setEdges(newEdges)
-    }
     const newNodes = produce(getNodes(), (draft) => {
       draft.forEach((node) => {
         if (node.id === nodeId || node.id === variableAssignerNodeId) {
@@ -113,7 +86,7 @@ export const useVariableAssigner = () => {
     setNodes(newNodes)
     setShowAssignVariablePopup(undefined)
     handleAssignVariableValueChange(variableAssignerNodeId, value, hoveringAssignVariableGroupId)
-  }, [store, getAfterNodesInSameBranch, workflowStore, handleAssignVariableValueChange])
+  }, [store, workflowStore, handleAssignVariableValueChange])
 
   const handleRemoveEdges = useCallback((nodeId: string) => {
     const {

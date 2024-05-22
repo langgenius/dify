@@ -4,6 +4,7 @@ import {
   Handle,
   Position,
 } from 'reactflow'
+import { useStore } from '../../../store'
 import AddVariable from './add-variable'
 import type { AddVariableProps } from './add-variable'
 
@@ -17,14 +18,17 @@ const NodeHandle = ({
   handleId = 'target',
   availableVars,
 }: NodeHandleProps) => {
+  const connectingNodePayload = useStore(s => s.connectingNodePayload)
+
   return (
     <Handle
       id={handleId}
       type='target'
+      isConnectable={!connectingNodePayload}
       position={Position.Left}
       className={cn(
         '!-left-[13px] !top-1 !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none z-[1] !transform-none',
-        'after:absolute after:w-0.5 after:h-2 after:left-[5px] after:top-1 after:bg-primary-500',
+        'after:absolute after:w-0.5 after:h-2 after:left-[5px] after:top-1 after:bg-primary-500 pointer-events-none',
         !connected && 'after:opacity-0',
       )}
     >
