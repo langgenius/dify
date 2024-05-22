@@ -7,9 +7,11 @@ import { useRouter, useSearchParams } from 'next/navigation'
 
 type SwrInitorProps = {
   children: ReactNode
+  token?: string
 }
 const SwrInitor = ({
   children,
+  token,
 }: SwrInitorProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -18,6 +20,9 @@ const SwrInitor = ({
   const [init, setInit] = useState(false)
 
   useEffect(() => {
+    if (token)
+      localStorage?.setItem('console_token', token)
+
     if (!(consoleToken || consoleTokenFromLocalStorage))
       router.replace('/signin')
 
