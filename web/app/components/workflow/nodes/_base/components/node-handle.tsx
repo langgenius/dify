@@ -113,11 +113,14 @@ export const NodeSourceHandle = memo(({
   nodeSelectorClassName,
 }: NodeHandleProps) => {
   const notInitialWorkflow = useStore(s => s.notInitialWorkflow)
+  const connectingNodePayload = useStore(s => s.connectingNodePayload)
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration)
-  const isConnectable = !!availableNextBlocks.length
+  const isUnConnectable = !availableNextBlocks.length || (connectingNodePayload?.nodeType === BlockEnum.VariableAssigner && connectingNodePayload?.handleType === 'target')
+  const isConnectable = !isUnConnectable
+
   const connected = data._connectedSourceHandleIds?.includes(handleId)
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)

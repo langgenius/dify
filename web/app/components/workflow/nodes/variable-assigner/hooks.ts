@@ -61,6 +61,7 @@ export const useVariableAssigner = () => {
   const handleAddVariableInAddVariablePopupWithPosition = useCallback((
     nodeId: string,
     variableAssignerNodeId: string,
+    variableAssignerNodeHandleId: string,
     value: ValueSelector,
   ) => {
     const {
@@ -68,7 +69,6 @@ export const useVariableAssigner = () => {
       setNodes,
     } = store.getState()
     const {
-      hoveringAssignVariableGroupId,
       setShowAssignVariablePopup,
     } = workflowStore.getState()
 
@@ -85,7 +85,7 @@ export const useVariableAssigner = () => {
     })
     setNodes(newNodes)
     setShowAssignVariablePopup(undefined)
-    handleAssignVariableValueChange(variableAssignerNodeId, value, hoveringAssignVariableGroupId)
+    handleAssignVariableValueChange(variableAssignerNodeId, value, variableAssignerNodeHandleId)
   }, [store, workflowStore, handleAssignVariableValueChange])
 
   const handleRemoveEdges = useCallback((nodeId: string) => {
