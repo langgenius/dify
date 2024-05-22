@@ -42,6 +42,11 @@ class ParameterExtractorNodeData(BaseNodeData):
     parameters: list[ParameterConfig]
     instruction: Optional[str]
     memory: Optional[MemoryConfig]
+    reasoning_mode: Literal['function_call', 'prompt']
+
+    @validator('reasoning_mode', pre=True, always=True)
+    def set_reasoning_mode(cls, v):
+        return v or 'function_call'
 
     def get_parameter_json_schema(self) -> dict:
         """
