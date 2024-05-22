@@ -57,6 +57,7 @@ class QueueIterationStartEvent(AppQueueEvent):
     event = QueueEvent.ITERATION_START
     node_id: str
     node_type: NodeType
+    node_data: BaseNodeData
 
     node_run_index: int
     inputs: dict = None
