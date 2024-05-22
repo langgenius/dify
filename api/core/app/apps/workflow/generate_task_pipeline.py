@@ -206,8 +206,8 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                         for node_id in iteration_relations:
                             self._task_state.ran_node_execution_infos.pop(node_id, None)
 
-                self._handle_iteration_operation(event)
                 yield self._handle_iteration_to_stream_response(self._application_generate_entity.task_id, event)
+                self._handle_iteration_operation(event)
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
                 workflow_run = self._handle_workflow_finished(event)
 

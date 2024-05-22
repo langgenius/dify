@@ -52,6 +52,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                     node_type=event.node_type.value,
                     created_at=int(time.time()),
                     extras={},
+                    inputs=event.inputs,
                     metadata=event.metadata
                 )
             )
@@ -70,6 +71,8 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                 )
             )
         elif isinstance(event, QueueIterationCompletedEvent):
+            current_iteration = self._iteration_state.current_iterations[event.node_id]
+
             return IterationNodeCompletedStreamResponse(
                 task_id=task_id,
                 workflow_run_id=self._task_state.workflow_run_id,
@@ -79,7 +82,14 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                     node_type=event.node_type.value,
                     outputs=event.outputs,
                     created_at=int(time.time()),
-                    extras={}
+                    extras={},
+                    inputs=current_iteration.inputs,
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    error='',
+                    elapsed_time=time.perf_counter() - current_iteration.started_at,
+                    total_tokens=0,
+                    finished_at=int(time.time()),
+                    steps=current_iteration.current_index
                 )
             )
         
@@ -155,7 +165,8 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
             current_index=0,
             iteration_steps_boundary=[],
             node_execution_id=workflow_node_execution.id,
-            started_at=time.perf_counter()
+            started_at=time.perf_counter(),
+            inputs=event.inputs
         )
 
         db.session.close()
