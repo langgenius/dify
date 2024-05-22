@@ -57,6 +57,7 @@ const NodeGroupItem = ({
         <NodeHandle
           connected={connected}
           variableAssignerNodeId={item.variableAssignerNodeId}
+          variableAssignerNodeData={item.variableAssignerNodeData}
           handleId={item.targetHandleId}
           availableVars={availableVars}
         />

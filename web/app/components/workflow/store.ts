@@ -109,13 +109,14 @@ type Shape = {
     nodeData: Node['data']
     variableAssignerNodeId: string
     variableAssignerNodeData: Node['data']
+    variableAssignerNodeHandleId: string
     x: number
     y: number
   }
   setShowAssignVariablePopup: (showAssignVariablePopup: Shape['showAssignVariablePopup']) => void
   hoveringAssignVariableGroupId?: string
   setHoveringAssignVariableGroupId: (hoveringAssignVariableGroupId?: string) => void
-  connectingNodePayload?: { nodeId: string; handleType: string; handleId: string | null }
+  connectingNodePayload?: { nodeId: string; nodeType: string; handleType: string; handleId: string | null }
   setConnectingNodePayload: (startConnectingPayload?: Shape['connectingNodePayload']) => void
   enteringNodePayload?: { nodeId: string }
   setEnteringNodePayload: (enteringNodePayload?: Shape['enteringNodePayload']) => void

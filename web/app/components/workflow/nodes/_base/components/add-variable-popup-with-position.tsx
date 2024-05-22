@@ -5,20 +5,16 @@ import {
   useRef,
 } from 'react'
 import { useClickAway } from 'ahooks'
+import { useStore } from '../../../store'
 import {
-  useStore,
-} from '../../../store'
-import {
+  useIsChatMode,
   useNodeDataUpdate,
+  useWorkflow,
 } from '../../../hooks'
-import type {
-  ValueSelector,
-} from '../../../types'
-import {
-  useGetAvailableVars,
-  useVariableAssigner,
-} from '../../variable-assigner/hooks'
+import type { ValueSelector } from '../../../types'
+import { useVariableAssigner } from '../../variable-assigner/hooks'
 import AddVariablePopup from './add-variable-popup'
+import { toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 type AddVariablePopupWithPositionProps = {
   nodeId: string
@@ -31,17 +27,20 @@ const AddVariablePopupWithPosition = ({
   const ref = useRef(null)
   const showAssignVariablePopup = useStore(s => s.showAssignVariablePopup)
   const setShowAssignVariablePopup = useStore(s => s.setShowAssignVariablePopup)
-  const hoveringAssignVariableGroupId = useStore(s => s.hoveringAssignVariableGroupId)
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const { handleAddVariableInAddVariablePopupWithPosition } = useVariableAssigner()
-  const getAvailableVars = useGetAvailableVars()
+  const isChatMode = useIsChatMode()
+  const { getBeforeNodesInSameBranch } = useWorkflow()
 
   const availableVars = useMemo(() => {
     if (!showAssignVariablePopup)
       return []
 
-    return getAvailableVars(showAssignVariablePopup.variableAssignerNodeId, hoveringAssignVariableGroupId || 'target')
-  }, [showAssignVariablePopup, getAvailableVars, hoveringAssignVariableGroupId])
+    return toNodeOutputVars([{
+      id: showAssignVariablePopup.nodeId,
+      data: showAssignVariablePopup.nodeData,
+    }, ...getBeforeNodesInSameBranch(showAssignVariablePopup.nodeId)], isChatMode)
+  }, [getBeforeNodesInSameBranch, isChatMode, showAssignVariablePopup])
 
   useClickAway(() => {
     if (nodeData._holdAddVariablePopup) {
@@ -68,6 +67,7 @@ const AddVariablePopupWithPosition = ({
       handleAddVariableInAddVariablePopupWithPosition(
         showAssignVariablePopup.nodeId,
         showAssignVariablePopup.variableAssignerNodeId,
+        showAssignVariablePopup.variableAssignerNodeHandleId,
         value,
       )
     }

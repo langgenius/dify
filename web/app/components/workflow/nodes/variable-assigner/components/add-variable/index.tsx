@@ -1,10 +1,10 @@
 import {
   memo,
   useCallback,
-  useState,
 } from 'react'
 import cn from 'classnames'
 import { useVariableAssigner } from '../../hooks'
+import type { VariableAssignerNodeType } from '../../types'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -18,16 +18,21 @@ import type {
 } from '@/app/components/workflow/types'
 
 export type AddVariableProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
   variableAssignerNodeId: string
+  variableAssignerNodeData: VariableAssignerNodeType
   availableVars: NodeOutPutVar[]
   handleId?: string
 }
 const AddVariable = ({
+  open,
+  onOpenChange,
   availableVars,
   variableAssignerNodeId,
+  variableAssignerNodeData,
   handleId,
 }: AddVariableProps) => {
-  const [open, setOpen] = useState(false)
   const { handleAssignVariableValueChange } = useVariableAssigner()
 
   const handleSelectVariable = useCallback((v: ValueSelector) => {
@@ -36,13 +41,14 @@ const AddVariable = ({
       v,
       handleId,
     )
-    setOpen(false)
-  }, [handleAssignVariableValueChange, variableAssignerNodeId, handleId])
+    onOpenChange(false)
+  }, [handleAssignVariableValueChange, variableAssignerNodeId, handleId, onOpenChange])
 
   return (
     <div className={cn(
-      'hidden group-hover:flex absolute top-0 left-0 z-10',
+      'hidden group-hover:flex absolute top-0 left-0 z-10 pointer-events-none',
       open && '!flex',
+      variableAssignerNodeData.selected && '!flex',
     )}>
       <PortalToFollowElem
         placement={'left-start'}
@@ -51,10 +57,10 @@ const AddVariable = ({
           crossAxis: -60,
         }}
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={onOpenChange}
       >
         <PortalToFollowElemTrigger
-          onClick={() => setOpen(!open)}
+          onClick={() => onOpenChange(!open)}
         >
           <div
             className={cn(

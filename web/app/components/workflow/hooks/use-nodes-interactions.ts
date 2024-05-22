@@ -154,6 +154,8 @@ export const useNodesInteractions = () => {
     } = workflowStore.getState()
 
     if (connectingNodePayload) {
+      if (connectingNodePayload.nodeId === node.id)
+        return
       const connectingNode: Node = nodes.find(n => n.id === connectingNodePayload.nodeId)!
       const sameLevel = connectingNode.parentId === node.parentId
 
@@ -169,6 +171,8 @@ export const useNodesInteractions = () => {
               if (!node.data.advanced_settings?.group_enabled)
                 n.data._isEntering = true
             }
+            if (n.id === node.id && fromType === 'target' && connectingNode.data.type === BlockEnum.VariableAssigner && node.data.type !== BlockEnum.IfElse && node.data.type !== BlockEnum.QuestionClassifier)
+              n.data._isEntering = true
           })
         })
         setNodes(newNodes)
@@ -275,8 +279,6 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly())
       return
 
-    const { connectingNodePayload } = workflowStore.getState()
-
     const {
       getNodes,
       setNodes,
@@ -286,10 +288,6 @@ export const useNodesInteractions = () => {
     const nodes = getNodes()
     const targetNode = nodes.find(node => node.id === target!)
     const sourceNode = nodes.find(node => node.id === source!)
-    const connectingNode = nodes.find(node => node.id === connectingNodePayload?.nodeId)
-
-    if (connectingNode?.data.type === BlockEnum.VariableAssigner && connectingNodePayload?.handleType === 'target')
-      return
 
     if (targetNode?.parentId !== sourceNode?.parentId)
       return
@@ -346,7 +344,7 @@ export const useNodesInteractions = () => {
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
-  }, [store, workflowStore, handleSyncWorkflowDraft, getNodesReadOnly])
+  }, [store, handleSyncWorkflowDraft, getNodesReadOnly])
 
   const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType, handleId }) => {
     if (getNodesReadOnly())
@@ -354,13 +352,16 @@ export const useNodesInteractions = () => {
 
     if (nodeId && handleType) {
       const { setConnectingNodePayload } = workflowStore.getState()
+      const { getNodes } = store.getState()
+      const node = getNodes().find(n => n.id === nodeId)!
       setConnectingNodePayload({
         nodeId,
+        nodeType: node.data.type,
         handleType,
         handleId,
       })
     }
-  }, [workflowStore, getNodesReadOnly])
+  }, [store, workflowStore, getNodesReadOnly])
 
   const handleNodeConnectEnd = useCallback<OnConnectEnd>((e: any) => {
     if (getNodesReadOnly())
@@ -414,6 +415,7 @@ export const useNodesInteractions = () => {
             nodeData: fromNode.data,
             variableAssignerNodeId: toNode.id,
             variableAssignerNodeData: toNode.data,
+            variableAssignerNodeHandleId: hoveringAssignVariableGroupId || 'target',
             x: x - toNode.positionAbsolute!.x,
             y: y - toNode.positionAbsolute!.y,
           })
@@ -424,6 +426,32 @@ export const useNodesInteractions = () => {
             targetHandle: hoveringAssignVariableGroupId || 'target',
           })
         }
+      }
+      if (fromHandleType === 'target' && fromNode.data.type === BlockEnum.VariableAssigner && toNode.data.type !== BlockEnum.IfElse && toNode.data.type !== BlockEnum.QuestionClassifier) {
+        const newNodes = produce(nodes, (draft) => {
+          draft.forEach((node) => {
+            if (node.id === toNode.id) {
+              node.data._showAddVariablePopup = true
+              node.data._holdAddVariablePopup = true
+            }
+          })
+        })
+        setNodes(newNodes)
+        setShowAssignVariablePopup({
+          nodeId: toNode.id,
+          nodeData: toNode.data,
+          variableAssignerNodeId: fromNode.id,
+          variableAssignerNodeData: fromNode.data,
+          variableAssignerNodeHandleId: fromHandleId || 'target',
+          x: x - toNode.positionAbsolute!.x,
+          y: y - toNode.positionAbsolute!.y,
+        })
+        handleNodeConnect({
+          source: toNode.id,
+          sourceHandle: 'source',
+          target: fromNode.id,
+          targetHandle: fromHandleId,
+        })
       }
     }
     setConnectingNodePayload(undefined)
@@ -618,6 +646,7 @@ export const useNodesInteractions = () => {
           nodeData: prevNode.data,
           variableAssignerNodeId: newNode.id,
           variableAssignerNodeData: newNode.data,
+          variableAssignerNodeHandleId: targetHandle,
           x: -25,
           y: 44,
         })
@@ -819,6 +848,7 @@ export const useNodesInteractions = () => {
           nodeData: prevNode.data,
           variableAssignerNodeId: newNode.id,
           variableAssignerNodeData: newNode.data,
+          variableAssignerNodeHandleId: targetHandle,
           x: -25,
           y: 44,
         })
