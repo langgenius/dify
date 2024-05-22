@@ -442,14 +442,14 @@ class ToolWorkflowProviderListToolApi(Resource):
         tenant_id = current_user.current_tenant_id
 
         parser = reqparse.RequestParser()
-        parser.add_argument('workflow_app_id', type=uuid_value, required=True, nullable=False, location='args')
+        parser.add_argument('workflow_tool_id', type=uuid_value, required=True, nullable=False, location='args')
 
         args = parser.parse_args()
 
         return jsonable_encoder(WorkflowToolManageService.list_single_workflow_tools(
             user_id,
             tenant_id,
-            args['workflow_app_id'],
+            args['workflow_tool_id'],
         ))
 
 class ToolBuiltinListApi(Resource):

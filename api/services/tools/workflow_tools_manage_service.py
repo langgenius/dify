@@ -312,7 +312,7 @@ class WorkflowToolManageService:
         }
     
     @classmethod
-    def list_single_workflow_tools(cls, user_id: str, tenant_id: str, workflow_app_id: str) -> list[dict]:
+    def list_single_workflow_tools(cls, user_id: str, tenant_id: str, workflow_tool_id: str) -> list[dict]:
         """
         List workflow tool provider tools.
         :param user_id: the user id
@@ -322,11 +322,11 @@ class WorkflowToolManageService:
         """
         db_tool: WorkflowToolProvider = db.session.query(WorkflowToolProvider).filter(
             WorkflowToolProvider.tenant_id == tenant_id,
-            WorkflowToolProvider.app_id == workflow_app_id
+            WorkflowToolProvider.id == workflow_tool_id
         ).first()
 
         if db_tool is None:
-            raise ValueError(f'Tool {workflow_app_id} not found')
+            raise ValueError(f'Tool {workflow_tool_id} not found')
 
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
 
