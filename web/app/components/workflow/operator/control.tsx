@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useKeyPress } from 'ahooks'
 import {
-  // useNodesLayout,
   useNodesReadOnly,
   useSelectionInteractions,
   useWorkflow,
@@ -27,7 +26,6 @@ const Control = () => {
   const controlMode = useStore(s => s.controlMode)
   const setControlMode = useStore(s => s.setControlMode)
   const { handleLayout } = useWorkflow()
-  // const { handleNodesLayout } = useNodesLayout()
   const {
     nodesReadOnly,
     getNodesReadOnly,
@@ -74,7 +72,6 @@ const Control = () => {
   const goLayout = () => {
     if (getNodesReadOnly())
       return
-    // handleNodesLayout()
     handleLayout()
   }
 

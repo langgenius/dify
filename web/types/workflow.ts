@@ -172,6 +172,7 @@ export type IterationFinishedResponse = {
     node_id: string
     outputs: any
     extras?: any
+    status: string
     created_at: number
   }
 }

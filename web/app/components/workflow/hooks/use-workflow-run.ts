@@ -179,7 +179,7 @@ export const useWorkflowRun = () => {
             draft.result = {
               ...draft.result,
               ...data,
-            }
+            } as any
           }))
 
           prevNodeId = ''
@@ -362,6 +362,7 @@ export const useWorkflowRun = () => {
         },
         onIterationFinish: (params) => {
           const { data } = params
+
           const {
             workflowRunningData,
             setWorkflowRunningData,
@@ -387,7 +388,7 @@ export const useWorkflowRun = () => {
           const newNodes = produce(nodes, (draft) => {
             const currentNode = draft.find(node => node.id === data.node_id)!
 
-            currentNode.data._runningStatus = 'succeeded'
+            currentNode.data._runningStatus = data.status
           })
           setNodes(newNodes)
 
