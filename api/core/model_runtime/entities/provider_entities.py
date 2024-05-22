@@ -121,6 +121,8 @@ class ProviderEntity(BaseModel):
     models: list[ProviderModel] = []
     provider_credential_schema: Optional[ProviderCredentialSchema] = None
     model_credential_schema: Optional[ModelCredentialSchema] = None
+
+    # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
     def to_simple_provider(self) -> SimpleProviderEntity:
