@@ -109,9 +109,11 @@ class SerpAPI:
                 chunks.append(KnowledgeResource(content=res["knowledge_graph"]["description"],
                                                 title=res["knowledge_graph"]["description"]))
             if "snippet" in res["organic_results"][0].keys():
-                for item in res["organic_results"]:
-                    toret += "content: " + item["snippet"] + "\n" + "link: " + item["link"] + "\n"
-                    chunks.append(KnowledgeResource(content=item["snippet"], title=item["title"], url=item["link"]))
+                toret = "\n".join(
+                    f"content: {item['snippet']}\nlink: {item['link']}"
+                    for item in res["organic_results"]
+                    if "snippet" in item and "link" in item
+                )
             if (
                     "images_results" in res.keys()
                     and "thumbnail" in res["images_results"][0].keys()
