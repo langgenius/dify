@@ -185,10 +185,17 @@ class TiDBVector(BaseVector):
         logger.debug(f"_collection_name: {self._collection_name}, score_threshold: {score_threshold}, distance: {distance}")
 
         docs = []
+        if self._distance_func == 'l2':
+            tidb_func = 'Vec_l2_distance'
+        elif self._distance_func == 'l2':
+            tidb_func = 'Vec_Cosine_distance'
+        else:
+            tidb_func = 'Vec_Cosine_distance'
+
         with Session(self._engine) as session:
             select_statement = sql_text(
                 f"""SELECT meta, text FROM (
-                        SELECT meta, text, Vec_Cosine_distance(vector, "{query_vector_str}")  as distance 
+                        SELECT meta, text, {tidb_func}(vector, "{query_vector_str}")  as distance 
                         FROM {self._collection_name} 
                         ORDER BY distance
                         LIMIT {top_k}

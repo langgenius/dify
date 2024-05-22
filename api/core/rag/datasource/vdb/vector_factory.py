@@ -188,7 +188,7 @@ class Vector:
                 ),
             )
         elif vector_type == "tidb_vector":
-            from core.rag.datasource.vdb.tidb_vector.tidbvector import TiDBVector, TiDBVectorConfig
+            from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVector, TiDBVectorConfig
 
             if self._dataset.index_struct_dict:
                 class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
