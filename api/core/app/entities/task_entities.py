@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.answer.entities import GenerateRouteChunk
 from models.workflow import WorkflowNodeExecutionStatus
@@ -335,6 +336,7 @@ class IterationNodeStartStreamResponse(StreamResponse):
         id: str
         node_id: str
         node_type: str
+        title: str
         created_at: int
         extras: dict = {}
         metadata: dict = {}
@@ -355,6 +357,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
         id: str
         node_id: str
         node_type: str
+        title: str
         index: int
         created_at: int
         pre_iteration_output: Optional[Any]
@@ -375,6 +378,7 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         id: str
         node_id: str
         node_type: str
+        title: str
         outputs: Optional[list[Any]]
         created_at: int
         extras: dict = None
@@ -541,5 +545,6 @@ class WorkflowIterationState(BaseModel):
         started_at: float
         inputs: dict = None
         total_tokens: int = 0
+        node_data: BaseNodeData
 
     current_iterations: dict[str, Data] = None

@@ -51,6 +51,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                     id=event.node_id,
                     node_id=event.node_id,
                     node_type=event.node_type.value,
+                    title=event.node_data.title,
                     created_at=int(time.time()),
                     extras={},
                     inputs=event.inputs,
@@ -58,6 +59,8 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                 )
             )
         elif isinstance(event, QueueIterationNextEvent):
+            current_iteration = self._iteration_state.current_iterations[event.node_id]
+
             return IterationNodeNextStreamResponse(
                 task_id=task_id,
                 workflow_run_id=self._task_state.workflow_run_id,
@@ -65,6 +68,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                     id=event.node_id,
                     node_id=event.node_id,
                     node_type=event.node_type.value,
+                    title=current_iteration.node_data.title,
                     index=event.index,
                     pre_iteration_output=event.output,
                     created_at=int(time.time()),
@@ -81,6 +85,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                     id=event.node_id,
                     node_id=event.node_id,
                     node_type=event.node_type.value,
+                    title=current_iteration.node_data.title,
                     outputs=event.outputs,
                     created_at=int(time.time()),
                     extras={},
@@ -148,7 +153,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
             workflow_run=workflow_run,
             node_id=event.node_id,
             node_type=NodeType.ITERATION,
-            node_title=event.node_id,
+            node_title=event.node_data.title,
             node_run_index=event.node_run_index,
             inputs=event.inputs,
             predecessor_node_id=event.predecessor_node_id
@@ -171,7 +176,8 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
             node_execution_id=workflow_node_execution.id,
             started_at=time.perf_counter(),
             inputs=event.inputs,
-            total_tokens=0
+            total_tokens=0,
+            node_data=event.node_data
         )
 
         db.session.close()
