@@ -484,10 +484,20 @@ export const useChat = (
           isInIteration = true
         },
         onIterationFinish: ({ data }) => {
-          // const responseItem.workflowProcess!.tracing!.push({
-          //   ...data,
-          //   status: WorkflowRunningStatus.Running,
-          // } as any)
+          const tracing = responseItem.workflowProcess!.tracing!
+          tracing[tracing.length - 1] = {
+            ...tracing[tracing.length - 1],
+            ...data,
+            status: WorkflowRunningStatus.Succeeded,
+          } as any
+
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
           isInIteration = false
         },
         onNodeStarted: ({ data }) => {
