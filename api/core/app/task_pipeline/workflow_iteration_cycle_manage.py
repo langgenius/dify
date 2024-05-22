@@ -1,5 +1,6 @@
 import json
 import time
+from collections.abc import Generator
 from typing import Optional, Union
 
 from core.app.entities.queue_entities import (
@@ -222,3 +223,39 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
         self._task_state.latest_node_execution_info = latest_node_execution_info
         
         db.session.close()
+
+    def _handle_iteration_exception(self, task_id: str, error: str) -> Generator[IterationNodeCompletedStreamResponse, None, None]:
+        """
+        Handle iteration exception
+        """
+        for node_id, current_iteration in self._iteration_state.current_iterations.items():
+            workflow_node_execution: WorkflowNodeExecution = db.session.query(WorkflowNodeExecution).filter(
+                WorkflowNodeExecution.id == current_iteration.node_execution_id
+            ).first()
+
+            workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
+            workflow_node_execution.error = error
+            workflow_node_execution.elapsed_time = time.perf_counter() - current_iteration.started_at
+
+            db.session.commit()
+            db.session.close()
+
+            yield IterationNodeCompletedStreamResponse(
+                task_id=task_id,
+                workflow_run_id=self._task_state.workflow_run_id,
+                data=IterationNodeCompletedStreamResponse.Data(
+                    id=node_id,
+                    node_id=node_id,
+                    node_type=NodeType.ITERATION.value,
+                    outputs={},
+                    created_at=int(time.time()),
+                    extras={},
+                    inputs=current_iteration.inputs,
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    error=error,
+                    elapsed_time=time.perf_counter() - current_iteration.started_at,
+                    total_tokens=0,
+                    finished_at=int(time.time()),
+                    steps=current_iteration.current_index
+                )
+            )

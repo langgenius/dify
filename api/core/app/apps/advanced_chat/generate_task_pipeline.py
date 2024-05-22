@@ -232,6 +232,12 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution
                 )
+
+                if isinstance(event, QueueNodeFailedEvent):
+                    yield self._handle_iteration_exception(
+                        task_id=self._application_generate_entity.task_id,
+                        error=f'Child node failed: {event.error}'
+                    )
             elif isinstance(event, QueueIterationStartEvent | QueueIterationNextEvent | QueueIterationCompletedEvent):
                 if isinstance(event, QueueIterationNextEvent):
                     # clear ran node execution infos of current iteration
