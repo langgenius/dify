@@ -355,7 +355,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
         node_type: str
         index: int
         created_at: int
-        output: Optional[Any]
+        pre_iteration_output: Optional[Any]
         extras: dict = {}
 
     event: StreamEvent = StreamEvent.ITERATION_NEXT
