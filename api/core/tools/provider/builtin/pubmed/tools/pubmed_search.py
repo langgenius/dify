@@ -30,8 +30,8 @@ class PubMedAPIWrapper(BaseModel):
 
     base_url_esearch: str = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?"
     base_url_efetch: str = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?"
-    max_retry = 5
-    sleep_time = 0.2
+    max_retry: str = 5
+    sleep_time: float = 0.2
 
     # Default values for the parameters
     top_k_results: int = 3
