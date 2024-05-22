@@ -1,18 +1,15 @@
 import json
 import logging
-import uuid
 from typing import Any
 
 import sqlalchemy
 from pydantic import BaseModel, root_validator
-from sqlalchemy import create_engine, text as sql_text, insert, Table, Column, TEXT, JSON, DateTime, BIGINT, String, \
-    select
+from sqlalchemy import create_engine, text as sql_text, insert, Table, Column, TEXT, JSON, DateTime, String
 from sqlalchemy.orm import Session, declarative_base
 
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
-
 
 logger = logging.getLogger(__name__)
 
