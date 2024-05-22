@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
@@ -23,6 +23,7 @@ const IterationResultPanel: FC<Props> = ({
   noWrap,
 }) => {
   const { t } = useTranslation()
+  console.log(list)
 
   const main = (
     <>
@@ -66,14 +67,23 @@ const IterationResultPanel: FC<Props> = ({
       </div>
     </>
   )
+  const handleNotBubble = useCallback((e: React.MouseEvent) => {
+    // if not do this, it will trigger the message log modal disappear(useClickAway)
+    e.stopPropagation()
+    e.nativeEvent.stopImmediatePropagation()
+  }, [])
 
   if (noWrap)
     return main
 
   return (
-    <div className='absolute inset-0 z-10 rounded-2xl pt-10' style={{
-      backgroundColor: 'rgba(16, 24, 40, 0.20)',
-    }}>
+    <div
+      className='absolute inset-0 z-10 rounded-2xl pt-10'
+      style={{
+        backgroundColor: 'rgba(16, 24, 40, 0.20)',
+      }}
+      onClick={handleNotBubble}
+    >
       <div className='h-full rounded-2xl bg-white flex flex-col'>
         {main}
       </div>

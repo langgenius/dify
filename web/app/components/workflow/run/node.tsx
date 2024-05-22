@@ -18,8 +18,9 @@ type Props = {
   nodeInfo: NodeTracing
   hideInfo?: boolean
   hideProcessDetail?: boolean
-  onShowIterationDetail?: () => void
+  onShowIterationDetail?: (detail: NodeTracing[][]) => void
   notShowIterationNav?: boolean
+  justShowIterationNavArrow?: boolean
 }
 
 const NodePanel: FC<Props> = ({
@@ -29,6 +30,7 @@ const NodePanel: FC<Props> = ({
   hideProcessDetail,
   onShowIterationDetail,
   notShowIterationNav,
+  justShowIterationNavArrow,
 }) => {
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
   const setCollapseState = useCallback((state: boolean) => {
@@ -60,8 +62,10 @@ const NodePanel: FC<Props> = ({
   }, [nodeInfo.expand, setCollapseState])
 
   const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration
-  const handleOnShowIterationDetail = () => {
-    onShowIterationDetail?.()
+  const handleOnShowIterationDetail = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    e.nativeEvent.stopImmediatePropagation()
+    onShowIterationDetail?.(nodeInfo.details || [])
   }
   return (
     <div className={cn('px-4 py-1', className, hideInfo && '!p-0')}>
@@ -116,10 +120,16 @@ const NodePanel: FC<Props> = ({
                   className='flex items-center h-[34px] justify-between px-3 bg-gray-100 border-[0.5px] border-gray-200 rounded-lg cursor-pointer'
                   onClick={handleOnShowIterationDetail}>
                   <div className='leading-[18px] text-[13px] font-medium text-gray-700'>{t('workflow.nodes.iteration.iteration', { count: 3 })}</div>
-                  <div className='flex items-center space-x-1 text-[#155EEF]'>
-                    <div className='text-[13px] font-normal '>{t('workflow.common.viewDetailInTracingPanel')}</div>
-                    <ArrowNarrowRight className='w-3.5 h-3.5' />
-                  </div>
+                  {justShowIterationNavArrow
+                    ? (
+                      <ArrowNarrowRight className='w-3.5 h-3.5 text-gray-500' />
+                    )
+                    : (
+                      <div className='flex items-center space-x-1 text-[#155EEF]'>
+                        <div className='text-[13px] font-normal '>{t('workflow.common.viewDetailInTracingPanel')}</div>
+                        <ArrowNarrowRight className='w-3.5 h-3.5' />
+                      </div>
+                    )}
                 </div>
                 <Split className='mt-2' />
               </div>

@@ -1,20 +1,36 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import produce from 'immer'
 import cn from 'classnames'
-import type { Collection, CustomCollectionBackend } from '../types'
+import { useMount } from 'ahooks'
+import type { Collection, CustomCollectionBackend, Tool } from '../types'
 import Type from './type'
 import Category from './category'
+import Tools from './tools'
+import I18n from '@/context/i18n'
+import { getLanguage } from '@/i18n/language'
 import Drawer from '@/app/components/base/drawer'
 import Button from '@/app/components/base/button'
-// import AppIcon from '@/app/components/base/app-icon'
+import Loading from '@/app/components/base/loading'
 import SearchInput from '@/app/components/base/search-input'
 import { Plus, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
-import { createCustomCollection, removeBuiltInToolCredential, updateBuiltInToolCredential } from '@/service/tools'
+import {
+  createCustomCollection,
+  fetchAllBuiltInTools,
+  fetchAllCustomTools,
+  fetchAllWorkflowTools,
+  removeBuiltInToolCredential,
+  updateBuiltInToolCredential,
+} from '@/service/tools'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import Toast from '@/app/components/base/toast'
+import ConfigContext from '@/context/debug-configuration'
+import type { ModelConfig } from '@/models/debug'
 
 type Props = {
   onHide: () => void
@@ -24,12 +40,55 @@ const AddToolModal: FC<Props> = ({
   onHide,
 }) => {
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
+  const language = getLanguage(locale)
   const [currentType, setCurrentType] = useState('all')
   const [currentCategory, setCurrentCategory] = useState('')
   const [keywords, setKeywords] = useState<string>('')
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
   }
+  const [toolList, setToolList] = useState<ToolWithProvider[]>([])
+  const [listLoading, setListLoading] = useState(true)
+  const getAllTools = async () => {
+    setListLoading(true)
+    const buildInTools = await fetchAllBuiltInTools()
+    const customTools = await fetchAllCustomTools()
+    const workflowTools = await fetchAllWorkflowTools()
+    const mergedToolList = [
+      ...buildInTools,
+      ...customTools,
+      ...workflowTools.filter((toolWithProvider) => {
+        return !toolWithProvider.tools.some((tool) => {
+          return !!tool.parameters.find(item => item.name === '__image')
+        })
+      }),
+    ]
+    setToolList(mergedToolList)
+    setListLoading(false)
+  }
+  const filterdList = useMemo(() => {
+    return toolList.filter((toolWithProvider) => {
+      if (currentType === 'all')
+        return true
+      else
+        return toolWithProvider.type === currentType
+    }).filter((toolWithProvider) => {
+      if (!currentCategory)
+        return true
+      else
+        return toolWithProvider.labels.includes(currentCategory)
+    }).filter((toolWithProvider) => {
+      return toolWithProvider.tools.some((tool) => {
+        return tool.label[language].toLowerCase().includes(keywords.toLowerCase())
+      })
+    })
+  }, [currentType, currentCategory, toolList, keywords, language])
+
+  const {
+    modelConfig,
+    setModelConfig,
+  } = useContext(ConfigContext)
 
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
@@ -43,6 +102,31 @@ const AddToolModal: FC<Props> = ({
   }
   const [showSettingAuth, setShowSettingAuth] = useState(false)
   const [collection, setCollection] = useState<Collection>()
+  const toolSelectHandle = (collection: Collection, tool: Tool) => {
+    const parameters: Record<string, string> = {}
+    if (tool.parameters) {
+      tool.parameters.forEach((item) => {
+        parameters[item.name] = ''
+      })
+    }
+
+    const nexModelConfig = produce(modelConfig, (draft: ModelConfig) => {
+      draft.agentConfig.tools.push({
+        provider_id: collection.id || collection.name,
+        provider_type: collection.type,
+        provider_name: collection.name,
+        tool_name: tool.name,
+        tool_label: tool.label[locale] || tool.label[locale.replaceAll('-', '_')],
+        tool_parameters: parameters,
+        enabled: true,
+      })
+    })
+    setModelConfig(nexModelConfig)
+  }
+  const authSelectHandle = (provider: Collection) => {
+    setCollection(provider)
+    setShowSettingAuth(true)
+  }
   const updateBuiltinAuth = async (value: Record<string, any>) => {
     if (!collection)
       return
@@ -65,6 +149,10 @@ const AddToolModal: FC<Props> = ({
     // await onRefreshData()
     setShowSettingAuth(false)
   }
+
+  useMount(() => {
+    getAllTools()
+  })
 
   return (
     <>
@@ -96,7 +184,7 @@ const AddToolModal: FC<Props> = ({
             </div>
           </div>
           <div className='relative grow bg-white rounded-r-xl overflow-y-auto'>
-            <div className='sticky top-0 left-0 right-0 p-2 flex items-center gap-1'>
+            <div className='z-10 sticky top-0 left-0 right-0 p-2 flex items-center gap-1 bg-white'>
               <div className='grow'>
                 <SearchInput className='w-full' value={keywords} onChange={handleKeywordsChange} />
               </div>
@@ -105,6 +193,19 @@ const AddToolModal: FC<Props> = ({
                 <XClose className='w-4 h-4 text-gray-500' />
               </div>
             </div>
+            {listLoading && (
+              <div className='flex h-[200px] items-center justify-center bg-white'>
+                <Loading />
+              </div>
+            )}
+            {!listLoading && (
+              <Tools
+                tools={filterdList}
+                addedTools={(modelConfig?.agentConfig?.tools as any) || []}
+                onSelect={toolSelectHandle}
+                onAuthSetup={authSelectHandle}
+              />
+            )}
           </div>
         </div>
       </Drawer>
