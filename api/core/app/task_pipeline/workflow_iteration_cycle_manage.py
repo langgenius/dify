@@ -85,7 +85,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                     extras={},
                     inputs=current_iteration.inputs,
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                    error='',
+                    error=None,
                     elapsed_time=time.perf_counter() - current_iteration.started_at,
                     total_tokens=0,
                     finished_at=int(time.time()),
