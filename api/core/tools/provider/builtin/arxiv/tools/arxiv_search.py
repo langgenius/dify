@@ -44,14 +44,14 @@ class ArxivAPIWrapper(BaseModel):
             arxiv.run("tree of thought llm)
     """
 
-    arxiv_search = arxiv.Search  #: :meta private:
+    arxiv_search: arxiv.Search = arxiv.Search  #: :meta private:
     arxiv_exceptions = (
         arxiv.ArxivError,
         arxiv.UnexpectedEmptyPageError,
         arxiv.HTTPError,
     )  # :meta private:
     top_k_results: int = 3
-    ARXIV_MAX_QUERY_LENGTH = 300
+    ARXIV_MAX_QUERY_LENGTH: int = 300
     load_max_docs: int = 100
     load_all_available_meta: bool = False
     doc_content_chars_max: Optional[int] = 4000
