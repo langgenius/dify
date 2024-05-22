@@ -206,6 +206,7 @@ const useOneStepRun = <T>({
             onWorkflowStarted: () => {
             },
             onWorkflowFinished: (params) => {
+              // TODO: use onIterationFinish instead. Wait for api.
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -238,6 +239,7 @@ const useOneStepRun = <T>({
               _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
             },
+            // onIterationFinish: (pa)
             onNodeStarted: (params) => {
               const newIterationRunResult = produce(_iterationResult, (draft) => {
                 draft[draft.length - 1].push({

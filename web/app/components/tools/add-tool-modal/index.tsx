@@ -4,6 +4,8 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import type { Collection, CustomCollectionBackend } from '../types'
+import Type from './type'
+import Category from './category'
 import Drawer from '@/app/components/base/drawer'
 import Button from '@/app/components/base/button'
 // import AppIcon from '@/app/components/base/app-icon'
@@ -22,6 +24,8 @@ const AddToolModal: FC<Props> = ({
   onHide,
 }) => {
   const { t } = useTranslation()
+  const [currentType, setCurrentType] = useState('all')
+  const [currentCategory, setCurrentCategory] = useState('')
   const [keywords, setKeywords] = useState<string>('')
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
@@ -80,6 +84,10 @@ const AddToolModal: FC<Props> = ({
         >
           <div className='relative shrink-0 w-[200px] pb-[56px] bg-gray-100 rounded-l-xl border-r-[0.5px] border-black/2 overflow-y-auto'>
             <div className='sticky top-0 left-0 right-0 px-5 py-3 text-md font-semibold text-gray-900'>{t('tools.addTool')}</div>
+            <div className='px-2 py-1'>
+              <Type value={currentType} onSelect={setCurrentType}/>
+              <Category value={currentCategory} onSelect={setCurrentCategory}/>
+            </div>
             <div className='absolute bottom-0 left-0 p-3'>
               <Button type='primary' className='w-[176px] text-[13px] leading-[18px] font-medium' onClick={() => setIsShowEditCustomCollectionModal(true)}>
                 <Plus className='w-4 h-4 mr-1'/>

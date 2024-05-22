@@ -297,21 +297,23 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
   let maxDepth = 1
 
   const traverse = (root: Node, depth: number) => {
-    if (depth > maxDepth) {
+    if (depth > maxDepth)
       maxDepth = depth
-      return
-    }
 
     const outgoers = getOutgoers(root, nodes, edges)
 
     if (outgoers.length) {
       outgoers.forEach((outgoer) => {
         list.push(outgoer)
+        if (outgoer.data.type === BlockEnum.Iteration)
+          list.push(...nodes.filter(node => node.parentId === outgoer.id))
         traverse(outgoer, depth + 1)
       })
     }
     else {
       list.push(root)
+      if (root.data.type === BlockEnum.Iteration)
+        list.push(...nodes.filter(node => node.parentId === root.id))
     }
   }
 

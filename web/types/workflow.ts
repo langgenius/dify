@@ -32,6 +32,7 @@ export type NodeTracing = {
   finished_at: number
   extras?: any
   expand?: boolean // for UI
+  details?: NodeTracing[][] // iteration detail
 }
 
 export type FetchWorkflowDraftResponse = {
@@ -171,6 +172,7 @@ export type IterationFinishedResponse = {
     node_id: string
     outputs: any
     extras?: any
+    status: string
     created_at: number
   }
 }
