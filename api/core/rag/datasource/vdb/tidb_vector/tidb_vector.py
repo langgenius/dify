@@ -121,18 +121,14 @@ class TiDBVector(BaseVector):
         return ids
 
     def text_exists(self, id: str) -> bool:
-        with Session(self._engine) as session:
-            select_statement = sql_text(
-                f"""SELECT id FROM {self._collection_name} WHERE meta->>'doc_id' = '{id}' limit 1; """
-            )
-            result = session.execute(select_statement).fetchall()
+        result = self.get_ids_by_metadata_field('doc_id', id)
         return len(result) > 0
 
     def delete_by_ids(self, ids: list[str]) -> None:
         with Session(self._engine) as session:
             ids_str = ','.join(f"'{doc_id}'" for doc_id in ids)
             select_statement = sql_text(
-                f"""SELECT id FROM {self._collection_name} WHERE meta->>'doc_id' in ({ids_str}); """
+                f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.doc_id' in ({ids_str}); """
             )
             result = session.execute(select_statement).fetchall()
         if result:
@@ -161,7 +157,7 @@ class TiDBVector(BaseVector):
     def get_ids_by_metadata_field(self, key: str, value: str):
         with Session(self._engine) as session:
             select_statement = sql_text(
-                f"""SELECT id FROM {self._collection_name} WHERE meta->>'{key}' = '{value}'; """
+                f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.{key}' = '{value}'; """
             )
             result = session.execute(select_statement).fetchall()
         if result:
