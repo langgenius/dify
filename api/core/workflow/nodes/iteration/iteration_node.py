@@ -23,7 +23,7 @@ class IterationNode(BaseIterationNode):
         iterator = variable_pool.get_variable_value(cast(IterationNodeData, self.node_data).iterator_selector)
 
         state = IterationState(iteration_node_id=self.node_id, index=-1, inputs={
-            'input_selector': iterator
+            'iterator_selector': iterator
         }, outputs=[], metadata=IterationState.MetaData(
             iterator_length=len(iterator) if iterator is not None else 0
         ))
