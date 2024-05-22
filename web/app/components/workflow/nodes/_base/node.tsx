@@ -161,7 +161,7 @@ const BaseNode: FC<BaseNodeProps> = ({
             {data.title}
           </div>
           {
-            data._iterationLength && data._iterationIndex && (
+            data._iterationLength && data._iterationIndex && data._runningStatus && (
               <div className='mr-1.5 text-xs font-medium text-primary-600'>
                 {data._iterationIndex}/{data._iterationLength}
               </div>

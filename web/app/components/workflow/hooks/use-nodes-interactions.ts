@@ -610,6 +610,18 @@ export const useNodesInteractions = () => {
         draft.push(newNode)
       })
       setNodes(newNodes)
+      if (newNode.data.type === BlockEnum.VariableAssigner) {
+        const { setShowAssignVariablePopup } = workflowStore.getState()
+
+        setShowAssignVariablePopup({
+          nodeId: prevNode.id,
+          nodeData: prevNode.data,
+          variableAssignerNodeId: newNode.id,
+          variableAssignerNodeData: newNode.data,
+          x: -25,
+          y: 44,
+        })
+      }
       const newEdges = produce(edges, (draft) => {
         draft.forEach((item) => {
           item.data = {
@@ -799,7 +811,7 @@ export const useNodesInteractions = () => {
         draft.push(newNode)
       })
       setNodes(newNodes)
-      if (newNode.data.type === BlockEnum.VariableAssigner && prevNodeId) {
+      if (newNode.data.type === BlockEnum.VariableAssigner) {
         const { setShowAssignVariablePopup } = workflowStore.getState()
 
         setShowAssignVariablePopup({
