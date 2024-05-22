@@ -28,7 +28,7 @@ export const fetchModelToolList = (collectionName: string) => {
 }
 
 export const fetchWorkflowToolList = (appID: string) => {
-  return get<Tool[]>(`/workspaces/current/tool-provider/workflow/tools?workflow__id=${appID}`)
+  return get<Tool[]>(`/workspaces/current/tool-provider/workflow/tools?workflow_tool_id=${appID}`)
 }
 
 export const fetchBuiltInToolCredentialSchema = (collectionName: string) => {

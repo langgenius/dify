@@ -55,7 +55,16 @@ const AddToolModal: FC<Props> = ({
     const buildInTools = await fetchAllBuiltInTools()
     const customTools = await fetchAllCustomTools()
     const workflowTools = await fetchAllWorkflowTools()
-    setToolList([...buildInTools, ...customTools, ...workflowTools])
+    const mergedToolList = [
+      ...buildInTools,
+      ...customTools,
+      ...workflowTools.filter((toolWithProvider) => {
+        return !toolWithProvider.tools.some((tool) => {
+          return !!tool.parameters.find(item => item.name === '__image')
+        })
+      }),
+    ]
+    setToolList(mergedToolList)
     setListLoading(false)
   }
   const filterdList = useMemo(() => {
