@@ -380,7 +380,7 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         extras: dict = None
         inputs: dict = None
         status: WorkflowNodeExecutionStatus
-        error: str
+        error: Optional[str]
         elapsed_time: float
         total_tokens: int
         finished_at: int
