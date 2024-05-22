@@ -23,6 +23,7 @@ const IterationResultPanel: FC<Props> = ({
   noWrap,
 }) => {
   const { t } = useTranslation()
+  console.log(list)
 
   const main = (
     <>

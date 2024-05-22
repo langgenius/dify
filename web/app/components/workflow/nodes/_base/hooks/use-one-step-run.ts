@@ -199,6 +199,7 @@ const useOneStepRun = <T>({
       else {
         setIterationRunResult([])
         let _iterationResult: NodeTracing[][] = []
+        let _runResult: any = null
         ssePost(
           getIterationSingleNodeRunUrl(isChatMode, appId!, id),
           { body: { inputs: submitData } },
@@ -206,7 +207,6 @@ const useOneStepRun = <T>({
             onWorkflowStarted: () => {
             },
             onWorkflowFinished: (params) => {
-              // TODO: use onIterationFinish instead. Wait for api.
               handleNodeDataUpdate({
                 id,
                 data: {
@@ -215,18 +215,8 @@ const useOneStepRun = <T>({
                 },
               })
               const { data: iterationData } = params
-              setRunResult({
-                inputs: submitData[iteratorInputKey!],
-                outputs: iterationData.outputs,
-                status: iterationData.status,
-                error: iterationData.error,
-                elapsed_time: iterationData.elapsed_time,
-                total_tokens: iterationData.total_tokens,
-                created_at: iterationData.created_at,
-                created_by: iterationData.created_by.name,
-                finished_at: iterationData.finished_at,
-                steps: iterationData.total_steps,
-              })
+              _runResult.created_by = iterationData.created_by.name
+              setRunResult(_runResult)
             },
             onIterationNext: () => {
               // iteration next trigger time is triggered one more time than iterationTimes
@@ -239,7 +229,10 @@ const useOneStepRun = <T>({
               _iterationResult = newIterationRunResult
               setIterationRunResult(newIterationRunResult)
             },
-            // onIterationFinish: (pa)
+            onIterationFinish: (params) => {
+              _runResult = params.data
+              setRunResult(_runResult)
+            },
             onNodeStarted: (params) => {
               const newIterationRunResult = produce(_iterationResult, (draft) => {
                 draft[draft.length - 1].push({
