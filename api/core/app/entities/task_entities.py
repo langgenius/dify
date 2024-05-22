@@ -7,6 +7,7 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.answer.entities import GenerateRouteChunk
+from models.workflow import WorkflowNodeExecutionStatus
 
 
 class WorkflowStreamGenerateNodes(BaseModel):
@@ -337,6 +338,7 @@ class IterationNodeStartStreamResponse(StreamResponse):
         created_at: int
         extras: dict = {}
         metadata: dict = {}
+        inputs: dict = {}
 
     event: StreamEvent = StreamEvent.ITERATION_STARTED
     workflow_run_id: str
@@ -375,7 +377,14 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         node_type: str
         outputs: Optional[list[Any]]
         created_at: int
-        extras: dict = {}
+        extras: dict = None
+        inputs: dict = None
+        status: WorkflowNodeExecutionStatus
+        error: str
+        elapsed_time: float
+        total_tokens: int
+        finished_at: int
+        steps: int
 
     event: StreamEvent = StreamEvent.ITERATION_COMPLETED
     workflow_run_id: str
@@ -530,5 +539,6 @@ class WorkflowIterationState(BaseModel):
         iteration_steps_boundary: list[int] = None
         node_execution_id: str
         started_at: float
+        inputs: dict = None
 
     current_iterations: dict[str, Data] = None

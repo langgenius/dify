@@ -554,6 +554,7 @@ class WorkflowEngineManager:
                         node_id=current_iteration_node.node_id,
                         node_type=NodeType.ITERATION,
                         node_run_index=workflow_run_state.workflow_node_steps,
+                        inputs=workflow_run_state.current_iteration_state.inputs,
                         predecessor_node_id=predecessor_node_id,
                         metadata=workflow_run_state.current_iteration_state.metadata.dict()
                     )
