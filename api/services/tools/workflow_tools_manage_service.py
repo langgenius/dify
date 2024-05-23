@@ -234,16 +234,6 @@ class WorkflowToolManageService:
 
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
 
-        synced = False
-        try:
-            WorkflowToolConfigurationUtils.check_is_synced(
-                WorkflowToolConfigurationUtils.get_workflow_graph_variables(workflow_app.workflow.graph_dict),
-                db_tool.parameter_configurations
-            )
-            synced = True
-        except Exception as e:
-            pass
-
         return {
             'name': db_tool.name,
             'workflow_tool_id': db_tool.id,
@@ -255,8 +245,8 @@ class WorkflowToolManageService:
                 tool.get_tools(user_id, tenant_id)[0],
                 labels=ToolLabelManager.get_tool_labels(tool)
             ),
-            'synced': synced,
-            'privacy_policy': db_tool.privacy_policy
+            'synced': workflow_app.workflow.version == db_tool.version,
+            'privacy_policy': db_tool.privacy_policy,
         }
     
     @classmethod
@@ -286,16 +276,6 @@ class WorkflowToolManageService:
 
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
 
-        synced = False
-        try:
-            WorkflowToolConfigurationUtils.check_is_synced(
-                WorkflowToolConfigurationUtils.get_workflow_graph_variables(workflow_app.workflow.graph_dict),
-                db_tool.parameter_configurations
-            )
-            synced = True
-        except Exception as e:
-            pass
-
         return {
             'name': db_tool.name,
             'workflow_tool_id': db_tool.id,
@@ -307,7 +287,7 @@ class WorkflowToolManageService:
                 tool.get_tools(user_id, tenant_id)[0],
                 labels=ToolLabelManager.get_tool_labels(tool)
             ),
-            'synced': synced,
+            'synced': workflow_app.workflow.version == db_tool.version,
             'privacy_policy': db_tool.privacy_policy
         }
     
