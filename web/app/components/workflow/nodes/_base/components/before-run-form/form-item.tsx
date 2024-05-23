@@ -22,6 +22,7 @@ type Props = {
   value: any
   onChange: (value: any) => void
   className?: string
+  autoFocus?: boolean
 }
 
 const FormItem: FC<Props> = ({
@@ -29,6 +30,7 @@ const FormItem: FC<Props> = ({
   value,
   onChange,
   className,
+  autoFocus,
 }) => {
   const { t } = useTranslation()
   const { type } = payload
@@ -106,6 +108,7 @@ const FormItem: FC<Props> = ({
               value={value || ''}
               onChange={e => onChange(e.target.value)}
               placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              autoFocus={autoFocus}
             />
           )
         }
@@ -118,6 +121,7 @@ const FormItem: FC<Props> = ({
               value={value || ''}
               onChange={e => onChange(e.target.value)}
               placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              autoFocus={autoFocus}
             />
           )
         }
@@ -148,6 +152,7 @@ const FormItem: FC<Props> = ({
               value={value || ''}
               onChange={e => onChange(e.target.value)}
               placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              autoFocus={autoFocus}
             />
           )
         }
@@ -179,9 +184,9 @@ const FormItem: FC<Props> = ({
           type === InputVarType.files && (
             <TextGenerationImageUploader
               settings={{
-                ...fileSettings.image,
+                ...fileSettings?.image,
                 detail: Resolution.high,
-              }}
+              } as any}
               onFilesChange={files => onChange(files.filter(file => file.progress !== -1).map(fileItem => ({
                 type: 'image',
                 transfer_method: fileItem.type,

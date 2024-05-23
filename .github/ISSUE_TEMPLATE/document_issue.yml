@@ -1,7 +1,7 @@
 name: "📚 Documentation Issue"
 description: Report issues in our documentation
 labels:
-  - ducumentation
+  - documentation
 body:
   - type: checkboxes
     attributes:
@@ -12,7 +12,7 @@ body:
           required: true
         - label: I confirm that I am using English to submit report (我已阅读并同意 [Language Policy](https://github.com/langgenius/dify/issues/1542)).
           required: true
-        - label: "Pleas do not modify this template :) and fill in all the required fields."
+        - label: "Please do not modify this template :) and fill in all the required fields."
           required: true
   - type: textarea
     attributes:

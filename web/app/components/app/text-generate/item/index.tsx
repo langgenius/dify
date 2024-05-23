@@ -8,9 +8,8 @@ import { useParams } from 'next/navigation'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
 import { HashtagIcon } from '@heroicons/react/24/solid'
-// import PromptLog from '@/app/components/app/chat/log'
+import ResultTab from './result-tab'
 import { Markdown } from '@/app/components/base/markdown'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import AudioBtn from '@/app/components/base/audio-btn'
@@ -26,7 +25,6 @@ import EditReplyModal from '@/app/components/app/annotation/edit-annotation-moda
 import { useStore as useAppStore } from '@/app/components/app/store'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
 const MAX_DEPTH = 3
 
@@ -60,6 +58,7 @@ export type IGenerationItemProps = {
   innerClassName?: string
   contentClassName?: string
   footerClassName?: string
+  hideProcessDetail?: boolean
 }
 
 export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
@@ -110,6 +109,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   varList,
   innerClassName,
   contentClassName,
+  hideProcessDetail,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -121,7 +121,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [childFeedback, setChildFeedback] = useState<Feedbacktype>({
     rating: null,
   })
-  const { setCurrentLogItem, setShowPromptLogModal } = useAppStore()
+  const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
+  const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
 
   const handleFeedback = async (childFeedback: Feedbacktype) => {
     await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
@@ -266,6 +267,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     </>
   )
 
+  const [currentTab, setCurrentTab] = useState<string>('DETAIL')
+
   return (
     <div ref={ref} className={cn(className, isTop ? `rounded-xl border ${!isError ? 'border-gray-200 bg-white' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : 'rounded-br-xl !mt-0')}
       style={isTop
@@ -292,22 +295,16 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             <div className={`flex ${contentClassName}`}>
               <div className='grow w-0'>
                 {workflowProcessData && (
-                  <WorkflowProcessItem grayBg data={workflowProcessData} expand={workflowProcessData.expand} />
+                  <WorkflowProcessItem grayBg hideInfo data={workflowProcessData} expand={workflowProcessData.expand} hideProcessDetail={hideProcessDetail} />
+                )}
+                {workflowProcessData && !isError && (
+                  <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} onCurrentTabChange={setCurrentTab} />
                 )}
                 {isError && (
                   <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
                 )}
-                {!isError && (typeof content === 'string') && (
+                {!workflowProcessData && !isError && (typeof content === 'string') && (
                   <Markdown content={content} />
-                )}
-                {!isError && (typeof content !== 'string') && (
-                  <CodeEditor
-                    readOnly
-                    title={<div/>}
-                    language={CodeLanguage.json}
-                    value={content}
-                    isJSONStringifyBeauty
-                  />
                 )}
               </div>
             </div>
@@ -325,19 +322,23 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                     </SimpleBtn>
                   )
                 }
-                <SimpleBtn
-                  isDisabled={isError || !messageId}
-                  className={cn(isMobile && '!px-1.5', 'space-x-1')}
-                  onClick={() => {
-                    if (typeof content === 'string')
-                      copy(content)
-                    else
-                      copy(JSON.stringify(content))
-                    Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-                  }}>
-                  <Clipboard className='w-3.5 h-3.5' />
-                  {!isMobile && <div>{t('common.operation.copy')}</div>}
-                </SimpleBtn>
+                {(currentTab === 'RESULT' || !isWorkflow) && (
+                  <SimpleBtn
+                    isDisabled={isError || !messageId}
+                    className={cn(isMobile && '!px-1.5', 'space-x-1')}
+                    onClick={() => {
+                      const copyContent = isWorkflow ? workflowProcessData?.resultText : content
+                      if (typeof copyContent === 'string')
+                        copy(copyContent)
+                      else
+                        copy(JSON.stringify(copyContent))
+                      Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+                    }}>
+                    <Clipboard className='w-3.5 h-3.5' />
+                    {!isMobile && <div>{t('common.operation.copy')}</div>}
+                  </SimpleBtn>
+                )}
+
                 {isInWebApp && (
                   <>
                     {!isWorkflow && (
@@ -426,7 +427,11 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   </>
                 )}
               </div>
-              <div className='text-xs text-gray-500'>{content?.length} {t('common.unit.char')}</div>
+              <div>
+                {!workflowProcessData && (
+                  <div className='text-xs text-gray-500'>{content?.length} {t('common.unit.char')}</div>
+                )}
+              </div>
             </div>
 
           </div>

@@ -10,7 +10,6 @@ from core.tools.entities.tool_entities import ApiProviderAuthType, ToolParameter
 from core.tools.entities.user_entities import UserTool, UserToolProvider
 from core.tools.provider.api_tool_provider import ApiBasedToolProviderController
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
-from core.tools.provider.model_tool_provider import ModelToolProviderController
 from core.tools.tool.tool import Tool
 from core.tools.utils.configuration import ToolConfigurationManager
 from models.tools import ApiToolProvider, BuiltinToolProvider
@@ -28,8 +27,6 @@ class ToolTransformService:
         
         if provider_type == UserToolProvider.ProviderType.BUILTIN.value:
             return url_prefix + 'builtin/' + provider_name + '/icon'
-        elif provider_type == UserToolProvider.ProviderType.MODEL.value:
-            return url_prefix + 'model/' + provider_name + '/icon'
         elif provider_type == UserToolProvider.ProviderType.API.value:
             try:
                 return json.loads(icon)
@@ -184,31 +181,6 @@ class ToolTransformService:
             result.masked_credentials = masked_credentials
 
         return result
-    
-    @staticmethod
-    def model_provider_to_user_provider(
-        db_provider: ModelToolProviderController,
-    ) -> UserToolProvider:
-        """
-        convert provider controller to user provider
-        """
-        return UserToolProvider(
-            id=db_provider.identity.name,
-            author=db_provider.identity.author,
-            name=db_provider.identity.name,
-            description=I18nObject(
-                en_US=db_provider.identity.description.en_US,
-                zh_Hans=db_provider.identity.description.zh_Hans,
-            ),
-            icon=db_provider.identity.icon,
-            label=I18nObject(
-                en_US=db_provider.identity.label.en_US,
-                zh_Hans=db_provider.identity.label.zh_Hans,
-            ),
-            type=UserToolProvider.ProviderType.MODEL,
-            masked_credentials={},
-            is_team_authorization=db_provider.is_active,
-        )
     
     @staticmethod
     def tool_to_user_tool(

@@ -18,7 +18,7 @@ def test_default_value():
         with pytest.raises(ValidationError) as e:
             MilvusConfig(**config)
         assert e.value.errors()[1]['msg'] == f'config MILVUS_{key.upper()} is required'
-    
+
     config = MilvusConfig(**valid_config)
     assert config.secure is False
     assert config.database == 'default'

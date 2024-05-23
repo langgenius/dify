@@ -2,10 +2,10 @@ import json
 from enum import Enum
 from typing import Optional, Union
 
-from sqlalchemy.dialects.postgresql import UUID
-
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
+from libs import helper
+from models import StringUUID
 from models.account import Account
 
 
@@ -102,16 +102,16 @@ class Workflow(db.Model):
         db.Index('workflow_version_idx', 'tenant_id', 'app_id', 'version'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
-    app_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    app_id = db.Column(StringUUID, nullable=False)
     type = db.Column(db.String(255), nullable=False)
     version = db.Column(db.String(255), nullable=False)
     graph = db.Column(db.Text)
     features = db.Column(db.Text)
-    created_by = db.Column(UUID, nullable=False)
+    created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
-    updated_by = db.Column(UUID)
+    updated_by = db.Column(StringUUID)
     updated_at = db.Column(db.DateTime)
 
     @property
@@ -156,6 +156,21 @@ class Workflow(db.Model):
             return old_structure_variables
 
         return variables
+
+    @property
+    def unique_hash(self) -> str:
+        """
+        Get hash of workflow.
+
+        :return: hash
+        """
+        entity = {
+            'graph': self.graph_dict,
+            'features': self.features_dict
+        }
+
+        return helper.generate_text_hash(json.dumps(entity, sort_keys=True))
+
 
 class WorkflowRunTriggeredFrom(Enum):
     """
@@ -245,11 +260,11 @@ class WorkflowRun(db.Model):
         db.Index('workflow_run_triggerd_from_idx', 'tenant_id', 'app_id', 'triggered_from'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
-    app_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    app_id = db.Column(StringUUID, nullable=False)
     sequence_number = db.Column(db.Integer, nullable=False)
-    workflow_id = db.Column(UUID, nullable=False)
+    workflow_id = db.Column(StringUUID, nullable=False)
     type = db.Column(db.String(255), nullable=False)
     triggered_from = db.Column(db.String(255), nullable=False)
     version = db.Column(db.String(255), nullable=False)
@@ -262,7 +277,7 @@ class WorkflowRun(db.Model):
     total_tokens = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
     total_steps = db.Column(db.Integer, server_default=db.text('0'))
     created_by_role = db.Column(db.String(255), nullable=False)
-    created_by = db.Column(UUID, nullable=False)
+    created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     finished_at = db.Column(db.DateTime)
 
@@ -404,12 +419,12 @@ class WorkflowNodeExecution(db.Model):
                  'triggered_from', 'node_id'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
-    app_id = db.Column(UUID, nullable=False)
-    workflow_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    app_id = db.Column(StringUUID, nullable=False)
+    workflow_id = db.Column(StringUUID, nullable=False)
     triggered_from = db.Column(db.String(255), nullable=False)
-    workflow_run_id = db.Column(UUID)
+    workflow_run_id = db.Column(StringUUID)
     index = db.Column(db.Integer, nullable=False)
     predecessor_node_id = db.Column(db.String(255))
     node_id = db.Column(db.String(255), nullable=False)
@@ -424,7 +439,7 @@ class WorkflowNodeExecution(db.Model):
     execution_metadata = db.Column(db.Text)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     created_by_role = db.Column(db.String(255), nullable=False)
-    created_by = db.Column(UUID, nullable=False)
+    created_by = db.Column(StringUUID, nullable=False)
     finished_at = db.Column(db.DateTime)
 
     @property
@@ -529,14 +544,14 @@ class WorkflowAppLog(db.Model):
         db.Index('workflow_app_log_app_idx', 'tenant_id', 'app_id'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
-    app_id = db.Column(UUID, nullable=False)
-    workflow_id = db.Column(UUID, nullable=False)
-    workflow_run_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    app_id = db.Column(StringUUID, nullable=False)
+    workflow_id = db.Column(StringUUID, nullable=False)
+    workflow_run_id = db.Column(StringUUID, nullable=False)
     created_from = db.Column(db.String(255), nullable=False)
     created_by_role = db.Column(db.String(255), nullable=False)
-    created_by = db.Column(UUID, nullable=False)
+    created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
     @property

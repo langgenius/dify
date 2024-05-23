@@ -5,6 +5,7 @@ import dotenv
 dotenv.load_dotenv()
 
 DEFAULTS = {
+    'EDITION': 'SELF_HOSTED',
     'DB_USERNAME': 'postgres',
     'DB_PASSWORD': '',
     'DB_HOST': 'localhost',
@@ -27,15 +28,19 @@ DEFAULTS = {
     'STORAGE_LOCAL_PATH': 'storage',
     'CHECK_UPDATE_URL': 'https://updates.dify.ai',
     'DEPLOY_ENV': 'PRODUCTION',
+    'SQLALCHEMY_DATABASE_URI_SCHEME': 'postgresql',
     'SQLALCHEMY_POOL_SIZE': 30,
     'SQLALCHEMY_MAX_OVERFLOW': 10,
     'SQLALCHEMY_POOL_RECYCLE': 3600,
+    'SQLALCHEMY_POOL_PRE_PING': 'False',
     'SQLALCHEMY_ECHO': 'False',
     'SENTRY_TRACES_SAMPLE_RATE': 1.0,
     'SENTRY_PROFILES_SAMPLE_RATE': 1.0,
     'WEAVIATE_GRPC_ENABLED': 'True',
     'WEAVIATE_BATCH_SIZE': 100,
     'QDRANT_CLIENT_TIMEOUT': 20,
+    'QDRANT_GRPC_ENABLED': 'False',
+    'QDRANT_GRPC_PORT': '6334',
     'CELERY_BACKEND': 'database',
     'LOG_LEVEL': 'INFO',
     'LOG_FILE': '',
@@ -104,9 +109,9 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.6.4"
+        self.CURRENT_VERSION = "0.6.8"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
-        self.EDITION = "SELF_HOSTED"
+        self.EDITION = get_env('EDITION')
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
         self.TESTING = False
         self.LOG_LEVEL = get_env('LOG_LEVEL')
@@ -162,14 +167,16 @@ class Config:
             key: get_env(key) for key in
             ['DB_USERNAME', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_CHARSET']
         }
+        self.SQLALCHEMY_DATABASE_URI_SCHEME = get_env('SQLALCHEMY_DATABASE_URI_SCHEME')
 
         db_extras = f"?client_encoding={db_credentials['DB_CHARSET']}" if db_credentials['DB_CHARSET'] else ""
 
-        self.SQLALCHEMY_DATABASE_URI = f"postgresql://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
+        self.SQLALCHEMY_DATABASE_URI = f"{self.SQLALCHEMY_DATABASE_URI_SCHEME}://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
         self.SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
             'max_overflow': int(get_env('SQLALCHEMY_MAX_OVERFLOW')),
-            'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE'))
+            'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE')),
+            'pool_pre_ping': get_bool_env('SQLALCHEMY_POOL_PRE_PING')
         }
 
         self.SQLALCHEMY_ECHO = get_bool_env('SQLALCHEMY_ECHO')
@@ -208,10 +215,18 @@ class Config:
         self.AZURE_BLOB_ACCOUNT_KEY = get_env('AZURE_BLOB_ACCOUNT_KEY')
         self.AZURE_BLOB_CONTAINER_NAME = get_env('AZURE_BLOB_CONTAINER_NAME')
         self.AZURE_BLOB_ACCOUNT_URL = get_env('AZURE_BLOB_ACCOUNT_URL')
+        self.ALIYUN_OSS_BUCKET_NAME=get_env('ALIYUN_OSS_BUCKET_NAME')
+        self.ALIYUN_OSS_ACCESS_KEY=get_env('ALIYUN_OSS_ACCESS_KEY')
+        self.ALIYUN_OSS_SECRET_KEY=get_env('ALIYUN_OSS_SECRET_KEY')
+        self.ALIYUN_OSS_ENDPOINT=get_env('ALIYUN_OSS_ENDPOINT')
+        self.ALIYUN_OSS_REGION=get_env('ALIYUN_OSS_REGION')
+        self.ALIYUN_OSS_AUTH_VERSION=get_env('ALIYUN_OSS_AUTH_VERSION')
+        self.GOOGLE_STORAGE_BUCKET_NAME = get_env('GOOGLE_STORAGE_BUCKET_NAME')
+        self.GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 = get_env('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')
 
         # ------------------------
         # Vector Store Configurations.
-        # Currently, only support: qdrant, milvus, zilliz, weaviate, relyt
+        # Currently, only support: qdrant, milvus, zilliz, weaviate, relyt, pgvector
         # ------------------------
         self.VECTOR_STORE = get_env('VECTOR_STORE')
         self.KEYWORD_STORE = get_env('KEYWORD_STORE')
@@ -219,6 +234,8 @@ class Config:
         self.QDRANT_URL = get_env('QDRANT_URL')
         self.QDRANT_API_KEY = get_env('QDRANT_API_KEY')
         self.QDRANT_CLIENT_TIMEOUT = get_env('QDRANT_CLIENT_TIMEOUT')
+        self.QDRANT_GRPC_ENABLED = get_env('QDRANT_GRPC_ENABLED')
+        self.QDRANT_GRPC_PORT = get_env('QDRANT_GRPC_PORT')
 
         # milvus / zilliz setting
         self.MILVUS_HOST = get_env('MILVUS_HOST')
@@ -241,6 +258,20 @@ class Config:
         self.RELYT_PASSWORD = get_env('RELYT_PASSWORD')
         self.RELYT_DATABASE = get_env('RELYT_DATABASE')
 
+        # pgvecto rs settings
+        self.PGVECTO_RS_HOST = get_env('PGVECTO_RS_HOST')
+        self.PGVECTO_RS_PORT = get_env('PGVECTO_RS_PORT')
+        self.PGVECTO_RS_USER = get_env('PGVECTO_RS_USER')
+        self.PGVECTO_RS_PASSWORD = get_env('PGVECTO_RS_PASSWORD')
+        self.PGVECTO_RS_DATABASE = get_env('PGVECTO_RS_DATABASE')
+
+        # pgvector settings
+        self.PGVECTOR_HOST = get_env('PGVECTOR_HOST')
+        self.PGVECTOR_PORT = get_env('PGVECTOR_PORT')
+        self.PGVECTOR_USER = get_env('PGVECTOR_USER')
+        self.PGVECTOR_PASSWORD = get_env('PGVECTOR_PASSWORD')
+        self.PGVECTOR_DATABASE = get_env('PGVECTOR_DATABASE')
+
         # ------------------------
         # Mail Configurations.
         # ------------------------
@@ -256,7 +287,7 @@ class Config:
         self.SMTP_USE_TLS = get_bool_env('SMTP_USE_TLS')
         
         # ------------------------
-        # Workpace Configurations.
+        # Workspace Configurations.
         # ------------------------
         self.INVITE_EXPIRY_HOURS = int(get_env('INVITE_EXPIRY_HOURS'))
 
@@ -295,6 +326,12 @@ class Config:
         # ------------------------
         # Platform Configurations.
         # ------------------------
+        self.GITHUB_CLIENT_ID = get_env('GITHUB_CLIENT_ID')
+        self.GITHUB_CLIENT_SECRET = get_env('GITHUB_CLIENT_SECRET')
+        self.GOOGLE_CLIENT_ID = get_env('GOOGLE_CLIENT_ID')
+        self.GOOGLE_CLIENT_SECRET = get_env('GOOGLE_CLIENT_SECRET')
+        self.OAUTH_REDIRECT_PATH = get_env('OAUTH_REDIRECT_PATH')
+
         self.HOSTED_OPENAI_API_KEY = get_env('HOSTED_OPENAI_API_KEY')
         self.HOSTED_OPENAI_API_BASE = get_env('HOSTED_OPENAI_API_BASE')
         self.HOSTED_OPENAI_API_ORGANIZATION = get_env('HOSTED_OPENAI_API_ORGANIZATION')
@@ -341,17 +378,3 @@ class Config:
 
         self.KEYWORD_DATA_SOURCE_TYPE = get_env('KEYWORD_DATA_SOURCE_TYPE')
         self.ENTERPRISE_ENABLED = get_bool_env('ENTERPRISE_ENABLED')
-
-
-class CloudEditionConfig(Config):
-
-    def __init__(self):
-        super().__init__()
-
-        self.EDITION = "CLOUD"
-
-        self.GITHUB_CLIENT_ID = get_env('GITHUB_CLIENT_ID')
-        self.GITHUB_CLIENT_SECRET = get_env('GITHUB_CLIENT_SECRET')
-        self.GOOGLE_CLIENT_ID = get_env('GOOGLE_CLIENT_ID')
-        self.GOOGLE_CLIENT_SECRET = get_env('GOOGLE_CLIENT_SECRET')
-        self.OAUTH_REDIRECT_PATH = get_env('OAUTH_REDIRECT_PATH')

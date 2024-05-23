@@ -248,6 +248,15 @@ const translation = {
         'header': 'Cabeçalho',
       },
       insertVarPlaceholder: 'digite \'/\' para inserir variável',
+      timeout: {
+        title: 'Tempo esgotado',
+        connectLabel: 'Tempo de conexão',
+        connectPlaceholder: 'Insira o tempo de conexão em segundos',
+        readLabel: 'Tempo de leitura',
+        readPlaceholder: 'Insira o tempo de leitura em segundos',
+        writeLabel: 'Tempo de escrita',
+        writePlaceholder: 'Insira o tempo de escrita em segundos',
+      },
     },
     code: {
       inputVars: 'Variáveis de entrada',
@@ -318,6 +327,9 @@ const translation = {
     questionClassifiers: {
       model: 'modelo',
       inputVars: 'Variáveis de entrada',
+      outputVars: {
+        className: 'Nome da classe',
+      },
       class: 'Classe',
       classNamePlaceholder: 'Escreva o nome da classe',
       advancedSetting: 'Configuração avançada',

@@ -5,11 +5,12 @@ import {
 } from 'reactflow'
 import produce from 'immer'
 import { useWorkflowStore } from '../store'
+import { useNodesSyncDraft } from '../hooks'
 import {
   NodeRunningStatus,
   WorkflowRunningStatus,
 } from '../types'
-import { useWorkflow } from './use-workflow'
+import { useWorkflowUpdate } from './use-workflow-interactions'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { IOtherOptions } from '@/service/base'
 import { ssePost } from '@/service/base'
@@ -24,7 +25,8 @@ export const useWorkflowRun = () => {
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
-  const { renderTreeFromRecord } = useWorkflow()
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
 
   const handleBackupDraft = useCallback(() => {
     const {
@@ -45,15 +47,11 @@ export const useWorkflowRun = () => {
         viewport: getViewport(),
         features,
       })
+      doSyncWorkflowDraft()
     }
-  }, [reactflow, workflowStore, store, featuresStore])
+  }, [reactflow, workflowStore, store, featuresStore, doSyncWorkflowDraft])
 
   const handleLoadBackupDraft = useCallback(() => {
-    const {
-      setNodes,
-      setEdges,
-    } = store.getState()
-    const { setViewport } = reactflow
     const {
       backupDraft,
       setBackupDraft,
@@ -66,64 +64,32 @@ export const useWorkflowRun = () => {
         viewport,
         features,
       } = backupDraft
-      setNodes(nodes)
-      setEdges(edges)
-      setViewport(viewport)
+      handleUpdateWorkflowCanvas({
+        nodes,
+        edges,
+        viewport,
+      })
       featuresStore!.setState({ features })
       setBackupDraft(undefined)
     }
-  }, [store, reactflow, workflowStore, featuresStore])
+  }, [handleUpdateWorkflowCanvas, workflowStore, featuresStore])
 
-  const handleRunSetting = useCallback((shouldClear?: boolean) => {
-    if (shouldClear) {
-      workflowStore.setState({
-        workflowRunningData: undefined,
-        historyWorkflowData: undefined,
-        showInputsPanel: false,
-      })
-    }
-    else {
-      workflowStore.setState({
-        workflowRunningData: {
-          result: {
-            status: shouldClear ? '' : WorkflowRunningStatus.Waiting,
-          },
-          tracing: [],
-        },
-      })
-    }
-
-    const {
-      setNodes,
-      getNodes,
-      edges,
-      setEdges,
-    } = store.getState()
-
-    if (shouldClear) {
-      handleLoadBackupDraft()
-    }
-    else {
-      handleBackupDraft()
-      const newNodes = produce(getNodes(), (draft) => {
-        draft.forEach((node) => {
-          node.data._runningStatus = NodeRunningStatus.Waiting
-        })
-      })
-      setNodes(newNodes)
-      const newEdges = produce(edges, (draft) => {
-        draft.forEach((edge) => {
-          edge.data._runned = false
-        })
-      })
-      setEdges(newEdges)
-    }
-  }, [store, handleLoadBackupDraft, handleBackupDraft, workflowStore])
-
-  const handleRun = useCallback((
+  const handleRun = useCallback(async (
     params: any,
     callback?: IOtherOptions,
   ) => {
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+    const newNodes = produce(getNodes(), (draft) => {
+      draft.forEach((node) => {
+        node.data.selected = false
+      })
+    })
+    setNodes(newNodes)
+    await doSyncWorkflowDraft()
+
     const {
       onWorkflowStarted,
       onWorkflowFinished,
@@ -151,15 +117,15 @@ export const useWorkflowRun = () => {
     let prevNodeId = ''
 
     const {
-      workflowRunningData,
       setWorkflowRunningData,
     } = workflowStore.getState()
-    setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-      draft.result = {
-        ...draft?.result,
+    setWorkflowRunningData({
+      result: {
         status: WorkflowRunningStatus.Running,
-      }
-    }))
+      },
+      tracing: [],
+      resultText: '',
+    })
 
     ssePost(
       url,
@@ -174,8 +140,6 @@ export const useWorkflowRun = () => {
             setWorkflowRunningData,
           } = workflowStore.getState()
           const {
-            getNodes,
-            setNodes,
             edges,
             setEdges,
           } = store.getState()
@@ -188,12 +152,6 @@ export const useWorkflowRun = () => {
             }
           }))
 
-          const newNodes = produce(getNodes(), (draft) => {
-            draft.forEach((node) => {
-              node.data._runningStatus = NodeRunningStatus.Waiting
-            })
-          })
-          setNodes(newNodes)
           const newEdges = produce(edges, (draft) => {
             draft.forEach((edge) => {
               edge.data = {
@@ -253,6 +211,7 @@ export const useWorkflowRun = () => {
             setNodes,
             edges,
             setEdges,
+            transform,
           } = store.getState()
           const nodes = getNodes()
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
@@ -268,12 +227,12 @@ export const useWorkflowRun = () => {
           const currentNodeIndex = nodes.findIndex(node => node.id === data.node_id)
           const currentNode = nodes[currentNodeIndex]
           const position = currentNode.position
-          const zoom = 1
+          const zoom = transform[2]
 
           setViewport({
-            x: (clientWidth - 400 - currentNode.width!) / 2 - position.x,
-            y: (clientHeight - currentNode.height!) / 2 - position.y,
-            zoom,
+            x: (clientWidth - 400 - currentNode.width! * zoom) / 2 - position.x * zoom,
+            y: (clientHeight - currentNode.height! * zoom) / 2 - position.y * zoom,
+            zoom: transform[2],
           })
           const newNodes = produce(nodes, (draft) => {
             draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Running
@@ -326,10 +285,31 @@ export const useWorkflowRun = () => {
           if (onNodeFinished)
             onNodeFinished(params)
         },
+        onTextChunk: (params) => {
+          const { data: { text } } = params
+          const {
+            workflowRunningData,
+            setWorkflowRunningData,
+          } = workflowStore.getState()
+          setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+            draft.resultTabActive = true
+            draft.resultText += text
+          }))
+        },
+        onTextReplace: (params) => {
+          const { data: { text } } = params
+          const {
+            workflowRunningData,
+            setWorkflowRunningData,
+          } = workflowStore.getState()
+          setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
+            draft.resultText = text
+          }))
+        },
         ...restCallback,
       },
     )
-  }, [store, reactflow, workflowStore])
+  }, [store, reactflow, workflowStore, doSyncWorkflowDraft])
 
   const handleStopRun = useCallback((taskId: string) => {
     const appId = useAppStore.getState().appDetail?.id
@@ -344,18 +324,21 @@ export const useWorkflowRun = () => {
     if (publishedWorkflow) {
       const nodes = publishedWorkflow.graph.nodes
       const edges = publishedWorkflow.graph.edges
-      const viewport = publishedWorkflow.graph.viewport
+      const viewport = publishedWorkflow.graph.viewport!
 
-      renderTreeFromRecord(nodes, edges, viewport)
+      handleUpdateWorkflowCanvas({
+        nodes,
+        edges,
+        viewport,
+      })
       featuresStore?.setState({ features: publishedWorkflow.features })
       workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
     }
-  }, [featuresStore, workflowStore, renderTreeFromRecord])
+  }, [featuresStore, handleUpdateWorkflowCanvas, workflowStore])
 
   return {
     handleBackupDraft,
     handleLoadBackupDraft,
-    handleRunSetting,
     handleRun,
     handleStopRun,
     handleRestoreFromPublishedWorkflow,

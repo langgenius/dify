@@ -248,6 +248,15 @@ const translation = {
         'header': 'ヘッダー',
       },
       insertVarPlaceholder: '変数を挿入するには\'/\'を入力してください',
+      timeout: {
+        title: 'タイムアウト',
+        connectLabel: '接続タイムアウト',
+        connectPlaceholder: '接続タイムアウトを秒で入力',
+        readLabel: '読み取りタイムアウト',
+        readPlaceholder: '読み取りタイムアウトを秒で入力',
+        writeLabel: '書き込みタイムアウト',
+        writePlaceholder: '書き込みタイムアウトを秒で入力',
+      },
     },
     code: {
       inputVars: '入力変数',
@@ -318,6 +327,9 @@ const translation = {
     questionClassifiers: {
       model: 'モデル',
       inputVars: '入力変数',
+      outputVars: {
+        className: 'クラス名',
+      },
       class: 'クラス',
       classNamePlaceholder: 'クラス名を入力してください',
       advancedSetting: '高度な設定',

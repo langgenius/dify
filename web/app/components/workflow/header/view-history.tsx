@@ -5,9 +5,12 @@ import {
 import cn from 'classnames'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
+import { useShallow } from 'zustand/react/shallow'
 import {
   useIsChatMode,
+  useNodesInteractions,
   useWorkflow,
+  useWorkflowInteractions,
   useWorkflowRun,
 } from '../hooks'
 import { WorkflowRunningStatus } from '../types'
@@ -34,13 +37,28 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 
-const ViewHistory = () => {
+type ViewHistoryProps = {
+  withText?: boolean
+}
+const ViewHistory = ({
+  withText,
+}: ViewHistoryProps) => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
   const [open, setOpen] = useState(false)
   const { formatTimeFromNow } = useWorkflow()
+  const {
+    handleNodesCancelSelected,
+  } = useNodesInteractions()
+  const {
+    handleCancelDebugAndPreviewPanel,
+  } = useWorkflowInteractions()
   const workflowStore = useWorkflowStore()
-  const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore()
+  const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
+    appDetail: state.appDetail,
+    setCurrentLogItem: state.setCurrentLogItem,
+    setShowMessageLogModal: state.setShowMessageLogModal,
+  })))
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { handleBackupDraft } = useWorkflowRun()
   const { data: runList, isLoading: runListLoading } = useSWR((appDetail && !isChatMode && open) ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
@@ -52,31 +70,49 @@ const ViewHistory = () => {
   return (
     (
       <PortalToFollowElem
-        placement='bottom-end'
+        placement={withText ? 'bottom-start' : 'bottom-end'}
         offset={{
           mainAxis: 4,
-          crossAxis: 131,
+          crossAxis: withText ? -8 : 10,
         }}
         open={open}
         onOpenChange={setOpen}
       >
         <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-          <TooltipPlus
-            popupContent={t('workflow.common.viewRunHistory')}
-          >
-            <div
-              className={`
-                flex items-center justify-center w-7 h-7 rounded-md hover:bg-black/5 cursor-pointer
-                ${open && 'bg-primary-50'}
-              `}
-              onClick={() => {
-                setCurrentLogItem()
-                setShowMessageLogModal(false)
-              }}
-            >
-              <ClockPlay className={`w-4 h-4 ${open ? 'text-primary-600' : 'text-gray-500'}`} />
-            </div>
-          </TooltipPlus>
+          {
+            withText && (
+              <div className={cn(
+                'flex items-center px-3 h-8 rounded-lg border-[0.5px] border-gray-200 bg-white shadow-xs',
+                'text-[13px] font-medium text-primary-600 cursor-pointer',
+                open && '!bg-primary-50',
+              )}>
+                <ClockPlay
+                  className={'mr-1 w-4 h-4'}
+                />
+                {t('workflow.common.showRunHistory')}
+              </div>
+            )
+          }
+          {
+            !withText && (
+              <TooltipPlus
+                popupContent={t('workflow.common.viewRunHistory')}
+              >
+                <div
+                  className={`
+                    flex items-center justify-center w-7 h-7 rounded-md hover:bg-black/5 cursor-pointer
+                    ${open && 'bg-primary-50'}
+                  `}
+                  onClick={() => {
+                    setCurrentLogItem()
+                    setShowMessageLogModal(false)
+                  }}
+                >
+                  <ClockPlay className={`w-4 h-4 ${open ? 'text-primary-600' : 'text-gray-500'}`} />
+                </div>
+              </TooltipPlus>
+            )
+          }
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[12]'>
           <div
@@ -133,6 +169,8 @@ const ViewHistory = () => {
                           })
                           handleBackupDraft()
                           setOpen(false)
+                          handleNodesCancelSelected()
+                          handleCancelDebugAndPreviewPanel()
                         }}
                       >
                         {

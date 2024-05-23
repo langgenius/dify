@@ -49,6 +49,17 @@ const translation = {
     processData: 'Process Data',
     input: 'Input',
     output: 'Output',
+    jinjaEditorPlaceholder: 'Type \'/\' or \'{\' to insert variable',
+    viewOnly: 'View Only',
+    showRunHistory: 'Show Run History',
+    enableJinja: 'Enable Jinja template support',
+    learnMore: 'Learn More',
+    copy: 'Copy',
+    duplicate: 'Duplicate',
+    addBlock: 'Add Block',
+    pasteHere: 'Paste Here',
+    pointerMode: 'Pointer Mode',
+    handMode: 'Hand Mode',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
@@ -204,6 +215,7 @@ const translation = {
       singleRun: {
         variable: 'Variable',
       },
+      sysQueryInUser: 'sys.query in user message is required',
     },
     knowledgeRetrieval: {
       queryVariable: 'Query Variable',
@@ -248,10 +260,22 @@ const translation = {
         'header': 'Header',
       },
       insertVarPlaceholder: 'type \'/\' to insert variable',
+      timeout: {
+        title: 'Timeout',
+        connectLabel: 'Connection Timeout',
+        connectPlaceholder: 'Enter connection timeout in seconds',
+        readLabel: 'Read Timeout',
+        readPlaceholder: 'Enter read timeout in seconds',
+        writeLabel: 'Write Timeout',
+        writePlaceholder: 'Enter write timeout in seconds',
+      },
     },
     code: {
       inputVars: 'Input Variables',
       outputVars: 'Output Variables',
+      advancedDependencies: 'Advanced Dependencies',
+      advancedDependenciesTip: 'Add some preloaded dependencies that take more time to consume or are not default built-in here',
+      searchDependencies: 'Search Dependencies',
     },
     templateTransform: {
       inputVars: 'Input Variables',
@@ -318,6 +342,9 @@ const translation = {
     questionClassifiers: {
       model: 'model',
       inputVars: 'Input Variables',
+      outputVars: {
+        className: 'Class Name',
+      },
       class: 'Class',
       classNamePlaceholder: 'Write your class name',
       advancedSetting: 'Advanced Setting',

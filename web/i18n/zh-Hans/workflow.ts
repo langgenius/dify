@@ -49,6 +49,17 @@ const translation = {
     processData: '数据处理',
     input: '输入',
     output: '输出',
+    jinjaEditorPlaceholder: '输入 “/” 或 “{” 插入变量',
+    viewOnly: '只读',
+    showRunHistory: '显示运行历史',
+    enableJinja: '开启支持 Jinja 模板',
+    learnMore: '了解更多',
+    copy: '拷贝',
+    duplicate: '复制',
+    addBlock: '添加节点',
+    pasteHere: '粘贴到这里',
+    pointerMode: '指针模式',
+    handMode: '手模式',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
@@ -204,6 +215,7 @@ const translation = {
       singleRun: {
         variable: '变量',
       },
+      sysQueryInUser: 'user message 中必须包含 sys.query',
     },
     knowledgeRetrieval: {
       queryVariable: '查询变量',
@@ -248,10 +260,22 @@ const translation = {
         'header': 'Header',
       },
       insertVarPlaceholder: '键入 \'/\' 键快速插入变量',
+      timeout: {
+        title: '超时设置',
+        connectLabel: '连接超时',
+        connectPlaceholder: '输入连接超时（以秒为单位）',
+        readLabel: '读取超时',
+        readPlaceholder: '输入读取超时（以秒为单位）',
+        writeLabel: '写入超时',
+        writePlaceholder: '输入写入超时（以秒为单位）',
+      },
     },
     code: {
       inputVars: '输入变量',
       outputVars: '输出变量',
+      advancedDependencies: '高级依赖',
+      advancedDependenciesTip: '在这里添加一些预加载需要消耗较多时间或非默认内置的依赖包',
+      searchDependencies: '搜索依赖',
     },
     templateTransform: {
       inputVars: '输入变量',
@@ -318,6 +342,9 @@ const translation = {
     questionClassifiers: {
       model: '模型',
       inputVars: '输入变量',
+      outputVars: {
+        className: '分类名称',
+      },
       class: '分类',
       classNamePlaceholder: '输入你的分类名称',
       advancedSetting: '高级设置',

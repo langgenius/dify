@@ -34,6 +34,8 @@ const translation = {
     log: 'Log',
     learnMore: 'Saiba Mais',
     params: 'Parâmetros',
+    duplicate: 'Duplicada',
+    rename: 'Renomear',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -42,6 +44,7 @@ const translation = {
   voice: {
     language: {
       zhHans: 'Chinês',
+      zhHant: 'Chinês Tradicional',
       enUS: 'Inglês',
       deDE: 'Alemão',
       frFR: 'Francês',
@@ -54,6 +57,8 @@ const translation = {
       ptBR: 'Português',
       ruRU: 'Russo',
       ukUA: 'Ucraniano',
+      viVN: 'Vietnamita',
+      plPL: 'Polonês',
     },
   },
   unit: {
@@ -504,6 +509,21 @@ const translation = {
     pasteImageLinkInputPlaceholder: 'Cole o link da imagem aqui',
     pasteImageLinkInvalid: 'Link da imagem inválido',
     imageUpload: 'Enviar Imagem',
+  },
+  tag: {
+    placeholder: 'Todas as tags',
+    addNew: 'Adicionar nova tag',
+    noTag: 'Sem tags',
+    noTagYet: 'Nenhuma tag ainda',
+    addTag: 'adicionar etiqueta',
+    editTag: 'Editar tags',
+    manageTags: 'Gerenciar tags',
+    selectorPlaceholder: 'Digite para pesquisar ou criar',
+    create: 'Criar',
+    delete: 'Excluir etiqueta',
+    deleteTip: 'A tag está sendo usada, excluí-la?',
+    created: 'Tag criada com sucesso',
+    failed: 'Falha na criação da tag',
   },
 }
 

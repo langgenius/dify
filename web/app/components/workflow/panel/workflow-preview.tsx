@@ -1,47 +1,50 @@
 import {
   memo,
   useEffect,
-  useRef,
+  // useRef,
   useState,
 } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
-import OutputPanel from '../run/output-panel'
+import copy from 'copy-to-clipboard'
+import ResultText from '../run/result-text'
 import ResultPanel from '../run/result-panel'
 import TracingPanel from '../run/tracing-panel'
 import {
-  useWorkflowRun,
+  useWorkflowInteractions,
 } from '../hooks'
 import { useStore } from '../store'
 import {
   WorkflowRunningStatus,
 } from '../types'
+import { SimpleBtn } from '../../app/text-generate/item'
+import Toast from '../../base/toast'
 import InputsPanel from './inputs-panel'
 import Loading from '@/app/components/base/loading'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
+import { Clipboard } from '@/app/components/base/icons/src/vender/line/files'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()
-  const { handleRunSetting } = useWorkflowRun()
-  const showInputsPanel = useStore(s => s.showInputsPanel)
+  const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore(s => s.workflowRunningData)
+  const showInputsPanel = useStore(s => s.showInputsPanel)
+  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const [currentTab, setCurrentTab] = useState<string>(showInputsPanel ? 'INPUT' : 'TRACING')
 
   const switchTab = async (tab: string) => {
     setCurrentTab(tab)
   }
 
-  const [height, setHieght] = useState(0)
-  const ref = useRef<HTMLDivElement>(null)
-
-  const adjustResultHeight = () => {
-    if (ref.current)
-      setHieght(ref.current?.clientHeight - 16 - 16 - 2 - 1)
-  }
+  useEffect(() => {
+    if (showDebugAndPreviewPanel && showInputsPanel)
+      setCurrentTab('INPUT')
+  }, [showDebugAndPreviewPanel, showInputsPanel])
 
   useEffect(() => {
-    adjustResultHeight()
-  }, [])
+    if ((workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded || workflowRunningData?.result.status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText)
+      switchTab('DETAIL')
+  }, [workflowRunningData])
 
   return (
     <div className={`
@@ -49,11 +52,9 @@ const WorkflowPreview = () => {
     `}>
       <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
         {`Test Run${!workflowRunningData?.result.sequence_number ? '' : `#${workflowRunningData?.result.sequence_number}`}`}
-        {showInputsPanel && workflowRunningData?.result?.status !== WorkflowRunningStatus.Running && (
-          <div className='p-1 cursor-pointer' onClick={() => handleRunSetting(true)}>
-            <XClose className='w-4 h-4 text-gray-500' />
-          </div>
-        )}
+        <div className='p-1 cursor-pointer' onClick={() => handleCancelDebugAndPreviewPanel()}>
+          <XClose className='w-4 h-4 text-gray-500' />
+        </div>
       </div>
       <div className='grow relative flex flex-col'>
         <div className='shrink-0 flex items-center px-4 border-b-[0.5px] border-[rgba(0,0,0,0.05)]'>
@@ -103,20 +104,36 @@ const WorkflowPreview = () => {
             }}
           >{t('runLog.tracing')}</div>
         </div>
-        <div ref={ref} className={cn(
+        <div className={cn(
           'grow bg-white h-0 overflow-y-auto rounded-b-2xl',
           (currentTab === 'RESULT' || currentTab === 'TRACING') && '!bg-gray-50',
         )}>
-          {currentTab === 'INPUT' && (
+          {currentTab === 'INPUT' && showInputsPanel && (
             <InputsPanel onRun={() => switchTab('RESULT')} />
           )}
           {currentTab === 'RESULT' && (
-            <OutputPanel
-              isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
-              outputs={workflowRunningData?.result?.outputs}
-              error={workflowRunningData?.result?.error}
-              height={height}
-            />
+            <>
+              <ResultText
+                isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
+                outputs={workflowRunningData?.resultText}
+                error={workflowRunningData?.result?.error}
+                onClick={() => switchTab('DETAIL')}
+              />
+              <SimpleBtn
+                isDisabled={workflowRunningData?.result.status !== WorkflowRunningStatus.Succeeded}
+                className={cn('ml-4 mb-4 inline-flex space-x-1')}
+                onClick={() => {
+                  const content = workflowRunningData?.resultText
+                  if (typeof content === 'string')
+                    copy(content)
+                  else
+                    copy(JSON.stringify(content))
+                  Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+                }}>
+                <Clipboard className='w-3.5 h-3.5' />
+                <div>{t('common.operation.copy')}</div>
+              </SimpleBtn>
+            </>
           )}
           {currentTab === 'DETAIL' && (
             <ResultPanel
@@ -146,6 +163,7 @@ const WorkflowPreview = () => {
               <Loading />
             </div>
           )}
+
         </div>
       </div>
     </div>

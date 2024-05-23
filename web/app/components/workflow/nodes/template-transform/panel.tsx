@@ -8,7 +8,7 @@ import VarList from '@/app/components/workflow/nodes/_base/components/variable/v
 import AddButton from '@/app/components/base/button/add-button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import type { NodePanelProps } from '@/app/components/workflow/types'
@@ -26,8 +26,11 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
   const {
     readOnly,
     inputs,
+    availableVars,
     handleVarListChange,
+    handleVarNameChange,
     handleAddVariable,
+    handleAddEmptyVariable,
     handleCodeChange,
     filterVar,
     // single run
@@ -49,7 +52,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
           operations={
-            !readOnly ? <AddButton onClick={handleAddVariable} /> : undefined
+            !readOnly ? <AddButton onClick={handleAddEmptyVariable} /> : undefined
           }
         >
           <VarList
@@ -57,11 +60,16 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
             readonly={readOnly}
             list={inputs.variables}
             onChange={handleVarListChange}
+            onVarNameChange={handleVarNameChange}
             filterVar={filterVar}
           />
         </Field>
         <Split />
         <CodeEditor
+          availableVars={availableVars}
+          varList={inputs.variables}
+          onAddVar={handleAddVariable}
+          isInNode
           readOnly={readOnly}
           language={CodeLanguage.python3}
           title={

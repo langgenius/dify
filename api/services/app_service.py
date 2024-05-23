@@ -5,23 +5,28 @@ from typing import cast
 
 import yaml
 from flask import current_app
+from flask_login import current_user
 from flask_sqlalchemy.pagination import Pagination
 
 from constants.model_template import default_app_templates
+from core.agent.entities import AgentToolEntity
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.tools.tool_manager import ToolManager
+from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_model_config_was_updated, app_was_created, app_was_deleted
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig
 from models.tools import ApiToolProvider
+from services.tag_service import TagService
 from services.workflow_service import WorkflowService
 
 
 class AppService:
-    def get_paginate_apps(self, tenant_id: str, args: dict) -> Pagination:
+    def get_paginate_apps(self, tenant_id: str, args: dict) -> Pagination | None:
         """
         Get app list with pagination
         :param tenant_id: tenant id
@@ -45,6 +50,14 @@ class AppService:
         if 'name' in args and args['name']:
             name = args['name'][:30]
             filters.append(App.name.ilike(f'%{name}%'))
+        if 'tag_ids' in args and args['tag_ids']:
+            target_ids = TagService.get_target_ids_by_tag_ids('app',
+                                                              tenant_id,
+                                                              args['tag_ids'])
+            if target_ids:
+                filters.append(App.id.in_(target_ids))
+            else:
+                return None
 
         app_models = db.paginate(
             db.select(App).where(*filters).order_by(App.created_at.desc()),
@@ -183,6 +196,7 @@ class AppService:
                 app_model=app,
                 graph=workflow.get('graph'),
                 features=workflow.get('features'),
+                unique_hash=None,
                 account=account
             )
             workflow_service.publish_workflow(
@@ -239,6 +253,64 @@ class AppService:
             export_data['model_config'] = app_model_config.to_dict()
 
         return yaml.dump(export_data)
+
+    def get_app(self, app: App) -> App:
+        """
+        Get App
+        """
+        # get original app model config
+        if app.mode == AppMode.AGENT_CHAT.value or app.is_agent:
+            model_config: AppModelConfig = app.app_model_config
+            agent_mode = model_config.agent_mode_dict
+            # decrypt agent tool parameters if it's secret-input
+            for tool in agent_mode.get('tools') or []:
+                if not isinstance(tool, dict) or len(tool.keys()) <= 3:
+                    continue
+                agent_tool_entity = AgentToolEntity(**tool)
+                # get tool
+                try:
+                    tool_runtime = ToolManager.get_agent_tool_runtime(
+                        tenant_id=current_user.current_tenant_id,
+                        app_id=app.id,
+                        agent_tool=agent_tool_entity,
+                    )
+                    manager = ToolParameterConfigurationManager(
+                        tenant_id=current_user.current_tenant_id,
+                        tool_runtime=tool_runtime,
+                        provider_name=agent_tool_entity.provider_id,
+                        provider_type=agent_tool_entity.provider_type,
+                        identity_id=f'AGENT.{app.id}'
+                    )
+
+                    # get decrypted parameters
+                    if agent_tool_entity.tool_parameters:
+                        parameters = manager.decrypt_tool_parameters(agent_tool_entity.tool_parameters or {})
+                        masked_parameter = manager.mask_tool_parameters(parameters or {})
+                    else:
+                        masked_parameter = {}
+
+                    # override tool parameters
+                    tool['tool_parameters'] = masked_parameter
+                except Exception as e:
+                    pass
+
+            # override agent mode
+            model_config.agent_mode = json.dumps(agent_mode)
+
+            class ModifiedApp(App):
+                """
+                Modified App class
+                """
+                def __init__(self, app):
+                    self.__dict__.update(app.__dict__)
+
+                @property
+                def app_model_config(self):
+                    return model_config
+                
+            app = ModifiedApp(app)
+
+        return app
 
     def update_app(self, app: App, args: dict) -> App:
         """

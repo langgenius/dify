@@ -34,6 +34,8 @@ const translation = {
     log: 'Protokoll',
     learnMore: 'Mehr erfahren',
     params: 'Parameter',
+    duplicate: 'Duplikat',
+    rename: 'Umbenennen',
   },
   placeholder: {
     input: 'Bitte eingeben',
@@ -42,6 +44,7 @@ const translation = {
   voice: {
     language: {
       zhHans: 'Chinesisch',
+      zhHant: 'Chinesisch (traditionell)',
       enUS: 'Englisch',
       deDE: 'Deutsch',
       frFR: 'Französisch',
@@ -54,6 +57,8 @@ const translation = {
       ptBR: 'Portugiesisch',
       ruRU: 'Russisch',
       ukUA: 'Ukrainisch',
+      viVN: 'Vietnamesisch',
+      plPL: 'Polnisch',
     },
   },
   unit: {
@@ -499,6 +504,21 @@ const translation = {
     pasteImageLinkInputPlaceholder: 'Bildlink hier einfügen',
     pasteImageLinkInvalid: 'Ungültiger Bildlink',
     imageUpload: 'Bild-Upload',
+  },
+  tag: {
+    placeholder: 'Alle Tags',
+    addNew: 'Neues Tag hinzufügen',
+    noTag: 'Keine Tags',
+    noTagYet: 'Noch keine Tags',
+    addTag: 'Tags hinzufügen',
+    editTag: 'Tags bearbeiten',
+    manageTags: 'Tags verwalten',
+    selectorPlaceholder: 'Typ zum Suchen oder Erstellen',
+    create: 'Erstellen',
+    delete: 'Tag löschen',
+    deleteTip: 'Das Tag wird verwendet, löschen?',
+    created: 'Tag erfolgreich erstellt',
+    failed: 'Tag-Erstellung fehlgeschlagen',
   },
 }
 

@@ -5,6 +5,8 @@ import type {
 import {
   cloneElement,
   memo,
+  useMemo,
+  useRef,
 } from 'react'
 import type { NodeProps } from '../../types'
 import {
@@ -36,29 +38,45 @@ const BaseNode: FC<BaseNodeProps> = ({
   data,
   children,
 }) => {
+  const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
   const toolIcon = useToolIcon(data)
+
+  const showSelectedBorder = data.selected || data._isBundled
+  const {
+    showRunningBorder,
+    showSuccessBorder,
+    showFailedBorder,
+  } = useMemo(() => {
+    return {
+      showRunningBorder: data._runningStatus === NodeRunningStatus.Running && !showSelectedBorder,
+      showSuccessBorder: data._runningStatus === NodeRunningStatus.Succeeded && !showSelectedBorder,
+      showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
+    }
+  }, [data._runningStatus, showSelectedBorder])
+
   return (
     <div
       className={`
         flex border-[2px] rounded-2xl
-        ${(data.selected && !data._runningStatus && !data._isInvalidConnection) ? 'border-primary-600' : 'border-transparent'}
+        ${(showSelectedBorder && !data._isInvalidConnection) ? 'border-primary-600' : 'border-transparent'}
       `}
+      ref={nodeRef}
     >
       <div
         className={`
           group relative pb-1 w-[240px] bg-[#fcfdff] shadow-xs
           border border-transparent rounded-[15px]
           ${!data._runningStatus && 'hover:shadow-lg'}
-          ${data._runningStatus === NodeRunningStatus.Running && '!border-primary-500'}
-          ${data._runningStatus === NodeRunningStatus.Succeeded && '!border-[#12B76A]'}
-          ${data._runningStatus === NodeRunningStatus.Failed && '!border-[#F04438]'}
-          ${data._runningStatus === NodeRunningStatus.Waiting && 'opacity-70'}
+          ${showRunningBorder && '!border-primary-500'}
+          ${showSuccessBorder && '!border-[#12B76A]'}
+          ${showFailedBorder && '!border-[#F04438]'}
           ${data._isInvalidConnection && '!border-[#F04438]'}
+          ${data._isBundled && '!shadow-lg'}
         `}
       >
         {
-          data.type !== BlockEnum.VariableAssigner && !data._runningStatus && !nodesReadOnly && (
+          data.type !== BlockEnum.VariableAssigner && !data._isCandidate && (
             <NodeTargetHandle
               id={id}
               data={data}
@@ -68,7 +86,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && !data._runningStatus && !nodesReadOnly && (
+          data.type !== BlockEnum.IfElse && data.type !== BlockEnum.QuestionClassifier && !data._isCandidate && (
             <NodeSourceHandle
               id={id}
               data={data}
@@ -78,7 +96,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          !data._runningStatus && !nodesReadOnly && (
+          !data._runningStatus && !nodesReadOnly && !data._isCandidate && (
             <NodeControl
               id={id}
               data={data}

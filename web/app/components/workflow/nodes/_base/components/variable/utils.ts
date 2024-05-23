@@ -16,11 +16,10 @@ import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import {
-  CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
-  COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
+  QUESTION_CLASSIFIER_OUTPUT_STRUCT,
   SUPPORT_OUTPUT_VARS_NODE,
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
@@ -80,7 +79,15 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
           variable: 'sys.query',
           type: VarType.string,
         })
+        res.vars.push({
+          variable: 'sys.conversation_id',
+          type: VarType.string,
+        })
       }
+      res.vars.push({
+        variable: 'sys.user_id',
+        type: VarType.string,
+      })
       res.vars.push({
         variable: 'sys.files',
         type: VarType.arrayFile,
@@ -117,7 +124,7 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
     }
 
     case BlockEnum.QuestionClassifier: {
-      res.vars = isChatMode ? CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT : COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT
+      res.vars = QUESTION_CLASSIFIER_OUTPUT_STRUCT
       break
     }
 
@@ -227,6 +234,8 @@ const matchNotSystemVars = (prompts: string[]) => {
   const allVars: string[] = []
   prompts.forEach((prompt) => {
     VAR_REGEX.lastIndex = 0
+    if (typeof prompt !== 'string')
+      return
     allVars.push(...(prompt.match(VAR_REGEX) || []))
   })
   const uniqVars = uniq(allVars).map(v => v.replaceAll('{{#', '').replace('#}}', '').split('.'))
@@ -264,10 +273,12 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       const payload = (data as LLMNodeType)
       const isChatModel = payload.model?.mode === 'chat'
       let prompts: string[] = []
-      if (isChatModel)
+      if (isChatModel) {
         prompts = (payload.prompt_template as PromptItem[])?.map(p => p.text) || []
-      else
-        prompts = [(payload.prompt_template as PromptItem).text]
+        if (payload.memory?.query_prompt_template)
+          prompts.push(payload.memory.query_prompt_template)
+      }
+      else { prompts = [(payload.prompt_template as PromptItem).text] }
 
       const inputVars: ValueSelector[] = matchNotSystemVars(prompts)
       const contextVar = (data as LLMNodeType).context?.variable_selector ? [(data as LLMNodeType).context?.variable_selector] : []
@@ -367,6 +378,8 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
               text: replaceOldVarInText(prompt.text, oldVarSelector, newVarSelector),
             }
           })
+          if (payload.memory?.query_prompt_template)
+            payload.memory.query_prompt_template = replaceOldVarInText(payload.memory.query_prompt_template, oldVarSelector, newVarSelector)
         }
         else {
           payload.prompt_template = {
@@ -540,7 +553,7 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
     }
 
     case BlockEnum.QuestionClassifier: {
-      varsToValueSelectorList(isChatMode ? CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT : COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT, [id], res)
+      varsToValueSelectorList(QUESTION_CLASSIFIER_OUTPUT_STRUCT, [id], res)
       break
     }
 

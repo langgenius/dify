@@ -1,8 +1,8 @@
 import { useContext } from 'react'
 import {
-  create,
   useStore as useZustandStore,
 } from 'zustand'
+import { createStore } from 'zustand/vanilla'
 import { debounce } from 'lodash-es'
 import type { Viewport } from 'reactflow'
 import type {
@@ -19,12 +19,18 @@ import type {
 } from './types'
 import { WorkflowContext } from './context'
 
+type PreviewRunningData = WorkflowRunningData & {
+  resultTabActive?: boolean
+  resultText?: string
+}
+
 type Shape = {
   appId: string
-  workflowRunningData?: WorkflowRunningData
-  setWorkflowRunningData: (workflowData: WorkflowRunningData) => void
+  panelWidth: number
+  workflowRunningData?: PreviewRunningData
+  setWorkflowRunningData: (workflowData: PreviewRunningData) => void
   historyWorkflowData?: HistoryWorkflowData
-  setHistoryWorkflowData: (historyWorkflowData: HistoryWorkflowData) => void
+  setHistoryWorkflowData: (historyWorkflowData?: HistoryWorkflowData) => void
   showRunHistory: boolean
   setShowRunHistory: (showRunHistory: boolean) => void
   showFeaturesPanel: boolean
@@ -67,12 +73,38 @@ type Shape = {
   setClipboardElements: (clipboardElements: Node[]) => void
   shortcutsDisabled: boolean
   setShortcutsDisabled: (shortcutsDisabled: boolean) => void
+  showDebugAndPreviewPanel: boolean
+  setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
+  selection: null | { x1: number; y1: number; x2: number; y2: number }
+  setSelection: (selection: Shape['selection']) => void
+  bundleNodeSize: { width: number; height: number } | null
+  setBundleNodeSize: (bundleNodeSize: Shape['bundleNodeSize']) => void
+  controlMode: 'pointer' | 'hand'
+  setControlMode: (controlMode: Shape['controlMode']) => void
+  candidateNode?: Node
+  setCandidateNode: (candidateNode?: Node) => void
+  panelMenu?: {
+    top: number
+    left: number
+  }
+  setPanelMenu: (panelMenu: Shape['panelMenu']) => void
+  nodeMenu?: {
+    top: number
+    left: number
+    nodeId: string
+  }
+  setNodeMenu: (nodeMenu: Shape['nodeMenu']) => void
+  mousePosition: { pageX: number; pageY: number; elementX: number; elementY: number }
+  setMousePosition: (mousePosition: Shape['mousePosition']) => void
+  syncWorkflowDraftHash: string
+  setSyncWorkflowDraftHash: (hash: string) => void
 }
 
 export const createWorkflowStore = () => {
-  return create<Shape>(set => ({
+  return createStore<Shape>(set => ({
     appId: '',
-    workflowData: undefined,
+    panelWidth: localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
+    workflowRunningData: undefined,
     setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
     historyWorkflowData: undefined,
     setHistoryWorkflowData: historyWorkflowData => set(() => ({ historyWorkflowData })),
@@ -115,6 +147,27 @@ export const createWorkflowStore = () => {
     setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
     shortcutsDisabled: false,
     setShortcutsDisabled: shortcutsDisabled => set(() => ({ shortcutsDisabled })),
+    showDebugAndPreviewPanel: false,
+    setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
+    selection: null,
+    setSelection: selection => set(() => ({ selection })),
+    bundleNodeSize: null,
+    setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
+    controlMode: localStorage.getItem('workflow-operation-mode') === 'pointer' ? 'pointer' : 'hand',
+    setControlMode: (controlMode) => {
+      set(() => ({ controlMode }))
+      localStorage.setItem('workflow-operation-mode', controlMode)
+    },
+    candidateNode: undefined,
+    setCandidateNode: candidateNode => set(() => ({ candidateNode })),
+    panelMenu: undefined,
+    setPanelMenu: panelMenu => set(() => ({ panelMenu })),
+    nodeMenu: undefined,
+    setNodeMenu: nodeMenu => set(() => ({ nodeMenu })),
+    mousePosition: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },
+    setMousePosition: mousePosition => set(() => ({ mousePosition })),
+    syncWorkflowDraftHash: '',
+    setSyncWorkflowDraftHash: syncWorkflowDraftHash => set(() => ({ syncWorkflowDraftHash })),
   }))
 }
 

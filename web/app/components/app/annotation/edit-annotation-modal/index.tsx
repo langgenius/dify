@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import dayjs from 'dayjs'
 import EditItem, { EditItemType } from './edit-item'
 import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
@@ -11,6 +10,8 @@ import { addAnnotation, editAnnotation } from '@/service/annotation'
 import Toast from '@/app/components/base/toast'
 import { useProviderContext } from '@/context/provider-context'
 import AnnotationFull from '@/app/components/billing/annotation-full'
+import useTimestamp from '@/hooks/use-timestamp'
+
 type Props = {
   isShow: boolean
   onHide: () => void
@@ -41,6 +42,7 @@ const EditAnnotationModal: FC<Props> = ({
   onlyEditResponse,
 }) => {
   const { t } = useTranslation()
+  const { formatTime } = useTimestamp()
   const { plan, enableBilling } = useProviderContext()
   const isAdd = !annotationId
   const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
@@ -117,15 +119,14 @@ const EditAnnotationModal: FC<Props> = ({
                       <MessageCheckRemove />
                       <div>{t('appAnnotation.editModal.removeThisCache')}</div>
                     </div>
-                    {createdAt && <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{dayjs(createdAt * 1000).format('YYYY-MM-DD HH:mm')}</div>}
+                    {createdAt && <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{formatTime(createdAt, t('appLog.dateTimeFormat') as string)}</div>}
                   </div>
                 )
                 : undefined
             }
           </div>
         }
-      >
-      </Drawer>
+      />
       <DeleteConfirmModal
         isShow={showModal}
         onHide={() => setShowModal(false)}

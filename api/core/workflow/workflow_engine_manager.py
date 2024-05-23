@@ -148,9 +148,9 @@ class WorkflowEngineManager:
 
                 has_entry_node = True
 
-                # max steps 30 reached
-                if len(workflow_run_state.workflow_nodes_and_results) > 30:
-                    raise ValueError('Max steps 30 reached.')
+                # max steps 50 reached
+                if len(workflow_run_state.workflow_nodes_and_results) > 50:
+                    raise ValueError('Max steps 50 reached.')
 
                 # or max execution time 10min reached
                 if self._is_timed_out(start_at=workflow_run_state.start_at, max_execution_time=600):

@@ -1,6 +1,8 @@
+import re
 import tempfile
 from pathlib import Path
 from typing import Union
+from urllib.parse import unquote
 
 import requests
 from flask import current_app
@@ -55,6 +57,17 @@ class ExtractProcessor:
 
         with tempfile.TemporaryDirectory() as temp_dir:
             suffix = Path(url).suffix
+            if not suffix and suffix != '.':
+                # get content-type
+                if response.headers.get('Content-Type'):
+                    suffix = '.' + response.headers.get('Content-Type').split('/')[-1]
+                else:
+                    content_disposition = response.headers.get('Content-Disposition')
+                    filename_match = re.search(r'filename="([^"]+)"', content_disposition)
+                    if filename_match:
+                        filename = unquote(filename_match.group(1))
+                        suffix = '.' + re.search(r'\.(\w+)$', filename).group(1)
+
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
             with open(file_path, 'wb') as file:
                 file.write(response.content)

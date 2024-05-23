@@ -32,6 +32,15 @@ provider_credential_schema:
         zh_Hans: 在此输入您的 API Key
         en_US: Enter your API Key
       show_on: [ ]
+    - variable: base_url
+      label:
+        zh_Hans: API Base
+        en_US: API Base
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: 在此输入您的 API Base，如 https://api.cohere.ai/v1
+        en_US: Enter your API Base, e.g. https://api.cohere.ai/v1
 model_credential_schema:
   model:
     label:
@@ -70,3 +79,12 @@ model_credential_schema:
       placeholder:
         zh_Hans: 在此输入您的 API Key
         en_US: Enter your API Key
+    - variable: base_url
+      label:
+        zh_Hans: API Base
+        en_US: API Base
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: 在此输入您的 API Base，如 https://api.cohere.ai/v1
+        en_US: Enter your API Base, e.g. https://api.cohere.ai/v1
