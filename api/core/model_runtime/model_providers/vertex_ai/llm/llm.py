@@ -157,8 +157,6 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        print("model_parameters", model_parameters)
-        print("prompt_messages", prompt_messages)
         config_kwargs = model_parameters.copy()
         config_kwargs['max_output_tokens'] = config_kwargs.pop('max_tokens_to_sample', None)
 
@@ -260,15 +258,9 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
         """
-        print("response");
-        print(response)
         index = -1
         for chunk in response:
-            print("chunk")
-            print(chunk)
             for part in chunk.candidates[0].content.parts:
-                print("part")
-                print(part)
                 assistant_prompt_message = AssistantPromptMessage(
                     content=''
                 )
