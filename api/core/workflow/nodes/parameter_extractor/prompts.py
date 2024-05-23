@@ -1,23 +1,28 @@
 FUNCTION_CALLING_EXTRACTOR_NAME = 'extract_parameters'
 
-FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT = f"""You are a helpful assistant that extracts structured information based on specific criteria provided. 
-Generate a well-formatted output using the defined functions and arguments, always try to extract the information based on the context, including the parameter descriptions.
-Based on the provided descriptions, you could understand the context and extract the information accordingly.
-
+FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT = f"""You are a helpful assistant tasked with extracting structured information based on specific criteria provided. Follow the guidelines below to ensure consistency and accuracy.
 ### Task
-You need always call `{FUNCTION_CALLING_EXTRACTOR_NAME}` function with the correct parameters.
-
+Always call the `{FUNCTION_CALLING_EXTRACTOR_NAME}` function with the correct parameters. Ensure that the information extraction is contextual and aligns with the provided criteria.
 ### Memory
-Here is the chat histories between human and assistant, inside <histories></histories> XML tags.
+Here is the chat history between the human and assistant, provided within <histories> tags:
 <histories>
 \x7bhistories\x7d
 </histories>
-
 ### Instructions:
-Some extra information are provided below, you should always follow the instructions as possible as you can.
+Some additional information is provided below. Always adhere to these instructions as closely as possible:
 <instruction>
 \x7binstruction\x7d
 </instruction>
+Steps:
+1. Review the chat history provided within the <histories> tags.
+2. Extract the relevant information based on the criteria given, output multiple values if there is multiple relevant information that match the criteria in the given text. 
+3. Generate a well-formatted output using the defined functions and arguments.
+4. Use the `extract_parameter` function to create structured outputs with appropriate parameters.
+5. Do not include any XML tags in your output.
+### Example
+To illustrate, if the task involves extracting a user's name and their request, your function call might look like this: Ensure your output follows a similar structure to examples.
+### Final Output
+Produce well-formatted function calls in json without XML tags, as shown in the example.
 """
 
 FUNCTION_CALLING_EXTRACTOR_EXAMPLE = [{
