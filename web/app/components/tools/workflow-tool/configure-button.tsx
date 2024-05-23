@@ -75,7 +75,7 @@ const WorkflowToolConfigureButton = ({
             required: item.required,
             type: getParameterType(item.type),
             description: detail.tool.parameters.find(param => param.name === item.variable)?.llm_description || '',
-            form: detail.tool.parameters.find(param => param.name === item.variable)?.name || 'llm',
+            form: detail.tool.parameters.find(param => param.name === item.variable)?.form || 'llm',
           }
         })
       }
@@ -92,13 +92,19 @@ const WorkflowToolConfigureButton = ({
       }
     }
     return {
-      workflow_app_id: workflowAppId,
       name,
       description,
       icon,
       parameters,
       labels: detail?.tool?.labels || [],
       privacy_policy: detail?.privacy_policy || '',
+      ...(published
+        ? {
+          workflow_tool_id: detail?.workflow_tool_id,
+        }
+        : {
+          workflow_app_id: workflowAppId,
+        }),
     }
   }, [detail, outdated, published, workflowAppId, icon, name, description, inputs])
 

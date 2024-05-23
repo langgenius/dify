@@ -11,6 +11,7 @@ import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppIcon from '@/app/components/base/app-icon'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
 import LabelSelector from '@/app/components/tools/labels/selector'
+import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 
 type Props = {
   isAdd?: boolean
@@ -53,6 +54,7 @@ const WorkflowToolAsModal: FC<Props> = ({
     setLabels(value)
   }
   const [privacyPolicy, setPrivacyPolicy] = useState(payload.privacy_policy)
+  const [showModal, setShowModal] = useState(false)
 
   const onConfirm = () => {
     const requestParams = {
@@ -70,7 +72,7 @@ const WorkflowToolAsModal: FC<Props> = ({
     if (!isAdd) {
       onSave?.({
         ...requestParams,
-        workflow_app_id: payload.workflow_app_id,
+        workflow_tool_id: payload.workflow_tool_id,
       })
     }
     else {
@@ -191,7 +193,12 @@ const WorkflowToolAsModal: FC<Props> = ({
               )}
               <div className='flex space-x-2 '>
                 <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={onConfirm}>{t('common.operation.save')}</Button>
+                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={() => {
+                  if (isAdd)
+                    onConfirm()
+                  else
+                    setShowModal(true)
+                }}>{t('common.operation.save')}</Button>
               </div>
             </div>
           </div>
@@ -208,6 +215,13 @@ const WorkflowToolAsModal: FC<Props> = ({
           setShowEmojiPicker(false)
         }}
       />}
+      {showModal && (
+        <ConfirmModal
+          show={showModal}
+          onClose={() => setShowModal(false)}
+          onConfirm={onConfirm}
+        />
+      )}
     </>
 
   )

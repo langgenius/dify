@@ -98,6 +98,8 @@ const translation = {
     },
     customDisclaimer: 'Custom disclaimer',
     customDisclaimerPlaceholder: 'Please enter custom disclaimer',
+    confirmTitle: 'Confirm to save ?',
+    confirmTip: 'Apps using this tool will be affected',
   },
   test: {
     title: 'Test',
