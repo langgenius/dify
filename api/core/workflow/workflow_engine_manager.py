@@ -94,7 +94,7 @@ class WorkflowEngineManager:
                      user_inputs: dict,
                      system_inputs: Optional[dict] = None,
                      callbacks: list[BaseWorkflowCallback] = None,
-                     call_depth: Optional[int] = 1,
+                     call_depth: Optional[int] = 0,
                      variable_pool: Optional[VariablePool] = None) -> None:
         """
         :param workflow: Workflow instance
@@ -133,7 +133,8 @@ class WorkflowEngineManager:
             variable_pool=variable_pool,
             user_id=user_id,
             user_from=user_from,
-            invoke_from=invoke_from
+            invoke_from=invoke_from,
+            workflow_call_depth=call_depth
         )
 
         # init workflow run
@@ -152,7 +153,7 @@ class WorkflowEngineManager:
     def _run_workflow(self, workflow: Workflow,
                      workflow_run_state: WorkflowRunState,
                      callbacks: list[BaseWorkflowCallback] = None,
-                     call_depth: Optional[int] = 1,
+                     call_depth: Optional[int] = 0,
                      start_at: Optional[str] = None,
                      end_at: Optional[str] = None) -> None:
         """
@@ -357,6 +358,7 @@ class WorkflowEngineManager:
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
             config=node_config,
+            workflow_call_depth=0
         )
 
         try:
@@ -475,7 +477,8 @@ class WorkflowEngineManager:
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
                 config=node_config,
-                callbacks=callbacks
+                callbacks=callbacks,
+                workflow_call_depth=0
             )
 
             self._mapping_user_inputs_to_variable_pool(
@@ -503,7 +506,8 @@ class WorkflowEngineManager:
             variable_pool=variable_pool,
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER
+            invoke_from=InvokeFrom.DEBUGGER,
+            workflow_call_depth=0
         )
 
         # run workflow
@@ -651,7 +655,8 @@ class WorkflowEngineManager:
                         user_from=workflow_run_state.user_from,
                         invoke_from=workflow_run_state.invoke_from,
                         config=node_config,
-                        callbacks=callbacks
+                        callbacks=callbacks,
+                        workflow_call_depth=workflow_run_state.workflow_call_depth
                     )
                 
         else:
@@ -704,7 +709,8 @@ class WorkflowEngineManager:
                 user_from=workflow_run_state.user_from,
                 invoke_from=workflow_run_state.invoke_from,
                 config=target_node_config,
-                callbacks=callbacks
+                callbacks=callbacks,
+                workflow_call_depth=workflow_run_state.workflow_call_depth
             )
         
     def _get_node(self, workflow_run_state: WorkflowRunState, 
@@ -730,7 +736,8 @@ class WorkflowEngineManager:
                     user_from=workflow_run_state.user_from,
                     invoke_from=workflow_run_state.invoke_from,
                     config=node_config,
-                    callbacks=callbacks
+                    callbacks=callbacks,
+                    workflow_call_depth=workflow_run_state.workflow_call_depth
                 )
 
         return None

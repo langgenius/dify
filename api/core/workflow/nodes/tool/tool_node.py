@@ -60,7 +60,8 @@ class ToolNode(BaseNode):
                 tool_parameters=parameters,
                 user_id=self.user_id,
                 workflow_id=self.workflow_id, 
-                workflow_tool_callback=DifyWorkflowCallbackHandler()
+                workflow_tool_callback=DifyWorkflowCallbackHandler(),
+                workflow_call_depth=self.workflow_call_depth + 1
             )
         except Exception as e:
             return NodeRunResult(

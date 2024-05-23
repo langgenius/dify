@@ -28,6 +28,8 @@ class WorkflowRunState:
     user_from: UserFrom
     invoke_from: InvokeFrom
 
+    workflow_call_depth: int
+
     start_at: float
     variable_pool: VariablePool
 
@@ -49,7 +51,8 @@ class WorkflowRunState:
                  variable_pool: VariablePool,
                  user_id: str,
                  user_from: UserFrom,
-                 invoke_from: InvokeFrom):
+                 invoke_from: InvokeFrom,
+                 workflow_call_depth: int):
         self.workflow_id = workflow.id
         self.tenant_id = workflow.tenant_id
         self.app_id = workflow.app_id
@@ -57,6 +60,7 @@ class WorkflowRunState:
         self.user_id = user_id
         self.user_from = user_from
         self.invoke_from = invoke_from
+        self.workflow_call_depth = workflow_call_depth
 
         self.start_at = start_at
         self.variable_pool = variable_pool
