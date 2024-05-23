@@ -8,6 +8,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.entities.tool_entities import (
     ToolDescription,
     ToolIdentity,
+    ToolInvokeFrom,
     ToolInvokeMessage,
     ToolParameter,
     ToolProviderType,
@@ -27,10 +28,7 @@ class Tool(BaseModel, ABC):
 
     @validator('parameters', pre=True, always=True)
     def set_parameters(cls, v, values):
-        if not v:
-            return []
-
-        return v
+        return v or []
 
     class Runtime(BaseModel):
         """
@@ -43,7 +41,8 @@ class Tool(BaseModel, ABC):
 
         tenant_id: str = None
         tool_id: str = None
-        invoke_from: InvokeFrom = InvokeFrom.DEBUGGER
+        invoke_from: InvokeFrom = None
+        tool_invoke_from: ToolInvokeFrom = None
         credentials: dict[str, Any] = None
         runtime_parameters: dict[str, Any] = None
 
@@ -56,7 +55,7 @@ class Tool(BaseModel, ABC):
     class VARIABLE_KEY(Enum):
         IMAGE = 'image'
 
-    def fork_tool_runtime(self, meta: dict[str, Any]) -> 'Tool':
+    def fork_tool_runtime(self, runtime: dict[str, Any]) -> 'Tool':
         """
             fork a new tool with meta data
 
@@ -67,7 +66,7 @@ class Tool(BaseModel, ABC):
             identity=self.identity.copy() if self.identity else None,
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.copy() if self.description else None,
-            runtime=Tool.Runtime(**meta),
+            runtime=Tool.Runtime(**runtime),
         )
     
     @abstractmethod

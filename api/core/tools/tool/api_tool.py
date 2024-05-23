@@ -25,7 +25,7 @@ class ApiTool(Tool):
     """
     Api tool
     """
-    def fork_tool_runtime(self, meta: dict[str, Any]) -> 'Tool':
+    def fork_tool_runtime(self, runtime: dict[str, Any]) -> 'Tool':
         """
             fork a new tool with meta data
 
@@ -37,7 +37,7 @@ class ApiTool(Tool):
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.copy() if self.description else None,
             api_bundle=self.api_bundle.copy() if self.api_bundle else None,
-            runtime=Tool.Runtime(**meta)
+            runtime=Tool.Runtime(**runtime)
         )
     
     def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any], format_only: bool = False) -> str:
