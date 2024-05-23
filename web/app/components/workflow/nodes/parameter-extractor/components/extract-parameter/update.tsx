@@ -15,6 +15,7 @@ import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 import { ChangeType, type MoreInfo } from '@/app/components/workflow/types'
+import { checkKeys } from '@/utils/var'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 const errorI18nPrefix = 'workflow.errorMsg'
@@ -46,6 +47,16 @@ const AddExtractParameter: FC<Props> = ({
   const [renameInfo, setRenameInfo] = useState<MoreInfo | undefined>(undefined)
   const handleParamChange = useCallback((key: string) => {
     return (value: any) => {
+      if (key === 'name') {
+        const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
+        if (!isValid) {
+          Toast.notify({
+            type: 'error',
+            message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+          })
+          return
+        }
+      }
       setRenameInfo(key === 'name'
         ? {
           type: ChangeType.changeVarName,
