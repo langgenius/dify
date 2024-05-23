@@ -50,6 +50,7 @@ class TiDBVector(BaseVector):
             Column("meta", JSON, nullable=False),
             Column("create_time", DateTime, server_default=sqlalchemy.text("CURRENT_TIMESTAMP")),
             Column("update_time", DateTime, server_default=sqlalchemy.text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")),
+            extend_existing=True
         )
 
     def __init__(self, collection_name: str, config: TiDBVectorConfig, distance_func: str = 'cosine'):
