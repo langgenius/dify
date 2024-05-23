@@ -178,6 +178,7 @@ export type IterationFinishedResponse = {
     extras?: any
     status: string
     created_at: number
+    error: string
   }
 }
 
