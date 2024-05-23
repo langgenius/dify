@@ -218,10 +218,6 @@ export const fetchModelParameterRules: Fetcher<{ data: ModelParameterRule[] }, s
   return get<{ data: ModelParameterRule[] }>(url)
 }
 
-export const submitFreeQuota: Fetcher<{ type: string; redirect_url?: string; result?: string }, string> = (url) => {
-  return post<{ type: string; redirect_url?: string; result?: string }>(url)
-}
-
 export const fetchFileUploadConfig: Fetcher<FileUploadConfigResponse, { url: string }> = ({ url }) => {
   return get<FileUploadConfigResponse>(url)
 }
