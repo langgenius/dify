@@ -98,6 +98,8 @@ const translation = {
     },
     customDisclaimer: '自定义免责声明',
     customDisclaimerPlaceholder: '请输入自定义免责声明',
+    confirmTitle: '确认保存？',
+    confirmTip: '发布新的工具版本可能会影响该工具已关联的应用',
   },
   test: {
     title: '测试',
