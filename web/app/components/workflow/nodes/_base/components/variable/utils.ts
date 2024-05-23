@@ -387,6 +387,20 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
   return res || []
 }
 
+export const getNodeUsedVarPassToServerKey = (node: Node, valueSelector: ValueSelector): string => {
+  const { data } = node
+  const { type } = data
+  let res = ''
+  switch (type) {
+    case BlockEnum.Code: {
+      const targetVar = (data as CodeNodeType).variables?.find(v => v.value_selector.join('.') === valueSelector.join('.'))
+      if (targetVar)
+        res = targetVar.variable
+    }
+  }
+  return res
+}
+
 export const findUsedVarNodes = (varSelector: ValueSelector, availableNodes: Node[]): Node[] => {
   const res: Node[] = []
   availableNodes.forEach((node) => {
