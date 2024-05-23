@@ -441,7 +441,7 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         workflow_node_execution = db.session.query(WorkflowNodeExecution).filter(
             WorkflowNodeExecution.id == current_node_execution.workflow_node_execution_id).first()
         
-        execution_metadata = event.execution_metadata
+        execution_metadata = event.execution_metadata if isinstance(event, QueueNodeSucceededEvent) else None
         
         if self._iteration_state and self._iteration_state.current_iterations:
             if not execution_metadata:
