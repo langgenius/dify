@@ -17,6 +17,7 @@ from core.tools.errors import (
     ToolProviderNotFoundError,
 )
 from core.tools.tool.tool import Tool
+from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from extensions.ext_database import db
 from models.model import Message, MessageFile
@@ -115,7 +116,8 @@ class ToolEngine:
     @staticmethod
     def workflow_invoke(tool: Tool, tool_parameters: dict,
                         user_id: str, workflow_id: str, 
-                        workflow_tool_callback: DifyWorkflowCallbackHandler) \
+                        workflow_tool_callback: DifyWorkflowCallbackHandler,
+                        workflow_call_depth: int) \
                               -> list[ToolInvokeMessage]:
         """
         Workflow invokes the tool with the given arguments.
@@ -126,6 +128,9 @@ class ToolEngine:
                 tool_name=tool.identity.name, 
                 tool_inputs=tool_parameters
             )
+
+            if isinstance(tool, WorkflowTool):
+                tool.workflow_call_depth = workflow_call_depth + 1
 
             response = tool.invoke(user_id, tool_parameters)
 

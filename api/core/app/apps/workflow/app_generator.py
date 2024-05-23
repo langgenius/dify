@@ -77,7 +77,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
-            call_depth=call_depth + 1
+            call_depth=call_depth
         )
 
         return self._generate(

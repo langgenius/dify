@@ -50,7 +50,7 @@ class WorkflowTool(Tool):
             }, 
             invoke_from=self.runtime.invoke_from,
             stream=False,
-            call_depth=self.workflow_call_depth,
+            call_depth=self.workflow_call_depth + 1,
         )
 
         return self.create_text_message(json.dumps(result))

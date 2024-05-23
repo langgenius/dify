@@ -110,7 +110,8 @@ class AdvancedChatAppRunner(AppRunner):
                 SystemVariable.CONVERSATION_ID: conversation.id,
                 SystemVariable.USER_ID: user_id
             },
-            callbacks=workflow_callbacks
+            callbacks=workflow_callbacks,
+            call_depth=application_generate_entity.call_depth
         )
 
     def single_iteration_run(self, app_id: str, workflow_id: str,
