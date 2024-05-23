@@ -339,6 +339,7 @@ const translation = {
         array: 'Array',
       },
       aggregationGroup: '聚合分组',
+      aggregationGroupTip: '开启该功能后，变量聚合器内可以同时聚合多组变量',
       addGroup: '添加分组',
       outputVars: {
         varDescribe: '{{groupName}}的输出变量',
@@ -372,6 +373,7 @@ const translation = {
       topicPlaceholder: '在这里输入你的主题内容',
       addClass: '添加分类',
       instruction: '指令',
+      instructionTip: '你可以输入额外的附加指令，帮助问题分类器更好的理解如何分类',
       instructionPlaceholder: '在这里输入你的指令',
     },
     parameterExtractor: {
@@ -397,6 +399,7 @@ const translation = {
       },
       extractParametersNotSet: '提取参数未设置',
       instruction: '指令',
+      instructionTip: '你可以输入额外的附加指令，帮助参数提取器理解如何提取参数',
       advancedSetting: '高级设置',
     },
     iteration: {

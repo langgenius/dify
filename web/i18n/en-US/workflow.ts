@@ -339,6 +339,7 @@ const translation = {
         array: 'Array',
       },
       aggregationGroup: 'Aggregation Group',
+      aggregationGroupTip: 'Enabling this feature allows the variable aggregator to aggregate multiple sets of variables.',
       addGroup: 'Add Group',
       outputVars: {
         varDescribe: '{{groupName}} output',
@@ -372,6 +373,7 @@ const translation = {
       topicPlaceholder: 'Write your topic name',
       addClass: 'Add Class',
       instruction: 'Instruction',
+      instructionTip: 'Input additional instructions to help the question classifier better understand how to categorize questions.',
       instructionPlaceholder: 'Write your instruction',
     },
     parameterExtractor: {
@@ -397,6 +399,7 @@ const translation = {
       },
       extractParametersNotSet: 'Extract Parameters not setup',
       instruction: 'Instruction',
+      instructionTip: 'Input additional instructions to help the parameter extractor understand how to extract parameters.',
       advancedSetting: 'Advanced Setting',
     },
     iteration: {

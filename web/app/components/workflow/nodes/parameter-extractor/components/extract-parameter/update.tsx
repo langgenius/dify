@@ -73,7 +73,7 @@ const AddExtractParameter: FC<Props> = ({
         }
       })
     }
-  }, [param.name])
+  }, [param.name, t])
 
   const [isShowModal, {
     setTrue: doShowModal,

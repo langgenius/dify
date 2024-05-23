@@ -131,7 +131,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                   <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
                   <TooltipPlus popupContent={
                     <div className='w-[120px]'>
-                      {'TODO'}
+                      {t(`${i18nPrefix}.instructionTip`)}
                     </div>}>
                     <HelpCircle className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
                   </TooltipPlus>
