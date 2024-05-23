@@ -65,7 +65,7 @@ const translation = {
     configureRequired: 'Configure Required',
     configure: 'Configure',
     manageInTools: 'Manage in Tools',
-    workflowAsToolTip: 'After the update, parameters changed, reconfiguration required.',
+    workflowAsToolTip: 'Tool reconfiguration is required after the workflow update.',
     viewDetailInTracingPanel: 'View details in tracing panel',
   },
   errorMsg: {

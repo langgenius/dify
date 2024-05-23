@@ -214,6 +214,7 @@ const AppPublisher = ({
               <WorkflowToolConfigureButton
                 disabled={!publishedAt}
                 published={!!toolPublished}
+                detailNeedUpdate={!!toolPublished && published}
                 workflowAppId={appDetail?.id}
                 icon={{
                   content: appDetail?.icon,

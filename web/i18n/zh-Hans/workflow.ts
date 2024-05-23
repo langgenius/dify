@@ -65,7 +65,7 @@ const translation = {
     configureRequired: '需要进行配置',
     configure: '配置',
     manageInTools: '访问工具页',
-    workflowAsToolTip: '工作流已更新，工具需要重新配置。',
+    workflowAsToolTip: '工作流更新后需要重新配置工具参数',
     viewDetailInTracingPanel: '在追踪面板查看详细信息',
   },
   errorMsg: {

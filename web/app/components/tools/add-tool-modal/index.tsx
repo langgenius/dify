@@ -106,8 +106,7 @@ const AddToolModal: FC<Props> = ({
     const parameters: Record<string, string> = {}
     if (tool.parameters) {
       tool.parameters.forEach((item) => {
-        if (item.form === 'llm')
-          parameters[item.name] = ''
+        parameters[item.name] = ''
       })
     }
 
