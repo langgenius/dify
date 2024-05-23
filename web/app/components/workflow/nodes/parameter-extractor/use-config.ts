@@ -10,8 +10,9 @@ import {
 } from '../../hooks'
 import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { Param, ParameterExtractorNodeType, ReasoningModeType } from './types'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
+  ModelFeatureEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
@@ -125,6 +126,17 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     }
   }, [model?.provider, currentProvider, currentModel, handleModelChanged])
 
+  const {
+    currentModel: currModel,
+  } = useTextGenerationCurrentProviderAndModelAndModelList(
+    {
+      provider: model.provider,
+      model: model.name,
+    },
+  )
+
+  const isSupportFunctionCall = currModel?.features?.includes(ModelFeatureEnum.toolCall) || currModel?.features?.includes(ModelFeatureEnum.multiToolCall)
+
   const filterInputVar = useCallback((varPayload: Var) => {
     return [VarType.number, VarType.string].includes(varPayload.type)
   }, [])
@@ -228,6 +240,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     hasSetBlockStatus,
     availableVars,
     availableNodes,
+    isSupportFunctionCall,
     handleReasoningModeChange,
     handleMemoryChange,
     varInputs,

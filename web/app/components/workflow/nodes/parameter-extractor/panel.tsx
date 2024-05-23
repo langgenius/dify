@@ -45,6 +45,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     handleInstructionChange,
     hasSetBlockStatus,
     handleMemoryChange,
+    isSupportFunctionCall,
     handleReasoningModeChange,
     availableVars,
     availableNodes,
@@ -157,13 +158,14 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                 />
               </div>
             )}
-
-            <div className='mt-2'>
-              <ReasoningModePicker
-                type={inputs.reasoning_mode}
-                onChange={handleReasoningModeChange}
-              />
-            </div>
+            {isSupportFunctionCall && (
+              <div className='mt-2'>
+                <ReasoningModePicker
+                  type={inputs.reasoning_mode}
+                  onChange={handleReasoningModeChange}
+                />
+              </div>
+            )}
           </>
         </Field>
 
