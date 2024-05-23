@@ -241,7 +241,7 @@ class ToolTransformService:
         """
         if isinstance(tool, Tool):
             # fork tool runtime
-            tool = tool.fork_tool_runtime(meta={
+            tool = tool.fork_tool_runtime(runtime={
                 'credentials': credentials,
                 'tenant_id': tenant_id,
             })
