@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: 'Публічний URL',
       preview: 'Попередній перегляд',
       regenerate: 'Відновити',
+      regenerateNotice: 'Бажаєте згенерувати новий публічний URL?',
       preUseReminder: 'Будь ласка, активуйте веб-додаток перед продовженням.',
       settings: {
         entry: 'Налаштування',

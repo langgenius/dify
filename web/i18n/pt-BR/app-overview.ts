@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: 'URL Pública',
       preview: 'Visualização',
       regenerate: 'Regenerar',
+      regenerateNotice: 'Você deseja regenerar a URL pública?',
       preUseReminder: 'Por favor, ative o WebApp antes de continuar.',
       settings: {
         entry: 'Configurações',
