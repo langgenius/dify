@@ -33,6 +33,7 @@ from core.workflow.nodes.parameter_extractor.prompts import (
     FUNCTION_CALLING_EXTRACTOR_EXAMPLE,
     FUNCTION_CALLING_EXTRACTOR_NAME,
     FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT,
+    FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE,
 )
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
@@ -217,6 +218,8 @@ class ParameterExtractorNode(LLMNode):
         """
         Generate function call prompt.
         """
+        query = FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE.format(content=query)
+
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
         rest_token = self._calculate_rest_token(node_data, query, variable_pool, model_config, '')
         prompt_template = self._get_function_calling_prompt_template(node_data, query, variable_pool, memory, rest_token)

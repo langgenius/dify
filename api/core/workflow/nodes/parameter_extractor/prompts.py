@@ -25,6 +25,12 @@ To illustrate, if the task involves extracting a user's name and their request, 
 Produce well-formatted function calls in json without XML tags, as shown in the example.
 """
 
+FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE = """You need to extract structured information from context inside <context></context> XML tags.
+<context>
+{content}
+</context>
+"""
+
 FUNCTION_CALLING_EXTRACTOR_EXAMPLE = [{
     'user': {
         'query': 'What is the weather today in SF?',
