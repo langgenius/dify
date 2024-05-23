@@ -24,6 +24,7 @@ const DEFAULT_PARAM: Param = {
   name: '',
   type: ParamType.string,
   description: '',
+  required: false,
 }
 
 type Props = {

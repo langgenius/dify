@@ -15,9 +15,15 @@ export type Param = {
   required?: boolean
 }
 
+export enum ReasoningModeType {
+  prompt = 'prompt',
+  functionCall = 'function_call',
+}
+
 export type ParameterExtractorNodeType = CommonNodeType & {
   model: ModelConfig
   query: ValueSelector
+  reasoning_mode: ReasoningModeType
   parameters: Param[]
   instruction: string
   memory?: Memory
