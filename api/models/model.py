@@ -57,6 +57,7 @@ class App(db.Model):
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    user_id = db.Column(StringUUID, nullable=False)
     tenant_id = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
