@@ -131,6 +131,7 @@ export const useWorkflowRun = () => {
     })
 
     let isInIteration = false
+    let iterationLength = 0
 
     ssePost(
       url,
@@ -339,6 +340,7 @@ export const useWorkflowRun = () => {
             } as any)
           }))
           isInIteration = true
+          iterationLength = data.metadata.iterator_length
 
           const {
             setViewport,
@@ -385,6 +387,9 @@ export const useWorkflowRun = () => {
 
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             const iteration = draft.tracing![draft.tracing!.length - 1]
+            if (iteration.details!.length >= iterationLength)
+              return
+
             iteration.details!.push([])
           }))
 
