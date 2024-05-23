@@ -53,7 +53,7 @@ class WorkflowTool(Tool):
             call_depth=self.workflow_call_depth + 1,
         )
 
-        return self.create_text_message(json.dumps(result))
+        return self.create_text_message(json.dumps(result.get('data', {}).get('outputs', {})))
 
     def _get_user(self, user_id: str) -> Union[EndUser, Account]:
         """
