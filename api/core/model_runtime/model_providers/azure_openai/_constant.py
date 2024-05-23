@@ -49,7 +49,7 @@ LLM_BASE_MODELS = [
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 ModelPropertyKey.MODE: LLMMode.CHAT.value,
-                ModelPropertyKey.CONTEXT_SIZE: 4096,
+                ModelPropertyKey.CONTEXT_SIZE: 16385,
             },
             parameter_rules=[
                 ParameterRule(
@@ -68,11 +68,25 @@ LLM_BASE_MODELS = [
                     name='frequency_penalty',
                     **PARAMETER_RULE_TEMPLATE[DefaultParameterName.FREQUENCY_PENALTY],
                 ),
-                _get_max_tokens(default=512, min_val=1, max_val=4096)
+                _get_max_tokens(default=512, min_val=1, max_val=4096),
+                ParameterRule(
+                    name='response_format',
+                    label=I18nObject(
+                        zh_Hans='回复格式',
+                        en_US='response_format'
+                    ),
+                    type='string',
+                    help=I18nObject(
+                        zh_Hans='指定模型必须输出的格式',
+                        en_US='specifying the format that the model must output'
+                    ),
+                    required=False,
+                    options=['text', 'json_object']
+                ),
             ],
             pricing=PriceConfig(
-                input=0.001,
-                output=0.002,
+                input=0.0005,
+                output=0.0015,
                 unit=0.001,
                 currency='USD',
             )
@@ -703,8 +717,8 @@ LLM_BASE_MODELS = [
                 ),
             ],
             pricing=PriceConfig(
-                input=0.001,
-                output=0.003,
+                input=0.01,
+                output=0.03,
                 unit=0.001,
                 currency='USD',
             )
@@ -779,8 +793,8 @@ LLM_BASE_MODELS = [
                 ),
             ],
             pricing=PriceConfig(
-                input=0.001,
-                output=0.003,
+                input=0.01,
+                output=0.03,
                 unit=0.001,
                 currency='USD',
             )
