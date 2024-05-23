@@ -1,15 +1,16 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useTranslation } from 'react-i18next'
-import { Heart02 } from '../base/icons/src/vender/solid/education'
-import { BookOpen01 } from '../base/icons/src/vender/line/education'
+// import { useTranslation } from 'react-i18next'
+// import { Heart02 } from '../base/icons/src/vender/solid/education'
+// import { BookOpen01 } from '../base/icons/src/vender/line/education'
 
 const Contribute: FC = () => {
-  const { t } = useTranslation()
+  // const { t } = useTranslation()
 
   return (
     <div className='shrink-0 p-2'>
+      {/*
       <div className='inline-block p-2 bg-white shadow-lg rounded-lg'>
         <Heart02 className='w-3 h-3 text-[#EE46BC]' />
       </div>
@@ -25,6 +26,7 @@ const Contribute: FC = () => {
         <BookOpen01 className='w-3 h-3' />
         <div className='leading-[18px] text-xs font-normal'>{t('tools.contribute.viewGuide')}</div>
       </a>
+      */}
     </div>
   )
 }

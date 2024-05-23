@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import classNames from 'classnames'
 import useSWR from 'swr'
-import Link from 'next/link'
+// import Link from 'next/link'
 import Toast from '../components/base/toast'
 import style from './page.module.css'
 import { IS_CE_EDITION, apiPrefix } from '@/config'
@@ -280,6 +280,7 @@ const NormalForm = () => {
             </>
           }
           {/*  agree to our Terms and Privacy Policy. */}
+          {/*
           <div className="w-hull text-center block mt-2 text-xs text-gray-600">
             {t('login.tosDesc')}
             &nbsp;
@@ -304,6 +305,7 @@ const NormalForm = () => {
               href='/install'
             >{t('login.setAdminAccount')}</Link>
           </div>}
+          */}
 
         </div>
       </div>
