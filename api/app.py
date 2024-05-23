@@ -101,7 +101,18 @@ def create_app() -> Flask:
         datefmt=app.config.get('LOG_DATEFORMAT'),
         handlers=log_handlers
     )
+    log_tz = app.config.get('LOG_TZ')
+    if log_tz:
+        from datetime import datetime
 
+        import pytz
+        timezone = pytz.timezone(log_tz)
+
+        def time_converter(seconds):
+            return datetime.utcfromtimestamp(seconds).astimezone(timezone).timetuple()
+
+        for handler in logging.root.handlers:
+            handler.formatter.converter = time_converter
     initialize_extensions(app)
     register_blueprints(app)
     register_commands(app)
