@@ -17,6 +17,7 @@ import { useStore as useLabelStore } from '@/app/components/tools/labels/store'
 import type { Tool } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import type { AgentTool } from '@/types/app'
+import { MAX_TOOLS_NUM } from '@/config'
 
 type ToolsProps = {
   tools: ToolWithProvider[]
@@ -33,6 +34,7 @@ const Blocks = ({
   const { t } = useTranslation()
   const language = useGetLanguage()
   const labelList = useLabelStore(s => s.labelList)
+  const addable = addedTools.length < MAX_TOOLS_NUM
 
   const renderGroup = useCallback((toolWithProvider: ToolWithProvider) => {
     const list = toolWithProvider.tools
@@ -98,7 +100,7 @@ const Blocks = ({
                     {t('tools.addToolModal.added').toLocaleUpperCase()}
                   </div>
                 )}
-                {!needAuth && !added && (
+                {!needAuth && !added && addable && (
                   <Button
                     type='default'
                     className={cn('hidden shrink-0 items-center !h-6 px-2 py-1 bg-white text-xs font-medium leading-[18px] text-primary-600 group-hover/item:flex')}
@@ -121,7 +123,7 @@ const Blocks = ({
         })}
       </div>
     )
-  }, [language, t, labelList, addedTools, onAuthSetup, onSelect])
+  }, [addable, language, t, labelList, addedTools, onAuthSetup, onSelect])
 
   return (
     <div className='p-1 pb-6 max-w-[440px]'>
