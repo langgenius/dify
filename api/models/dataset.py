@@ -1,8 +1,15 @@
+import base64
+import hashlib
+import hmac
 import json
 import logging
+import os
 import pickle
+import re
+import time
 from json import JSONDecodeError
 
+from flask import current_app
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -413,6 +420,26 @@ class DocumentSegment(db.Model):
             DocumentSegment.document_id == self.document_id,
             DocumentSegment.position == self.position + 1
         ).first()
+
+    def get_sign_content(self):
+        pattern = r"/files/([a-f0-9\-]+)/image-preview"
+        text = self.content
+        match = re.search(pattern, text)
+
+        if match:
+            upload_file_id = match.group(1)
+            nonce = os.urandom(16).hex()
+            timestamp = str(int(time.time()))
+            data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
+            secret_key = current_app.config['SECRET_KEY'].encode()
+            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+            encoded_sign = base64.urlsafe_b64encode(sign).decode()
+
+            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+            replacement = r"\g<0>?{params}".format(params=params)
+            text = re.sub(pattern, replacement, text)
+        return text
+
 
 
 class AppDatasetJoin(db.Model):
