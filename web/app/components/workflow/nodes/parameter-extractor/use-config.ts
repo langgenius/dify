@@ -164,6 +164,13 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleImportFromTool = useCallback((params: Param[]) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.parameters = params
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   // single run
   const {
     isShowSingleRun,
@@ -207,6 +214,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     isCompletionModel,
     handleModelChanged,
     handleCompletionParamsChange,
+    handleImportFromTool,
     handleExactParamsChange,
     addExtractParameter,
     handleInstructionChange,
