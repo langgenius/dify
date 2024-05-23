@@ -91,6 +91,7 @@ def test_function_calling_parameter_extractor(setup_openai_mock):
                     'required': True
                 }],
                 'instruction': '',
+                'reasoning_mode': 'function_call',
                 'memory': None,
             }
         }
@@ -147,6 +148,7 @@ def test_instructions(setup_openai_mock):
                     'description': 'location',
                     'required': True
                 }],
+                'reasoning_mode': 'function_call',
                 'instruction': '{{#sys.query#}}',
                 'memory': None,
             }
@@ -212,6 +214,7 @@ def test_chat_parameter_extractor(setup_anthropic_mock):
                     'description': 'location',
                     'required': True
                 }],
+                'reasoning_mode': 'prompt',
                 'instruction': '',
                 'memory': None,
             }
@@ -275,6 +278,7 @@ def test_completion_parameter_extractor(setup_openai_mock):
                     'description': 'location',
                     'required': True
                 }],
+                'reasoning_mode': 'prompt',
                 'instruction': '{{#sys.query#}}',
                 'memory': None,
             }
@@ -334,6 +338,7 @@ def test_extract_json_response():
                     'description': 'location',
                     'required': True
                 }],
+                'reasoning_mode': 'prompt',
                 'instruction': '{{#sys.query#}}',
                 'memory': None,
             }
