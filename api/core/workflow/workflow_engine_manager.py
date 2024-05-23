@@ -228,7 +228,7 @@ class WorkflowEngineManager:
                             # move to next iteration
                             next_node_id = next_iteration
                             # get next id
-                            next_node = self._get_node(workflow_run_state, graph, next_node_id)
+                            next_node = self._get_node(workflow_run_state, graph, next_node_id, callbacks)
                 
                 if not next_node:
                     break
@@ -278,7 +278,7 @@ class WorkflowEngineManager:
                         workflow_run_state.current_iteration_state = None
                         continue
                     else:
-                        next_node = self._get_node(workflow_run_state, graph, next_node_id)
+                        next_node = self._get_node(workflow_run_state, graph, next_node_id, callbacks)
 
                 # run workflow, run multiple target nodes in the future
                 self._run_workflow_node(
@@ -356,7 +356,7 @@ class WorkflowEngineManager:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
-            config=node_config
+            config=node_config,
         )
 
         try:
@@ -474,7 +474,8 @@ class WorkflowEngineManager:
                 user_id=user_id,
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
-                config=node_config
+                config=node_config,
+                callbacks=callbacks
             )
 
             self._mapping_user_inputs_to_variable_pool(
@@ -706,7 +707,10 @@ class WorkflowEngineManager:
                 callbacks=callbacks
             )
         
-    def _get_node(self, workflow_run_state: WorkflowRunState, graph: dict, node_id) -> Optional[BaseNode]:
+    def _get_node(self, workflow_run_state: WorkflowRunState, 
+                  graph: dict, 
+                  node_id: str,
+                  callbacks: list[BaseWorkflowCallback]) -> Optional[BaseNode]:
         """
         Get node from graph by node id
         """
@@ -725,7 +729,8 @@ class WorkflowEngineManager:
                     user_id=workflow_run_state.user_id,
                     user_from=workflow_run_state.user_from,
                     invoke_from=workflow_run_state.invoke_from,
-                    config=node_config
+                    config=node_config,
+                    callbacks=callbacks
                 )
 
         return None
