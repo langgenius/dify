@@ -8,7 +8,7 @@ class DuckDuckGoProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
             DuckDuckGoSearchTool().fork_tool_runtime(
-                meta={
+                runtime={
                     "credentials": credentials,
                 }
             ).invoke(

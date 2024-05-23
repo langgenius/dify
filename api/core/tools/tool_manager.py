@@ -16,6 +16,7 @@ from core.tools.entities.api_entities import UserToolProvider, UserToolProviderT
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    ToolInvokeFrom,
     ToolParameter,
 )
 from core.tools.errors import ToolProviderNotFoundError
@@ -101,8 +102,12 @@ class ToolManager:
             raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
 
     @classmethod
-    def get_tool_runtime(cls, provider_type: str, provider_id: str, tool_name: str, 
-                         tenant_id: str, invoke_from: InvokeFrom = InvokeFrom.DEBUGGER) \
+    def get_tool_runtime(cls, provider_type: str, 
+                         provider_id: str,
+                         tool_name: str, 
+                         tenant_id: str, 
+                         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
+                         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT) \
         -> Union[BuiltinTool, ApiTool]:
         """
             get the tool runtime
@@ -119,10 +124,11 @@ class ToolManager:
             # check if the builtin tool need credentials
             provider_controller = cls.get_builtin_provider(provider_id)
             if not provider_controller.need_credentials:
-                return builtin_tool.fork_tool_runtime(meta={
+                return builtin_tool.fork_tool_runtime(runtime={
                     'tenant_id': tenant_id,
                     'credentials': {},
-                    'invoke_from': invoke_from
+                    'invoke_from': invoke_from,
+                    'tool_invoke_from': tool_invoke_from,
                 })
 
             # get credentials
@@ -141,11 +147,12 @@ class ToolManager:
 
             decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
 
-            return builtin_tool.fork_tool_runtime(meta={
+            return builtin_tool.fork_tool_runtime(runtime={
                 'tenant_id': tenant_id,
                 'credentials': decrypted_credentials,
                 'runtime_parameters': {},
-                'invoke_from': invoke_from
+                'invoke_from': invoke_from,
+                'tool_invoke_from': tool_invoke_from,
             })
         
         elif provider_type == 'api':
@@ -158,10 +165,11 @@ class ToolManager:
             tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=api_provider)
             decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
 
-            return api_provider.get_tool(tool_name).fork_tool_runtime(meta={
+            return api_provider.get_tool(tool_name).fork_tool_runtime(runtime={
                 'tenant_id': tenant_id,
                 'credentials': decrypted_credentials,
-                'invoke_from': invoke_from
+                'invoke_from': invoke_from,
+                'tool_invoke_from': tool_invoke_from,
             })
         elif provider_type == 'workflow':
             workflow_provider = db.session.query(WorkflowToolProvider).filter(
@@ -176,10 +184,11 @@ class ToolManager:
                 db_provider=workflow_provider
             )
 
-            return controller.get_tool(tool_name).fork_tool_runtime(meta={
+            return controller.get_tool(tool_name).fork_tool_runtime(runtime={
                 'tenant_id': tenant_id,
                 'credentials': {},
-                'invoke_from': invoke_from
+                'invoke_from': invoke_from,
+                'tool_invoke_from': tool_invoke_from,
             })
         elif provider_type == 'app':
             raise NotImplementedError('app provider not implemented')
@@ -240,11 +249,16 @@ class ToolManager:
             provider_id=agent_tool.provider_id,
             tool_name=agent_tool.tool_name,
             tenant_id=tenant_id,
-            invoke_from=invoke_from
+            invoke_from=invoke_from,
+            tool_invoke_from=ToolInvokeFrom.AGENT
         )
         runtime_parameters = {}
         parameters = tool_entity.get_all_runtime_parameters()
         for parameter in parameters:
+            # check file types
+            if parameter.type == ToolParameter.ToolParameterType.FILE:
+                raise ValueError(f"file type parameter {parameter.name} not supported in agent")
+            
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
                 # save tool parameter to tool entity memory
                 value = cls._init_runtime_parameter(parameter, agent_tool.tool_parameters)
@@ -273,7 +287,8 @@ class ToolManager:
             provider_id=workflow_tool.provider_id,
             tool_name=workflow_tool.tool_name,
             tenant_id=tenant_id,
-            invoke_from=invoke_from
+            invoke_from=invoke_from,
+            tool_invoke_from=ToolInvokeFrom.WORKFLOW
         )
         runtime_parameters = {}
         parameters = tool_entity.get_all_runtime_parameters()

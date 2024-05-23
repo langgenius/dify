@@ -377,3 +377,10 @@ class ToolLabel(BaseModel):
     """
     name: str = Field(..., description="The name of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
+
+class ToolInvokeFrom(Enum):
+    """
+    Enum class for tool invoke
+    """
+    WORKFLOW = "workflow"
+    AGENT = "agent"

@@ -396,7 +396,7 @@ class ApiToolManageService:
             provider_controller.validate_credentials_format(credentials)
             # get tool
             tool = provider_controller.get_tool(tool_name)
-            tool = tool.fork_tool_runtime(meta={
+            tool = tool.fork_tool_runtime(runtime={
                 'credentials': credentials,
                 'tenant_id': tenant_id,
             })
