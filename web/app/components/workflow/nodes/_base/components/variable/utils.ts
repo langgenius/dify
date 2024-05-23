@@ -387,6 +387,70 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
   return res || []
 }
 
+// used can be used in iteration node
+export const getNodeUsedVarPassToServerKey = (node: Node, valueSelector: ValueSelector): string => {
+  const { data } = node
+  const { type } = data
+  let res = ''
+  switch (type) {
+    case BlockEnum.LLM: {
+      const payload = (data as LLMNodeType)
+
+      if (payload.context?.variable_selector.join('.') === valueSelector.join('.'))
+        res = '#context#'
+      else
+        res = `#${valueSelector.join('.')}#`
+
+      break
+    }
+    case BlockEnum.KnowledgeRetrieval: {
+      res = 'query'
+      break
+    }
+    case BlockEnum.IfElse: {
+      const targetVar = (data as IfElseNodeType).conditions?.find(c => c.variable_selector.join('.') === valueSelector.join('.'))
+      if (targetVar)
+        res = `#${valueSelector.join('.')}#`
+      break
+    }
+    case BlockEnum.Code: {
+      const targetVar = (data as CodeNodeType).variables?.find(v => v.value_selector.join('.') === valueSelector.join('.'))
+      if (targetVar)
+        res = targetVar.variable
+      break
+    }
+    case BlockEnum.TemplateTransform: {
+      const targetVar = (data as TemplateTransformNodeType).variables?.find(v => v.value_selector.join('.') === valueSelector.join('.'))
+      if (targetVar)
+        res = targetVar.variable
+      break
+    }
+    case BlockEnum.QuestionClassifier: {
+      res = 'query'
+      break
+    }
+    case BlockEnum.HttpRequest: {
+      res = `#${valueSelector.join('.')}#`
+      break
+    }
+
+    case BlockEnum.Tool: {
+      res = `#${valueSelector.join('.')}#`
+      break
+    }
+
+    case BlockEnum.VariableAssigner: {
+      res = `#${valueSelector.join('.')}#`
+      break
+    }
+    case BlockEnum.ParameterExtractor: {
+      res = 'query'
+      break
+    }
+  }
+  return res
+}
+
 export const findUsedVarNodes = (varSelector: ValueSelector, availableNodes: Node[]): Node[] => {
   const res: Node[] = []
   availableNodes.forEach((node) => {

@@ -15,7 +15,6 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
-import Toast from '@/app/components/base/toast'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
@@ -38,6 +37,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     isChatMode,
     isCompletionModel,
     handleModelChanged,
+    handleImportFromTool,
     handleCompletionParamsChange,
     addExtractParameter,
     handleExactParamsChange,
@@ -100,12 +100,9 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             !readOnly
               ? (
                 <div className='flex items-center space-x-1'>
-                  <ImportFromTool onImport={() => {
-                    Toast.notify({
-                      type: 'info',
-                      message: 'TODO',
-                    })
-                  }} />
+                  {!readOnly && (
+                    <ImportFromTool onImport={handleImportFromTool} />
+                  )}
                   {!readOnly && (<div className='w-px h-3 bg-gray-200'></div>)}
                   <AddExtractParameter type='add' onSave={addExtractParameter} />
                 </div>
@@ -131,7 +128,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                   <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
                   <TooltipPlus popupContent={
                     <div className='w-[120px]'>
-                      {'TODO'}
+                      {t(`${i18nPrefix}.instructionTip`)}
                     </div>}>
                     <HelpCircle className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
                   </TooltipPlus>

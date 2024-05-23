@@ -98,7 +98,7 @@ const AddToolModal: FC<Props> = ({
       message: t('common.api.actionSuccess'),
     })
     setIsShowEditCustomCollectionModal(false)
-    // TODO update list
+    getAllTools()
   }
   const [showSettingAuth, setShowSettingAuth] = useState(false)
   const [collection, setCollection] = useState<Collection>()
@@ -106,7 +106,8 @@ const AddToolModal: FC<Props> = ({
     const parameters: Record<string, string> = {}
     if (tool.parameters) {
       tool.parameters.forEach((item) => {
-        parameters[item.name] = ''
+        if (item.form === 'llm')
+          parameters[item.name] = ''
       })
     }
 
@@ -135,7 +136,7 @@ const AddToolModal: FC<Props> = ({
       type: 'success',
       message: t('common.api.actionSuccess'),
     })
-    // await onRefreshData()
+    await getAllTools()
     setShowSettingAuth(false)
   }
   const removeBuiltinAuth = async () => {
@@ -146,7 +147,7 @@ const AddToolModal: FC<Props> = ({
       type: 'success',
       message: t('common.api.actionSuccess'),
     })
-    // await onRefreshData()
+    await getAllTools()
     setShowSettingAuth(false)
   }
 

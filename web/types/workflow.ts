@@ -24,6 +24,9 @@ export type NodeTracing = {
     currency: string
     steps_boundary: number[]
   }
+  metadata: {
+    iterator_length: number
+  }
   created_at: number
   created_by: {
     id: string
@@ -175,6 +178,7 @@ export type IterationFinishedResponse = {
     extras?: any
     status: string
     created_at: number
+    error: string
   }
 }
 

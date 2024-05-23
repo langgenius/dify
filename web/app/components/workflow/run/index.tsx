@@ -4,10 +4,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { useBoolean } from 'ahooks'
 import { BlockEnum } from '../types'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
 import TracingPanel from './tracing-panel'
+import IterationResultPanel from './iteration-result-panel'
 import { ToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
@@ -169,6 +171,29 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
     adjustResultHeight()
   }, [loading])
 
+  const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[][]>([])
+  const [isShowIterationDetail, {
+    setTrue: doShowIterationDetail,
+    setFalse: doHideIterationDetail,
+  }] = useBoolean(false)
+
+  const handleShowIterationDetail = useCallback((detail: NodeTracing[][]) => {
+    setIterationRunResult(detail)
+    doShowIterationDetail()
+  }, [doShowIterationDetail])
+
+  if (isShowIterationDetail) {
+    return (
+      <div className='grow relative flex flex-col'>
+        <IterationResultPanel
+          list={iterationRunResult}
+          onHide={doHideIterationDetail}
+          onBack={doHideIterationDetail}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className='grow relative flex flex-col'>
       {/* tab */}
@@ -227,7 +252,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         {!loading && currentTab === 'TRACING' && (
           <TracingPanel
             list={list}
-            onShowIterationDetail={onShowIterationDetail}
+            onShowIterationDetail={handleShowIterationDetail}
           />
         )}
       </div>

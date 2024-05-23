@@ -1,6 +1,6 @@
 import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
-import type { ParameterExtractorNodeType } from './types'
+import { type ParameterExtractorNodeType, ReasoningModeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
 const i18nPrefix = 'workflow'
 
@@ -15,6 +15,7 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
         temperature: 0.7,
       },
     },
+    reasoning_mode: ReasoningModeType.prompt,
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode

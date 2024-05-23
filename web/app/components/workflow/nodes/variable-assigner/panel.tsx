@@ -81,7 +81,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
       <div className={cn('px-4 pt-4', isEnableGroup ? 'pb-4' : 'pb-2')}>
         <Field
           title={t(`${i18nPrefix}.aggregationGroup`)}
-          tooltip={'TODO'}
+          tooltip={t(`${i18nPrefix}.aggregationGroupTip`)!}
           operations={
             <Switch
               defaultValue={isEnableGroup}

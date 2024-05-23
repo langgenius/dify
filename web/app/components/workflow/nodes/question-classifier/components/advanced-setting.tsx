@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next'
 import TextEditor from '../../_base/components/editor/text-editor'
 import MemoryConfig from '../../_base/components/memory-config'
 import type { Memory } from '@/app/components/workflow/types'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
 type Props = {
@@ -30,7 +32,17 @@ const AdvancedSetting: FC<Props> = ({
     <>
       <TextEditor
         isInNode
-        title={t(`${i18nPrefix}.instruction`)!}
+        title={
+          <div className='flex items-center space-x-1'>
+            <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
+            <TooltipPlus popupContent={
+              <div className='w-[120px]'>
+                {t(`${i18nPrefix}.instructionTip`)}
+              </div>}>
+              <HelpCircle className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
+            </TooltipPlus>
+          </div>
+        }
         value={instruction}
         onChange={onInstructionChange}
         minHeight={160}

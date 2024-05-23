@@ -10,7 +10,7 @@ import {
 import { VarType } from '../../types'
 import type { ValueSelector, Var } from '../../types'
 import useNodeCrud from '../_base/hooks/use-node-crud'
-import { getNodeInfoById, getNodeUsedVars, isSystemVar, toNodeOutputVars } from '../_base/components/variable/utils'
+import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar, toNodeOutputVars } from '../_base/components/variable/utils'
 import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { IterationNodeType } from './types'
 
@@ -93,7 +93,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     const vars: ValueSelector[] = []
     const varObjs: Record<string, boolean> = {}
     const allVarObject: Record<string, {
-      isInIteration: boolean
+      inSingleRunPassedKey: string
     }> = {}
     iterationChildrenNodes.forEach((node) => {
       const nodeVars = getNodeUsedVars(node).filter(item => item && item.length > 0)
@@ -111,7 +111,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
           vars.push(varSelector)
         }
         allVarObject[`${varSectorStr}${DELIMITER}${node.id}`] = {
-          isInIteration,
+          inSingleRunPassedKey: getNodeUsedVarPassToServerKey(node, varSelector),
         }
       })
     })
@@ -133,11 +133,13 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     }
   })()
 
+  console.log(allVarObject)
+
   const handleRun = useCallback((data: Record<string, any>) => {
     const formattedData: Record<string, any> = {}
     Object.keys(allVarObject).forEach((key) => {
       const [varSectorStr, nodeId] = key.split(DELIMITER)
-      formattedData[`${nodeId}.#${varSectorStr}#`] = data[varSectorStr]
+      formattedData[`${nodeId}.${allVarObject[key].inSingleRunPassedKey}`] = data[varSectorStr]
     })
     formattedData[iteratorInputKey] = data[iteratorInputKey]
     doHandleRun(formattedData)

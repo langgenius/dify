@@ -314,7 +314,7 @@ export const useChat = (
           }))
           isInIteration = true
         },
-        onIterationNext: ({ data }) => {
+        onIterationNext: () => {
           const tracing = responseItem.workflowProcess!.tracing!
           const iterations = tracing[tracing.length - 1]
           iterations.details!.push([])
@@ -331,7 +331,6 @@ export const useChat = (
             ...iterations,
             ...data,
             status: NodeRunningStatus.Succeeded,
-            // details: iterations.details,
           } as any
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
             const currentIndex = draft.length - 1
