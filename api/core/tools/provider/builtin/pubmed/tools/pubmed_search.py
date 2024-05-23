@@ -160,8 +160,8 @@ class PubMedAPIWrapper(BaseModel):
 class PubmedQueryRun(BaseModel):
     """Tool that searches the PubMed API."""
 
-    name = "PubMed"
-    description = (
+    name: str = "PubMed"
+    description: str = (
         "A wrapper around PubMed.org "
         "Useful for when you need to answer questions about Physics, Mathematics, "
         "Computer Science, Quantitative Biology, Quantitative Finance, Statistics, "
