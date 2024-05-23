@@ -9,7 +9,7 @@ import {
   useWorkflow,
 } from '../../hooks'
 import useOneStepRun from '../_base/hooks/use-one-step-run'
-import type { Param, ParameterExtractorNodeType } from './types'
+import type { Param, ParameterExtractorNodeType, ReasoningModeType } from './types'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   ModelTypeEnum,
@@ -164,6 +164,13 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleReasoningModeChange = useCallback((newReasoningMode: ReasoningModeType) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.reasoning_mode = newReasoningMode
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const handleImportFromTool = useCallback((params: Param[]) => {
     const newInputs = produce(inputs, (draft) => {
       draft.parameters = params
@@ -221,6 +228,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     hasSetBlockStatus,
     availableVars,
     availableNodes,
+    handleReasoningModeChange,
     handleMemoryChange,
     varInputs,
     inputVarValues,
