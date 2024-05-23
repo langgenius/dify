@@ -7,17 +7,10 @@ import {
   QuotaUnitEnum,
 } from '../declarations'
 import {
-  useAnthropicBuyQuota,
-  useFreeQuota,
-  useUpdateModelProviders,
-} from '../hooks'
-import {
-  MODEL_PROVIDER_QUOTA_GET_FREE,
   MODEL_PROVIDER_QUOTA_GET_PAID,
 } from '../utils'
 import PriorityUseTip from './priority-use-tip'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
-import Button from '@/app/components/base/button'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { formatNumber } from '@/utils/format'
 
@@ -28,12 +21,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   provider,
 }) => {
   const { t } = useTranslation()
-  const updateModelProviders = useUpdateModelProviders()
-  const handlePay = useAnthropicBuyQuota()
-  const handleFreeQuotaSuccess = () => {
-    updateModelProviders()
-  }
-  const handleFreeQuota = useFreeQuota(handleFreeQuotaSuccess)
+
   const customConfig = provider.custom_configuration
   const priorityUseType = provider.preferred_provider_type
   const systemConfig = provider.system_configuration
@@ -66,16 +54,6 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
               currentQuota?.quota_unit === QuotaUnitEnum.credits && t('common.modelProvider.credits')
             }
           </div>
-        )
-      }
-      {
-        !currentQuota && MODEL_PROVIDER_QUOTA_GET_FREE.includes(provider.provider) && (
-          <Button
-            className='h-6 bg-white text-xs font-medium rounded-md'
-            onClick={() => handleFreeQuota(provider.provider)}
-          >
-            {t('common.modelProvider.getFreeTokens')}
-          </Button>
         )
       }
       {
