@@ -65,7 +65,7 @@ const translation = {
     configureRequired: '需要进行配置',
     configure: '配置',
     manageInTools: '访问工具页',
-    workflowAsToolTip: '工作流已更新，工具需要重新配置。',
+    workflowAsToolTip: '工作流更新后需要重新配置工具参数',
     viewDetailInTracingPanel: '在追踪面板查看详细信息',
   },
   errorMsg: {
@@ -404,6 +404,8 @@ const translation = {
       instruction: '指令',
       instructionTip: '你可以输入额外的附加指令，帮助参数提取器理解如何提取参数',
       advancedSetting: '高级设置',
+      reasoningMode: '推理模式',
+      reasoningModeTip: '你可以根据模型对于 Function calling 或 Prompt 的指令响应能力选择合适的推理模式',
     },
     iteration: {
       deleteTitle: '删除迭代节点？',

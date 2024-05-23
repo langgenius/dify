@@ -10,6 +10,7 @@ import type { ParameterExtractorNodeType } from './types'
 import ExtractParameter from './components/extract-parameter/list'
 import ImportFromTool from './components/extract-parameter/import-from-tool'
 import AddExtractParameter from './components/extract-parameter/update'
+import ReasoningModePicker from './components/reasoning-mode-picker'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -44,6 +45,8 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     handleInstructionChange,
     hasSetBlockStatus,
     handleMemoryChange,
+    isSupportFunctionCall,
+    handleReasoningModeChange,
     availableVars,
     availableNodes,
     inputVarValues,
@@ -116,7 +119,6 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             onChange={handleExactParamsChange}
           />
         </Field>
-        {/* Memory */}
         <Field
           title={t(`${i18nPrefix}.advancedSetting`)}
           supportFold
@@ -145,6 +147,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
               availableNodes={availableNodes}
             />
 
+            {/* Memory */}
             {isChatMode && (
               <div className='mt-4'>
                 <MemoryConfig
@@ -152,6 +155,14 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                   config={{ data: inputs.memory }}
                   onChange={handleMemoryChange}
                   canSetRoleName={isCompletionModel}
+                />
+              </div>
+            )}
+            {isSupportFunctionCall && (
+              <div className='mt-2'>
+                <ReasoningModePicker
+                  type={inputs.reasoning_mode}
+                  onChange={handleReasoningModeChange}
                 />
               </div>
             )}

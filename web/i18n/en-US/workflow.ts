@@ -65,7 +65,7 @@ const translation = {
     configureRequired: 'Configure Required',
     configure: 'Configure',
     manageInTools: 'Manage in Tools',
-    workflowAsToolTip: 'After the update, parameters changed, reconfiguration required.',
+    workflowAsToolTip: 'Tool reconfiguration is required after the workflow update.',
     viewDetailInTracingPanel: 'View details in tracing panel',
   },
   errorMsg: {
@@ -404,6 +404,8 @@ const translation = {
       instruction: 'Instruction',
       instructionTip: 'Input additional instructions to help the parameter extractor understand how to extract parameters.',
       advancedSetting: 'Advanced Setting',
+      reasoningMode: 'Reasoning Mode',
+      reasoningModeTip: 'You can choose the appropriate reasoning mode based on the model\'s ability to respond to instructions for function calling or prompts.',
     },
     iteration: {
       deleteTitle: 'Delete Iteration Node?',

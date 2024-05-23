@@ -18,6 +18,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 type Props = {
   disabled: boolean
   published: boolean
+  detailNeedUpdate: boolean
   workflowAppId: string
   icon: Emoji
   name: string
@@ -29,6 +30,7 @@ type Props = {
 const WorkflowToolConfigureButton = ({
   disabled,
   published,
+  detailNeedUpdate,
   workflowAppId,
   icon,
   name,
@@ -54,7 +56,7 @@ const WorkflowToolConfigureButton = ({
 
   const payload = useMemo(() => {
     let parameters: WorkflowToolProviderParameter[] = []
-    if (!published || outdated) {
+    if (!published) {
       parameters = (inputs || []).map((item) => {
         return {
           name: item.variable,
@@ -66,15 +68,28 @@ const WorkflowToolConfigureButton = ({
       })
     }
     else if (detail && detail.tool) {
-      parameters = detail.tool.parameters.map((item) => {
-        return {
-          name: item.name,
-          description: item.llm_description,
-          form: item.form,
-          required: item.required,
-          type: item.type,
-        }
-      })
+      if (outdated) {
+        parameters = (inputs || []).map((item) => {
+          return {
+            name: item.variable,
+            required: item.required,
+            type: getParameterType(item.type),
+            description: detail.tool.parameters.find(param => param.name === item.variable)?.llm_description || '',
+            form: detail.tool.parameters.find(param => param.name === item.variable)?.name || 'llm',
+          }
+        })
+      }
+      else {
+        parameters = detail.tool.parameters.map((item) => {
+          return {
+            name: item.name,
+            description: item.llm_description,
+            form: item.form,
+            required: item.required,
+            type: item.type,
+          }
+        })
+      }
     }
     return {
       workflow_app_id: workflowAppId,
@@ -99,6 +114,11 @@ const WorkflowToolConfigureButton = ({
     if (published)
       getDetail(workflowAppId)
   }, [getDetail, published, workflowAppId])
+
+  useEffect(() => {
+    if (detailNeedUpdate)
+      getDetail(workflowAppId)
+  }, [detailNeedUpdate, getDetail, workflowAppId])
 
   const createHandle = async (data: WorkflowToolProviderRequest & { workflow_app_id: string }) => {
     try {
