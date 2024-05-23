@@ -79,11 +79,6 @@ class WorkflowToolProviderController(ToolProviderController):
         parameters = db_provider.parameter_configurations
         variables = WorkflowToolConfigurationUtils.get_workflow_graph_variables(graph)
 
-        WorkflowToolConfigurationUtils.check_is_synced(
-            variables=variables,
-            tool_configurations=parameters
-        )
-        
         def fetch_workflow_variable(variable_name: str) -> VariableEntity:
             return next(filter(lambda x: x.variable == variable_name, variables), None)
 
@@ -164,8 +159,8 @@ class WorkflowToolProviderController(ToolProviderController):
                 author=user.name if user else '',
                 name=db_provider.name,
                 label=I18nObject(
-                    en_US=db_provider.description,
-                    zh_Hans=db_provider.description
+                    en_US=db_provider.name,
+                    zh_Hans=db_provider.name
                 ),
                 provider=self.provider_id,
                 icon=db_provider.icon,
