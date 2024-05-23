@@ -145,9 +145,9 @@ def load_user_from_request(request_from_flask_login):
                 raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
 
         decoded = PassportService().verify(auth_token)
-        user_id = decoded.get('user_id')
+        email = decoded.get('email')
 
-        return AccountService.load_user(user_id)
+        return AccountService.load_user(email)
     else:
         return None
 

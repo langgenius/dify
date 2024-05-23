@@ -38,8 +38,8 @@ from tasks.mail_invite_member_task import send_invite_member_mail_task
 class AccountService:
 
     @staticmethod
-    def load_user(user_id: str) -> Account:
-        account = Account.query.filter_by(id=user_id).first()
+    def load_user(email: str) -> Account:
+        account = Account.query.filter_by(email=email).first()
         if not account:
             return None
 
