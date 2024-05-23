@@ -471,10 +471,11 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
                 self._task_state.total_tokens += (
                     int(execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS)))
                 
-                for iteration_node_id in self._iteration_state.current_iterations:
-                    data = self._iteration_state.current_iterations[iteration_node_id]
-                    if execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
-                        data.total_tokens += int(execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS))
+                if self._iteration_state:
+                    for iteration_node_id in self._iteration_state.current_iterations:
+                        data = self._iteration_state.current_iterations[iteration_node_id]
+                        if execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
+                            data.total_tokens += int(execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS))
 
             if workflow_node_execution.node_type == NodeType.LLM.value:
                 outputs = workflow_node_execution.outputs_dict
