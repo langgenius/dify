@@ -4,6 +4,7 @@ import {
   useNodes,
   useStoreApi,
 } from 'reactflow'
+import { useTranslation } from 'react-i18next'
 import { uniqBy } from 'lodash-es'
 import produce from 'immer'
 import {
@@ -18,7 +19,7 @@ import type {
   ValueSelector,
 } from '../../types'
 import { useWorkflowStore } from '../../store'
-import { toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 export const useVariableAssigner = () => {
   const store = useStoreApi()
@@ -150,23 +151,38 @@ export const useVariableAssigner = () => {
 }
 
 export const useGetAvailableVars = () => {
+  const { t } = useTranslation()
   const nodes: Node[] = useNodes()
   const edges: Edge[] = useEdges()
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const isChatMode = useIsChatMode()
   const getAvailableVars = useCallback((nodeId: string, handleId: string) => {
     const availableNodes: Node[] = []
+    const currentNode = nodes.find(node => node.id === nodeId)!
+    const parentNode = nodes.find(node => node.id === currentNode.parentId)
     const connectedEdges = edges.filter(edge => edge.target === nodeId && edge.targetHandle === handleId)
 
-    connectedEdges.forEach((connectedEdge) => {
-      const beforeNodes = getBeforeNodesInSameBranch(connectedEdge.source)
-      const connectedNode = nodes.find(node => node.id === connectedEdge.source)!
+    if (parentNode && !connectedEdges.length) {
+      const beforeNodes = getBeforeNodesInSameBranch(parentNode.id)
+      availableNodes.push(...beforeNodes)
+    }
+    else {
+      connectedEdges.forEach((connectedEdge) => {
+        const beforeNodes = getBeforeNodesInSameBranch(connectedEdge.source)
+        const connectedNode = nodes.find(node => node.id === connectedEdge.source)!
 
-      availableNodes.push(connectedNode, ...beforeNodes)
+        availableNodes.push(connectedNode, ...beforeNodes)
+      })
+    }
+
+    return toNodeAvailableVars({
+      parentNode,
+      t,
+      beforeNodes: uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId),
+      isChatMode,
+      filterVar: () => true,
     })
-
-    return toNodeOutputVars(uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId), isChatMode, () => true)
-  }, [nodes, edges, isChatMode, getBeforeNodesInSameBranch])
+  }, [nodes, edges, isChatMode, getBeforeNodesInSameBranch, t])
 
   return getAvailableVars
 }
