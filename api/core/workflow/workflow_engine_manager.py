@@ -246,7 +246,7 @@ class WorkflowEngineManager:
                 has_entry_node = True
 
                 # max steps reached
-                if len(workflow_run_state.workflow_nodes_and_results) > max_execution_steps:
+                if workflow_run_state.workflow_node_steps > max_execution_steps:
                     raise ValueError('Max steps {} reached.'.format(max_execution_steps))
 
                 # or max execution time reached
