@@ -31,6 +31,7 @@ class AppSiteApi(WebApiResource):
         'description': fields.String,
         'copyright': fields.String,
         'privacy_policy': fields.String,
+        'custom_disclaimer': fields.String,
         'default_language': fields.String,
         'prompt_public': fields.Boolean
     }

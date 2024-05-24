@@ -5,14 +5,14 @@ import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
-import { getOIDCSSOUrl, getSAMLSSOUrl } from '@/service/enterprise'
+import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 import Button from '@/app/components/base/button'
 
-type EnterpriseSSOFormProps = {
+type UserSSOFormProps = {
   protocol: string
 }
 
-const EnterpriseSSOForm: FC<EnterpriseSSOFormProps> = ({
+const UserSSOForm: FC<UserSSOFormProps> = ({
   protocol,
 }) => {
   const searchParams = useSearchParams()
@@ -41,19 +41,34 @@ const EnterpriseSSOForm: FC<EnterpriseSSOFormProps> = ({
   const handleSSOLogin = () => {
     setIsLoading(true)
     if (protocol === 'saml') {
-      getSAMLSSOUrl().then((res) => {
+      getUserSAMLSSOUrl().then((res) => {
+        router.push(res.url)
+      }).finally(() => {
+        setIsLoading(false)
+      })
+    }
+    else if (protocol === 'oidc') {
+      getUserOIDCSSOUrl().then((res) => {
+        document.cookie = `user-oidc-state=${res.state}`
+        router.push(res.url)
+      }).finally(() => {
+        setIsLoading(false)
+      })
+    }
+    else if (protocol === 'oauth2') {
+      getUserOAuth2SSOUrl().then((res) => {
+        document.cookie = `user-oauth2-state=${res.state}`
         router.push(res.url)
       }).finally(() => {
         setIsLoading(false)
       })
     }
     else {
-      getOIDCSSOUrl().then((res) => {
-        document.cookie = `oidc-state=${res.state}`
-        router.push(res.url)
-      }).finally(() => {
-        setIsLoading(false)
+      Toast.notify({
+        type: 'error',
+        message: 'invalid SSO protocol',
       })
+      setIsLoading(false)
     }
   }
 
@@ -84,4 +99,4 @@ const EnterpriseSSOForm: FC<EnterpriseSSOFormProps> = ({
   )
 }
 
-export default EnterpriseSSOForm
+export default UserSSOForm

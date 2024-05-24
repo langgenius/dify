@@ -9,7 +9,7 @@ class MoreLikeThisConfigManager:
         more_like_this = False
         more_like_this_dict = config.get('more_like_this')
         if more_like_this_dict:
-            if 'enabled' in more_like_this_dict and more_like_this_dict['enabled']:
+            if more_like_this_dict.get('enabled'):
                 more_like_this = True
 
         return more_like_this

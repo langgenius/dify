@@ -1,7 +1,7 @@
 import os
 from typing import Optional, cast
 
-from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor
+from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
@@ -53,7 +53,7 @@ class TemplateTransformNode(BaseNode):
         # Run code
         try:
             result = CodeExecutor.execute_workflow_code_template(
-                language='jinja2',
+                language=CodeLanguage.JINJA2,
                 code=node_data.template,
                 inputs=variables
             )

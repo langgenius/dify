@@ -44,7 +44,7 @@ const Item = ({
     return (
       <Button
         className={`
-          hidden group-hover:flex px-2 py-0 h-6 bg-white text-xs text-gray-700 font-medium rounded-md 
+          hidden group-hover:flex px-2 py-0 h-6 bg-white text-xs text-gray-700 font-medium rounded-md
           ${open && '!bg-gray-100 !flex'}
         `}
       >
@@ -84,7 +84,7 @@ const Item = ({
             }}
             trigger={renderTrigger}
             popupClassName='!w-[328px]'
-            availableBlocksTypes={intersection(availablePrevNodes, availableNextNodes)}
+            availableBlocksTypes={intersection(availablePrevNodes, availableNextNodes).filter(item => item !== data.type)}
           />
         )
       }
