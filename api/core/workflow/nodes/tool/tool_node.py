@@ -44,7 +44,7 @@ class ToolNode(BaseNode):
         except Exception as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
-                inputs=parameters,
+                inputs={},
                 metadata={
                     NodeRunMetadataKey.TOOL_INFO: tool_info
                 },

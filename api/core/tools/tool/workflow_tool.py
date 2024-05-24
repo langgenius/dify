@@ -2,6 +2,7 @@ import json
 from copy import deepcopy
 from typing import Any, Union
 
+from core.file.file_obj import FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderType
 from core.tools.tool.tool import Tool
 from extensions.ext_database import db
@@ -53,7 +54,21 @@ class WorkflowTool(Tool):
             call_depth=self.workflow_call_depth + 1,
         )
 
-        return self.create_text_message(json.dumps(result.get('data', {}).get('outputs', {})))
+        data = result.get('data', {})
+
+        if data.get('error'):
+            raise Exception(data.get('error'))
+        
+        result = []
+
+        outputs = data.get('outputs', {})
+        outputs, files = self._extract_files(outputs)
+        for file in files:
+            result.append(self.create_image_message(file.preview_url))
+        
+        result.append(self.create_text_message(json.dumps(outputs)))
+
+        return result
 
     def _get_user(self, user_id: str) -> Union[EndUser, Account]:
         """
@@ -136,3 +151,29 @@ class WorkflowTool(Tool):
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)
 
         return parameters_result, files
+    
+    def _extract_files(self, outputs: dict) -> tuple[dict, list[FileVar]]:
+        """
+            extract files from the result
+
+            :param result: the result
+            :return: the result, files
+        """
+        files = []
+        result = {}
+        for key, value in outputs.items():
+            if isinstance(value, list):
+                has_file = False
+                for item in value:
+                    if isinstance(item, dict) and item.get('__variant') == 'FileVar':
+                        try:
+                            files.append(FileVar(**item))
+                            has_file = True
+                        except Exception as e:
+                            pass
+                if has_file:
+                    continue
+
+            result[key] = value
+
+        return result, files

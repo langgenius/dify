@@ -49,7 +49,7 @@ def uuid_value(value):
     
 def alphanumeric(value: str):
     # check if the value is alphanumeric and underlined
-    if re.match(r'^[a-zA-Z0-9_]$', value):
+    if re.match(r'^[a-zA-Z0-9_]+$', value):
         return value
     
     raise ValueError(f'{value} is not a valid alphanumeric value')
