@@ -93,7 +93,6 @@ class WorkflowToolProviderController(ToolProviderController):
                 if variable.type in [
                     VariableEntity.Type.TEXT_INPUT, 
                     VariableEntity.Type.PARAGRAPH, 
-                    VariableEntity.Type.SELECT
                 ]:
                     parameter_type = ToolParameter.ToolParameterType.STRING
                 elif variable.type in [
