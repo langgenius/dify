@@ -36,7 +36,7 @@ class YoutubeVideosAnalyticsTool(BuiltinTool):
         youtube = build('youtube', 'v3', developerKey=self.runtime.credentials['google_api_key'])
 
         # try to get channel id
-        search_results = youtube.search().list(q='mrbeast', type='channel', order='relevance', part='id').execute()
+        search_results = youtube.search().list(q=channel, type='channel', order='relevance', part='id').execute()
         channel_id = search_results['items'][0]['id']['channelId']
 
         start_date, end_date = time_range
