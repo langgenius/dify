@@ -1,7 +1,6 @@
 
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
-from core.tools.entities.api_entities import UserToolProvider
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool.tool import Tool
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
@@ -43,7 +42,7 @@ class BuiltinTool(Tool):
         )
     
     def tool_provider_type(self) -> ToolProviderType:
-        return UserToolProvider.ProviderType.BUILTIN
+        return ToolProviderType.BUILT_IN
     
     def get_max_tokens(self) -> int:
         """
