@@ -174,9 +174,9 @@ class ToolNode(BaseNode):
         """
         Extract tool response text
         """
-        return ''.join([
-            f'{message.message}\n' if message.type == ToolInvokeMessage.MessageType.TEXT else
-            f'Link: {message.message}\n' if message.type == ToolInvokeMessage.MessageType.LINK else ''
+        return '\n'.join([
+            f'{message.message}' if message.type == ToolInvokeMessage.MessageType.TEXT else
+            f'Link: {message.message}' if message.type == ToolInvokeMessage.MessageType.LINK else ''
             for message in tool_response
         ])
 
