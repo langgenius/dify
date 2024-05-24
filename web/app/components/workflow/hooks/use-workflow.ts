@@ -205,6 +205,21 @@ export const useWorkflow = () => {
     return []
   }, [store])
 
+  const getBeforeNodesInSameBranchIncludeParent = useCallback((nodeId: string, newNodes?: Node[], newEdges?: Edge[]) => {
+    const nodes = getBeforeNodesInSameBranch(nodeId, newNodes, newEdges)
+    const {
+      getNodes,
+    } = store.getState()
+    const allNodes = getNodes()
+    const node = allNodes.find(n => n.id === nodeId)
+    const parentNodeId = node?.parentId
+    const parentNode = allNodes.find(n => n.id === parentNodeId)
+    if (parentNode)
+      nodes.push(parentNode)
+
+    return nodes
+  }, [getBeforeNodesInSameBranch, store])
+
   const getAfterNodesInSameBranch = useCallback((nodeId: string) => {
     const {
       getNodes,
@@ -370,6 +385,7 @@ export const useWorkflow = () => {
     handleLayout,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
+    getBeforeNodesInSameBranchIncludeParent,
     getAfterNodesInSameBranch,
     handleOutVarRenameChange,
     isVarUsedInNodes,
