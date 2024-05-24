@@ -64,7 +64,7 @@ class WorkflowTool(Tool):
         outputs = data.get('outputs', {})
         outputs, files = self._extract_files(outputs)
         for file in files:
-            result.append(self.create_image_message(file.preview_url))
+            result.append(self.create_file_var_message(file))
         
         result.append(self.create_text_message(json.dumps(outputs)))
 

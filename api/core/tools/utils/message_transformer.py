@@ -1,6 +1,7 @@
 import logging
 from mimetypes import guess_extension
 
+from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
 
@@ -79,6 +80,24 @@ class ToolFileMessageTransformer:
                         save_as=message.save_as,
                         meta=message.meta.copy() if message.meta is not None else {},
                     ))
+            elif message.type == ToolInvokeMessage.MessageType.FILE_VAR:
+                file_var: FileVar = message.meta.get('file_var')
+                if file_var:
+                    if file_var.transfer_method == FileTransferMethod.TOOL_FILE:
+                        if file_var.type == FileType.IMAGE:
+                            result.append(ToolInvokeMessage(
+                                type=ToolInvokeMessage.MessageType.IMAGE_LINK,
+                                message=file_var.url,
+                                save_as=message.save_as,
+                                meta=message.meta.copy() if message.meta is not None else {},
+                            ))
+                        else:
+                            result.append(ToolInvokeMessage(
+                                type=ToolInvokeMessage.MessageType.LINK,
+                                message=file_var.url,
+                                save_as=message.save_as,
+                                meta=message.meta.copy() if message.meta is not None else {},
+                            ))
             else:
                 result.append(message)
 
