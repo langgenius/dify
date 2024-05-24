@@ -64,7 +64,10 @@ class WorkflowToolProviderController(ToolProviderController):
             :param app: the app
             :return: the tool
         """
-        workflow: Workflow = app.workflow
+        workflow: Workflow = db.session.query(Workflow).filter(
+            Workflow.app_id == db_provider.app_id,
+            Workflow.version == db_provider.version
+        )
         if not workflow:
             raise ValueError('workflow not found')
 
