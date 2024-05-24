@@ -67,7 +67,7 @@ class WorkflowToolProviderController(ToolProviderController):
         workflow: Workflow = db.session.query(Workflow).filter(
             Workflow.app_id == db_provider.app_id,
             Workflow.version == db_provider.version
-        )
+        ).first()
         if not workflow:
             raise ValueError('workflow not found')
 
