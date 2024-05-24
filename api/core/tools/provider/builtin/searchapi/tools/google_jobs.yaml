@@ -1,0 +1,87 @@
+identity:
+  name: google_jobs_api
+  author: SearchApi
+  label:
+    en_US: Google Jobs API
+    zh_Hans: Google Jobs API
+description:
+  human:
+    en_US: A tool to retrieve job titles, company names and description from Google Jobs engine.
+    zh_Hans: 一个从 Google 招聘引擎检索职位名称、公司名称和描述的工具。
+  llm: A tool to retrieve job titles, company names and description from Google Jobs engine.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: query
+      zh_Hans: 询问
+    human_description:
+      en_US: Defines the query you want to search.
+      zh_Hans: 定义您要搜索的查询。
+    llm_description: Defines the search query you want to search.
+    form: llm
+  - name: result_type
+    type: select
+    required: true
+    options:
+      - value: text
+        label:
+          en_US: text
+          zh_Hans: 文本
+      - value: link
+        label:
+          en_US: link
+          zh_Hans: 链接
+    default: text
+    label:
+      en_US: Result type
+      zh_Hans: 结果类型
+    human_description:
+      en_US: used for selecting the result type, text or link
+      zh_Hans: 用于选择结果类型，使用文本还是链接进行展示
+    form: form
+  - name: location
+    type: string
+    required: false
+    label:
+      en_US: location
+      zh_Hans: 询问
+    human_description:
+      en_US: Defines from where you want the search to originate. (For example - New York)
+      zh_Hans: 定义您想要搜索的起始位置。 （例如 - 纽约）
+    llm_description: Defines from where you want the search to originate. (For example - New York)
+    form: llm
+  - name: gl
+    type: string
+    required: false
+    label:
+      en_US: gl
+      zh_Hans: gl
+    human_description:
+      en_US: Defines the country of the search. Default is "US".
+      zh_Hans: 定义搜索的国家/地区。默认为“美国”。
+    llm_description: Defines the gl parameter of the Google Jobs search.
+    form: llm
+  - name: hl
+    type: string
+    required: false
+    label:
+      en_US: hl
+      zh_Hans: hl
+    human_description:
+      en_US: Defines the interface language of the search. Default is "en".
+      zh_Hans: 定义搜索的界面语言。默认为“en”。
+    llm_description: Defines the hl parameter of the Google Jobs search.
+    form: llm
+  - name: is_remote
+    type: boolean
+    required: false
+    label:
+      en_US: is_remote
+      zh_Hans: 很遥远
+    human_description:
+      en_US: Filter results based on the work arrangement. Set it to true to find jobs that offer work from home or remote work opportunities.
+      zh_Hans: 根据工作安排过滤结果。将其设置为 true 可查找提供在家工作或远程工作机会的工作。
+    llm_description: Filters results based on the work arrangement (ltype).
+    form: llm

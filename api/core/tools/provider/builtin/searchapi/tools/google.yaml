@@ -1,0 +1,99 @@
+identity:
+  name: google_search_api
+  author: SearchApi
+  label:
+    en_US: Google Search API
+    zh_Hans: Google Search API
+description:
+  human:
+    en_US: A tool to retrieve answer boxes, knowledge graphs, snippets, and webpages from Google Search engine.
+    zh_Hans: 一种从 Google 搜索引擎检索答案框、知识图、片段和网页的工具。
+  llm: A tool to retrieve answer boxes, knowledge graphs, snippets, and webpages from Google Search engine.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: query
+      zh_Hans: 询问
+    human_description:
+      en_US: Defines the query you want to search.
+      zh_Hans: 定义您要搜索的查询。
+    llm_description: Defines the search query you want to search.
+    form: llm
+  - name: result_type
+    type: select
+    required: true
+    options:
+      - value: text
+        label:
+          en_US: text
+          zh_Hans: 文本
+      - value: link
+        label:
+          en_US: link
+          zh_Hans: 链接
+    default: text
+    label:
+      en_US: Result type
+      zh_Hans: 结果类型
+    human_description:
+      en_US: used for selecting the result type, text or link
+      zh_Hans: 用于选择结果类型，使用文本还是链接进行展示
+    form: form
+  - name: location
+    type: string
+    required: false
+    label:
+      en_US: location
+      zh_Hans: 询问
+    human_description:
+      en_US: Defines from where you want the search to originate. (For example - New York)
+      zh_Hans: 定义您想要搜索的起始位置。 （例如 - 纽约）
+    llm_description: Defines from where you want the search to originate. (For example - New York)
+    form: llm
+  - name: gl
+    type: string
+    required: false
+    label:
+      en_US: gl
+      zh_Hans: gl
+    human_description:
+      en_US: Defines the country of the search. Default is "US".
+      zh_Hans: 定义搜索的国家/地区。默认为“美国”。
+    llm_description: Defines the gl parameter of the Google News search.
+    form: llm
+  - name: hl
+    type: string
+    required: false
+    label:
+      en_US: hl
+      zh_Hans: hl
+    human_description:
+      en_US: Defines the interface language of the search. Default is "en".
+      zh_Hans: 定义搜索的界面语言。默认为“en”。
+    llm_description: Defines the hl parameter of the Google News search.
+    form: llm
+  - name: google_domain
+    type: string
+    required: false
+    label:
+      en_US: google_domain
+      zh_Hans: google_domain
+    human_description:
+      en_US: Defines the Google domain of the search. Default is "google.com".
+      zh_Hans: 定义搜索的 Google 域。默认为“google.com”。
+    llm_description: Defines Google domain in which you want to search.
+    form: llm
+  - name: num
+    type: number
+    required: false
+    label:
+      en_US: num
+      zh_Hans: num
+    human_description:
+      en_US: Specifies the number of results to display per page. Default is 10. Max number - 100, min - 1.
+      zh_Hans: 指定每页显示的结果数。默认值为 10。最大数量 - 100，最小数量 - 1。
+      pt_BR: Specifies the number of results to display per page. Default is 10. Max number - 100, min - 1.
+    llm_description: Specifies the num of results to display per page.
+    form: llm

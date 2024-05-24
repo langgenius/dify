@@ -1,0 +1,29 @@
+identity:
+  author: SearchApi
+  name: searchapi
+  label:
+    en_US: SearchApi
+    zh_Hans: SearchApi
+    pt_BR: SearchApi
+  description:
+    en_US: SearchApi
+    zh_Hans: SearchApi
+    pt_BR: SearchApi
+  icon: icon.svg
+credentials_for_provider:
+  searchapi_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: SearchApi API key
+      zh_Hans: SearchApi API key
+      pt_BR: SearchApi API key
+    placeholder:
+      en_US: Please input your SearchApi API key
+      zh_Hans: 请输入你的 SearchApi API key
+      pt_BR: Please input your SearchApi API key
+    help:
+      en_US: Get your SearchApi API key from SearchApi
+      zh_Hans: 从 SearchApi 获取您的 SearchApi API key
+      pt_BR: Get your SearchApi API key from SearchApi
+    url: https://www.searchapi.io/
