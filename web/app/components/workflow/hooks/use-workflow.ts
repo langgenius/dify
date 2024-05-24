@@ -313,6 +313,9 @@ export const useWorkflow = () => {
     const sourceNode: Node = nodes.find(node => node.id === source)!
     const targetNode: Node = nodes.find(node => node.id === target)!
 
+    if (targetNode.data.isIterationStart)
+      return false
+
     if (sourceNode && targetNode) {
       const sourceNodeAvailableNextNodes = nodesExtraData[sourceNode.data.type].availableNextNodes
       const targetNodeAvailablePrevNodes = [...nodesExtraData[targetNode.data.type].availablePrevNodes, BlockEnum.Start]

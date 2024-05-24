@@ -5,6 +5,7 @@ import {
   useRef,
 } from 'react'
 import { useClickAway } from 'ahooks'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '../../../store'
 import {
   useIsChatMode,
@@ -14,7 +15,7 @@ import {
 import type { ValueSelector } from '../../../types'
 import { useVariableAssigner } from '../../variable-assigner/hooks'
 import AddVariablePopup from './add-variable-popup'
-import { toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 type AddVariablePopupWithPositionProps = {
   nodeId: string
@@ -24,6 +25,7 @@ const AddVariablePopupWithPosition = ({
   nodeId,
   nodeData,
 }: AddVariablePopupWithPositionProps) => {
+  const { t } = useTranslation()
   const ref = useRef(null)
   const showAssignVariablePopup = useStore(s => s.showAssignVariablePopup)
   const setShowAssignVariablePopup = useStore(s => s.setShowAssignVariablePopup)
@@ -36,11 +38,20 @@ const AddVariablePopupWithPosition = ({
     if (!showAssignVariablePopup)
       return []
 
-    return toNodeOutputVars([{
-      id: showAssignVariablePopup.nodeId,
-      data: showAssignVariablePopup.nodeData,
-    }, ...getBeforeNodesInSameBranch(showAssignVariablePopup.nodeId)], isChatMode)
-  }, [getBeforeNodesInSameBranch, isChatMode, showAssignVariablePopup])
+    return toNodeAvailableVars({
+      parentNode: showAssignVariablePopup.parentNode,
+      t,
+      beforeNodes: [
+        ...getBeforeNodesInSameBranch(showAssignVariablePopup.nodeId),
+        {
+          id: showAssignVariablePopup.nodeId,
+          data: showAssignVariablePopup.nodeData,
+        } as any,
+      ],
+      isChatMode,
+      filterVar: () => true,
+    })
+  }, [getBeforeNodesInSameBranch, isChatMode, showAssignVariablePopup, t])
 
   useClickAway(() => {
     if (nodeData._holdAddVariablePopup) {

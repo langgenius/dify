@@ -292,6 +292,9 @@ export const useNodesInteractions = () => {
     if (targetNode?.parentId !== sourceNode?.parentId)
       return
 
+    if (targetNode?.data.isIterationStart)
+      return
+
     const needDeleteEdges = edges.filter((edge) => {
       if (
         (edge.source === source && edge.sourceHandle === sourceHandle)
@@ -354,12 +357,15 @@ export const useNodesInteractions = () => {
       const { setConnectingNodePayload } = workflowStore.getState()
       const { getNodes } = store.getState()
       const node = getNodes().find(n => n.id === nodeId)!
-      setConnectingNodePayload({
-        nodeId,
-        nodeType: node.data.type,
-        handleType,
-        handleId,
-      })
+
+      if (!node.data.isIterationStart) {
+        setConnectingNodePayload({
+          nodeId,
+          nodeType: node.data.type,
+          handleType,
+          handleId,
+        })
+      }
     }
   }, [store, workflowStore, getNodesReadOnly])
 
@@ -387,7 +393,9 @@ export const useNodesInteractions = () => {
       const fromHandleType = connectingNodePayload.handleType
       const fromHandleId = connectingNodePayload.handleId
       const fromNode = nodes.find(n => n.id === connectingNodePayload.nodeId)!
+      const fromNodeParent = nodes.find(n => n.id === fromNode.parentId)
       const toNode = nodes.find(n => n.id === enteringNodePayload.nodeId)!
+      const toParentNode = nodes.find(n => n.id === toNode.parentId)
 
       if (fromNode.parentId !== toNode.parentId)
         return
@@ -416,6 +424,7 @@ export const useNodesInteractions = () => {
             variableAssignerNodeId: toNode.id,
             variableAssignerNodeData: toNode.data,
             variableAssignerNodeHandleId: hoveringAssignVariableGroupId || 'target',
+            parentNode: toParentNode,
             x: x - toNode.positionAbsolute!.x,
             y: y - toNode.positionAbsolute!.y,
           })
@@ -443,6 +452,7 @@ export const useNodesInteractions = () => {
           variableAssignerNodeId: fromNode.id,
           variableAssignerNodeData: fromNode.data,
           variableAssignerNodeHandleId: fromHandleId || 'target',
+          parentNode: fromNodeParent,
           x: x - toNode.positionAbsolute!.x,
           y: y - toNode.positionAbsolute!.y,
         })
@@ -647,6 +657,7 @@ export const useNodesInteractions = () => {
           variableAssignerNodeId: newNode.id,
           variableAssignerNodeData: newNode.data,
           variableAssignerNodeHandleId: targetHandle,
+          parentNode: nodes.find(node => node.id === newNode.parentId),
           x: -25,
           y: 44,
         })
@@ -849,6 +860,7 @@ export const useNodesInteractions = () => {
           variableAssignerNodeId: newNode.id,
           variableAssignerNodeData: newNode.data,
           variableAssignerNodeHandleId: targetHandle,
+          parentNode: nodes.find(node => node.id === newNode.parentId),
           x: -25,
           y: 44,
         })

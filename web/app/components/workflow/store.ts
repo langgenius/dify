@@ -110,6 +110,7 @@ type Shape = {
     variableAssignerNodeId: string
     variableAssignerNodeData: Node['data']
     variableAssignerNodeHandleId: string
+    parentNode?: Node
     x: number
     y: number
   }
