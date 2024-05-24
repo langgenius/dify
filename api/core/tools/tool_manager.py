@@ -599,6 +599,15 @@ class ToolManager:
                     "background": "#252525",
                     "content": "\ud83d\ude01"
                 }
+        elif provider_type == 'workflow':
+            provider: WorkflowToolProvider = db.session.query(WorkflowToolProvider).filter(
+                WorkflowToolProvider.tenant_id == tenant_id,
+                WorkflowToolProvider.id == provider_id
+            ).first()
+            if provider is None:
+                raise ToolProviderNotFoundError(f'workflow provider {provider_id} not found')
+
+            return json.loads(provider.icon)
         else:
             raise ValueError(f"provider type {provider_type} not found")
 
