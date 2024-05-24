@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: 'Public URL',
       preview: 'Preview',
       regenerate: 'Regenerate',
+      regenerateNotice: 'Do you want to regenerate the public URL?',
       preUseReminder: 'Please enable WebApp before continuing.',
       settings: {
         entry: 'Settings',

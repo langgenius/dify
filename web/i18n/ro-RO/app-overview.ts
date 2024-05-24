@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: 'URL public',
       preview: 'Previzualizare',
       regenerate: 'Regenerare',
+      regenerateNotice: 'Doriți să regenerați URL-ul public?',
       preUseReminder: 'Activați aplicația web înainte de a continua.',
       settings: {
         entry: 'Setări',
