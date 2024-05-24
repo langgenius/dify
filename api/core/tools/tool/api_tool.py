@@ -8,7 +8,6 @@ import httpx
 import requests
 
 import core.helper.ssrf_proxy as ssrf_proxy
-from core.tools.entities.api_entities import UserToolProvider
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
@@ -55,7 +54,7 @@ class ApiTool(Tool):
         return self.validate_and_parse_response(response)
 
     def tool_provider_type(self) -> ToolProviderType:
-        return UserToolProvider.ProviderType.API
+        return ToolProviderType.API
 
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
         headers = {}

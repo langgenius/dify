@@ -1,6 +1,9 @@
 from copy import deepcopy
 from datetime import datetime, timezone
+from mimetypes import guess_type
 from typing import Union
+
+from yarl import URL
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
@@ -200,8 +203,24 @@ class ToolEngine:
         for response in tool_response:
             if response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                 response.type == ToolInvokeMessage.MessageType.IMAGE:
+                mimetype = None
+                if response.meta.get('mime_type'):
+                    mimetype = response.meta.get('mime_type')
+                else:
+                    try:
+                        url = URL(response.message)
+                        extension = url.suffix
+                        guess_type_result, _ = guess_type(f'a{extension}')
+                        if guess_type_result:
+                            mimetype = guess_type_result
+                    except Exception:
+                        pass
+                
+                if not mimetype:
+                    mimetype = 'image/jpeg'
+                    
                 result.append(ToolInvokeMessageBinary(
-                    mimetype=response.meta.get('mime_type', 'octet/stream'),
+                    mimetype=response.meta.get('mime_type', 'image/jpeg'),
                     url=response.message,
                     save_as=response.save_as,
                 ))
