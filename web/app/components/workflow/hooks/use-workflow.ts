@@ -538,14 +538,19 @@ export const useNodesReadOnly = () => {
 export const useToolIcon = (data: Node['data']) => {
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
   const toolIcon = useMemo(() => {
     if (data.type === BlockEnum.Tool) {
+      let targetTools = buildInTools
       if (data.provider_type === 'builtin')
-        return buildInTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.icon
-
-      return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.icon
+        targetTools = buildInTools
+      else if (data.provider_type === 'api')
+        targetTools = customTools
+      else
+        targetTools = workflowTools
+      return targetTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.icon
     }
-  }, [data, buildInTools, customTools])
+  }, [data, buildInTools, customTools, workflowTools])
 
   return toolIcon
 }
