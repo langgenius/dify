@@ -368,7 +368,6 @@ export const toNodeAvailableVars = ({
   const isInIteration = parentNode?.data.type === BlockEnum.Iteration
   if (isInIteration) {
     const iterationNode: any = parentNode
-    // debugger
     const itemType = getVarType({
       parentNode: iterationNode,
       isIterationItem: true,

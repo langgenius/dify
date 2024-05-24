@@ -92,12 +92,13 @@ const useOneStepRun = <T>({
   iteratorInputKey,
 }: Params<T>) => {
   const { t } = useTranslation()
-  const { getBeforeNodesInSameBranch } = useWorkflow() as any
+  const { getBeforeNodesInSameBranch, getBeforeNodesInSameBranchIncludeParent } = useWorkflow() as any
   const isChatMode = useIsChatMode()
   const isIteration = data.type === BlockEnum.Iteration
 
   const availableNodes = getBeforeNodesInSameBranch(id)
-  const allOutputVars = toNodeOutputVars(getBeforeNodesInSameBranch(id), isChatMode)
+  const availableNodesIncludeParent = getBeforeNodesInSameBranchIncludeParent(id)
+  const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
   const getVar = (valueSelector: ValueSelector): Var | undefined => {
     let res: Var | undefined
     const isSystem = valueSelector[0] === 'sys'
@@ -352,12 +353,12 @@ const useOneStepRun = <T>({
     })
 
     const variables = unionBy(valueSelectors, item => item.join('.')).map((item) => {
-      const varInfo = getNodeInfoById(availableNodes, item[0])?.data
+      const varInfo = getNodeInfoById(availableNodesIncludeParent, item[0])?.data
 
       return {
         label: {
           nodeType: varInfo?.type,
-          nodeName: varInfo?.title || availableNodes[0]?.data.title, // default start node title
+          nodeName: varInfo?.title || availableNodesIncludeParent[0]?.data.title, // default start node title
           variable: isSystemVar(item) ? item.join('.') : item[item.length - 1],
         },
         variable: `#${item.join('.')}#`,
