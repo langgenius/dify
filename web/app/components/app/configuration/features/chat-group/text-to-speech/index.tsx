@@ -42,6 +42,7 @@ const TextToSpeech: FC = () => {
               value={languageInfo?.example}
               voice={voiceItem?.value}
               isAudition={true}
+              noCache={true}
             />
           )}
         </div>

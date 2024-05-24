@@ -13,6 +13,7 @@ type AudioBtnProps = {
   voice?: string
   className?: string
   isAudition?: boolean
+  noCache: boolean
 }
 
 type AudioState = 'initial' | 'loading' | 'playing' | 'paused' | 'ended'
@@ -22,6 +23,7 @@ const AudioBtn = ({
   voice,
   className,
   isAudition,
+  noCache,
 }: AudioBtnProps) => {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [audioState, setAudioState] = useState<AudioState>('initial')
@@ -38,11 +40,11 @@ const AudioBtn = ({
 
   const loadAudio = async () => {
     const formData = new FormData()
+    formData.append('text', removeCodeBlocks(value))
+    formData.append('voice', removeCodeBlocks(voice))
+
     if (value !== '') {
       setAudioState('loading')
-
-      formData.append('text', removeCodeBlocks(value))
-      formData.append('voice', removeCodeBlocks(voice))
 
       let url = ''
       let isPublic = false
@@ -73,9 +75,10 @@ const AudioBtn = ({
   }
 
   const handleToggle = () => {
-    if (audioState === 'initial')
-      loadAudio()
-    if (audioRef.current) {
+    if (audioState === 'initial' || noCache) {
+      loadAudio().then(() => {})
+    }
+    else if (audioRef.current) {
       if (audioState === 'playing') {
         audioRef.current.pause()
         setAudioState('paused')
