@@ -143,7 +143,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
 
   const {
     availableVars,
-    availableNodes,
+    availableNodesWithParent,
   } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar: filterInputVar,
@@ -239,7 +239,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     handleInstructionChange,
     hasSetBlockStatus,
     availableVars,
-    availableNodes,
+    availableNodesWithParent,
     isSupportFunctionCall,
     handleReasoningModeChange,
     handleMemoryChange,

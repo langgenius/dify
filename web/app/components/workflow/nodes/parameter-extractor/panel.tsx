@@ -48,7 +48,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     isSupportFunctionCall,
     handleReasoningModeChange,
     availableVars,
-    availableNodes,
+    availableNodesWithParent,
     inputVarValues,
     varInputs,
     isShowSingleRun,
@@ -144,7 +144,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
               isShowContext={false}
               hasSetBlockStatus={hasSetBlockStatus}
               nodesOutputVars={availableVars}
-              availableNodes={availableNodes}
+              availableNodes={availableNodesWithParent}
             />
 
             {/* Memory */}
