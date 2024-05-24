@@ -133,8 +133,6 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     }
   })()
 
-  console.log(allVarObject)
-
   const handleRun = useCallback((data: Record<string, any>) => {
     const formattedData: Record<string, any> = {}
     Object.keys(allVarObject).forEach((key) => {
