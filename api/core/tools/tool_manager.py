@@ -184,7 +184,7 @@ class ToolManager:
                 db_provider=workflow_provider
             )
 
-            return controller.get_tool(tool_name).fork_tool_runtime(runtime={
+            return controller.get_tools(user_id=None, tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(runtime={
                 'tenant_id': tenant_id,
                 'credentials': {},
                 'invoke_from': invoke_from,
