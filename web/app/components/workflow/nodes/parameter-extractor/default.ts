@@ -38,6 +38,22 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
     if (!errorMessages && (!payload.parameters || payload.parameters.length === 0))
       errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.extractParameters`) })
 
+    if (!errorMessages) {
+      payload.parameters.forEach((param) => {
+        if (errorMessages)
+          return
+        if (!param.name) {
+          errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder`) })
+          return
+        }
+        if (!param.type) {
+          errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.addExtractParameterContent.typePlaceholder`) })
+          return
+        }
+        if (!param.description)
+          errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder`) })
+      })
+    }
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,
