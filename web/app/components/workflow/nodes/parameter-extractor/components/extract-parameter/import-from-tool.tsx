@@ -40,18 +40,28 @@ const ImportFromTool: FC<Props> = ({
 
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
 
   const handleSelectTool = useCallback((_type: BlockEnum, toolInfo?: ToolDefaultValue) => {
     const { provider_id, provider_type, tool_name } = toolInfo!
-    const isBuiltIn = provider_type === CollectionType.builtIn
-    // TODO: workflow type
-    const currentTools = isBuiltIn ? buildInTools : customTools
+    const currentTools = (() => {
+      switch (provider_type) {
+        case CollectionType.builtIn:
+          return buildInTools
+        case CollectionType.custom:
+          return customTools
+        case CollectionType.workflow:
+          return workflowTools
+        default:
+          return []
+      }
+    })()
     const currCollection = currentTools.find(item => item.id === provider_id)
     const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
     const toExactParams = (currTool?.parameters || []).filter((item: any) => item.form === 'llm')
     const formattedParams = toParmExactParams(toExactParams, language)
     onImport(formattedParams)
-  }, [buildInTools, customTools, language, onImport])
+  }, [buildInTools, customTools, language, onImport, workflowTools])
 
   const renderTrigger = useCallback((open: boolean) => {
     return (
