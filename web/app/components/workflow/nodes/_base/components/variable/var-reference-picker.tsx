@@ -6,7 +6,7 @@ import cn from 'classnames'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
 import VarReferencePopup from './var-reference-popup'
-import { getNodeInfoById, isSystemVar, toNodeOutputVars } from './utils'
+import { getNodeInfoById, isSystemVar, toNodeAvailableVars, toNodeOutputVars } from './utils'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
@@ -79,9 +79,25 @@ const VarReferencePicker: FC<Props> = ({
       return 'undefined'
 
     if (isIterationVar) {
-      if (value[1] === 'item')
+      if (value[1] === 'item') {
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        return iterationItemType
+        const arrType = getVarType(iterationNode?.data.iterator_selector || [], iterationNode?.data.iterator_selector[0] || '', false, false)
+        switch (arrType) {
+          case VarType.arrayString:
+            return VarType.string
+          case VarType.arrayNumber:
+            return VarType.number
+          case VarType.arrayObject:
+            return VarType.object
+          case VarType.array:
+            return VarType.any
+          case VarType.arrayFile:
+            return VarType.object
+          default:
+            return VarType.string
+        }
+      }
+
       return VarType.number
     }
     const isSystem = isSystemVar(value as ValueSelector)
@@ -115,25 +131,7 @@ const VarReferencePicker: FC<Props> = ({
   const node = getNodes().find(n => n.id === nodeId)
   const isInIteration = !!node?.data.isInIteration
   const iterationNode = isInIteration ? getNodes().find(n => n.id === node.parentId) : null
-  const iterationItemType = (() => {
-    if (!isInIteration)
-      return VarType.string
-    const arrType = getVarType(iterationNode?.data.iterator_selector || [], iterationNode?.data.iterator_selector[0] || '', false, false)
-    switch (arrType) {
-      case VarType.arrayString:
-        return VarType.string
-      case VarType.arrayNumber:
-        return VarType.number
-      case VarType.arrayObject:
-        return VarType.object
-      case VarType.array:
-        return VarType.any
-      case VarType.arrayFile:
-        return VarType.object
-      default:
-        return VarType.string
-    }
-  })()
+
   const triggerRef = useRef<HTMLDivElement>(null)
   const [triggerWidth, setTriggerWidth] = useState(TRIGGER_DEFAULT_WIDTH)
   useEffect(() => {
@@ -149,31 +147,14 @@ const VarReferencePicker: FC<Props> = ({
     if (availableVars)
       return availableVars
 
-    const vars = toNodeOutputVars(availableNodes, isChatMode, filterVar)
-    if (isInIteration && node?.parentId) {
-      const iterationVar = {
-        nodeId: node.parentId,
-        title: t('workflow.nodes.iteration.iterationContent'),
-        vars: [
-          {
-            variable: 'item',
-            type: iterationItemType as VarType,
-          },
-          {
-            variable: 'index',
-            type: VarType.number,
-          },
-        ].filter((item) => {
-          if (item.type === VarType.any)
-            return true
+    const vars = toNodeAvailableVars({
+      parentNode: iterationNode,
+      t,
+      beforeNodes: availableNodes,
+      isChatMode,
+      filterVar,
+    })
 
-          return filterVar(item, [node.parentId!, item.variable])
-        }),
-      }
-
-      if (iterationVar.vars.length > 0)
-        vars.push(iterationVar)
-    }
     return vars
   })()
   const [open, setOpen] = useState(false)
