@@ -57,7 +57,7 @@ const Datasets = ({
 
   useEffect(() => {
     loadingStateRef.current = isLoading
-    document.title = `${t('dataset.knowledge')} - 心雀大模型`
+    document.title = `${t('dataset.knowledge')} - 心雀大模型开发平台`
   }, [isLoading])
 
   useEffect(() => {

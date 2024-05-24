@@ -9,7 +9,7 @@ const Layout: FC = () => {
   const { t } = useTranslation()
 
   useEffect(() => {
-    document.title = `${t('tools.title')} - 心雀大模型`
+    document.title = `${t('tools.title')} - 心雀大模型开发平台`
   }, [])
 
   return (
