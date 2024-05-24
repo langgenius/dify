@@ -115,8 +115,11 @@ class QdrantVector(BaseVector):
                     timeout=int(self._client_config.timeout),
                 )
 
-                # create payload index
+                # create group_id payload index
                 self._client.create_payload_index(collection_name, Field.GROUP_KEY.value,
+                                                  field_schema=PayloadSchemaType.KEYWORD)
+                # create doc_id payload index
+                self._client.create_payload_index(collection_name, Field.DOC_ID.value,
                                                   field_schema=PayloadSchemaType.KEYWORD)
                 # creat full text index
                 text_index_params = TextIndexParams(

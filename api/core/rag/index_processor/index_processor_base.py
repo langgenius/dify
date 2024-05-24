@@ -57,7 +57,7 @@ class BaseIndexProcessor(ABC):
                 chunk_size=segmentation["max_tokens"],
                 chunk_overlap=segmentation.get('chunk_overlap', 0),
                 fixed_separator=separator,
-                separators=["\n\n", "。", ".", " ", ""],
+                separators=["\n\n", "。", ". ", " ", ""],
                 embedding_model_instance=embedding_model_instance
             )
         else:
@@ -65,7 +65,7 @@ class BaseIndexProcessor(ABC):
             character_splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
                 chunk_size=DatasetProcessRule.AUTOMATIC_RULES['segmentation']['max_tokens'],
                 chunk_overlap=DatasetProcessRule.AUTOMATIC_RULES['segmentation']['chunk_overlap'],
-                separators=["\n\n", "。", ".", " ", ""],
+                separators=["\n\n", "。", ". ", " ", ""],
                 embedding_model_instance=embedding_model_instance
             )
 
