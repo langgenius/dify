@@ -1,33 +1,26 @@
-version: '3.5'
-
+version: "3.0"
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
-    container_name: es
-    restart: always
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.21
+    container_name: elasticsearch
+    hostname: elasticsearch
     environment:
+      - cluster.name=elasticsearch
       - discovery.type=single-node
-      - cluster.name=es-cluster
-      - node.name=es-node
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - xpack.security.enabled=false
-      - xpack.security.http.ssl.enabled=false
-      - xpack.security.transport.ssl.enabled=false
-    volumes:
-      - type: volume
-        source: data
-        target: /usr/share/elasticsearch/data
     ports:
       - "9200:9200"
-    healthcheck:
-      test: curl -s http://localhost:9200 >/dev/null || exit 1
-      interval: 30s
-      timeout: 10s
-      retries: 50
-volumes:
-  data:
-    driver: local
-
+    networks:
+      - es-net
+  kibana:
+    container_name: kb-container
+    image: docker.elastic.co/kibana/kibana:7.17.21
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - es-net
+    depends_on:
+      - elasticsearch
+    ports:
+      - "5601:5601"
 networks:
-  default:
-    name: es
+  es-net: { }
