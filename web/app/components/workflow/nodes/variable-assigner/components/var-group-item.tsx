@@ -9,7 +9,7 @@ import VarReferencePicker from '../../_base/components/variable/var-reference-pi
 import VarList from '../components/var-list'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { VarType } from '@/app/components/workflow/types'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { Folder } from '@/app/components/base/icons/src/vender/line/files'
@@ -31,6 +31,7 @@ type Props = {
   onGroupNameChange?: (value: string) => void
   canRemove?: boolean
   onRemove?: () => void
+  availableVars: NodeOutPutVar[]
 }
 
 const VarGroupItem: FC<Props> = ({
@@ -42,6 +43,7 @@ const VarGroupItem: FC<Props> = ({
   onGroupNameChange,
   canRemove,
   onRemove,
+  availableVars,
 }) => {
   const { t } = useTranslation()
 
@@ -144,6 +146,7 @@ const VarGroupItem: FC<Props> = ({
                 onChange={handleAddVariable}
                 defaultVarKindType={VarKindType.variable}
                 filterVar={filterVar}
+                availableVars={availableVars}
               />
               : undefined
           }
