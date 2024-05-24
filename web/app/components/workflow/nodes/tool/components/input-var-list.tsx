@@ -166,7 +166,7 @@ const InputVarList: FC<Props> = ({
                   value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
                   onChange={handleNotMixedTypeChange(variable)}
                   onOpen={handleOpen(index)}
-                  defaultVarKindType={varInput?.type}
+                  defaultVarKindType={VarKindType.variable}
                   filterVar={(varPayload: Var) => varPayload.type === VarType.arrayFile}
                 />
               )}
