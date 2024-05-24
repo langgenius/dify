@@ -28,5 +28,6 @@ class GaodeProvider(BuiltinToolProviderController):
 
     def _get_tool_labels(self) -> list[ToolLabelEnum]:
         return [
-            ToolLabelEnum.UTILITIES, ToolLabelEnum.PRODUCTIVITY
+            ToolLabelEnum.UTILITIES, ToolLabelEnum.PRODUCTIVITY, 
+            ToolLabelEnum.WEATHER, ToolLabelEnum.TRAVEL
         ]
