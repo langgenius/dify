@@ -1,16 +1,12 @@
-import os
 from copy import deepcopy
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel
-from yaml import FullLoader, load
 
 from core.helper import encrypter
 from core.helper.tool_parameter_cache import ToolParameterCache, ToolParameterCacheType
 from core.helper.tool_provider_cache import ToolProviderCredentialsCache, ToolProviderCredentialsCacheType
 from core.tools.entities.tool_entities import (
-    ModelToolConfiguration,
-    ModelToolProviderConfiguration,
     ToolParameter,
     ToolProviderCredentials,
 )
@@ -231,65 +227,3 @@ class ToolParameterConfigurationManager(BaseModel):
             identity_id=self.identity_id
         )
         cache.delete()
-
-class ModelToolConfigurationManager:
-    """
-    Model as tool configuration
-    """
-    _configurations: dict[str, ModelToolProviderConfiguration] = {}
-    _model_configurations: dict[str, ModelToolConfiguration] = {}
-    _inited = False
-
-    @classmethod
-    def _init_configuration(cls):
-        """
-        init configuration
-        """
-        
-        absolute_path = os.path.abspath(os.path.dirname(__file__))
-        model_tools_path = os.path.join(absolute_path, '..', 'model_tools')
-
-        # get all .yaml file
-        files = [f for f in os.listdir(model_tools_path) if f.endswith('.yaml')]
-
-        for file in files:
-            provider = file.split('.')[0]
-            with open(os.path.join(model_tools_path, file), encoding='utf-8') as f:
-                configurations = ModelToolProviderConfiguration(**load(f, Loader=FullLoader))
-                models = configurations.models or []
-                for model in models:
-                    model_key = f'{provider}.{model.model}'
-                    cls._model_configurations[model_key] = model
-
-                cls._configurations[provider] = configurations
-        cls._inited = True
-
-    @classmethod
-    def get_configuration(cls, provider: str) -> Union[ModelToolProviderConfiguration, None]:
-        """
-        get configuration by provider
-        """
-        if not cls._inited:
-            cls._init_configuration()
-        return cls._configurations.get(provider, None)
-    
-    @classmethod
-    def get_all_configuration(cls) -> dict[str, ModelToolProviderConfiguration]:
-        """
-        get all configurations
-        """
-        if not cls._inited:
-            cls._init_configuration()
-        return cls._configurations
-    
-    @classmethod
-    def get_model_configuration(cls, provider: str, model: str) -> Union[ModelToolConfiguration, None]:
-        """
-        get model configuration
-        """
-        key = f'{provider}.{model}'
-
-        if not cls._inited:
-            cls._init_configuration()
-
-        return cls._model_configurations.get(key, None)

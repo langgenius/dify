@@ -75,6 +75,29 @@ type Shape = {
   setShortcutsDisabled: (shortcutsDisabled: boolean) => void
   showDebugAndPreviewPanel: boolean
   setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
+  selection: null | { x1: number; y1: number; x2: number; y2: number }
+  setSelection: (selection: Shape['selection']) => void
+  bundleNodeSize: { width: number; height: number } | null
+  setBundleNodeSize: (bundleNodeSize: Shape['bundleNodeSize']) => void
+  controlMode: 'pointer' | 'hand'
+  setControlMode: (controlMode: Shape['controlMode']) => void
+  candidateNode?: Node
+  setCandidateNode: (candidateNode?: Node) => void
+  panelMenu?: {
+    top: number
+    left: number
+  }
+  setPanelMenu: (panelMenu: Shape['panelMenu']) => void
+  nodeMenu?: {
+    top: number
+    left: number
+    nodeId: string
+  }
+  setNodeMenu: (nodeMenu: Shape['nodeMenu']) => void
+  mousePosition: { pageX: number; pageY: number; elementX: number; elementY: number }
+  setMousePosition: (mousePosition: Shape['mousePosition']) => void
+  syncWorkflowDraftHash: string
+  setSyncWorkflowDraftHash: (hash: string) => void
 }
 
 export const createWorkflowStore = () => {
@@ -126,6 +149,25 @@ export const createWorkflowStore = () => {
     setShortcutsDisabled: shortcutsDisabled => set(() => ({ shortcutsDisabled })),
     showDebugAndPreviewPanel: false,
     setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
+    selection: null,
+    setSelection: selection => set(() => ({ selection })),
+    bundleNodeSize: null,
+    setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
+    controlMode: localStorage.getItem('workflow-operation-mode') === 'pointer' ? 'pointer' : 'hand',
+    setControlMode: (controlMode) => {
+      set(() => ({ controlMode }))
+      localStorage.setItem('workflow-operation-mode', controlMode)
+    },
+    candidateNode: undefined,
+    setCandidateNode: candidateNode => set(() => ({ candidateNode })),
+    panelMenu: undefined,
+    setPanelMenu: panelMenu => set(() => ({ panelMenu })),
+    nodeMenu: undefined,
+    setNodeMenu: nodeMenu => set(() => ({ nodeMenu })),
+    mousePosition: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },
+    setMousePosition: mousePosition => set(() => ({ mousePosition })),
+    syncWorkflowDraftHash: '',
+    setSyncWorkflowDraftHash: syncWorkflowDraftHash => set(() => ({ syncWorkflowDraftHash })),
   }))
 }
 

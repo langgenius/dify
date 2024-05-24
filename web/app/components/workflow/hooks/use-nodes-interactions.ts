@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
@@ -11,6 +12,7 @@ import type {
 import {
   getConnectedEdges,
   getOutgoers,
+  useReactFlow,
   useStoreApi,
 } from 'reactflow'
 import type { ToolDefaultValue } from '../block-selector/types'
@@ -29,6 +31,7 @@ import {
 import {
   generateNewNode,
   getNodesConnectedSourceOrTargetHandleIdsMap,
+  getTopLeftNodePosition,
 } from '../utils'
 import { useNodesExtraData } from './use-nodes-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -41,6 +44,7 @@ export const useNodesInteractions = () => {
   const { t } = useTranslation()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const reactflow = useReactFlow()
   const nodesExtraData = useNodesExtraData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
@@ -462,8 +466,7 @@ export const useNodesInteractions = () => {
       const prevNode = nodes[prevNodeIndex]
       const outgoers = getOutgoers(prevNode, nodes, edges).sort((a, b) => a.position.y - b.position.y)
       const lastOutgoer = outgoers[outgoers.length - 1]
-      if (prevNode.data.type === BlockEnum.KnowledgeRetrieval)
-        targetHandle = prevNodeId
+
       newNode.data._connectedTargetHandleIds = [targetHandle]
       newNode.data._connectedSourceHandleIds = []
       newNode.position = {
@@ -484,12 +487,22 @@ export const useNodesInteractions = () => {
           _connectedNodeIsSelected: true,
         },
       }
+      const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
+        [
+          { type: 'add', edge: newEdge },
+        ],
+        nodes,
+      )
       const newNodes = produce(nodes, (draft: Node[]) => {
         draft.forEach((node) => {
           node.data.selected = false
 
-          if (node.id === prevNode.id)
-            node.data._connectedSourceHandleIds?.push(prevNodeSourceHandle!)
+          if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
+            node.data = {
+              ...node.data,
+              ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+            }
+          }
         })
         draft.push(newNode)
       })
@@ -508,26 +521,42 @@ export const useNodesInteractions = () => {
     if (!prevNodeId && nextNodeId) {
       const nextNodeIndex = nodes.findIndex(node => node.id === nextNodeId)
       const nextNode = nodes[nextNodeIndex]!
-      newNode.data._connectedSourceHandleIds = [sourceHandle]
+      if ((nodeType !== BlockEnum.IfElse) && (nodeType !== BlockEnum.QuestionClassifier))
+        newNode.data._connectedSourceHandleIds = [sourceHandle]
       newNode.data._connectedTargetHandleIds = []
       newNode.position = {
         x: nextNode.position.x,
         y: nextNode.position.y,
       }
 
-      const newEdge = {
-        id: `${newNode.id}-${nextNodeId}`,
-        type: 'custom',
-        source: newNode.id,
-        sourceHandle,
-        target: nextNodeId,
-        targetHandle: nextNodeTargetHandle,
-        data: {
-          sourceType: newNode.data.type,
-          targetType: nextNode.data.type,
-          _connectedNodeIsSelected: true,
-        },
+      let newEdge
+
+      if ((nodeType !== BlockEnum.IfElse) && (nodeType !== BlockEnum.QuestionClassifier)) {
+        newEdge = {
+          id: `${newNode.id}-${nextNodeId}`,
+          type: 'custom',
+          source: newNode.id,
+          sourceHandle,
+          target: nextNodeId,
+          targetHandle: nextNodeTargetHandle,
+          data: {
+            sourceType: newNode.data.type,
+            targetType: nextNode.data.type,
+            _connectedNodeIsSelected: true,
+          },
+        }
       }
+
+      let nodesConnectedSourceOrTargetHandleIdsMap: Record<string, any>
+      if (newEdge) {
+        nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
+          [
+            { type: 'add', edge: newEdge },
+          ],
+          nodes,
+        )
+      }
+
       const afterNodesInSameBranch = getAfterNodesInSameBranch(nextNodeId!)
       const afterNodesInSameBranchIds = afterNodesInSameBranch.map(node => node.id)
       const newNodes = produce(nodes, (draft) => {
@@ -537,28 +566,33 @@ export const useNodesInteractions = () => {
           if (afterNodesInSameBranchIds.includes(node.id))
             node.position.x += NODE_WIDTH_X_OFFSET
 
-          if (node.id === nextNodeId)
-            node.data._connectedTargetHandleIds?.push(nextNodeTargetHandle!)
+          if (nodesConnectedSourceOrTargetHandleIdsMap?.[node.id]) {
+            node.data = {
+              ...node.data,
+              ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+            }
+          }
         })
         draft.push(newNode)
       })
       setNodes(newNodes)
-      const newEdges = produce(edges, (draft) => {
-        draft.forEach((item) => {
-          item.data = {
-            ...item.data,
-            _connectedNodeIsSelected: false,
-          }
+      if (newEdge) {
+        const newEdges = produce(edges, (draft) => {
+          draft.forEach((item) => {
+            item.data = {
+              ...item.data,
+              _connectedNodeIsSelected: false,
+            }
+          })
+          draft.push(newEdge)
         })
-        draft.push(newEdge)
-      })
-      setEdges(newEdges)
+        setEdges(newEdges)
+      }
     }
     if (prevNodeId && nextNodeId) {
       const prevNode = nodes.find(node => node.id === prevNodeId)!
       const nextNode = nodes.find(node => node.id === nextNodeId)!
-      if (prevNode.data.type === BlockEnum.KnowledgeRetrieval)
-        targetHandle = prevNodeId
+
       newNode.data._connectedTargetHandleIds = [targetHandle]
       newNode.data._connectedSourceHandleIds = [sourceHandle]
       newNode.position = {
@@ -705,132 +739,6 @@ export const useNodesInteractions = () => {
     handleSyncWorkflowDraft()
   }, [store, handleSyncWorkflowDraft, getNodesReadOnly, t])
 
-  const handleNodeCopySelected = useCallback((): undefined | Node[] => {
-    if (getNodesReadOnly())
-      return
-
-    const {
-      setClipboardElements,
-      shortcutsDisabled,
-      showFeaturesPanel,
-    } = workflowStore.getState()
-
-    if (shortcutsDisabled || showFeaturesPanel)
-      return
-
-    const {
-      getNodes,
-    } = store.getState()
-
-    const nodes = getNodes()
-    const nodesToCopy = nodes.filter(node => node.data.selected && node.data.type !== BlockEnum.Start)
-
-    setClipboardElements(nodesToCopy)
-
-    return nodesToCopy
-  }, [getNodesReadOnly, store, workflowStore])
-
-  const handleNodePaste = useCallback((): undefined | Node[] => {
-    if (getNodesReadOnly())
-      return
-
-    const {
-      clipboardElements,
-      shortcutsDisabled,
-      showFeaturesPanel,
-    } = workflowStore.getState()
-
-    if (shortcutsDisabled || showFeaturesPanel)
-      return
-
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-
-    const nodesToPaste: Node[] = []
-    const nodes = getNodes()
-
-    for (const nodeToPaste of clipboardElements) {
-      const nodeType = nodeToPaste.data.type
-      const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
-
-      const newNode = generateNewNode({
-        data: {
-          ...NODES_INITIAL_DATA[nodeType],
-          ...nodeToPaste.data,
-          _connectedSourceHandleIds: [],
-          _connectedTargetHandleIds: [],
-          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
-          selected: true,
-        },
-        position: {
-          x: nodeToPaste.position.x + 10,
-          y: nodeToPaste.position.y + 10,
-        },
-      })
-      nodesToPaste.push(newNode)
-    }
-
-    setNodes([...nodes.map((n: Node) => ({ ...n, selected: false, data: { ...n.data, selected: false } })), ...nodesToPaste])
-
-    handleSyncWorkflowDraft()
-
-    return nodesToPaste
-  }, [getNodesReadOnly, handleSyncWorkflowDraft, store, t, workflowStore])
-
-  const handleNodeDuplicateSelected = useCallback(() => {
-    if (getNodesReadOnly())
-      return
-
-    handleNodeCopySelected()
-    handleNodePaste()
-  }, [getNodesReadOnly, handleNodeCopySelected, handleNodePaste])
-
-  const handleNodeCut = useCallback(() => {
-    if (getNodesReadOnly())
-      return
-
-    const nodesToCut = handleNodeCopySelected()
-    if (!nodesToCut)
-      return
-
-    for (const node of nodesToCut)
-      handleNodeDelete(node.id)
-  }, [getNodesReadOnly, handleNodeCopySelected, handleNodeDelete])
-
-  const handleNodeDeleteSelected = useCallback(() => {
-    if (getNodesReadOnly())
-      return
-
-    const {
-      shortcutsDisabled,
-      showFeaturesPanel,
-    } = workflowStore.getState()
-
-    if (shortcutsDisabled || showFeaturesPanel)
-      return
-
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
-
-    const currentEdgeIndex = edges.findIndex(edge => edge.selected)
-
-    if (currentEdgeIndex > -1)
-      return
-
-    const nodes = getNodes()
-    const nodesToDelete = nodes.filter(node => node.data.selected)
-
-    if (!nodesToDelete)
-      return
-
-    for (const node of nodesToDelete)
-      handleNodeDelete(node.id)
-  }, [getNodesReadOnly, handleNodeDelete, store, workflowStore])
-
   const handleNodeCancelRunningStatus = useCallback(() => {
     const {
       getNodes,
@@ -861,6 +769,178 @@ export const useNodesInteractions = () => {
     setNodes(newNodes)
   }, [store])
 
+  const handleNodeContextMenu = useCallback((e: MouseEvent, node: Node) => {
+    e.preventDefault()
+    const container = document.querySelector('#workflow-container')
+    const { x, y } = container!.getBoundingClientRect()
+    workflowStore.setState({
+      nodeMenu: {
+        top: e.clientY - y,
+        left: e.clientX - x,
+        nodeId: node.id,
+      },
+    })
+    handleNodeSelect(node.id)
+  }, [workflowStore, handleNodeSelect])
+
+  const handleNodesCopy = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      setClipboardElements,
+      shortcutsDisabled,
+      showFeaturesPanel,
+    } = workflowStore.getState()
+
+    if (shortcutsDisabled || showFeaturesPanel)
+      return
+
+    const {
+      getNodes,
+    } = store.getState()
+
+    const nodes = getNodes()
+    const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start)
+
+    if (bundledNodes.length) {
+      setClipboardElements(bundledNodes)
+      return
+    }
+
+    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
+
+    if (selectedNode)
+      setClipboardElements([selectedNode])
+  }, [getNodesReadOnly, store, workflowStore])
+
+  const handleNodesPaste = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      clipboardElements,
+      shortcutsDisabled,
+      showFeaturesPanel,
+      mousePosition,
+    } = workflowStore.getState()
+
+    if (shortcutsDisabled || showFeaturesPanel)
+      return
+
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+
+    const nodesToPaste: Node[] = []
+    const nodes = getNodes()
+
+    if (clipboardElements.length) {
+      const { x, y } = getTopLeftNodePosition(clipboardElements)
+      const { screenToFlowPosition } = reactflow
+      const currentPosition = screenToFlowPosition({ x: mousePosition.pageX, y: mousePosition.pageY })
+      const offsetX = currentPosition.x - x
+      const offsetY = currentPosition.y - y
+      clipboardElements.forEach((nodeToPaste, index) => {
+        const nodeType = nodeToPaste.data.type
+        const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
+
+        const newNode = generateNewNode({
+          data: {
+            ...NODES_INITIAL_DATA[nodeType],
+            ...nodeToPaste.data,
+            selected: false,
+            _isBundled: false,
+            _connectedSourceHandleIds: [],
+            _connectedTargetHandleIds: [],
+            title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
+          },
+          position: {
+            x: nodeToPaste.position.x + offsetX,
+            y: nodeToPaste.position.y + offsetY,
+          },
+        })
+        newNode.id = newNode.id + index
+        nodesToPaste.push(newNode)
+      })
+
+      setNodes([...nodes, ...nodesToPaste])
+      handleSyncWorkflowDraft()
+    }
+  }, [t, getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, reactflow])
+
+  const handleNodesDuplicate = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      getNodes,
+      setNodes,
+    } = store.getState()
+    const nodes = getNodes()
+
+    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
+
+    if (selectedNode) {
+      const nodeType = selectedNode.data.type
+      const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
+
+      const newNode = generateNewNode({
+        data: {
+          ...NODES_INITIAL_DATA[nodeType as BlockEnum],
+          ...selectedNode.data,
+          selected: false,
+          _isBundled: false,
+          _connectedSourceHandleIds: [],
+          _connectedTargetHandleIds: [],
+          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
+        },
+        position: {
+          x: selectedNode.position.x + selectedNode.width! + 10,
+          y: selectedNode.position.y,
+        },
+      })
+
+      setNodes([...nodes, newNode])
+    }
+  }, [store, t, getNodesReadOnly])
+
+  const handleNodesDelete = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      shortcutsDisabled,
+      showFeaturesPanel,
+    } = workflowStore.getState()
+
+    if (shortcutsDisabled || showFeaturesPanel)
+      return
+
+    const {
+      getNodes,
+      edges,
+    } = store.getState()
+
+    const nodes = getNodes()
+    const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start)
+
+    if (bundledNodes.length) {
+      bundledNodes.forEach(node => handleNodeDelete(node.id))
+      return
+    }
+
+    const edgeSelected = edges.some(edge => edge.selected)
+    if (edgeSelected)
+      return
+
+    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
+
+    if (selectedNode)
+      handleNodeDelete(selectedNode.id)
+  }, [store, workflowStore, getNodesReadOnly, handleNodeDelete])
+
   return {
     handleNodeDragStart,
     handleNodeDrag,
@@ -875,12 +955,12 @@ export const useNodesInteractions = () => {
     handleNodeDelete,
     handleNodeChange,
     handleNodeAdd,
-    handleNodeDuplicateSelected,
-    handleNodeCopySelected,
-    handleNodeCut,
-    handleNodeDeleteSelected,
-    handleNodePaste,
     handleNodeCancelRunningStatus,
     handleNodesCancelSelected,
+    handleNodeContextMenu,
+    handleNodesCopy,
+    handleNodesPaste,
+    handleNodesDuplicate,
+    handleNodesDelete,
   }
 }

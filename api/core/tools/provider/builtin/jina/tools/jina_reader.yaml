@@ -25,6 +25,32 @@ parameters:
       pt_BR: used for linking to webpages
     llm_description: url for scraping
     form: llm
+  - name: target_selector
+    type: string
+    required: false
+    label:
+      en_US: Target selector
+      zh_Hans: 目标选择器
+      pt_BR: Seletor de destino
+    human_description:
+      en_US: css selector for scraping specific elements
+      zh_Hans: css 选择器用于抓取特定元素
+      pt_BR: css selector for scraping specific elements
+    llm_description: css selector of the target element to scrape
+    form: form
+  - name: wait_for_selector
+    type: string
+    required: false
+    label:
+      en_US: Wait for selector
+      zh_Hans: 等待选择器
+      pt_BR: Aguardar por seletor
+    human_description:
+      en_US: css selector for waiting for specific elements
+      zh_Hans: css 选择器用于等待特定元素
+      pt_BR: css selector for waiting for specific elements
+    llm_description: css selector of the target element to wait for
+    form: form
   - name: summary
     type: boolean
     required: false

@@ -37,6 +37,8 @@ export type CommonNodeType<T = {}> = {
   _isSingleRun?: boolean
   _runningStatus?: NodeRunningStatus
   _singleRunningStatus?: NodeRunningStatus
+  _isCandidate?: boolean
+  _isBundled?: boolean
   selected?: boolean
   title: string
   desc: string
@@ -48,6 +50,7 @@ export type CommonEdgeType = {
   _connectedNodeIsHovering?: boolean
   _connectedNodeIsSelected?: boolean
   _runned?: boolean
+  _isBundled?: boolean
   sourceType: BlockEnum
   targetType: BlockEnum
 }
@@ -128,10 +131,17 @@ export enum PromptRole {
   assistant = 'assistant',
 }
 
+export enum EditionType {
+  basic = 'basic',
+  jinja2 = 'jinja2',
+}
+
 export type PromptItem = {
   id?: string
   role?: PromptRole
   text: string
+  edition_type?: EditionType
+  jinja2_text?: string
 }
 
 export enum MemoryRole {

@@ -451,7 +451,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                                           "more creatively. (Default: 0.8)"),
                     default=0.1,
                     min=0,
-                    max=2
+                    max=1
                 ),
                 ParameterRule(
                     name=DefaultParameterName.TOP_P.value,

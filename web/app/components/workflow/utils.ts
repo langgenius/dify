@@ -148,14 +148,14 @@ export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
     if (!edge.targetHandle)
       edge.targetHandle = 'target'
 
-    if (!edge.data?.sourceType && edge.source) {
+    if (!edge.data?.sourceType && edge.source && nodesMap[edge.source]) {
       edge.data = {
         ...edge.data,
         sourceType: nodesMap[edge.source].data.type!,
       } as any
     }
 
-    if (!edge.data?.targetType && edge.target) {
+    if (!edge.data?.targetType && edge.target && nodesMap[edge.target]) {
       edge.data = {
         ...edge.data,
         targetType: nodesMap[edge.target].data.type!,
@@ -360,4 +360,57 @@ export const changeNodesAndEdgesId = (nodes: Node[], edges: Edge[]) => {
   })
 
   return [newNodes, newEdges] as [Node[], Edge[]]
+}
+
+export const isMac = () => {
+  return navigator.userAgent.toUpperCase().includes('MAC')
+}
+
+const specialKeysNameMap: Record<string, string | undefined> = {
+  ctrl: '⌘',
+  alt: '⌥',
+}
+
+export const getKeyboardKeyNameBySystem = (key: string) => {
+  if (isMac())
+    return specialKeysNameMap[key] || key
+
+  return key
+}
+
+const specialKeysCodeMap: Record<string, string | undefined> = {
+  ctrl: 'meta',
+}
+
+export const getKeyboardKeyCodeBySystem = (key: string) => {
+  if (isMac())
+    return specialKeysCodeMap[key] || key
+
+  return key
+}
+
+export const getTopLeftNodePosition = (nodes: Node[]) => {
+  let minX = Infinity
+  let minY = Infinity
+
+  nodes.forEach((node) => {
+    if (node.position.x < minX)
+      minX = node.position.x
+
+    if (node.position.y < minY)
+      minY = node.position.y
+  })
+
+  return {
+    x: minX,
+    y: minY,
+  }
+}
+
+export const isEventTargetInputArea = (target: HTMLElement) => {
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')
+    return true
+
+  if (target.contentEditable === 'true')
+    return true
 }
