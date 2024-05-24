@@ -240,7 +240,8 @@ const getIterationItemType = ({
   const targetVar = beforeNodesOutputVars.find(v => v.nodeId === outputVarNodeId)
   if (!targetVar)
     return VarType.string
-  let type: VarType = VarType.string
+
+  let arrayType: VarType = VarType.string
 
   const isSystem = isSystemVar(valueSelector)
   let curr: any = targetVar.vars
@@ -252,14 +253,27 @@ const getIterationItemType = ({
     const isLast = i === valueSelector.length - 2
     curr = curr?.find((v: any) => v.variable === key)
     if (isLast) {
-      type = curr?.type
+      arrayType = curr?.type
     }
     else {
       if (curr?.type === VarType.object)
         curr = curr.children
     }
   })
-  return type
+  switch (arrayType as VarType) {
+    case VarType.arrayString:
+      return VarType.string
+    case VarType.arrayNumber:
+      return VarType.number
+    case VarType.arrayObject:
+      return VarType.object
+    case VarType.array:
+      return VarType.any
+    case VarType.arrayFile:
+      return VarType.object
+    default:
+      return VarType.string
+  }
 }
 
 // node output vars + parent inner vars(if in iteration or other wrap node)
@@ -309,27 +323,53 @@ export const getNodeInfoById = (nodes: any, id: string) => {
   return nodes.find((node: any) => node.id === id)
 }
 
-export const getVarType = (value: ValueSelector, availableNodes: any[], isChatMode: boolean): VarType | undefined => {
-  const isSystem = isSystemVar(value)
+export const getVarType = ({
+  parentNode,
+  valueSelector,
+  availableNodes,
+  isChatMode,
+}:
+{
+  valueSelector: ValueSelector
+  parentNode?: Node | null
+  availableNodes: any[]
+  isChatMode: boolean
+}): VarType => {
+  const beforeNodesOutputVars = toNodeOutputVars(availableNodes, isChatMode)
+
+  const isIterationInnerVar = valueSelector[0] === parentNode?.id && parentNode?.data.type === BlockEnum.Iteration
+  if (isIterationInnerVar) {
+    if (valueSelector[1] === 'item') {
+      const itemType = getIterationItemType({
+        valueSelector: (parentNode?.data as any).iterator_selector || [],
+        beforeNodesOutputVars,
+      })
+      return itemType
+    }
+    if (valueSelector[1] === 'index')
+      return VarType.number
+
+    return VarType.string
+  }
+  const isSystem = isSystemVar(valueSelector)
   const startNode = availableNodes.find((node: any) => {
     return node.data.type === BlockEnum.Start
   })
-  const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
 
-  const targetVarNodeId = isSystem ? startNode?.id : value[0]
-  const targetVar = allOutputVars.find(v => v.nodeId === targetVarNodeId)
+  const targetVarNodeId = isSystem ? startNode?.id : valueSelector[0]
+  const targetVar = beforeNodesOutputVars.find(v => v.nodeId === targetVarNodeId)
 
   if (!targetVar)
-    return undefined
+    return VarType.string
 
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
   if (isSystem) {
-    return curr.find((v: any) => v.variable === (value as ValueSelector).join('.'))?.type
+    return curr.find((v: any) => v.variable === (valueSelector as ValueSelector).join('.'))?.type
   }
   else {
-    (value as ValueSelector).slice(1).forEach((key, i) => {
-      const isLast = i === value.length - 2
+    (valueSelector as ValueSelector).slice(1).forEach((key, i) => {
+      const isLast = i === valueSelector.length - 2
       curr = curr.find((v: any) => v.variable === key)
       if (isLast) {
         type = curr?.type
