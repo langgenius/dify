@@ -10,10 +10,12 @@ import {
 } from '../hooks'
 import NodeHandle from './node-handle'
 import NodeVariableItem from './node-variable-item'
-import type {
-  Node,
-  ValueSelector,
+import {
+  BlockEnum,
+  type Node,
+  type ValueSelector,
 } from '@/app/components/workflow/types'
+import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 type GroupItem = {
@@ -34,7 +36,7 @@ const NodeGroupItem = ({
   const { t } = useTranslation()
   const enteringNodePayload = useStore(s => s.enteringNodePayload)
   const hoveringAssignVariableGroupId = useStore(s => s.hoveringAssignVariableGroupId)
-  const nodes = useNodes()
+  const nodes: Node[] = useNodes()
   const {
     handleGroupItemMouseEnter,
     handleGroupItemMouseLeave,
@@ -73,8 +75,9 @@ const NodeGroupItem = ({
       }
       {
         !!item.variables.length && item.variables.map((variable, index) => {
-          const node = nodes.find(node => node.id === variable[0])!
-          const varName = variable[variable.length - 1]
+          const isSystem = isSystemVar(variable)
+          const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
+          const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
 
           return (
             <NodeVariableItem
