@@ -35,7 +35,7 @@ export const useVariableAssigner = () => {
       payload = {
         advanced_settings: {
           ...node.data.advanced_settings,
-          groups: node.data.advanced_settings.groups.map((group: any) => {
+          groups: node.data.advanced_settings?.groups.map((group: any) => {
             if (group.groupId === groupId) {
               return {
                 ...group,
