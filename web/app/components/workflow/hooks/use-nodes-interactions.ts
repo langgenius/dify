@@ -1116,40 +1116,9 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly())
       return
 
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-    const nodes = getNodes()
-
-    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
-
-    if (selectedNode) {
-      const nodeType = selectedNode.data.type
-      const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
-
-      const newNode = generateNewNode({
-        data: {
-          ...NODES_INITIAL_DATA[nodeType as BlockEnum],
-          ...selectedNode.data,
-          selected: false,
-          _isBundled: false,
-          _connectedSourceHandleIds: [],
-          _connectedTargetHandleIds: [],
-          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
-        },
-        position: {
-          x: selectedNode.position.x + selectedNode.width! + 10,
-          y: selectedNode.position.y,
-        },
-        parentId: selectedNode.parentId,
-        extent: selectedNode.extent,
-        zIndex: selectedNode.zIndex,
-      })
-
-      setNodes([...nodes, newNode])
-    }
-  }, [store, t, getNodesReadOnly])
+    handleNodesCopy()
+    handleNodesPaste()
+  }, [getNodesReadOnly, handleNodesCopy, handleNodesPaste])
 
   const handleNodesDelete = useCallback(() => {
     if (getNodesReadOnly())
