@@ -2,6 +2,8 @@ import logging
 import time
 from typing import Optional, cast
 
+from flask import current_app
+
 from core.app.app_config.entities import FileExtraConfig
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -178,6 +180,8 @@ class WorkflowEngineManager:
             predecessor_node: BaseNode = None
             current_iteration_node: BaseIterationNode = None
             has_entry_node = False
+            max_execution_steps = current_app.config.get("WORKFLOW_MAX_EXECUTION_STEPS")
+            max_execution_time = current_app.config.get("WORKFLOW_MAX_EXECUTION_TIME")
             while True:
                 # get next node, multiple target nodes in the future
                 next_node = self._get_next_overall_node(
@@ -241,13 +245,13 @@ class WorkflowEngineManager:
 
                 has_entry_node = True
 
-                # max steps 50 reached
-                if len(workflow_run_state.workflow_nodes_and_results) > 50:
-                    raise ValueError('Max steps 50 reached.')
+                # max steps reached
+                if len(workflow_run_state.workflow_nodes_and_results) > max_execution_steps:
+                    raise ValueError('Max steps {} reached.'.format(max_execution_steps))
 
-                # or max execution time 10min reached
-                if self._is_timed_out(start_at=workflow_run_state.start_at, max_execution_time=600):
-                    raise ValueError('Max execution time 10min reached.')
+                # or max execution time reached
+                if self._is_timed_out(start_at=workflow_run_state.start_at, max_execution_time=max_execution_time):
+                    raise ValueError('Max execution time {}s reached.'.format(max_execution_time))
 
                 # handle iteration nodes
                 if isinstance(next_node, BaseIterationNode):
