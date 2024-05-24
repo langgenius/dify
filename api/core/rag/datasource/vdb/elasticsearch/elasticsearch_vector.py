@@ -70,7 +70,7 @@ class ElasticSearchVector(BaseVector):
                     },
                 }
             }
-            self._client.options(ignore_status=400).indices.create(index=self._collection_name, mappings=mapping)
+            self._client.indices.create(index=self._collection_name, mappings=mapping)
 
         added_ids = []
         for i, text in enumerate(texts):
