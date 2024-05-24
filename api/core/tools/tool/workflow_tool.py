@@ -1,8 +1,9 @@
 import json
+import logging
 from copy import deepcopy
 from typing import Any, Union
 
-from core.file.file_obj import FileVar
+from core.file.file_obj import FileTransferMethod, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderType
 from core.tools.tool.tool import Tool
 from extensions.ext_database import db
@@ -10,6 +11,7 @@ from models.account import Account
 from models.model import App, EndUser
 from models.workflow import Workflow
 
+logger = logging.getLogger(__name__)
 
 class WorkflowTool(Tool):
     workflow_app_id: str
@@ -144,9 +146,25 @@ class WorkflowTool(Tool):
         files = []
         for parameter in parameter_rules:
             if parameter.type == ToolParameter.ToolParameterType.FILE:
-                files = tool_parameters.get(parameter.name)
-                if files:
-                    files.extend(files)
+                file = tool_parameters.get(parameter.name)
+                if file:
+                    try:
+                        file_var_list = [FileVar(**f) for f in file]
+                        for file_var in file_var_list:
+                            file_dict = {
+                                'transfer_method': file_var.transfer_method.value,
+                                'type': file_var.type.value,
+                            }
+                            if file_var.transfer_method == FileTransferMethod.TOOL_FILE:
+                                file_dict['tool_file_id'] = file_var.related_id
+                            elif file_var.transfer_method == FileTransferMethod.LOCAL_FILE:
+                                file_dict['upload_file_id'] = file_var.related_id
+                            elif file_var.transfer_method == FileTransferMethod.REMOTE_URL:
+                                file_dict['url'] = file_var.preview_url
+
+                            files.append(file_dict)
+                    except Exception as e:
+                        logger.exception(e)
             else:
                 parameters_result[parameter.name] = tool_parameters.get(parameter.name)
 

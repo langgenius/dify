@@ -246,6 +246,9 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
         """
         Handle iteration exception
         """
+        if not self._iteration_state or not self._iteration_state.current_iterations:
+            return
+        
         for node_id, current_iteration in self._iteration_state.current_iterations.items():
             workflow_node_execution: WorkflowNodeExecution = db.session.query(WorkflowNodeExecution).filter(
                 WorkflowNodeExecution.id == current_iteration.node_execution_id
