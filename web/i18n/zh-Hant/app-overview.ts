@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: '公開訪問 URL',
       preview: '預覽',
       regenerate: '重新生成',
+      regenerateNotice: '您是否要重新生成公開訪問 URL？',
       preUseReminder: '使用前請先開啟開關',
       settings: {
         entry: '設定',

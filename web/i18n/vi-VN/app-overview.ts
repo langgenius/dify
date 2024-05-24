@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: 'Địa chỉ công cộng',
       preview: 'Xem trước',
       regenerate: 'Tạo lại',
+      regenerateNotice: 'Bạn có muốn tạo lại địa chỉ công cộng không?',
       preUseReminder: 'Vui lòng kích hoạt ứng dụng web trước khi tiếp tục.',
       settings: {
         entry: 'Cài đặt',
