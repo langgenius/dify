@@ -3,6 +3,10 @@ model_type: text-embedding
 model_properties:
   context_size: 8192
 pricing:
-  input: '0.02'
+  input: '0.00002'
+--
+
+
+<br class="Apple-interchange-newline">'
   unit: '0.000001'
   currency: USD
