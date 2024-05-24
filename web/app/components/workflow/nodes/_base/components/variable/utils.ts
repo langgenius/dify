@@ -276,68 +276,34 @@ const getIterationItemType = ({
   }
 }
 
-// node output vars + parent inner vars(if in iteration or other wrap node)
-export const toNodeAvailableVars = ({
-  parentNode,
-  t,
-  beforeNodes,
-  isChatMode,
-  filterVar,
-}: {
-  parentNode?: Node | null
-  t?: any
-  // to get those nodes output vars
-  beforeNodes: Node[]
-  isChatMode: boolean
-  filterVar: (payload: Var, selector: ValueSelector) => boolean
-}): NodeOutPutVar[] => {
-  const beforeNodesOutputVars = toNodeOutputVars(beforeNodes, isChatMode, filterVar)
-  const isInIteration = parentNode?.data.type === BlockEnum.Iteration
-  if (isInIteration) {
-    const iterationNode: any = parentNode
-    const iterationVar = {
-      nodeId: iterationNode?.id,
-      title: t('workflow.nodes.iteration.iterationContent'),
-      vars: [
-        {
-          variable: 'item',
-          type: getIterationItemType({
-            valueSelector: iterationNode?.data.iterator_selector || [],
-            beforeNodesOutputVars,
-          }),
-        },
-        {
-          variable: 'index',
-          type: VarType.number,
-        },
-      ],
-    }
-    beforeNodesOutputVars.push(iterationVar)
-  }
-  return beforeNodesOutputVars
-}
-
-export const getNodeInfoById = (nodes: any, id: string) => {
-  if (!isArray(nodes))
-    return
-  return nodes.find((node: any) => node.id === id)
-}
-
 export const getVarType = ({
   parentNode,
   valueSelector,
+  isIterationItem,
   availableNodes,
   isChatMode,
+  isConstant,
 }:
 {
   valueSelector: ValueSelector
   parentNode?: Node | null
+  isIterationItem?: boolean
   availableNodes: any[]
   isChatMode: boolean
+  isConstant?: boolean
 }): VarType => {
+  if (isConstant)
+    return VarType.string
+
   const beforeNodesOutputVars = toNodeOutputVars(availableNodes, isChatMode)
 
-  const isIterationInnerVar = valueSelector[0] === parentNode?.id && parentNode?.data.type === BlockEnum.Iteration
+  const isIterationInnerVar = parentNode?.data.type === BlockEnum.Iteration
+  if (isIterationItem) {
+    return getIterationItemType({
+      valueSelector,
+      beforeNodesOutputVars,
+    })
+  }
   if (isIterationInnerVar) {
     if (valueSelector[1] === 'item') {
       const itemType = getIterationItemType({
@@ -381,6 +347,58 @@ export const getVarType = ({
     })
     return type
   }
+}
+
+// node output vars + parent inner vars(if in iteration or other wrap node)
+export const toNodeAvailableVars = ({
+  parentNode,
+  t,
+  beforeNodes,
+  isChatMode,
+  filterVar,
+}: {
+  parentNode?: Node | null
+  t?: any
+  // to get those nodes output vars
+  beforeNodes: Node[]
+  isChatMode: boolean
+  filterVar: (payload: Var, selector: ValueSelector) => boolean
+}): NodeOutPutVar[] => {
+  const beforeNodesOutputVars = toNodeOutputVars(beforeNodes, isChatMode, filterVar)
+  const isInIteration = parentNode?.data.type === BlockEnum.Iteration
+  if (isInIteration) {
+    const iterationNode: any = parentNode
+    // debugger
+    const itemType = getVarType({
+      parentNode: iterationNode,
+      isIterationItem: true,
+      valueSelector: iterationNode?.data.iterator_selector || [],
+      availableNodes: beforeNodes,
+      isChatMode,
+    })
+    const iterationVar = {
+      nodeId: iterationNode?.id,
+      title: t('workflow.nodes.iteration.iterationContent'),
+      vars: [
+        {
+          variable: 'item',
+          type: itemType,
+        },
+        {
+          variable: 'index',
+          type: VarType.number,
+        },
+      ],
+    }
+    beforeNodesOutputVars.push(iterationVar)
+  }
+  return beforeNodesOutputVars
+}
+
+export const getNodeInfoById = (nodes: any, id: string) => {
+  if (!isArray(nodes))
+    return
+  return nodes.find((node: any) => node.id === id)
 }
 
 const matchNotSystemVars = (prompts: string[]) => {
