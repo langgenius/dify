@@ -13,7 +13,6 @@ import Toast from '@/app/components/base/toast'
 import { createWorkflowToolProvider, fetchWorkflowToolDetailByAppID, saveWorkflowToolProvider } from '@/service/tools'
 import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
 import type { InputVar } from '@/app/components/workflow/types'
-import { InputVarType } from '@/app/components/workflow/types'
 
 type Props = {
   disabled: boolean
@@ -45,15 +44,6 @@ const WorkflowToolConfigureButton = ({
   const [detail, setDetail] = useState<WorkflowToolProviderResponse>()
   const [outdated, setOutdated] = useState(false)
 
-  const getParameterType = (type: string) => {
-    if (type === InputVarType.number)
-      return 'Number'
-    else if (type === InputVarType.files)
-      return 'Files'
-    else
-      return 'String'
-  }
-
   const payload = useMemo(() => {
     let parameters: WorkflowToolProviderParameter[] = []
     if (!published) {
@@ -63,7 +53,7 @@ const WorkflowToolConfigureButton = ({
           description: '',
           form: 'llm',
           required: item.required,
-          type: getParameterType(item.type),
+          type: item.type,
         }
       })
     }
@@ -73,7 +63,7 @@ const WorkflowToolConfigureButton = ({
           return {
             name: item.variable,
             required: item.required,
-            type: getParameterType(item.type),
+            type: item.type,
             description: detail.tool.parameters.find(param => param.name === item.variable)?.llm_description || '',
             form: detail.tool.parameters.find(param => param.name === item.variable)?.form || 'llm',
           }

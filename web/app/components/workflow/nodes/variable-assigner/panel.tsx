@@ -6,6 +6,7 @@ import Field from '../_base/components/field'
 import RemoveEffectVarConfirm from '../_base/components/remove-effect-var-confirm'
 import useConfig from './use-config'
 import type { VariableAssignerNodeType } from './types'
+import { useGetAvailableVars } from './hooks'
 import VarGroupItem from './components/var-group-item'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -34,6 +35,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
     hideRemoveVarConfirm,
     onRemoveVarConfirm,
   } = useConfig(id, data)
+  const getAvailableVars = useGetAvailableVars()
 
   return (
     <div className='mt-2'>
@@ -49,6 +51,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
               }}
               onChange={handleListOrTypeChange}
               groupEnabled={false}
+              availableVars={getAvailableVars(id, 'target')}
             />
           )
           : (<div>
@@ -64,6 +67,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
                     canRemove={!readOnly && inputs.advanced_settings?.groups.length > 1}
                     onRemove={handleGroupRemoved(item.groupId)}
                     onGroupNameChange={handleVarGroupNameChange(item.groupId)}
+                    availableVars={getAvailableVars(id, item.groupId)}
                   />
                   {index !== inputs.advanced_settings?.groups.length - 1 && <Split className='my-4' />}
                 </div>
