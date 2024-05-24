@@ -9,7 +9,7 @@ from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.model_runtime.utils.encoders import jsonable_encoder
-from libs.helper import uuid_value
+from libs.helper import alphanumeric, uuid_value
 from libs.login import login_required
 from services.tools.api_tools_manage_service import ApiToolManageService
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -322,7 +322,7 @@ class ToolWorkflowProviderCreateApi(Resource):
 
         reqparser = reqparse.RequestParser()
         reqparser.add_argument('workflow_app_id', type=uuid_value, required=True, nullable=False, location='json')
-        reqparser.add_argument('name', type=str, required=True, nullable=False, location='json')
+        reqparser.add_argument('name', type=alphanumeric, required=True, nullable=False, location='json')
         reqparser.add_argument('description', type=str, required=True, nullable=False, location='json')
         reqparser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         reqparser.add_argument('parameters', type=list[dict], required=True, nullable=False, location='json')
@@ -356,7 +356,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
 
         reqparser = reqparse.RequestParser()
         reqparser.add_argument('workflow_tool_id', type=uuid_value, required=True, nullable=False, location='json')
-        reqparser.add_argument('name', type=str, required=True, nullable=False, location='json')
+        reqparser.add_argument('name', type=alphanumeric, required=True, nullable=False, location='json')
         reqparser.add_argument('description', type=str, required=True, nullable=False, location='json')
         reqparser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         reqparser.add_argument('parameters', type=list[dict], required=True, nullable=False, location='json')
