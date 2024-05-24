@@ -211,17 +211,17 @@ class Tool(BaseModel, ABC):
             if response.type == ToolInvokeMessage.MessageType.TEXT:
                 result += response.message
             elif response.type == ToolInvokeMessage.MessageType.LINK:
-                result += f"result link: {response.message}. please tell user to check it."
+                result += f"result link: {response.message}. please tell user to check it. \n"
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
-                result += "image has been created and sent to user already, you do not need to create it, just tell the user to check it now."
+                result += "image has been created and sent to user already, you do not need to create it, just tell the user to check it now. \n"
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 if len(response.message) > 114:
                     result += str(response.message[:114]) + '...'
                 else:
                     result += str(response.message)
             else:
-                result += f"tool response: {response.message}."
+                result += f"tool response: {response.message}. \n"
 
         return result
     
