@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
 import cn from 'classnames'
-import Link from 'next/link'
+// import Link from 'next/link'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import style from './style.module.css'
 import Button from '@/app/components/base/button'
@@ -203,6 +203,7 @@ const ActivateForm = () => {
                   {`${t('login.join')} ${checkRes.workspace_name}`}
                 </Button>
               </div>
+              {/*
               <div className="block w-hull mt-2 text-xs text-gray-600">
                 {t('login.license.tip')}
                 &nbsp;
@@ -212,6 +213,7 @@ const ActivateForm = () => {
                   href={`https://docs.dify.ai/${language !== LanguagesSupported[1] ? 'user-agreement' : `v/${locale.toLowerCase()}/policies`}/open-source`}
                 >{t('login.license.link')}</Link>
               </div>
+              */}
             </div>
           </div>
         </div>

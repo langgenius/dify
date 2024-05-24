@@ -2,7 +2,7 @@
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import Link from 'next/link'
+// import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import type { SubmitHandler } from 'react-hook-form'
@@ -153,6 +153,7 @@ const InstallForm = () => {
                 </Button>
               </div>
             </form>
+            {/*
             <div className="block w-hull mt-2 text-xs text-gray-600">
               {t('login.license.tip')}
               &nbsp;
@@ -162,6 +163,7 @@ const InstallForm = () => {
                 href={'https://docs.dify.ai/user-agreement/open-source'}
               >{t('login.license.link')}</Link>
             </div>
+            */}
           </div>
         </div>
       </>
