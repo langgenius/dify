@@ -22,7 +22,7 @@ const Activate = () => {
         <Header />
         <ActivateForm />
         <div className='px-8 py-6 text-sm font-normal text-gray-500'>
-          © {new Date().getFullYear()} Dify, Inc. All rights reserved.
+          北京易普斯咨询有限责任公司
         </div>
       </div>
     </div>

@@ -57,7 +57,7 @@ const Datasets = ({
 
   useEffect(() => {
     loadingStateRef.current = isLoading
-    document.title = `${t('dataset.knowledge')} - Dify`
+    document.title = `${t('dataset.knowledge')} - 心雀大模型`
   }, [isLoading])
 
   useEffect(() => {
@@ -76,7 +76,7 @@ const Datasets = ({
 
   return (
     <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
-      { isCurrentWorkspaceManager && <NewDatasetCard ref={anchorRef} /> }
+      {isCurrentWorkspaceManager && <NewDatasetCard ref={anchorRef} />}
       {data?.map(({ data: datasets }) => datasets.map(dataset => (
         <DatasetCard key={dataset.id} dataset={dataset} onSuccess={mutate} />),
       ))}

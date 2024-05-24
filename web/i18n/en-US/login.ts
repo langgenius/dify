@@ -1,6 +1,6 @@
 const translation = {
   pageTitle: 'Hey, let\'s get started!👋',
-  welcome: 'Welcome to XinQue LLM App Platform, please log in to continue.',
+  welcome: 'Welcome to XinQue LLM Dev Platform, please log in to continue.',
   email: 'Email address',
   emailPlaceholder: 'Your email',
   password: 'Password',

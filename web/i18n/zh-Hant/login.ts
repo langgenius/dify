@@ -1,6 +1,6 @@
 const translation = {
   pageTitle: '嗨，近來可好 👋',
-  welcome: '歡迎來到“心雀大模型應用平臺”，登入以繼續',
+  welcome: '歡迎來到 心雀大模型開發平臺，登入以繼續',
   email: '郵箱',
   emailPlaceholder: '輸入郵箱地址',
   password: '密碼',

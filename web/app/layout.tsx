@@ -8,7 +8,7 @@ import './styles/globals.css'
 import './styles/markdown.scss'
 
 export const metadata = {
-  title: 'Dify',
+  title: '心雀大模型',
 }
 
 export const viewport: Viewport = {
@@ -43,7 +43,7 @@ const LocaleLayout = ({
         data-public-maintenance-notice={process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE}
         data-public-site-about={process.env.NEXT_PUBLIC_SITE_ABOUT}
       >
-        <Topbar/>
+        <Topbar />
         <BrowerInitor>
           <SentryInitor>
             {/* @ts-expect-error Async Server Component */}
