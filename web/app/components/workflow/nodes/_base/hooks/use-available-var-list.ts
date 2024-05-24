@@ -40,6 +40,7 @@ const useAvailableVarList = (nodeId: string, {
   return {
     availableVars,
     availableNodes,
+    availableNodesWithParent: iterationNode ? [...availableNodes, iterationNode] : availableNodes,
   }
 }
 

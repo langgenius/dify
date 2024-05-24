@@ -6,9 +6,9 @@ import cn from 'classnames'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
 import VarReferencePopup from './var-reference-popup'
-import { getNodeInfoById, isSystemVar, toNodeAvailableVars, toNodeOutputVars } from './utils'
+import { getNodeInfoById, getVarType, isSystemVar, toNodeAvailableVars } from './utils'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
-import { BlockEnum, VarType } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -70,63 +70,9 @@ const VarReferencePicker: FC<Props> = ({
 
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
   const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId))
-  const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
   const startNode = availableNodes.find((node: any) => {
     return node.data.type === BlockEnum.Start
   })
-  const getVarType = (value: ValueSelector, outputVarNodeId: string, isConstant: boolean, isIterationVar: boolean): VarType | 'undefined' => {
-    if (isConstant)
-      return 'undefined'
-
-    if (isIterationVar) {
-      if (value[1] === 'item') {
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        const arrType = getVarType(iterationNode?.data.iterator_selector || [], iterationNode?.data.iterator_selector[0] || '', false, false)
-        switch (arrType) {
-          case VarType.arrayString:
-            return VarType.string
-          case VarType.arrayNumber:
-            return VarType.number
-          case VarType.arrayObject:
-            return VarType.object
-          case VarType.array:
-            return VarType.any
-          case VarType.arrayFile:
-            return VarType.object
-          default:
-            return VarType.string
-        }
-      }
-
-      return VarType.number
-    }
-    const isSystem = isSystemVar(value as ValueSelector)
-    const targetVarNodeId = isSystem ? startNode?.id : outputVarNodeId
-    const targetVar = allOutputVars.find(v => v.nodeId === targetVarNodeId)
-
-    if (!targetVar)
-      return 'undefined'
-
-    let type: VarType = VarType.string
-    let curr: any = targetVar.vars
-    if (isSystem) {
-      return curr.find((v: any) => v.variable === (value as ValueSelector).join('.'))?.type
-    }
-    else {
-      (value as ValueSelector).slice(1).forEach((key, i) => {
-        const isLast = i === value.length - 2
-        curr = curr?.find((v: any) => v.variable === key)
-        if (isLast) {
-          type = curr?.type
-        }
-        else {
-          if (curr?.type === VarType.object)
-            curr = curr.children
-        }
-      })
-      return type
-    }
-  }
 
   const node = getNodes().find(n => n.id === nodeId)
   const isInIteration = !!node?.data.isInIteration
@@ -250,7 +196,14 @@ const VarReferencePicker: FC<Props> = ({
       onChange([], varKindType)
   }, [onChange, varKindType])
 
-  const type = getVarType(value as ValueSelector, outputVarNodeId, !!isConstant, isIterationVar)
+  const type = getVarType({
+    parentNode: iterationNode,
+    valueSelector: value as ValueSelector,
+    availableNodes,
+    isChatMode,
+    isConstant: !!isConstant,
+  })
+
   // 8(left/right-padding) + 14(icon) + 4 + 14 + 2 = 42 + 17 buff
   const availableWidth = triggerWidth - 56
   const [maxNodeNameWidth, maxVarNameWidth, maxTypeWidth] = (() => {

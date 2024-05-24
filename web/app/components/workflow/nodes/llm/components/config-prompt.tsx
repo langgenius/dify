@@ -62,7 +62,7 @@ const ConfigPrompt: FC<Props> = ({
     : []
   const {
     availableVars,
-    availableNodes,
+    availableNodesWithParent,
   } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar,
@@ -186,7 +186,7 @@ const ConfigPrompt: FC<Props> = ({
                           isShowContext={isShowContext}
                           hasSetBlockStatus={hasSetBlockStatus}
                           availableVars={availableVars}
-                          availableNodes={availableNodes}
+                          availableNodes={availableNodesWithParent}
                           varList={varList}
                           handleAddVariable={handleAddVariable}
                         />
@@ -218,7 +218,7 @@ const ConfigPrompt: FC<Props> = ({
               isShowContext={isShowContext}
               hasSetBlockStatus={hasSetBlockStatus}
               nodesOutputVars={availableVars}
-              availableNodes={availableNodes}
+              availableNodes={availableNodesWithParent}
               isSupportJinja
               editionType={(payload as PromptItem).edition_type}
               varList={varList}

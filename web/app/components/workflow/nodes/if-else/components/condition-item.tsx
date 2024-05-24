@@ -96,7 +96,7 @@ const Item: FC<ItemProps> = ({
   readonly,
   nodeId,
   payload,
-  varType,
+  varType = VarType.string,
   onChange,
   canRemove,
   onRemove = () => { },
@@ -184,7 +184,7 @@ const Item: FC<ItemProps> = ({
                   e.stopPropagation()
                   return
                 }
-                if (!varType) {
+                if (!payload.variable_selector || payload.variable_selector.length === 0) {
                   e.stopPropagation()
                   Toast.notify({
                     message: t(`${i18nPrefix}.notSetVariable`),

@@ -82,9 +82,9 @@ const WorkflowToolConfigureButton = ({
       }
     }
     return {
-      name,
-      description,
-      icon,
+      name: detail?.name || name,
+      description: detail?.description || description,
+      icon: detail?.icon || icon,
       parameters,
       labels: detail?.tool?.labels || [],
       privacy_policy: detail?.privacy_policy || '',

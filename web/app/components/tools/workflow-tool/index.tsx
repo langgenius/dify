@@ -7,6 +7,7 @@ import produce from 'immer'
 import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
+import Toast from '@/app/components/base/toast'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppIcon from '@/app/components/base/app-icon'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
@@ -56,7 +57,23 @@ const WorkflowToolAsModal: FC<Props> = ({
   const [privacyPolicy, setPrivacyPolicy] = useState(payload.privacy_policy)
   const [showModal, setShowModal] = useState(false)
 
+  const isNameValid = (name: string) => {
+    return /^[a-zA-Z0-9_]+$/.test(name)
+  }
+
   const onConfirm = () => {
+    if (!name) {
+      return Toast.notify({
+        type: 'error',
+        message: 'Please enter the tool name',
+      })
+    }
+    else if (isNameValid(name)) {
+      return Toast.notify({
+        type: 'error',
+        message: 'Name can only contain numbers, letters, and underscores',
+      })
+    }
     const requestParams = {
       name,
       description,
