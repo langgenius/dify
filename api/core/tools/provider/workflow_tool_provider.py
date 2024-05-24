@@ -96,7 +96,7 @@ class WorkflowToolProviderController(ToolProviderController):
                     VariableEntity.Type.SELECT
                 ]:
                     parameter_type = ToolParameter.ToolParameterType.STRING
-                elif variable.Type in [
+                elif variable.type in [
                     VariableEntity.Type.SELECT
                 ]:
                     parameter_type = ToolParameter.ToolParameterType.SELECT
