@@ -56,6 +56,7 @@ import {
   fetchAllWorkflowTools,
 } from '@/service/tools'
 import I18n from '@/context/i18n'
+import { CollectionType } from '@/app/components/tools/types'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -542,9 +543,9 @@ export const useToolIcon = (data: Node['data']) => {
   const toolIcon = useMemo(() => {
     if (data.type === BlockEnum.Tool) {
       let targetTools = buildInTools
-      if (data.provider_type === 'builtin')
+      if (data.provider_type === CollectionType.builtIn)
         targetTools = buildInTools
-      else if (data.provider_type === 'api')
+      else if (data.provider_type === CollectionType.custom)
         targetTools = customTools
       else
         targetTools = workflowTools

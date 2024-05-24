@@ -329,11 +329,12 @@ export const getToolCheckParams = (
   toolData: ToolNodeType,
   buildInTools: ToolWithProvider[],
   customTools: ToolWithProvider[],
+  workflowTools: ToolWithProvider[],
   language: string,
 ) => {
   const { provider_id, provider_type, tool_name } = toolData
   const isBuiltIn = provider_type === CollectionType.builtIn
-  const currentTools = isBuiltIn ? buildInTools : customTools
+  const currentTools = provider_type === CollectionType.builtIn ? buildInTools : provider_type === CollectionType.custom ? customTools : workflowTools
   const currCollection = currentTools.find(item => item.id === provider_id)
   const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []
