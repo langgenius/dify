@@ -14,6 +14,7 @@ select = [
     "I", # isort rules
     "UP",   # pyupgrade rules
     "RUF019", # unnecessary-key-check
+    "S506", # unsafe-yaml-load
 ]
 ignore = [
     "F403", # undefined-local-with-import-star
