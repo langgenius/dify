@@ -22,6 +22,9 @@ class IterationNode(BaseIterationNode):
         """
         iterator = variable_pool.get_variable_value(cast(IterationNodeData, self.node_data).iterator_selector)
 
+        if not isinstance(iterator, list):
+            raise ValueError(f"Invalid iterator value: {iterator}, please provide a list.")
+
         state = IterationState(iteration_node_id=self.node_id, index=-1, inputs={
             'iterator_selector': iterator
         }, outputs=[], metadata=IterationState.MetaData(
