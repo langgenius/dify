@@ -25,10 +25,14 @@ To illustrate, if the task involves extracting a user's name and their request, 
 Produce well-formatted function calls in json without XML tags, as shown in the example.
 """
 
-FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE = """You need to extract structured information from context inside <context></context> XML tags.
+FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE = f"""extract structured information from context inside <context></context> XML tags by calling the function {FUNCTION_CALLING_EXTRACTOR_NAME} with the correct parameters with structure inside <structure></structure> XML tags.
 <context>
-{content}
+\x7bcontent\x7d
 </context>
+
+<structure>
+\x7bstructure\x7d
+</structure>
 """
 
 FUNCTION_CALLING_EXTRACTOR_EXAMPLE = [{
@@ -87,8 +91,22 @@ FUNCTION_CALLING_EXTRACTOR_EXAMPLE = [{
     }
 }]
 
-COMPLETION_GENERATE_JSON_PROMPT = """I need always follow the instructions and output a valid JSON object.
-The structure of the JSON object I can found in the instructions.
+COMPLETION_GENERATE_JSON_PROMPT = """### Instructions:
+Some extra information are provided below, I should always follow the instructions as possible as I can.
+<instructions>
+{instruction}
+</instructions>
+
+### Extract parameter Workflow
+I need to extract the following information from the input text. The <information to be extracted> tag specifies the 'type', 'description' and 'required' of the information to be extracted. 
+<information to be extracted>
+{{ structure }}
+</information to be extracted>
+
+Step 1: Carefully read the input and understand the structure of the expected output.
+Step 2: Extract relevant parameters from the provided text based on the name and description of object. 
+Step 3: Structure the extracted parameters to JSON object as specified in <structure>.
+Step 4: Ensure that the JSON object is properly formatted and valid. The output should not contain any XML tags. Only the JSON object should be outputted.
 
 ### Memory
 Here is the chat histories between human and assistant, inside <histories></histories> XML tags.
@@ -97,25 +115,20 @@ Here is the chat histories between human and assistant, inside <histories></hist
 </histories>
 
 ### Structure
-Here is the structure of the JSON object, I should always follow the structure.
-<structure>
-{{ structure }}
-</structure>
+Here is the structure of the expected output, I should always follow the output structure. 
+{
+  'properties1': 'relevant text extracted from input', 
+  'properties2': 'relevant text extracted from input', 
+}
 
-### Instructions:
-Some extra information are provided below, I should always follow the instructions as possible as I can.
-<instructions>
-{instruction}
-</instructions>
-
-### Text to be converted to JSON
-Inside <text></text> XML tags, there is a text that I should convert to a JSON object.
+### Input Text
+Inside <text></text> XML tags, there is a text that I should extract parameters and convert to a JSON object.
 <text>
 {text}
 </text>
 
 ### Answer
-I should always output a valid JSON object.
+I should always output a valid JSON object. Output nothing other than the JSON object. 
 ```JSON
 """
 
