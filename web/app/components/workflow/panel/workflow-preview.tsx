@@ -162,7 +162,7 @@ const WorkflowPreview = ({
                       error={workflowRunningData?.result?.error}
                       onClick={() => switchTab('DETAIL')}
                     />
-                    {(workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded || !workflowRunningData?.resultText) && (
+                    {(workflowRunningData?.result.status === WorkflowRunningStatus.Succeeded && workflowRunningData?.resultText && typeof workflowRunningData?.resultText === 'string') && (
                       <SimpleBtn
                         className={cn('ml-4 mb-4 inline-flex space-x-1')}
                         onClick={() => {
