@@ -281,6 +281,15 @@ class WorkflowEngineManager:
                     )
                     if isinstance(next_node_id, NodeRunResult):
                         # iteration has ended
+                        current_iteration_node.set_output(
+                            variable_pool=workflow_run_state.variable_pool,
+                            state=workflow_run_state.current_iteration_state
+                        )
+                        self._workflow_iteration_completed(
+                            current_iteration_node=current_iteration_node,
+                            workflow_run_state=workflow_run_state,
+                            callbacks=callbacks
+                        )
                         current_iteration_node = None
                         workflow_run_state.current_iteration_state = None
                         continue
