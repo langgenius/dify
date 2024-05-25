@@ -5,6 +5,9 @@ export enum ParamType {
   number = 'number',
   bool = 'bool',
   select = 'select',
+  arrayString = 'array[string]',
+  arrayNumber = 'array[number]',
+  arrayObject = 'array[object]',
 }
 
 export type Param = {

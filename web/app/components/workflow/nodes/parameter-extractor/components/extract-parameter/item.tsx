@@ -26,7 +26,7 @@ const Item: FC<Props> = ({
         <div className='flex items-center'>
           <Variable02 className='w-3.5 h-3.5 text-primary-500' />
           <div className='ml-1 text-[13px] font-medium text-gray-900'>{payload.name}</div>
-          <div className='ml-2 text-xs font-normal text-gray-500'>{payload.type}</div>
+          <div className='ml-2 text-xs font-normal text-gray-500 capitalize'>{payload.type}</div>
         </div>
         {payload.required && (
           <div className='uppercase leading-4 text-xs font-normal text-gray-500'>{t(`${i18nPrefix}.addExtractParameterContent.required`)}</div>

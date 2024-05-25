@@ -394,12 +394,6 @@ const translation = {
         required: '必填',
         requiredContent: '必填仅作为模型推理的参考，不用于参数输出的强制验证。',
       },
-      type: {
-        string: 'String',
-        number: 'Number',
-        object: 'Object',
-        array: 'Array',
-      },
       extractParametersNotSet: '提取参数未设置',
       instruction: '指令',
       instructionTip: '你可以输入额外的附加指令，帮助参数提取器理解如何提取参数',
