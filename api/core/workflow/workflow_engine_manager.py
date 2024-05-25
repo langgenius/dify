@@ -152,7 +152,6 @@ class WorkflowEngineManager:
             workflow=workflow,
             workflow_run_state=workflow_run_state,
             callbacks=callbacks,
-            call_depth=call_depth,
         )
 
     def _run_workflow(self, workflow: Workflow,
