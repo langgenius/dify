@@ -90,7 +90,7 @@ export const useVariableAssigner = () => {
     handleAssignVariableValueChange(variableAssignerNodeId, value, variableAssignerNodeHandleId)
   }, [store, workflowStore, handleAssignVariableValueChange])
 
-  const handleRemoveEdges = useCallback((nodeId: string) => {
+  const handleRemoveEdges = useCallback((nodeId: string, enabled: boolean) => {
     const {
       getNodes,
       setNodes,
@@ -99,13 +99,45 @@ export const useVariableAssigner = () => {
     } = store.getState()
     const nodes = getNodes()
     const needDeleteEdges = edges.filter(edge => edge.target === nodeId)
+
+    if (!needDeleteEdges.length)
+      return
+
+    const currentNode = nodes.find(node => node.id === nodeId)!
+    const groups = currentNode.data.advanced_settings?.groups || []
+
+    let shouldKeepEdge: Edge
+
+    if (enabled) {
+      shouldKeepEdge = {
+        ...edges.find((edge) => {
+          return edge.target === nodeId && edge.targetHandle === 'target'
+        }),
+        targetHandle: groups[0].groupId,
+      } as Edge
+    }
+    else {
+      shouldKeepEdge = {
+        ...edges.find((edge) => {
+          return edge.target === nodeId && edge.targetHandle === groups[0].groupId
+        }),
+        targetHandle: 'target',
+      } as Edge
+    }
+
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
-      needDeleteEdges.map((needDeleteEdge) => {
-        return {
-          type: 'remove',
-          edge: needDeleteEdge,
-        }
-      }),
+      [
+        ...needDeleteEdges.map((needDeleteEdge) => {
+          return {
+            type: 'remove',
+            edge: needDeleteEdge,
+          }
+        }),
+        {
+          type: 'add',
+          edge: shouldKeepEdge,
+        },
+      ],
       nodes,
     )
 
@@ -120,7 +152,11 @@ export const useVariableAssigner = () => {
       })
     })
     setNodes(newNodes)
-    const newEdges = edges.filter(edge => edge.target !== nodeId)
+    const newEdges = produce(edges, (draft) => {
+      draft = draft.filter(edge => edge.target !== nodeId)
+      draft.push(shouldKeepEdge as Edge)
+      return draft
+    })
     setEdges(newEdges)
   }, [store])
 
@@ -160,6 +196,9 @@ export const useGetAvailableVars = () => {
   const getAvailableVars = useCallback((nodeId: string, handleId: string) => {
     const availableNodes: Node[] = []
     const currentNode = nodes.find(node => node.id === nodeId)!
+
+    if (!currentNode)
+      return []
     const parentNode = nodes.find(node => node.id === currentNode.parentId)
     const connectedEdges = edges.filter(edge => edge.target === nodeId && edge.targetHandle === handleId)
 

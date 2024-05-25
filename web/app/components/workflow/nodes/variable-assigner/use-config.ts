@@ -102,7 +102,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       draft.advanced_settings.group_enabled = enabled
     })
     setInputs(newInputs)
-    handleRemoveEdges(id)
+    handleRemoveEdges(id, enabled)
   }, [handleOutVarRenameChange, id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm, handleRemoveEdges])
 
   const handleAddGroup = useCallback(() => {
