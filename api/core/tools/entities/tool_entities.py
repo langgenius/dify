@@ -379,6 +379,7 @@ class ToolLabel(BaseModel):
     """
     name: str = Field(..., description="The name of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
+    icon: str = Field(..., description="The icon of the tool")
 
 class ToolInvokeFrom(Enum):
     """
