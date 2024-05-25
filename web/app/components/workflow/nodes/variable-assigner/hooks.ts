@@ -19,6 +19,7 @@ import type {
   ValueSelector,
 } from '../../types'
 import { useWorkflowStore } from '../../store'
+import type { VariableAssignerNodeType } from './types'
 import { toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 export const useVariableAssigner = () => {
@@ -175,12 +176,18 @@ export const useGetAvailableVars = () => {
       })
     }
 
+    const variables = (currentNode.data as VariableAssignerNodeType).variables || []
+
     return toNodeAvailableVars({
       parentNode,
       t,
       beforeNodes: uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId),
       isChatMode,
       filterVar: () => true,
+    }).filter((varItem) => {
+      return !variables.some((variable) => {
+        return variable[0] === varItem.nodeId
+      })
     })
   }, [nodes, edges, isChatMode, getBeforeNodesInSameBranch, t])
 
