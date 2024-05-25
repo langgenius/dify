@@ -3,7 +3,7 @@ import {
   getConnectedEdges,
   getOutgoers,
 } from 'reactflow'
-import dagre from 'dagre'
+import dagre from '@dagrejs/dagre'
 import { v4 as uuid4 } from 'uuid'
 import {
   cloneDeep,
@@ -186,19 +186,25 @@ export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
   })
 }
 
-const dagreGraph = new dagre.graphlib.Graph()
-dagreGraph.setDefaultEdgeLabel(() => ({}))
 export const getLayoutByDagre = (originNodes: Node[], originEdges: Edge[]) => {
-  const nodes = cloneDeep(originNodes)
-  const edges = cloneDeep(originEdges)
+  const dagreGraph = new dagre.graphlib.Graph()
+  dagreGraph.setDefaultEdgeLabel(() => ({}))
+  const nodes = cloneDeep(originNodes).filter(node => !node.parentId)
+  const edges = cloneDeep(originEdges).filter(edge => !edge.data?.isInIteration)
   dagreGraph.setGraph({
     rankdir: 'LR',
     align: 'UL',
     nodesep: 40,
     ranksep: 60,
+    ranker: 'tight-tree',
+    marginx: 30,
+    marginy: 200,
   })
   nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: node.width, height: node.height })
+    dagreGraph.setNode(node.id, {
+      width: node.width!,
+      height: node.height!,
+    })
   })
 
   edges.forEach((edge) => {
