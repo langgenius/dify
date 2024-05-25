@@ -202,6 +202,7 @@ const AddToolModal: FC<Props> = ({
             )}
             {!listLoading && (
               <Tools
+                showWorkflowEmpty={currentType === 'workflow'}
                 tools={filterdList}
                 addedTools={(modelConfig?.agentConfig?.tools as any) || []}
                 onSelect={toolSelectHandle}
