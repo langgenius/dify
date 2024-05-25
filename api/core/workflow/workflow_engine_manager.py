@@ -203,6 +203,7 @@ class WorkflowEngineManager:
                             state=workflow_run_state.current_iteration_state
                         )
                         self._workflow_iteration_next(
+                            graph=graph,
                             current_iteration_node=current_iteration_node,
                             workflow_run_state=workflow_run_state,
                             callbacks=callbacks
@@ -273,6 +274,7 @@ class WorkflowEngineManager:
                         state=workflow_run_state.current_iteration_state
                     )
                     self._workflow_iteration_next(
+                        graph=graph,
                         current_iteration_node=current_iteration_node,
                         workflow_run_state=workflow_run_state,
                         callbacks=callbacks
@@ -586,7 +588,8 @@ class WorkflowEngineManager:
         # add steps
         workflow_run_state.workflow_node_steps += 1
 
-    def _workflow_iteration_next(self, current_iteration_node: BaseIterationNode,
+    def _workflow_iteration_next(self, graph: dict,
+                                 current_iteration_node: BaseIterationNode,
                                  workflow_run_state: WorkflowRunState, 
                                  callbacks: list[BaseWorkflowCallback] = None) -> None:
         """
@@ -609,6 +612,13 @@ class WorkflowEngineManager:
             node_run for node_run in workflow_run_state.workflow_node_runs
             if node_run.iteration_node_id != current_iteration_node.node_id
         ]
+
+        # clear variables in current iteration
+        nodes = graph.get('nodes')
+        nodes = [node for node in nodes if node.get('data', {}).get('iteration_id') == current_iteration_node.node_id]
+
+        for node in nodes:
+            workflow_run_state.variable_pool.clear_node_variables(node_id=node.get('id'))
     
     def _workflow_iteration_completed(self, current_iteration_node: BaseIterationNode,
                                         workflow_run_state: WorkflowRunState, 
