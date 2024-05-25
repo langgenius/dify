@@ -190,7 +190,7 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
     case BlockEnum.Iteration: {
       res.vars = [
         {
-          variable: 'result',
+          variable: 'output',
           type: VarType.array,
         },
       ]
@@ -852,7 +852,7 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
     }
 
     case BlockEnum.Iteration: {
-      res.push([id, 'result'])
+      res.push([id, 'output'])
       break
     }
   }
