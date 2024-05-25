@@ -411,7 +411,7 @@ const translation = {
       output: 'Output Variables',
       iteration_one: '{{count}} Iteration',
       iteration_other: '{{count}} Iterations',
-      iterationContent: 'Iteration Content',
+      currentIteration: 'Current Iteration',
     },
   },
   tracing: {

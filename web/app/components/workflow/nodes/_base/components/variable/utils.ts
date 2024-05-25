@@ -377,7 +377,7 @@ export const toNodeAvailableVars = ({
     })
     const iterationVar = {
       nodeId: iterationNode?.id,
-      title: t('workflow.nodes.iteration.iterationContent'),
+      title: t('workflow.nodes.iteration.currentIteration'),
       vars: [
         {
           variable: 'item',
@@ -389,7 +389,7 @@ export const toNodeAvailableVars = ({
         },
       ],
     }
-    beforeNodesOutputVars.push(iterationVar)
+    beforeNodesOutputVars.unshift(iterationVar)
   }
   return beforeNodesOutputVars
 }
