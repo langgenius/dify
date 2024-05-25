@@ -25,9 +25,6 @@ from models.model import Message
 logger = logging.getLogger(__name__)
 
 class FunctionCallAgentRunner(BaseAgentRunner):
-    _query: str = None
-    _current_thoughts: list[PromptMessage] = []
-
 
     def run(self, 
             message: Message, query: str, **kwargs: Any
@@ -35,7 +32,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         """
         Run FunctionCall agent application
         """
-        self._query = query
+        self.query = query
         app_generate_entity = self.application_generate_entity
 
         app_config = self.app_config
@@ -417,7 +414,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
     def _organize_prompt_messages(self):
         prompt_template = self.app_config.prompt_template.simple_prompt_template or ''
         self.history_prompt_messages = self._init_system_message(prompt_template, self.history_prompt_messages)
-        query_prompt_messages = self._organize_user_query(self._query, [])
+        query_prompt_messages = self._organize_user_query(self.query, [])
 
         self.history_prompt_messages = AgentHistoryPromptTransform(
             model_config=self.model_config,

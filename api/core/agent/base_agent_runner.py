@@ -128,6 +128,8 @@ class BaseAgentRunner(AppRunner):
             self.files = application_generate_entity.files
         else:
             self.files = []
+        self.query = None
+        self._current_thoughts: list[PromptMessage] = []
 
     def _repack_app_generate_entity(self, app_generate_entity: AgentChatAppGenerateEntity) \
             -> AgentChatAppGenerateEntity:

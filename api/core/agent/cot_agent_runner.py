@@ -374,7 +374,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         return message
 
-    def _organize_historic_prompt_messages(self, prompt_messages: list[PromptMessage] = []) -> list[PromptMessage]:
+    def _organize_historic_prompt_messages(self, current_session_messages: list[PromptMessage] = None) -> list[PromptMessage]:
         """
             organize historic prompt messages
         """
@@ -384,7 +384,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         self.history_prompt_messages = AgentHistoryPromptTransform(
             model_config=self.model_config,
-            prompt_messages=prompt_messages,
+            prompt_messages=current_session_messages or [],
             history_messages=self.history_prompt_messages,
             memory=self.memory
         ).get_prompt()

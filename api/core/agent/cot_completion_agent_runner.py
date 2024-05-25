@@ -19,11 +19,11 @@ class CotCompletionAgentRunner(CotAgentRunner):
         
         return system_prompt
 
-    def _organize_historic_prompt(self, prompt_message: list[PromptMessage] = []) -> str:
+    def _organize_historic_prompt(self, current_session_messages: list[PromptMessage] = None) -> str:
         """
         Organize historic prompt
         """
-        historic_prompt_messages = self._organize_historic_prompt_messages(prompt_message)
+        historic_prompt_messages = self._organize_historic_prompt_messages(current_session_messages)
         historic_prompt = ""
 
         for message in historic_prompt_messages:
