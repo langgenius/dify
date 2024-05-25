@@ -53,7 +53,7 @@ class ToolFileManager:
             return False
 
         current_time = int(time.time())
-        return current_time - int(timestamp) <= current_app.config.get('FILES_ACCESS_TIME')
+        return current_time - int(timestamp) <= current_app.config.get('FILES_ACCESS_TIMEOUT')
 
     @staticmethod
     def create_file_by_raw(user_id: str, tenant_id: str,

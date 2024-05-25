@@ -23,7 +23,7 @@ DEFAULTS = {
     'SERVICE_API_URL': 'https://api.dify.ai',
     'APP_WEB_URL': 'https://udify.app',
     'FILES_URL': '',
-    'FILES_ACCESS_TIME': 300,
+    'FILES_ACCESS_TIMEOUT': 300,
     'S3_ADDRESS_STYLE': 'auto',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
@@ -144,7 +144,7 @@ class Config:
 
         # File Access Time specifies a time interval in seconds for the file to be accessed.
         # The default value is 300 seconds.
-        self.FILES_ACCESS_TIME = int(get_env('FILES_ACCESS_TIME'))
+        self.FILES_ACCESS_TIMEOUT = int(get_env('FILES_ACCESS_TIMEOUT'))
 
         # Your App secret key will be used for securely signing the session cookie
         # Make sure you are changing this key for your deployment with a strong key.
