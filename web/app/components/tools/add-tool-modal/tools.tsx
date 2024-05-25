@@ -14,18 +14,21 @@ import Tooltip from '@/app/components/base/tooltip'
 import Button from '@/app/components/base/button'
 import { useGetLanguage } from '@/context/i18n'
 import { useStore as useLabelStore } from '@/app/components/tools/labels/store'
+import Empty from '@/app/components/tools/add-tool-modal/empty'
 import type { Tool } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import type { AgentTool } from '@/types/app'
 import { MAX_TOOLS_NUM } from '@/config'
 
 type ToolsProps = {
+  showWorkflowEmpty: boolean
   tools: ToolWithProvider[]
   addedTools: AgentTool[]
   onSelect: (provider: ToolWithProvider, tool: Tool) => void
   onAuthSetup: (provider: ToolWithProvider) => void
 }
 const Blocks = ({
+  showWorkflowEmpty,
   tools,
   addedTools,
   onSelect,
@@ -127,8 +130,13 @@ const Blocks = ({
 
   return (
     <div className='p-1 pb-6 max-w-[440px]'>
-      {!tools.length && (
+      {!tools.length && !showWorkflowEmpty && (
         <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>{t('workflow.tabs.noResult')}</div>
+      )}
+      {!tools.length && showWorkflowEmpty && (
+        <div className='pt-[280px]'>
+          <Empty/>
+        </div>
       )}
       {!!tools.length && tools.map(renderGroup)}
     </div>

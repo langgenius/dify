@@ -29,6 +29,8 @@ const translation = {
     add: '添加',
     added: '已添加',
     manageInTools: '去工具列表管理',
+    emptyTitle: '没有可用的工作流工具',
+    emptyTip: '去 “工作流 -> 发布为工具” 添加',
   },
   createTool: {
     title: '创建自定义工具',

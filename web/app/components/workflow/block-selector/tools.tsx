@@ -8,13 +8,16 @@ import { BlockEnum } from '../types'
 import type { ToolWithProvider } from '../types'
 import type { ToolDefaultValue } from './types'
 import Tooltip from '@/app/components/base/tooltip'
+import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { useGetLanguage } from '@/context/i18n'
 
 type ToolsProps = {
+  showWorkflowEmpty: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   tools: ToolWithProvider[]
 }
 const Blocks = ({
+  showWorkflowEmpty,
   onSelect,
   tools,
 }: ToolsProps) => {
@@ -81,10 +84,15 @@ const Blocks = ({
   return (
     <div className='p-1 max-w-[320px] max-h-[464px] overflow-y-auto'>
       {
-        !tools.length && (
+        !tools.length && !showWorkflowEmpty && (
           <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>{t('workflow.tabs.noResult')}</div>
         )
       }
+      {!tools.length && showWorkflowEmpty && (
+        <div className='py-10'>
+          <Empty/>
+        </div>
+      )}
       {
         !!tools.length && tools.map(renderGroup)
       }

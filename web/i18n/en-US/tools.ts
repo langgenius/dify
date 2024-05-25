@@ -29,6 +29,8 @@ const translation = {
     add: 'add',
     added: 'added',
     manageInTools: 'Manage in Tools',
+    emptyTitle: 'No workflow tool available',
+    emptyTip: 'Go to "Workflow -> Publish as Tool"',
   },
   createTool: {
     title: 'Create Custom Tool',
