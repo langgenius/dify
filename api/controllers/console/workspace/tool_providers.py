@@ -323,6 +323,7 @@ class ToolWorkflowProviderCreateApi(Resource):
         reqparser = reqparse.RequestParser()
         reqparser.add_argument('workflow_app_id', type=uuid_value, required=True, nullable=False, location='json')
         reqparser.add_argument('name', type=alphanumeric, required=True, nullable=False, location='json')
+        reqparser.add_argument('label', type=str, required=True, nullable=False, location='json')
         reqparser.add_argument('description', type=str, required=True, nullable=False, location='json')
         reqparser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         reqparser.add_argument('parameters', type=list[dict], required=True, nullable=False, location='json')
@@ -336,6 +337,7 @@ class ToolWorkflowProviderCreateApi(Resource):
             tenant_id,
             args['workflow_app_id'],
             args['name'],
+            args['label'],
             args['icon'],
             args['description'],
             args['parameters'],
@@ -357,6 +359,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
         reqparser = reqparse.RequestParser()
         reqparser.add_argument('workflow_tool_id', type=uuid_value, required=True, nullable=False, location='json')
         reqparser.add_argument('name', type=alphanumeric, required=True, nullable=False, location='json')
+        reqparser.add_argument('label', type=str, required=True, nullable=False, location='json')
         reqparser.add_argument('description', type=str, required=True, nullable=False, location='json')
         reqparser.add_argument('icon', type=dict, required=True, nullable=False, location='json')
         reqparser.add_argument('parameters', type=list[dict], required=True, nullable=False, location='json')
@@ -373,6 +376,7 @@ class ToolWorkflowProviderUpdateApi(Resource):
             tenant_id,
             args['workflow_tool_id'],
             args['name'],
+            args['label'],
             args['icon'],
             args['description'],
             args['parameters'],
