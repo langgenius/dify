@@ -4713,10 +4713,7 @@ files = [
 grpcio = ">=1.41.0"
 grpcio-tools = ">=1.41.0"
 httpx = {version = ">=0.14.0", extras = ["http2"]}
-numpy = [
-    {version = ">=1.21", markers = "python_version >= \"3.8\" and python_version < \"3.12\""},
-    {version = ">=1.26", markers = "python_version >= \"3.12\""},
-]
+numpy = {version = ">=1.21", markers = "python_version >= \"3.8\" and python_version < \"3.12\""}
 portalocker = ">=2.7.0,<3.0.0"
 pydantic = ">=1.10.8"
 urllib3 = ">=1.26.14,<3"
@@ -6577,5 +6574,5 @@ cffi = ["cffi (>=1.11)"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.10"
-content-hash = "962914a60652e33d79fd07c58bbcaf1b5aec149c57b20b6cff1e9246b37e1bc9"
+python-versions = ">=3.10,<3.12"
+content-hash = "35bed9972c5b820be1e36c6c3eca22838a8e629d3bfa6b41094fd535a9b7d801"
