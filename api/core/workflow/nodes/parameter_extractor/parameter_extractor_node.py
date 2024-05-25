@@ -218,7 +218,7 @@ class ParameterExtractorNode(LLMNode):
         """
         Generate function call prompt.
         """
-        query = FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE.format(content=query)
+        query = FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE.format(content=query, structure=json.dumps(node_data.get_parameter_json_schema()))
 
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
         rest_token = self._calculate_rest_token(node_data, query, variable_pool, model_config, '')
@@ -399,17 +399,28 @@ class ParameterExtractorNode(LLMNode):
                 raise ValueError(f"Parameter {parameter.name} is required")
             
             if parameter.type == 'select' and parameter.options and result.get(parameter.name) not in parameter.options:
-                raise ValueError(f"Invalid value for parameter {parameter.name}")
+                raise ValueError(f"Invalid `select` value for parameter {parameter.name}")
             
             if parameter.type == 'number' and not isinstance(result.get(parameter.name), int | float):
-                raise ValueError(f"Invalid value for parameter {parameter.name}")
+                raise ValueError(f"Invalid `number` value for parameter {parameter.name}")
             
             if parameter.type == 'bool' and not isinstance(result.get(parameter.name), bool):
-                raise ValueError(f"Invalid value for parameter {parameter.name}")
+                raise ValueError(f"Invalid `bool` value for parameter {parameter.name}")
             
             if parameter.type == 'string' and not isinstance(result.get(parameter.name), str):
-                raise ValueError(f"Invalid value for parameter {parameter.name}")
+                raise ValueError(f"Invalid `string` value for parameter {parameter.name}")
             
+            if parameter.type.startswith('array'):
+                if not isinstance(result.get(parameter.name), list):
+                    raise ValueError(f"Invalid `array` value for parameter {parameter.name}")
+                nested_type = parameter.type[6:-1]
+                for item in result.get(parameter.name):
+                    if nested_type == 'number' and not isinstance(item, int | float):
+                        raise ValueError(f"Invalid `array[number]` value for parameter {parameter.name}")
+                    if nested_type == 'string' and not isinstance(item, str):
+                        raise ValueError(f"Invalid `array[string]` value for parameter {parameter.name}")
+                    if nested_type == 'object' and not isinstance(item, dict):
+                        raise ValueError(f"Invalid `array[object]` value for parameter {parameter.name}")
         return result
 
     def _transform_result(self, data: ParameterExtractorNodeData, result: dict) -> dict:
@@ -444,6 +455,28 @@ class ParameterExtractorNode(LLMNode):
                 elif parameter.type in ['string', 'select']:
                     if isinstance(result[parameter.name], str):
                         transformed_result[parameter.name] = result[parameter.name]
+                elif parameter.type.startswith('array'):
+                    if isinstance(result[parameter.name], list):
+                        nested_type = parameter.type[6:-1]
+                        transformed_result[parameter.name] = []
+                        for item in result[parameter.name]:
+                            if nested_type == 'number':
+                                if isinstance(item, int | float):
+                                    transformed_result[parameter.name].append(item)
+                                elif isinstance(item, str):
+                                    try:
+                                        if '.' in item:
+                                            transformed_result[parameter.name].append(float(item))
+                                        else:
+                                            transformed_result[parameter.name].append(int(item))
+                                    except ValueError:
+                                        pass
+                            elif nested_type == 'string':
+                                if isinstance(item, str):
+                                    transformed_result[parameter.name].append(item)
+                            elif nested_type == 'object':
+                                if isinstance(item, dict):
+                                    transformed_result[parameter.name].append(item)
 
             if parameter.name not in transformed_result:
                 if parameter.type == 'number':
@@ -452,6 +485,8 @@ class ParameterExtractorNode(LLMNode):
                     transformed_result[parameter.name] = False
                 elif parameter.type in ['string', 'select']:
                     transformed_result[parameter.name] = ''
+                elif parameter.type.startswith('array'):
+                    transformed_result[parameter.name] = []
 
         return transformed_result
 

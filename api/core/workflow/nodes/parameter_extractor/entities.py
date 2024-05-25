@@ -20,7 +20,7 @@ class ParameterConfig(BaseModel):
     Parameter Config.
     """
     name: str
-    type: Literal['string', 'number', 'bool', 'select']
+    type: Literal['string', 'number', 'bool', 'select', 'array[string]', 'array[number]', 'array[object]']
     options: Optional[list[str]]
     description: str
     required: bool
@@ -62,9 +62,17 @@ class ParameterExtractorNodeData(BaseNodeData):
 
         for parameter in self.parameters:
             parameter_schema = {
-                'type': 'string' if parameter.type in ['string', 'select'] else parameter.type,
                 'description': parameter.description
             }
+
+            if parameter.type in ['string', 'select']:
+                parameter_schema['type'] = 'string'
+            elif parameter.type.startswith('array'):
+                parameter_schema['type'] = 'array'
+                nested_type = parameter.type[6:-1]
+                parameter_schema['items'] = {'type': nested_type}
+            else:
+                parameter_schema['type'] = parameter.type
 
             if parameter.type == 'select':
                 parameter_schema['enum'] = parameter.options

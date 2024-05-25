@@ -25,10 +25,14 @@ To illustrate, if the task involves extracting a user's name and their request, 
 Produce well-formatted function calls in json without XML tags, as shown in the example.
 """
 
-FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE = """You need to extract structured information from context inside <context></context> XML tags.
+FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE = f"""extract structured information from context inside <context></context> XML tags by calling the function {FUNCTION_CALLING_EXTRACTOR_NAME} with the correct parameters with structure inside <structure></structure> XML tags.
 <context>
-{content}
+\x7bcontent\x7d
 </context>
+
+<structure>
+\x7bstructure\x7d
+</structure>
 """
 
 FUNCTION_CALLING_EXTRACTOR_EXAMPLE = [{
