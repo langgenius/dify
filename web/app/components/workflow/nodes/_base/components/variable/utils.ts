@@ -176,12 +176,9 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
 
     case BlockEnum.ParameterExtractor: {
       res.vars = ((data as ParameterExtractorNodeType).parameters || []).map((p) => {
-        let type = VarType.string
-        if (p.type === 'number')
-          type = VarType.number
         return {
           variable: p.name,
-          type,
+          type: p.type as unknown as VarType,
         }
       })
       break
