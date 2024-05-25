@@ -165,6 +165,8 @@ class WorkflowToolProvider(db.Model):
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     # name of the workflow provider
     name = db.Column(db.String(40), nullable=False)
+    # label of the workflow provider
+    label = db.Column(db.String(255), nullable=False, server_default='')
     # icon
     icon = db.Column(db.String(255), nullable=False)
     # app id of the workflow provider

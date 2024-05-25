@@ -20,7 +20,8 @@ class WorkflowToolManageService:
     Service class for managing workflow tools.
     """
     @classmethod
-    def create_workflow_tool(cls, user_id: str, tenant_id: str, workflow_app_id: str, name: str, icon: dict, description: str,
+    def create_workflow_tool(cls, user_id: str, tenant_id: str, workflow_app_id: str, name: str, 
+                                label: str, icon: dict, description: str,
                                 parameters: list[dict], privacy_policy: str = '', labels: list[str] = None) -> dict:
         """
         Create a workflow tool.
@@ -62,6 +63,7 @@ class WorkflowToolManageService:
             user_id=user_id,
             app_id=workflow_app_id,
             name=name,
+            label=label,
             icon=json.dumps(icon),
             description=description,
             parameter_configuration=json.dumps(parameters),
@@ -84,7 +86,7 @@ class WorkflowToolManageService:
 
     @classmethod
     def update_workflow_tool(cls, user_id: str, tenant_id: str, workflow_tool_id: str, 
-                             name: str, icon: dict, description: str, 
+                             name: str, label: str, icon: dict, description: str, 
                              parameters: list[dict], privacy_policy: str = '', labels: list[str] = None) -> dict:
         """
         Update a workflow tool.
@@ -126,6 +128,7 @@ class WorkflowToolManageService:
             raise ValueError(f'Workflow not found for app {workflow_tool_provider.app_id}')
         
         workflow_tool_provider.name = name
+        workflow_tool_provider.label = label
         workflow_tool_provider.icon = json.dumps(icon)
         workflow_tool_provider.description = description
         workflow_tool_provider.parameter_configuration = json.dumps(parameters)
@@ -236,6 +239,7 @@ class WorkflowToolManageService:
 
         return {
             'name': db_tool.name,
+            'label': db_tool.label,
             'workflow_tool_id': db_tool.id,
             'workflow_app_id': db_tool.app_id,
             'icon': json.loads(db_tool.icon),
@@ -278,6 +282,7 @@ class WorkflowToolManageService:
 
         return {
             'name': db_tool.name,
+            'label': db_tool.label,
             'workflow_tool_id': db_tool.id,
             'workflow_app_id': db_tool.app_id,
             'icon': json.loads(db_tool.icon),
