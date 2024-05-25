@@ -148,6 +148,7 @@ export type WorkflowToolProviderRequest = {
 export type WorkflowToolProviderResponse = {
   workflow_app_id: string
   workflow_tool_id: string
+  label: string
   name: string
   icon: Emoji
   description: string

@@ -13,6 +13,8 @@ import AppIcon from '@/app/components/base/app-icon'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
+import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   isAdd?: boolean
@@ -38,6 +40,7 @@ const WorkflowToolAsModal: FC<Props> = ({
 
   const [showEmojiPicker, setShowEmojiPicker] = useState<Boolean>(false)
   const [emoji, setEmoji] = useState<Emoji>(payload.icon)
+  const [label, setLabel] = useState<string>(payload.label)
   const [name, setName] = useState(payload.name)
   const [description, setDescription] = useState(payload.description)
   const [parameters, setParameters] = useState<WorkflowToolProviderParameter[]>(payload.parameters)
@@ -62,22 +65,29 @@ const WorkflowToolAsModal: FC<Props> = ({
   }
 
   const onConfirm = () => {
-    if (!name) {
+    if (!label) {
       return Toast.notify({
         type: 'error',
         message: 'Please enter the tool name',
       })
     }
+    if (!name) {
+      return Toast.notify({
+        type: 'error',
+        message: 'Please enter the name for tool call',
+      })
+    }
     else if (!isNameValid(name)) {
       return Toast.notify({
         type: 'error',
-        message: 'Name can only contain numbers, letters, and underscores',
+        message: 'Name for tool call can only contain numbers, letters, and underscores',
       })
     }
     const requestParams = {
       name,
       description,
       icon: emoji,
+      label,
       parameters: parameters.map(item => ({
         name: item.name,
         description: item.description,
@@ -122,10 +132,36 @@ const WorkflowToolAsModal: FC<Props> = ({
                     type='text'
                     className='grow h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs'
                     placeholder={t('tools.createTool.toolNamePlaceHolder')!}
-                    value={name}
-                    onChange={e => setName(e.target.value)}
+                    value={label}
+                    onChange={e => setLabel(e.target.value)}
                   />
                 </div>
+              </div>
+              {/* name for tool call */}
+              <div>
+                <div className='flex items-center py-2 leading-5 text-sm font-medium text-gray-900'>
+                  {t('tools.createTool.nameForToolCall')}
+                  <Tooltip
+                    htmlContent={
+                      <div className='w-[180px]'>
+                        {t('tools.createTool.nameForToolCallPlaceHolder')}
+                      </div>
+                    }
+                    selector='workflow-tool-modal-tooltip'
+                  >
+                    <HelpCircle className='ml-2 w-[14px] h-[14px] text-gray-400' />
+                  </Tooltip>
+                </div>
+                <input
+                  type='text'
+                  className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs'
+                  placeholder={t('tools.createTool.nameForToolCallPlaceHolder')!}
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                />
+                {!isNameValid(name) && (
+                  <div className='text-xs leading-[18px] text-[#DC6803]'>{t('tools.createTool.nameForToolCallTip')}</div>
+                )}
               </div>
               {/* description */}
               <div>
@@ -210,7 +246,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               )}
               <div className='flex space-x-2 '>
                 <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={() => {
+                <Button disabled={!label || !name || !isNameValid(name)} className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={() => {
                   if (isAdd)
                     onConfirm()
                   else

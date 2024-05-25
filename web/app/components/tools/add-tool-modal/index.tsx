@@ -42,7 +42,7 @@ const AddToolModal: FC<Props> = ({
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
   const language = getLanguage(locale)
-  const [currentType, setCurrentType] = useState('all')
+  const [currentType, setCurrentType] = useState('builtin')
   const [currentCategory, setCurrentCategory] = useState('')
   const [keywords, setKeywords] = useState<string>('')
   const handleKeywordsChange = (value: string) => {
