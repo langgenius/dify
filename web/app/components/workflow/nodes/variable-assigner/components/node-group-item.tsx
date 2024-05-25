@@ -74,7 +74,7 @@ const NodeGroupItem = ({
         )
       }
       {
-        !!item.variables.length && item.variables.map((variable, index) => {
+        !!item.variables.length && item.variables.map((variable = [], index) => {
           const isSystem = isSystemVar(variable)
           const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
           const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
