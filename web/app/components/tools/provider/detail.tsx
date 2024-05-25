@@ -149,6 +149,7 @@ const ProviderDetail = ({
   }>) => {
     await saveWorkflowToolProvider(data)
     onRefreshData()
+    getWorkflowToolProvider()
     Toast.notify({
       type: 'success',
       message: t('common.api.actionSuccess'),
