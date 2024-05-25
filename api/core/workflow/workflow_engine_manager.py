@@ -128,6 +128,9 @@ class WorkflowEngineManager:
                 user_inputs=user_inputs
             )
 
+        if call_depth > WORKFLOW_CALL_MAX_DEPTH:
+            raise ValueError('Max workflow call depth reached.')
+
         # init workflow run state
         workflow_run_state = WorkflowRunState(
             workflow=workflow,
@@ -155,7 +158,6 @@ class WorkflowEngineManager:
     def _run_workflow(self, workflow: Workflow,
                      workflow_run_state: WorkflowRunState,
                      callbacks: list[BaseWorkflowCallback] = None,
-                     call_depth: Optional[int] = 0,
                      start_at: Optional[str] = None,
                      end_at: Optional[str] = None) -> None:
         """
@@ -172,9 +174,6 @@ class WorkflowEngineManager:
         :return:
         """
         graph = workflow.graph_dict
-
-        if call_depth > WORKFLOW_CALL_MAX_DEPTH:
-            raise ValueError('Max workflow call depth reached.')
 
         try:
             predecessor_node: BaseNode = None
@@ -530,7 +529,6 @@ class WorkflowEngineManager:
             workflow=workflow,
             workflow_run_state=workflow_run_state,
             callbacks=callbacks,
-            call_depth=1,
             start_at=node_id,
             end_at=end_node_id
         )
