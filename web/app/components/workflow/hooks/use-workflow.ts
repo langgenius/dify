@@ -35,7 +35,6 @@ import {
   useWorkflowStore,
 } from '../store'
 import {
-  AUTO_LAYOUT_OFFSET,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
 import { findUsedVarNodes, getNodeOutputVars, isSystemVar, toNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
@@ -86,15 +85,31 @@ export const useWorkflow = () => {
     } = store.getState()
     const { setViewport } = reactflow
     const nodes = getNodes()
-    const layout = getLayoutByDagre(nodes.filter(node => !node.parentId), edges)
+    const layout = getLayoutByDagre(nodes, edges)
+    const rankMap = {} as Record<string, Node>
+
+    nodes.forEach((node) => {
+      if (!node.parentId) {
+        const rank = layout.node(node.id).rank!
+
+        if (!rankMap[rank]) {
+          rankMap[rank] = node
+        }
+        else {
+          if (rankMap[rank].position.y > node.position.y)
+            rankMap[rank] = node
+        }
+      }
+    })
 
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
         if (!node.parentId) {
           const nodeWithPosition = layout.node(node.id)
+
           node.position = {
-            x: nodeWithPosition.x + AUTO_LAYOUT_OFFSET.x,
-            y: nodeWithPosition.y + AUTO_LAYOUT_OFFSET.y,
+            x: nodeWithPosition.x - node.width! / 2,
+            y: nodeWithPosition.y - node.height! / 2 + rankMap[nodeWithPosition.rank!].height! / 2,
           }
         }
       })
