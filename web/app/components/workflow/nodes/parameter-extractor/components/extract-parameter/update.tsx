@@ -35,6 +35,8 @@ type Props = {
   onCancel?: () => void
 }
 
+const TYPES = [ParamType.string, ParamType.number, ParamType.bool, ParamType.arrayString, ParamType.arrayNumber, ParamType.arrayObject]
+
 const AddExtractParameter: FC<Props> = ({
   type,
   payload,
@@ -149,12 +151,13 @@ const AddExtractParameter: FC<Props> = ({
                   allowSearch={false}
                   bgClassName='bg-gray-100'
                   onSelect={v => handleParamChange('type')(v.value)}
-                  items={[
-                    { value: ParamType.string, name: t(`${i18nPrefix}.dataType.string`) },
-                    { value: ParamType.number, name: t(`${i18nPrefix}.dataType.number`) },
-                    { value: ParamType.bool, name: t(`${i18nPrefix}.dataType.bool`) },
-                    { value: ParamType.select, name: t(`${i18nPrefix}.dataType.select`) },
-                  ]}
+                  optionClassName='capitalize'
+                  items={
+                    TYPES.map(type => ({
+                      value: type,
+                      name: type,
+                    }))
+                  }
                 />
               </Field>
               {param.type === ParamType.select && (

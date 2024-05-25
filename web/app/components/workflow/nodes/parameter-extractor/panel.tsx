@@ -179,7 +179,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                 <VarItem
                   key={index}
                   name={param.name}
-                  type={t(`${i18nPrefix}.dataType.${param.type}`)}
+                  type={param.type}
                   description={param.description}
                 />
               ))}

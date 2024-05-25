@@ -391,12 +391,6 @@ const translation = {
         required: 'Required',
         requiredContent: 'Required is only used as a reference for model inference, and not for mandatory validation of parameter output.',
       },
-      dataType: {
-        string: 'String',
-        number: 'Number',
-        bool: 'Boolean',
-        select: 'Select',
-      },
       extractParametersNotSet: 'Extract Parameters not setup',
       instruction: 'Instruction',
       instructionTip: 'Input additional instructions to help the parameter extractor understand how to extract parameters.',
