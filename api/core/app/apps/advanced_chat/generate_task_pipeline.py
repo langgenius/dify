@@ -234,7 +234,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 )
 
                 if isinstance(event, QueueNodeFailedEvent):
-                    yield self._handle_iteration_exception(
+                    yield from self._handle_iteration_exception(
                         task_id=self._application_generate_entity.task_id,
                         error=f'Child node failed: {event.error}'
                     )

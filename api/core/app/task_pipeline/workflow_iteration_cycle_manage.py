@@ -266,6 +266,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                     id=node_id,
                     node_id=node_id,
                     node_type=NodeType.ITERATION.value,
+                    title=current_iteration.node_data.title,
                     outputs={},
                     created_at=int(time.time()),
                     extras={},
