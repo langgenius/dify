@@ -99,8 +99,8 @@ I need to extract the following information from the input text. The <informatio
 {{ structure }}
 </information to be extracted>
 
-Step 1: Carefully read the input and understand the structure of the expecteed output.
-Step 2: Extract relevant paramters from the provided text based on the name and description of object. 
+Step 1: Carefully read the input and understand the structure of the expected output.
+Step 2: Extract relevant parameters from the provided text based on the name and description of object. 
 Step 3: Structure the extracted parameters to JSON object as specified in <structure>.
 Step 4: Ensure that the JSON object is properly formatted and valid. The output should not contain any XML tags. Only the JSON object should be outputted.
 
