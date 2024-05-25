@@ -212,7 +212,7 @@ const ProviderDetail = ({
       </div>
       <div className='mt-2 min-h-[36px] text-gray-500 text-sm leading-[18px]'>{collection.description[language]}</div>
       <div className='flex gap-1 border-b-[0.5px] border-black/5'>
-        {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && needAuth && (
+        {(collection.type === CollectionType.builtIn) && needAuth && (
           <Button
             type={isAuthed ? 'default' : 'primary'}
             className={cn('shrink-0 my-3 w-full flex items-center', isAuthed && 'bg-white')}
@@ -236,13 +236,13 @@ const ProviderDetail = ({
             <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
           </Button>
         )}
-        {collection.type === CollectionType.workflow && !isDetailLoading && (
+        {collection.type === CollectionType.workflow && !isDetailLoading && customCollection && (
           <>
             <Button
               type='primary'
               className={cn('shrink-0 my-3 w-[183px] flex items-center')}
             >
-              <a className='flex items-center text-white' href={`/app/${collection.id}/workflow`} rel='noreferrer' target='_blank'>
+              <a className='flex items-center text-white' href={`/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
                 <div className='leading-5 text-sm font-medium'>{t('tools.openInStudio')}</div>
                 <LinkExternal02 className='ml-1 w-4 h-4' />
               </a>
