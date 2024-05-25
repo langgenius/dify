@@ -179,7 +179,8 @@ class Config:
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
             'max_overflow': int(get_env('SQLALCHEMY_MAX_OVERFLOW')),
             'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE')),
-            'pool_pre_ping': get_bool_env('SQLALCHEMY_POOL_PRE_PING')
+            'pool_pre_ping': get_bool_env('SQLALCHEMY_POOL_PRE_PING'),
+            'connect_args': {'options': '-c timezone=UTC'},
         }
 
         self.SQLALCHEMY_ECHO = get_bool_env('SQLALCHEMY_ECHO')
@@ -316,6 +317,9 @@ class Config:
         self.UPLOAD_FILE_BATCH_LIMIT = int(get_env('UPLOAD_FILE_BATCH_LIMIT'))
         self.UPLOAD_IMAGE_FILE_SIZE_LIMIT = int(get_env('UPLOAD_IMAGE_FILE_SIZE_LIMIT'))
 
+        self.WORKFLOW_MAX_EXECUTION_STEPS = int(get_env('WORKFLOW_MAX_EXECUTION_STEPS'))
+        self.WORKFLOW_MAX_EXECUTION_TIME = int(get_env('WORKFLOW_MAX_EXECUTION_TIME'))
+
         # Moderation in app Configurations.
         self.OUTPUT_MODERATION_BUFFER_SIZE = int(get_env('OUTPUT_MODERATION_BUFFER_SIZE'))
 
@@ -387,6 +391,3 @@ class Config:
         # Indexing Configurations.
         # ------------------------
         self.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH = get_env('INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH')
-
-        self.WORKFLOW_MAX_EXECUTION_STEPS = get_env('WORKFLOW_MAX_EWORKFLOW_MAX_EXECUTION_STEPSXECUTION_STEPS')
-        self.WORKFLOW_MAX_EXECUTION_TIME = get_env('WORKFLOW_MAX_EXECUTION_TIME')
