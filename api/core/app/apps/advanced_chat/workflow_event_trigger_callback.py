@@ -179,7 +179,7 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
     def on_workflow_iteration_completed(self, node_id: str, 
                                         node_type: NodeType,
                                         node_run_index: int,
-                                        outputs: list[Any]) -> None:
+                                        outputs: dict) -> None:
         """
         Publish iteration completed
         """

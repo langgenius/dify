@@ -379,7 +379,7 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         node_id: str
         node_type: str
         title: str
-        outputs: Optional[list[Any]]
+        outputs: Optional[dict]
         created_at: int
         extras: dict = None
         inputs: dict = None

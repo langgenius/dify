@@ -215,9 +215,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
         ).first()
 
         workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
-        workflow_node_execution.outputs = json.dumps({
-            'output': event.outputs
-        })
+        workflow_node_execution.outputs = json.dumps(event.outputs) if event.outputs else None
         workflow_node_execution.elapsed_time = time.perf_counter() - current_iteration.started_at
         
         original_node_execution_metadata = workflow_node_execution.execution_metadata_dict

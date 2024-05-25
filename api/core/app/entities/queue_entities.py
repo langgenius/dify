@@ -98,7 +98,7 @@ class QueueIterationCompletedEvent(AppQueueEvent):
     node_type: NodeType
     
     node_run_index: int
-    outputs: list[Any]
+    outputs: dict
 
 class QueueTextChunkEvent(AppQueueEvent):
     """
