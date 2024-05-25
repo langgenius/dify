@@ -414,7 +414,7 @@ const translation = {
       output: '输出变量',
       iteration_one: '{{count}}个迭代',
       iteration_other: '{{count}}个迭代',
-      iterationContent: '迭代内容',
+      currentIteration: '当前迭代',
     },
   },
   tracing: {
