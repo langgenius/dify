@@ -223,6 +223,7 @@ const AppPublisher = ({
                 name={appDetail?.name}
                 description={appDetail?.description}
                 inputs={inputs}
+                handlePublish={handlePublish}
                 onRefreshData={onRefreshData}
               />
             )}

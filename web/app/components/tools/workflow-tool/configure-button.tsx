@@ -23,6 +23,7 @@ type Props = {
   name: string
   description: string
   inputs?: InputVar[]
+  handlePublish: () => void
   onRefreshData?: () => void
 }
 
@@ -35,6 +36,7 @@ const WorkflowToolConfigureButton = ({
   name,
   description,
   inputs,
+  handlePublish,
   onRefreshData,
 }: Props) => {
   const { t } = useTranslation()
@@ -42,7 +44,13 @@ const WorkflowToolConfigureButton = ({
   const [showModal, setShowModal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [detail, setDetail] = useState<WorkflowToolProviderResponse>()
-  const [outdated, setOutdated] = useState(false)
+  // const [outdated, setOutdated] = useState(false)
+
+  const outdated = useMemo(() => {
+    if (!detail)
+      return false
+    return detail.tool.parameters.length !== inputs?.length
+  }, [detail, inputs])
 
   const payload = useMemo(() => {
     let parameters: WorkflowToolProviderParameter[] = []
@@ -58,28 +66,28 @@ const WorkflowToolConfigureButton = ({
       })
     }
     else if (detail && detail.tool) {
-      if (outdated) {
-        parameters = (inputs || []).map((item) => {
-          return {
-            name: item.variable,
-            required: item.required,
-            type: item.type,
-            description: detail.tool.parameters.find(param => param.name === item.variable)?.llm_description || '',
-            form: detail.tool.parameters.find(param => param.name === item.variable)?.form || 'llm',
-          }
-        })
-      }
-      else {
-        parameters = detail.tool.parameters.map((item) => {
-          return {
-            name: item.name,
-            description: item.llm_description,
-            form: item.form,
-            required: item.required,
-            type: item.type,
-          }
-        })
-      }
+      // if (outdated) {
+      parameters = (inputs || []).map((item) => {
+        return {
+          name: item.variable,
+          required: item.required,
+          type: item.type,
+          description: detail.tool.parameters.find(param => param.name === item.variable)?.llm_description || '',
+          form: detail.tool.parameters.find(param => param.name === item.variable)?.form || 'llm',
+        }
+      })
+      // }
+      // else {
+      //   parameters = detail.tool.parameters.map((item) => {
+      //     return {
+      //       name: item.name,
+      //       description: item.llm_description,
+      //       form: item.form,
+      //       required: item.required,
+      //       type: item.type,
+      //     }
+      //   })
+      // }
     }
     return {
       icon: detail?.icon || icon,
@@ -97,13 +105,13 @@ const WorkflowToolConfigureButton = ({
           workflow_app_id: workflowAppId,
         }),
     }
-  }, [detail, outdated, published, workflowAppId, icon, name, description, inputs])
+  }, [detail, published, workflowAppId, icon, name, description, inputs])
 
   const getDetail = useCallback(async (workflowAppId: string) => {
     setIsLoading(true)
     const res = await fetchWorkflowToolDetailByAppID(workflowAppId)
     setDetail(res)
-    setOutdated(!res?.synced)
+    // setOutdated(!res?.synced)
     setIsLoading(false)
   }, [])
 
@@ -138,6 +146,7 @@ const WorkflowToolConfigureButton = ({
     workflow_tool_id: string
   }>) => {
     try {
+      await handlePublish()
       await saveWorkflowToolProvider(data)
       onRefreshData?.()
       getDetail(workflowAppId)
