@@ -90,7 +90,7 @@ jobs:
 
     steps:
       - name: Install poetry
-        uses: abatilo/actions-poetry@v2
+        uses: abatilo/actions-poetry@v3
         with:
           poetry-version: "1.8.1"
 

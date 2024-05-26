@@ -635,13 +635,12 @@ cffi = ">=1.0.0"
 
 [[package]]
 name = "bs4"
-version = "0.0.2"
-description = "Dummy package for Beautiful Soup (beautifulsoup4)"
+version = "0.0.1"
+description = "Dummy package for Beautiful Soup"
 optional = false
 python-versions = "*"
 files = [
-    {file = "bs4-0.0.2-py2.py3-none-any.whl", hash = "sha256:abf8742c0805ef7f662dce4b51cca104cffe52b835238afc169142ab9b3fbccc"},
-    {file = "bs4-0.0.2.tar.gz", hash = "sha256:a48685c58f50fe127722417bae83fe6badf500d54b55f7e39ffe43b798653925"},
+    {file = "bs4-0.0.1.tar.gz", hash = "sha256:36ecea1fd7cc5c0c6e4a1ff075df26d50da647b75376626cc186e2212886dd3a"},
 ]
 
 [package.dependencies]
@@ -4837,7 +4836,10 @@ files = [
 grpcio = ">=1.41.0"
 grpcio-tools = ">=1.41.0"
 httpx = {version = ">=0.14.0", extras = ["http2"]}
-numpy = {version = ">=1.21", markers = "python_version >= \"3.8\" and python_version < \"3.12\""}
+numpy = [
+    {version = ">=1.21", markers = "python_version >= \"3.8\" and python_version < \"3.12\""},
+    {version = ">=1.26", markers = "python_version >= \"3.12\""},
+]
 portalocker = ">=2.7.0,<3.0.0"
 pydantic = ">=1.10.8"
 urllib3 = ">=1.26.14,<3"
@@ -6755,5 +6757,5 @@ cffi = ["cffi (>=1.11)"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = ">=3.10,<3.12"
-content-hash = "453f390e2e7d05e2b7ccb0009a400b6cc1291c4e5ef72ebf5ffc48b6c2cde7ce"
+python-versions = "^3.10"
+content-hash = "f4261113d6c4b775d4cf9876260e0b27da9023b0164e3580eebda1b251e63586"
