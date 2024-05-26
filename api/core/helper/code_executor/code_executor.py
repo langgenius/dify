@@ -101,7 +101,7 @@ class CodeExecutor:
         except Exception as e:
             raise CodeExecutionException('Failed to execute code, which is likely a network issue,'
                                          ' please check if the sandbox service is running.'
-                                         f' Error: {str(e)}')
+                                         f' ( Error: {str(e)} )')
         
         try:
             response = response.json()
