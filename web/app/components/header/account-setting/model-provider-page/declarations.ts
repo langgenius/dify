@@ -224,3 +224,19 @@ export type ModelParameterRule = {
   options?: string[]
   tagPlaceholder?: TypeWithI18N
 }
+
+export type ModelLoadBalancingConfigEntry = {
+  /** model balancing config entry id */
+  id: string
+  /** is model balancing enabled */
+  enabled: boolean
+  /** config entry name */
+  name: string
+  /** model balancing credential */
+  credentials: Record<string, string | undefined | boolean>
+}
+
+export type ModelLoadBalancingConfig = {
+  enabled: boolean
+  configs: ModelLoadBalancingConfigEntry[]
+}

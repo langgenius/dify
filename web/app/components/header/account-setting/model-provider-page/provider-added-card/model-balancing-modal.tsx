@@ -1,7 +1,8 @@
-import { memo } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import classNames from 'classnames'
-import type { ModelItem, ModelProvider } from '../declarations'
+import useSWR from 'swr'
+import type { ModelItem, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import Modal from '@/app/components/base/modal'
@@ -13,10 +14,12 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alert
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import Button from '@/app/components/base/button'
+import { fetchModelLoadBalancingConfig } from '@/service/common'
+import Loading from '@/app/components/base/loading'
 
 export type ModelBalancingModalProps = {
   provider: ModelProvider
-  model?: ModelItem
+  model: ModelItem
   open?: boolean
   onClose?: () => void
 }
@@ -25,7 +28,53 @@ export type ModelBalancingModalProps = {
 const ModelBalancingModal = ({ provider, model, open = false, onClose }: ModelBalancingModalProps) => {
   const { t } = useTranslation()
 
-  // const { data: providersData } = useSWR(`/workspaces/current/model-providers/${provider.provider}/models/load-balancing-configs/:config_id`, fetchModelProviders)
+  // useProviderCredentialsFormSchemasValue(provider.provider, model.fetch_from)
+  const { data } = useSWR(
+    `/workspaces/current/model-providers/${provider.provider}/models/credentials?model=${model.model}&model_type=${model.model_type}`,
+    fetchModelLoadBalancingConfig,
+  )
+
+  const originalConfig = data?.load_balancing
+  const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig>()
+  useEffect(() => {
+    if (originalConfig && !draftConfig)
+      setDraftConfig(originalConfig)
+  }, [draftConfig, originalConfig])
+
+  const toggleModalBalancing = useCallback((enabled: boolean) => {
+    if (draftConfig) {
+      setDraftConfig({
+        ...draftConfig,
+        enabled,
+      })
+    }
+  }, [draftConfig])
+
+  const updateConfigEntry = useCallback(
+    (
+      index: number,
+      modifier: (entry: ModelLoadBalancingConfigEntry) => ModelLoadBalancingConfigEntry,
+    ) => {
+      setDraftConfig((prev) => {
+        if (!prev)
+          return prev
+        const newConfigs = [...prev.configs]
+        newConfigs[index] = modifier(newConfigs[index])
+        return {
+          ...prev,
+          configs: newConfigs,
+        }
+      })
+    },
+    [],
+  )
+
+  const toggleConfigEntryEnabled = useCallback((index: number, state?: boolean) => {
+    updateConfigEntry(index, entry => ({
+      ...entry,
+      enabled: typeof state === 'boolean' ? state : !entry.enabled,
+    }))
+  }, [updateConfigEntry])
 
   return (
     <Modal
@@ -55,115 +104,151 @@ const ModelBalancingModal = ({ provider, model, open = false, onClose }: ModelBa
         </div>
       }
     >
-      <div className='py-2'>
-        <div className={classNames('min-h-16 bg-gray-50 border rounded-xl', 'border-gray-200 cursor-pointer')}>
-          <div className='flex items-center px-[15px] py-3 gap-2 select-none'>
-            <div className='grow-0 flex items-center justify-center w-8 h-8 bg-white border rounded-lg'>
-              {Boolean(model) && (
-                <ModelIcon className='shrink-0' provider={provider} modelName={model!.model} />
-              )}
-            </div>
-            <div className='grow'>
-              <div className='text-sm'>{t('common.modelProvider.providerManaged')}</div>
-              <div className='text-xs text-gray-500'>Todo</div>
-            </div>
-          </div>
-        </div>
-
-        <div className={classNames('mt-2 bg-gray-50 min-h-16 border rounded-xl', 'border-primary-400 cursor-default')}>
-          <div className='flex items-center px-[15px] py-3 gap-2 select-none'>
-            <div className='grow-0 flex items-center justify-center w-8 h-8 text-primary-600 bg-indigo-50 border border-indigo-100 rounded-lg'>
-              <Balance className='w-4 h-4' />
-            </div>
-            <div className='grow'>
-              <div className='flex items-center gap-1 text-sm'>
-                {t('common.modelProvider.loadBalancing')}
-                <TooltipPlus popupContent={t('common.modelProvider.loadBalancingInfo')} popupClassName='max-w-[300px]'>
-                  <HelpCircle className='w-3 h-3 text-gray-400' />
-                </TooltipPlus>
-              </div>
-              <div className='text-xs text-gray-500'>Todo</div>
-            </div>
-          </div>
-
-          <div className='px-3 pb-3'>
-            <div className='group flex items-center px-3 h-10 bg-white border border-gray-200 rounded-lg shadow-xs'>
-              <div className='grow flex items-center'>
-                <div className='flex items-center justify-center mr-2 w-3 h-3'>
-                  <TooltipPlus popupContent={t('common.modelProvider.apiKeyStatusNormal')}>
-                    <Indicator color='green' />
-                  </TooltipPlus>
+      {!draftConfig
+        ? <Loading type='area' />
+        : (
+          <>
+            <div className='py-2'>
+              <div
+                className={classNames(
+                  'min-h-16 bg-gray-50 border rounded-xl transition-colors',
+                  draftConfig.enabled ? 'border-gray-200 cursor-pointer' : 'border-primary-400 cursor-default',
+                )}
+                onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}
+              >
+                <div className='flex items-center px-[15px] py-3 gap-2 select-none'>
+                  <div className='grow-0 flex items-center justify-center w-8 h-8 bg-white border rounded-lg'>
+                    {Boolean(model) && (
+                      <ModelIcon className='shrink-0' provider={provider} modelName={model!.model} />
+                    )}
+                  </div>
+                  <div className='grow'>
+                    <div className='text-sm'>{t('common.modelProvider.providerManaged')}</div>
+                    <div className='text-xs text-gray-500'>Todo</div>
+                  </div>
                 </div>
-                <div className='text-[13px] mr-1'>{t('common.modelProvider.defaultConfig')}</div>
-                <span className='px-1 text-2xs uppercase text-gray-500 border border-black/8 rounded-[5px]'>{t('common.modelProvider.providerManaged')}</span>
               </div>
-              <div className='flex items-center gap-1'>
-                <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
-                  <span className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'>
-                    <Edit02 className='w-4 h-4' />
-                  </span>
-                  <span className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'>
-                    <Trash03 className='w-4 h-4' />
-                  </span>
-                  <span className='mr-2 h-3 border-r border-r-gray-100' />
+
+              <div
+                className={classNames(
+                  'mt-2 min-h-16 bg-gray-50 border rounded-xl transition-colors',
+                  !draftConfig.enabled ? 'border-gray-200 cursor-pointer' : 'border-primary-400 cursor-default',
+                )}
+                onClick={!draftConfig.enabled ? () => toggleModalBalancing(true) : undefined}
+              >
+                <div className='flex items-center px-[15px] py-3 gap-2 select-none'>
+                  <div className='grow-0 flex items-center justify-center w-8 h-8 text-primary-600 bg-indigo-50 border border-indigo-100 rounded-lg'>
+                    <Balance className='w-4 h-4' />
+                  </div>
+                  <div className='grow'>
+                    <div className='flex items-center gap-1 text-sm'>
+                      {t('common.modelProvider.loadBalancing')}
+                      <TooltipPlus popupContent={t('common.modelProvider.loadBalancingInfo')} popupClassName='max-w-[300px]'>
+                        <HelpCircle className='w-3 h-3 text-gray-400' />
+                      </TooltipPlus>
+                    </div>
+                    <div className='text-xs text-gray-500'>Todo</div>
+                  </div>
                 </div>
-                <Switch
-                  defaultValue={false}
-                  size='md'
-                  className='justify-self-end'
-                  onChange={async value => value}
-                />
+                {draftConfig.enabled && (
+                  <div className='px-3 pb-3'>
+                    {draftConfig.configs.map((config, index) => {
+                      const isProviderManaged = config.name === '__inherit__'
+                      return (
+                        <div key={config.id || index} className='group flex items-center px-3 h-10 bg-white border border-gray-200 rounded-lg shadow-xs'>
+                          <div className='grow flex items-center'>
+                            <div className='flex items-center justify-center mr-2 w-3 h-3'>
+                              <TooltipPlus popupContent={t('common.modelProvider.apiKeyStatusNormal')}>
+                                <Indicator color='green' />
+                              </TooltipPlus>
+                            </div>
+                            <div className='text-[13px] mr-1'>
+                              {isProviderManaged ? t('common.modelProvider.defaultConfig') : config.name}
+                            </div>
+                            {isProviderManaged && (
+                              <span className='px-1 text-2xs uppercase text-gray-500 border border-black/8 rounded-[5px]'>{t('common.modelProvider.providerManaged')}</span>
+                            )}
+                          </div>
+                          <div className='flex items-center gap-1'>
+                            {!isProviderManaged && (
+                              <>
+                                <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
+                                  <span className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'>
+                                    <Edit02 className='w-4 h-4' />
+                                  </span>
+                                  <span className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'>
+                                    <Trash03 className='w-4 h-4' />
+                                  </span>
+                                  <span className='mr-2 h-3 border-r border-r-gray-100' />
+                                </div>
+                              </>
+                            )}
+                            <Switch
+                              defaultValue={Boolean(config.enabled)}
+                              size='md'
+                              className='justify-self-end'
+                              onChange={value => toggleConfigEntryEnabled(index, value)}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+
+                    <div className='group flex items-center mt-1 px-3 h-10 bg-white border border-gray-200 rounded-lg shadow-xs'>
+                      <div className='grow flex items-center'>
+                        <div className='flex items-center justify-center mr-2 w-3 h-3'>
+                          <TooltipPlus popupContent={t('common.modelProvider.apiKeyRateLimit', { seconds: 60 })}>
+                            <SimplePieChart percentage={80} className='w-3 h-3' />
+                          </TooltipPlus>
+                        </div>
+                        <div className='text-[13px] mr-1'>Another</div>
+                        <span className='px-1 text-2xs uppercase text-gray-500 border border-black/8 rounded-[5px]'>{t('common.modelProvider.providerManaged')}</span>
+                      </div>
+                      <div className='flex items-center gap-1'>
+                        <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
+                          <span className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'>
+                            <Edit02 className='w-4 h-4' />
+                          </span>
+                          <span className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'>
+                            <Trash03 className='w-4 h-4' />
+                          </span>
+                          <span className='mr-2 h-3 border-r border-r-gray-100' />
+                        </div>
+                        <Switch
+                          defaultValue={false}
+                          size='md'
+                          className='justify-self-end'
+                          onChange={async value => value}
+                        />
+                      </div>
+                    </div>
+
+                    <div className='flex items-center px-3 mt-1 h-8 text-[13px] font-medium text-primary-600'>
+                      <div className='flex items-center cursor-pointer'>
+                        <Plus02 className='mr-2 w-3 h-3' />{t('common.modelProvider.addConfig')}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {
+                  draftConfig.enabled && draftConfig.configs.length < 2 && (
+                    <div className='flex items-center px-6 h-[34px] text-xs text-gray-700 bg-black/2 border-t border-t-black/5'>
+                      <AlertTriangle className='mr-1 w-3 h-3 text-[#f79009]' />
+                      {t('common.modelProvider.loadBalancingLeastKeyWarning')}
+                    </div>
+                  )
+                }
               </div>
             </div>
 
-            <div className='group flex items-center mt-1 px-3 h-10 bg-white border border-gray-200 rounded-lg shadow-xs'>
-              <div className='grow flex items-center'>
-                <div className='flex items-center justify-center mr-2 w-3 h-3'>
-                  <TooltipPlus popupContent={t('common.modelProvider.apiKeyRateLimit', { seconds: 60 })}>
-                    <SimplePieChart percentage={80} className='w-3 h-3' />
-                  </TooltipPlus>
-                </div>
-                <div className='text-[13px] mr-1'>Another</div>
-                <span className='px-1 text-2xs uppercase text-gray-500 border border-black/8 rounded-[5px]'>{t('common.modelProvider.providerManaged')}</span>
-              </div>
-              <div className='flex items-center gap-1'>
-                <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
-                  <span className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'>
-                    <Edit02 className='w-4 h-4' />
-                  </span>
-                  <span className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'>
-                    <Trash03 className='w-4 h-4' />
-                  </span>
-                  <span className='mr-2 h-3 border-r border-r-gray-100' />
-                </div>
-                <Switch
-                  defaultValue={false}
-                  size='md'
-                  className='justify-self-end'
-                  onChange={async value => value}
-                />
-              </div>
+            <div className='flex items-center justify-end gap-2 mt-6'>
+              <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
+              <Button type='primary'>{t('common.operation.save')}</Button>
             </div>
-
-            <div className='flex items-center px-3 mt-1 h-8 text-[13px] font-medium text-primary-600'>
-              <div className='flex items-center cursor-pointer'>
-                <Plus02 className='mr-2 w-3 h-3' />{t('common.modelProvider.addConfig')}
-              </div>
-            </div>
-          </div>
-
-          <div className='flex items-center px-6 h-[34px] text-xs text-gray-700 bg-black/2 border-t border-t-black/5'>
-            <AlertTriangle className='mr-1 w-3 h-3 text-[#f79009]' />
-            {t('common.modelProvider.loadBalancingLeastKeyWarning')}
-          </div>
-        </div>
-      </div>
-
-      <div className='flex items-center justify-end gap-2 mt-6'>
-        <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
-        <Button type='primary'>{t('common.operation.save')}</Button>
-      </div>
-    </Modal>
+          </>
+        )
+      }
+    </Modal >
   )
 }
 

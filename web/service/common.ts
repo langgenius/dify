@@ -30,6 +30,7 @@ import type {
   DefaultModelResponse,
   Model,
   ModelItem,
+  ModelLoadBalancingConfig,
   ModelParameterRule,
   ModelProvider,
   ModelTypeEnum,
@@ -168,6 +169,16 @@ export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (
 
 export const fetchModelProviderCredentials: Fetcher<{ credentials?: Record<string, string | undefined | boolean> }, string> = (url) => {
   return get<{ credentials?: Record<string, string | undefined | boolean> }>(url)
+}
+
+export const fetchModelLoadBalancingConfig: Fetcher<{
+  credentials?: Record<string, string | undefined | boolean>
+  load_balancing: ModelLoadBalancingConfig
+}, string> = (url) => {
+  return get<{
+    credentials?: Record<string, string | undefined | boolean>
+    load_balancing: ModelLoadBalancingConfig
+  }>(url)
 }
 
 export const fetchModelProviderModelList: Fetcher<{ data: ModelItem[] }, string> = (url) => {

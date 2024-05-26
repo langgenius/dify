@@ -82,12 +82,14 @@ const ModelList: FC<ModelListProps> = ({
           ))
         }
       </div>
-      <ModelBalancingModal {...{
-        provider,
-        model: balancingModel,
-        open: !!balancingModel,
-        onClose: () => setBalancingModel(undefined),
-      }} />
+      {Boolean(balancingModel) && (
+        <ModelBalancingModal {...{
+          provider,
+          model: balancingModel!,
+          open: !!balancingModel,
+          onClose: () => setBalancingModel(undefined),
+        }} />
+      )}
     </div>
   )
 }

@@ -62,7 +62,7 @@ export const useLanguage = () => {
   return locale.replace('-', '_')
 }
 
-export const useProviderCrenditialsFormSchemasValue = (
+export const useProviderCredentialsFormSchemasValue = (
   provider: string,
   configurateMethod: ConfigurationMethodEnum,
   configured?: boolean,

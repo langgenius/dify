@@ -278,6 +278,7 @@ const translation = {
       key: 'Rerank Model',
       tip: 'Rerank model will reorder the candidate document list based on the semantic match with  user query, improving the results of semantic ranking',
     },
+    apiKey: 'API-KEY',
     quota: 'Quota',
     searchModel: 'Search model',
     noModelFound: 'No model found for {{model}}',

@@ -28,7 +28,7 @@ import {
 } from '../utils'
 import {
   useLanguage,
-  useProviderCrenditialsFormSchemasValue,
+  useProviderCredentialsFormSchemasValue,
 } from '../hooks'
 import ProviderIcon from '../provider-icon'
 import { useValidate } from '../../key-validator/hooks'
@@ -61,7 +61,7 @@ const ModelModal: FC<ModelModalProps> = ({
   onSave,
 }) => {
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
-  const formSchemasValue = useProviderCrenditialsFormSchemasValue(
+  const formSchemasValue = useProviderCredentialsFormSchemasValue(
     provider.provider,
     configurateMethod,
     providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
