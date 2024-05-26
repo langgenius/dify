@@ -44,6 +44,11 @@ const translation = {
         webDescTip: 'This text will be displayed on the client side, providing basic guidance on how to use the application',
         webDescPlaceholder: 'Enter the description of the WebApp',
         language: 'Language',
+        chatColorTheme: 'Chat color theme',
+        chatColorThemeDesc: 'Set the color theme of the chatbot',
+        chatColorThemeInverted: 'Inverted',
+        invalidHexMessage: 'Invalid hex value',
+
         more: {
           entry: 'Show more settings',
           copyright: 'Copyright',

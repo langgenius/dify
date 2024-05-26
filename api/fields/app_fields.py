@@ -110,6 +110,8 @@ site_fields = {
     'icon_background': fields.String,
     'description': fields.String,
     'default_language': fields.String,
+    'chat_color_theme': fields.String,
+    'chat_color_theme_inverted': fields.Boolean,
     'customize_domain': fields.String,
     'copyright': fields.String,
     'privacy_policy': fields.String,
