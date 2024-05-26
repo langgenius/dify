@@ -4,9 +4,5 @@ model_properties:
   context_size: 8192
 pricing:
   input: '0.00002'
---
-
-
-<br class="Apple-interchange-newline">'
-  unit: '0.001'
+  unit: '0.00001'
   currency: USD
