@@ -53,13 +53,17 @@ const ModelBalancingModal = ({ provider, model, open = false, onClose }: ModelBa
   const updateConfigEntry = useCallback(
     (
       index: number,
-      modifier: (entry: ModelLoadBalancingConfigEntry) => ModelLoadBalancingConfigEntry,
+      modifier: (entry: ModelLoadBalancingConfigEntry) => ModelLoadBalancingConfigEntry | undefined,
     ) => {
       setDraftConfig((prev) => {
         if (!prev)
           return prev
         const newConfigs = [...prev.configs]
-        newConfigs[index] = modifier(newConfigs[index])
+        const modifiedConfig = modifier(newConfigs[index])
+        if (modifiedConfig)
+          newConfigs[index] = modifiedConfig
+        else
+          newConfigs.splice(index, 1)
         return {
           ...prev,
           configs: newConfigs,
@@ -176,7 +180,10 @@ const ModelBalancingModal = ({ provider, model, open = false, onClose }: ModelBa
                                   <span className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'>
                                     <Edit02 className='w-4 h-4' />
                                   </span>
-                                  <span className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'>
+                                  <span
+                                    className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'
+                                    onClick={() => updateConfigEntry(index, () => undefined)}
+                                  >
                                     <Trash03 className='w-4 h-4' />
                                   </span>
                                   <span className='mr-2 h-3 border-r border-r-gray-100' />
