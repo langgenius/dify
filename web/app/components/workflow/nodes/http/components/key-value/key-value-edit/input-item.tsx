@@ -49,7 +49,7 @@ const InputItem: FC<Props> = ({
   }, [onRemove])
 
   return (
-    <div className={cn(className, 'hover:bg-gray-50 hover:cursor-text', 'relative flex h-full items-center')}>
+    <div className={cn(className, 'hover:bg-gray-50 hover:cursor-text', 'relative flex items-center')}>
       {(!readOnly)
         ? (
           <Input
