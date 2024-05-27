@@ -166,10 +166,13 @@ class WorkflowToolManageService:
             WorkflowToolProvider.tenant_id == tenant_id
         ).all()
 
-        tools = [
-            ToolTransformService.workflow_provider_to_controller(provider)
-            for provider in db_tools
-        ]
+        tools = []
+        for provider in db_tools:
+            try:
+                tools.append(ToolTransformService.workflow_provider_to_controller(provider))
+            except:
+                # skip deleted tools
+                pass
 
         labels = ToolLabelManager.get_tools_labels(tools)
 
