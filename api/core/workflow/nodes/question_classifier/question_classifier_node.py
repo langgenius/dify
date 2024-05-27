@@ -282,6 +282,7 @@ class QuestionClassifierNode(LLMNode):
             raise ValueError(f"Model mode {model_mode} not support.")
 
     def _format_instruction(self, instruction: str, variable_pool: VariablePool) -> str:
+        instruction = instruction or ''
         inputs = {}
 
         variable_selectors = []
