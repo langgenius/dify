@@ -58,7 +58,7 @@ const AddBlock = ({
         iteration_id: iterationNodeId,
       },
       position: {
-        x: 85,
+        x: 117,
         y: 85,
       },
       zIndex: 1001,
@@ -98,7 +98,7 @@ const AddBlock = ({
           <IterationStart className='w-4 h-4 text-white' />
         </div>
       </TooltipPlus>
-      <div className='group/insert relative w-8 h-0.5 bg-gray-300'>
+      <div className='group/insert relative w-16 h-0.5 bg-gray-300'>
         {
           iterationNodeData.startNodeType && (
             <InsertBlock
