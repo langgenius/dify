@@ -2,11 +2,12 @@ import { useCallback, useState } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import { v4 as uuid4 } from 'uuid'
-import type { ValueSelector } from '../../types'
+import type { ValueSelector, Var } from '../../types'
 import { VarType } from '../../types'
 import type { VarGroupItem, VariableAssignerNodeType } from './types'
-import { useVariableAssigner } from './hooks'
+import { useGetAvailableVars, useVariableAssigner } from './hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+
 import {
   useNodesReadOnly,
   useWorkflow,
@@ -40,6 +41,17 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       setInputs(newInputs)
     }
   }, [inputs, setInputs])
+
+  const getAvailableVars = useGetAvailableVars()
+  const filterVar = (varType: VarType) => {
+    return (v: Var) => {
+      if (varType === VarType.any)
+        return true
+      if (v.type === VarType.any)
+        return true
+      return v.type === varType
+    }
+  }
 
   const [isShowRemoveVarConfirm, {
     setTrue: showRemoveVarConfirm,
@@ -172,6 +184,8 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
     isShowRemoveVarConfirm,
     hideRemoveVarConfirm,
     onRemoveVarConfirm,
+    getAvailableVars,
+    filterVar,
   }
 }
 

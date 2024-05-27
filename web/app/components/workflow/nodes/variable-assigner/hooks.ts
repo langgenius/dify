@@ -202,7 +202,7 @@ export const useGetAvailableVars = () => {
   const edges: Edge[] = useEdges()
   const { getBeforeNodesInSameBranch } = useWorkflow()
   const isChatMode = useIsChatMode()
-  const getAvailableVars = useCallback((nodeId: string, handleId: string) => {
+  const getAvailableVars = useCallback((nodeId: string, handleId: string, filterVar: (v: Var) => boolean) => {
     const availableNodes: Node[] = []
     const currentNode = nodes.find(node => node.id === nodeId)!
 
@@ -229,9 +229,9 @@ export const useGetAvailableVars = () => {
       t,
       beforeNodes: uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId),
       isChatMode,
-      filterVar: () => true,
+      filterVar,
     })
-  }, [nodes, edges, isChatMode, getBeforeNodesInSameBranch, t])
+  }, [nodes, edges, t, isChatMode, getBeforeNodesInSameBranch])
 
   return getAvailableVars
 }
