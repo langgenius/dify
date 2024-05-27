@@ -32,10 +32,10 @@ class WorkflowToolProviderController(ToolProviderController):
         controller = WorkflowToolProviderController(**{
             'identity': {
                 'author': db_provider.user.name if db_provider.user_id and db_provider.user else '',
-                'name': db_provider.name,
+                'name': db_provider.label,
                 'label': {
-                    'en_US': db_provider.name,
-                    'zh_Hans': db_provider.name
+                    'en_US': db_provider.label,
+                    'zh_Hans': db_provider.label
                 },
                 'description': {
                     'en_US': db_provider.description,
@@ -165,8 +165,8 @@ class WorkflowToolProviderController(ToolProviderController):
                 author=user.name if user else '',
                 name=db_provider.name,
                 label=I18nObject(
-                    en_US=db_provider.label,
-                    zh_Hans=db_provider.label
+                    en_US=db_provider.name,
+                    zh_Hans=db_provider.name
                 ),
                 provider=self.provider_id,
                 icon=db_provider.icon,
