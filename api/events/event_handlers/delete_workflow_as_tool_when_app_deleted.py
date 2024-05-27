@@ -9,6 +9,6 @@ def handle(sender, **kwargs):
     workflow_tools = db.session.query(WorkflowToolProvider).filter(
         WorkflowToolProvider.app_id == app.id
     ).all()
-    for installed_app in workflow_tools:
-        db.session.delete(installed_app)
+    for workflow_tool in workflow_tools:
+        db.session.delete(workflow_tool)
     db.session.commit()
