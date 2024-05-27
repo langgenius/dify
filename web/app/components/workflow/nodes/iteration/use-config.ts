@@ -110,9 +110,15 @@ const useConfig = (id: string, payload: IterationNodeType) => {
           varObjs[varSectorStr] = true
           vars.push(varSelector)
         }
-        allVarObject[`${varSectorStr}${DELIMITER}${node.id}`] = {
-          inSingleRunPassedKey: getNodeUsedVarPassToServerKey(node, varSelector),
-        }
+        let passToServerKeys = getNodeUsedVarPassToServerKey(node, varSelector)
+        if (typeof passToServerKeys === 'string')
+          passToServerKeys = [passToServerKeys]
+
+        passToServerKeys.forEach((key: string, index: number) => {
+          allVarObject[[varSectorStr, node.id, index].join(DELIMITER)] = {
+            inSingleRunPassedKey: key,
+          }
+        })
       })
     })
     const res = toVarInputs(vars.map((item) => {
