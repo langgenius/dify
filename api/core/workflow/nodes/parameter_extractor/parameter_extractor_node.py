@@ -165,7 +165,7 @@ class ParameterExtractorNode(LLMNode):
             process_data=process_data,
             outputs={
                 '__is_success': 1 if not error else 0,
-                '__reason': error
+                '__reason': error,
                 **result,
             },
             metadata={
