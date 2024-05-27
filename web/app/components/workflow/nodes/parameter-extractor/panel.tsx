@@ -119,33 +119,33 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             onChange={handleExactParamsChange}
           />
         </Field>
+        <Editor
+          title={
+            <div className='flex items-center space-x-1'>
+              <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
+              <TooltipPlus popupContent={
+                <div className='w-[120px]'>
+                  {t(`${i18nPrefix}.instructionTip`)}
+                </div>}>
+                <HelpCircle className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
+              </TooltipPlus>
+            </div>
+          }
+          value={inputs.instruction}
+          onChange={handleInstructionChange}
+          readOnly={readOnly}
+          isChatModel={isChatModel}
+          isChatApp={isChatMode}
+          isShowContext={false}
+          hasSetBlockStatus={hasSetBlockStatus}
+          nodesOutputVars={availableVars}
+          availableNodes={availableNodesWithParent}
+        />
         <Field
           title={t(`${i18nPrefix}.advancedSetting`)}
           supportFold
         >
           <>
-            <Editor
-              title={
-                <div className='flex items-center space-x-1'>
-                  <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
-                  <TooltipPlus popupContent={
-                    <div className='w-[120px]'>
-                      {t(`${i18nPrefix}.instructionTip`)}
-                    </div>}>
-                    <HelpCircle className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
-                  </TooltipPlus>
-                </div>
-              }
-              value={inputs.instruction}
-              onChange={handleInstructionChange}
-              readOnly={readOnly}
-              isChatModel={isChatModel}
-              isChatApp={isChatMode}
-              isShowContext={false}
-              hasSetBlockStatus={hasSetBlockStatus}
-              nodesOutputVars={availableVars}
-              availableNodes={availableNodesWithParent}
-            />
 
             {/* Memory */}
             {isChatMode && (
