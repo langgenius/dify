@@ -38,6 +38,7 @@ import {
   getTopLeftNodePosition,
 } from '../utils'
 import type { IterationNodeType } from '../nodes/iteration/types'
+import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useHelpline } from './use-helpline'
@@ -655,7 +656,7 @@ export const useNodesInteractions = () => {
           nodeId: prevNode.id,
           nodeData: prevNode.data,
           variableAssignerNodeId: newNode.id,
-          variableAssignerNodeData: newNode.data,
+          variableAssignerNodeData: (newNode.data as VariableAssignerNodeType),
           variableAssignerNodeHandleId: targetHandle,
           parentNode: nodes.find(node => node.id === newNode.parentId),
           x: -25,
@@ -858,7 +859,7 @@ export const useNodesInteractions = () => {
           nodeId: prevNode.id,
           nodeData: prevNode.data,
           variableAssignerNodeId: newNode.id,
-          variableAssignerNodeData: newNode.data,
+          variableAssignerNodeData: newNode.data as VariableAssignerNodeType,
           variableAssignerNodeHandleId: targetHandle,
           parentNode: nodes.find(node => node.id === newNode.parentId),
           x: -25,

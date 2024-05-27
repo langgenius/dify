@@ -8,8 +8,8 @@ import { useNodes } from 'reactflow'
 import { useStore } from '../../../store'
 import { BlockEnum } from '../../../types'
 import type {
-  type Node,
-  type ValueSelector,
+  Node,
+  ValueSelector,
   VarType,
 } from '../../../types'
 import type { VariableAssignerNodeType } from '../types'

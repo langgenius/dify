@@ -15,8 +15,10 @@ import {
 import type {
   ValueSelector,
   Var,
+  VarType,
 } from '../../../types'
 import { useVariableAssigner } from '../../variable-assigner/hooks'
+import { filterVar } from '../../variable-assigner/utils'
 import AddVariablePopup from './add-variable-popup'
 import { toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
@@ -37,6 +39,16 @@ const AddVariablePopupWithPosition = ({
   const isChatMode = useIsChatMode()
   const { getBeforeNodesInSameBranch } = useWorkflow()
 
+  const outputType = useMemo(() => {
+    if (!showAssignVariablePopup)
+      return ''
+
+    if (showAssignVariablePopup.variableAssignerNodeHandleId === 'target')
+      return showAssignVariablePopup.variableAssignerNodeData.output_type
+
+    const group = showAssignVariablePopup.variableAssignerNodeData.advanced_settings?.groups.find(group => group.groupId === showAssignVariablePopup.variableAssignerNodeHandleId)
+    return group?.output_type || ''
+  }, [showAssignVariablePopup])
   const availableVars = useMemo(() => {
     if (!showAssignVariablePopup)
       return []
@@ -52,9 +64,9 @@ const AddVariablePopupWithPosition = ({
         } as any,
       ],
       isChatMode,
-      filterVar: () => true,
+      filterVar: filterVar(outputType as VarType),
     })
-  }, [getBeforeNodesInSameBranch, isChatMode, showAssignVariablePopup, t])
+  }, [getBeforeNodesInSameBranch, isChatMode, showAssignVariablePopup, t, outputType])
 
   useClickAway(() => {
     if (nodeData._holdAddVariablePopup) {
