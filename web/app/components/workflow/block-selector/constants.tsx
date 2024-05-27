@@ -56,8 +56,8 @@ export const BLOCKS: Block[] = [
   },
   {
     classification: BlockClassificationEnum.Transform,
-    type: BlockEnum.VariableAssigner,
-    title: 'Variable Assigner',
+    type: BlockEnum.VariableAggregator,
+    title: 'Variable Aggregator',
   },
   {
     classification: BlockClassificationEnum.Transform,

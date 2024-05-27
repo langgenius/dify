@@ -133,6 +133,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailableNextNodes: VariableAssignerDefault.getAvailableNextNodes,
     checkValid: VariableAssignerDefault.checkValid,
   },
+  [BlockEnum.VariableAggregator]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: VariableAssignerDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: VariableAssignerDefault.getAvailableNextNodes,
+    checkValid: VariableAssignerDefault.checkValid,
+  },
   [BlockEnum.ParameterExtractor]: {
     author: 'Dify',
     about: '',
@@ -251,6 +260,14 @@ export const NODES_INITIAL_DATA = {
     output_type: '',
     ...VariableAssignerDefault.defaultValue,
   },
+  [BlockEnum.VariableAggregator]: {
+    type: BlockEnum.VariableAggregator,
+    title: '',
+    desc: '',
+    variables: [],
+    output_type: '',
+    ...VariableAssignerDefault.defaultValue,
+  },
   [BlockEnum.Tool]: {
     type: BlockEnum.Tool,
     title: '',
@@ -300,7 +317,7 @@ export const RETRIEVAL_OUTPUT_STRUCT = `{
 
 export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.Start, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
-  BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.QuestionClassifier,
+  BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.VariableAggregator, BlockEnum.QuestionClassifier,
   BlockEnum.ParameterExtractor, BlockEnum.Iteration,
 ]
 

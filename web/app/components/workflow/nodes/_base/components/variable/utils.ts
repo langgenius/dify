@@ -170,6 +170,35 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
       break
     }
 
+    case BlockEnum.VariableAggregator: {
+      const {
+        output_type,
+        advanced_settings,
+      } = data as VariableAssignerNodeType
+      const isGroup = !!advanced_settings?.group_enabled
+      if (!isGroup) {
+        res.vars = [
+          {
+            variable: 'output',
+            type: output_type,
+          },
+        ]
+      }
+      else {
+        res.vars = advanced_settings?.groups.map((group) => {
+          return {
+            variable: group.group_name,
+            type: VarType.object,
+            children: [{
+              variable: 'output',
+              type: group.output_type,
+            }],
+          }
+        })
+      }
+      break
+    }
+
     case BlockEnum.Tool: {
       res.vars = TOOL_OUTPUT_STRUCT
       break
@@ -502,6 +531,11 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
 
+    case BlockEnum.VariableAggregator: {
+      res = (data as VariableAssignerNodeType)?.variables
+      break
+    }
+
     case BlockEnum.ParameterExtractor: {
       const payload = (data as ParameterExtractorNodeType)
       res = [payload.query]
@@ -572,6 +606,12 @@ export const getNodeUsedVarPassToServerKey = (node: Node, valueSelector: ValueSe
       res = `#${valueSelector.join('.')}#`
       break
     }
+
+    case BlockEnum.VariableAggregator: {
+      res = `#${valueSelector.join('.')}#`
+      break
+    }
+
     case BlockEnum.ParameterExtractor: {
       res = 'query'
       break
@@ -730,6 +770,17 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
         }
         break
       }
+      case BlockEnum.VariableAggregator: {
+        const payload = data as VariableAssignerNodeType
+        if (payload.variables) {
+          payload.variables = payload.variables.map((v) => {
+            if (v.join('.') === oldVarSelector.join('.'))
+              v = newVarSelector
+            return v
+          })
+        }
+        break
+      }
       case BlockEnum.ParameterExtractor: {
         const payload = data as ParameterExtractorNodeType
         if (payload.query.join('.') === oldVarSelector.join('.'))
@@ -827,6 +878,11 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
     }
 
     case BlockEnum.VariableAssigner: {
+      res.push([id, 'output'])
+      break
+    }
+
+    case BlockEnum.VariableAggregator: {
       res.push([id, 'output'])
       break
     }

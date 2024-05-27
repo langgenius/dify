@@ -21,6 +21,7 @@ export enum BlockEnum {
   TemplateTransform = 'template-transform',
   HttpRequest = 'http-request',
   VariableAssigner = 'variable-assigner',
+  VariableAggregator = 'variable-aggregator',
   Tool = 'tool',
   ParameterExtractor = 'parameter-extractor',
   Iteration = 'iteration',
