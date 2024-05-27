@@ -19,6 +19,7 @@ import { InputVarType, type NodePanelProps } from '@/app/components/workflow/typ
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import { VarType } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 const i18nCommonPrefix = 'workflow.common'
@@ -175,6 +176,16 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
         <div className='px-4 pt-4 pb-2'>
           <OutputVars>
             <>
+              <VarItem
+                name='__is_success'
+                type={VarType.number}
+                description={t(`${i18nPrefix}.isSuccess`)}
+              />
+              <VarItem
+                name='__reason'
+                type={VarType.string}
+                description={t(`${i18nPrefix}.errorReason`)}
+              />
               {inputs.parameters.map((param, index) => (
                 <VarItem
                   key={index}

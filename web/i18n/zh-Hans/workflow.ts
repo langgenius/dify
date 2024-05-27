@@ -400,6 +400,8 @@ const translation = {
       advancedSetting: '高级设置',
       reasoningMode: '推理模式',
       reasoningModeTip: '你可以根据模型对于 Function calling 或 Prompt 的指令响应能力选择合适的推理模式',
+      isSuccess: '是否成功。成功时值为 1，失败时值为 0。',
+      errorReason: '错误原因',
     },
     iteration: {
       deleteTitle: '删除迭代节点？',
