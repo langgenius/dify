@@ -14,7 +14,6 @@ import {
 } from '../../../hooks'
 import type { ValueSelector } from '../../../types'
 import { useVariableAssigner } from '../../variable-assigner/hooks'
-import type { VariableAssignerNodeType } from '../../variable-assigner/types'
 import AddVariablePopup from './add-variable-popup'
 import { toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
@@ -51,10 +50,6 @@ const AddVariablePopupWithPosition = ({
       ],
       isChatMode,
       filterVar: () => true,
-    }).filter((varItem) => {
-      return !(showAssignVariablePopup.variableAssignerNodeData as VariableAssignerNodeType).variables.some((variable) => {
-        return variable[0] === varItem.nodeId
-      })
     })
   }, [getBeforeNodesInSameBranch, isChatMode, showAssignVariablePopup, t])
 
