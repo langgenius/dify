@@ -117,7 +117,7 @@ const translation = {
     'variable-assigner': 'Variable Aggregator',
     'iteration-start': 'Iteration Start',
     'iteration': 'Iteration',
-    'parameter-extractor': 'Parameter Extactor',
+    'parameter-extractor': 'Parameter Extractor',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
