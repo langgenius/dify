@@ -21,6 +21,7 @@ import {
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
+  PARAMETER_EXTRACTOR_COMMON_STRUCT,
   QUESTION_CLASSIFIER_OUTPUT_STRUCT,
   SUPPORT_OUTPUT_VARS_NODE,
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
@@ -175,12 +176,14 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
     }
 
     case BlockEnum.ParameterExtractor: {
-      res.vars = ((data as ParameterExtractorNodeType).parameters || []).map((p) => {
-        return {
-          variable: p.name,
-          type: p.type as unknown as VarType,
-        }
-      })
+      res.vars = [
+        ...PARAMETER_EXTRACTOR_COMMON_STRUCT,
+        ...((data as ParameterExtractorNodeType).parameters || []).map((p) => {
+          return {
+            variable: p.name,
+            type: p.type as unknown as VarType,
+          }
+        })]
       break
     }
 
