@@ -49,6 +49,17 @@ const translation = {
     processData: 'データ処理',
     input: '入力',
     output: '出力',
+    jinjaEditorPlaceholder: '変数を挿入するには「/」または「{」を入力してください',
+    viewOnly: '表示のみ',
+    showRunHistory: '実行履歴を表示',
+    enableJinja: 'Jinjaテンプレートのサポートを有効にする',
+    learnMore: '詳細を学ぶ',
+    copy: 'コピー',
+    duplicate: '複製',
+    addBlock: 'ブロックを追加',
+    pasteHere: 'ここに貼り付け',
+    pointerMode: 'ポインターモード',
+    handMode: 'ハンドモード',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必須です',
@@ -204,6 +215,7 @@ const translation = {
       singleRun: {
         variable: '変数',
       },
+      sysQueryInUser: 'ユーザーメッセージにsys.queryが必要です',
     },
     knowledgeRetrieval: {
       queryVariable: 'クエリ変数',
@@ -261,6 +273,9 @@ const translation = {
     code: {
       inputVars: '入力変数',
       outputVars: '出力変数',
+      advancedDependencies: '高度な依存関係',
+      advancedDependenciesTip: '消費に時間がかかる、またはデフォルトで組み込まれていない事前ロードされた依存関係を追加します',
+      searchDependencies: '依存関係を検索',
     },
     templateTransform: {
       inputVars: '入力変数',
