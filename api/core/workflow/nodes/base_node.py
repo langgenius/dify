@@ -167,38 +167,19 @@ class BaseIterationNode(BaseNode):
         """
         return self._run(variable_pool=variable_pool)
 
-    def get_next_iteration_start_id(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
+    def get_next_iteration(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
         """
         Get next iteration start node id based on the graph.
         :param graph: graph
         :return: next node id
         """
-        return self._get_next_iteration_start_id(variable_pool, state)
-    
-    def set_output(self, variable_pool: VariablePool, state: BaseIterationState) -> None:
-        """
-        Set output
-        :param variable_pool: variable pool
-        :param state: iteration state
-        :return:
-        """
-        self._set_output(variable_pool, state)
+        return self._get_next_iteration(variable_pool, state)
     
     @abstractmethod
-    def _get_next_iteration_start_id(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
+    def _get_next_iteration(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
         """
         Get next iteration start node id based on the graph.
         :param graph: graph
         :return: next node id
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def _set_output(self, variable_pool: VariablePool, state: BaseIterationState) -> None:
-        """
-        Set output
-        :param variable_pool: variable pool
-        :param state: iteration state
-        :return:
         """
         raise NotImplementedError

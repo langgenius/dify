@@ -196,7 +196,7 @@ class WorkflowEngineManager:
                     if current_iteration_node and workflow_run_state.current_iteration_state:
                         # reached loop/iteration end
                         # get next iteration
-                        next_iteration = current_iteration_node.get_next_iteration_start_id(
+                        next_iteration = current_iteration_node.get_next_iteration(
                             variable_pool=workflow_run_state.variable_pool,
                             state=workflow_run_state.current_iteration_state
                         )
@@ -207,10 +207,15 @@ class WorkflowEngineManager:
                             callbacks=callbacks
                         )
                         if isinstance(next_iteration, NodeRunResult):
-                            current_iteration_node.set_output(
-                                variable_pool=workflow_run_state.variable_pool,
-                                state=workflow_run_state.current_iteration_state
-                            )
+                            if next_iteration.outputs:
+                                for variable_key, variable_value in next_iteration.outputs.items():
+                                    # append variables to variable pool recursively
+                                    self._append_variables_recursively(
+                                        variable_pool=workflow_run_state.variable_pool,
+                                        node_id=current_iteration_node.node_id,
+                                        variable_key_list=[variable_key],
+                                        variable_value=variable_value
+                                    )
                             self._workflow_iteration_completed(
                                 current_iteration_node=current_iteration_node,
                                 workflow_run_state=workflow_run_state,
@@ -267,7 +272,7 @@ class WorkflowEngineManager:
                     )
                     predecessor_node = next_node
                     # move to start node of iteration
-                    next_node_id = next_node.get_next_iteration_start_id(
+                    next_node_id = next_node.get_next_iteration(
                         variable_pool=workflow_run_state.variable_pool,
                         state=workflow_run_state.current_iteration_state
                     )

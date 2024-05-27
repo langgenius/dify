@@ -14,12 +14,7 @@ class LoopNode(BaseIterationNode):
     def _run(self, variable_pool: VariablePool) -> LoopState:
         return super()._run(variable_pool)
 
-    def _get_next_iteration_start_id(self, variable_loop: VariablePool) -> NodeRunResult | str:
+    def _get_next_iteration(self, variable_loop: VariablePool) -> NodeRunResult | str:
         """
         Get next iteration start node id based on the graph.
-        """
-
-    def _set_output(self, variable_pool: VariablePool, state: LoopState) -> None:
-        """
-        Set output
         """
