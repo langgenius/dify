@@ -9,7 +9,7 @@ import IterationResultPanel from '../../run/iteration-result-panel'
 import type { IterationNodeType } from './types'
 import useConfig from './use-config'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
-import Field from '@/app/components/app/configuration/config-var/config-modal/field'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import { ArrowNarrowRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
@@ -65,9 +65,12 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
         </Field>
       </div>
       <Split />
-      <div className='px-4 pb-4 space-y-4'>
+      <div className='mt-2 px-4 pb-4 space-y-4'>
         <Field
           title={t(`${i18nPrefix}.output`)}
+          operations={(
+            <div className='flex items-center h-[18px] px-1 border border-black/8 rounded-[5px] text-xs font-medium text-gray-500 capitalize'>Array</div>
+          )}
         >
           <VarReferencePicker
             readonly={readOnly}
