@@ -446,12 +446,12 @@ class ParameterExtractorNode(LLMNode):
                         pass
                 elif parameter.type == 'bool':
                     if isinstance(result[parameter.name], bool):
-                        transformed_result[parameter.name] = result[parameter.name]
+                        transformed_result[parameter.name] = int(result[parameter.name])
                     elif isinstance(result[parameter.name], str):
                         if result[parameter.name].lower() in ['true', 'false']:
-                            transformed_result[parameter.name] = result[parameter.name].lower() == 'true'
+                            transformed_result[parameter.name] = int(result[parameter.name].lower() == 'true')
                     elif isinstance(result[parameter.name], int):
-                        transformed_result[parameter.name] = bool(result[parameter.name])
+                        transformed_result[parameter.name] = result[parameter.name]
                 elif parameter.type in ['string', 'select']:
                     if isinstance(result[parameter.name], str):
                         transformed_result[parameter.name] = result[parameter.name]
