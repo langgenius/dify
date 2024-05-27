@@ -66,7 +66,7 @@ const translation = {
     configure: 'Configure',
     manageInTools: 'Manage in Tools',
     workflowAsToolTip: 'Tool reconfiguration is required after the workflow update.',
-    viewDetailInTracingPanel: 'View details in tracing panel',
+    viewDetailInTracingPanel: 'View details',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
