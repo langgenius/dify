@@ -38,11 +38,11 @@ const translation = {
     editTitle: 'Edit Custom Tool',
     name: 'Name',
     toolNamePlaceHolder: 'Enter the tool name',
-    nameForToolCall: 'Name for tool call',
+    nameForToolCall: 'Tool call name',
     nameForToolCallPlaceHolder: 'Used for machine recognition, such as getCurrentWeather, list_pets',
-    nameForToolCallTip: 'Name for tool call is used for machine recognition, such as getcurrentweather, list_pets. Only supports numbers, letters, and underscores',
+    nameForToolCallTip: 'Only supports numbers, letters, and underscores.',
     description: 'Description',
-    descriptionPlaceholder: 'Enter the tool description',
+    descriptionPlaceholder: 'Brief description of the tool\'s purpose, e.g., get the temperature for a specific location.',
     schema: 'Schema',
     schemaPlaceHolder: 'Enter your OpenAPI schema here',
     viewSchemaSpec: 'View the OpenAPI-Swagger Specification',
@@ -99,7 +99,7 @@ const translation = {
       label: 'Tags',
       labelPlaceholder: 'Choose tags(optional)',
       description: 'Description',
-      descriptionPlaceholder: 'Parameter description',
+      descriptionPlaceholder: 'Description of the parameter\'s meaning',
     },
     customDisclaimer: 'Custom disclaimer',
     customDisclaimerPlaceholder: 'Please enter custom disclaimer',
@@ -145,6 +145,7 @@ const translation = {
   notAuthorized: 'Tool not authorized',
   howToGet: 'How to get',
   openInStudio: 'Open in Studio',
+  toolNameUsageTip: 'Used for LLM call in prompts',
 }
 
 export default translation

@@ -20,6 +20,10 @@ import type {
   Var,
 } from '../../types'
 import { useWorkflowStore } from '../../store'
+import type {
+  VarGroupItem,
+  VariableAssignerNodeType,
+} from './types'
 import { toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 export const useVariableAssigner = () => {
@@ -30,15 +34,15 @@ export const useVariableAssigner = () => {
   const handleAssignVariableValueChange = useCallback((nodeId: string, value: ValueSelector, varDetail: Var, groupId?: string) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
-    const node = nodes.find(node => node.id === nodeId)!
+    const node: Node<VariableAssignerNodeType> = nodes.find(node => node.id === nodeId)!
 
     let payload
     if (groupId && groupId !== 'target') {
       payload = {
         advanced_settings: {
           ...node.data.advanced_settings,
-          groups: node.data.advanced_settings?.groups.map((group: any) => {
-            if (group.groupId === groupId) {
+          groups: node.data.advanced_settings?.groups.map((group: VarGroupItem & { groupId: string }) => {
+            if (group.groupId === groupId && !group.variables.some(item => item.join('.') === (value as ValueSelector).join('.'))) {
               return {
                 ...group,
                 variables: [...group.variables, value],
@@ -51,6 +55,8 @@ export const useVariableAssigner = () => {
       }
     }
     else {
+      if (node.data.variables.some(item => item.join('.') === (value as ValueSelector).join('.')))
+        return
       payload = {
         variables: [...node.data.variables, value],
         output_type: varDetail.type,

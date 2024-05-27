@@ -13,7 +13,7 @@ type Props = {
   readonly: boolean
   nodeId: string
   list: ValueSelector[]
-  onChange: (list: ValueSelector[]) => void
+  onChange: (list: ValueSelector[], value?: ValueSelector) => void
   onOpen?: (index: number) => void
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
 }
@@ -32,7 +32,7 @@ const VarList: FC<Props> = ({
       const newList = produce(list, (draft) => {
         draft[index] = value as ValueSelector
       })
-      onChange(newList)
+      onChange(newList, value as ValueSelector)
     }
   }, [list, onChange])
 

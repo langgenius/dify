@@ -40,9 +40,9 @@ const translation = {
     toolNamePlaceHolder: '输入工具名称',
     nameForToolCall: '工具调用名称',
     nameForToolCallPlaceHolder: '用于机器识别，如 getCurrentWeather, list_pets',
-    nameForToolCallTip: '工具调用名称用于机器识别，如 getcurrentweather, list_pets。仅支持数字、字母、下划线。',
+    nameForToolCallTip: '仅支持数字、字母、下划线。',
     description: '工具描述',
-    descriptionPlaceholder: '输入工具描述',
+    descriptionPlaceholder: '工具用途的简要描述，例如获取特定位置的温度。',
     schema: 'Schema',
     schemaPlaceHolder: '在此处输入您的 OpenAPI schema',
     viewSchemaSpec: '查看 OpenAPI-Swagger 规范',
@@ -99,7 +99,7 @@ const translation = {
       label: '标签',
       labelPlaceholder: '选择标签(可选)',
       description: '描述',
-      descriptionPlaceholder: '参数描述',
+      descriptionPlaceholder: '参数意义的描述',
     },
     customDisclaimer: '自定义免责声明',
     customDisclaimerPlaceholder: '请输入自定义免责声明',
@@ -145,6 +145,7 @@ const translation = {
   notAuthorized: '工具未授权',
   howToGet: '如何获取',
   openInStudio: '在工作室中打开',
+  toolNameUsageTip: '用于提示词中 LLM 调用',
 }
 
 export default translation

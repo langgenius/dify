@@ -14,6 +14,7 @@ import CustomCreateCard from '@/app/components/tools/provider/custom-create-card
 import ContributeCard from '@/app/components/tools/provider/contribute'
 import ProviderCard from '@/app/components/tools/provider/card'
 import ProviderDetail from '@/app/components/tools/provider/detail'
+import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { fetchCollectionList } from '@/service/tools'
 
 const ProviderList = () => {
@@ -73,7 +74,11 @@ const ProviderList = () => {
         )}>
           <TabSliderNew
             value={activeTab}
-            onChange={setActiveTab}
+            onChange={(state) => {
+              setActiveTab(state)
+              if (state !== activeTab)
+                setCurrentProvider(undefined)
+            }}
             options={options}
           />
           <div className='flex items-center gap-2'>
@@ -82,7 +87,7 @@ const ProviderList = () => {
           </div>
         </div>
         <div className={cn(
-          'grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0',
+          'relative grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0',
           currentProvider && 'pr-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
         )}>
           {activeTab === 'builtin' && <ContributeCard />}
@@ -95,6 +100,7 @@ const ProviderList = () => {
               collection={collection}
             />
           ))}
+          {!filteredCollectionList.length && <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'><Empty/></div>}
         </div>
       </div>
       <div className={cn(
