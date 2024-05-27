@@ -166,7 +166,7 @@ class ParameterExtractorNode(LLMNode):
             outputs={
                 '__is_success': 1 if not error else 0,
                 '__reason': error,
-                **result,
+                **result
             },
             metadata={
                 NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
