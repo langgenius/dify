@@ -116,10 +116,10 @@ Here is the chat histories between human and assistant, inside <histories></hist
 
 ### Structure
 Here is the structure of the expected output, I should always follow the output structure. 
-{
+{{γγγ
   'properties1': 'relevant text extracted from input', 
   'properties2': 'relevant text extracted from input', 
-}
+}}γγγ
 
 ### Input Text
 Inside <text></text> XML tags, there is a text that I should extract parameters and convert to a JSON object.
