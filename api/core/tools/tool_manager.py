@@ -474,10 +474,16 @@ class ToolManager:
             workflow_providers: list[WorkflowToolProvider] = db.session.query(WorkflowToolProvider). \
                 filter(WorkflowToolProvider.tenant_id == tenant_id).all()
             
-            workflow_provider_controllers = [
-                ToolTransformService.workflow_provider_to_controller(db_provider=provider)
-                for provider in workflow_providers
-            ]
+            workflow_provider_controllers = []
+            for provider in workflow_providers:
+                try:
+                    workflow_provider_controllers.append(
+                        ToolTransformService.workflow_provider_to_controller(db_provider=provider)
+                    )
+                except Exception as e:
+                    # app has been deleted
+                    pass
+            
             labels = ToolLabelManager.get_tools_labels(workflow_provider_controllers)
 
             for provider_controller in workflow_provider_controllers:
