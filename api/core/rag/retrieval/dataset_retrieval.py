@@ -144,9 +144,9 @@ class DatasetRetrieval:
                                                                                        float('inf')))
             for segment in sorted_segments:
                 if segment.answer:
-                    document_context_list.append(f'question:{segment.content} answer:{segment.answer}')
+                    document_context_list.append(f'question:{segment.get_sign_content()} answer:{segment.answer}')
                 else:
-                    document_context_list.append(segment.content)
+                    document_context_list.append(segment.get_sign_content())
             if show_retrieve_source:
                 context_list = []
                 resource_number = 1

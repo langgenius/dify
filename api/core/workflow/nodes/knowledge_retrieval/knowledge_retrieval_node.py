@@ -191,9 +191,9 @@ class KnowledgeRetrievalNode(BaseNode):
                             'title': document.name
                         }
                         if segment.answer:
-                            source['content'] = f'question:{segment.content} \nanswer:{segment.answer}'
+                            source['content'] = f'question:{segment.get_sign_content()} \nanswer:{segment.answer}'
                         else:
-                            source['content'] = segment.content
+                            source['content'] = segment.get_sign_content()
                         context_list.append(source)
                         resource_number += 1
         return context_list
