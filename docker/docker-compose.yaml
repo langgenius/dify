@@ -36,6 +36,9 @@ services:
       # used to display File preview or download Url to the front-end or as Multi-model inputs;
       # Url is signed and has expiration time.
       FILES_URL: ''
+      # File Access Time specifies a time interval in seconds for the file to be accessed.
+      # The default value is 300 seconds.
+      FILES_ACCESS_TIMEOUT: 300
       # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
       MIGRATION_ENABLED: 'true'
       # The configurations of postgres database connection.
