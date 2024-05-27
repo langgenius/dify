@@ -48,10 +48,26 @@ const WorkflowToolConfigureButton = ({
   const outdated = useMemo(() => {
     if (!detail)
       return false
-    if (detail.tool.parameters.length !== inputs?.length)
+    if (detail.tool.parameters.length !== inputs?.length) {
       return true
-    // else if (!inputs.every(item => detail.tool.parameters.some(toolParam => toolParam.name === item.variable && toolParam.type === item.type && toolParam.required === item.required)))
-    //   return true
+    }
+    else {
+      for (const item of inputs || []) {
+        const param = detail.tool.parameters.find(toolParam => toolParam.name === item.variable)
+        if (!param) {
+          return true
+        }
+        else if (param.required !== item.required) {
+          return true
+        }
+        else {
+          if (item.type === 'paragraph' && param.type !== 'string')
+            return true
+          if (param.type !== item.type && !(param.type === 'string' && item.type === 'paragraph'))
+            return true
+        }
+      }
+    }
     return false
   }, [detail, inputs])
 
@@ -73,7 +89,7 @@ const WorkflowToolConfigureButton = ({
         return {
           name: item.variable,
           required: item.required,
-          type: item.type,
+          type: item.type === 'paragraph' ? 'string' : item.type,
           description: detail.tool.parameters.find(param => param.name === item.variable)?.llm_description || '',
           form: detail.tool.parameters.find(param => param.name === item.variable)?.form || 'llm',
         }
