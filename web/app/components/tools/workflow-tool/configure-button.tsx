@@ -44,13 +44,15 @@ const WorkflowToolConfigureButton = ({
   const [showModal, setShowModal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [detail, setDetail] = useState<WorkflowToolProviderResponse>()
-  // const [outdated, setOutdated] = useState(false)
 
   const outdated = useMemo(() => {
     if (!detail)
       return false
     if (detail.tool.parameters.length !== inputs?.length)
       return true
+    // else if (!inputs.every(item => detail.tool.parameters.some(toolParam => toolParam.name === item.variable && toolParam.type === item.type && toolParam.required === item.required)))
+    //   return true
+    return false
   }, [detail, inputs])
 
   const payload = useMemo(() => {
@@ -67,7 +69,6 @@ const WorkflowToolConfigureButton = ({
       })
     }
     else if (detail && detail.tool) {
-      // if (outdated) {
       parameters = (inputs || []).map((item) => {
         return {
           name: item.variable,

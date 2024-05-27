@@ -112,10 +112,14 @@ const AgentTools: FC = () => {
                         />
                       ))}
                 <div
-                  title={item.tool_name}
                   className={cn((item.isDeleted || item.notAuthor) ? 'line-through opacity-50' : '', 'grow w-0 ml-2 leading-[18px] text-[13px] font-medium text-gray-800  truncate')}
                 >
-                  {item.tool_label || item.tool_name}
+                  <span className='text-gray-800 pr-2'>{item.provider_type === CollectionType.builtIn ? item.provider_name : item.tool_label}</span>
+                  <TooltipPlus
+                    popupContent={t('tools.toolNameUsageTip')}
+                  >
+                    <span className='text-gray-500'>{item.tool_name}</span>
+                  </TooltipPlus>
                 </div>
               </div>
               <div className='shrink-0 ml-1 flex items-center'>

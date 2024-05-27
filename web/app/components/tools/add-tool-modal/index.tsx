@@ -67,7 +67,7 @@ const AddToolModal: FC<Props> = ({
     setToolList(mergedToolList)
     setListLoading(false)
   }
-  const filterdList = useMemo(() => {
+  const filteredList = useMemo(() => {
     return toolList.filter((toolWithProvider) => {
       if (currentType === 'all')
         return true
@@ -203,7 +203,7 @@ const AddToolModal: FC<Props> = ({
             {!listLoading && (
               <Tools
                 showWorkflowEmpty={currentType === 'workflow'}
-                tools={filterdList}
+                tools={filteredList}
                 addedTools={(modelConfig?.agentConfig?.tools as any) || []}
                 onSelect={toolSelectHandle}
                 onAuthSetup={authSelectHandle}
