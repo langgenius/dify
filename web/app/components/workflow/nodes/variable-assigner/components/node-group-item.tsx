@@ -1,20 +1,25 @@
-import { memo } from 'react'
+import {
+  memo,
+  useMemo,
+} from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import { useStore } from '../../../store'
+import { BlockEnum } from '../../../types'
+import type {
+  type Node,
+  type ValueSelector,
+  VarType,
+} from '../../../types'
 import type { VariableAssignerNodeType } from '../types'
 import {
   useGetAvailableVars,
   useVariableAssigner,
 } from '../hooks'
+import { filterVar } from '../utils'
 import NodeHandle from './node-handle'
 import NodeVariableItem from './node-variable-item'
-import {
-  BlockEnum,
-  type Node,
-  type ValueSelector,
-} from '@/app/components/workflow/types'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
@@ -42,7 +47,14 @@ const NodeGroupItem = ({
     handleGroupItemMouseLeave,
   } = useVariableAssigner()
   const getAvailableVars = useGetAvailableVars()
-  const availableVars = getAvailableVars(item.variableAssignerNodeId, item.targetHandleId)
+  const outputType = useMemo(() => {
+    if (item.targetHandleId === 'target')
+      return item.variableAssignerNodeData.output_type
+
+    const group = item.variableAssignerNodeData.advanced_settings?.groups.find(group => group.groupId === item.targetHandleId)
+    return group?.output_type || ''
+  }, [item.variableAssignerNodeData, item.targetHandleId])
+  const availableVars = getAvailableVars(item.variableAssignerNodeId, item.targetHandleId, filterVar(outputType as VarType))
   const showSelectionBorder = enteringNodePayload?.nodeId === item.variableAssignerNodeId && item.groupEnabled && hoveringAssignVariableGroupId === item.targetHandleId
   const connected = item.variableAssignerNodeData._connectedTargetHandleIds?.includes(item.targetHandleId)
 
