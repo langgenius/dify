@@ -4,9 +4,12 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, validator
 
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.file.file_obj import FileVar
 from core.tools.entities.tool_entities import (
     ToolDescription,
     ToolIdentity,
+    ToolInvokeFrom,
     ToolInvokeMessage,
     ToolParameter,
     ToolProviderType,
@@ -25,10 +28,7 @@ class Tool(BaseModel, ABC):
 
     @validator('parameters', pre=True, always=True)
     def set_parameters(cls, v, values):
-        if not v:
-            return []
-
-        return v
+        return v or []
 
     class Runtime(BaseModel):
         """
@@ -41,6 +41,8 @@ class Tool(BaseModel, ABC):
 
         tenant_id: str = None
         tool_id: str = None
+        invoke_from: InvokeFrom = None
+        tool_invoke_from: ToolInvokeFrom = None
         credentials: dict[str, Any] = None
         runtime_parameters: dict[str, Any] = None
 
@@ -53,7 +55,7 @@ class Tool(BaseModel, ABC):
     class VARIABLE_KEY(Enum):
         IMAGE = 'image'
 
-    def fork_tool_runtime(self, meta: dict[str, Any]) -> 'Tool':
+    def fork_tool_runtime(self, runtime: dict[str, Any]) -> 'Tool':
         """
             fork a new tool with meta data
 
@@ -64,7 +66,7 @@ class Tool(BaseModel, ABC):
             identity=self.identity.copy() if self.identity else None,
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.copy() if self.description else None,
-            runtime=Tool.Runtime(**meta),
+            runtime=Tool.Runtime(**runtime),
         )
     
     @abstractmethod
@@ -208,17 +210,17 @@ class Tool(BaseModel, ABC):
             if response.type == ToolInvokeMessage.MessageType.TEXT:
                 result += response.message
             elif response.type == ToolInvokeMessage.MessageType.LINK:
-                result += f"result link: {response.message}. please tell user to check it."
+                result += f"result link: {response.message}. please tell user to check it. \n"
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
-                result += "image has been created and sent to user already, you do not need to create it, just tell the user to check it now."
+                result += "image has been created and sent to user already, you do not need to create it, just tell the user to check it now. \n"
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 if len(response.message) > 114:
                     result += str(response.message[:114]) + '...'
                 else:
                     result += str(response.message)
             else:
-                result += f"tool response: {response.message}."
+                result += f"tool response: {response.message}. \n"
 
         return result
     
@@ -342,6 +344,14 @@ class Tool(BaseModel, ABC):
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE, 
                                  message=image, 
                                  save_as=save_as)
+    
+    def create_file_var_message(self, file_var: FileVar) -> ToolInvokeMessage:
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.FILE_VAR,
+                                 message='',
+                                 meta={
+                                     'file_var': file_var
+                                 },
+                                 save_as='')
     
     def create_link_message(self, link: str, save_as: str = '') -> ToolInvokeMessage:
         """
