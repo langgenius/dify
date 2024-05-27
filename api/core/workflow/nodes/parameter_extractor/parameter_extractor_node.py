@@ -133,12 +133,15 @@ class ParameterExtractorNode(LLMNode):
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=inputs,
                 process_data={},
-                outputs={'__error__': str(e)},
+                outputs={
+                    '__is_success': 0,
+                    '__reason': str(e)
+                },
                 error=str(e),
                 metadata={}
             )
 
-        error = ''
+        error = None
 
         if tool_call:
             result = self._extract_json_from_tool_call(tool_call)
@@ -161,7 +164,8 @@ class ParameterExtractorNode(LLMNode):
             inputs=inputs,
             process_data=process_data,
             outputs={
-                '__error__': error,
+                '__is_success': 1 if not error else 0,
+                '__reason': error
                 **result,
             },
             metadata={
@@ -444,14 +448,15 @@ class ParameterExtractorNode(LLMNode):
                             pass
                     else:
                         pass
-                elif parameter.type == 'bool':
-                    if isinstance(result[parameter.name], bool):
-                        transformed_result[parameter.name] = result[parameter.name]
-                    elif isinstance(result[parameter.name], str):
-                        if result[parameter.name].lower() in ['true', 'false']:
-                            transformed_result[parameter.name] = result[parameter.name].lower() == 'true'
-                    elif isinstance(result[parameter.name], int):
-                        transformed_result[parameter.name] = bool(result[parameter.name])
+                # TODO: bool is not supported in the current version
+                # elif parameter.type == 'bool':
+                #     if isinstance(result[parameter.name], bool):
+                #         transformed_result[parameter.name] = bool(result[parameter.name])
+                #     elif isinstance(result[parameter.name], str):
+                #         if result[parameter.name].lower() in ['true', 'false']:
+                #             transformed_result[parameter.name] = bool(result[parameter.name].lower() == 'true')
+                #     elif isinstance(result[parameter.name], int):
+                #         transformed_result[parameter.name] = bool(result[parameter.name])
                 elif parameter.type in ['string', 'select']:
                     if isinstance(result[parameter.name], str):
                         transformed_result[parameter.name] = result[parameter.name]
