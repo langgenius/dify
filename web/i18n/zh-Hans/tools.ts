@@ -40,7 +40,7 @@ const translation = {
     toolNamePlaceHolder: '输入工具名称',
     nameForToolCall: '工具调用名称',
     nameForToolCallPlaceHolder: '用于机器识别，如 getCurrentWeather, list_pets',
-    nameForToolCallTip: '工具调用名称用于机器识别，如 getcurrentweather, list_pets。请勿使用中文字符、空格、特殊字符。',
+    nameForToolCallTip: '工具调用名称用于机器识别，如 getcurrentweather, list_pets。仅支持数字、字母、下划线。',
     description: '工具描述',
     descriptionPlaceholder: '输入工具描述',
     schema: 'Schema',

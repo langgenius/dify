@@ -12,10 +12,10 @@ const Contribute: FC = () => {
 
   return (
     <a
-      href='https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md'
+      href='https://github.com/langgenius/dify/blob/main/api/core/tools/README.md'
       target='_blank'
       rel='noopener noreferrer'
-      className="group flex col-span-1 bg-white bg-cover bg-no-repeat bg-[url('~@/app/components/tools/provider/grid_bg.svg')] border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg"
+      className="group flex col-span-1 bg-white bg-cover bg-no-repeat bg-[url('~@/app/components/tools/provider/grid_bg.svg')] border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg"
     >
       <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
         <div className='relative shrink-0 flex items-center'>

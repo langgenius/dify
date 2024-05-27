@@ -49,7 +49,8 @@ const WorkflowToolConfigureButton = ({
   const outdated = useMemo(() => {
     if (!detail)
       return false
-    return detail.tool.parameters.length !== inputs?.length
+    if (detail.tool.parameters.length !== inputs?.length)
+      return true
   }, [detail, inputs])
 
   const payload = useMemo(() => {
@@ -76,18 +77,6 @@ const WorkflowToolConfigureButton = ({
           form: detail.tool.parameters.find(param => param.name === item.variable)?.form || 'llm',
         }
       })
-      // }
-      // else {
-      //   parameters = detail.tool.parameters.map((item) => {
-      //     return {
-      //       name: item.name,
-      //       description: item.llm_description,
-      //       form: item.form,
-      //       required: item.required,
-      //       type: item.type,
-      //     }
-      //   })
-      // }
     }
     return {
       icon: detail?.icon || icon,
@@ -111,7 +100,6 @@ const WorkflowToolConfigureButton = ({
     setIsLoading(true)
     const res = await fetchWorkflowToolDetailByAppID(workflowAppId)
     setDetail(res)
-    // setOutdated(!res?.synced)
     setIsLoading(false)
   }, [])
 

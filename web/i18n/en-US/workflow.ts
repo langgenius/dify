@@ -66,7 +66,7 @@ const translation = {
     configure: 'Configure',
     manageInTools: 'Manage in Tools',
     workflowAsToolTip: 'Tool reconfiguration is required after the workflow update.',
-    viewDetailInTracingPanel: 'View details in tracing panel',
+    viewDetailInTracingPanel: 'View details',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
@@ -117,7 +117,7 @@ const translation = {
     'variable-assigner': 'Variable Aggregator',
     'iteration-start': 'Iteration Start',
     'iteration': 'Iteration',
-    'parameter-extractor': 'Parameter Extactor',
+    'parameter-extractor': 'Parameter Extractor',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',

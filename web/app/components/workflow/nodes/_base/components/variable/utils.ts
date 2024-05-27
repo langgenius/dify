@@ -516,18 +516,16 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
 }
 
 // used can be used in iteration node
-export const getNodeUsedVarPassToServerKey = (node: Node, valueSelector: ValueSelector): string => {
+export const getNodeUsedVarPassToServerKey = (node: Node, valueSelector: ValueSelector): string | string[] => {
   const { data } = node
   const { type } = data
-  let res = ''
+  let res: string | string[] = ''
   switch (type) {
     case BlockEnum.LLM: {
       const payload = (data as LLMNodeType)
-
+      res = [`#${valueSelector.join('.')}#`]
       if (payload.context?.variable_selector.join('.') === valueSelector.join('.'))
-        res = '#context#'
-      else
-        res = `#${valueSelector.join('.')}#`
+        res.push('#context#')
 
       break
     }
