@@ -19,7 +19,6 @@ import type {
   ValueSelector,
 } from '../../types'
 import { useWorkflowStore } from '../../store'
-import type { VariableAssignerNodeType } from './types'
 import { toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 export const useVariableAssigner = () => {
@@ -106,23 +105,27 @@ export const useVariableAssigner = () => {
     const currentNode = nodes.find(node => node.id === nodeId)!
     const groups = currentNode.data.advanced_settings?.groups || []
 
-    let shouldKeepEdge: Edge
+    let shouldKeepEdges: Edge[] = []
 
     if (enabled) {
-      shouldKeepEdge = {
-        ...edges.find((edge) => {
-          return edge.target === nodeId && edge.targetHandle === 'target'
-        }),
-        targetHandle: groups[0].groupId,
-      } as Edge
+      shouldKeepEdges = edges.filter((edge) => {
+        return edge.target === nodeId && edge.targetHandle === 'target'
+      }).map((edge) => {
+        return {
+          ...edge,
+          targetHandle: groups[0].groupId,
+        }
+      })
     }
     else {
-      shouldKeepEdge = {
-        ...edges.find((edge) => {
-          return edge.target === nodeId && edge.targetHandle === groups[0].groupId
-        }),
-        targetHandle: 'target',
-      } as Edge
+      shouldKeepEdges = edges.filter((edge) => {
+        return edge.target === nodeId && edge.targetHandle === groups[0].groupId
+      }).map((edge) => {
+        return {
+          ...edge,
+          targetHandle: 'target',
+        }
+      })
     }
 
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
@@ -133,10 +136,12 @@ export const useVariableAssigner = () => {
             edge: needDeleteEdge,
           }
         }),
-        {
-          type: 'add',
-          edge: shouldKeepEdge,
-        },
+        ...shouldKeepEdges.map((shouldKeepEdge) => {
+          return {
+            type: 'add',
+            edge: shouldKeepEdge,
+          }
+        }),
       ],
       nodes,
     )
@@ -154,7 +159,7 @@ export const useVariableAssigner = () => {
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       draft = draft.filter(edge => edge.target !== nodeId)
-      draft.push(shouldKeepEdge as Edge)
+      draft.push(...shouldKeepEdges)
       return draft
     })
     setEdges(newEdges)
@@ -215,18 +220,12 @@ export const useGetAvailableVars = () => {
       })
     }
 
-    const variables = (currentNode.data as VariableAssignerNodeType).variables || []
-
     return toNodeAvailableVars({
       parentNode,
       t,
       beforeNodes: uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId),
       isChatMode,
       filterVar: () => true,
-    }).filter((varItem) => {
-      return !variables.some((variable) => {
-        return variable[0] === varItem.nodeId
-      })
     })
   }, [nodes, edges, isChatMode, getBeforeNodesInSameBranch, t])
 
