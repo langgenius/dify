@@ -48,6 +48,10 @@ const VarGroupItem: FC<Props> = ({
   const { t } = useTranslation()
 
   const handleAddVariable = useCallback((value: ValueSelector | string, _varKindType: VarKindType, varInfo?: Var) => {
+    const chosenVariables = payload.variables
+    if (chosenVariables.some(item => item.join('.') === (value as ValueSelector).join('.')))
+      return
+
     const newPayload = produce(payload, (draft: Payload) => {
       draft.variables.push(value as ValueSelector)
       if (varInfo && varInfo.type !== VarType.any)
@@ -56,7 +60,13 @@ const VarGroupItem: FC<Props> = ({
     onChange(newPayload)
   }, [onChange, payload])
 
-  const handleListChange = useCallback((newList: ValueSelector[]) => {
+  const handleListChange = useCallback((newList: ValueSelector[], changedItem?: ValueSelector) => {
+    if (changedItem) {
+      const chosenVariables = payload.variables
+      if (chosenVariables.some(item => item.join('.') === (changedItem as ValueSelector).join('.')))
+        return
+    }
+
     const newPayload = produce(payload, (draft) => {
       draft.variables = newList
       if (newList.length === 0)
