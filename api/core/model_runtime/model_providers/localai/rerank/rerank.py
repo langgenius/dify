@@ -5,6 +5,8 @@ import httpx
 from requests import post
 from yarl import URL
 
+from core.model_runtime.entities.common_entities import I18nObject
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
@@ -118,3 +120,17 @@ class LocalaiRerankModel(RerankModel):
             InvokeAuthorizationError: [httpx.HTTPStatusError],  
             InvokeBadRequestError: [httpx.RequestError]
         }
+    
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
+        """
+            generate custom model entities from credentials
+        """
+        entity = AIModelEntity(
+            model=model,
+            label=I18nObject(en_US=model),
+            model_type=ModelType.RERANK,
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_properties={}
+        )
+
+        return entity
