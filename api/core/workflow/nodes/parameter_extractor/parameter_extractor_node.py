@@ -620,6 +620,8 @@ class ParameterExtractorNode(LLMNode):
                 text=COMPLETION_GENERATE_JSON_PROMPT.format(histories=memory_str,
                                                             text=input_text,
                                                             instruction=instruction)
+                                                    .replace('{γγγ', '')
+                                                    .replace('}γγγ', '')
             )
         else:
             raise ValueError(f"Model mode {model_mode} not support.")

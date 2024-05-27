@@ -116,7 +116,7 @@ def test_function_calling_parameter_extractor(setup_openai_mock):
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs.get('location') == 'kawaii'
-    assert result.outputs.get('__error__') == ''
+    assert result.outputs.get('__reason') == None
 
 @pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
 def test_instructions(setup_openai_mock):
@@ -174,7 +174,7 @@ def test_instructions(setup_openai_mock):
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs.get('location') == 'kawaii'
-    assert result.outputs.get('__error__') == ''
+    assert result.outputs.get('__reason') == None
 
     process_data = result.process_data
 
@@ -240,7 +240,7 @@ def test_chat_parameter_extractor(setup_anthropic_mock):
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs.get('location') == ''
-    assert result.outputs.get('__error__') == 'Failed to extract result from function call or text response, using empty result.'
+    assert result.outputs.get('__reason') == 'Failed to extract result from function call or text response, using empty result.'
     prompts = result.process_data.get('prompts')
 
     for prompt in prompts:
@@ -304,7 +304,7 @@ def test_completion_parameter_extractor(setup_openai_mock):
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert result.outputs.get('location') == ''
-    assert result.outputs.get('__error__') == 'Failed to extract result from function call or text response, using empty result.'
+    assert result.outputs.get('__reason') == 'Failed to extract result from function call or text response, using empty result.'
     assert len(result.process_data.get('prompts')) == 1
     assert 'SF' in result.process_data.get('prompts')[0].get('text')
 
