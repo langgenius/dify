@@ -286,8 +286,10 @@ export const useWorkflowRun = () => {
               const iterations = tracing[tracing.length - 1]
               const currIteration = iterations.details![iterations.details!.length - 1]
               const nodeInfo = currIteration[currIteration.length - 1]
+
               currIteration[currIteration.length - 1] = {
                 ...nodeInfo,
+                ...data,
                 status: NodeRunningStatus.Succeeded,
               } as any
             }))
