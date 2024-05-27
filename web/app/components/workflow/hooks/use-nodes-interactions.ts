@@ -168,11 +168,11 @@ export const useNodesInteractions = () => {
 
         const newNodes = produce(nodes, (draft) => {
           draft.forEach((n) => {
-            if (n.id === node.id && fromType === 'source' && node.data.type === BlockEnum.VariableAssigner) {
+            if (n.id === node.id && fromType === 'source' && (node.data.type === BlockEnum.VariableAssigner || node.data.type === BlockEnum.VariableAggregator)) {
               if (!node.data.advanced_settings?.group_enabled)
                 n.data._isEntering = true
             }
-            if (n.id === node.id && fromType === 'target' && connectingNode.data.type === BlockEnum.VariableAssigner && node.data.type !== BlockEnum.IfElse && node.data.type !== BlockEnum.QuestionClassifier)
+            if (n.id === node.id && fromType === 'target' && (connectingNode.data.type === BlockEnum.VariableAssigner || connectingNode.data.type === BlockEnum.VariableAggregator) && node.data.type !== BlockEnum.IfElse && node.data.type !== BlockEnum.QuestionClassifier)
               n.data._isEntering = true
           })
         })
@@ -299,7 +299,7 @@ export const useNodesInteractions = () => {
     const needDeleteEdges = edges.filter((edge) => {
       if (
         (edge.source === source && edge.sourceHandle === sourceHandle)
-        || (edge.target === target && edge.targetHandle === targetHandle && targetNode?.data.type !== BlockEnum.VariableAssigner)
+        || (edge.target === target && edge.targetHandle === targetHandle && targetNode?.data.type !== BlockEnum.VariableAssigner && targetNode?.data.type !== BlockEnum.VariableAggregator)
       )
         return true
 
@@ -403,7 +403,7 @@ export const useNodesInteractions = () => {
 
       const { x, y } = screenToFlowPosition({ x: e.x, y: e.y })
 
-      if (fromHandleType === 'source' && toNode.data.type === BlockEnum.VariableAssigner) {
+      if (fromHandleType === 'source' && (toNode.data.type === BlockEnum.VariableAssigner || toNode.data.type === BlockEnum.VariableAggregator)) {
         const groupEnabled = toNode.data.advanced_settings?.group_enabled
 
         if (
@@ -437,7 +437,7 @@ export const useNodesInteractions = () => {
           })
         }
       }
-      if (fromHandleType === 'target' && fromNode.data.type === BlockEnum.VariableAssigner && toNode.data.type !== BlockEnum.IfElse && toNode.data.type !== BlockEnum.QuestionClassifier) {
+      if (fromHandleType === 'target' && (fromNode.data.type === BlockEnum.VariableAssigner || fromNode.data.type === BlockEnum.VariableAggregator) && toNode.data.type !== BlockEnum.IfElse && toNode.data.type !== BlockEnum.QuestionClassifier) {
         const newNodes = produce(nodes, (draft) => {
           draft.forEach((node) => {
             if (node.id === toNode.id) {
@@ -582,7 +582,7 @@ export const useNodesInteractions = () => {
         title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
         ...(toolDefaultValue || {}),
         selected: true,
-        _showAddVariablePopup: nodeType === BlockEnum.VariableAssigner && !!prevNodeId,
+        _showAddVariablePopup: (nodeType === BlockEnum.VariableAssigner || nodeType === BlockEnum.VariableAggregator) && !!prevNodeId,
         _holdAddVariablePopup: false,
       },
       position: {
@@ -649,7 +649,7 @@ export const useNodesInteractions = () => {
         draft.push(newNode)
       })
       setNodes(newNodes)
-      if (newNode.data.type === BlockEnum.VariableAssigner) {
+      if (newNode.data.type === BlockEnum.VariableAssigner || newNode.data.type === BlockEnum.VariableAggregator) {
         const { setShowAssignVariablePopup } = workflowStore.getState()
 
         setShowAssignVariablePopup({
@@ -852,7 +852,7 @@ export const useNodesInteractions = () => {
         draft.push(newNode)
       })
       setNodes(newNodes)
-      if (newNode.data.type === BlockEnum.VariableAssigner) {
+      if (newNode.data.type === BlockEnum.VariableAssigner || newNode.data.type === BlockEnum.VariableAggregator) {
         const { setShowAssignVariablePopup } = workflowStore.getState()
 
         setShowAssignVariablePopup({

@@ -42,6 +42,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.HttpRequest]: HttpNode,
   [BlockEnum.Tool]: ToolNode,
   [BlockEnum.VariableAssigner]: VariableAssignerNode,
+  [BlockEnum.VariableAggregator]: VariableAssignerNode,
   [BlockEnum.ParameterExtractor]: ParameterExtractorNode,
   [BlockEnum.Iteration]: IterationNode,
 }
@@ -59,6 +60,7 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.HttpRequest]: HttpPanel,
   [BlockEnum.Tool]: ToolPanel,
   [BlockEnum.VariableAssigner]: VariableAssignerPanel,
+  [BlockEnum.VariableAggregator]: VariableAssignerPanel,
   [BlockEnum.ParameterExtractor]: ParameterExtractorPanel,
   [BlockEnum.Iteration]: IterationPanel,
 }
