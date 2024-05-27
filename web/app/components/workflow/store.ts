@@ -9,6 +9,7 @@ import type {
   HelpLineHorizontalPosition,
   HelpLineVerticalPosition,
 } from './help-line/types'
+import type { VariableAssignerNodeType } from './nodes/variable-assigner/types'
 import type {
   Edge,
   HistoryWorkflowData,
@@ -108,7 +109,7 @@ type Shape = {
     nodeId: string
     nodeData: Node['data']
     variableAssignerNodeId: string
-    variableAssignerNodeData: Node['data']
+    variableAssignerNodeData: VariableAssignerNodeType
     variableAssignerNodeHandleId: string
     parentNode?: Node
     x: number
