@@ -165,8 +165,8 @@ class WorkflowToolProviderController(ToolProviderController):
                 author=user.name if user else '',
                 name=db_provider.name,
                 label=I18nObject(
-                    en_US=db_provider.name,
-                    zh_Hans=db_provider.name
+                    en_US=db_provider.label,
+                    zh_Hans=db_provider.label
                 ),
                 provider=self.provider_id,
                 icon=db_provider.icon,
@@ -186,7 +186,8 @@ class WorkflowToolProviderController(ToolProviderController):
                 'workflow': workflow,
             },
             version=db_provider.version,
-            workflow_call_depth=0
+            workflow_call_depth=0,
+            label=db_provider.label
         )
 
     def get_tools(self, user_id: str, tenant_id: str) -> list[WorkflowTool]:

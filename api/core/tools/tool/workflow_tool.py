@@ -19,6 +19,8 @@ class WorkflowTool(Tool):
     workflow_entities: dict[str, Any]
     workflow_call_depth: int
 
+    label: str
+
     """
     Workflow tool.
     """
@@ -101,7 +103,8 @@ class WorkflowTool(Tool):
             workflow_app_id=self.workflow_app_id,
             workflow_entities=self.workflow_entities,
             workflow_call_depth=self.workflow_call_depth,
-            version=self.version
+            version=self.version,
+            label=self.label
         )
     
     def _get_workflow(self, app_id: str, version: str) -> Workflow:

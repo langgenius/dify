@@ -263,17 +263,24 @@ class ToolTransformService:
                 if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
                     current_parameters.append(runtime_parameter)
 
-            user_tool = UserTool(
-                author=tool.identity.author,
-                name=tool.identity.name,
-                label=tool.identity.label,
-                description=tool.description.human,
-                parameters=current_parameters,
-                labels=labels
-            )
-
-            return user_tool
-        
+            if isinstance(tool, WorkflowTool):
+                return UserTool(
+                    author=tool.identity.author,
+                    name=tool.label,
+                    label=tool.identity.label,
+                    description=tool.description.human,
+                    parameters=current_parameters,
+                    labels=labels
+                )
+            else:
+                return UserTool(
+                    author=tool.identity.author,
+                    name=tool.identity.name,
+                    label=tool.identity.label,
+                    description=tool.description.human,
+                    parameters=current_parameters,
+                    labels=labels
+                )
         if isinstance(tool, ApiToolBundle):
             return UserTool(
                 author=tool.author,
