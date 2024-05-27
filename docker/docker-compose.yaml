@@ -319,8 +319,8 @@ services:
       # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
       SENTRY_DSN: ''
     # uncomment to expose dify-web port to host
-    ports:
-      - "3000:3000"
+#    ports:
+#      - "3000:3000"
 
   # The postgres database.
   db:
@@ -471,7 +471,7 @@ services:
       - web
     ports:
       - "80:80"
-      #- "443:443"
+#      - "443:443"
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
