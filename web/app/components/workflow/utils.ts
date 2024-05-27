@@ -266,16 +266,16 @@ export const generateNewNode = ({ data, position, id }: Pick<Node, 'data' | 'pos
 }
 
 export const genNewNodeTitleFromOld = (oldTitle: string) => {
-  const regex = /^(.+?)(?:\s+(\d+))?$/
+  const regex = /^(.+?)\s*\((\d+)\)\s*$/
   const match = oldTitle.match(regex)
 
   if (match) {
     const title = match[1]
-    const num = match[2] ? parseInt(match[2], 10) : 0
-    return `${title} ${num + 1}`
+    const num = parseInt(match[2], 10)
+    return `${title} (${num + 1})`
   }
   else {
-    return 'unknownTitle'
+    return `${oldTitle} (1)`
   }
 }
 
