@@ -49,6 +49,8 @@ const translation = {
     processData: '데이터 처리',
     input: '입력',
     output: '출력',
+    enableJinja: 'Jinja 템플릿 지원 활성화',
+    learnMore: '더 알아보기',
     jinjaEditorPlaceholder: '\'/\' 또는 \'{\'를 입력하여 변수를 삽입하세요.',
     viewOnly: '보기 모드',
     showRunHistory: '실행 기록 보기',
@@ -271,6 +273,9 @@ const translation = {
     code: {
       inputVars: '입력 변수',
       outputVars: '출력 변수',
+      advancedDependencies: '고급 종속성',
+      advancedDependenciesTip: '소비하는 데 시간이 더 걸리거나 기본 내장되지 않은 일부 사전 로드된 종속성을 추가하십시오',
+      searchDependencies: '종속성 검색',
     },
     templateTransform: {
       inputVars: '입력 변수',
