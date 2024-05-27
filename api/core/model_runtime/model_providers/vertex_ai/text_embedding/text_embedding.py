@@ -41,14 +41,15 @@ class VertexAiTextEmbeddingModel(_CommonVertexAi, TextEmbeddingModel):
         :return: embeddings result
         """
         service_account_info = json.loads(base64.b64decode(credentials["vertex_service_account_key"]))
-        service_accountSA = service_account.Credentials.from_service_account_info(service_account_info)
         project_id = credentials["vertex_project_id"]
         location = credentials["vertex_location"]
-        aiplatform.init(credentials=service_accountSA, project=project_id, location=location)
+        if service_account_info:
+            service_accountSA = service_account.Credentials.from_service_account_info(service_account_info)
+            aiplatform.init(credentials=service_accountSA, project=project_id, location=location)
+        else:
+            aiplatform.init(project=project_id, location=location)
 
         client = VertexTextEmbeddingModel.from_pretrained(model)
-
-        
 
         embeddings_batch, embedding_used_tokens = self._embedding_invoke(
             client=client,
@@ -103,10 +104,13 @@ class VertexAiTextEmbeddingModel(_CommonVertexAi, TextEmbeddingModel):
         """
         try:
             service_account_info = json.loads(base64.b64decode(credentials["vertex_service_account_key"]))
-            service_accountSA = service_account.Credentials.from_service_account_info(service_account_info)
             project_id = credentials["vertex_project_id"]
             location = credentials["vertex_location"]
-            aiplatform.init(credentials=service_accountSA, project=project_id, location=location)
+            if service_account_info:
+                service_accountSA = service_account.Credentials.from_service_account_info(service_account_info)
+                aiplatform.init(credentials=service_accountSA, project=project_id, location=location)
+            else:
+                aiplatform.init(project=project_id, location=location)
 
             client = VertexTextEmbeddingModel.from_pretrained(model)
 

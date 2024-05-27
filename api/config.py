@@ -179,7 +179,8 @@ class Config:
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
             'max_overflow': int(get_env('SQLALCHEMY_MAX_OVERFLOW')),
             'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE')),
-            'pool_pre_ping': get_bool_env('SQLALCHEMY_POOL_PRE_PING')
+            'pool_pre_ping': get_bool_env('SQLALCHEMY_POOL_PRE_PING'),
+            'connect_args': {'options': '-c timezone=UTC'},
         }
 
         self.SQLALCHEMY_ECHO = get_bool_env('SQLALCHEMY_ECHO')
