@@ -133,12 +133,15 @@ class ParameterExtractorNode(LLMNode):
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=inputs,
                 process_data={},
-                outputs={'__error__': str(e)},
+                outputs={
+                    '__is_success': 0,
+                    '__reason': str(e)
+                },
                 error=str(e),
                 metadata={}
             )
 
-        error = ''
+        error = None
 
         if tool_call:
             result = self._extract_json_from_tool_call(tool_call)
@@ -161,7 +164,8 @@ class ParameterExtractorNode(LLMNode):
             inputs=inputs,
             process_data=process_data,
             outputs={
-                '__error__': error,
+                '__is_success': 1 if not error else 0,
+                '__reason': error
                 **result,
             },
             metadata={
