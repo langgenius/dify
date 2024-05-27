@@ -49,6 +49,17 @@ const translation = {
     processData: 'Traiter les données',
     input: 'Entrée',
     output: 'Sortie',
+    jinjaEditorPlaceholder: 'Tapez \'/\' ou \'{\' pour insérer une variable',
+    viewOnly: 'Vue Seulement',
+    showRunHistory: 'Afficher l\'Historique des Exécutions',
+    enableJinja: 'Activer le support des modèles Jinja',
+    learnMore: 'En Savoir Plus',
+    copy: 'Copier',
+    duplicate: 'Dupliquer',
+    addBlock: 'Ajouter un Bloc',
+    pasteHere: 'Coller Ici',
+    pointerMode: 'Mode Pointeur',
+    handMode: 'Mode Main',
   },
   errorMsg: {
     fieldRequired: '{{field}} est requis',
@@ -204,6 +215,7 @@ const translation = {
       singleRun: {
         variable: 'Variable',
       },
+      sysQueryInUser: 'sys.query dans l\'entrée utilisateur',
     },
     knowledgeRetrieval: {
       queryVariable: 'Variable de requête',
@@ -261,6 +273,9 @@ const translation = {
     code: {
       inputVars: 'Variables d\'entrée',
       outputVars: 'Variables de sortie',
+      advancedDependencies: 'Dépendances Avancées',
+      advancedDependenciesTip: 'Ajoutez ici des dépendances préchargées qui prennent plus de temps à consommer ou qui ne sont pas intégrées par défaut',
+      searchDependencies: 'Rechercher des Dépendances',
     },
     templateTransform: {
       inputVars: 'Variables d\'entrée',

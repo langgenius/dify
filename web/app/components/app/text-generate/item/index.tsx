@@ -422,6 +422,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                     <div className='ml-2 mr-2 h-[14px] w-[1px] bg-gray-200'></div>
                     <AudioBtn
                       value={content}
+                      noCache={false}
                       className={'mr-1'}
                     />
                   </>
