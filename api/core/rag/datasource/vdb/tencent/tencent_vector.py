@@ -68,7 +68,6 @@ class TencentVector(BaseVector):
         collections = self._db.list_collections()
         for collection in collections:
             if collection.collection_name == self._collection_name:
-                self.collection = collection
                 return True
         return False
 
@@ -115,7 +114,7 @@ class TencentVector(BaseVector):
                 ),
             )
 
-            self.collection = self._db.create_collection(
+            self._db.create_collection(
                 name=self._collection_name,
                 shard=self._client_config.shard,
                 replicas=self._client_config.replicas,
@@ -144,7 +143,7 @@ class TencentVector(BaseVector):
                 metadata=metadata,
             )
             docs.append(doc)
-        self.collection.upsert(docs, self._client_config.timeout)
+        self._db.collection(self._collection_name).upsert(docs, self._client_config.timeout)
 
     def text_exists(self, id: str) -> bool:
         docs = self._db.collection(self._collection_name).query(document_ids=[id])
@@ -156,9 +155,7 @@ class TencentVector(BaseVector):
         self._db.collection(self._collection_name).delete(document_ids=ids)
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
-        docs = self._db.collection(self._collection_name).query(filter=Filter(Filter.In(key, [value])))
-        if docs and len(docs) > 0:
-            self.collection.delete(document_ids=[doc['id'] for doc in docs])
+        self._db.collection(self._collection_name).delete(filter=Filter(Filter.In(key, [value])))
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
 
