@@ -13,6 +13,7 @@ import useNodeCrud from '../_base/hooks/use-node-crud'
 import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar, toNodeOutputVars } from '../_base/components/variable/utils'
 import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { IterationNodeType } from './types'
+import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
 const DELIMITER = '@@@@@'
 const useConfig = (id: string, payload: IterationNodeType) => {
@@ -40,9 +41,16 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   const canChooseVarNodes = [...beforeNodes, ...iterationChildrenNodes]
   const childrenNodeVars = toNodeOutputVars(iterationChildrenNodes, isChatMode)
 
-  const handleOutputVarChange = useCallback((output: ValueSelector | string) => {
+  const handleOutputVarChange = useCallback((output: ValueSelector | string, _varKindType: VarKindType, varInfo?: Var) => {
     const newInputs = produce(inputs, (draft) => {
       draft.output_selector = output as ValueSelector || []
+      const outputItemType = varInfo?.type || VarType.string
+
+      draft.output_type = ({
+        [VarType.string]: VarType.arrayString,
+        [VarType.number]: VarType.arrayNumber,
+        [VarType.object]: VarType.arrayObject,
+      } as Record<VarType, VarType>)[outputItemType] || VarType.arrayString
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
