@@ -192,7 +192,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                             <div className='text-[13px] leading-[18px]'>
                               <div title={item.name} className='flex'>
                                 <span className='font-medium text-gray-900 truncate'>{item.name}</span>
-                                <span className='shrink-0 pl-1 text-[#ec4a0a] text-xs'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
+                                <span className='shrink-0 pl-1 text-[#ec4a0a] text-xs leading-[18px]'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
                               </div>
                               <div className='text-gray-500'>{item.type}</div>
                             </div>
@@ -226,7 +226,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                   </table>
                 </div>
               </div>
-              {/* Labels */}
+              {/* Tags */}
               <div>
                 <div className='py-2 leading-5 text-sm font-medium text-gray-900'>{t('tools.createTool.toolInput.label')}</div>
                 <LabelSelector value={labels} onChange={handleLabelSelect} />
