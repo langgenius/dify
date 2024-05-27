@@ -120,6 +120,7 @@ const Operation: FC<OperationProps> = ({
                 <div className='mx-1 w-[1px] h-[14px] bg-gray-200'/>
                 <AudioBtn
                   value={content}
+                  noCache={false}
                   voice={config?.text_to_speech?.voice}
                   className='hidden group-hover:block'
                 />
