@@ -12,7 +12,10 @@ import {
   useNodeDataUpdate,
   useWorkflow,
 } from '../../../hooks'
-import type { ValueSelector } from '../../../types'
+import type {
+  ValueSelector,
+  Var,
+} from '../../../types'
 import { useVariableAssigner } from '../../variable-assigner/hooks'
 import AddVariablePopup from './add-variable-popup'
 import { toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
@@ -73,13 +76,14 @@ const AddVariablePopupWithPosition = ({
     }
   }, ref)
 
-  const handleAddVariable = useCallback((value: ValueSelector) => {
+  const handleAddVariable = useCallback((value: ValueSelector, varDetail: Var) => {
     if (showAssignVariablePopup) {
       handleAddVariableInAddVariablePopupWithPosition(
         showAssignVariablePopup.nodeId,
         showAssignVariablePopup.variableAssignerNodeId,
         showAssignVariablePopup.variableAssignerNodeHandleId,
         value,
+        varDetail,
       )
     }
   }, [showAssignVariablePopup, handleAddVariableInAddVariablePopupWithPosition])

@@ -15,6 +15,7 @@ import AddVariablePopup from '@/app/components/workflow/nodes/_base/components/a
 import type {
   NodeOutPutVar,
   ValueSelector,
+  Var,
 } from '@/app/components/workflow/types'
 
 export type AddVariableProps = {
@@ -35,10 +36,11 @@ const AddVariable = ({
 }: AddVariableProps) => {
   const { handleAssignVariableValueChange } = useVariableAssigner()
 
-  const handleSelectVariable = useCallback((v: ValueSelector) => {
+  const handleSelectVariable = useCallback((v: ValueSelector, varDetail: Var) => {
     handleAssignVariableValueChange(
       variableAssignerNodeId,
       v,
+      varDetail,
       handleId,
     )
     onOpenChange(false)
