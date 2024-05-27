@@ -188,7 +188,7 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
       res.vars = [
         {
           variable: 'output',
-          type: VarType.array,
+          type: (data as IterationNodeType).output_type || VarType.arrayString,
         },
       ]
       break

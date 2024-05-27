@@ -2,6 +2,7 @@ import type {
   BlockEnum,
   CommonNodeType,
   ValueSelector,
+  VarType,
 } from '@/app/components/workflow/types'
 
 export type IterationNodeType = CommonNodeType & {
@@ -10,4 +11,5 @@ export type IterationNodeType = CommonNodeType & {
   iteration_id?: string
   iterator_selector: ValueSelector
   output_selector: ValueSelector
+  output_type: VarType // output type.
 }
