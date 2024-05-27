@@ -17,6 +17,7 @@ import type {
   Edge,
   Node,
   ValueSelector,
+  Var,
 } from '../../types'
 import { useWorkflowStore } from '../../store'
 import { toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
@@ -26,7 +27,7 @@ export const useVariableAssigner = () => {
   const workflowStore = useWorkflowStore()
   const { handleNodeDataUpdate } = useNodeDataUpdate()
 
-  const handleAssignVariableValueChange = useCallback((nodeId: string, value: ValueSelector, groupId?: string) => {
+  const handleAssignVariableValueChange = useCallback((nodeId: string, value: ValueSelector, varDetail: Var, groupId?: string) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
     const node = nodes.find(node => node.id === nodeId)!
@@ -41,6 +42,7 @@ export const useVariableAssigner = () => {
               return {
                 ...group,
                 variables: [...group.variables, value],
+                output_type: varDetail.type,
               }
             }
             return group
@@ -51,6 +53,7 @@ export const useVariableAssigner = () => {
     else {
       payload = {
         variables: [...node.data.variables, value],
+        output_type: varDetail.type,
       }
     }
     handleNodeDataUpdate({
@@ -64,6 +67,7 @@ export const useVariableAssigner = () => {
     variableAssignerNodeId: string,
     variableAssignerNodeHandleId: string,
     value: ValueSelector,
+    varDetail: Var,
   ) => {
     const {
       getNodes,
@@ -86,7 +90,7 @@ export const useVariableAssigner = () => {
     })
     setNodes(newNodes)
     setShowAssignVariablePopup(undefined)
-    handleAssignVariableValueChange(variableAssignerNodeId, value, variableAssignerNodeHandleId)
+    handleAssignVariableValueChange(variableAssignerNodeId, value, varDetail, variableAssignerNodeHandleId)
   }, [store, workflowStore, handleAssignVariableValueChange])
 
   const handleRemoveEdges = useCallback((nodeId: string, enabled: boolean) => {

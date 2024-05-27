@@ -85,6 +85,7 @@ export const useWorkflowRun = () => {
     const newNodes = produce(getNodes(), (draft) => {
       draft.forEach((node) => {
         node.data.selected = false
+        node.data._runningStatus = undefined
       })
     })
     setNodes(newNodes)
