@@ -145,7 +145,7 @@ const translation = {
   notAuthorized: 'Tool not authorized',
   howToGet: 'How to get',
   openInStudio: 'Open in Studio',
-  toolNameUsageTip: 'Used for LLM call in prompts',
+  toolNameUsageTip: 'Tool call name for agent reasoning and prompting',
 }
 
 export default translation

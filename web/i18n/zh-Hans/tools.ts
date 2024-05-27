@@ -145,7 +145,7 @@ const translation = {
   notAuthorized: '工具未授权',
   howToGet: '如何获取',
   openInStudio: '在工作室中打开',
-  toolNameUsageTip: '用于提示词中 LLM 调用',
+  toolNameUsageTip: '工具调用名称，用于 Agent 推理和提示词',
 }
 
 export default translation
