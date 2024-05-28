@@ -39,7 +39,13 @@ const WorkflowVariableBlockComponent = ({
   const [editor] = useLexicalComposerContext()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND)
   const variablesLength = variables.length
-  const lastVariable = isSystemVar(variables) ? variables.join('.') : variables[variablesLength - 1]
+  const varName = (
+    () => {
+      const isSystem = isSystemVar(variables)
+      const varName = variablesLength >= 3 ? (variables).slice(-2).join('.') : variables[variablesLength - 1]
+      return `${isSystem ? 'sys.' : ''}${varName}`
+    }
+  )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
   const node = localWorkflowNodesMap![variables[0]]
 
@@ -86,7 +92,7 @@ const WorkflowVariableBlockComponent = ({
       </div>
       <div className='flex items-center text-primary-600'>
         <Variable02 className='w-3.5 h-3.5' />
-        <div className='shrink-0 ml-0.5 text-xs font-medium truncate' title={lastVariable}>{lastVariable}</div>
+        <div className='shrink-0 ml-0.5 text-xs font-medium truncate' title={varName}>{varName}</div>
         {
           !node && (
             <AlertCircle className='ml-0.5 w-3 h-3 text-[#D92D20]' />

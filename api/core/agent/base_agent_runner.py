@@ -165,6 +165,7 @@ class BaseAgentRunner(AppRunner):
             tenant_id=self.tenant_id,
             app_id=self.app_config.app_id,
             agent_tool=tool,
+            invoke_from=self.application_generate_entity.invoke_from
         )
         tool_entity.load_variables(self.variables_pool)
 

@@ -77,4 +77,4 @@ class UploadFileParser:
             return False
 
         current_time = int(time.time())
-        return current_time - int(timestamp) <= 300  # expired after 5 minutes
+        return current_time - int(timestamp) <= current_app.config.get('FILES_ACCESS_TIMEOUT')
