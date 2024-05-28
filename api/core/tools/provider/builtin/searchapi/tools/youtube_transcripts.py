@@ -56,9 +56,9 @@ class SearchAPI:
         return toret
 
 class YoutubeTranscriptsTool(BuiltinTool):
-    def _invoke(self, 
+    def _invoke(self,
                 user_id: str,
-                tool_parameters: dict[str, Any], 
+                tool_parameters: dict[str, Any],
         ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Invoke the SearchApi tool.
@@ -68,5 +68,5 @@ class YoutubeTranscriptsTool(BuiltinTool):
 
         api_key = self.runtime.credentials['searchapi_api_key']
         result = SearchAPI(api_key).run(video_id, language=language)
-        
+
         return self.create_text_message(text=result)
