@@ -69,7 +69,6 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
       draft.query_variable_selector = newVar as ValueSelector
     })
     setInputs(newInputs)
-    // console.log(newInputs.query_variable_selector)
   }, [inputs, setInputs])
 
   useEffect(() => {

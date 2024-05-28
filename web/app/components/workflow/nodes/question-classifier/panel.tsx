@@ -44,8 +44,6 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
     runningStatus,
     handleRun,
     handleStop,
-    query,
-    setQuery,
     runResult,
     filterVar,
   } = useConfig(id, data)

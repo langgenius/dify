@@ -45,7 +45,6 @@ const AdvancedSetting: FC<Props> = ({
   return (
     <>
       <Editor
-        // isInNode
         title={
           <div className='flex items-center space-x-1'>
             <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
@@ -59,14 +58,6 @@ const AdvancedSetting: FC<Props> = ({
         }
         value={instruction}
         onChange={onInstructionChange}
-        // minHeight={160}
-        // placeholder={t(`${i18nPrefix}.instructionPlaceholder`)!}
-        // headerRight={(
-        //   <div className='flex items-center h-full'>
-        //     <div className='text-xs font-medium text-gray-500'>{instruction?.length || 0}</div>
-        //     <div className='mx-3 h-3 w-px bg-gray-200'></div>
-        //   </div>
-        // )}
         readOnly={readonly}
         isChatModel={isChatModel}
         isChatApp={isChatApp}
