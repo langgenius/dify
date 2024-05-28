@@ -7,11 +7,13 @@ import {
   useWorkflow,
 } from '../../hooks'
 import { useStore } from '../../store'
+import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import type { QuestionClassifierNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 
 const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -93,6 +95,24 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const filterInputVar = useCallback((varPayload: Var) => {
+    return [VarType.number, VarType.string].includes(varPayload.type)
+  }, [])
+
+  const {
+    availableVars,
+    availableNodesWithParent,
+  } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: filterInputVar,
+  })
+
+  const hasSetBlockStatus = {
+    history: false,
+    query: isChatMode ? checkHasQueryBlock(inputs.instruction) : false,
+    context: false,
+  }
+
   const handleInstructionChange = useCallback((instruction: string) => {
     const newInputs = produce(inputs, (draft) => {
       draft.instruction = instruction
@@ -147,6 +167,9 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     handleQueryVarChange,
     filterVar,
     handleTopicsChange: handleClassesChange,
+    hasSetBlockStatus,
+    availableVars,
+    availableNodesWithParent,
     handleInstructionChange,
     handleMemoryChange,
     isShowSingleRun,

@@ -27,9 +27,13 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
     inputs,
     handleModelChanged,
     isChatMode,
+    isChatModel,
     handleCompletionParamsChange,
     handleQueryVarChange,
     handleTopicsChange,
+    hasSetBlockStatus,
+    availableVars,
+    availableNodesWithParent,
     handleInstructionChange,
     handleMemoryChange,
     isShowSingleRun,
@@ -99,6 +103,11 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             memory={inputs.memory}
             onMemoryChange={handleMemoryChange}
             readonly={readOnly}
+            isChatApp={isChatMode}
+            isChatModel={isChatModel}
+            hasSetBlockStatus={hasSetBlockStatus}
+            nodesOutputVars={availableVars}
+            availableNodes={availableNodesWithParent}
           />
         </Field>
       </div>
