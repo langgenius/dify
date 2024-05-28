@@ -177,24 +177,26 @@ const WorkflowToolConfigureButton = ({
             disabled ? 'shadow-xs opacity-30 cursor-not-allowed' : 'cursor-pointer',
             !published && 'hover:bg-primary-50',
           )}>
-            {isCurrentWorkspaceManager ? (
-              <div
-                className='flex justify-start items-center gap-2 px-2.5 py-2'
-                onClick={() => !published && setShowModal(true)}
-              >
-                <Tools className={cn('relative w-4 h-4', !published && 'group-hover:text-primary-600')} />
-                <div title={t('workflow.common.workflowAsTool') || ''} className={cn('grow shrink basis-0 text-[13px] font-medium leading-[18px] truncate', !published && 'group-hover:text-primary-600')}>{t('workflow.common.workflowAsTool')}</div>
-                {!published && (
-                  <span className='shrink-0 px-1 border border-black/8 rounded-[5px] bg-white text-[10px] font-medium leading-[18px] text-gray-500'>{t('workflow.common.configureRequired').toLocaleUpperCase()}</span>
-                )}
-              </div>) : (
-              <div
-                className='flex justify-start items-center gap-2 px-2.5 py-2'
-              >
-                <Tools className='w-4 h-4 text-gray-500' />
-                <div title={t('workflow.common.workflowAsTool') || ''} className='grow shrink basis-0 text-[13px] font-medium leading-[18px] truncate text-gray-500'>{t('workflow.common.workflowAsTool')}</div>
-              </div>
-            )}
+            {isCurrentWorkspaceManager
+              ? (
+                <div
+                  className='flex justify-start items-center gap-2 px-2.5 py-2'
+                  onClick={() => !published && setShowModal(true)}
+                >
+                  <Tools className={cn('relative w-4 h-4', !published && 'group-hover:text-primary-600')} />
+                  <div title={t('workflow.common.workflowAsTool') || ''} className={cn('grow shrink basis-0 text-[13px] font-medium leading-[18px] truncate', !published && 'group-hover:text-primary-600')}>{t('workflow.common.workflowAsTool')}</div>
+                  {!published && (
+                    <span className='shrink-0 px-1 border border-black/8 rounded-[5px] bg-white text-[10px] font-medium leading-[18px] text-gray-500'>{t('workflow.common.configureRequired').toLocaleUpperCase()}</span>
+                  )}
+                </div>)
+              : (
+                <div
+                  className='flex justify-start items-center gap-2 px-2.5 py-2'
+                >
+                  <Tools className='w-4 h-4 text-gray-500' />
+                  <div title={t('workflow.common.workflowAsTool') || ''} className='grow shrink basis-0 text-[13px] font-medium leading-[18px] truncate text-gray-500'>{t('workflow.common.workflowAsTool')}</div>
+                </div>
+              )}
             {published && (
               <div className='px-2.5 py-2 border-t-[0.5px] border-black/5'>
                 <div className='flex justify-between'>
