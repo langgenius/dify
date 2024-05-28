@@ -42,4 +42,5 @@ jobs:
       - name: Run DB Migration
         run: |
           cd api
+          cp .env.example .env
           flask db upgrade
