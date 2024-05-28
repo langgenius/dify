@@ -36,11 +36,11 @@ const Header: FC<Props> = ({
     <div className={cn(isInToolsPage ? 'py-4 px-6' : 'py-[11px] pl-4 pr-3', 'flex justify-between items-start border-b border-gray-200')}>
       <div className='flex items-start w-full'>
         {icon}
-        <div className='ml-3 grow w-0'>
+        <div className='w-0 ml-3 grow'>
           <div className='flex items-center h-6 space-x-1'>
             <div className={cn(isInDebugPage && 'truncate', 'text-base font-semibold text-gray-900')}>{collection.label[language]}</div>
             <div className='text-xs font-normal text-gray-500'>·</div>
-            <div className='text-xs font-normal text-gray-500'>{t('tools.author')}&nbsp;{collection.author}</div>
+            {/* <div className='text-xs font-normal text-gray-500'>{t('tools.author')}&nbsp;{collection.author}</div> */}
           </div>
           {collection.description && (
             <div className={cn('leading-[18px] text-[13px] font-normal text-gray-500')}>
@@ -58,7 +58,7 @@ const Header: FC<Props> = ({
           }}
         >
           <div className={cn(isAuthed ? 'border-[#12B76A] bg-[#32D583]' : 'border-gray-400 bg-gray-300', 'rounded h-2 w-2 border')}></div>
-          <div className='leading-5 text-sm font-medium text-gray-700'>{t(`tools.auth.${isAuthed ? 'authorized' : 'unauthorized'}`)}</div>
+          <div className='text-sm font-medium leading-5 text-gray-700'>{t(`tools.auth.${isAuthed ? 'authorized' : 'unauthorized'}`)}</div>
         </div>
       )}
 
@@ -68,7 +68,7 @@ const Header: FC<Props> = ({
           onClick={() => onShowEditCustomCollection()}
         >
           <Settings01 className='w-4 h-4 text-gray-700' />
-          <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
+          <div className='text-sm font-medium leading-5 text-gray-700'>{t('tools.createTool.editAction')}</div>
         </div>
       )}
     </div >

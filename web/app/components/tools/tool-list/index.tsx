@@ -118,7 +118,7 @@ const ToolList: FC<Props> = ({
   const icon = <>{typeof collection.icon === 'string'
     ? (
       <div
-        className='p-2 bg-cover bg-center border border-gray-100 rounded-lg'
+        className='p-2 bg-center bg-cover border border-gray-100 rounded-lg'
       >
         <div className='w-6 h-6 bg-center bg-contain rounded-md'
           style={{

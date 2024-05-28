@@ -125,7 +125,7 @@ const Apps = ({
 
   if (!categories) {
     return (
-      <div className="flex h-full items-center">
+      <div className="flex items-center h-full">
         <Loading type="area" />
       </div>
     )
@@ -137,9 +137,9 @@ const Apps = ({
       pageType === PageType.EXPLORE ? 'h-full border-l border-gray-200' : 'h-[calc(100%-56px)]',
     )}>
       {pageType === PageType.EXPLORE && (
-        <div className='shrink-0 pt-6 px-12'>
-          <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-          <div className='text-gray-500 text-sm'>{t('explore.apps.description')}</div>
+        <div className='px-12 pt-6 shrink-0'>
+          {/* <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div> */}
+          <div className='text-sm text-gray-500'>{t('explore.apps.description')}</div>
         </div>
       )}
       <div className={cn(
@@ -149,7 +149,7 @@ const Apps = ({
         {pageType !== PageType.EXPLORE && (
           <>
             <AppTypeSelector value={currentType} onChange={setCurrentType} />
-            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'/>
+            <div className='mx-2 w-[1px] h-3.5 bg-gray-200' />
           </>
         )}
         <Category

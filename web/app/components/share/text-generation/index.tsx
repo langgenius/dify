@@ -400,7 +400,7 @@ const TextGeneration: FC<IMainProps> = ({
       if (canReplaceLogo)
         document.title = `${siteInfo.title}`
       else
-        document.title = `${siteInfo.title} - Powered by Dify`
+        document.title = `${siteInfo.title} - Powered by hz`
     }
   }, [siteInfo?.title, canReplaceLogo])
 
@@ -618,7 +618,7 @@ const TextGeneration: FC<IMainProps> = ({
                 <div>·</div>
                 <div>{t('share.chat.privacyPolicyLeft')}
                   <a
-                    className='text-gray-500 px-1'
+                    className='px-1 text-gray-500'
                     href={siteInfo.privacy_policy}
                     target='_blank' rel='noopener noreferrer'>{t('share.chat.privacyPolicyMiddle')}</a>
                   {t('share.chat.privacyPolicyRight')}

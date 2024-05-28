@@ -11,7 +11,7 @@ const translation = {
   datasetDeleted: '知識庫已刪除',
   datasetDeleteFailed: '刪除知識庫失敗',
   didYouKnow: '你知道嗎？',
-  intro1: '知識庫可以被整合到 Dify 應用中',
+  intro1: '知識庫可以被整合到 hz 應用中',
   intro2: '作為上下文',
   intro3: ',',
   intro4: '或可以',

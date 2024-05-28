@@ -7,7 +7,7 @@ const translation = {
     nameError: '名称不能为空',
     desc: '知识库描述',
     descInfo: '请写出清楚的文字描述来概述知识库的内容。当从多个知识库中进行选择匹配时，该描述将用作匹配的基础。',
-    descPlaceholder: '描述这个知识库中的内容。详细的描述可以让 AI 及时访问知识库的内容。如果为空，Dify 将使用默认的命中策略。',
+    descPlaceholder: '描述这个知识库中的内容。详细的描述可以让 AI 及时访问知识库的内容。如果为空，hz 将使用默认的命中策略。',
     descWrite: '了解如何编写更好的知识库描述。',
     permissions: '可见权限',
     permissionsOnlyMe: '只有我',

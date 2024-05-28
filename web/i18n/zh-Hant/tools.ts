@@ -8,7 +8,7 @@ const translation = {
   },
   contribute: {
     line1: '我有興趣為 ',
-    line2: 'Dify 貢獻工具。',
+    line2: 'hz 貢獻工具。',
     viewGuide: '檢視指南',
   },
   author: '作者',

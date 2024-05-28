@@ -20,7 +20,7 @@ const translation = {
   invitationCodePlaceholder: 'Your invitation code',
   interfaceLanguage: 'Interface Language',
   timezone: 'Time zone',
-  go: 'Go to Dify',
+  go: 'Go to hz',
   sendUsMail: 'Email us your introduction, and we\'ll handle the invitation request.',
   acceptPP: 'I have read and accept the privacy policy',
   reset: 'Please run following command to reset your password',

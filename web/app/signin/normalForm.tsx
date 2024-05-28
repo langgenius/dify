@@ -143,10 +143,10 @@ const NormalForm = () => {
 
   return (
     <>
-      <div className="w-full mx-auto">
+      {/* <div className="w-full mx-auto">
         <h2 className="text-[32px] font-bold text-gray-900">{t('login.pageTitle')}</h2>
         <p className='mt-1 text-sm text-gray-600'>{t('login.welcome')}</p>
-      </div>
+      </div> */}
 
       <div className="w-full mx-auto mt-8">
         <div className="bg-white ">
@@ -166,7 +166,7 @@ const NormalForm = () => {
                           'w-5 h-5 mr-2',
                         )
                       } />
-                      <span className="truncate text-gray-800">{t('login.withGitHub')}</span>
+                      <span className="text-gray-800 truncate">{t('login.withGitHub')}</span>
                     </>
                   </Button>
                 </a>
@@ -185,7 +185,7 @@ const NormalForm = () => {
                           'w-5 h-5 mr-2',
                         )
                       } />
-                      <span className="truncate text-gray-800">{t('login.withGoogle')}</span>
+                      <span className="text-gray-800 truncate">{t('login.withGoogle')}</span>
                     </>
                   </Button>
                 </a>
@@ -206,7 +206,7 @@ const NormalForm = () => {
 
               <form onSubmit={() => { }}>
                 <div className='mb-5'>
-                  <label htmlFor="email" className="my-2 block text-sm font-medium text-gray-900">
+                  <label htmlFor="email" className="block my-2 text-sm font-medium text-gray-900">
                     {t('login.email')}
                   </label>
                   <div className="mt-1">
@@ -223,7 +223,7 @@ const NormalForm = () => {
                 </div>
 
                 <div className='mb-4'>
-                  <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+                  <label htmlFor="password" className="flex items-center justify-between my-2 text-sm font-medium text-gray-900">
                     <span>{t('login.password')}</span>
                     {/* <Tooltip
                       selector='forget-password'
@@ -280,7 +280,7 @@ const NormalForm = () => {
             </>
           }
           {/*  agree to our Terms and Privacy Policy. */}
-          <div className="w-hull text-center block mt-2 text-xs text-gray-600">
+          <div className="block mt-2 text-xs text-center text-gray-600 w-hull">
             {t('login.tosDesc')}
             &nbsp;
             <Link
@@ -296,7 +296,7 @@ const NormalForm = () => {
             >{t('login.pp')}</Link>
           </div>
 
-          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-gray-600">
+          {IS_CE_EDITION && <div className="block mt-2 text-xs text-center text-gray-600 w-hull">
             {t('login.goToInit')}
             &nbsp;
             <Link

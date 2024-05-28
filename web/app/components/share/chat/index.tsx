@@ -91,7 +91,7 @@ const Main: FC<IMainProps> = ({
       if (canReplaceLogo)
         document.title = `${siteInfo.title}`
       else
-        document.title = `${siteInfo.title} - Powered by Dify`
+        document.title = `${siteInfo.title} - Powered by hz`
     }
   }, [siteInfo?.title, canReplaceLogo])
 
@@ -842,13 +842,13 @@ const Main: FC<IMainProps> = ({
     return <AppUnavailable isUnknwonReason={isUnknwonReason} />
 
   if (!appId || !siteInfo || !promptConfig) {
-    return <div className='flex h-screen w-full'>
+    return <div className='flex w-full h-screen'>
       <Loading type='app' />
     </div>
   }
 
   return (
-    <div className='bg-gray-100 h-full flex flex-col'>
+    <div className='flex flex-col h-full bg-gray-100'>
       {!isInstalledApp && (
         <Header
           title={siteInfo.title}

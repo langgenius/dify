@@ -82,7 +82,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   useEffect(() => {
     if (appDetail) {
-      document.title = `${(appDetail.name || 'App')} - Dify`
+      document.title = `${(appDetail.name || 'App')} - Haizhi`
       const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
       const mode = isMobile ? 'collapse' : 'expand'
       setAppSiderbarExpand(isMobile ? mode : localeMode)
@@ -115,7 +115,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   if (!appDetail) {
     return (
-      <div className='flex h-full items-center justify-center bg-white'>
+      <div className='flex items-center justify-center h-full bg-white'>
         <Loading />
       </div>
     )
@@ -126,7 +126,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       {appDetail && (
         <AppSideBar title={appDetail.name} icon={appDetail.icon} icon_background={appDetail.icon_background} desc={appDetail.mode} navigation={navigation} />
       )}
-      <div className="bg-white grow overflow-hidden">
+      <div className="overflow-hidden bg-white grow">
         {children}
       </div>
     </div>

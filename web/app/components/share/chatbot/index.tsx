@@ -77,7 +77,7 @@ const Main: FC<IMainProps> = ({
       if (canReplaceLogo)
         document.title = `${siteInfo.title}`
       else
-        document.title = `${siteInfo.title} - Powered by Dify`
+        document.title = `${siteInfo.title} - Powered by hz`
     }
   }, [siteInfo?.title, canReplaceLogo])
 
@@ -718,7 +718,7 @@ const Main: FC<IMainProps> = ({
     return <AppUnavailable isUnknwonReason={isUnknwonReason} />
 
   if (!appId || !siteInfo || !promptConfig) {
-    return <div className='flex h-screen w-full'>
+    return <div className='flex w-full h-screen'>
       <Loading type='app' />
     </div>
   }
@@ -759,11 +759,11 @@ const Main: FC<IMainProps> = ({
             shouldReload && (
               <div className='flex items-center justify-between mb-5 px-4 py-2 bg-[#FEF0C7]'>
                 <div className='flex items-center text-xs font-medium text-[#DC6803]'>
-                  <AlertTriangle className='mr-2 w-4 h-4' />
+                  <AlertTriangle className='w-4 h-4 mr-2' />
                   {t('share.chat.temporarySystemIssue')}
                 </div>
                 <div
-                  className='flex items-center px-3 h-7 bg-white shadow-xs rounded-md text-xs font-medium text-gray-700 cursor-pointer'
+                  className='flex items-center px-3 text-xs font-medium text-gray-700 bg-white rounded-md shadow-xs cursor-pointer h-7'
                   onClick={handleReload}
                 >
                   {t('share.chat.tryToSolve')}

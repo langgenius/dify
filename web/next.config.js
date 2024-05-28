@@ -14,7 +14,7 @@ const withMDX = require('@next/mdx')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config) => {
     config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
     return config
   },

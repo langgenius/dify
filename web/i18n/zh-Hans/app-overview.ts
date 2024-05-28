@@ -25,7 +25,7 @@ const translation = {
     callTimes: '调用次数',
     usedToken: '使用 Tokens',
     setAPIBtn: '设置模型提供商',
-    tryCloud: '或者尝试使用 Dify 的云版本并使用试用配额',
+    tryCloud: '或者尝试使用 hz 的云版本并使用试用配额',
   },
   overview: {
     title: '概览',
@@ -49,7 +49,7 @@ const translation = {
           copyRightPlaceholder: '请输入作者或组织名称',
           privacyPolicy: '隐私政策',
           privacyPolicyPlaceholder: '请输入隐私政策链接',
-          privacyPolicyTip: '帮助访问者了解该应用收集的数据，可参考 Dify 的<privacyPolicyLink>隐私政策</privacyPolicyLink>。',
+          privacyPolicyTip: '帮助访问者了解该应用收集的数据，可参考 hz 的<privacyPolicyLink>隐私政策</privacyPolicyLink>。',
         },
       },
       embedded: {
@@ -58,7 +58,7 @@ const translation = {
         explanation: '选择一种方式将聊天应用嵌入到你的网站中',
         iframe: '将以下 iframe 嵌入到你的网站中的目标位置',
         scripts: '将以下代码嵌入到你的网站中',
-        chromePlugin: '安装 Dify Chrome 浏览器扩展',
+        chromePlugin: '安装 hz Chrome 浏览器扩展',
         copied: '已复制',
         copy: '复制',
       },

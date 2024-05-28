@@ -25,7 +25,7 @@ const translation = {
     callTimes: 'Call times',
     usedToken: 'Used token',
     setAPIBtn: 'Go to setup model provider',
-    tryCloud: 'Or try the cloud version of Dify with free quote',
+    tryCloud: 'Or try the cloud version of hz with free quote',
   },
   overview: {
     title: 'Overview',

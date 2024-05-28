@@ -10,7 +10,6 @@ import type { Collection, CustomCollectionBackend, Tool } from './types'
 import { CollectionType, LOC } from './types'
 import ToolNavList from './tool-nav-list'
 import Search from './search'
-import Contribute from './contribute'
 import ToolList from './tool-list'
 import EditCustomToolModal from './edit-custom-collection-modal'
 import NoCustomTool from './info/no-custom-tool'
@@ -166,7 +165,7 @@ const Tools: FC<Props> = ({
           )}
 
           {isInDebugPage && (
-            <div className='mt-6 flex space-x-1 items-center'>
+            <div className='flex items-center mt-6 space-x-1'>
               <Search
                 className='grow'
                 value={query}
@@ -195,20 +194,20 @@ const Tools: FC<Props> = ({
 
           {(collectionType === CollectionType.custom && hasNoCustomCollection)
             ? (
-              <div className='grow h-0 p-2 pt-8'>
+              <div className='h-0 p-2 pt-8 grow'>
                 <NoCustomTool onCreateTool={handleCreateToolCollection} />
               </div>
             )
             : (
               (showCollectionList.length > 0 || !query)
                 ? <ToolNavList
-                  className='mt-2 grow height-0 overflow-y-auto'
+                  className='mt-2 overflow-y-auto grow height-0'
                   currentIndex={currCollectionIndex || 0}
                   list={showCollectionList}
                   onChosen={setCurrCollectionIndex}
                 />
                 : (
-                  <div className='grow h-0 p-2 pt-8'>
+                  <div className='h-0 p-2 pt-8 grow'>
                     <NoSearchRes
                       onReset={() => { setQuery('') }}
                     />
@@ -216,9 +215,9 @@ const Tools: FC<Props> = ({
                 )
             )}
 
-          {loc === LOC.tools && (
+          {/* {loc === LOC.tools && (
             <Contribute />
-          )}
+          )} */}
         </div>
 
         {/* tools */}

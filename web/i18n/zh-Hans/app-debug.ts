@@ -201,7 +201,7 @@ const translation = {
   },
   automatic: {
     title: '自动编排',
-    description: '描述您的场景，Dify 将为您编排一个应用。',
+    description: '描述您的场景，hz 将为您编排一个应用。',
     intendedAudience: '目标用户是谁？',
     intendedAudiencePlaceHolder: '例如：学生',
     solveProblem: '希望 AI 为他们解决什么问题？',

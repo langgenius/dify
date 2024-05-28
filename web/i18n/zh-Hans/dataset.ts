@@ -11,7 +11,7 @@ const translation = {
   datasetDeleted: '知识库已删除',
   datasetDeleteFailed: '删除知识库失败',
   didYouKnow: '你知道吗？',
-  intro1: '知识库可以被集成到 Dify 应用中',
+  intro1: '知识库可以被集成到 hz 应用中',
   intro2: '作为上下文',
   intro3: ',',
   intro4: '或可以',

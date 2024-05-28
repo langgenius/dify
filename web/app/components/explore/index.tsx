@@ -22,7 +22,7 @@ const Explore: FC<IExploreProps> = ({
   const [installedApps, setInstalledApps] = useState<InstalledApp[]>([])
 
   useEffect(() => {
-    document.title = `${t('explore.title')} -  Dify`;
+    document.title = `${t('explore.title')} -  haizhi`;
     (async () => {
       const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
       if (!accounts)
@@ -33,7 +33,7 @@ const Explore: FC<IExploreProps> = ({
   }, [])
 
   return (
-    <div className='flex h-full bg-gray-100 border-t border-gray-200 overflow-hidden'>
+    <div className='flex h-full overflow-hidden bg-gray-100 border-t border-gray-200'>
       <ExploreContext.Provider
         value={
           {
@@ -46,7 +46,7 @@ const Explore: FC<IExploreProps> = ({
         }
       >
         <Sidebar controlUpdateInstalledApps={controlUpdateInstalledApps} />
-        <div className='grow w-0'>
+        <div className='w-0 grow'>
           {children}
         </div>
       </ExploreContext.Provider>
