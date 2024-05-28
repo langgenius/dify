@@ -99,7 +99,8 @@ def create_app() -> Flask:
         level=app.config.get('LOG_LEVEL'),
         format=app.config.get('LOG_FORMAT'),
         datefmt=app.config.get('LOG_DATEFORMAT'),
-        handlers=log_handlers
+        handlers=log_handlers,
+        force=True
     )
     log_tz = app.config.get('LOG_TZ')
     if log_tz:
