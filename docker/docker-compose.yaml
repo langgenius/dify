@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: faye1225/takin-dify-api:0.0.1
+    image: faye1225/takin-dify-api:0.0.2
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -303,7 +303,7 @@ services:
 
   # Frontend web application.
   web:
-    image: faye1225/takin-dify-web:0.0.1
+    image: faye1225/takin-dify-web:0.0.2
     restart: always
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
