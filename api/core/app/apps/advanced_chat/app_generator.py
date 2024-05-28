@@ -98,6 +98,90 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             extras=extras
         )
 
+        return self._generate(
+            app_model=app_model,
+            workflow=workflow,
+            user=user,
+            invoke_from=invoke_from,
+            application_generate_entity=application_generate_entity,
+            conversation=conversation,
+            stream=stream
+        )
+    
+    def single_iteration_generate(self, app_model: App,
+                                  workflow: Workflow,
+                                  node_id: str,
+                                  user: Account,
+                                  args: dict,
+                                  stream: bool = True) \
+            -> Union[dict, Generator[dict, None, None]]:
+        """
+        Generate App response.
+
+        :param app_model: App
+        :param workflow: Workflow
+        :param user: account or end user
+        :param args: request args
+        :param invoke_from: invoke from source
+        :param stream: is stream
+        """
+        if not node_id:
+            raise ValueError('node_id is required')
+        
+        if args.get('inputs') is None:
+            raise ValueError('inputs is required')
+        
+        extras = {
+            "auto_generate_conversation_name": False
+        }
+
+        # get conversation
+        conversation = None
+        if args.get('conversation_id'):
+            conversation = self._get_conversation_by_user(app_model, args.get('conversation_id'), user)
+
+        # convert to app config
+        app_config = AdvancedChatAppConfigManager.get_app_config(
+            app_model=app_model,
+            workflow=workflow
+        )
+
+        # init application generate entity
+        application_generate_entity = AdvancedChatAppGenerateEntity(
+            task_id=str(uuid.uuid4()),
+            app_config=app_config,
+            conversation_id=conversation.id if conversation else None,
+            inputs={},
+            query='',
+            files=[],
+            user_id=user.id,
+            stream=stream,
+            invoke_from=InvokeFrom.DEBUGGER,
+            extras=extras,
+            single_iteration_run=AdvancedChatAppGenerateEntity.SingleIterationRunEntity(
+                node_id=node_id,
+                inputs=args['inputs']
+            )
+        )
+
+        return self._generate(
+            app_model=app_model,
+            workflow=workflow,
+            user=user,
+            invoke_from=InvokeFrom.DEBUGGER,
+            application_generate_entity=application_generate_entity,
+            conversation=conversation,
+            stream=stream
+        )
+
+    def _generate(self, app_model: App,
+                 workflow: Workflow,
+                 user: Union[Account, EndUser],
+                 invoke_from: InvokeFrom,
+                 application_generate_entity: AdvancedChatAppGenerateEntity,
+                 conversation: Conversation = None,
+                 stream: bool = True) \
+            -> Union[dict, Generator[dict, None, None]]:
         is_first_conversation = False
         if not conversation:
             is_first_conversation = True
@@ -167,18 +251,30 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         """
         with flask_app.app_context():
             try:
-                # get conversation and message
-                conversation = self._get_conversation(conversation_id)
-                message = self._get_message(message_id)
-
-                # chatbot app
                 runner = AdvancedChatAppRunner()
-                runner.run(
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager,
-                    conversation=conversation,
-                    message=message
-                )
+                if application_generate_entity.single_iteration_run:
+                    single_iteration_run = application_generate_entity.single_iteration_run
+                    runner.single_iteration_run(
+                        app_id=application_generate_entity.app_config.app_id,
+                        workflow_id=application_generate_entity.app_config.workflow_id,
+                        queue_manager=queue_manager,
+                        inputs=single_iteration_run.inputs,
+                        node_id=single_iteration_run.node_id,
+                        user_id=application_generate_entity.user_id
+                    )
+                else:
+                    # get conversation and message
+                    conversation = self._get_conversation(conversation_id)
+                    message = self._get_message(message_id)
+
+                    # chatbot app
+                    runner = AdvancedChatAppRunner()
+                    runner.run(
+                        application_generate_entity=application_generate_entity,
+                        queue_manager=queue_manager,
+                        conversation=conversation,
+                        message=message
+                    )
             except GenerateTaskStoppedException:
                 pass
             except InvokeAuthorizationError:

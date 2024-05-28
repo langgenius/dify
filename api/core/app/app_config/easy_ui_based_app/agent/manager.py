@@ -1,7 +1,7 @@
 from typing import Optional
 
 from core.agent.entities import AgentEntity, AgentPromptEntity, AgentToolEntity
-from core.tools.prompt.template import REACT_PROMPT_TEMPLATES
+from core.agent.prompt.template import REACT_PROMPT_TEMPLATES
 
 
 class AgentConfigManager:

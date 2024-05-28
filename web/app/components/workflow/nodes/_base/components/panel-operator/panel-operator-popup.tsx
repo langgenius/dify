@@ -20,6 +20,7 @@ import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import type { Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
+import { CollectionType } from '@/app/components/tools/types'
 
 type PanelOperatorPopupProps = {
   id: string
@@ -46,28 +47,35 @@ const PanelOperatorPopup = ({
   const nodesExtraData = useNodesExtraData()
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
   const edge = edges.find(edge => edge.target === id)
   const author = useMemo(() => {
     if (data.type !== BlockEnum.Tool)
       return nodesExtraData[data.type].author
 
-    if (data.provider_type === 'builtin')
+    if (data.provider_type === CollectionType.builtIn)
       return buildInTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.author
 
+    if (data.provider_type === CollectionType.workflow)
+      return workflowTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.author
+
     return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.author
-  }, [data, nodesExtraData, buildInTools, customTools])
+  }, [data, nodesExtraData, buildInTools, customTools, workflowTools])
 
   const about = useMemo(() => {
     if (data.type !== BlockEnum.Tool)
       return nodesExtraData[data.type].about
 
-    if (data.provider_type === 'builtin')
+    if (data.provider_type === CollectionType.builtIn)
       return buildInTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
 
-    return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
-  }, [data, nodesExtraData, language, buildInTools, customTools])
+    if (data.provider_type === CollectionType.workflow)
+      return workflowTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
 
-  const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly
+    return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
+  }, [data, nodesExtraData, language, buildInTools, customTools, workflowTools])
+
+  const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly && data.type !== BlockEnum.Iteration
 
   return (
     <div className='w-[240px] border-[0.5px] border-gray-200 rounded-lg shadow-xl bg-white'>
@@ -97,7 +105,7 @@ const PanelOperatorPopup = ({
                 showChangeBlock && (
                   <ChangeBlock
                     nodeId={id}
-                    nodeType={data.type}
+                    nodeData={data}
                     sourceHandle={edge?.sourceHandle || 'source'}
                   />
                 )
