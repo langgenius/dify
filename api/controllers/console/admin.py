@@ -5,11 +5,11 @@ from flask import request
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import NotFound, Unauthorized
 
+from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.wraps import only_edition_cloud
 from extensions.ext_database import db
-from libs.helper import supported_language
-from models.model import RecommendedApp, App, InstalledApp
+from models.model import App, InstalledApp, RecommendedApp
 
 
 def admin_required(view):
@@ -48,6 +48,7 @@ class InsertExploreAppListApi(Resource):
         parser.add_argument('desc', type=str, location='json')
         parser.add_argument('copyright', type=str, location='json')
         parser.add_argument('privacy_policy', type=str, location='json')
+        parser.add_argument('custom_disclaimer', type=str, location='json')
         parser.add_argument('language', type=supported_language, required=True, nullable=False, location='json')
         parser.add_argument('category', type=str, required=True, nullable=False, location='json')
         parser.add_argument('position', type=int, required=True, nullable=False, location='json')
@@ -62,6 +63,7 @@ class InsertExploreAppListApi(Resource):
             desc = args['desc'] if args['desc'] else ''
             copy_right = args['copyright'] if args['copyright'] else ''
             privacy_policy = args['privacy_policy'] if args['privacy_policy'] else ''
+            custom_disclaimer = args['custom_disclaimer'] if args['custom_disclaimer'] else ''
         else:
             desc = site.description if site.description else \
                 args['desc'] if args['desc'] else ''
@@ -69,6 +71,8 @@ class InsertExploreAppListApi(Resource):
                 args['copyright'] if args['copyright'] else ''
             privacy_policy = site.privacy_policy if site.privacy_policy else \
                 args['privacy_policy'] if args['privacy_policy']  else ''
+            custom_disclaimer = site.custom_disclaimer if site.custom_disclaimer else \
+                args['custom_disclaimer'] if args['custom_disclaimer'] else ''
 
         recommended_app = RecommendedApp.query.filter(RecommendedApp.app_id == args['app_id']).first()
 
@@ -78,6 +82,7 @@ class InsertExploreAppListApi(Resource):
                 description=desc,
                 copyright=copy_right,
                 privacy_policy=privacy_policy,
+                custom_disclaimer=custom_disclaimer,
                 language=args['language'],
                 category=args['category'],
                 position=args['position']
@@ -93,6 +98,7 @@ class InsertExploreAppListApi(Resource):
             recommended_app.description = desc
             recommended_app.copyright = copy_right
             recommended_app.privacy_policy = privacy_policy
+            recommended_app.custom_disclaimer = custom_disclaimer
             recommended_app.language = args['language']
             recommended_app.category = args['category']
             recommended_app.position = args['position']

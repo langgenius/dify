@@ -108,7 +108,7 @@ const KeyValidator = ({
                 />
               ))
             }
-            <a className="flex items-center text-xs cursor-pointer text-primary-600" href={keyFrom.link} target={'_blank'}>
+            <a className="flex items-center text-xs cursor-pointer text-primary-600" href={keyFrom.link} target='_blank' rel='noopener noreferrer'>
               {keyFrom.text}
               <LinkExternal02 className='w-3 h-3 ml-1 text-primary-600' />
             </a>

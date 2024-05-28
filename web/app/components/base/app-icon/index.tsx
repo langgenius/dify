@@ -8,7 +8,7 @@ import style from './style.module.css'
 init({ data })
 
 export type AppIconProps = {
-  size?: 'tiny' | 'small' | 'medium' | 'large'
+  size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large'
   rounded?: boolean
   icon?: string
   background?: string

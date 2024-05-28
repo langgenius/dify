@@ -1,12 +1,11 @@
 import type { FC, SVGProps } from 'react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { omit } from 'lodash-es'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
-import { useGetState } from 'ahooks'
 import cn from 'classnames'
 import SegmentCard from '../completed/SegmentCard'
 import { FieldInfo } from '../metadata'
@@ -18,7 +17,7 @@ import Divider from '@/app/components/base/divider'
 import { ToastContext } from '@/app/components/base/toast'
 import type { FullDocumentDetail, ProcessRuleResponse } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
-import { asyncRunSafe } from '@/utils'
+import { asyncRunSafe, sleep } from '@/utils'
 import { formatNumber } from '@/utils/format'
 import { fetchIndexingStatus as doFetchIndexingStatus, fetchIndexingEstimate, fetchProcessRule, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
@@ -35,7 +34,7 @@ type Props = {
 
 const StopIcon = ({ className }: SVGProps<SVGElement>) => {
   return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
-    <g clip-path="url(#clip0_2328_2798)">
+    <g clipPath="url(#clip0_2328_2798)">
       <path d="M1.5 3.9C1.5 3.05992 1.5 2.63988 1.66349 2.31901C1.8073 2.03677 2.03677 1.8073 2.31901 1.66349C2.63988 1.5 3.05992 1.5 3.9 1.5H8.1C8.94008 1.5 9.36012 1.5 9.68099 1.66349C9.96323 1.8073 10.1927 2.03677 10.3365 2.31901C10.5 2.63988 10.5 3.05992 10.5 3.9V8.1C10.5 8.94008 10.5 9.36012 10.3365 9.68099C10.1927 9.96323 9.96323 10.1927 9.68099 10.3365C9.36012 10.5 8.94008 10.5 8.1 10.5H3.9C3.05992 10.5 2.63988 10.5 2.31901 10.3365C2.03677 10.1927 1.8073 9.96323 1.66349 9.68099C1.5 9.36012 1.5 8.94008 1.5 8.1V3.9Z" stroke="#344054" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </g>
     <defs>
@@ -120,46 +119,49 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
   const localDocumentId = docId ?? documentId
   const localIndexingTechnique = indexingType ?? indexingTechnique
 
-  // const { data: indexingStatusDetailFromApi, error: indexingStatusErr, mutate: statusMutate } = useSWR({
-  //   action: 'fetchIndexingStatus',
-  //   datasetId: localDatasetId,
-  //   documentId: localDocumentId,
-  // }, apiParams => fetchIndexingStatus(omit(apiParams, 'action')), {
-  //   refreshInterval: 2500,
-  //   revalidateOnFocus: false,
-  // })
-
-  const [indexingStatusDetail, setIndexingStatusDetail, getIndexingStatusDetail] = useGetState<any>(null)
+  const [indexingStatusDetail, setIndexingStatusDetail] = useState<any>(null)
   const fetchIndexingStatus = async () => {
     const status = await doFetchIndexingStatus({ datasetId: localDatasetId, documentId: localDocumentId })
     setIndexingStatusDetail(status)
+    return status
   }
 
-  const [runId, setRunId, getRunId] = useGetState<any>(null)
-
+  const [isStopQuery, setIsStopQuery] = useState(false)
+  const isStopQueryRef = useRef(isStopQuery)
+  useEffect(() => {
+    isStopQueryRef.current = isStopQuery
+  }, [isStopQuery])
   const stopQueryStatus = () => {
-    clearInterval(getRunId())
+    setIsStopQuery(true)
   }
 
-  const startQueryStatus = () => {
-    const runId = setInterval(() => {
-      const indexingStatusDetail = getIndexingStatusDetail()
-      if (indexingStatusDetail?.indexing_status === 'completed') {
+  const startQueryStatus = async () => {
+    if (isStopQueryRef.current)
+      return
+
+    try {
+      const indexingStatusDetail = await fetchIndexingStatus()
+      if (['completed', 'error', 'paused'].includes(indexingStatusDetail?.indexing_status)) {
         stopQueryStatus()
         detailUpdate()
         return
       }
-      fetchIndexingStatus()
-    }, 2500)
-    setRunId(runId)
+      await sleep(2500)
+      await startQueryStatus()
+    }
+    catch (e) {
+      await sleep(2500)
+      await startQueryStatus()
+    }
   }
 
   useEffect(() => {
-    fetchIndexingStatus()
+    setIsStopQuery(false)
     startQueryStatus()
     return () => {
       stopQueryStatus()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { data: indexingEstimateDetail, error: indexingEstimateErr } = useSWR({
@@ -301,4 +303,4 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
   )
 }
 
-export default EmbeddingDetail
+export default React.memo(EmbeddingDetail)

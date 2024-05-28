@@ -1,19 +1,19 @@
-# -*- coding:utf-8 -*-
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 
 import pytz
 from flask import jsonify
 from flask_login import current_user
-from libs.login import login_required
 from flask_restful import Resource, reqparse
 
 from controllers.console import api
-from controllers.console.app import _get_app
+from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from libs.helper import datetime_string
 from extensions.ext_database import db
+from libs.helper import datetime_string
+from libs.login import login_required
+from models.model import AppMode
 
 
 class DailyConversationStatistic(Resource):
@@ -21,10 +21,9 @@ class DailyConversationStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    @get_app_model
+    def get(self, app_model):
         account = current_user
-        app_id = str(app_id)
-        app_model = _get_app(app_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument('start', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
@@ -62,16 +61,15 @@ class DailyConversationStatistic(Resource):
 
         sql_query += ' GROUP BY date order by date'
 
-        with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
-
         response_data = []
 
-        for i in rs:
-            response_data.append({
-                'date': str(i.date),
-                'conversation_count': i.conversation_count
-            })
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)
+            for i in rs:
+                response_data.append({
+                    'date': str(i.date),
+                    'conversation_count': i.conversation_count
+                })
 
         return jsonify({
             'data': response_data
@@ -83,10 +81,9 @@ class DailyTerminalsStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    @get_app_model
+    def get(self, app_model):
         account = current_user
-        app_id = str(app_id)
-        app_model = _get_app(app_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument('start', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
@@ -124,16 +121,15 @@ class DailyTerminalsStatistic(Resource):
 
         sql_query += ' GROUP BY date order by date'
 
-        with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
-
         response_data = []
 
-        for i in rs:
-            response_data.append({
-                'date': str(i.date),
-                'terminal_count': i.terminal_count
-            })
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)            
+            for i in rs:
+                response_data.append({
+                    'date': str(i.date),
+                    'terminal_count': i.terminal_count
+                })
 
         return jsonify({
             'data': response_data
@@ -144,10 +140,9 @@ class DailyTokenCostStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    @get_app_model
+    def get(self, app_model):
         account = current_user
-        app_id = str(app_id)
-        app_model = _get_app(app_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument('start', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
@@ -187,18 +182,17 @@ class DailyTokenCostStatistic(Resource):
 
         sql_query += ' GROUP BY date order by date'
 
-        with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
-
         response_data = []
 
-        for i in rs:
-            response_data.append({
-                'date': str(i.date),
-                'token_count': i.token_count,
-                'total_price': i.total_price,
-                'currency': 'USD'
-            })
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)
+            for i in rs:
+                response_data.append({
+                    'date': str(i.date),
+                    'token_count': i.token_count,
+                    'total_price': i.total_price,
+                    'currency': 'USD'
+                })
 
         return jsonify({
             'data': response_data
@@ -209,10 +203,9 @@ class AverageSessionInteractionStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    def get(self, app_model):
         account = current_user
-        app_id = str(app_id)
-        app_model = _get_app(app_id, 'chat')
 
         parser = reqparse.RequestParser()
         parser.add_argument('start', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
@@ -256,16 +249,15 @@ LEFT JOIN conversations c on c.id=subquery.conversation_id
 GROUP BY date
 ORDER BY date"""
 
+        response_data = []
+        
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
-
-        response_data = []
-
-        for i in rs:
-            response_data.append({
-                'date': str(i.date),
-                'interactions': float(i.interactions.quantize(Decimal('0.01')))
-            })
+            for i in rs:
+                response_data.append({
+                    'date': str(i.date),
+                    'interactions': float(i.interactions.quantize(Decimal('0.01')))
+                })
 
         return jsonify({
             'data': response_data
@@ -276,10 +268,9 @@ class UserSatisfactionRateStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    @get_app_model
+    def get(self, app_model):
         account = current_user
-        app_id = str(app_id)
-        app_model = _get_app(app_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument('start', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
@@ -320,30 +311,28 @@ class UserSatisfactionRateStatistic(Resource):
 
         sql_query += ' GROUP BY date order by date'
 
-        with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
-
         response_data = []
 
-        for i in rs:
-            response_data.append({
-                'date': str(i.date),
-                'rate': round((i.feedback_count * 1000 / i.message_count) if i.message_count > 0 else 0, 2),
-            })
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)
+            for i in rs:
+                response_data.append({
+                    'date': str(i.date),
+                    'rate': round((i.feedback_count * 1000 / i.message_count) if i.message_count > 0 else 0, 2),
+                })
 
         return jsonify({
-                'data': response_data
-            })
+            'data': response_data
+        })
 
 
 class AverageResponseTimeStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    @get_app_model(mode=AppMode.COMPLETION)
+    def get(self, app_model):
         account = current_user
-        app_id = str(app_id)
-        app_model = _get_app(app_id, 'completion')
 
         parser = reqparse.RequestParser()
         parser.add_argument('start', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
@@ -383,16 +372,15 @@ class AverageResponseTimeStatistic(Resource):
 
         sql_query += ' GROUP BY date order by date'
 
-        with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
-
         response_data = []
 
-        for i in rs:
-            response_data.append({
-                'date': str(i.date),
-                'latency': round(i.latency * 1000, 4)
-            })
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)            
+            for i in rs:
+                response_data.append({
+                    'date': str(i.date),
+                    'latency': round(i.latency * 1000, 4)
+                })
 
         return jsonify({
             'data': response_data
@@ -403,10 +391,9 @@ class TokensPerSecondStatistic(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
+    @get_app_model
+    def get(self, app_model):
         account = current_user
-        app_id = str(app_id)
-        app_model = _get_app(app_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument('start', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
@@ -447,16 +434,15 @@ WHERE app_id = :app_id'''
 
         sql_query += ' GROUP BY date order by date'
 
-        with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
-
         response_data = []
 
-        for i in rs:
-            response_data.append({
-                'date': str(i.date),
-                'tps': round(i.tokens_per_second, 4)
-            })
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)
+            for i in rs:
+                response_data.append({
+                    'date': str(i.date),
+                    'tps': round(i.tokens_per_second, 4)
+                })
 
         return jsonify({
             'data': response_data

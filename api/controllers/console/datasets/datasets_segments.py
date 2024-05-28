@@ -1,30 +1,34 @@
-# -*- coding:utf-8 -*-
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
+
+import pandas as pd
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, reqparse, marshal
-from werkzeug.exceptions import NotFound, Forbidden
+from flask_restful import Resource, marshal, reqparse
+from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.console import api
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import InvalidActionError, NoFileUploadedError, TooManyFilesError
 from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
-from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.model_providers.model_factory import ModelFactory
-from libs.login import login_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_knowledge_limit_check,
+    cloud_edition_billing_resource_check,
+)
+from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import segment_fields
+from libs.login import login_required
 from models.dataset import DocumentSegment
-
 from services.dataset_service import DatasetService, DocumentService, SegmentService
-from tasks.enable_segment_to_index_task import enable_segment_to_index_task
-from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
-import pandas as pd
+from tasks.disable_segment_from_index_task import disable_segment_from_index_task
+from tasks.enable_segment_to_index_task import enable_segment_to_index_task
 
 
 class DatasetDocumentSegmentListApi(Resource):
@@ -114,6 +118,7 @@ class DatasetDocumentSegmentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('vector_space')
     def patch(self, dataset_id, segment_id, action):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -122,7 +127,7 @@ class DatasetDocumentSegmentApi(Resource):
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         try:
@@ -132,15 +137,17 @@ class DatasetDocumentSegmentApi(Resource):
         if dataset.indexing_technique == 'high_quality':
             # check embedding model setting
             try:
-                ModelFactory.get_embedding_model(
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    "No Embedding Model available. Please configure a valid provider "
+                    "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
 
@@ -151,6 +158,9 @@ class DatasetDocumentSegmentApi(Resource):
 
         if not segment:
             raise NotFound('Segment not found.')
+
+        if segment.status != 'completed':
+            raise NotFound('Segment is not completed, enable or disable function is not allowed')
 
         document_indexing_cache_key = 'document_{}_indexing'.format(segment.document_id)
         cache_result = redis_client.get(document_indexing_cache_key)
@@ -182,7 +192,7 @@ class DatasetDocumentSegmentApi(Resource):
                 raise InvalidActionError("Segment is already disabled.")
 
             segment.enabled = False
-            segment.disabled_at = datetime.utcnow()
+            segment.disabled_at = datetime.now(timezone.utc).replace(tzinfo=None)
             segment.disabled_by = current_user.id
             db.session.commit()
 
@@ -200,6 +210,8 @@ class DatasetDocumentSegmentAddApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('vector_space')
+    @cloud_edition_billing_knowledge_limit_check('add_segment')
     def post(self, dataset_id, document_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -212,20 +224,22 @@ class DatasetDocumentSegmentAddApi(Resource):
         if not document:
             raise NotFound('Document not found.')
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
         # check embedding model setting
         if dataset.indexing_technique == 'high_quality':
             try:
-                ModelFactory.get_embedding_model(
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    "No Embedding Model available. Please configure a valid provider "
+                    "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         try:
@@ -250,6 +264,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('vector_space')
     def patch(self, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -266,15 +281,17 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if dataset.indexing_technique == 'high_quality':
             # check embedding model setting
             try:
-                ModelFactory.get_embedding_model(
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    "No Embedding Model available. Please configure a valid provider "
+                    "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
             # check segment
@@ -286,7 +303,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if not segment:
             raise NotFound('Segment not found.')
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -330,7 +347,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if not segment:
             raise NotFound('Segment not found.')
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -344,6 +361,8 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('vector_space')
+    @cloud_edition_billing_knowledge_limit_check('add_segment')
     def post(self, dataset_id, document_id):
         # check dataset
         dataset_id = str(dataset_id)

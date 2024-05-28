@@ -76,7 +76,7 @@
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 body {
@@ -146,3 +146,5 @@ button:focus-within {
   top: 0;
   bottom: 0;
 }
+
+@import '../components/base/button/index.css';

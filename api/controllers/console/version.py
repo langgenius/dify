@@ -1,12 +1,10 @@
-# -*- coding:utf-8 -*-
 
 import json
 import logging
 
 import requests
 from flask import current_app
-from flask_restful import reqparse, Resource
-from werkzeug.exceptions import InternalServerError
+from flask_restful import Resource, reqparse
 
 from . import api
 

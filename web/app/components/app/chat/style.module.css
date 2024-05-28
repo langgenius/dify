@@ -38,8 +38,14 @@
   background: url(./icons/answer.svg) no-repeat;
 }
 
-.copyBtn {
+.copyBtn,
+.playBtn,
+.annotationBtn {
   display: none;
+}
+
+pre:hover .copyBtn {
+  display: block;
 }
 
 .answerWrapWrap,
@@ -53,14 +59,24 @@
   justify-content: flex-end;
 }
 
-.answerWrap,
 .question {
   display: inline-block;
   max-width: 100%;
 }
 
-.answerWrap:hover .copyBtn {
+.answer {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.answerWrap:hover .copyBtn,
+.answerWrap:hover .playBtn,
+.answerWrap:hover .annotationBtn {
   display: block;
+}
+
+.answerWrap:hover .hasAnnotationBtn {
+  display: none;
 }
 
 .answerWrap .itemOperation {

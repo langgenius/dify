@@ -1,20 +1,28 @@
-# -*- coding:utf-8 -*-
 import logging
 
 from flask import request
 from flask_login import current_user
-from libs.login import login_required
-from flask_restful import Resource, fields, marshal_with, reqparse, marshal, inputs
+from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse
+from werkzeug.exceptions import Unauthorized
 
+import services
 from controllers.console import api
 from controllers.console.admin import admin_required
-from controllers.console.setup import setup_required
+from controllers.console.datasets.error import (
+    FileTooLargeError,
+    NoFileUploadedError,
+    TooManyFilesError,
+    UnsupportedFileTypeError,
+)
 from controllers.console.error import AccountNotLinkTenantError
-from controllers.console.wraps import account_initialization_required
-from libs.helper import TimestampField
+from controllers.console.setup import setup_required
+from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_database import db
-from models.account import Tenant
+from libs.helper import TimestampField
+from libs.login import login_required
+from models.account import Tenant, TenantStatus
 from services.account_service import TenantService
+from services.file_service import FileService
 from services.workspace_service import WorkspaceService
 
 provider_fields = {
@@ -31,9 +39,9 @@ tenant_fields = {
     'status': fields.String,
     'created_at': TimestampField,
     'role': fields.String,
-    'providers': fields.List(fields.Nested(provider_fields)),
     'in_trial': fields.Boolean,
     'trial_end_reason': fields.String,
+    'custom_config': fields.Raw(attribute='custom_config'),
 }
 
 tenants_fields = {
@@ -109,6 +117,16 @@ class TenantApi(Resource):
 
         tenant = current_user.current_tenant
 
+        if tenant.status == TenantStatus.ARCHIVE:
+            tenants = TenantService.get_join_tenants(current_user)
+            # if there is any tenant, switch to the first one
+            if len(tenants) > 0:
+                TenantService.switch_tenant(current_user, tenants[0].id)
+                tenant = tenants[0]
+            # else, raise Unauthorized
+            else:
+                raise Unauthorized('workspace is archived')
+
         return WorkspaceService.get_tenant_info(tenant), 200
 
 
@@ -130,6 +148,61 @@ class SwitchWorkspaceApi(Resource):
         new_tenant = db.session.query(Tenant).get(args['tenant_id'])  # Get new tenant
 
         return {'result': 'success', 'new_tenant': marshal(WorkspaceService.get_tenant_info(new_tenant), tenant_fields)}
+    
+
+class CustomConfigWorkspaceApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_resource_check('workspace_custom')
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('remove_webapp_brand', type=bool, location='json')
+        parser.add_argument('replace_webapp_logo', type=str,  location='json')
+        args = parser.parse_args()
+
+        tenant = db.session.query(Tenant).filter(Tenant.id == current_user.current_tenant_id).one_or_404()
+
+        custom_config_dict = {
+            'remove_webapp_brand': args['remove_webapp_brand'],
+            'replace_webapp_logo': args['replace_webapp_logo'] if args['replace_webapp_logo'] is not None else tenant.custom_config_dict.get('replace_webapp_logo') ,
+        }
+
+        tenant.custom_config_dict = custom_config_dict
+        db.session.commit()
+
+        return {'result': 'success', 'tenant': marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
+    
+
+class WebappLogoWorkspaceApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_resource_check('workspace_custom')
+    def post(self):
+        # get file from request
+        file = request.files['file']
+
+        # check file
+        if 'file' not in request.files:
+            raise NoFileUploadedError()
+
+        if len(request.files) > 1:
+            raise TooManyFilesError()
+
+        extension = file.filename.split('.')[-1]
+        if extension.lower() not in ['svg', 'png']:
+            raise UnsupportedFileTypeError()
+
+        try:
+            upload_file = FileService.upload_file(file, current_user, True)
+
+        except services.errors.file.FileTooLargeError as file_too_large_error:
+            raise FileTooLargeError(file_too_large_error.description)
+        except services.errors.file.UnsupportedFileTypeError:
+            raise UnsupportedFileTypeError()
+        
+        return { 'id': upload_file.id }, 201
 
 
 api.add_resource(TenantListApi, '/workspaces')  # GET for getting all tenants
@@ -137,3 +210,5 @@ api.add_resource(WorkspaceListApi, '/all-workspaces')  # GET for getting all ten
 api.add_resource(TenantApi, '/workspaces/current', endpoint='workspaces_current')  # GET for getting current tenant info
 api.add_resource(TenantApi, '/info', endpoint='info')  # Deprecated
 api.add_resource(SwitchWorkspaceApi, '/workspaces/switch')  # POST for switching tenant
+api.add_resource(CustomConfigWorkspaceApi, '/workspaces/custom-config')
+api.add_resource(WebappLogoWorkspaceApi, '/workspaces/custom-config/webapp-logo/upload')

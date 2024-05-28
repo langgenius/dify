@@ -1,7 +1,8 @@
-# -*- coding:utf-8 -*-
 import jwt
-from werkzeug.exceptions import Unauthorized
 from flask import current_app
+from werkzeug.exceptions import Unauthorized
+
+
 class PassportService:
     def __init__(self):
         self.sk = current_app.config.get('SECRET_KEY')

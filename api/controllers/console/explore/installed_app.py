@@ -1,17 +1,16 @@
-# -*- coding:utf-8 -*-
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask_login import current_user
-from libs.login import login_required
-from flask_restful import Resource, reqparse, marshal_with, inputs
+from flask_restful import Resource, inputs, marshal_with, reqparse
 from sqlalchemy import and_
-from werkzeug.exceptions import NotFound, Forbidden, BadRequest
+from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 from controllers.console import api
 from controllers.console.explore.wraps import InstalledAppResource
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
+from libs.login import login_required
 from models.model import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
 
@@ -34,18 +33,20 @@ class InstalledAppsListApi(Resource):
                 'app_owner_tenant_id': installed_app.app_owner_tenant_id,
                 'is_pinned': installed_app.is_pinned,
                 'last_used_at': installed_app.last_used_at,
-                "editable": current_user.role in ["owner", "admin"],
-                "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id
+                'editable': current_user.role in ["owner", "admin"],
+                'uninstallable': current_tenant_id == installed_app.app_owner_tenant_id
             }
             for installed_app in installed_apps
         ]
-        installed_apps.sort(key=lambda app: (-app['is_pinned'], app['last_used_at']
-                            if app['last_used_at'] is not None else datetime.min))
+        installed_apps.sort(key=lambda app: (-app['is_pinned'],
+                                             app['last_used_at'] is None,
+                                             -app['last_used_at'].timestamp() if app['last_used_at'] is not None else 0))
 
         return {'installed_apps': installed_apps}
 
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('apps')
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('app_id', type=str, required=True, help='Invalid app_id')
@@ -80,7 +81,7 @@ class InstalledAppsListApi(Resource):
                 tenant_id=current_tenant_id,
                 app_owner_tenant_id=app.tenant_id,
                 is_pinned=False,
-                last_used_at=datetime.utcnow()
+                last_used_at=datetime.now(timezone.utc).replace(tzinfo=None)
             )
             db.session.add(new_installed_app)
             db.session.commit()

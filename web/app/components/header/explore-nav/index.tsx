@@ -4,9 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { useSelectedLayoutSegment } from 'next/navigation'
 import classNames from 'classnames'
-import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
-import { Grid01 as Grid01Solid } from '@/app/components/base/icons/src/vender/solid/layout'
-
+import { Explore, ExploreActive } from '../../base/icons/src/public/header-nav/explore'
 type ExploreNavProps = {
   className?: string
 }
@@ -26,8 +24,8 @@ const ExploreNav = ({
     )}>
       {
         actived
-          ? <Grid01Solid className='mr-2 w-4 h-4' />
-          : <Grid01 className='mr-2 w-4 h-4' />
+          ? <ExploreActive className='mr-2 w-4 h-4' />
+          : <Explore className='mr-2 w-4 h-4' />
       }
       {t('common.menus.explore')}
     </Link>

@@ -1,5 +1,6 @@
 import { Popover, Transition } from '@headlessui/react'
 import { Fragment, cloneElement, useRef } from 'react'
+import cn from 'classnames'
 import s from './style.module.css'
 
 export type HtmlContentProps = {
@@ -10,8 +11,9 @@ export type HtmlContentProps = {
 type IPopover = {
   className?: string
   htmlContent: React.ReactElement<HtmlContentProps>
+  popupClassName?: string
   trigger?: 'click' | 'hover'
-  position?: 'bottom' | 'br'
+  position?: 'bottom' | 'br' | 'bl'
   btnElement?: string | React.ReactNode
   btnClassName?: string | ((open: boolean) => string)
   manualClose?: boolean
@@ -23,6 +25,7 @@ export default function CustomPopover({
   trigger = 'hover',
   position = 'bottom',
   htmlContent,
+  popupClassName,
   btnElement,
   className,
   btnClassName,
@@ -57,19 +60,24 @@ export default function CustomPopover({
             >
               <Popover.Button
                 ref={buttonRef}
-                className={`group ${s.popupBtn} ${open ? '' : 'bg-gray-100'} ${
-                  !btnClassName
-                    ? ''
-                    : typeof btnClassName === 'string'
-                      ? btnClassName
-                      : btnClassName?.(open)
+                className={`group ${s.popupBtn} ${open ? '' : 'bg-gray-100'} ${!btnClassName
+                  ? ''
+                  : typeof btnClassName === 'string'
+                    ? btnClassName
+                    : btnClassName?.(open)
                 }`}
               >
                 {btnElement}
               </Popover.Button>
               <Transition as={Fragment}>
                 <Popover.Panel
-                  className={`${s.popupPanel} ${position === 'br' ? 'right-0' : 'translate-x-1/2 left-1/2'} ${className}`}
+                  className={cn(
+                    s.popupPanel,
+                    position === 'bottom' && '-translate-x-1/2 left-1/2',
+                    position === 'bl' && 'left-0',
+                    position === 'br' && 'right-0',
+                    className,
+                  )}
                   {...(trigger !== 'hover'
                     ? {}
                     : {
@@ -80,7 +88,7 @@ export default function CustomPopover({
                 >
                   {({ close }) => (
                     <div
-                      className={s.panelContainer}
+                      className={cn(s.panelContainer, popupClassName)}
                       {...(trigger !== 'hover'
                         ? {}
                         : {

@@ -24,7 +24,7 @@ const PluginPage = () => {
         {t('common.provider.encrypted.front')}
         <Link
           className='text-primary-600 mx-1'
-          target={'_blank'}
+          target='_blank' rel='noopener noreferrer'
           href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
         >
           PKCS1_OAEP

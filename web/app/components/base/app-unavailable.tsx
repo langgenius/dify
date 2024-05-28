@@ -1,8 +1,9 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 
-interface IAppUnavailableProps {
+type IAppUnavailableProps = {
   code?: number
   isUnknwonReason?: boolean
   unknownReason?: string

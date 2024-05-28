@@ -1,31 +1,33 @@
-import json
 import logging
-from typing import Union, Generator
 
-from flask import Response, stream_with_context
 from flask_login import current_user
-from flask_restful import Resource, reqparse, marshal_with, fields
+from flask_restful import Resource, fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 from controllers.console import api
-from controllers.console.app import _get_app
-from controllers.console.app.error import CompletionRequestError, ProviderNotInitializeError, \
-    AppMoreLikeThisDisabledError, ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError
+from controllers.console.app.error import (
+    CompletionRequestError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
+from controllers.console.app.wraps import get_app_model
+from controllers.console.explore.error import AppSuggestedQuestionsAfterAnswerDisabledError
 from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
-from core.model_providers.error import LLMRateLimitError, LLMBadRequestError, LLMAuthorizationError, LLMAPIConnectionError, \
-    ProviderTokenNotInitError, LLMAPIUnavailableError, QuotaExceededError, ModelCurrentlyNotSupportError
-from libs.login import login_required
-from fields.conversation_fields import message_detail_fields
+from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.model_runtime.errors.invoke import InvokeError
+from extensions.ext_database import db
+from fields.conversation_fields import annotation_fields, message_detail_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from extensions.ext_database import db
-from models.model import MessageAnnotation, Conversation, Message, MessageFeedback
-from services.completion_service import CompletionService
-from services.errors.app import MoreLikeThisDisabledError
+from libs.login import login_required
+from models.model import AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
+from services.annotation_service import AppAnnotationService
 from services.errors.conversation import ConversationNotExistsError
-from services.errors.message import MessageNotExistsError
+from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService
 
 
@@ -38,14 +40,10 @@ class ChatMessageListApi(Resource):
 
     @setup_required
     @login_required
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @account_initialization_required
     @marshal_with(message_infinite_scroll_pagination_fields)
-    def get(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app = _get_app(app_id, 'chat')
-
+    def get(self, app_model):
         parser = reqparse.RequestParser()
         parser.add_argument('conversation_id', required=True, type=uuid_value, location='args')
         parser.add_argument('first_id', type=uuid_value, location='args')
@@ -54,7 +52,7 @@ class ChatMessageListApi(Resource):
 
         conversation = db.session.query(Conversation).filter(
             Conversation.id == args['conversation_id'],
-            Conversation.app_id == app.id
+            Conversation.app_id == app_model.id
         ).first()
 
         if not conversation:
@@ -102,12 +100,8 @@ class MessageFeedbackApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app = _get_app(app_id)
-
+    @get_app_model
+    def post(self, app_model):
         parser = reqparse.RequestParser()
         parser.add_argument('message_id', required=True, type=uuid_value, location='json')
         parser.add_argument('rating', type=str, choices=['like', 'dislike', None], location='json')
@@ -117,7 +111,7 @@ class MessageFeedbackApi(Resource):
 
         message = db.session.query(Message).filter(
             Message.id == message_id,
-            Message.app_id == app.id
+            Message.app_id == app_model.id
         ).first()
 
         if not message:
@@ -133,7 +127,7 @@ class MessageFeedbackApi(Resource):
             raise ValueError('rating cannot be None when feedback not exists')
         else:
             feedback = MessageFeedback(
-                app_id=app.id,
+                app_id=app_model.id,
                 conversation_id=message.conversation_id,
                 message_id=message.id,
                 rating=args['rating'],
@@ -151,153 +145,52 @@ class MessageAnnotationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app = _get_app(app_id)
+    @cloud_edition_billing_resource_check('annotation')
+    @get_app_model
+    @marshal_with(annotation_fields)
+    def post(self, app_model):
+        # The role of the current user in the ta table must be admin or owner
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument('message_id', required=True, type=uuid_value, location='json')
-        parser.add_argument('content', type=str, location='json')
+        parser.add_argument('message_id', required=False, type=uuid_value, location='json')
+        parser.add_argument('question', required=True, type=str, location='json')
+        parser.add_argument('answer', required=True, type=str, location='json')
+        parser.add_argument('annotation_reply', required=False, type=dict, location='json')
         args = parser.parse_args()
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
 
-        message_id = str(args['message_id'])
-
-        message = db.session.query(Message).filter(
-            Message.id == message_id,
-            Message.app_id == app.id
-        ).first()
-
-        if not message:
-            raise NotFound("Message Not Exists.")
-
-        annotation = message.annotation
-
-        if annotation:
-            annotation.content = args['content']
-        else:
-            annotation = MessageAnnotation(
-                app_id=app.id,
-                conversation_id=message.conversation_id,
-                message_id=message.id,
-                content=args['content'],
-                account_id=current_user.id
-            )
-            db.session.add(annotation)
-
-        db.session.commit()
-
-        return {'result': 'success'}
+        return annotation
 
 
 class MessageAnnotationCountApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app = _get_app(app_id)
-
+    @get_app_model
+    def get(self, app_model):
         count = db.session.query(MessageAnnotation).filter(
-            MessageAnnotation.app_id == app.id
+            MessageAnnotation.app_id == app_model.id
         ).count()
 
         return {'count': count}
-
-
-class MessageMoreLikeThisApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self, app_id, message_id):
-        app_id = str(app_id)
-        message_id = str(message_id)
-
-        parser = reqparse.RequestParser()
-        parser.add_argument('response_mode', type=str, required=True, choices=['blocking', 'streaming'],
-                            location='args')
-        args = parser.parse_args()
-
-        streaming = args['response_mode'] == 'streaming'
-
-        # get app info
-        app_model = _get_app(app_id, 'completion')
-
-        try:
-            response = CompletionService.generate_more_like_this(app_model, current_user, message_id, streaming)
-            return compact_response(response)
-        except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
-        except MoreLikeThisDisabledError:
-            raise AppMoreLikeThisDisabledError()
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logging.exception("internal server error.")
-            raise InternalServerError()
-
-
-def compact_response(response: Union[dict | Generator]) -> Response:
-    if isinstance(response, dict):
-        return Response(response=json.dumps(response), status=200, mimetype='application/json')
-    else:
-        def generate() -> Generator:
-            try:
-                for chunk in response:
-                    yield chunk
-            except MessageNotExistsError:
-                yield "data: " + json.dumps(api.handle_error(NotFound("Message Not Exists.")).get_json()) + "\n\n"
-            except MoreLikeThisDisabledError:
-                yield "data: " + json.dumps(api.handle_error(AppMoreLikeThisDisabledError()).get_json()) + "\n\n"
-            except ProviderTokenNotInitError as ex:
-                yield "data: " + json.dumps(api.handle_error(ProviderNotInitializeError(ex.description)).get_json()) + "\n\n"
-            except QuotaExceededError:
-                yield "data: " + json.dumps(api.handle_error(ProviderQuotaExceededError()).get_json()) + "\n\n"
-            except ModelCurrentlyNotSupportError:
-                yield "data: " + json.dumps(
-                    api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
-            except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                    LLMRateLimitError, LLMAuthorizationError) as e:
-                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(str(e))).get_json()) + "\n\n"
-            except ValueError as e:
-                yield "data: " + json.dumps(api.handle_error(e).get_json()) + "\n\n"
-            except Exception:
-                logging.exception("internal server error.")
-                yield "data: " + json.dumps(api.handle_error(InternalServerError()).get_json()) + "\n\n"
-
-        return Response(stream_with_context(generate()), status=200,
-                        mimetype='text/event-stream')
 
 
 class MessageSuggestedQuestionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_id, message_id):
-        app_id = str(app_id)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    def get(self, app_model, message_id):
         message_id = str(message_id)
-
-        # get app info
-        app_model = _get_app(app_id, 'chat')
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model,
-                user=current_user,
                 message_id=message_id,
-                check_enabled=False
+                user=current_user,
+                invoke_from=InvokeFrom.DEBUGGER
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")
@@ -309,9 +202,10 @@ class MessageSuggestedQuestionApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+        except SuggestedQuestionsAfterAnswerDisabledError:
+            raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()
@@ -323,13 +217,10 @@ class MessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @get_app_model
     @marshal_with(message_detail_fields)
-    def get(self, app_id, message_id):
-        app_id = str(app_id)
+    def get(self, app_model, message_id):
         message_id = str(message_id)
-
-        # get app info
-        app_model = _get_app(app_id, 'chat')
 
         message = db.session.query(Message).filter(
             Message.id == message_id,
@@ -342,7 +233,6 @@ class MessageApi(Resource):
         return message
 
 
-api.add_resource(MessageMoreLikeThisApi, '/apps/<uuid:app_id>/completion-messages/<uuid:message_id>/more-like-this')
 api.add_resource(MessageSuggestedQuestionApi, '/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions')
 api.add_resource(ChatMessageListApi, '/apps/<uuid:app_id>/chat-messages', endpoint='console_chat_messages')
 api.add_resource(MessageFeedbackApi, '/apps/<uuid:app_id>/feedbacks')

@@ -1,5 +1,6 @@
-import type { AppMode } from './app'
 import type { DataSourceNotionPage } from './common'
+import type { AppMode, RetrievalConfig } from '@/types/app'
+import type { Tag } from '@/app/components/base/tag-management/constant'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -25,6 +26,9 @@ export type DataSet = {
   embedding_model: string
   embedding_model_provider: string
   embedding_available: boolean
+  retrieval_model_dict: RetrievalConfig
+  retrieval_model: RetrievalConfig
+  tags: Tag[]
 }
 
 export type CustomFile = File & {
@@ -105,6 +109,7 @@ export type PreProcessingRule = {
 export type Segmentation = {
   separator: string
   max_tokens: number
+  chunk_overlap: number
 }
 
 export const DocumentIndexingStatusList = [
@@ -193,6 +198,7 @@ export type DocumentReq = {
 
 export type CreateDocumentReq = DocumentReq & {
   data_source: DataSource
+  retrieval_model: RetrievalConfig
 }
 
 export type IndexingEstimateParams = DocumentReq & Partial<DataSource> & {
@@ -405,4 +411,9 @@ export type SegmentUpdator = {
 export enum DocForm {
   TEXT = 'text_model',
   QA = 'qa_model',
+}
+
+export type ErrorDocsResponse = {
+  data: IndexingStatusResponse[]
+  total: number
 }

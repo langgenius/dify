@@ -1,15 +1,16 @@
 import base64
+import datetime
 import secrets
-from datetime import datetime
 
 from flask_restful import Resource, reqparse
 
+from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
-from libs.helper import email, str_len, supported_language, timezone
-from libs.password import valid_password, hash_password
-from models.account import AccountStatus, Tenant
+from libs.helper import email, str_len, timezone
+from libs.password import hash_password, valid_password
+from models.account import AccountStatus
 from services.account_service import RegisterService
 
 
@@ -65,7 +66,7 @@ class ActivateApi(Resource):
         account.timezone = args['timezone']
         account.interface_theme = 'light'
         account.status = AccountStatus.ACTIVE.value
-        account.initialized_at = datetime.utcnow()
+        account.initialized_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
         return {'result': 'success'}

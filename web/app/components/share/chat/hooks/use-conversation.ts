@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import produce from 'immer'
 import { useGetState } from 'ahooks'
 import type { ConversationItem } from '@/models/share'
@@ -11,7 +11,7 @@ function useConversation() {
   const [pinnedConversationList, setPinnedConversationList] = useState<ConversationItem[]>([])
   const [currConversationId, doSetCurrConversationId, getCurrConversationId] = useGetState<string>('-1')
   // when set conversation id, we do not have set appId
-  const setCurrConversationId = (id: string, appId: string, isSetToLocalStroge = true, newConversationName = '') => {
+  const setCurrConversationId = useCallback((id: string, appId: string, isSetToLocalStroge = true, newConversationName = '') => {
     doSetCurrConversationId(id)
     if (isSetToLocalStroge && id !== '-1') {
       // conversationIdInfo: {[appId1]: conversationId1, [appId2]: conversationId2}
@@ -19,7 +19,7 @@ function useConversation() {
       conversationIdInfo[appId] = id
       globalThis.localStorage?.setItem(storageConversationIdKey, JSON.stringify(conversationIdInfo))
     }
-  }
+  }, [doSetCurrConversationId])
 
   const getConversationIdFromStorage = (appId: string) => {
     const conversationIdInfo = globalThis.localStorage?.getItem(storageConversationIdKey) ? JSON.parse(globalThis.localStorage?.getItem(storageConversationIdKey) || '') : {}

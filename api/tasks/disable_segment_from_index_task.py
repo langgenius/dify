@@ -5,7 +5,7 @@ import click
 from celery import shared_task
 from werkzeug.exceptions import NotFound
 
-from core.index.index import IndexBuilder
+from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
@@ -27,7 +27,7 @@ def disable_segment_from_index_task(segment_id: str):
         raise NotFound('Segment not found')
 
     if segment.status != 'completed':
-        return
+        raise NotFound('Segment is not completed , disable action is not allowed.')
 
     indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
 
@@ -48,15 +48,9 @@ def disable_segment_from_index_task(segment_id: str):
             logging.info(click.style('Segment {} document status is invalid, pass.'.format(segment.id), fg='cyan'))
             return
 
-        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
-        kw_index = IndexBuilder.get_index(dataset, 'economy')
-
-        # delete from vector index
-        if vector_index:
-            vector_index.delete_by_ids([segment.index_node_id])
-
-        # delete from keyword index
-        kw_index.delete_by_ids([segment.index_node_id])
+        index_type = dataset_document.doc_form
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
+        index_processor.clean(dataset, [segment.index_node_id])
 
         end_at = time.perf_counter()
         logging.info(click.style('Segment removed from index: {} latency: {}'.format(segment.id, end_at - start_at), fg='green'))

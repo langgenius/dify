@@ -1,13 +1,14 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import s from './style.module.css'
 
-export interface ILoaidingAnimProps {
+export type ILoaidingAnimProps = {
   type: 'text' | 'avatar'
 }
 
 const LoaidingAnim: FC<ILoaidingAnimProps> = ({
-  type
+  type,
 }) => {
   return (
     <div className={`${s['dot-flashing']} ${s[type]}`}></div>

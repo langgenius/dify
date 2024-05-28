@@ -1,104 +1,63 @@
-import os
-import shutil
-from contextlib import closing
+from collections.abc import Generator
+from typing import Union
 
-import boto3
-from botocore.exceptions import ClientError
 from flask import Flask
+
+from extensions.storage.aliyun_storage import AliyunStorage
+from extensions.storage.azure_storage import AzureStorage
+from extensions.storage.google_storage import GoogleStorage
+from extensions.storage.local_storage import LocalStorage
+from extensions.storage.s3_storage import S3Storage
 
 
 class Storage:
     def __init__(self):
-        self.storage_type = None
-        self.bucket_name = None
-        self.client = None
-        self.folder = None
+        self.storage_runner = None
 
     def init_app(self, app: Flask):
-        self.storage_type = app.config.get('STORAGE_TYPE')
-        if self.storage_type == 's3':
-            self.bucket_name = app.config.get('S3_BUCKET_NAME')
-            self.client = boto3.client(
-                's3',
-                aws_secret_access_key=app.config.get('S3_SECRET_KEY'),
-                aws_access_key_id=app.config.get('S3_ACCESS_KEY'),
-                endpoint_url=app.config.get('S3_ENDPOINT'),
-                region_name=app.config.get('S3_REGION')
+        storage_type = app.config.get('STORAGE_TYPE')
+        if storage_type == 's3':
+            self.storage_runner = S3Storage(
+                app=app
+            )
+        elif storage_type == 'azure-blob':
+            self.storage_runner = AzureStorage(
+                app=app
+            )
+        elif storage_type == 'aliyun-oss':
+            self.storage_runner = AliyunStorage(
+                app=app
+            )
+        elif storage_type == 'google-storage':
+            self.storage_runner = GoogleStorage(
+                app=app
             )
         else:
-            self.folder = app.config.get('STORAGE_LOCAL_PATH')
-            if not os.path.isabs(self.folder):
-                self.folder = os.path.join(app.root_path, self.folder)
+            self.storage_runner = LocalStorage(app=app)
 
     def save(self, filename, data):
-        if self.storage_type == 's3':
-            self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
+        self.storage_runner.save(filename, data)
+
+    def load(self, filename: str, stream: bool = False) -> Union[bytes, Generator]:
+        if stream:
+            return self.load_stream(filename)
         else:
-            if not self.folder or self.folder.endswith('/'):
-                filename = self.folder + filename
-            else:
-                filename = self.folder + '/' + filename
+            return self.load_once(filename)
 
-            folder = os.path.dirname(filename)
-            os.makedirs(folder, exist_ok=True)
+    def load_once(self, filename: str) -> bytes:
+        return self.storage_runner.load_once(filename)
 
-            with open(os.path.join(os.getcwd(), filename), "wb") as f:
-                f.write(data)
-
-    def load(self, filename):
-        if self.storage_type == 's3':
-            try:
-                with closing(self.client) as client:
-                    data = client.get_object(Bucket=self.bucket_name, Key=filename)['Body'].read()
-            except ClientError as ex:
-                if ex.response['Error']['Code'] == 'NoSuchKey':
-                    raise FileNotFoundError("File not found")
-                else:
-                    raise
-        else:
-            if not self.folder or self.folder.endswith('/'):
-                filename = self.folder + filename
-            else:
-                filename = self.folder + '/' + filename
-
-            if not os.path.exists(filename):
-                raise FileNotFoundError("File not found")
-
-            with open(filename, "rb") as f:
-                data = f.read()
-
-        return data
+    def load_stream(self, filename: str) -> Generator:
+        return self.storage_runner.load_stream(filename)
 
     def download(self, filename, target_filepath):
-        if self.storage_type == 's3':
-            with closing(self.client) as client:
-                client.download_file(self.bucket_name, filename, target_filepath)
-        else:
-            if not self.folder or self.folder.endswith('/'):
-                filename = self.folder + filename
-            else:
-                filename = self.folder + '/' + filename
-
-            if not os.path.exists(filename):
-                raise FileNotFoundError("File not found")
-
-            shutil.copyfile(filename, target_filepath)
+        self.storage_runner.download(filename, target_filepath)
 
     def exists(self, filename):
-        if self.storage_type == 's3':
-            with closing(self.client) as client:
-                try:
-                    client.head_object(Bucket=self.bucket_name, Key=filename)
-                    return True
-                except:
-                    return False
-        else:
-            if not self.folder or self.folder.endswith('/'):
-                filename = self.folder + filename
-            else:
-                filename = self.folder + '/' + filename
+        return self.storage_runner.exists(filename)
 
-            return os.path.exists(filename)
+    def delete(self, filename):
+        return self.storage_runner.delete(filename)
 
 
 storage = Storage()

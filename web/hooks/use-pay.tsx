@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import I18n from '@/context/i18n'
-import { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import {
   fetchDataSourceNotionBinding,
   fetchFreeQuotaVerify,
@@ -24,7 +23,7 @@ export const useAnthropicCheckPay = () => {
   const paymentResult = searchParams.get('payment_result')
 
   useEffect(() => {
-    if (providerName === ProviderEnum.anthropic && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
+    if (providerName === 'anthropic' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
       setConfirm({
         type: paymentResult === 'succeeded' ? 'success' : 'danger',
         title: paymentResult === 'succeeded' ? t('common.actionMsg.paySucceeded') : t('common.actionMsg.payCancelled'),
@@ -35,8 +34,27 @@ export const useAnthropicCheckPay = () => {
   return confirm
 }
 
-const QUOTA_RECEIVE_STATUS = {
-  [ProviderEnum.spark]: {
+export const useBillingPay = () => {
+  const { t } = useTranslation()
+  const [confirm, setConfirm] = useState<ConfirmType | null>(null)
+  const searchParams = useSearchParams()
+  const paymentType = searchParams.get('payment_type')
+  const paymentResult = searchParams.get('payment_result')
+
+  useEffect(() => {
+    if (paymentType === 'billing' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
+      setConfirm({
+        type: paymentResult === 'succeeded' ? 'success' : 'danger',
+        title: paymentResult === 'succeeded' ? t('common.actionMsg.paySucceeded') : t('common.actionMsg.payCancelled'),
+      })
+    }
+  }, [paymentType, paymentResult, t])
+
+  return confirm
+}
+
+const QUOTA_RECEIVE_STATUS: Record<string, any> = {
+  spark: {
     success: {
       'en': 'Successful collection, the quota will be automatically increased after 5 minutes.',
       'zh-Hans': '领取成功，将在 5 分钟后自动增加配额',
@@ -46,7 +64,7 @@ const QUOTA_RECEIVE_STATUS = {
       'zh-Hans': '领取失败',
     },
   },
-  [ProviderEnum.zhipuai]: {
+  zhipuai: {
     success: {
       'en': 'Successful collection',
       'zh-Hans': '领取成功',
@@ -58,14 +76,14 @@ const QUOTA_RECEIVE_STATUS = {
   },
 }
 
-const FREE_CHECK_PROVIDER = [ProviderEnum.spark, ProviderEnum.zhipuai]
+const FREE_CHECK_PROVIDER = ['spark', 'zhipuai']
 export const useCheckFreeQuota = () => {
   const { locale } = useContext(I18n)
   const router = useRouter()
   const [shouldVerify, setShouldVerify] = useState(false)
   const searchParams = useSearchParams()
   const type = searchParams.get('type')
-  const provider = searchParams.get('provider') as (ProviderEnum.spark | ProviderEnum.zhipuai)
+  const provider = searchParams.get('provider')
   const result = searchParams.get('result')
   const token = searchParams.get('token')
 
@@ -82,14 +100,14 @@ export const useCheckFreeQuota = () => {
   }, [error, router])
 
   useEffect(() => {
-    if (type === 'provider_apply_callback' && FREE_CHECK_PROVIDER.includes(provider) && result === 'success')
+    if (type === 'provider_apply_callback' && FREE_CHECK_PROVIDER.includes(provider as string) && result === 'success')
       setShouldVerify(true)
   }, [type, provider, result])
 
   return (data && provider)
     ? {
       type: data.flag ? 'success' : 'danger',
-      title: data.flag ? QUOTA_RECEIVE_STATUS[provider].success[locale] : QUOTA_RECEIVE_STATUS[provider].fail[locale],
+      title: data.flag ? QUOTA_RECEIVE_STATUS[provider as string].success[locale] : QUOTA_RECEIVE_STATUS[provider].fail[locale],
       desc: !data.flag ? data.reason : undefined,
     }
     : null
@@ -104,7 +122,7 @@ export const useCheckNotion = () => {
   const notionCode = searchParams.get('code')
   const notionError = searchParams.get('error')
   const { data } = useSWR(
-    canBinding
+    (canBinding && notionCode)
       ? `/oauth/data-source/binding/notion?code=${notionCode}`
       : null,
     fetchDataSourceNotionBinding,
@@ -138,13 +156,14 @@ export const CheckModal = () => {
   const anthropicConfirmInfo = useAnthropicCheckPay()
   const freeQuotaConfirmInfo = useCheckFreeQuota()
   const notionConfirmInfo = useCheckNotion()
+  const billingConfirmInfo = useBillingPay()
 
   const handleCancelShowPayStatusModal = useCallback(() => {
     setShowPayStatusModal(false)
     router.replace('/', { forceOptimisticNavigation: false })
   }, [router])
 
-  const confirmInfo = anthropicConfirmInfo || freeQuotaConfirmInfo || notionConfirmInfo
+  const confirmInfo = anthropicConfirmInfo || freeQuotaConfirmInfo || notionConfirmInfo || billingConfirmInfo
 
   if (!confirmInfo || !showPayStatusModal)
     return null

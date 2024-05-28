@@ -1,8 +1,8 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
 import AppUnavailable from '../../base/app-unavailable'
+import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
 import StepsNavBar from './steps-nav-bar'
 import StepOne from './step-one'
 import StepTwo from './step-two'
@@ -12,9 +12,8 @@ import type { DataSet, FileItem, createDocumentResponse } from '@/models/dataset
 import { fetchDataSource } from '@/service/common'
 import { fetchDatasetDetail } from '@/service/datasets'
 import type { NotionPage } from '@/models/common'
-import { useProviderContext } from '@/context/provider-context'
-
-import AccountSetting from '@/app/components/header/account-setting'
+import { useModalContext } from '@/context/modal-context'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 type DatasetUpdateFormProps = {
   datasetId?: string
@@ -22,16 +21,15 @@ type DatasetUpdateFormProps = {
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const { t } = useTranslation()
-  const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
+  const { setShowAccountSettingModal } = useModalContext()
   const [hasConnection, setHasConnection] = useState(true)
-  const [isShowDataSourceSetting, { setTrue: showDataSourceSetting, setFalse: hideDataSourceSetting }] = useBoolean()
   const [dataSourceType, setDataSourceType] = useState<DataSourceType>(DataSourceType.FILE)
   const [step, setStep] = useState(1)
   const [indexingTypeCache, setIndexTypeCache] = useState('')
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [result, setResult] = useState<createDocumentResponse | undefined>()
   const [hasError, setHasError] = useState(false)
-  const { embeddingsDefaultModel } = useProviderContext()
+  const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
 
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
   const updateNotionPages = (value: NotionPage[]) => {
@@ -106,13 +104,13 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
 
   return (
     <div className='flex' style={{ height: 'calc(100vh - 56px)' }}>
-      <div className="flex flex-col w-56 overflow-y-auto bg-white border-r border-gray-200 shrink-0">
+      <div className="flex flex-col w-11 sm:w-56 overflow-y-auto bg-white border-r border-gray-200 shrink-0">
         <StepsNavBar step={step} datasetId={datasetId} />
       </div>
       <div className="grow bg-white">
         {step === 1 && <StepOne
           hasConnection={hasConnection}
-          onSetting={showDataSourceSetting}
+          onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
           datasetId={datasetId}
           dataSourceType={dataSourceType}
           dataSourceTypeDisable={!!detail?.data_source_type}
@@ -126,7 +124,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
         />}
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
           hasSetAPIKEY={!!embeddingsDefaultModel}
-          onSetting={showSetAPIKey}
+          onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
           indexingType={detail?.indexing_technique}
           datasetId={datasetId}
           dataSourceType={dataSourceType}
@@ -143,10 +141,6 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           creationCache={result}
         />}
       </div>
-      {isShowSetAPIKey && <AccountSetting activeTab="provider" onCancel={async () => {
-        hideSetAPIkey()
-      }} />}
-      {isShowDataSourceSetting && <AccountSetting activeTab="data-source" onCancel={hideDataSourceSetting}/>}
     </div>
   )
 }

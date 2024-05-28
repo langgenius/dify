@@ -13,7 +13,8 @@ import Loading from '@/app/components/base/loading'
 import StepTwo from '@/app/components/datasets/create/step-two'
 import AccountSetting from '@/app/components/header/account-setting'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import { useProviderContext } from '@/context/provider-context'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type DocumentSettingsProps = {
   datasetId: string
@@ -26,7 +27,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
   const [hasError, setHasError] = useState(false)
   const { indexingTechnique, dataset } = useContext(DatasetDetailContext)
-  const { embeddingsDefaultModel } = useProviderContext()
+  const { data: embeddingsDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
 
   const saveHandler = () => router.push(`/datasets/${datasetId}/documents/${documentId}`)
 

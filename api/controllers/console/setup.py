@@ -1,18 +1,17 @@
-# -*- coding:utf-8 -*-
 from functools import wraps
 
-from flask import request, current_app
+from flask import current_app, request
 from flask_restful import Resource, reqparse
 
 from extensions.ext_database import db
-from models.model import DifySetup
-from services.account_service import AccountService, TenantService, RegisterService
-
 from libs.helper import email, str_len
 from libs.password import valid_password
+from models.model import DifySetup
+from services.account_service import AccountService, RegisterService, TenantService
 
 from . import api
-from .error import AlreadySetupError, NotSetupError
+from .error import AlreadySetupError, NotInitValidateError, NotSetupError
+from .init_validate import get_init_validate_status
 from .wraps import only_edition_self_hosted
 
 
@@ -26,7 +25,7 @@ class SetupApi(Resource):
                     'step': 'finished',
                     'setup_at': setup_status.setup_at.isoformat()
                 }
-            return {'step': 'not_start'}
+            return {'step': 'not_started'}
         return {'step': 'finished'}
 
     @only_edition_self_hosted
@@ -39,6 +38,9 @@ class SetupApi(Resource):
         tenant_count = TenantService.get_tenant_count()
         if tenant_count > 0:
             raise AlreadySetupError()
+    
+        if not get_init_validate_status():
+            raise NotInitValidateError()
 
         parser = reqparse.RequestParser()
         parser.add_argument('email', type=email,
@@ -55,6 +57,8 @@ class SetupApi(Resource):
             name=args['name'],
             password=args['password']
         )
+
+        TenantService.create_owner_tenant_if_not_exist(account)
 
         setup()
         AccountService.update_last_login(account, request)
@@ -73,7 +77,10 @@ def setup_required(view):
     @wraps(view)
     def decorated(*args, **kwargs):
         # check setup
-        if not get_setup_status():
+        if not get_init_validate_status():
+            raise NotInitValidateError()
+        
+        elif not get_setup_status():
             raise NotSetupError()
 
         return view(*args, **kwargs)

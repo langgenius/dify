@@ -14,6 +14,7 @@ import { inviteMember } from '@/service/common'
 import { emailRegex } from '@/config'
 import { ToastContext } from '@/app/components/base/toast'
 import type { InvitationResult } from '@/models/common'
+import I18n from '@/context/i18n'
 
 import 'react-multi-email/dist/style.css'
 type IInviteModalProps = {
@@ -29,6 +30,8 @@ const InviteModal = ({
   const [emails, setEmails] = useState<string[]>([])
   const { notify } = useContext(ToastContext)
 
+  const { locale } = useContext(I18n)
+
   const InvitingRoles = useMemo(() => [
     {
       name: 'normal',
@@ -42,11 +45,11 @@ const InviteModal = ({
   const [role, setRole] = useState(InvitingRoles[0])
 
   const handleSend = useCallback(async () => {
-    if (emails.map(email => emailRegex.test(email)).every(Boolean)) {
+    if (emails.map((email: string) => emailRegex.test(email)).every(Boolean)) {
       try {
         const { result, invitation_results } = await inviteMember({
           url: '/workspaces/current/members/invite-email',
-          body: { emails, role: role.name },
+          body: { emails, role: role.name, language: locale },
         })
 
         if (result === 'success') {
@@ -62,8 +65,8 @@ const InviteModal = ({
   }, [role, emails, notify, onCancel, onSend, t])
 
   return (
-    <div className={s.wrap}>
-      <Modal overflowVisible isShow onClose={() => {}} className={s.modal}>
+    <div className={cn(s.wrap)}>
+      <Modal overflowVisible isShow onClose={() => {}} className={cn(s.modal)} wrapperClassName='z-20'>
         <div className='flex justify-between mb-2'>
           <div className='text-xl font-semibold text-gray-900'>{t('common.members.inviteTeamMember')}</div>
           <XMarkIcon className='w-4 h-4 cursor-pointer' onClick={onCancel} />

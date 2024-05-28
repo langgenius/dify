@@ -1,0 +1,46 @@
+provider: spark
+label:
+  zh_Hans: 讯飞星火
+  en_US: iFLYTEK SPARK
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  zh_Hans: icon_l_zh.svg
+  en_US: icon_l_en.svg
+background: "#EBF8FF"
+help:
+  title:
+    en_US: Get your API key from iFLYTEK SPARK
+    zh_Hans: 从讯飞星火获取 API Keys
+  url:
+    en_US: https://www.xfyun.cn/solutions/xinghuoAPI
+supported_model_types:
+  - llm
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: app_id
+      label:
+        en_US: APPID
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 APPID
+        en_US: Enter your APPID
+    - variable: api_secret
+      label:
+        en_US: APISecret
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 APISecret
+        en_US: Enter your APISecret
+    - variable: api_key
+      label:
+        en_US: APIKey
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 APIKey
+        en_US: Enter your APIKey

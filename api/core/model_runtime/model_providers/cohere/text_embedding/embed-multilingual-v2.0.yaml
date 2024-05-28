@@ -1,0 +1,9 @@
+model: embed-multilingual-v2.0
+model_type: text-embedding
+model_properties:
+  context_size: 768
+  max_chunks: 48
+pricing:
+  input: '0.1'
+  unit: '0.000001'
+  currency: USD

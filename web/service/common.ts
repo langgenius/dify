@@ -1,19 +1,40 @@
 import type { Fetcher } from 'swr'
 import { del, get, patch, post, put } from './base'
 import type {
-  AccountIntegrate, CommonResponse, DataSourceNotion,
-  DocumentsLimitResponse,
+  AccountIntegrate,
+  ApiBasedExtension,
+  CodeBasedExtension,
+  CommonResponse,
+  DataSourceNotion,
   FileUploadConfigResponse,
   ICurrentWorkspace,
-  IWorkspace, InvitationResponse, LangGeniusVersionResponse, Member,
-  OauthResponse, PluginProvider, Provider, ProviderAnthropicToken, ProviderAzureToken,
-  SetupStatusResponse, UserProfileOriginResponse,
+  IWorkspace,
+  InitValidateStatusResponse,
+  InvitationResponse,
+  LangGeniusVersionResponse,
+  Member,
+  ModerateResponse,
+  OauthResponse,
+  PluginProvider,
+  Provider,
+  ProviderAnthropicToken,
+  ProviderAzureToken,
+  SetupStatusResponse,
+  UserProfileOriginResponse,
 } from '@/models/common'
 import type {
   UpdateOpenAIKeyResponse,
   ValidateOpenAIKeyResponse,
 } from '@/models/app'
-import type { BackendModel, ProviderMap } from '@/app/components/header/account-setting/model-page/declarations'
+import type {
+  DefaultModelResponse,
+  Model,
+  ModelItem,
+  ModelParameterRule,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { RETRIEVE_METHOD } from '@/types/app'
+import type { SystemFeatures } from '@/types/feature'
 
 export const login: Fetcher<CommonResponse & { data: string }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse & { data: string }>
@@ -21,6 +42,14 @@ export const login: Fetcher<CommonResponse & { data: string }, { url: string; bo
 
 export const setup: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
   return post<CommonResponse>('/setup', { body })
+}
+
+export const initValidate: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
+  return post<CommonResponse>('/init', { body })
+}
+
+export const fetchInitValidateStatus = () => {
+  return get<InitValidateStatusResponse>('/init')
 }
 
 export const fetchSetupStatus = () => {
@@ -90,6 +119,10 @@ export const fetchCurrentWorkspace: Fetcher<ICurrentWorkspace, { url: string; pa
   return get<ICurrentWorkspace>(url, { params })
 }
 
+export const updateCurrentWorkspace: Fetcher<ICurrentWorkspace, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post<ICurrentWorkspace>(url, { body })
+}
+
 export const fetchWorkspaces: Fetcher<{ workspaces: IWorkspace[] }, { url: string; params: Record<string, any> }> = ({ url, params }) => {
   return get<{ workspaces: IWorkspace[] }>(url, { params })
 }
@@ -129,12 +162,20 @@ export const activateMember: Fetcher<CommonResponse, { url: string; body: any }>
   return post<CommonResponse>(url, { body })
 }
 
-export const fetchModelProviders: Fetcher<ProviderMap, string> = (url) => {
-  return get<ProviderMap>(url)
+export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (url) => {
+  return get<{ data: ModelProvider[] }>(url)
 }
 
-export const fetchModelList: Fetcher<BackendModel[], string> = (url) => {
-  return get<BackendModel[]>(url)
+export const fetchModelProviderCredentials: Fetcher<{ credentials?: Record<string, string | undefined | boolean> }, string> = (url) => {
+  return get<{ credentials?: Record<string, string | undefined | boolean> }>(url)
+}
+
+export const fetchModelProviderModelList: Fetcher<{ data: ModelItem[] }, string> = (url) => {
+  return get<{ data: ModelItem[] }>(url)
+}
+
+export const fetchModelList: Fetcher<{ data: Model[] }, string> = (url) => {
+  return get<{ data: Model[] }>(url)
 }
 
 export const validateModelProvider: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {
@@ -145,8 +186,8 @@ export const setModelProvider: Fetcher<CommonResponse, { url: string; body: any 
   return post<CommonResponse>(url, { body })
 }
 
-export const deleteModelProvider: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
-  return del<CommonResponse>(url)
+export const deleteModelProvider: Fetcher<CommonResponse, { url: string; body?: any }> = ({ url, body }) => {
+  return del<CommonResponse>(url, { body })
 }
 
 export const changeModelProviderPriority: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
@@ -165,24 +206,20 @@ export const getPayUrl: Fetcher<{ url: string }, string> = (url) => {
   return get<{ url: string }>(url)
 }
 
-export const fetchDefaultModal: Fetcher<BackendModel, string> = (url) => {
-  return get<BackendModel>(url)
+export const fetchDefaultModal: Fetcher<{ data: DefaultModelResponse }, string> = (url) => {
+  return get<{ data: DefaultModelResponse }>(url)
 }
 
 export const updateDefaultModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
   return post<CommonResponse>(url, { body })
 }
 
-export const submitFreeQuota: Fetcher<{ type: string; redirect_url?: string; result?: string }, string> = (url) => {
-  return post<{ type: string; redirect_url?: string; result?: string }>(url)
+export const fetchModelParameterRules: Fetcher<{ data: ModelParameterRule[] }, string> = (url) => {
+  return get<{ data: ModelParameterRule[] }>(url)
 }
 
 export const fetchFileUploadConfig: Fetcher<FileUploadConfigResponse, { url: string }> = ({ url }) => {
   return get<FileUploadConfigResponse>(url)
-}
-
-export const fetchDocumentsLimit: Fetcher<DocumentsLimitResponse, string> = (url) => {
-  return get<DocumentsLimitResponse>(url)
 }
 
 export const fetchFreeQuotaVerify: Fetcher<{ result: string; flag: boolean; reason: string }, string> = (url) => {
@@ -195,4 +232,43 @@ export const fetchNotionConnection: Fetcher<{ data: string }, string> = (url) =>
 
 export const fetchDataSourceNotionBinding: Fetcher<{ result: string }, string> = (url) => {
   return get(url) as Promise<{ result: string }>
+}
+
+export const fetchApiBasedExtensionList: Fetcher<ApiBasedExtension[], string> = (url) => {
+  return get(url) as Promise<ApiBasedExtension[]>
+}
+
+export const fetchApiBasedExtensionDetail: Fetcher<ApiBasedExtension, string> = (url) => {
+  return get(url) as Promise<ApiBasedExtension>
+}
+
+export const addApiBasedExtension: Fetcher<ApiBasedExtension, { url: string; body: ApiBasedExtension }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<ApiBasedExtension>
+}
+
+export const updateApiBasedExtension: Fetcher<ApiBasedExtension, { url: string; body: ApiBasedExtension }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<ApiBasedExtension>
+}
+
+export const deleteApiBasedExtension: Fetcher<{ result: string }, string> = (url) => {
+  return del(url) as Promise<{ result: string }>
+}
+
+export const fetchCodeBasedExtensionList: Fetcher<CodeBasedExtension, string> = (url) => {
+  return get(url) as Promise<CodeBasedExtension>
+}
+
+export const moderate = (url: string, body: { app_id: string; text: string }) => {
+  return post(url, { body }) as Promise<ModerateResponse>
+}
+
+type RetrievalMethodsRes = {
+  'retrieval_method': RETRIEVE_METHOD[]
+}
+export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> = (url) => {
+  return get<RetrievalMethodsRes>(url)
+}
+
+export const getSystemFeatures = () => {
+  return get<SystemFeatures>('/system-features')
 }

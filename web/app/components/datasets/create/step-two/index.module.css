@@ -1,5 +1,5 @@
 .pageHeader {
-  @apply px-16;
+  @apply px-16 flex justify-between items-center;
   position: sticky;
   top: 0;
   left: 0;
@@ -18,7 +18,7 @@
 }
 
 .form .label {
-  @apply pt-6 pb-2;
+  @apply pt-6 pb-2 flex items-center;
   font-weight: 500;
   font-size: 16px;
   line-height: 24px;
@@ -251,7 +251,7 @@
 }
 
 .ruleItem {
-  @apply flex items-center h-7;
+  @apply flex items-center;
 }
 
 .formFooter {
@@ -262,6 +262,7 @@
   font-size: 13px;
   line-height: 18px;
 }
+
 .input {
   @apply inline-flex h-9 w-full py-1 px-2 rounded-lg text-xs leading-normal;
   @apply bg-gray-100 caret-primary-600 hover:bg-gray-100 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus-visible:outline-none focus:bg-white placeholder:text-gray-400;
@@ -290,6 +291,10 @@
   background-image: url(../assets/csv.svg);
 }
 
+.fileIcon.doc {
+  background-image: url(../assets/doc.svg);
+}
+
 .fileIcon.docx {
   background-image: url(../assets/docx.svg);
 }
@@ -316,9 +321,11 @@
 .fileIcon.json {
   background-image: url(../assets/json.svg);
 }
+
 .sourceContent {
   flex: 1 1 auto;
 }
+
 .sourceCount {
   @apply shrink-0 ml-1;
   font-weight: 500;
@@ -326,6 +333,7 @@
   line-height: 18px;
   color: #667085;
 }
+
 .segmentCount {
   flex: 1 1 30%;
   max-width: 120px;
@@ -385,6 +393,10 @@
   width: 524px;
 }
 
+.previewWrap.isMobile {
+  max-width: 524px;
+}
+
 .previewHeader {
   position: sticky;
   top: 0;
@@ -410,12 +422,14 @@
   backdrop-filter: blur(4px);
   animation: fix 0.5s;
 }
+
 @keyframes fix {
   from {
     padding-top: 42px;
     font-size: 18px;
     line-height: 28px;
   }
+
   to {
     padding-top: 12px;
     font-size: 12px;

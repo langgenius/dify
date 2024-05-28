@@ -8,13 +8,6 @@
   border-top: 4px solid #06AED4;
 }
 
-.logo {
-  width: 96px;
-  height: 40px;
-  background: url(~@/app/components/share/chat/welcome/icons/logo.png) center center no-repeat;
-  background-size: contain;
-}
-
 .alpha {
   width: 12px;
   height: 12px;

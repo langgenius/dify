@@ -1,14 +1,17 @@
-from typing import Any, Dict, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any, Optional, cast
 
-from langchain.schema import Document
 from sqlalchemy import func
 
-from core.model_providers.model_factory import ModelFactory
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment
 
 
-class DatesetDocumentStore:
+class DatasetDocumentStore:
     def __init__(
             self,
             dataset: Dataset,
@@ -20,10 +23,10 @@ class DatesetDocumentStore:
         self._document_id = document_id
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "DatesetDocumentStore":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "DatasetDocumentStore":
         return cls(**config_dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize to dict."""
         return {
             "dataset_id": self._dataset.id,
@@ -38,7 +41,7 @@ class DatesetDocumentStore:
         return self._user_id
 
     @property
-    def docs(self) -> Dict[str, Document]:
+    def docs(self) -> dict[str, Document]:
         document_segments = db.session.query(DocumentSegment).filter(
             DocumentSegment.dataset_id == self._dataset.id
         ).all()
@@ -69,17 +72,19 @@ class DatesetDocumentStore:
             max_position = 0
         embedding_model = None
         if self._dataset.indexing_technique == 'high_quality':
-            embedding_model = ModelFactory.get_embedding_model(
+            model_manager = ModelManager()
+            embedding_model = model_manager.get_model_instance(
                 tenant_id=self._dataset.tenant_id,
-                model_provider_name=self._dataset.embedding_model_provider,
-                model_name=self._dataset.embedding_model
+                provider=self._dataset.embedding_model_provider,
+                model_type=ModelType.TEXT_EMBEDDING,
+                model=self._dataset.embedding_model
             )
 
         for doc in docs:
             if not isinstance(doc, Document):
                 raise ValueError("doc must be a Document")
 
-            segment_document = self.get_document(doc_id=doc.metadata['doc_id'], raise_error=False)
+            segment_document = self.get_document_segment(doc_id=doc.metadata['doc_id'])
 
             # NOTE: doc could already exist in the store, but we overwrite it
             if not allow_update and segment_document:
@@ -89,7 +94,16 @@ class DatesetDocumentStore:
                 )
 
             # calc embedding use tokens
-            tokens = embedding_model.get_num_tokens(doc.page_content) if embedding_model else 0
+            if embedding_model:
+                model_type_instance = embedding_model.model_type_instance
+                model_type_instance = cast(TextEmbeddingModel, model_type_instance)
+                tokens = model_type_instance.get_num_tokens(
+                    model=embedding_model.model,
+                    credentials=embedding_model.credentials,
+                    texts=[doc.page_content]
+                )
+            else:
+                tokens = 0
 
             if not segment_document:
                 max_position += 1
@@ -107,13 +121,13 @@ class DatesetDocumentStore:
                     enabled=False,
                     created_by=self._user_id,
                 )
-                if 'answer' in doc.metadata and doc.metadata['answer']:
+                if doc.metadata.get('answer'):
                     segment_document.answer = doc.metadata.pop('answer', '')
 
                 db.session.add(segment_document)
             else:
                 segment_document.content = doc.page_content
-                if 'answer' in doc.metadata and doc.metadata['answer']:
+                if doc.metadata.get('answer'):
                     segment_document.answer = doc.metadata.pop('answer', '')
                 segment_document.index_node_hash = doc.metadata['doc_hash']
                 segment_document.word_count = len(doc.page_content)

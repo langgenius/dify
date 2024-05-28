@@ -15,9 +15,6 @@
   background-color: #fff;
 }
 
-.dataSourceTypeList {
-  @apply flex items-center mb-8;
-}
 .dataSourceItem {
   @apply box-border relative shrink-0 flex items-center mr-3 p-3 h-14 bg-white rounded-xl cursor-pointer;
   border: 0.5px solid #EAECF0;

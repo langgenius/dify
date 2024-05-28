@@ -1,10 +1,7 @@
 import os
 from functools import wraps
 
-from flask import current_app
-from flask import g
-from flask import has_request_context
-from flask import request, session
+from flask import current_app, g, has_request_context, request
 from flask_login import user_logged_in
 from flask_login.config import EXEMPT_METHODS
 from werkzeug.exceptions import Unauthorized
@@ -56,7 +53,7 @@ def login_required(func):
     def decorated_view(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
         admin_api_key_enable = os.getenv('ADMIN_API_KEY_ENABLE', default='False')
-        if admin_api_key_enable:
+        if admin_api_key_enable.lower() == 'true':
             if auth_header:
                 if ' ' not in auth_header:
                     raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')

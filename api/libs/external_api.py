@@ -1,7 +1,7 @@
 import re
 import sys
 
-from flask import got_request_exception, current_app
+from flask import current_app, got_request_exception
 from flask_restful import Api, http_status_message
 from werkzeug.datastructures import Headers
 from werkzeug.exceptions import HTTPException
@@ -31,6 +31,10 @@ class ExternalApi(Api):
                 'message': getattr(e, 'description', http_status_message(status_code)),
                 'status': status_code
             }
+
+            if default_data['message'] and default_data['message'] == 'Failed to decode JSON object: Expecting value: line 1 column 1 (char 0)':
+                default_data['message'] = 'Invalid JSON payload received or JSON payload is empty.'
+
             headers = e.get_response().headers
         elif isinstance(e, ValueError):
             status_code = 400

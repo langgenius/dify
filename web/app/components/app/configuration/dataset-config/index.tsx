@@ -3,17 +3,16 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { useBoolean } from 'ahooks'
-import { isEqual } from 'lodash-es'
 import produce from 'immer'
+import { useFormattingChangedDispatcher } from '../debug/hooks'
 import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
-import CardItem from './card-item'
-import SelectDataSet from './select-dataset'
+import CardItem from './card-item/item'
+import ParamsConfig from './params-config'
 import ContextVar from './context-var'
 import ConfigContext from '@/context/debug-configuration'
-import type { DataSet } from '@/models/datasets'
 import { AppType } from '@/types/app'
+import type { DataSet } from '@/models/datasets'
 
 const Icon = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -28,41 +27,25 @@ const DatasetConfig: FC = () => {
     mode,
     dataSets: dataSet,
     setDataSets: setDataSet,
-    setFormattingChanged,
     modelConfig,
     setModelConfig,
+    showSelectDataSet,
+    isAgent,
   } = useContext(ConfigContext)
-  const selectedIds = dataSet.map(item => item.id)
+  const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
   const hasData = dataSet.length > 0
-  const [isShowSelectDataSet, { setTrue: showSelectDataSet, setFalse: hideSelectDataSet }] = useBoolean(false)
-  const handleSelect = (data: DataSet[]) => {
-    if (isEqual(data.map(item => item.id), dataSet.map(item => item.id))) {
-      hideSelectDataSet()
-      return
-    }
 
-    setFormattingChanged(true)
-    if (data.find(item => !item.name)) { // has not loaded selected dataset
-      const newSelected = produce(data, (draft) => {
-        data.forEach((item, index) => {
-          if (!item.name) { // not fetched database
-            const newItem = dataSet.find(i => i.id === item.id)
-            if (newItem)
-              draft[index] = newItem
-          }
-        })
-      })
-      setDataSet(newSelected)
-    }
-    else {
-      setDataSet(data)
-    }
-    hideSelectDataSet()
-  }
   const onRemove = (id: string) => {
     setDataSet(dataSet.filter(item => item.id !== id))
-    setFormattingChanged(true)
+    formattingChangedDispatcher()
+  }
+
+  const handleSave = (newDataset: DataSet) => {
+    const index = dataSet.findIndex(item => item.id === newDataset.id)
+
+    setDataSet([...dataSet.slice(0, index), newDataset, ...dataSet.slice(index + 1)])
+    formattingChangedDispatcher()
   }
 
   const promptVariables = modelConfig.configs.prompt_variables
@@ -89,19 +72,24 @@ const DatasetConfig: FC = () => {
       className='mt-3'
       headerIcon={Icon}
       title={t('appDebug.feature.dataSet.title')}
-      headerRight={<OperationBtn type="add" onClick={showSelectDataSet} />}
+      headerRight={
+        <div className='flex items-center gap-1'>
+          {!isAgent && <ParamsConfig />}
+          <OperationBtn type="add" onClick={showSelectDataSet} />
+        </div>
+      }
       hasHeaderBottomBorder={!hasData}
       noBodySpacing
     >
       {hasData
         ? (
-          <div className='flex flex-wrap mt-1 px-3 justify-between'>
+          <div className='flex flex-wrap mt-1 px-3 pb-3 justify-between'>
             {dataSet.map(item => (
               <CardItem
-                className="mb-2"
                 key={item.id}
                 config={item}
                 onRemove={onRemove}
+                onSave={handleSave}
               />
             ))}
           </div>
@@ -117,15 +105,6 @@ const DatasetConfig: FC = () => {
           value={selectedContextVar?.key}
           options={promptVariablesToSelect}
           onChange={handleSelectContextVar}
-        />
-      )}
-
-      {isShowSelectDataSet && (
-        <SelectDataSet
-          isShow={isShowSelectDataSet}
-          onClose={hideSelectDataSet}
-          selectedIds={selectedIds}
-          onSelect={handleSelect}
         />
       )}
     </FeaturePanel>

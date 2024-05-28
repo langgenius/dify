@@ -9,24 +9,31 @@ import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
 import PermissionsRadio from '../permissions-radio'
 import IndexMethodRadio from '../index-method-radio'
+import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
+import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 import { updateDatasetSetting } from '@/service/datasets'
 import type { DataSet, DataSetListResponse } from '@/models/datasets'
-import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
-import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
-import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
-import AccountSetting from '@/app/components/header/account-setting'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { type RetrievalConfig } from '@/types/app'
+import { useModalContext } from '@/context/modal-context'
+import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import {
+  useModelList,
+  useModelListAndDefaultModelAndCurrentProviderAndModel,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const rowClass = `
-  flex justify-between py-4
+  flex justify-between py-4 flex-wrap gap-y-2
 `
 const labelClass = `
   flex items-center w-[168px] h-9
 `
 const inputClass = `
-  w-[480px] px-3 bg-gray-100 text-sm text-gray-800 rounded-lg outline-none appearance-none
+  w-full max-w-[480px] px-3 bg-gray-100 text-sm text-gray-800 rounded-lg outline-none appearance-none
 `
 const useInitialValue: <T>(depend: T, dispatch: Dispatch<T>) => void = (depend, dispatch) => {
   useEffect(() => {
@@ -45,12 +52,31 @@ const Form = () => {
   const { notify } = useContext(ToastContext)
   const { mutate } = useSWRConfig()
   const { dataset: currentDataset, mutateDatasetRes: mutateDatasets } = useContext(DatasetDetailContext)
+  const { setShowAccountSettingModal } = useModalContext()
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState(currentDataset?.name ?? '')
   const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
-  const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
+  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
+  const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
+    currentDataset?.embedding_model
+      ? {
+        provider: currentDataset.embedding_model_provider,
+        model: currentDataset.embedding_model,
+      }
+      : {
+        provider: '',
+        model: '',
+      },
+  )
+  const {
+    modelList: rerankModelList,
+    defaultModel: rerankDefaultModel,
+    currentModel: isRerankDefaultModelVaild,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+
   const handleSave = async () => {
     if (loading)
       return
@@ -58,6 +84,23 @@ const Form = () => {
       notify({ type: 'error', message: t('datasetSettings.form.nameError') })
       return
     }
+    if (
+      !isReRankModelSelected({
+        rerankDefaultModel,
+        isRerankDefaultModelVaild: !!isRerankDefaultModelVaild,
+        rerankModelList,
+        retrievalConfig,
+        indexMethod,
+      })
+    ) {
+      notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+      return
+    }
+    const postRetrievalConfig = ensureRerankModelSelected({
+      rerankDefaultModel: rerankDefaultModel!,
+      retrievalConfig,
+      indexMethod,
+    })
     try {
       setLoading(true)
       await updateDatasetSetting({
@@ -67,6 +110,9 @@ const Form = () => {
           description,
           permission,
           indexing_technique: indexMethod,
+          retrieval_model: postRetrievalConfig,
+          embedding_model: embeddingModel.model,
+          embedding_model_provider: embeddingModel.provider,
         },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -89,14 +135,14 @@ const Form = () => {
   useInitialValue<DataSet['indexing_technique'] | undefined>(currentDataset?.indexing_technique, setIndexMethod)
 
   return (
-    <div className='w-[800px] px-16 py-6'>
+    <div className='w-full sm:w-[800px] p-4 sm:px-16 sm:py-6'>
       <div className={rowClass}>
         <div className={labelClass}>
           <div>{t('datasetSettings.form.name')}</div>
         </div>
         <input
           disabled={!currentDataset?.embedding_available}
-          className={cn(inputClass, !currentDataset?.embedding_available && 'opacity-60')}
+          className={cn(inputClass, !currentDataset?.embedding_available && 'opacity-60', 'h-9')}
           value={name}
           onChange={e => setName(e.target.value)}
         />
@@ -105,7 +151,7 @@ const Form = () => {
         <div className={labelClass}>
           <div>{t('datasetSettings.form.desc')}</div>
         </div>
-        <div>
+        <div className='w-full max-w-[480px]'>
           <textarea
             disabled={!currentDataset?.embedding_available}
             className={cn(`${inputClass} block mb-2 h-[120px] py-2 resize-none`, !currentDataset?.embedding_available && 'opacity-60')}
@@ -113,7 +159,7 @@ const Form = () => {
             value={description}
             onChange={e => setDescription(e.target.value)}
           />
-          <a className='flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/advanced/datasets#how-to-write-a-good-dataset-description" target='_blank'>
+          <a className='flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank' rel='noopener noreferrer'>
             <BookOpenIcon className='w-3 h-[18px] mr-1' />
             {t('datasetSettings.form.descWrite')}
           </a>
@@ -123,7 +169,7 @@ const Form = () => {
         <div className={labelClass}>
           <div>{t('datasetSettings.form.permissions')}</div>
         </div>
-        <div className='w-[480px]'>
+        <div className='w-full sm:w-[480px]'>
           <PermissionsRadio
             disable={!currentDataset?.embedding_available}
             value={permission}
@@ -138,7 +184,7 @@ const Form = () => {
             <div className={labelClass}>
               <div>{t('datasetSettings.form.indexMethod')}</div>
             </div>
-            <div className='w-[480px]'>
+            <div className='w-full sm:w-[480px]'>
               <IndexMethodRadio
                 disable={!currentDataset?.embedding_available}
                 value={indexMethod}
@@ -154,24 +200,44 @@ const Form = () => {
             <div>{t('datasetSettings.form.embeddingModel')}</div>
           </div>
           <div className='w-[480px]'>
-            <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
-              <ModelSelector
-                readonly
-                value={{
-                  providerName: currentDataset.embedding_model_provider as ProviderEnum,
-                  modelName: currentDataset.embedding_model,
-                }}
-                modelType={ModelType.embeddings}
-                onChange={() => {}}
-              />
-            </div>
-            <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
-              {t('datasetSettings.form.embeddingModelTip')}
-              <span className='text-[#155eef] cursor-pointer' onClick={() => setShowSetAPIKeyModal(true)}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
-            </div>
+            <ModelSelector
+              triggerClassName=''
+              defaultModel={embeddingModel}
+              modelList={embeddingModelList}
+              onSelect={(model: DefaultModel) => {
+                setEmbeddingModel(model)
+              }}
+            />
           </div>
         </div>
       )}
+      {/* Retrieval Method Config */}
+      <div className={rowClass}>
+        <div className={labelClass}>
+          <div>
+            <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
+            <div className='leading-[18px] text-xs font-normal text-gray-500'>
+              <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/features/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+              {t('datasetSettings.form.retrievalSetting.description')}
+            </div>
+          </div>
+        </div>
+        <div className='w-[480px]'>
+          {indexMethod === 'high_quality'
+            ? (
+              <RetrievalMethodConfig
+                value={retrievalConfig}
+                onChange={setRetrievalConfig}
+              />
+            )
+            : (
+              <EconomicalRetrievalMethodConfig
+                value={retrievalConfig}
+                onChange={setRetrievalConfig}
+              />
+            )}
+        </div>
+      </div>
       {currentDataset?.embedding_available && (
         <div className={rowClass}>
           <div className={labelClass} />
@@ -185,11 +251,6 @@ const Form = () => {
             </Button>
           </div>
         </div>
-      )}
-      {showSetAPIKeyModal && (
-        <AccountSetting activeTab="provider" onCancel={async () => {
-          setShowSetAPIKeyModal(false)
-        }} />
       )}
     </div>
   )

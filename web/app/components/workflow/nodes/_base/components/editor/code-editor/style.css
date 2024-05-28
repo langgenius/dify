@@ -1,0 +1,12 @@
+.margin-view-overlays {
+  padding-left: 10px;
+}
+
+.no-wrapper .margin-view-overlays {
+  padding-left: 0;
+}
+
+/* hide readonly tooltip */
+.monaco-editor-overlaymessage {
+  display: none !important;
+}

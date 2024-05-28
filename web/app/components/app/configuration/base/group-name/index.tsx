@@ -1,12 +1,13 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 
-export interface IGroupNameProps {
+export type IGroupNameProps = {
   name: string
 }
 
 const GroupName: FC<IGroupNameProps> = ({
-  name
+  name,
 }) => {
   return (
     <div className='flex items-center mb-1'>

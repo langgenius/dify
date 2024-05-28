@@ -1,11 +1,11 @@
-import type { AppMode } from './app'
-
+import type { AppMode } from '@/types/app'
 export type AppBasicInfo = {
   id: string
-  name: string
   mode: AppMode
   icon: string
   icon_background: string
+  name: string
+  description: string
 }
 
 export type AppCategory = 'Writing' | 'Translate' | 'HR' | 'Programming' | 'Assistant'
@@ -15,13 +15,15 @@ export type App = {
   app_id: string
   description: string
   copyright: string
-  privacy_policy: string
+  privacy_policy: string | null
+  custom_disclaimer: string | null
   category: AppCategory
   position: number
   is_listed: boolean
   install_count: number
   installed: boolean
   editable: boolean
+  is_agent: boolean
 }
 
 export type InstalledApp = {

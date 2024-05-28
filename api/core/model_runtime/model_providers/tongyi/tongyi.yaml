@@ -1,0 +1,32 @@
+provider: tongyi
+label:
+  zh_Hans: 通义千问
+  en_US: TONGYI
+icon_small:
+  en_US: icon_s_en.png
+icon_large:
+  zh_Hans: icon_l_zh.png
+  en_US: icon_l_en.png
+background: "#EFF1FE"
+help:
+  title:
+    en_US: Get your API key from AliCloud
+    zh_Hans: 从阿里云获取 API Key
+  url:
+    en_US: https://dashscope.console.aliyun.com/api-key_management
+supported_model_types:
+  - llm
+  - tts
+  - text-embedding
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: dashscope_api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key

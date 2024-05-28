@@ -9,6 +9,7 @@ import ItemOperation from '@/app/components/explore/item-operation'
 import AppIcon from '@/app/components/base/app-icon'
 
 export type IAppNavItemProps = {
+  isMobile: boolean
   name: string
   id: string
   icon: string
@@ -21,6 +22,7 @@ export type IAppNavItemProps = {
 }
 
 export default function AppNavItem({
+  isMobile,
   name,
   id,
   icon,
@@ -42,27 +44,30 @@ export default function AppNavItem({
       className={cn(
         s.item,
         isSelected ? s.active : 'hover:bg-gray-200',
-        'flex h-8 items-center justify-between px-2 rounded-lg text-sm font-normal ',
+        'flex h-8 items-center justify-between mobile:justify-center px-2 mobile:px-1 rounded-lg text-sm font-normal',
       )}
       onClick={() => {
         router.push(url) // use Link causes popup item always trigger jump. Can not be solved by e.stopPropagation().
       }}
     >
-      <div className='flex items-center space-x-2 w-0 grow'>
-        <AppIcon size='tiny' icon={icon} background={icon_background} />
-        <div className='overflow-hidden text-ellipsis whitespace-nowrap'>{name}</div>
-      </div>
-      {
-        <div className='shrink-0 h-6' onClick={e => e.stopPropagation()}>
-          <ItemOperation
-            isPinned={isPinned}
-            isItemHovering={isHovering}
-            togglePin={togglePin}
-            isShowDelete={!uninstallable && !isSelected}
-            onDelete={() => onDelete(id)}
-          />
-        </div>
-      }
+      {isMobile && <AppIcon size='tiny' icon={icon} background={icon_background} />}
+      {!isMobile && (
+        <>
+          <div className='flex items-center space-x-2 w-0 grow'>
+            <AppIcon size='tiny' icon={icon} background={icon_background} />
+            <div className='overflow-hidden text-ellipsis whitespace-nowrap' title={name}>{name}</div>
+          </div>
+          <div className='shrink-0 h-6' onClick={e => e.stopPropagation()}>
+            <ItemOperation
+              isPinned={isPinned}
+              isItemHovering={isHovering}
+              togglePin={togglePin}
+              isShowDelete={!uninstallable && !isSelected}
+              onDelete={() => onDelete(id)}
+            />
+          </div>
+        </>
+      )}
     </div>
   )
 }

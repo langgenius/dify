@@ -1,14 +1,12 @@
-from events.dataset_event import dataset_was_deleted
-from events.event_handlers.document_index_event import document_index_created
 import datetime
 import logging
 import time
 
 import click
-from celery import shared_task
 from werkzeug.exceptions import NotFound
 
-from core.indexing_runner import IndexingRunner, DocumentIsPausedException
+from core.indexing_runner import DocumentIsPausedException, IndexingRunner
+from events.event_handlers.document_index_event import document_index_created
 from extensions.ext_database import db
 from models.dataset import Document
 
@@ -31,7 +29,7 @@ def handle(sender, **kwargs):
             raise NotFound('Document not found')
 
         document.indexing_status = 'parsing'
-        document.processing_started_at = datetime.datetime.utcnow()
+        document.processing_started_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         documents.append(document)
         db.session.add(document)
     db.session.commit()

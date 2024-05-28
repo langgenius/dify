@@ -33,7 +33,7 @@ const Explore: FC<IExploreProps> = ({
   }, [])
 
   return (
-    <div className='flex h-full bg-gray-100 border-t border-gray-200'>
+    <div className='flex h-full bg-gray-100 border-t border-gray-200 overflow-hidden'>
       <ExploreContext.Provider
         value={
           {
@@ -46,7 +46,7 @@ const Explore: FC<IExploreProps> = ({
         }
       >
         <Sidebar controlUpdateInstalledApps={controlUpdateInstalledApps} />
-        <div className='grow'>
+        <div className='grow w-0'>
           {children}
         </div>
       </ExploreContext.Provider>

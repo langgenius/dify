@@ -1,0 +1,68 @@
+[project]
+requires-python = ">=3.10"
+
+[tool.ruff]
+exclude = [
+]
+line-length = 120
+
+[tool.ruff.lint]
+ignore-init-module-imports = true
+select = [
+    "B", # flake8-bugbear rules
+    "F", # pyflakes rules
+    "I", # isort rules
+    "UP",   # pyupgrade rules
+    "RUF019", # unnecessary-key-check
+    "S506", # unsafe-yaml-load
+]
+ignore = [
+    "F403", # undefined-local-with-import-star
+    "F405", # undefined-local-with-import-star-usage
+    "F821", # undefined-name
+    "F841", # unused-variable
+    "UP007", # non-pep604-annotation
+    "UP032", # f-string
+    "B005", # strip-with-multi-characters
+    "B006", # mutable-argument-default
+    "B007", # unused-loop-control-variable
+    "B026", # star-arg-unpacking-after-keyword-arg
+    "B904", # raise-without-from-inside-except
+    "B905", # zip-without-explicit-strict
+]
+
+[tool.ruff.lint.per-file-ignores]
+"app.py" = [
+    "F401", # unused-import
+    "F811", # redefined-while-unused
+]
+"__init__.py" = [
+    "F401", # unused-import
+    "F811", # redefined-while-unused
+]
+"tests/*" = [
+    "F401", # unused-import
+    "F811", # redefined-while-unused
+]
+
+
+[tool.pytest_env]
+OPENAI_API_KEY = "sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii"
+AZURE_OPENAI_API_BASE = "https://difyai-openai.openai.azure.com"
+AZURE_OPENAI_API_KEY = "xxxxb1707exxxxxxxxxxaaxxxxxf94"
+ANTHROPIC_API_KEY = "sk-ant-api11-IamNotARealKeyJustForMockTestKawaiiiiiiiiii-NotBaka-ASkksz"
+CHATGLM_API_BASE = "http://a.abc.com:11451"
+XINFERENCE_SERVER_URL = "http://a.abc.com:11451"
+XINFERENCE_GENERATION_MODEL_UID = "generate"
+XINFERENCE_CHAT_MODEL_UID = "chat"
+XINFERENCE_EMBEDDINGS_MODEL_UID = "embedding"
+XINFERENCE_RERANK_MODEL_UID = "rerank"
+GOOGLE_API_KEY = "abcdefghijklmnopqrstuvwxyz"
+HUGGINGFACE_API_KEY = "hf-awuwuwuwuwuwuwuwuwuwuwuwuwuwuwuwuwu"
+HUGGINGFACE_TEXT_GEN_ENDPOINT_URL = "a"
+HUGGINGFACE_TEXT2TEXT_GEN_ENDPOINT_URL = "b"
+HUGGINGFACE_EMBEDDINGS_ENDPOINT_URL = "c"
+MOCK_SWITCH = "true"
+CODE_MAX_STRING_LENGTH = "80000"
+CODE_EXECUTION_ENDPOINT="http://127.0.0.1:8194"
+CODE_EXECUTION_API_KEY="dify-sandbox"

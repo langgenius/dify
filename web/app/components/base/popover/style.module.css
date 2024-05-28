@@ -5,5 +5,5 @@
     @apply absolute z-10 w-full max-w-sm px-4 mt-1 sm:px-0 lg:max-w-3xl
 }
 .panelContainer {
-    @apply overflow-hidden bg-white w-full rounded-lg shadow-lg ring-1 ring-black ring-opacity-5
+    @apply overflow-hidden bg-white w-fit min-w-[130px] rounded-lg shadow-lg ring-1 ring-black ring-opacity-5
 }

@@ -1,0 +1,346 @@
+import { CodeGroup } from '../code.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
+
+# Workflow App API
+
+Workflow applications offers non-session support and is ideal for translation, article writing, summarization AI, and more.
+
+<div>
+  ### Base URL
+  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url}>
+    ```javascript
+    ```
+  </CodeGroup>
+
+  ### Authentication
+
+  The Service API uses `API-Key` authentication.
+  <i>**Strongly recommend storing your API Key on the server-side, not shared or stored on the client-side, to avoid possible API-Key leakage that can lead to serious consequences.**</i>
+
+  For all API requests, include your API Key in the `Authorization` HTTP Header, as shown below:
+
+  <CodeGroup title="Code">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
+    ```
+  </CodeGroup>
+</div>
+
+---
+
+<Heading
+  url='/workflows/run'
+  method='POST'
+  title='Execute workflow'
+  name='#Execute-Workflow'
+/>
+<Row>
+  <Col>
+    Execute workflow, cannot be executed without a published workflow.
+
+    ### Request Body
+      - `inputs` (object) Required
+        Allows the entry of various variable values defined by the App.
+        The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
+        The workflow application requires at least one key/value pair to be inputted.
+      - `response_mode` (string) Required
+        The mode of response return, supporting:
+        - `streaming` Streaming mode (recommended), implements a typewriter-like output through SSE ([Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)).
+        - `blocking` Blocking mode, returns result after execution is complete. (Requests may be interrupted if the process is long)
+        <i>Due to Cloudflare restrictions, the request will be interrupted without a return after 100 seconds.</i>
+      - `user` (string) Required
+        User identifier, used to define the identity of the end-user for retrieval and statistics.
+        Should be uniquely defined by the developer within the application.
+      - `files` (array[object]) Optional
+        File list, suitable for inputting files (images) combined with text understanding and answering questions, available only when the model supports Vision capability.
+          - `type` (string) Supported type: `image` (currently only supports image type)
+          - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
+          - `url` (string) Image URL (when the transfer method is `remote_url`)
+          - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
+
+    ### Response
+    When `response_mode` is `blocking`, return a CompletionResponse object.
+    When `response_mode` is `streaming`, return a ChunkCompletionResponse stream.
+
+    ### CompletionResponse
+    Returns the App result, `Content-Type` is `application/json`.
+    - `workflow_run_id` (string) Unique ID of workflow execution
+    - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+    - `data` (object) detail of result
+      - `id` (string) ID of workflow execution
+      - `workflow_id` (string) ID of relatied workflow
+      - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+      - `outputs` (json) Optional content of output
+      - `error` (string) Optional reason of error
+      - `elapsed_time` (float) Optional total seconds to be used
+      - `total_tokens` (int) Optional tokens to be used
+      - `total_steps` (int) default 0
+      - `created_at` (timestamp) start time
+      - `finished_at` (timestamp) end time
+
+    ### ChunkCompletionResponse
+    Returns the stream chunks outputted by the App, `Content-Type` is `text/event-stream`.
+    Each streaming chunk starts with `data:`, separated by two newline characters `\n\n`, as shown below:
+    <CodeGroup>
+    ```streaming {{ title: 'Response' }}
+    data: {"event": "message", "task_id": "900bbd43-dc0b-4383-a372-aa6e6c414227", "id": "663c5084-a254-4040-8ad3-51f2a3c1a77c", "answer": "Hi", "created_at": 1705398420}\n\n
+    ```
+    </CodeGroup>
+    The structure of the streaming chunks varies depending on the `event`:
+    - `event: workflow_started` workflow starts execution
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `workflow_started`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `workflow_id` (string) ID of relatied workflow
+        - `sequence_number` (int) Self-increasing serial number, self-increasing in the App, starting from 1
+        - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
+    - `event: node_started` node execution started
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `node_started`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `node_id` (string) ID of node
+        - `node_type` (string) type of node
+        - `title` (string) name of node
+        - `index` (int) Execution sequence number, used to display Tracing Node sequence
+        - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
+        - `inputs` (array[object]) Contents of all preceding node variables used in the node
+        - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: node_finished` node execution ends, success or failure in different states in the same event
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `node_finished`
+      - `data` (object) detail
+        - `id` (string) Unique ID of workflow execution
+        - `node_id` (string) ID of node
+        - `node_type` (string) type of node
+        - `title` (string) name of node
+        - `index` (int) Execution sequence number, used to display Tracing Node sequence
+        - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
+        - `inputs` (array[object]) Contents of all preceding node variables used in the node
+        - `process_data` (json) Optional node process data
+        - `outputs` (json) Optional content of output
+        - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+        - `error` (string) Optional reason of error
+        - `elapsed_time` (float) Optional total seconds to be used
+        - `execution_metadata` (json) meta data
+          - `total_tokens` (int) optional tokens to be used
+          - `total_price` (decimal) optional Total cost
+          - `currency` (string) optional e.g. `USD` / `RMB`
+        - `created_at` (timestamp) timestamp of start, e.g., 1705395332
+    - `event: workflow_finished` workflow execution ends, success or failure in different states in the same event
+      - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
+      - `workflow_run_id` (string) Unique ID of workflow execution
+      - `event` (string) fixed to `workflow_finished`
+      - `data` (object) detail
+        - `id` (string) ID of workflow execution
+        - `workflow_id` (string) ID of relatied workflow
+        - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+        - `outputs` (json) Optional content of output
+        - `error` (string) Optional reason of error
+        - `elapsed_time` (float) Optional total seconds to be used
+        - `total_tokens` (int) Optional tokens to be used
+        - `total_steps` (int) default 0
+        - `created_at` (timestamp) start time
+        - `finished_at` (timestamp) end time
+    - `event: ping` Ping event every 10 seconds to keep the connection alive.
+
+    ### Errors
+    - 400, `invalid_param`, abnormal parameter input
+    - 400, `app_unavailable`, App configuration unavailable
+    - 400, `provider_not_initialize`, no available model credential configuration
+    - 400, `provider_quota_exceeded`, model invocation quota insufficient
+    - 400, `model_currently_not_support`, current model unavailable
+    - 400, `workflow_request_error`, workflow execution failed
+    - 500, internal server error
+
+  </Col>
+  <Col sticky>
+     <CodeGroup title="Request" tag="POST" label="/workflows/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/workflows/run' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "inputs": {},
+        "response_mode": "streaming",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+    ### Blocking Mode
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "workflow_run_id": "djflajgkldjgd",
+        "task_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+        "data": {
+            "id": "fdlsjfjejkghjda",
+            "workflow_id": "fldjaslkfjlsda",
+            "status": "succeeded",
+            "outputs": {
+              "text": "Nice to meet you."
+            },
+            "error": null,
+            "elapsed_time": 0.875,
+            "total_tokens": 3562,
+            "total_steps": 8,
+            "created_at": 1705407629,
+            "finished_at": 1727807631
+        }
+    }
+    ```
+    </CodeGroup>
+    ### Streaming Mode
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "sequence_number": 1, "created_at": 1679586595}}
+      data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
+      data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
+      data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
+    ```
+    </CodeGroup>
+
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflows/:task_id/stop'
+  method='POST'
+  title='Stop Generate'
+  name='#stop-generatebacks'
+/>
+<Row>
+  <Col>
+  Only supported in streaming mode.
+  ### Path
+  - `task_id` (string) Task ID, can be obtained from the streaming chunk return
+  ### Request Body
+  - `user` (string) Required
+    User identifier, used to define the identity of the end-user, must be consistent with the user passed in the send message interface.
+  ### Response
+  - `result` (string) Always returns "success"
+  </Col>
+  <Col sticky>
+  ### Request Example
+  <CodeGroup title="Request" tag="POST" label="/workflows/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/workflows/:task_id/stop' \
+    -H 'Authorization: Bearer {api_key}' \
+    -H 'Content-Type: application/json' \
+    --data-raw '{
+        "user": "abc-123"
+    }'
+    ```
+    </CodeGroup>
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='Get Application Information'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    Used at the start of entering the page to obtain information such as features, input parameter names, types, and default values.
+
+    ### Query
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+          User identifier, defined by the developer's rules, must be unique within the application.
+      </Property>
+    </Properties>
+
+    ### Response
+    - `user_input_form` (array[object]) User input form configuration
+      - `text-input` (object) Text input control
+        - `label` (string) Variable display label name
+        - `variable` (string) Variable ID
+        - `required` (bool) Whether it is required
+        - `default` (string) Default value
+      - `paragraph` (object) Paragraph text input control
+        - `label` (string) Variable display label name
+        - `variable` (string) Variable ID
+        - `required` (bool) Whether it is required
+        - `default` (string) Default value
+      - `select` (object) Dropdown control
+        - `label` (string) Variable display label name
+        - `variable` (string) Variable ID
+        - `required` (bool) Whether it is required
+        - `default` (string) Default value
+        - `options` (array[string]) Option values
+    - `file_upload` (object) File upload configuration
+      - `image` (object) Image settings
+        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Image number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
+    - `system_parameters` (object) System parameters
+      - `image_file_size_limit` (string) Image file upload size limit (MB)
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "user_input_form": [
+          {
+              "paragraph": {
+                  "label": "Query",
+                  "variable": "query",
+                  "required": true,
+                  "default": ""
+              }
+          }
+      ],
+      "file_upload": {
+          "image": {
+              "enabled": false,
+              "number_limits": 3,
+              "detail": "high",
+              "transfer_methods": [
+                  "remote_url",
+                  "local_file"
+              ]
+          }
+      },
+      "system_parameters": {
+          "image_file_size_limit": "10"
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>

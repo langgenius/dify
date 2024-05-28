@@ -7,14 +7,19 @@ import MoreLikeThisIcon from '../../../base/icons/more-like-this-icon'
 import FeatureItem from './feature-item'
 import Modal from '@/app/components/base/modal'
 import SuggestedQuestionsAfterAnswerIcon from '@/app/components/app/configuration/base/icons/suggested-questions-after-answer-icon'
-import { Microphone01 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import { Microphone01, Speaker } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Citations } from '@/app/components/base/icons/src/vender/solid/editor'
+import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
+import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 type IConfig = {
   openingStatement: boolean
   moreLikeThis: boolean
   suggestedQuestionsAfterAnswer: boolean
   speechToText: boolean
+  textToSpeech: boolean
   citation: boolean
+  moderation: boolean
+  annotation: boolean
 }
 
 export type IChooseFeatureProps = {
@@ -23,6 +28,7 @@ export type IChooseFeatureProps = {
   config: IConfig
   isChatApp: boolean
   onChange: (key: string, value: boolean) => void
+  showTextToSpeechItem?: boolean
   showSpeechToTextItem?: boolean
 }
 
@@ -38,10 +44,10 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
   isChatApp,
   config,
   onChange,
+  showTextToSpeechItem,
   showSpeechToTextItem,
 }) => {
   const { t } = useTranslation()
-
   return (
     <Modal
       isShow={isShow}
@@ -75,6 +81,18 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
                 value={config.suggestedQuestionsAfterAnswer}
                 onChange={value => onChange('suggestedQuestionsAfterAnswer', value)}
               />
+              {
+                showTextToSpeechItem && (
+                  <FeatureItem
+                    icon={<Speaker className='w-4 h-4 text-[#7839EE]' />}
+                    previewImgClassName='textToSpeechPreview'
+                    title={t('appDebug.feature.textToSpeech.title')}
+                    description={t('appDebug.feature.textToSpeech.description')}
+                    value={config.textToSpeech}
+                    onChange={value => onChange('textToSpeech', value)}
+                  />
+                )
+              }
               {
                 showSpeechToTextItem && (
                   <FeatureItem
@@ -111,11 +129,43 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
                 value={config.moreLikeThis}
                 onChange={value => onChange('moreLikeThis', value)}
               />
+              {
+                showTextToSpeechItem && (
+                  <FeatureItem
+                    icon={<Speaker className='w-4 h-4 text-[#7839EE]' />}
+                    previewImgClassName='textToSpeechPreview'
+                    title={t('appDebug.feature.textToSpeech.title')}
+                    description={t('appDebug.feature.textToSpeech.description')}
+                    value={config.textToSpeech}
+                    onChange={value => onChange('textToSpeech', value)}
+                  />
+                )
+              }
             </>
           </FeatureGroup>
         )}
+        <FeatureGroup title={t('appDebug.feature.toolbox.title')}>
+          <>
+            <FeatureItem
+              icon={<FileSearch02 className='w-4 h-4 text-[#039855]' />}
+              previewImgClassName=''
+              title={t('appDebug.feature.moderation.title')}
+              description={t('appDebug.feature.moderation.description')}
+              value={config.moderation}
+              onChange={value => onChange('moderation', value)}
+            />
+            {isChatApp && (
+              <FeatureItem
+                icon={<MessageFast className='w-4 h-4 text-[#444CE7]' />}
+                title={t('appDebug.feature.annotation.title')}
+                description={t('appDebug.feature.annotation.description')}
+                value={config.annotation}
+                onChange={value => onChange('annotation', value)}
+              />
+            )}
+          </>
+        </FeatureGroup>
       </div>
-
     </Modal>
   )
 }

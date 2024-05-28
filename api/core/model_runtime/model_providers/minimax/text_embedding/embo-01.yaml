@@ -1,0 +1,9 @@
+model: embo-01
+model_type: text-embedding
+model_properties:
+  context_size: 4096
+  max_chunks: 1
+pricing:
+  input: '0.0005'
+  unit: '0.001'
+  currency: RMB

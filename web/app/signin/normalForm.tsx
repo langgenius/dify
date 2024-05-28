@@ -5,15 +5,12 @@ import { useRouter } from 'next/navigation'
 import classNames from 'classnames'
 import useSWR from 'swr'
 import Link from 'next/link'
-import { useContext } from 'use-context-selector'
 import Toast from '../components/base/toast'
 import style from './page.module.css'
-// import Tooltip from '@/app/components/base/tooltip/index'
 import { IS_CE_EDITION, apiPrefix } from '@/config'
 import Button from '@/app/components/base/button'
 import { login, oauth } from '@/service/common'
-import I18n from '@/context/i18n'
-
+import { getPurifyHref } from '@/utils'
 const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
 
 type IState = {
@@ -66,7 +63,6 @@ function reducer(state: IState, action: IAction) {
 const NormalForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
-  const { locale } = useContext(I18n)
 
   const [state, dispatch] = useReducer(reducer, {
     formValid: false,
@@ -97,8 +93,16 @@ const NormalForm = () => {
           remember_me: true,
         },
       })
-      localStorage.setItem('console_token', res.data)
-      router.replace('/apps')
+      if (res.result === 'success') {
+        localStorage.setItem('console_token', res.data)
+        router.replace('/apps')
+      }
+      else {
+        Toast.notify({
+          type: 'error',
+          message: res.data,
+        })
+      }
     }
     finally {
       setIsLoading(false)
@@ -135,7 +139,7 @@ const NormalForm = () => {
       dispatch({ type: 'google_login_failed' })
     if (google)
       window.location.href = google.redirect_url
-  }, [google, google])
+  }, [google, google_error])
 
   return (
     <>
@@ -149,7 +153,7 @@ const NormalForm = () => {
           {!IS_CE_EDITION && (
             <div className="flex flex-col gap-3 mt-6">
               <div className='w-full'>
-                <a href={`${apiPrefix}/oauth/login/github`}>
+                <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
                   <Button
                     type='default'
                     disabled={isLoading}
@@ -168,7 +172,7 @@ const NormalForm = () => {
                 </a>
               </div>
               <div className='w-full'>
-                <a href={`${apiPrefix}/oauth/login/google`}>
+                <a href={getPurifyHref(`${apiPrefix}/oauth/login/google`)}>
                   <Button
                     type='default'
                     disabled={isLoading}
@@ -237,7 +241,7 @@ const NormalForm = () => {
                       <span className='cursor-pointer text-primary-600'>{t('login.forget')}</span>
                     </Tooltip> */}
                   </label>
-                  <div className="relative mt-1 rounded-md shadow-sm">
+                  <div className="relative mt-1">
                     <input
                       id="password"
                       value={password}
@@ -281,16 +285,25 @@ const NormalForm = () => {
             &nbsp;
             <Link
               className='text-primary-600'
-              target={'_blank'}
-              href={locale === 'en' ? 'https://docs.dify.ai/user-agreement/terms-of-service' : 'https://docs.dify.ai/v/zh-hans/yong-hu-xie-yi/fu-wu-xie-yi'}
+              target='_blank' rel='noopener noreferrer'
+              href='https://dify.ai/terms'
             >{t('login.tos')}</Link>
             &nbsp;&&nbsp;
             <Link
               className='text-primary-600'
-              target={'_blank'}
-              href={locale === 'en' ? 'https://docs.dify.ai/user-agreement/privacy-policy' : 'https://docs.dify.ai/v/zh-hans/yong-hu-xie-yi/yin-si-xie-yi'}
+              target='_blank' rel='noopener noreferrer'
+              href='https://dify.ai/privacy'
             >{t('login.pp')}</Link>
           </div>
+
+          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-gray-600">
+            {t('login.goToInit')}
+            &nbsp;
+            <Link
+              className='text-primary-600'
+              href='/install'
+            >{t('login.setAdminAccount')}</Link>
+          </div>}
 
         </div>
       </div>

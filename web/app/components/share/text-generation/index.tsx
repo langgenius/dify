@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useBoolean, useClickAway } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/24/outline'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
 import { checkOrSetAccessToken } from '../utils'
@@ -16,7 +17,12 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
 import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
 import type { SiteInfo } from '@/models/share'
-import type { MoreLikeThisConfig, PromptConfig, SavedMessage } from '@/models/debug'
+import type {
+  MoreLikeThisConfig,
+  PromptConfig,
+  SavedMessage,
+  TextToSpeechConfig,
+} from '@/models/debug'
 import AppIcon from '@/app/components/base/app-icon'
 import { changeLanguage } from '@/i18n/i18next-config'
 import Loading from '@/app/components/base/loading'
@@ -26,6 +32,9 @@ import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
 import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import { Resolution, TransferMethod } from '@/types/app'
+
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
   pending = 'pending',
@@ -47,11 +56,13 @@ type Task = {
 export type IMainProps = {
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
+  isWorkflow?: boolean
 }
 
 const TextGeneration: FC<IMainProps> = ({
   isInstalledApp = false,
   installedAppInfo,
+  isWorkflow = false,
 }) => {
   const { notify } = Toast
 
@@ -61,15 +72,29 @@ const TextGeneration: FC<IMainProps> = ({
   const isTablet = media === MediaType.tablet
   const isMobile = media === MediaType.mobile
 
-  const [currTab, setCurrTab] = useState<string>('create')
+  const searchParams = useSearchParams()
+  const mode = searchParams.get('mode') || 'create'
+  const [currentTab, setCurrentTab] = useState<string>(['create', 'batch'].includes(mode) ? mode : 'create')
+
+  const router = useRouter()
+  const pathname = usePathname()
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams)
+    params.delete('mode')
+    router.replace(`${pathname}?${params.toString()}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Notice this situation isCallBatchAPI but not in batch tab
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
-  const isInBatchTab = currTab === 'batch'
+  const isInBatchTab = currentTab === 'batch'
   const [inputs, setInputs] = useState<Record<string, any>>({})
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
+  const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
+  const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
 
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
@@ -91,6 +116,14 @@ const TextGeneration: FC<IMainProps> = ({
   // send message task
   const [controlSend, setControlSend] = useState(0)
   const [controlStopResponding, setControlStopResponding] = useState(0)
+  const [visionConfig, setVisionConfig] = useState<VisionSettings>({
+    enabled: false,
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.local_file],
+  })
+  const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
+
   const handleSend = () => {
     setIsCallBatchAPI(false)
     setControlSend(Date.now())
@@ -141,7 +174,12 @@ const TextGeneration: FC<IMainProps> = ({
     promptConfig?.prompt_variables.forEach((v) => {
       res[v.name] = inputs[v.key]
     })
-    res[t('share.generation.completionResult')] = batchCompletionResLatest[task.id]
+    let result = batchCompletionResLatest[task.id]
+    // task might return multiple fields, should marshal object to string
+    if (typeof batchCompletionResLatest[task.id] === 'object')
+      result = JSON.stringify(result)
+
+    res[t('share.generation.completionResult')] = result
     return res
   })
   const checkBatchInputs = (data: string[][]) => {
@@ -219,7 +257,7 @@ const TextGeneration: FC<IMainProps> = ({
             return
           }
         }
-        if (varItem.required === false)
+        if (!varItem.required)
           return
 
         if (item[varIndex].trim() === '') {
@@ -267,7 +305,7 @@ const TextGeneration: FC<IMainProps> = ({
       }
     })
     setAllTaskList(allTaskList)
-
+    setCurrGroupNum(0)
     setControlSend(Date.now())
     // clear run once task status
     setControlStopResponding(Date.now())
@@ -283,10 +321,7 @@ const TextGeneration: FC<IMainProps> = ({
     // avoid add many task at the same time
     if (needToAddNextGroupTask)
       setCurrGroupNum(hadRunedTaskNum)
-    // console.group()
-    // console.log(`[#${taskId}]: ${isSuccess ? 'success' : 'fail'}.currGroupNum: ${getCurrGroupNum()}.hadRunedTaskNum: ${hadRunedTaskNum}, needToAddNextGroupTask: ${needToAddNextGroupTask}`)
-    // console.log([...allTasklistLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).map(item => item.id), taskId].sort((a: any, b: any) => a - b).join(','))
-    // console.groupEnd()
+
     const nextPendingTaskIds = needToAddNextGroupTask ? pendingTaskList.slice(0, GROUP_SIZE).map(item => item.id) : []
     const newAllTaskList = allTasklistLatest.map((item) => {
       if (item.id === taskId) {
@@ -316,44 +351,66 @@ const TextGeneration: FC<IMainProps> = ({
     if (!isInstalledApp)
       await checkOrSetAccessToken()
 
-    return Promise.all([isInstalledApp
-      ? {
-        app_id: installedAppInfo?.id,
-        site: {
-          title: installedAppInfo?.app.name,
-          prompt_public: false,
-          copyright: '',
-        },
-        plan: 'basic',
-      }
-      : fetchAppInfo(), fetchAppParams(isInstalledApp, installedAppInfo?.id), fetchSavedMessage()])
+    return Promise.all([
+      isInstalledApp
+        ? {
+          app_id: installedAppInfo?.id,
+          site: {
+            title: installedAppInfo?.app.name,
+            prompt_public: false,
+            copyright: '',
+          },
+          plan: 'basic',
+        }
+        : fetchAppInfo(),
+      fetchAppParams(isInstalledApp, installedAppInfo?.id),
+      !isWorkflow
+        ? fetchSavedMessage()
+        : {},
+    ])
   }
 
   useEffect(() => {
     (async () => {
       const [appData, appParams]: any = await fetchInitData()
-      const { app_id: appId, site: siteInfo } = appData
+      const { app_id: appId, site: siteInfo, can_replace_logo } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
+      setCanReplaceLogo(can_replace_logo)
       changeLanguage(siteInfo.default_language)
 
-      const { user_input_form, more_like_this }: any = appParams
+      const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
+      setVisionConfig({
+        ...file_upload.image,
+        image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
+      })
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
         prompt_template: '', // placeholder for feture
         prompt_variables,
       } as PromptConfig)
       setMoreLikeThisConfig(more_like_this)
+      setTextToSpeechConfig(text_to_speech)
     })()
   }, [])
 
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
   useEffect(() => {
-    if (siteInfo?.title)
-      document.title = `${siteInfo.title} - Powered by Dify`
-  }, [siteInfo?.title])
+    if (siteInfo?.title) {
+      if (canReplaceLogo)
+        document.title = `${siteInfo.title}`
+      else
+        document.title = `${siteInfo.title} - Powered by Dify`
+    }
+  }, [siteInfo?.title, canReplaceLogo])
 
-  const [isShowResSidebar, { setTrue: showResSidebar, setFalse: hideResSidebar }] = useBoolean(false)
+  const [isShowResSidebar, { setTrue: doShowResSidebar, setFalse: hideResSidebar }] = useBoolean(false)
+  const showResSidebar = () => {
+    // fix: useClickAway hideResSidebar will close sidebar
+    setTimeout(() => {
+      doShowResSidebar()
+    }, 0)
+  }
   const resRef = useRef<HTMLDivElement>(null)
   useClickAway(() => {
     hideResSidebar()
@@ -361,10 +418,11 @@ const TextGeneration: FC<IMainProps> = ({
 
   const renderRes = (task?: Task) => (<Res
     key={task?.id}
+    isWorkflow={isWorkflow}
     isCallBatchAPI={isCallBatchAPI}
     isPC={isPC}
     isMobile={isMobile}
-    isInstalledApp={!!isInstalledApp}
+    isInstalledApp={isInstalledApp}
     installedAppInfo={installedAppInfo}
     isError={task?.status === TaskStatus.failed}
     promptConfig={promptConfig}
@@ -377,11 +435,24 @@ const TextGeneration: FC<IMainProps> = ({
     handleSaveMessage={handleSaveMessage}
     taskId={task?.id}
     onCompleted={handleCompleted}
+    visionConfig={visionConfig}
+    completionFiles={completionFiles}
+    isShowTextToSpeech={!!textToSpeechConfig?.enabled}
   />)
 
   const renderBatchRes = () => {
     return (showTaskList.map(task => renderRes(task)))
   }
+
+  const resWrapClassNames = (() => {
+    if (isPC)
+      return 'grow h-full'
+
+    if (!isShowResSidebar)
+      return 'none'
+
+    return cn('fixed z-50 inset-0', isTablet ? 'pl-[128px]' : 'pl-6')
+  })()
 
   const renderResWrap = (
     <div
@@ -394,10 +465,10 @@ const TextGeneration: FC<IMainProps> = ({
       }
     >
       <>
-        <div className='shrink-0 flex items-center justify-between'>
+        <div className='flex items-center justify-between shrink-0'>
           <div className='flex items-center space-x-3'>
             <div className={s.starIcon}></div>
-            <div className='text-lg text-gray-800 font-semibold'>{t('share.generation.title')}</div>
+            <div className='text-lg font-semibold text-gray-800'>{t('share.generation.title')}</div>
           </div>
           <div className='flex items-center space-x-2'>
             {allFailedTaskList.length > 0 && (
@@ -429,7 +500,7 @@ const TextGeneration: FC<IMainProps> = ({
           </div>
         </div>
 
-        <div className='grow overflow-y-auto'>
+        <div className='overflow-y-auto grow'>
           {!isCallBatchAPI ? renderRes() : renderBatchRes()}
           {!noPendingTask && (
             <div className='mt-4'>
@@ -462,10 +533,10 @@ const TextGeneration: FC<IMainProps> = ({
           'shrink-0 relative flex flex-col pb-10 h-full border-r border-gray-100 bg-white',
         )}>
           <div className='mb-6'>
-            <div className='flex justify-between items-center'>
+            <div className='flex items-center justify-between'>
               <div className='flex items-center space-x-3'>
                 <AppIcon size="small" icon={siteInfo.icon} background={siteInfo.icon_background || appDefaultIconBackground} />
-                <div className='text-lg text-gray-800 font-semibold'>{siteInfo.title}</div>
+                <div className='text-lg font-semibold text-gray-800'>{siteInfo.title}</div>
               </div>
               {!isPC && (
                 <Button
@@ -487,30 +558,34 @@ const TextGeneration: FC<IMainProps> = ({
             items={[
               { id: 'create', name: t('share.generation.tabs.create') },
               { id: 'batch', name: t('share.generation.tabs.batch') },
-              {
-                id: 'saved',
-                name: t('share.generation.tabs.saved'),
-                isRight: true,
-                extra: savedMessages.length > 0
-                  ? (
-                    <div className='ml-1 flext items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium'>
-                      {savedMessages.length}
-                    </div>
-                  )
-                  : null,
-              },
+              ...(!isWorkflow
+                ? [{
+                  id: 'saved',
+                  name: t('share.generation.tabs.saved'),
+                  isRight: true,
+                  extra: savedMessages.length > 0
+                    ? (
+                      <div className='ml-1 flext items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium'>
+                        {savedMessages.length}
+                      </div>
+                    )
+                    : null,
+                }]
+                : []),
             ]}
-            value={currTab}
-            onChange={setCurrTab}
+            value={currentTab}
+            onChange={setCurrentTab}
           />
-          <div className='grow h-20 overflow-y-auto'>
-            <div className={cn(currTab === 'create' ? 'block' : 'hidden')}>
+          <div className='h-20 overflow-y-auto grow'>
+            <div className={cn(currentTab === 'create' ? 'block' : 'hidden')}>
               <RunOnce
                 siteInfo={siteInfo}
                 inputs={inputs}
                 onInputsChange={setInputs}
                 promptConfig={promptConfig}
                 onSend={handleSend}
+                visionConfig={visionConfig}
+                onVisionFilesChange={setCompletionFiles}
               />
             </div>
             <div className={cn(isInBatchTab ? 'block' : 'hidden')}>
@@ -521,12 +596,13 @@ const TextGeneration: FC<IMainProps> = ({
               />
             </div>
 
-            {currTab === 'saved' && (
+            {currentTab === 'saved' && (
               <SavedItems
                 className='mt-4'
+                isShowTextToSpeech={textToSpeechConfig?.enabled}
                 list={savedMessages}
                 onRemove={handleRemoveSavedMessage}
-                onStartCreateContent={() => setCurrTab('create')}
+                onStartCreateContent={() => setCurrentTab('create')}
               />
             )}
           </div>
@@ -542,9 +618,9 @@ const TextGeneration: FC<IMainProps> = ({
                 <div>·</div>
                 <div>{t('share.chat.privacyPolicyLeft')}
                   <a
-                    className='text-gray-500'
+                    className='text-gray-500 px-1'
                     href={siteInfo.privacy_policy}
-                    target='_blank'>{t('share.chat.privacyPolicyMiddle')}</a>
+                    target='_blank' rel='noopener noreferrer'>{t('share.chat.privacyPolicyMiddle')}</a>
                   {t('share.chat.privacyPolicyRight')}
                 </div>
               </>
@@ -553,22 +629,14 @@ const TextGeneration: FC<IMainProps> = ({
         </div>
 
         {/* Result */}
-        {isPC && (
-          <div className='grow h-full'>
-            {renderResWrap}
-          </div>
-        )}
-
-        {(!isPC && isShowResSidebar) && (
-          <div
-            className={cn('fixed z-50 inset-0', isTablet ? 'pl-[128px]' : 'pl-6')}
-            style={{
-              background: 'rgba(35, 56, 118, 0.2)',
-            }}
-          >
-            {renderResWrap}
-          </div>
-        )}
+        <div
+          className={resWrapClassNames}
+          style={{
+            background: (!isPC && isShowResSidebar) ? 'rgba(35, 56, 118, 0.2)' : 'none',
+          }}
+        >
+          {renderResWrap}
+        </div>
       </div>
     </>
   )

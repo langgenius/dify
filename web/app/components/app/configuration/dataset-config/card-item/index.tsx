@@ -16,7 +16,6 @@ export type ICardItemProps = {
   onRemove: (id: string) => void
   readonly?: boolean
 }
-
 const CardItem: FC<ICardItemProps> = ({
   className,
   config,

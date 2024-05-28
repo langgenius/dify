@@ -1,25 +1,44 @@
 'use client'
-import React, { FC } from 'react'
-import GroupName from '../base/group-name'
 
-export interface IToolboxProps {
-  searchToolConfig: any
-  sensitiveWordAvoidanceConifg: any
+import type { FC } from 'react'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import GroupName from '../base/group-name'
+import Moderation from './moderation'
+import Annotation from './annotation/config-param'
+import type { EmbeddingModelConfig } from '@/app/components/app/annotation/type'
+
+export type ToolboxProps = {
+  showModerationSettings: boolean
+  showAnnotation: boolean
+  onEmbeddingChange: (embeddingModel: EmbeddingModelConfig) => void
+  onScoreChange: (score: number, embeddingModel?: EmbeddingModelConfig) => void
 }
 
-/*
-* Include 
-* 1. Search Tool
-* 2. Sensitive word avoidance
-*/
-const Toolbox: FC<IToolboxProps> = ({ searchToolConfig, sensitiveWordAvoidanceConifg }) => {
+const Toolbox: FC<ToolboxProps> = ({
+  showModerationSettings,
+  showAnnotation,
+  onEmbeddingChange,
+  onScoreChange,
+}) => {
+  const { t } = useTranslation()
+
   return (
-    <div>
-      <GroupName name='Toolbox' />
-      <div>
-        {searchToolConfig?.enabled && <div>Search Tool</div>}
-        {sensitiveWordAvoidanceConifg?.enabled && <div>Sensitive word avoidance</div>}
-      </div>
+    <div className='mt-7'>
+      <GroupName name={t('appDebug.feature.toolbox.title')} />
+      {
+        showModerationSettings && (
+          <Moderation />
+        )
+      }
+      {
+        (showAnnotation || true) && (
+          <Annotation
+            onEmbeddingChange={onEmbeddingChange}
+            onScoreChange={onScoreChange}
+          />
+        )
+      }
     </div>
   )
 }
