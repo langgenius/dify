@@ -115,7 +115,7 @@ export const fetchDocumentDetail: Fetcher<DocumentDetailResponse, CommonDocReq &
 }
 
 export const renameDocumentName: Fetcher<CommonResponse, CommonDocReq & { name: string }> = ({ datasetId, documentId, name }) => {
-  return put<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/rename`, {
+  return post<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/rename`, {
     body: { name },
   })
 }
