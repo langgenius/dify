@@ -33,6 +33,7 @@ import {
   Y_OFFSET,
 } from '../constants'
 import {
+  genNewNodeTitleFromOld,
   generateNewNode,
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getTopLeftNodePosition,
@@ -1067,7 +1068,6 @@ export const useNodesInteractions = () => {
       const offsetY = currentPosition.y - y
       clipboardElements.forEach((nodeToPaste, index) => {
         const nodeType = nodeToPaste.data.type
-        const nodesWithSameType = nodes.filter(node => node.data.type === nodeType)
 
         const newNode = generateNewNode({
           data: {
@@ -1077,7 +1077,7 @@ export const useNodesInteractions = () => {
             _isBundled: false,
             _connectedSourceHandleIds: [],
             _connectedTargetHandleIds: [],
-            title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${nodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${nodeType}`),
+            title: genNewNodeTitleFromOld(nodeToPaste.data.title),
           },
           position: {
             x: nodeToPaste.position.x + offsetX,
