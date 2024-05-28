@@ -1,8 +1,8 @@
 /* eslint-disable no-mixed-operators */
 'use client'
 import type { FC, SVGProps } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useDebounceFn } from 'ahooks'
+import React, { useCallback, useEffect, useState } from 'react'
+import { useBoolean, useDebounceFn } from 'ahooks'
 import { ArrowDownIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid'
 import { pick } from 'lodash-es'
@@ -11,7 +11,10 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import dayjs from 'dayjs'
+import { Edit03 } from '../../base/icons/src/vender/solid/general'
+import TooltipPlus from '../../base/tooltip-plus'
 import s from './style.module.css'
+import RenameModal from './rename-modal'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import Popover from '@/app/components/base/popover'
@@ -39,7 +42,7 @@ export const SettingsIcon = ({ className }: SVGProps<SVGElement>) => {
 
 export const SyncIcon = () => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M5.69773 13.1783C7.29715 13.8879 9.20212 13.8494 10.8334 12.9075C13.5438 11.3427 14.4724 7.87704 12.9076 5.16672L12.7409 4.87804M3.09233 10.8335C1.52752 8.12314 2.45615 4.65746 5.16647 3.09265C6.7978 2.15081 8.70277 2.11227 10.3022 2.82185M1.66226 10.8892L3.48363 11.3773L3.97166 9.5559M12.0284 6.44393L12.5164 4.62256L14.3378 5.1106" stroke="#667085" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M5.69773 13.1783C7.29715 13.8879 9.20212 13.8494 10.8334 12.9075C13.5438 11.3427 14.4724 7.87704 12.9076 5.16672L12.7409 4.87804M3.09233 10.8335C1.52752 8.12314 2.45615 4.65746 5.16647 3.09265C6.7978 2.15081 8.70277 2.11227 10.3022 2.82185M1.66226 10.8892L3.48363 11.3773L3.97166 9.5559M12.0284 6.44393L12.5164 4.62256L14.3378 5.1106" stroke="#667085" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
   </svg>
 }
 
@@ -326,13 +329,30 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
     }
   }
 
+  const [currDocument, setCurrDocument] = useState<LocalDoc | null>(null)
+  const [isShowRenameModal, {
+    setTrue: setShowRenameModalTrue,
+    setFalse: setShowRenameModalFalse,
+  }] = useBoolean(false)
+  const handleShowRenameModal = useCallback((doc: LocalDoc) => {
+    setCurrDocument(doc)
+    setShowRenameModalTrue()
+  }, [setShowRenameModalTrue])
+  const handleRenamed = useCallback(() => {
+    onUpdate()
+  }, [onUpdate])
+
   return (
     <div className='w-full h-full overflow-x-auto'>
       <table className={`min-w-[700px] max-w-full w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
         <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-medium text-xs uppercase">
           <tr>
             <td className='w-12'>#</td>
-            <td>{t('datasetDocuments.list.table.header.fileName')}</td>
+            <td>
+              <div className='flex'>
+                {t('datasetDocuments.list.table.header.fileName')}
+              </div>
+            </td>
             <td className='w-24'>{t('datasetDocuments.list.table.header.words')}</td>
             <td className='w-44'>{t('datasetDocuments.list.table.header.hitCount')}</td>
             <td className='w-44'>
@@ -355,17 +375,35 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                 router.push(`/datasets/${datasetId}/documents/${doc.id}`)
               }}>
               <td className='text-left align-middle text-gray-500 text-xs'>{doc.position}</td>
-              <td className={s.tdValue}>
-                {
-                  doc?.data_source_type === DataSourceType.NOTION
-                    ? <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
-                    : <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? suffix}Icon`], s.commonIcon, 'mr-1.5')}></div>
-                }
-                {
-                  doc.data_source_type === DataSourceType.NOTION
-                    ? <span>{doc.name}</span>
-                    : <span>{doc?.name?.replace(/\.[^/.]+$/, '')}<span className='text-gray-500'>.{suffix}</span></span>
-                }
+              <td>
+                <div className='group flex items-center justify-between'>
+                  <span className={s.tdValue}>
+                    {
+                      doc?.data_source_type === DataSourceType.NOTION
+                        ? <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
+                        : <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? suffix}Icon`], s.commonIcon, 'mr-1.5')}></div>
+                    }
+                    {
+                      doc.data_source_type === DataSourceType.NOTION
+                        ? <span>{doc.name}</span>
+                        : <span>{doc?.name?.replace(/\.[^/.]+$/, '')}<span className='text-gray-500'>.{suffix}</span></span>
+                    }
+                  </span>
+                  <div className='group-hover:flex hidden'>
+                    <TooltipPlus popupContent={t('datasetDocuments.list.table.rename')}>
+                      <div
+                        className='p-1 rounded-md cursor-pointer hover:bg-black/5'
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleShowRenameModal(doc)
+                        }}
+                      >
+                        <Edit03 className='w-4 h-4 text-gray-500' />
+                      </div>
+                    </TooltipPlus>
+                  </div>
+                </div>
+
               </td>
               <td>{renderCount(doc.word_count)}</td>
               <td>{renderCount(doc.hit_count)}</td>
@@ -391,6 +429,16 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
           })}
         </tbody>
       </table>
+
+      {isShowRenameModal && currDocument && (
+        <RenameModal
+          datasetId={datasetId}
+          documentId={currDocument.id}
+          name={currDocument.name}
+          onClose={setShowRenameModalFalse}
+          onSaved={handleRenamed}
+        />
+      )}
     </div>
   )
 }
