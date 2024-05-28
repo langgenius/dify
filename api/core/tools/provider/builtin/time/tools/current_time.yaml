@@ -59,6 +59,11 @@ parameters:
           en_US: America/Chicago
           zh_Hans: 美洲/芝加哥
           pt_BR: America/Chicago
+      - value: America/Sao_Paulo
+        label:
+          en_US: America/Sao_Paulo
+          zh_Hans: 美洲/圣保罗
+          pt_BR: América/São Paulo
       - value: Asia/Shanghai
         label:
           en_US: Asia/Shanghai

@@ -11,7 +11,7 @@ import type {
 import BlockIcon from '@/app/components/workflow/block-icon'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
-  useNodesExtraData,
+  useAvailableBlocks,
   useNodesInteractions,
   useNodesReadOnly,
   useToolIcon,
@@ -33,10 +33,12 @@ const Item = ({
   const { t } = useTranslation()
   const { handleNodeChange } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
-  const nodesExtraData = useNodesExtraData()
   const toolIcon = useToolIcon(data)
-  const availablePrevNodes = nodesExtraData[data.type].availablePrevNodes
-  const availableNextNodes = nodesExtraData[data.type].availableNextNodes
+  const {
+    availablePrevBlocks,
+    availableNextBlocks,
+  } = useAvailableBlocks(data.type, data.isInIteration)
+
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleNodeChange(nodeId, type, sourceHandle, toolDefaultValue)
   }, [nodeId, sourceHandle, handleNodeChange])
@@ -84,7 +86,7 @@ const Item = ({
             }}
             trigger={renderTrigger}
             popupClassName='!w-[328px]'
-            availableBlocksTypes={intersection(availablePrevNodes, availableNextNodes).filter(item => item !== data.type)}
+            availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks).filter(item => item !== data.type)}
           />
         )
       }

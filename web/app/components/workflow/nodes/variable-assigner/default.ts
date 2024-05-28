@@ -7,14 +7,14 @@ const i18nPrefix = 'workflow'
 
 const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
   defaultValue: {
-    output_type: VarType.string,
+    output_type: VarType.any,
     variables: [],
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode
       ? ALL_CHAT_AVAILABLE_BLOCKS
       : ALL_COMPLETION_AVAILABLE_BLOCKS.filter(type => type !== BlockEnum.End)
-    return nodes.filter(type => type !== BlockEnum.IfElse && type !== BlockEnum.QuestionClassifier)
+    return nodes
   },
   getAvailableNextNodes(isChatMode: boolean) {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
