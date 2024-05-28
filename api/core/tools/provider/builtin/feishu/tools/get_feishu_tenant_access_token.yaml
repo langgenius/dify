@@ -1,0 +1,33 @@
+identity:
+  name: get_feishu_tenant_access_token
+  author: lb
+  label:
+    en_US: Get Feishu Tenant Access Token
+    zh_Hans: 获取应用访问凭证
+  icon: icon.png
+description:
+  human:
+    en_US: Get Feishu Tenant Access Token
+    zh_Hans: 获取应用访问凭证
+  llm: 获取应用访问凭证
+parameters:
+  - name: app_id
+    type: string
+    required: true
+    label:
+      en_US: 应用唯一标识
+      zh_Hans: 应用唯一标识
+    human_description:
+      en_US: 应用唯一标识
+      zh_Hans: 应用唯一标识
+    form: llm
+  - name: app_secret
+    type: string
+    required: true
+    label:
+      en_US: 应用秘钥
+      zh_Hans: 应用秘钥
+    human_description:
+      en_US: 应用秘钥
+      zh_Hans: 应用秘钥
+    form: llm
