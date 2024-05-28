@@ -20,7 +20,7 @@ DRAW_TEXT_OPTIONS = {
     "subseed": -1,
     "subseed_strength": 0,
     "seed_resize_from_h": -1,
-    'sampler_index': 'DPM++ SDE Karras',
+    # 'sampler_index': 'DPM++ SDE Karras',
     "seed_resize_from_w": -1,
     "batch_size": 1,
     "n_iter": 1,
