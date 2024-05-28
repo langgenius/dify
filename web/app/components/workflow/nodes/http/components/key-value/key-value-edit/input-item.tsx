@@ -49,7 +49,7 @@ const InputItem: FC<Props> = ({
   }, [onRemove])
 
   return (
-    <div className={cn(className, 'hover:bg-gray-50 hover:cursor-text', 'relative flex h-full items-center')}>
+    <div className={cn(className, 'hover:bg-gray-50 hover:cursor-text', 'relative flex h-full')}>
       {(!readOnly)
         ? (
           <Input
@@ -63,6 +63,7 @@ const InputItem: FC<Props> = ({
             onFocusChange={setIsFocus}
             placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
             placeholderClassName='!leading-[21px]'
+            promptMinHeightClassName='h-full'
           />
         )
         : <div
@@ -81,6 +82,7 @@ const InputItem: FC<Props> = ({
               onFocusChange={setIsFocus}
               placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
               placeholderClassName='!leading-[21px]'
+              promptMinHeightClassName='h-full'
             />
           )}
 
