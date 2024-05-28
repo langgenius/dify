@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'api/migrations/**'
+      - api/migrations/**
 
 concurrency:
   group: db-migration-test-${{ github.ref }}
