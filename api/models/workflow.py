@@ -263,6 +263,7 @@ class WorkflowRun(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='workflow_run_pkey'),
         db.Index('workflow_run_triggerd_from_idx', 'tenant_id', 'app_id', 'triggered_from'),
+        db.Index('workflow_run_tenant_app_sequence_idx', 'tenant_id', 'app_id', 'sequence_number'),
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
