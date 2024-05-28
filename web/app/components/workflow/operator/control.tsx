@@ -1,10 +1,13 @@
-import { memo } from 'react'
+import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { useKeyPress } from 'ahooks'
 import {
   useNodesReadOnly,
+  useSelectionInteractions,
   useWorkflow,
 } from '../hooks'
+import { isEventTargetInputArea } from '../utils'
 import { useStore } from '../store'
 import AddBlock from './add-block'
 import TipPopup from './tip-popup'
@@ -27,6 +30,44 @@ const Control = () => {
     nodesReadOnly,
     getNodesReadOnly,
   } = useNodesReadOnly()
+  const { handleSelectionCancel } = useSelectionInteractions()
+
+  const handleModePointer = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+    setControlMode('pointer')
+  }, [getNodesReadOnly, setControlMode])
+  const handleModeHand = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+    setControlMode('hand')
+    handleSelectionCancel()
+  }, [getNodesReadOnly, setControlMode, handleSelectionCancel])
+
+  useKeyPress('h', (e) => {
+    if (getNodesReadOnly())
+      return
+
+    if (isEventTargetInputArea(e.target as HTMLElement))
+      return
+
+    e.preventDefault()
+    handleModeHand()
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
+
+  useKeyPress('v', (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement))
+      return
+
+    e.preventDefault()
+    handleModePointer()
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
 
   const goLayout = () => {
     if (getNodesReadOnly())
@@ -45,7 +86,7 @@ const Control = () => {
             controlMode === 'pointer' ? 'bg-primary-50 text-primary-600' : 'hover:bg-black/5 hover:text-gray-700',
             `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
           )}
-          onClick={() => setControlMode('pointer')}
+          onClick={handleModePointer}
         >
           {
             controlMode === 'pointer' ? <Cursor02CSolid className='w-4 h-4' /> : <Cursor02C className='w-4 h-4' />
@@ -59,7 +100,7 @@ const Control = () => {
             controlMode === 'hand' ? 'bg-primary-50 text-primary-600' : 'hover:bg-black/5 hover:text-gray-700',
             `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
           )}
-          onClick={() => setControlMode('hand')}
+          onClick={handleModeHand}
         >
           {
             controlMode === 'hand' ? <Hand02Solid className='w-4 h-4' /> : <Hand02 className='w-4 h-4' />

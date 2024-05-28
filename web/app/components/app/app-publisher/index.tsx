@@ -23,6 +23,8 @@ import { PlayCircle } from '@/app/components/base/icons/src/vender/line/mediaAnd
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import { LeftIndent02 } from '@/app/components/base/icons/src/vender/line/editor'
 import { FileText } from '@/app/components/base/icons/src/vender/line/files'
+import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
+import type { InputVar } from '@/app/components/workflow/types'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -37,6 +39,9 @@ export type AppPublisherProps = {
   onRestore?: () => Promise<any> | any
   onToggle?: (state: boolean) => void
   crossAxisOffset?: number
+  toolPublished?: boolean
+  inputs?: InputVar[]
+  onRefreshData?: () => void
 }
 
 const AppPublisher = ({
@@ -50,6 +55,9 @@ const AppPublisher = ({
   onRestore,
   onToggle,
   crossAxisOffset = 0,
+  toolPublished,
+  inputs,
+  onRefreshData,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
   const [published, setPublished] = useState(false)
@@ -122,7 +130,7 @@ const AppPublisher = ({
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
-        <div className='w-[320px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl'>
+        <div className='w-[336px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl'>
           <div className='p-4 pt-3'>
             <div className='flex items-center h-6 text-xs font-medium text-gray-500 uppercase'>
               {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
@@ -202,6 +210,23 @@ const AppPublisher = ({
                 </SuggestedAction>
               )}
             <SuggestedAction disabled={!publishedAt} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
+            {appDetail?.mode === 'workflow' && (
+              <WorkflowToolConfigureButton
+                disabled={!publishedAt}
+                published={!!toolPublished}
+                detailNeedUpdate={!!toolPublished && published}
+                workflowAppId={appDetail?.id}
+                icon={{
+                  content: appDetail?.icon,
+                  background: appDetail?.icon_background,
+                }}
+                name={appDetail?.name}
+                description={appDetail?.description}
+                inputs={inputs}
+                handlePublish={handlePublish}
+                onRefreshData={onRefreshData}
+              />
+            )}
           </div>
         </div>
       </PortalToFollowElemContent>

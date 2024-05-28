@@ -62,7 +62,7 @@ const ConfigPrompt: FC<Props> = ({
     : []
   const {
     availableVars,
-    availableNodes,
+    availableNodesWithParent,
   } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar,
@@ -146,7 +146,7 @@ const ConfigPrompt: FC<Props> = ({
               <ReactSortable className="space-y-1"
                 list={payloadWithIds}
                 setList={(list) => {
-                  if ((payload as PromptItem[])?.[0].role === PromptRole.system && list[0].p?.role !== PromptRole.system)
+                  if ((payload as PromptItem[])?.[0]?.role === PromptRole.system && list[0].p?.role !== PromptRole.system)
                     return
 
                   onChange(list.map(item => item.p))
@@ -186,7 +186,7 @@ const ConfigPrompt: FC<Props> = ({
                           isShowContext={isShowContext}
                           hasSetBlockStatus={hasSetBlockStatus}
                           availableVars={availableVars}
-                          availableNodes={availableNodes}
+                          availableNodes={availableNodesWithParent}
                           varList={varList}
                           handleAddVariable={handleAddVariable}
                         />
@@ -218,7 +218,7 @@ const ConfigPrompt: FC<Props> = ({
               isShowContext={isShowContext}
               hasSetBlockStatus={hasSetBlockStatus}
               nodesOutputVars={availableVars}
-              availableNodes={availableNodes}
+              availableNodes={availableNodesWithParent}
               isSupportJinja
               editionType={(payload as PromptItem).edition_type}
               varList={varList}

@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: '公開URL',
       preview: 'プレビュー',
       regenerate: '再生成',
+      regenerateNotice: '公開URLを再生成しますか？',
       preUseReminder: '続行する前にWebAppを有効にしてください。',
       settings: {
         entry: '設定',
@@ -50,6 +51,9 @@ const translation = {
           privacyPolicy: 'プライバシーポリシー',
           privacyPolicyPlaceholder: 'プライバシーポリシーリンクを入力してください',
           privacyPolicyTip: '訪問者がアプリケーションが収集するデータを理解し、Difyの<privacyPolicyLink>プライバシーポリシー</privacyPolicyLink>を参照できるようにします。',
+          customDisclaimer: 'カスタム免責事項',
+          customDisclaimerPlaceholder: '免責事項を入力してください',
+          customDisclaimerTip: 'アプリケーションの使用に関する免責事項を提供します。',
         },
       },
       embedded: {

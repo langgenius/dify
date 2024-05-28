@@ -97,7 +97,7 @@ class MessageListApi(Resource):
 
 
 class MessageFeedbackApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, message_id):
         message_id = str(message_id)
 
@@ -114,7 +114,7 @@ class MessageFeedbackApi(Resource):
 
 
 class MessageSuggestedApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY, required=True))
     def get(self, app_model: App, end_user: EndUser, message_id):
         message_id = str(message_id)
         app_mode = AppMode.value_of(app_model.mode)

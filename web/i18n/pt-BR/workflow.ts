@@ -49,6 +49,17 @@ const translation = {
     processData: 'Processar dados',
     input: 'Entrada',
     output: 'Saída',
+    jinjaEditorPlaceholder: 'Digite \'/\' ou \'{\' para inserir variável',
+    viewOnly: 'Apenas Visualização',
+    showRunHistory: 'Mostrar Histórico de Execuções',
+    enableJinja: 'Ativar suporte a templates Jinja',
+    learnMore: 'Saiba Mais',
+    copy: 'Copiar',
+    duplicate: 'Duplicar',
+    addBlock: 'Adicionar Bloco',
+    pasteHere: 'Colar Aqui',
+    pointerMode: 'Modo Ponteiro',
+    handMode: 'Modo Manual',
   },
   errorMsg: {
     fieldRequired: '{{field}} é obrigatório',
@@ -204,6 +215,7 @@ const translation = {
       singleRun: {
         variable: 'Variável',
       },
+      sysQueryInUser: 'sys.query em user é inválido',
     },
     knowledgeRetrieval: {
       queryVariable: 'Variável de consulta',
@@ -261,6 +273,9 @@ const translation = {
     code: {
       inputVars: 'Variáveis de entrada',
       outputVars: 'Variáveis de saída',
+      advancedDependencies: 'Dependências Avançadas',
+      advancedDependenciesTip: 'Adicione algumas dependências pré-carregadas que demoram mais para serem consumidas ou que não são padrão aqui',
+      searchDependencies: 'Pesquisar Dependências',
     },
     templateTransform: {
       inputVars: 'Variáveis de entrada',

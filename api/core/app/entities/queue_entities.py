@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.workflow.entities.base_node_data_entities import BaseNodeData
@@ -21,6 +21,9 @@ class QueueEvent(Enum):
     WORKFLOW_STARTED = "workflow_started"
     WORKFLOW_SUCCEEDED = "workflow_succeeded"
     WORKFLOW_FAILED = "workflow_failed"
+    ITERATION_START = "iteration_start"
+    ITERATION_NEXT = "iteration_next"
+    ITERATION_COMPLETED = "iteration_completed"
     NODE_STARTED = "node_started"
     NODE_SUCCEEDED = "node_succeeded"
     NODE_FAILED = "node_failed"
@@ -47,6 +50,55 @@ class QueueLLMChunkEvent(AppQueueEvent):
     event = QueueEvent.LLM_CHUNK
     chunk: LLMResultChunk
 
+class QueueIterationStartEvent(AppQueueEvent):
+    """
+    QueueIterationStartEvent entity
+    """
+    event = QueueEvent.ITERATION_START
+    node_id: str
+    node_type: NodeType
+    node_data: BaseNodeData
+
+    node_run_index: int
+    inputs: dict = None
+    predecessor_node_id: Optional[str] = None
+    metadata: Optional[dict] = None
+
+class QueueIterationNextEvent(AppQueueEvent):
+    """
+    QueueIterationNextEvent entity
+    """
+    event = QueueEvent.ITERATION_NEXT
+
+    index: int
+    node_id: str
+    node_type: NodeType
+
+    node_run_index: int
+    output: Optional[Any] # output for the current iteration
+
+    @validator('output', pre=True, always=True)
+    def set_output(cls, v):
+        """
+        Set output
+        """
+        if v is None:
+            return None
+        if isinstance(v, int | float | str | bool | dict | list):
+            return v
+        raise ValueError('output must be a valid type')
+
+class QueueIterationCompletedEvent(AppQueueEvent):
+    """
+    QueueIterationCompletedEvent entity
+    """
+    event = QueueEvent.ITERATION_COMPLETED
+
+    node_id: str
+    node_type: NodeType
+    
+    node_run_index: int
+    outputs: dict
 
 class QueueTextChunkEvent(AppQueueEvent):
     """

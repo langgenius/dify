@@ -52,6 +52,14 @@ const translation = {
     jinjaEditorPlaceholder: 'Tastați \'/\' sau \'{\' pentru a insera variabila',
     viewOnly: 'Doar vizualizare',
     showRunHistory: 'Afișează istoricul de rulare',
+    enableJinja: 'Activează suportul pentru șabloane Jinja',
+    learnMore: 'Află mai multe',
+    copy: 'Copiază',
+    duplicate: 'Duplică',
+    addBlock: 'Adaugă Bloc',
+    pasteHere: 'Lipește Aici',
+    pointerMode: 'Mod Indicator',
+    handMode: 'Mod Manual',
   },
   errorMsg: {
     fieldRequired: '{{field}} este obligatoriu',
@@ -265,6 +273,9 @@ const translation = {
     code: {
       inputVars: 'Variabile de intrare',
       outputVars: 'Variabile de ieșire',
+      advancedDependencies: 'Dependențe Avansate',
+      advancedDependenciesTip: 'Adăugați aici unele dependențe preîncărcate care necesită mai mult timp pentru a fi utilizate sau care nu sunt în mod implicit integrate',
+      searchDependencies: 'Căutați Dependențe',
     },
     templateTransform: {
       inputVars: 'Variabile de intrare',
