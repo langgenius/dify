@@ -345,7 +345,7 @@ const translation = {
       aggregationGroupTip: 'この機能を有効にすると、変数集約器は複数のセットの変数を集約できます。',
       addGroup: 'グループを追加',
       outputVars: {
-        output: '割り当てられた変数の値',
+        varDescribe: '{{groupName}} 出力',
       },
       setAssignVariable: '割り当て変数を設定',
     },
