@@ -10,6 +10,7 @@ import { useBoolean, useGetState } from 'ahooks'
 import { checkOrSetAccessToken } from '../utils'
 import AppUnavailable from '../../base/app-unavailable'
 import useConversation from './hooks/use-conversation'
+import { useThemeContext } from './theme/theme-context'
 import { ToastContext } from '@/app/components/base/toast'
 import ConfigScene from '@/app/components/share/chatbot/config-scence'
 import Header from '@/app/components/share/header'
@@ -171,6 +172,8 @@ const Main: FC<IMainProps> = ({
 
     return isChatStarted
   })()
+
+  const themeContext = useThemeContext()
 
   // const conversationName = currConversationInfo?.name || t('share.chat.newChatDefaultName') as string
   const conversationIntroduction = currConversationInfo?.introduction || ''
@@ -341,6 +344,9 @@ const Main: FC<IMainProps> = ({
           introduction,
         })
         setSiteInfo(siteInfo as SiteInfo)
+
+        themeContext.buildTheme((siteInfo as SiteInfo).chat_color_theme, (siteInfo as SiteInfo).chat_color_theme_inverted)
+
         setPromptConfig({
           prompt_template,
           prompt_variables,
@@ -801,6 +807,7 @@ const Main: FC<IMainProps> = ({
                     visionConfig={visionConfig}
                     allToolIcons={appMeta?.tool_icons || {}}
                     customDisclaimer={siteInfo.custom_disclaimer}
+                    theme={themeContext}
                   />
                 </div>
               </div>)

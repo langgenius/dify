@@ -3,6 +3,8 @@ import type { FC, ReactNode } from 'react'
 import React from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import { useThemeContext } from '../theme/theme-context'
+import { CssTransform } from '../theme/utils'
 import s from './style.module.css'
 import { StarIcon } from '@/app/components/share/chatbot/welcome/massive-component'
 import Button from '@/app/components/base/button'
@@ -20,11 +22,13 @@ const TemplateVarPanel: FC<ITemplateVarPanelProps> = ({
   children,
   isFold,
 }) => {
+  const themeContext = useThemeContext()
   return (
     <div className={cn(isFold ? 'border border-indigo-100' : s.boxShodow, className, 'rounded-xl ')}>
       {/* header */}
       <div
         className={cn(isFold && 'rounded-b-xl', 'rounded-t-xl px-6 py-4 bg-indigo-25 text-xs')}
+        style={CssTransform(themeContext.theme?.roundedBackgroundColorStyle ?? '')}
       >
         {header}
       </div>

@@ -5,6 +5,8 @@ import {
   PencilSquareIcon,
 } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
+import { useThemeContext } from './chatbot/theme/theme-context'
+import { CssTransform } from './chatbot/theme/utils'
 import AppIcon from '@/app/components/base/app-icon'
 import { ReplayIcon } from '@/app/components/app/chat/icon-component'
 import Tooltip from '@/app/components/base/tooltip'
@@ -30,6 +32,8 @@ const Header: FC<IHeaderProps> = ({
   onCreateNewChat,
 }) => {
   const { t } = useTranslation()
+  const themeContext = useThemeContext()
+
   if (!isMobile)
     return null
 
@@ -37,14 +41,15 @@ const Header: FC<IHeaderProps> = ({
     return (
       <div
         className={`
-          shrink-0 flex items-center justify-between h-14 px-4 bg-gray-100 
-          bg-gradient-to-r from-blue-600 to-sky-500
+          shrink-0 flex items-center justify-between h-14 px-4
         `}
+        style={Object.assign({}, CssTransform(themeContext.theme?.backgroundHeaderColorStyle ?? ''), CssTransform(themeContext.theme?.headerBorderBottomStyle ?? '')) }
       >
         <div className="flex items-center space-x-2">
           {customerIcon || <AppIcon size="small" icon={icon} background={icon_background} />}
           <div
-            className={'text-sm font-bold text-white'}
+            className={'text-sm font-bold'}
+            style={CssTransform(themeContext.theme?.colorFontOnHeaderStyle ?? '')}
           >
             {title}
           </div>
@@ -57,7 +62,7 @@ const Header: FC<IHeaderProps> = ({
           <div className='flex cursor-pointer hover:rounded-lg hover:bg-black/5 w-8 h-8 items-center justify-center' onClick={() => {
             onCreateNewChat?.()
           }}>
-            <ReplayIcon className="h-4 w-4 text-sm font-bold text-white" />
+            <ReplayIcon className="h-4 w-4 text-sm font-bold text-white" color={themeContext.theme?.colorPathOnHeader}/>
           </div>
         </Tooltip>
       </div>

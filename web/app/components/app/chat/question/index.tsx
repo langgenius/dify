@@ -8,14 +8,17 @@ import MoreInfo from '../more-info'
 import AppContext from '@/context/app-context'
 import { Markdown } from '@/app/components/base/markdown'
 import ImageGallery from '@/app/components/base/image-gallery'
+import type { ThemeBuilder } from '@/app/components/share/chatbot/theme/theme-context'
+import { CssTransform } from '@/app/components/share/chatbot/theme/utils'
 
 type IQuestionProps = Pick<IChatItem, 'id' | 'content' | 'more' | 'useCurrentUserAvatar'> & {
   isShowPromptLog?: boolean
   item: IChatItem
   isResponding?: boolean
+  theme?: ThemeBuilder
 }
 
-const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar, isShowPromptLog, item }) => {
+const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar, isShowPromptLog, item, theme }) => {
   const { userProfile } = useContext(AppContext)
   const userName = userProfile?.name
   const ref = useRef(null)
@@ -28,6 +31,7 @@ const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar,
         <div className={`${s.question} group relative text-sm text-gray-900`}>
           <div
             className={'mr-2 py-3 px-4 bg-blue-500 rounded-tl-2xl rounded-b-2xl'}
+            style={theme?.theme?.chatBubbleColorStyle ? CssTransform(theme.theme.chatBubbleColorStyle) : {}}
           >
             {imgSrcs && imgSrcs.length > 0 && (
               <ImageGallery srcs={imgSrcs} />

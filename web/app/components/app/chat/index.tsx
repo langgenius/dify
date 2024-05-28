@@ -6,6 +6,7 @@ import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import Recorder from 'js-audio-recorder'
 import { useTranslation } from 'react-i18next'
+import type { ThemeBuilder } from '../../share/chatbot/theme/theme-context'
 import s from './style.module.css'
 import type { DisplayScene, FeedbackFunc, IChatItem } from './type'
 import { TryToAskIcon, stopIcon } from './icon-component'
@@ -68,6 +69,7 @@ export type IChatProps = {
   supportAnnotation?: boolean
   allToolIcons?: Record<string, string | Emoji>
   customDisclaimer?: string
+  theme?: ThemeBuilder
 }
 
 const Chat: FC<IChatProps> = ({
@@ -104,6 +106,7 @@ const Chat: FC<IChatProps> = ({
   onChatListChange,
   allToolIcons,
   customDisclaimer,
+  theme,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -180,7 +183,6 @@ const Chat: FC<IChatProps> = ({
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const sendBtn = <div className={cn(!(!query || query.trim() === '') && s.sendBtnActive, `${s.sendBtn} w-8 h-8 cursor-pointer rounded-md`)} onClick={() => handleSend()}></div>
-
   const suggestionListRef = useRef<HTMLDivElement>(null)
   const [hasScrollbar, setHasScrollbar] = useState(false)
   useLayoutEffect(() => {
@@ -314,6 +316,7 @@ const Chat: FC<IChatProps> = ({
               item={item}
               isShowPromptLog={isShowPromptLog}
               isResponding={isResponding}
+              theme={theme}
             />
           )
         })}
