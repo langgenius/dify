@@ -1,4 +1,4 @@
-name: DB migration test
+name: DB Migration Test
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
       - 'api/migrations/**'
 
 jobs:
-  test:
+  db-migration-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -26,12 +26,11 @@ jobs:
           cache: 'pip'
           cache-dependency-path: |
             ./api/requirements.txt
-            ./api/requirements-dev.txt
 
       - name: Install dependencies
-        run: pip install -r ./api/requirements.txt -r ./api/requirements-dev.txt
+        run: pip install -r ./api/requirements.txt
 
-      - name: Set up DB
+      - name: Set up Middleware
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
           compose-file: |
@@ -39,8 +38,12 @@ jobs:
           services: |
             db
 
-      - name: Run DB Migration
+      - name: Prepare configs
         run: |
           cd api
           cp .env.example .env
+
+      - name: Run DB Migration
+        run: |
+          cd api
           flask db upgrade
