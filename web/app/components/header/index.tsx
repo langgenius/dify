@@ -9,7 +9,7 @@ import AppNav from './app-nav'
 import DatasetNav from './dataset-nav'
 import ExploreNav from './explore-nav'
 import ToolsNav from './tools-nav'
-import GithubStar from './github-star'
+// import GithubStar from './github-star'
 import { WorkspaceProvider } from '@/context/workspace-context'
 import { useAppContext } from '@/context/app-context'
 import LogoSite from '@/app/components/base/logo/logo-site'
@@ -53,7 +53,7 @@ const Header = () => {
           <Link href="/apps" className='flex items-center mr-4'>
             <LogoSite className='object-contain' />
           </Link>
-          <GithubStar />
+          {/* <GithubStar /> */}
         </>}
       </div>
       {isMobile && (
@@ -61,7 +61,7 @@ const Header = () => {
           <Link href="/apps" className='flex items-center mr-4'>
             <LogoSite />
           </Link>
-          <GithubStar />
+          {/* <GithubStar /> */}
         </div>
       )}
       {!isMobile && (

@@ -23,6 +23,14 @@ class JinaReaderTool(BuiltinTool):
             'Accept': 'application/json'
         }
 
+        target_selector = tool_parameters.get('target_selector', None)
+        if target_selector is not None:
+            headers['X-Target-Selector'] = target_selector
+
+        wait_for_selector = tool_parameters.get('wait_for_selector', None)
+        if wait_for_selector is not None:
+            headers['X-Wait-For-Selector'] = wait_for_selector
+
         response = ssrf_proxy.get(
             str(URL(self._jina_reader_endpoint + url)), 
             headers=headers,

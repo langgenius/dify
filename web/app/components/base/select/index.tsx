@@ -37,6 +37,7 @@ export type ISelectProps = {
   bgClassName?: string
   placeholder?: string
   overlayClassName?: string
+  optionClassName?: string
 }
 const Select: FC<ISelectProps> = ({
   className,
@@ -47,6 +48,7 @@ const Select: FC<ISelectProps> = ({
   allowSearch = true,
   bgClassName = 'bg-gray-100',
   overlayClassName,
+  optionClassName,
 }) => {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -97,7 +99,7 @@ const Select: FC<ISelectProps> = ({
                 if (!disabled)
                   setOpen(!open)
               }
-            } className={`flex items-center h-9 w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200`}>
+            } className={classNames(optionClassName, `flex items-center h-9 w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200`)}>
               <div className='w-0 grow text-left truncate' title={selectedItem?.name}>{selectedItem?.name}</div>
             </Combobox.Button>}
           <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none group-hover:bg-gray-200" onClick={
@@ -118,6 +120,7 @@ const Select: FC<ISelectProps> = ({
                 value={item}
                 className={({ active }: { active: boolean }) =>
                   classNames(
+                    optionClassName,
                     'relative cursor-default select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700',
                     active ? 'bg-gray-100' : '',
                   )

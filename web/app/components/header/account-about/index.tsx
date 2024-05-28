@@ -31,15 +31,15 @@ export default function AccountAbout({
       className={s.modal}
     >
       <div className='relative pt-4'>
-        <div className='absolute -top-2 -right-4 flex justify-center items-center w-8 h-8 cursor-pointer' onClick={onCancel}>
+        <div className='absolute flex items-center justify-center w-8 h-8 cursor-pointer -top-2 -right-4' onClick={onCancel}>
           <XClose className='w-4 h-4 text-gray-500' />
         </div>
         <div>
           <LogoSite className='mx-auto mb-2' />
-          <div className='mb-3 text-center text-xs font-normal text-gray-500'>Version {langeniusVersionInfo?.current_version}</div>
-          <div className='mb-4 text-center text-xs font-normal text-gray-700'>
+          <div className='mb-3 text-xs font-normal text-center text-gray-500'>Version {langeniusVersionInfo?.current_version}</div>
+          <div className='mb-4 text-xs font-normal text-center text-gray-700'>
             <div>© 2023 LangGenius, Inc., Contributors.</div>
-            <div className='text-[#1C64F2]'>
+            {/* <div className='text-[#1C64F2]'>
               {
                 IS_CE_EDITION
                   ? <Link href={'https://github.com/langgenius/dify/blob/main/LICENSE'} target='_blank' rel='noopener noreferrer'>Open Source License</Link>
@@ -48,11 +48,11 @@ export default function AccountAbout({
                     <Link href='https://dify.ai/terms' target='_blank' rel='noopener noreferrer'>Terms of Service</Link>
                   </>
               }
-            </div>
+            </div> */}
           </div>
         </div>
         <div className='mb-4 -mx-8 h-[0.5px] bg-gray-200' />
-        <div className='flex justify-between items-center'>
+        <div className='flex items-center justify-between'>
           <div className='text-xs font-medium text-gray-800'>
             {
               isLatest

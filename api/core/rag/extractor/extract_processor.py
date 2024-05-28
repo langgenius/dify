@@ -16,7 +16,6 @@ from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
 from core.rag.extractor.text_extractor import TextExtractor
-from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
 from core.rag.extractor.unstructured.unstructured_eml_extractor import UnstructuredEmailExtractor
 from core.rag.extractor.unstructured.unstructured_epub_extractor import UnstructuredEpubExtractor
 from core.rag.extractor.unstructured.unstructured_markdown_extractor import UnstructuredMarkdownExtractor
@@ -96,6 +95,7 @@ class ExtractProcessor:
                 file_extension = input_file.suffix.lower()
                 etl_type = current_app.config['ETL_TYPE']
                 unstructured_api_url = current_app.config['UNSTRUCTURED_API_URL']
+                unstructured_api_key = current_app.config['UNSTRUCTURED_API_KEY']
                 if etl_type == 'Unstructured':
                     if file_extension == '.xlsx' or file_extension == '.xls':
                         extractor = ExcelExtractor(file_path)
@@ -107,7 +107,7 @@ class ExtractProcessor:
                     elif file_extension in ['.htm', '.html']:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension in ['.docx']:
-                        extractor = UnstructuredWordExtractor(file_path, unstructured_api_url)
+                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == '.csv':
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == '.msg':
@@ -115,7 +115,7 @@ class ExtractProcessor:
                     elif file_extension == '.eml':
                         extractor = UnstructuredEmailExtractor(file_path, unstructured_api_url)
                     elif file_extension == '.ppt':
-                        extractor = UnstructuredPPTExtractor(file_path, unstructured_api_url)
+                        extractor = UnstructuredPPTExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == '.pptx':
                         extractor = UnstructuredPPTXExtractor(file_path, unstructured_api_url)
                     elif file_extension == '.xml':
@@ -136,7 +136,7 @@ class ExtractProcessor:
                     elif file_extension in ['.htm', '.html']:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension in ['.docx']:
-                        extractor = WordExtractor(file_path)
+                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == '.csv':
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == 'epub':

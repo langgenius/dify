@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from fontTools.ttLib import TTFont
 from matplotlib.font_manager import findSystemFonts
 
+from core.tools.entities.values import ToolLabelEnum
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.chart.tools.line import LinearChartTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
@@ -44,7 +45,7 @@ class ChartProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
             LinearChartTool().fork_tool_runtime(
-                meta={
+                runtime={
                     "credentials": credentials,
                 }
             ).invoke(
@@ -55,3 +56,8 @@ class ChartProvider(BuiltinToolProviderController):
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
+        
+    def _get_tool_labels(self) -> list[ToolLabelEnum]:
+        return [
+            ToolLabelEnum.DESIGN, ToolLabelEnum.PRODUCTIVITY, ToolLabelEnum.UTILITIES
+        ]

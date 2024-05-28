@@ -54,6 +54,12 @@ const translation = {
     showRunHistory: 'Pokaż Historię Uruchomień',
     enableJinja: 'Włącz wsparcie dla szablonów Jinja',
     learnMore: 'Czytaj więcej',
+    copy: 'Kopiuj',
+    duplicate: 'Duplikuj',
+    addBlock: 'Dodaj Blok',
+    pasteHere: 'Wklej Tutaj',
+    pointerMode: 'Tryb Wskaźnika',
+    handMode: 'Tryb Ręczny',
   },
   errorMsg: {
     fieldRequired: '{{field}} jest wymagane',
@@ -267,6 +273,10 @@ const translation = {
     code: {
       inputVars: 'Zmienne Wejściowe',
       outputVars: 'Zmienne Wyjściowe',
+      advancedDependencies: 'Zaawansowane Zależności',
+      advancedDependenciesTip: 'Dodaj tutaj niektóre wstępnie załadowane zależności, które wymagają więcej czasu na załadowanie lub nie są domyślnie wbudowane',
+      searchDependencies: 'Wyszukaj Zależności',
+
     },
     templateTransform: {
       inputVars: 'Zmienne Wejściowe',

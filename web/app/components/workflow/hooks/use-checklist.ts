@@ -29,6 +29,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const isChatMode = useIsChatMode()
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
 
   const needWarningNodes = useMemo(() => {
     const list = []
@@ -41,14 +42,16 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
       if (node.data.type === BlockEnum.Tool) {
         const { provider_type } = node.data
-        const isBuiltIn = provider_type === CollectionType.builtIn
 
-        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, language)
-        if (isBuiltIn)
+        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
+        if (provider_type === CollectionType.builtIn)
           toolIcon = buildInTools.find(tool => tool.id === node.data.provider_id)?.icon
 
-        if (!isBuiltIn)
+        if (provider_type === CollectionType.custom)
           toolIcon = customTools.find(tool => tool.id === node.data.provider_id)?.icon
+
+        if (provider_type === CollectionType.workflow)
+          toolIcon = workflowTools.find(tool => tool.id === node.data.provider_id)?.icon
       }
       const { errorMessage } = nodesExtraData[node.data.type].checkValid(node.data, t, moreDataForCheckValid)
 
@@ -83,7 +86,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     }
 
     return list
-  }, [t, nodes, edges, nodesExtraData, buildInTools, customTools, language, isChatMode])
+  }, [t, nodes, edges, nodesExtraData, buildInTools, customTools, workflowTools, language, isChatMode])
 
   return needWarningNodes
 }
@@ -93,6 +96,7 @@ export const useChecklistBeforePublish = () => {
   const language = useGetLanguage()
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
   const { notify } = useToastContext()
   const isChatMode = useIsChatMode()
   const store = useStoreApi()
@@ -118,7 +122,7 @@ export const useChecklistBeforePublish = () => {
       const node = nodes[i]
       let moreDataForCheckValid
       if (node.data.type === BlockEnum.Tool)
-        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, language)
+        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
 
       const { errorMessage } = nodesExtraData[node.data.type as BlockEnum].checkValid(node.data, t, moreDataForCheckValid)
 
@@ -144,7 +148,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [nodesExtraData, notify, t, store, isChatMode, buildInTools, customTools, language])
+  }, [nodesExtraData, notify, t, store, isChatMode, buildInTools, customTools, workflowTools, language])
 
   return {
     handleCheckBeforePublish,

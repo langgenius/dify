@@ -62,7 +62,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                     ${open && 'bg-gray-200'}
                   `}
                 >
-                  <Avatar name={userProfile.name} className='sm:mr-2 mr-0' size={32} />
+                  <Avatar name={userProfile.name} className='mr-0 sm:mr-2' size={32} />
                   {!isMobile && <>
                     {userProfile.name}
                     <ChevronDown className="w-3 h-3 ml-1 text-gray-700" />
@@ -95,7 +95,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                     </div>
                   </Menu.Item>
                   <div className='px-1 py-1'>
-                    <div className='mt-2 px-3 text-xs font-medium text-gray-500'>{t('common.userProfile.workspace')}</div>
+                    <div className='px-3 mt-2 text-xs font-medium text-gray-500'>{t('common.userProfile.workspace')}</div>
                     <WorkplaceSelector />
                   </div>
                   <div className="px-1 py-1">
@@ -104,7 +104,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                         <div>{t('common.userProfile.settings')}</div>
                       </div>
                     </Menu.Item>
-                    <Menu.Item>
+                    {/* <Menu.Item>
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
                         href='https://github.com/langgenius/dify/discussions/categories/feedbacks'
@@ -112,7 +112,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                         <div>{t('common.userProfile.roadmapAndFeedback')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
                       </Link>
-                    </Menu.Item>
+                    </Menu.Item> */}
                     <Menu.Item>
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
@@ -150,7 +150,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                   <Menu.Item>
                     <div className='p-1' onClick={() => handleLogout()}>
                       <div
-                        className='flex items-center justify-between h-9 px-3 rounded-lg cursor-pointer group hover:bg-gray-50'
+                        className='flex items-center justify-between px-3 rounded-lg cursor-pointer h-9 group hover:bg-gray-50'
                       >
                         <div className='font-normal text-[14px] text-gray-700'>{t('common.userProfile.logout')}</div>
                         <LogOut01 className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />

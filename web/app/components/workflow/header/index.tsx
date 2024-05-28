@@ -2,13 +2,20 @@ import type { FC } from 'react'
 import {
   memo,
   useCallback,
+  useMemo,
 } from 'react'
+import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
   useStore,
   useWorkflowStore,
 } from '../store'
+import {
+  BlockEnum,
+  InputVarType,
+} from '../types'
+import type { StartNodeType } from '../nodes/start/types'
 import {
   useChecklistBeforePublish,
   useNodesReadOnly,
@@ -29,6 +36,7 @@ import Button from '@/app/components/base/button'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { publishWorkflow } from '@/service/workflow'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import { useFeatures } from '@/app/components/base/features/hooks'
 
 const Header: FC = () => {
   const { t } = useTranslation()
@@ -42,6 +50,28 @@ const Header: FC = () => {
   } = useNodesReadOnly()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
+  const toolPublished = useStore(s => s.toolPublished)
+  const nodes = useNodes<StartNodeType>()
+  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const startVariables = startNode?.data.variables
+  const fileSettings = useFeatures(s => s.features.file)
+  const variables = useMemo(() => {
+    const data = startVariables || []
+    if (fileSettings?.image?.enabled) {
+      return [
+        ...data,
+        {
+          type: InputVarType.files,
+          variable: '__image',
+          required: false,
+          label: 'files',
+        },
+      ]
+    }
+
+    return data
+  }, [fileSettings?.image?.enabled, startVariables])
+
   const {
     handleLoadBackupDraft,
     handleBackupDraft,
@@ -108,6 +138,10 @@ const Header: FC = () => {
     workflowStore.setState({ historyWorkflowData: undefined })
   }, [workflowStore, handleLoadBackupDraft])
 
+  const handleToolConfigureUpdate = useCallback(() => {
+    workflowStore.setState({ toolPublished: true })
+  }, [workflowStore])
+
   return (
     <div
       className='absolute top-0 left-0 z-10 flex items-center justify-between w-full px-3 h-14'
@@ -152,6 +186,9 @@ const Header: FC = () => {
                 publishedAt,
                 draftUpdatedAt,
                 disabled: Boolean(getNodesReadOnly()),
+                toolPublished,
+                inputs: variables,
+                onRefreshData: handleToolConfigureUpdate,
                 onPublish,
                 onRestore: onStartRestoring,
                 onToggle: onPublisherToggle,

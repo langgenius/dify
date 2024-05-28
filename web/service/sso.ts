@@ -7,3 +7,7 @@ export const getUserSAMLSSOUrl = () => {
 export const getUserOIDCSSOUrl = () => {
   return get<{ url: string; state: string }>('/enterprise/sso/oidc/login')
 }
+
+export const getUserOAuth2SSOUrl = () => {
+  return get<{ url: string; state: string }>('/enterprise/sso/oauth2/login')
+}

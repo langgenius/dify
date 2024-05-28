@@ -1,6 +1,6 @@
 import os.path
 
-from core.tools.entities.user_entities import UserToolProvider
+from core.tools.entities.api_entities import UserToolProvider
 from core.utils.position_helper import get_position_map, sort_by_position_map
 
 

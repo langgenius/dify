@@ -71,6 +71,8 @@ const translation = {
     },
     privacyPolicy: '隱私協議',
     privacyPolicyPlaceholder: '請輸入隱私協議',
+    customDisclaimer: '自定義免責聲明',
+    customDisclaimerPlaceholder: '請輸入自定義免責聲明',
   },
   test: {
     title: '測試',
