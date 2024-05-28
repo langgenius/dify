@@ -1,3 +1,4 @@
+from core.tools.entities.values import ToolLabelEnum
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.wikipedia.tools.wikipedia_search import WikiPediaSearchTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
@@ -7,7 +8,7 @@ class WikiPediaProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
             WikiPediaSearchTool().fork_tool_runtime(
-                meta={
+                runtime={
                     "credentials": credentials,
                 }
             ).invoke(
@@ -18,3 +19,8 @@ class WikiPediaProvider(BuiltinToolProviderController):
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
+        
+    def _get_tool_labels(self) -> list[ToolLabelEnum]:
+        return [
+            ToolLabelEnum.SEARCH
+        ]

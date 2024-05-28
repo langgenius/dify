@@ -1,3 +1,4 @@
+from core.tools.entities.values import ToolLabelEnum
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.youtube.tools.videos import YoutubeVideosAnalyticsTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
@@ -7,7 +8,7 @@ class YahooFinanceProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
             YoutubeVideosAnalyticsTool().fork_tool_runtime(
-                meta={
+                runtime={
                     "credentials": credentials,
                 }
             ).invoke(
@@ -20,3 +21,8 @@ class YahooFinanceProvider(BuiltinToolProviderController):
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
+        
+    def _get_tool_labels(self) -> list[ToolLabelEnum]:
+        return [
+            ToolLabelEnum.VIDEOS
+        ]

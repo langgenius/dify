@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.8
+    image: langgenius/dify-api:0.6.9
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -36,6 +36,9 @@ services:
       # used to display File preview or download Url to the front-end or as Multi-model inputs;
       # Url is signed and has expiration time.
       FILES_URL: ''
+      # File Access Time specifies a time interval in seconds for the file to be accessed.
+      # The default value is 300 seconds.
+      FILES_ACCESS_TIMEOUT: 300
       # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
       MIGRATION_ENABLED: 'true'
       # The configurations of postgres database connection.
@@ -185,7 +188,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.8
+    image: langgenius/dify-api:0.6.9
     restart: always
     environment:
       CONSOLE_WEB_URL: ''
@@ -303,7 +306,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.6.8
+    image: langgenius/dify-web:0.6.9
     restart: always
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is

@@ -16,9 +16,11 @@ import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppIcon from '@/app/components/base/app-icon'
 import { parseParamsSchema } from '@/service/tools'
+import LabelSelector from '@/app/components/tools/labels/selector'
 
 const fieldNameClassNames = 'py-2 leading-5 text-sm font-medium text-gray-900'
 type Props = {
+  positionLeft?: boolean
   payload: any
   onHide: () => void
   onAdd?: (payload: CustomCollectionBackend) => void
@@ -27,6 +29,7 @@ type Props = {
 }
 // Add and Edit
 const EditCustomCollectionModal: FC<Props> = ({
+  positionLeft,
   payload,
   onHide,
   onAdd,
@@ -114,6 +117,11 @@ const EditCustomCollectionModal: FC<Props> = ({
   const [currTool, setCurrTool] = useState<CustomParamSchema | null>(null)
   const [isShowTestApi, setIsShowTestApi] = useState(false)
 
+  const [labels, setLabels] = useState<string[]>(payload?.labels || [])
+  const handleLabelSelect = (value: string[]) => {
+    setLabels(value)
+  }
+
   const handleSave = () => {
     // const postData = clone(customCollection)
     const postData = produce(customCollection, (draft) => {
@@ -124,6 +132,8 @@ const EditCustomCollectionModal: FC<Props> = ({
         delete draft.credentials.api_key_header_prefix
         delete draft.credentials.api_key_value
       }
+
+      draft.labels = labels
     })
 
     if (isAdd) {
@@ -154,10 +164,11 @@ const EditCustomCollectionModal: FC<Props> = ({
     <>
       <Drawer
         isShow
+        positionCenter={isAdd && !positionLeft}
         onHide={onHide}
         title={t(`tools.createTool.${isAdd ? 'title' : 'editTitle'}`)!}
-        panelClassName='mt-2 !w-[640px]'
-        maxWidthClassName='!max-w-[640px]'
+        panelClassName='mt-2 !w-[630px]'
+        maxWidthClassName='!max-w-[630px]'
         height='calc(100vh - 16px)'
         headerClassName='!border-b-black/5'
         body={
@@ -254,6 +265,13 @@ const EditCustomCollectionModal: FC<Props> = ({
                 </div>
               </div>
 
+              {/* Labels */}
+              <div>
+                <div className='py-2 leading-5 text-sm font-medium text-gray-900'>{t('tools.createTool.toolInput.label')}</div>
+                <LabelSelector value={labels} onChange={handleLabelSelect} />
+              </div>
+
+              {/* Privacy Policy */}
               <div>
                 <div className={fieldNameClassNames}>{t('tools.createTool.privacyPolicy')}</div>
                 <input
@@ -288,7 +306,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                 )
               }
               <div className='flex space-x-2 '>
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
+                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700 bg-white' onClick={onHide}>{t('common.operation.cancel')}</Button>
                 <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
               </div>
             </div>
@@ -308,6 +326,7 @@ const EditCustomCollectionModal: FC<Props> = ({
       />}
       {credentialsModalShow && (
         <ConfigCredentials
+          positionCenter={isAdd}
           credential={credential}
           onChange={setCredential}
           onHide={() => setCredentialsModalShow(false)}
@@ -315,6 +334,7 @@ const EditCustomCollectionModal: FC<Props> = ({
       }
       {isShowTestApi && (
         <TestApi
+          positionCenter={isAdd}
           tool={currTool as CustomParamSchema}
           customCollection={customCollection}
           onHide={() => setIsShowTestApi(false)}
