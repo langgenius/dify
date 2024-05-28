@@ -9,14 +9,14 @@ from requests import get
 from yaml import YAMLError, safe_load
 
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_bundle import ApiBasedToolBundle
+from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolParameter
 from core.tools.errors import ToolApiSchemaError, ToolNotSupportedError, ToolProviderNotFoundError
 
 
 class ApiBasedToolSchemaParser:
     @staticmethod
-    def parse_openapi_to_tool_bundle(openapi: dict, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
+    def parse_openapi_to_tool_bundle(openapi: dict, extra_info: dict = None, warning: dict = None) -> list[ApiToolBundle]:
         warning = warning if warning is not None else {}
         extra_info = extra_info if extra_info is not None else {}
 
@@ -145,7 +145,7 @@ class ApiBasedToolSchemaParser:
                     
                 interface['operation']['operationId'] = f'{path}_{interface["method"]}'
 
-            bundles.append(ApiBasedToolBundle(
+            bundles.append(ApiToolBundle(
                 server_url=server_url + interface['path'],
                 method=interface['method'],
                 summary=interface['operation']['description'] if 'description' in interface['operation'] else 
@@ -176,7 +176,7 @@ class ApiBasedToolSchemaParser:
             return ToolParameter.ToolParameterType.STRING
 
     @staticmethod
-    def parse_openapi_yaml_to_tool_bundle(yaml: str, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
+    def parse_openapi_yaml_to_tool_bundle(yaml: str, extra_info: dict = None, warning: dict = None) -> list[ApiToolBundle]:
         """
             parse openapi yaml to tool bundle
 
@@ -258,7 +258,7 @@ class ApiBasedToolSchemaParser:
         return openapi
 
     @staticmethod
-    def parse_openai_plugin_json_to_tool_bundle(json: str, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
+    def parse_openai_plugin_json_to_tool_bundle(json: str, extra_info: dict = None, warning: dict = None) -> list[ApiToolBundle]:
         """
             parse openapi plugin yaml to tool bundle
 
@@ -290,7 +290,7 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(response.text, extra_info=extra_info, warning=warning)
     
     @staticmethod
-    def auto_parse_to_tool_bundle(content: str, extra_info: dict = None, warning: dict = None) -> tuple[list[ApiBasedToolBundle], str]:
+    def auto_parse_to_tool_bundle(content: str, extra_info: dict = None, warning: dict = None) -> tuple[list[ApiToolBundle], str]:
         """
             auto parse to tool bundle
 

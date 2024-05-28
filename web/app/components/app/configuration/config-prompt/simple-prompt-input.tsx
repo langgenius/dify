@@ -148,7 +148,7 @@ const Prompt: FC<ISimplePromptInput> = ({
             )}
           </div>
           <div className='flex items-center'>
-            {!isAgent && (
+            {!isAgent && !readonly && (
               <AutomaticBtn onClick={showAutomaticTrue} />
             )}
           </div>

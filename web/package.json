@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.6.8",
+  "version": "0.6.9",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.22.3",
+    "@dagrejs/dagre": "^1.1.2",
     "@emoji-mart/data": "^1.1.2",
     "@floating-ui/react": "^0.25.2",
     "@formatjs/intl-localematcher": "^0.5.4",
@@ -35,7 +36,6 @@
     "classnames": "^2.3.2",
     "copy-to-clipboard": "^3.3.3",
     "crypto-js": "^4.2.0",
-    "dagre": "^0.8.5",
     "dayjs": "^1.11.7",
     "echarts": "^5.4.1",
     "echarts-for-react": "^3.0.2",
@@ -73,7 +73,7 @@
     "react-tooltip": "5.8.3",
     "react-window": "^1.8.9",
     "react-window-infinite-loader": "^1.0.9",
-    "reactflow": "^11.10.3",
+    "reactflow": "^11.11.3",
     "recordrtc": "^5.6.2",
     "rehype-katex": "^6.0.2",
     "remark-breaks": "^3.0.2",

@@ -2,10 +2,9 @@ from abc import abstractmethod
 from os import listdir, path
 from typing import Any
 
-from yaml import FullLoader, load
-
+from core.tools.entities.api_entities import UserToolProviderCredentials
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderCredentials, ToolProviderType
-from core.tools.entities.user_entities import UserToolProviderCredentials
+from core.tools.entities.values import ToolLabelEnum, default_tool_label_dict
 from core.tools.errors import (
     ToolNotFoundError,
     ToolParameterValidationError,
@@ -15,12 +14,13 @@ from core.tools.errors import (
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
+from core.tools.utils.yaml_utils import load_yaml_file
 from core.utils.module_import_helper import load_single_subclass_from_source
 
 
 class BuiltinToolProviderController(ToolProviderController):
     def __init__(self, **data: Any) -> None:
-        if self.app_type == ToolProviderType.API_BASED or self.app_type == ToolProviderType.APP_BASED:
+        if self.provider_type == ToolProviderType.API or self.provider_type == ToolProviderType.APP:
             super().__init__(**data)
             return
         
@@ -28,10 +28,9 @@ class BuiltinToolProviderController(ToolProviderController):
         provider = self.__class__.__module__.split('.')[-1]
         yaml_path = path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, f'{provider}.yaml')
         try:
-            with open(yaml_path, 'rb') as f:
-                provider_yaml = load(f.read(), FullLoader)
-        except:
-            raise ToolProviderNotFoundError(f'can not load provider yaml for {provider}')
+            provider_yaml = load_yaml_file(yaml_path)
+        except Exception as e:
+            raise ToolProviderNotFoundError(f'can not load provider yaml for {provider}: {e}')
 
         if 'credentials_for_provider' in provider_yaml and provider_yaml['credentials_for_provider'] is not None:
             # set credentials name
@@ -58,18 +57,18 @@ class BuiltinToolProviderController(ToolProviderController):
         tool_files = list(filter(lambda x: x.endswith(".yaml") and not x.startswith("__"), listdir(tool_path)))
         tools = []
         for tool_file in tool_files:
-            with open(path.join(tool_path, tool_file), encoding='utf-8') as f:
-                # get tool name
-                tool_name = tool_file.split(".")[0]
-                tool = load(f.read(), FullLoader)
-                # get tool class, import the module
-                assistant_tool_class = load_single_subclass_from_source(
-                    module_name=f'core.tools.provider.builtin.{provider}.tools.{tool_name}',
-                    script_path=path.join(path.dirname(path.realpath(__file__)),
-                                           'builtin', provider, 'tools', f'{tool_name}.py'),
-                    parent_type=BuiltinTool)
-                tool["identity"]["provider"] = provider
-                tools.append(assistant_tool_class(**tool))
+            # get tool name
+            tool_name = tool_file.split(".")[0]
+            tool = load_yaml_file(path.join(tool_path, tool_file))
+
+            # get tool class, import the module
+            assistant_tool_class = load_single_subclass_from_source(
+                module_name=f'core.tools.provider.builtin.{provider}.tools.{tool_name}',
+                script_path=path.join(path.dirname(path.realpath(__file__)),
+                                       'builtin', provider, 'tools', f'{tool_name}.py'),
+                parent_type=BuiltinTool)
+            tool["identity"]["provider"] = provider
+            tools.append(assistant_tool_class(**tool))
 
         self.tools = tools
         return tools
@@ -131,13 +130,29 @@ class BuiltinToolProviderController(ToolProviderController):
             len(self.credentials_schema) != 0
 
     @property
-    def app_type(self) -> ToolProviderType:
+    def provider_type(self) -> ToolProviderType:
         """
             returns the type of the provider
 
             :return: type of the provider
         """
         return ToolProviderType.BUILT_IN
+    
+    @property
+    def tool_labels(self) -> list[str]:
+        """
+            returns the labels of the provider
+
+            :return: labels of the provider
+        """
+        label_enums = self._get_tool_labels()
+        return [default_tool_label_dict[label].name for label in label_enums]
+    
+    def _get_tool_labels(self) -> list[ToolLabelEnum]:
+        """
+            returns the labels of the provider
+        """
+        return []
 
     def validate_parameters(self, tool_id: int, tool_name: str, tool_parameters: dict[str, Any]) -> None:
         """

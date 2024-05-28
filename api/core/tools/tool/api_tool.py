@@ -8,9 +8,8 @@ import httpx
 import requests
 
 import core.helper.ssrf_proxy as ssrf_proxy
-from core.tools.entities.tool_bundle import ApiBasedToolBundle
+from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
-from core.tools.entities.user_entities import UserToolProvider
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.tool.tool import Tool
 
@@ -20,12 +19,12 @@ API_TOOL_DEFAULT_TIMEOUT = (
 )
 
 class ApiTool(Tool):
-    api_bundle: ApiBasedToolBundle
+    api_bundle: ApiToolBundle
     
     """
     Api tool
     """
-    def fork_tool_runtime(self, meta: dict[str, Any]) -> 'Tool':
+    def fork_tool_runtime(self, runtime: dict[str, Any]) -> 'Tool':
         """
             fork a new tool with meta data
 
@@ -37,7 +36,7 @@ class ApiTool(Tool):
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.copy() if self.description else None,
             api_bundle=self.api_bundle.copy() if self.api_bundle else None,
-            runtime=Tool.Runtime(**meta)
+            runtime=Tool.Runtime(**runtime)
         )
     
     def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any], format_only: bool = False) -> str:
@@ -55,7 +54,7 @@ class ApiTool(Tool):
         return self.validate_and_parse_response(response)
 
     def tool_provider_type(self) -> ToolProviderType:
-        return UserToolProvider.ProviderType.API
+        return ToolProviderType.API
 
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
         headers = {}

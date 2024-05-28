@@ -2,6 +2,7 @@ from typing import Any
 
 import requests
 
+from core.tools.entities.values import ToolLabelEnum
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
@@ -32,3 +33,8 @@ class TrelloProvider(BuiltinToolProviderController):
         except requests.exceptions.RequestException as e:
             # Handle other exceptions, such as connection errors
             raise ToolProviderCredentialValidationError("Error validating Trello credentials")
+        
+    def _get_tool_labels(self) -> list[ToolLabelEnum]:
+        return [
+            ToolLabelEnum.PRODUCTIVITY
+        ]

@@ -24,7 +24,6 @@ import {
   fetchModelProviderCredentials,
   fetchModelProviders,
   getPayUrl,
-  submitFreeQuota,
 } from '@/service/common'
 import { useProviderContext } from '@/context/provider-context'
 
@@ -200,30 +199,6 @@ export const useAnthropicBuyQuota = () => {
   }
 
   return handleGetPayUrl
-}
-
-export const useFreeQuota = (onSuccess: () => void) => {
-  const [loading, setLoading] = useState(false)
-
-  const handleClick = async (type: string) => {
-    if (loading)
-      return
-
-    try {
-      setLoading(true)
-      const res = await submitFreeQuota(`/workspaces/current/model-providers/${type}/free-quota-submit`)
-
-      if (res.type === 'redirect' && res.redirect_url)
-        window.location.href = res.redirect_url
-      else if (res.type === 'submit' && res.result === 'success')
-        onSuccess()
-    }
-    finally {
-      setLoading(false)
-    }
-  }
-
-  return handleClick
 }
 
 export const useModelProviders = () => {

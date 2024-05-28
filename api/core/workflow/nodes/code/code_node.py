@@ -2,7 +2,9 @@ import os
 from typing import Optional, Union, cast
 
 from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage
-from core.model_runtime.utils.encoders import jsonable_encoder
+from core.helper.code_executor.code_node_provider import CodeNodeProvider
+from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
+from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
@@ -18,16 +20,6 @@ MAX_STRING_ARRAY_LENGTH = int(os.environ.get('CODE_MAX_STRING_ARRAY_LENGTH', '30
 MAX_OBJECT_ARRAY_LENGTH = int(os.environ.get('CODE_MAX_OBJECT_ARRAY_LENGTH', '30'))
 MAX_NUMBER_ARRAY_LENGTH = int(os.environ.get('CODE_MAX_NUMBER_ARRAY_LENGTH', '1000'))
 
-JAVASCRIPT_DEFAULT_CODE = """function main({arg1, arg2}) {
-    return {
-        result: arg1 + arg2
-    }
-}"""
-
-PYTHON_DEFAULT_CODE = """def main(arg1: int, arg2: int) -> dict:
-    return {
-        "result": arg1 + arg2,
-    }"""
 
 class CodeNode(BaseNode):
     _node_data_cls = CodeNodeData
@@ -40,58 +32,15 @@ class CodeNode(BaseNode):
         :param filters: filter by node config parameters.
         :return:
         """
-        if filters and filters.get("code_language") == CodeLanguage.JAVASCRIPT:
-            return {
-                "type": "code",
-                "config": {
-                    "variables": [
-                        {
-                            "variable": "arg1",
-                            "value_selector": []
-                        },
-                        {
-                            "variable": "arg2",
-                            "value_selector": []
-                        }
-                    ],
-                    "code_language": CodeLanguage.JAVASCRIPT,
-                    "code": JAVASCRIPT_DEFAULT_CODE,
-                    "outputs": {
-                        "result": {
-                            "type": "string",
-                            "children": None
-                        }
-                    }
-                },
-                "available_dependencies": []
-            }
+        code_language = CodeLanguage.PYTHON3
+        if filters:
+            code_language = (filters.get("code_language", CodeLanguage.PYTHON3))
 
-        return {
-            "type": "code",
-            "config": {
-                "variables": [
-                    {
-                        "variable": "arg1",
-                        "value_selector": []
-                    },
-                    {
-                        "variable": "arg2",
-                        "value_selector": []
-                    }
-                ],
-                "code_language": CodeLanguage.PYTHON3,
-                "code": PYTHON_DEFAULT_CODE,
-                "outputs": {
-                    "result": {
-                        "type": "string",
-                        "children": None
-                    }
-                },
-                "dependencies": [
-                ]
-            },
-            "available_dependencies": jsonable_encoder(CodeExecutor.list_dependencies('python3'))
-        }
+        providers: list[type[CodeNodeProvider]] = [Python3CodeProvider, JavascriptCodeProvider]
+        code_provider: type[CodeNodeProvider] = next(p for p in providers
+                                                     if p.is_accept_language(code_language))
+
+        return code_provider.get_default_config()
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """

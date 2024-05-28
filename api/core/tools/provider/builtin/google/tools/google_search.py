@@ -99,8 +99,11 @@ class SerpAPI:
             ):
                 toret = res["knowledge_graph"]["description"] + "\n"
             if "snippet" in res["organic_results"][0].keys():
-                for item in res["organic_results"]:
-                    toret += "content: " + item["snippet"] + "\n" + "link: " + item["link"] + "\n"
+                toret = "\n".join(
+                    f"content: {item['snippet']}\nlink: {item['link']}"
+                    for item in res["organic_results"]
+                    if "snippet" in item and "link" in item
+                )
             if (
                 "images_results" in res.keys()
                 and "thumbnail" in res["images_results"][0].keys()

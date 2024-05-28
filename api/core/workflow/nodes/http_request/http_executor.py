@@ -25,7 +25,10 @@ class HttpExecutorResponse:
     response: Union[httpx.Response, requests.Response]
 
     def __init__(self, response: Union[httpx.Response, requests.Response] = None):
-        self.headers = response.headers
+        self.headers = {}
+        if isinstance(response, httpx.Response | requests.Response):
+            for k, v in response.headers.items():
+                self.headers[k] = v
         self.response = response
 
     @property
@@ -157,7 +160,9 @@ class HttpExecutor:
                 continue
 
             kv = kv.split(':', maxsplit=maxsplit)
-            if len(kv) == 2:
+            if len(kv) >= 3:
+                k, v = kv[0], ":".join(kv[1:])
+            elif len(kv) == 2:
                 k, v = kv
             elif len(kv) == 1:
                 k, v = kv[0], ''

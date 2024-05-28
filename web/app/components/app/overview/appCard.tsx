@@ -22,6 +22,7 @@ import Tag from '@/app/components/base/tag'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import CopyFeedback from '@/app/components/base/copy-feedback'
+import Confirm from '@/app/components/base/confirm'
 import ShareQRCode from '@/app/components/base/qrcode'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import type { AppDetailResponse } from '@/models/app'
@@ -57,6 +58,8 @@ function AppCard({
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
   const [genLoading, setGenLoading] = useState(false)
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+
   const { t } = useTranslation()
 
   const OPERATIONS_MAP = useMemo(() => {
@@ -176,6 +179,20 @@ function AppCard({
                 className={'hover:bg-gray-200'}
               />
               {/* button copy link/ button regenerate */}
+              {showConfirmDelete && (
+                <Confirm
+                  type='warning'
+                  title={t('appOverview.overview.appInfo.regenerate')}
+                  content={''}
+                  isShow={showConfirmDelete}
+                  onClose={() => setShowConfirmDelete(false)}
+                  onConfirm={() => {
+                    onGenCode()
+                    setShowConfirmDelete(false)
+                  }}
+                  onCancel={() => setShowConfirmDelete(false)}
+                />
+              )}
               {isApp && isCurrentWorkspaceManager && (
                 <Tooltip
                   content={t('appOverview.overview.appInfo.regenerate') || ''}
@@ -183,7 +200,7 @@ function AppCard({
                 >
                   <div
                     className="w-8 h-8 ml-0.5 cursor-pointer hover:bg-gray-200 rounded-lg"
-                    onClick={onGenCode}
+                    onClick={() => setShowConfirmDelete(true)}
                   >
                     <div
                       className={`w-full h-full ${style.refreshIcon} ${
