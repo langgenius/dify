@@ -289,6 +289,20 @@ export const generateNewNode = ({ data, position, id, zIndex, ...rest }: Omit<No
   } as Node
 }
 
+export const genNewNodeTitleFromOld = (oldTitle: string) => {
+  const regex = /^(.+?)\s*\((\d+)\)\s*$/
+  const match = oldTitle.match(regex)
+
+  if (match) {
+    const title = match[1]
+    const num = parseInt(match[2], 10)
+    return `${title} (${num + 1})`
+  }
+  else {
+    return `${oldTitle} (1)`
+  }
+}
+
 export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
 

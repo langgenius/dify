@@ -49,7 +49,7 @@ export type ModelParameterModalProps = {
   readonly?: boolean
   isInWorkflow?: boolean
 }
-const stopParameerRule: ModelParameterRule = {
+const stopParameterRule: ModelParameterRule = {
   default: [],
   help: {
     en_US: 'Up to four sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.',
@@ -233,7 +233,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 !isLoading && !!parameterRules.length && (
                   [
                     ...parameterRules,
-                    ...(isAdvancedMode ? [stopParameerRule] : []),
+                    ...(isAdvancedMode ? [stopParameterRule] : []),
                   ].map(parameter => (
                     <ParameterItem
                       key={`${modelId}-${parameter.name}`}

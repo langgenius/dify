@@ -70,7 +70,7 @@ class WorkflowTool(Tool):
         for file in files:
             result.append(self.create_file_var_message(file))
         
-        result.append(self.create_text_message(json.dumps(outputs)))
+        result.append(self.create_text_message(json.dumps(outputs, ensure_ascii=False)))
 
         return result
 
