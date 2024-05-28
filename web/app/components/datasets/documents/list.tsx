@@ -110,6 +110,7 @@ type OperationName = 'delete' | 'archive' | 'enable' | 'disable' | 'sync' | 'un_
 export const OperationAction: FC<{
   embeddingAvailable: boolean
   detail: {
+    name: string
     enabled: boolean
     archived: boolean
     id: string
@@ -167,6 +168,25 @@ export const OperationAction: FC<{
     onOperate(operationName)
   }, { wait: 500 })
 
+  const [currDocument, setCurrDocument] = useState<{
+    id: string
+    name: string
+  } | null>(null)
+  const [isShowRenameModal, {
+    setTrue: setShowRenameModalTrue,
+    setFalse: setShowRenameModalFalse,
+  }] = useBoolean(false)
+  const handleShowRenameModal = useCallback((doc: {
+    id: string
+    name: string
+  }) => {
+    setCurrDocument(doc)
+    setShowRenameModalTrue()
+  }, [setShowRenameModalTrue])
+  const handleRenamed = useCallback(() => {
+    onUpdate()
+  }, [onUpdate])
+
   return <div className='flex items-center' onClick={e => e.stopPropagation()}>
     {isListScene && !embeddingAvailable && (
       <Switch defaultValue={false} onChange={() => { }} disabled={true} size='md' />
@@ -216,6 +236,15 @@ export const OperationAction: FC<{
             </>}
             {!archived && (
               <>
+                <div className={s.actionItem} onClick={() => {
+                  handleShowRenameModal({
+                    id: detail.id,
+                    name: detail.name,
+                  })
+                }}>
+                  <Edit03 className='w-4 h-4 text-gray-500' />
+                  <span className={s.actionName}>{t('datasetDocuments.list.table.rename')}</span>
+                </div>
                 <div className={s.actionItem} onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}>
                   <SettingsIcon />
                   <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
@@ -275,6 +304,16 @@ export const OperationAction: FC<{
         </div>
       </div>
     </Modal>}
+
+    {isShowRenameModal && currDocument && (
+      <RenameModal
+        datasetId={datasetId}
+        documentId={currDocument.id}
+        name={currDocument.name}
+        onClose={setShowRenameModalFalse}
+        onSaved={handleRenamed}
+      />
+    )}
   </div>
 }
 
@@ -421,7 +460,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                 <OperationAction
                   embeddingAvailable={embeddingAvailable}
                   datasetId={datasetId}
-                  detail={pick(doc, ['enabled', 'archived', 'id', 'data_source_type', 'doc_form'])}
+                  detail={pick(doc, ['name', 'enabled', 'archived', 'id', 'data_source_type', 'doc_form'])}
                   onUpdate={onUpdate}
                 />
               </td>
