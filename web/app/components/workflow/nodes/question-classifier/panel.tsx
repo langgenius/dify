@@ -35,6 +35,9 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
     availableVars,
     availableNodesWithParent,
     handleInstructionChange,
+    inputVarValues,
+    varInputs,
+    setInputVarValues,
     handleMemoryChange,
     isShowSingleRun,
     hideSingleRun,
@@ -134,9 +137,9 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
                 variable: 'query',
                 type: InputVarType.paragraph,
                 required: true,
-              }],
-              values: { query },
-              onChange: keyValue => setQuery((keyValue as any).query),
+              }, ...varInputs],
+              values: inputVarValues,
+              onChange: setInputVarValues,
             },
           ]}
           runningStatus={runningStatus}

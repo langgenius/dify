@@ -131,6 +131,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const {
     isShowSingleRun,
     hideSingleRun,
+    getInputVars,
     runningStatus,
     handleRun,
     handleStop,
@@ -153,6 +154,22 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     })
   }, [runInputData, setRunInputData])
 
+  const varInputs = getInputVars([inputs.instruction])
+  const inputVarValues = (() => {
+    const vars: Record<string, any> = {
+      query,
+    }
+    Object.keys(runInputData)
+      .forEach((key) => {
+        vars[key] = runInputData[key]
+      })
+    return vars
+  })()
+
+  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
+    setRunInputData(newPayload)
+  }, [setRunInputData])
+
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string
   }, [])
@@ -171,6 +188,9 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     availableVars,
     availableNodesWithParent,
     handleInstructionChange,
+    varInputs,
+    inputVarValues,
+    setInputVarValues,
     handleMemoryChange,
     isShowSingleRun,
     hideSingleRun,
