@@ -1,0 +1,45 @@
+name: DB migration test
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'api/migrations/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.10"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: |
+            ./api/requirements.txt
+            ./api/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r ./api/requirements.txt -r ./api/requirements-dev.txt
+
+      - name: Set up DB
+        uses: hoverkraft-tech/compose-action@v2.0.0
+        with:
+          compose-file: |
+            docker/docker-compose.middleware.yaml
+          services: |
+            db
+
+      - name: Run DB Migration
+        run: |
+          cd api
+          flask db upgrade
