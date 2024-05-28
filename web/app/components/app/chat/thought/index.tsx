@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import { useContext } from 'use-context-selector'
 import type { ThoughtItem, ToolInfoInThought } from '../type'
 import Tool from '@/app/components/app/chat/thought/tool'
 import type { Emoji } from '@/app/components/tools/types'
-import { useContext } from 'use-context-selector'
-import { useTranslation } from 'react-i18next'
+
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
 
@@ -31,10 +31,9 @@ const Thought: FC<IThoughtProps> = ({
   allToolIcons,
   isFinished,
 }) => {
-  const { t } = useTranslation()
   const { locale } = useContext(I18n)
   const language = getLanguage(locale)
-  
+
   const [toolNames, isValueArray]: [string[], boolean] = (() => {
     try {
       if (Array.isArray(JSON.parse(thought.tool)))
