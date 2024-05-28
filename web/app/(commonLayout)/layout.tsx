@@ -13,7 +13,8 @@ import { ModalContextProvider } from '@/context/modal-context'
 const Layout = ({ children }: { children: ReactNode }) => {
   const cookieStore = cookies()
   // TODO:测试环境的cookie名字和生产环境cookie名字都需要加
-  const token = cookieStore.get('next-auth.session-token')
+  const token = cookieStore.get('__Secure-next-auth.session-token')
+  // const token = cookieStore.get('next-auth.session-token')
 
   return (
     <>
