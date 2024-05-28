@@ -2,8 +2,9 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Optional
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
-from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 
@@ -37,6 +38,9 @@ class BaseNode(ABC):
     workflow_id: str
     user_id: str
     user_from: UserFrom
+    invoke_from: InvokeFrom
+    
+    workflow_call_depth: int
 
     node_id: str
     node_data: BaseNodeData
@@ -49,13 +53,17 @@ class BaseNode(ABC):
                  workflow_id: str,
                  user_id: str,
                  user_from: UserFrom,
+                 invoke_from: InvokeFrom,
                  config: dict,
-                 callbacks: list[BaseWorkflowCallback] = None) -> None:
+                 callbacks: list[BaseWorkflowCallback] = None,
+                 workflow_call_depth: int = 0) -> None:
         self.tenant_id = tenant_id
         self.app_id = app_id
         self.workflow_id = workflow_id
         self.user_id = user_id
         self.user_from = user_from
+        self.invoke_from = invoke_from
+        self.workflow_call_depth = workflow_call_depth
 
         self.node_id = config.get("id")
         if not self.node_id:
@@ -140,3 +148,38 @@ class BaseNode(ABC):
         :return:
         """
         return self._node_type
+
+class BaseIterationNode(BaseNode):
+    @abstractmethod
+    def _run(self, variable_pool: VariablePool) -> BaseIterationState:
+        """
+        Run node
+        :param variable_pool: variable pool
+        :return:
+        """
+        raise NotImplementedError
+
+    def run(self, variable_pool: VariablePool) -> BaseIterationState:
+        """
+        Run node entry
+        :param variable_pool: variable pool
+        :return:
+        """
+        return self._run(variable_pool=variable_pool)
+
+    def get_next_iteration(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
+        """
+        Get next iteration start node id based on the graph.
+        :param graph: graph
+        :return: next node id
+        """
+        return self._get_next_iteration(variable_pool, state)
+    
+    @abstractmethod
+    def _get_next_iteration(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
+        """
+        Get next iteration start node id based on the graph.
+        :param graph: graph
+        :return: next node id
+        """
+        raise NotImplementedError

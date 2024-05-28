@@ -45,7 +45,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     filterInputVar,
     filterVar,
     availableVars,
-    availableNodes,
+    availableNodesWithParent,
     isShowVars,
     handlePromptChange,
     handleAddEmptyVariable,
@@ -234,7 +234,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 isChatModel
                 hasSetBlockStatus={hasSetBlockStatus}
                 nodesOutputVars={availableVars}
-                availableNodes={availableNodes}
+                availableNodes={availableNodesWithParent}
               />
 
               {inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (

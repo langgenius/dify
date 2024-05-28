@@ -1,4 +1,5 @@
 'use client'
+import cn from 'classnames'
 import { Dialog } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import { XMarkIcon } from '@heroicons/react/24/outline'
@@ -11,6 +12,7 @@ export type IDrawerProps = {
   children: React.ReactNode
   footer?: React.ReactNode
   mask?: boolean
+  positionCenter?: boolean
   isOpen: boolean
   // closable: boolean
   showClose?: boolean
@@ -27,6 +29,7 @@ export default function Drawer({
   children,
   footer,
   mask = true,
+  positionCenter,
   showClose = false,
   isOpen,
   clickOutsideNotOpen,
@@ -42,14 +45,12 @@ export default function Drawer({
       onClose={() => !clickOutsideNotOpen && onClose()}
       className="fixed z-30 inset-0 overflow-y-auto"
     >
-      <div className="flex w-screen h-screen justify-end">
+      <div className={cn('flex w-screen h-screen justify-end', positionCenter && '!justify-center')}>
         {/* mask */}
         <Dialog.Overlay
-          className={`z-40 fixed inset-0 ${!mask ? '' : 'bg-black bg-opacity-30'}`}
+          className={cn('z-40 fixed inset-0', mask && 'bg-black bg-opacity-30')}
         />
-        <div className={`relative z-50 flex flex-col justify-between bg-white w-full
-        max-w-sm p-6 overflow-hidden text-left align-middle
-        shadow-xl ${panelClassname}`}>
+        <div className={cn('relative z-50 flex flex-col justify-between bg-white w-full max-w-sm p-6 overflow-hidden text-left align-middle shadow-xl', panelClassname)}>
           <>
             {title && <Dialog.Title
               as="h3"

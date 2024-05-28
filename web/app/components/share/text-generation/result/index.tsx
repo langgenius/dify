@@ -192,6 +192,8 @@ const Result: FC<IResultProps> = ({
     })()
 
     if (isWorkflow) {
+      let isInIteration = false
+
       sendWorkflowMessage(
         data,
         {
@@ -205,7 +207,34 @@ const Result: FC<IResultProps> = ({
             })
             setRespondingFalse()
           },
+          onIterationStart: ({ data }) => {
+            setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+              draft.expand = true
+              draft.tracing!.push({
+                ...data,
+                status: NodeRunningStatus.Running,
+                expand: true,
+              } as any)
+            }))
+            isInIteration = true
+          },
+          onIterationNext: () => {
+          },
+          onIterationFinish: ({ data }) => {
+            setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+              draft.expand = true
+              // const iteration = draft.tracing![draft.tracing!.length - 1]
+              draft.tracing![draft.tracing!.length - 1] = {
+                ...data,
+                expand: !!data.error,
+              } as any
+            }))
+            isInIteration = false
+          },
           onNodeStarted: ({ data }) => {
+            if (isInIteration)
+              return
+
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
               draft.expand = true
               draft.tracing!.push({
@@ -216,6 +245,9 @@ const Result: FC<IResultProps> = ({
             }))
           },
           onNodeFinished: ({ data }) => {
+            if (isInIteration)
+              return
+
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
               const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id)
               if (currentIndex > -1 && draft.tracing) {
