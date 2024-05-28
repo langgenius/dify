@@ -4,7 +4,7 @@ import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 import ProviderCard from './provider-card'
 import type {
-  CustomConfigrationModelFixedFields,
+  CustomConfigurationModelFixedFields,
   ModelProvider,
 } from './declarations'
 import {
@@ -58,13 +58,13 @@ const ModelProviderPage = () => {
   const handleOpenModal = (
     provider: ModelProvider,
     configurateMethod: ConfigurationMethodEnum,
-    customConfigrationModelFixedFields?: CustomConfigrationModelFixedFields,
+    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
   ) => {
     setShowModelModal({
       payload: {
         currentProvider: provider,
-        currentConfigurateMethod: configurateMethod,
-        currentCustomConfigrationModelFixedFields: customConfigrationModelFixedFields,
+        currentConfigurationMethod: configurateMethod,
+        currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
       },
       onSaveCallback: () => {
         updateModelProviders()
@@ -81,8 +81,8 @@ const ModelProviderPage = () => {
             payload: provider.provider,
           } as any)
 
-          if (customConfigrationModelFixedFields?.__model_type)
-            updateModelList(customConfigrationModelFixedFields?.__model_type)
+          if (CustomConfigurationModelFixedFields?.__model_type)
+            updateModelList(CustomConfigurationModelFixedFields?.__model_type)
         }
       },
     })
@@ -117,7 +117,7 @@ const ModelProviderPage = () => {
                 <ProviderAddedCard
                   key={provider.provider}
                   provider={provider}
-                  onOpenModal={(configurateMethod: ConfigurationMethodEnum, currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields) => handleOpenModal(provider, configurateMethod, currentCustomConfigrationModelFixedFields)}
+                  onOpenModal={(configurateMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => handleOpenModal(provider, configurateMethod, currentCustomConfigurationModelFixedFields)}
                 />
               ))
             }

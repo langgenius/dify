@@ -13,7 +13,6 @@ import type {
   CredentialFormSchemaSelect,
   CustomConfigurationModelFixedFields,
   FormValue,
-  ModelLoadBalancingConfig,
   ModelProvider,
 } from '../declarations'
 import {
@@ -31,10 +30,8 @@ import {
   useLanguage,
   useProviderCredentialsFormSchemasValue,
 } from '../hooks'
-import ProviderIcon from '../provider-icon'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatedStatus } from '../../key-validator/declarations'
-import ModelLoadBalancingConfigs from '../provider-added-card/model-load-balancing-configs'
 import Form from './Form'
 import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
@@ -51,14 +48,16 @@ type ModelModalProps = {
   provider: ModelProvider
   configurateMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
+  credentials?: Record<string, string | boolean | undefined>
   onCancel: () => void
   onSave: () => void
 }
 
-const ModelModal: FC<ModelModalProps> = ({
+const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
   provider,
   configurateMethod,
   currentCustomConfigurationModelFixedFields,
+  credentials,
   onCancel,
   onSave,
 }) => {
@@ -69,23 +68,12 @@ const ModelModal: FC<ModelModalProps> = ({
     providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
     currentCustomConfigurationModelFixedFields,
   )
-  const isEditMode = !!formSchemasValue
+  const isEditMode = !!credentials
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const language = useLanguage()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-
-  const originalConfig: ModelLoadBalancingConfig = useMemo(() => ({
-    enabled: false,
-    configs: [],
-  }), [])
-  const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig>()
-  useEffect(() => {
-    if (originalConfig && !draftConfig)
-      setDraftConfig(originalConfig)
-  }, [draftConfig, originalConfig])
-
   const formSchemas = useMemo(() => {
     return providerFormSchemaPredefined
       ? provider.provider_credential_schema.credential_form_schemas
@@ -229,12 +217,6 @@ const ModelModal: FC<ModelModalProps> = ({
     }
   }
 
-  const renderTitlePrefix = () => {
-    const prefix = configurateMethod === ConfigurationMethodEnum.customizableModel ? t('common.operation.add') : t('common.operation.setup')
-
-    return `${prefix} ${provider.label[language] || provider.label.en_US}`
-  }
-
   return (
     <PortalToFollowElem open>
       <PortalToFollowElemContent className='w-full h-full z-[60]'>
@@ -242,8 +224,7 @@ const ModelModal: FC<ModelModalProps> = ({
           <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
             <div className='px-8 pt-8'>
               <div className='flex justify-between items-center mb-2'>
-                <div className='text-xl font-semibold text-gray-900'>{renderTitlePrefix()}</div>
-                <ProviderIcon provider={provider} />
+                <div className='text-xl font-semibold text-gray-900'>{t('common.modelProvider.addConfig')}</div>
               </div>
               <Form
                 value={value}
@@ -254,14 +235,6 @@ const ModelModal: FC<ModelModalProps> = ({
                 showOnVariableMap={showOnVariableMap}
                 isEditMode={isEditMode}
               />
-
-              <ModelLoadBalancingConfigs withSwitch {...{
-                draftConfig,
-                setDraftConfig,
-                provider,
-                configurationMethod: configurateMethod,
-              }} />
-
               <div className='sticky bottom-0 flex justify-between items-center py-6 flex-wrap gap-y-2 bg-white'>
                 {
                   (provider.help && (provider.help.title || provider.help.url))
@@ -349,4 +322,4 @@ const ModelModal: FC<ModelModalProps> = ({
   )
 }
 
-export default memo(ModelModal)
+export default memo(ModelLoadBalancingEntryModal)

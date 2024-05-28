@@ -2,7 +2,7 @@
 
 import type { Dispatch, SetStateAction } from 'react'
 import { useCallback, useState } from 'react'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AccountSetting from '@/app/components/header/account-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
@@ -12,7 +12,7 @@ import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import ModelModal from '@/app/components/header/account-setting/model-provider-page/model-modal'
 import type {
   ConfigurationMethodEnum,
-  CustomConfigrationModelFixedFields,
+  CustomConfigurationModelFixedFields,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
@@ -22,6 +22,7 @@ import type {
   ApiBasedExtension,
   ExternalDataTool,
 } from '@/models/common'
+import ModelLoadBalancingEntryModal from '@/app/components/header/account-setting/model-provider-page/model-modal/model-load-balancing-entry-modal'
 
 export type ModalState<T> = {
   payload: T
@@ -32,10 +33,10 @@ export type ModalState<T> = {
 
 export type ModelModalType = {
   currentProvider: ModelProvider
-  currentConfigurateMethod: ConfigurationMethodEnum
-  currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields
+  currentConfigurationMethod: ConfigurationMethodEnum
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
 }
-const ModalContext = createContext<{
+export type ModalContextState = {
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<string> | null>>
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
@@ -43,17 +44,26 @@ const ModalContext = createContext<{
   setShowPricingModal: Dispatch<SetStateAction<any>>
   setShowAnnotationFullModal: () => void
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
-}>({
-      setShowAccountSettingModal: () => { },
-      setShowApiBasedExtensionModal: () => { },
-      setShowModerationSettingModal: () => { },
-      setShowExternalDataToolModal: () => { },
-      setShowPricingModal: () => { },
-      setShowAnnotationFullModal: () => { },
-      setShowModelModal: () => { },
-    })
+  setShowModelLoadBalancingEntryModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
+}
+const ModalContext = createContext<ModalContextState>({
+  setShowAccountSettingModal: () => { },
+  setShowApiBasedExtensionModal: () => { },
+  setShowModerationSettingModal: () => { },
+  setShowExternalDataToolModal: () => { },
+  setShowPricingModal: () => { },
+  setShowAnnotationFullModal: () => { },
+  setShowModelModal: () => { },
+  setShowModelLoadBalancingEntryModal: () => { },
+})
 
 export const useModalContext = () => useContext(ModalContext)
+
+// Adding a dangling comma to avoid the generic parsing issue in tsx, see:
+// https://github.com/microsoft/TypeScript/issues/15713
+// eslint-disable-next-line @typescript-eslint/comma-dangle
+export const useModalContextSelector = <T,>(selector: (state: ModalContextState) => T): T =>
+  useContextSelector(ModalContext, selector)
 
 type ModalContextProviderProps = {
   children: React.ReactNode
@@ -66,34 +76,31 @@ export const ModalContextProvider = ({
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
+  const [showModelLoadBalancingEntryModal, setShowModelLoadBalancingEntryModal] = useState<ModalState<ModelModalType> | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
     setShowAccountSettingModal(null)
-
     if (showAccountSettingModal?.onCancelCallback)
       showAccountSettingModal?.onCancelCallback()
   }
 
   const handleCancelModerationSettingModal = () => {
     setShowModerationSettingModal(null)
-
     if (showModerationSettingModal?.onCancelCallback)
       showModerationSettingModal.onCancelCallback()
   }
 
   const handleCancelExternalDataToolModal = () => {
     setShowExternalDataToolModal(null)
-
     if (showExternalDataToolModal?.onCancelCallback)
       showExternalDataToolModal.onCancelCallback()
   }
 
   const handleCancelModelModal = useCallback(() => {
     setShowModelModal(null)
-
     if (showModelModal?.onCancelCallback)
       showModelModal.onCancelCallback()
   }, [showModelModal])
@@ -101,35 +108,42 @@ export const ModalContextProvider = ({
   const handleSaveModelModal = useCallback(() => {
     if (showModelModal?.onSaveCallback)
       showModelModal.onSaveCallback(showModelModal.payload)
-
     setShowModelModal(null)
   }, [showModelModal])
+
+  const handleCancelModelLoadBalancingEntryModal = useCallback(() => {
+    setShowModelLoadBalancingEntryModal(null)
+    if (showModelLoadBalancingEntryModal?.onCancelCallback)
+      showModelLoadBalancingEntryModal.onCancelCallback()
+  }, [showModelLoadBalancingEntryModal])
+
+  const handleSaveModelLoadBalancingEntryModal = useCallback(() => {
+    if (showModelLoadBalancingEntryModal?.onSaveCallback)
+      showModelLoadBalancingEntryModal.onSaveCallback(showModelLoadBalancingEntryModal.payload)
+    setShowModelLoadBalancingEntryModal(null)
+  }, [showModelLoadBalancingEntryModal])
 
   const handleSaveApiBasedExtension = (newApiBasedExtension: ApiBasedExtension) => {
     if (showApiBasedExtensionModal?.onSaveCallback)
       showApiBasedExtensionModal.onSaveCallback(newApiBasedExtension)
-
     setShowApiBasedExtensionModal(null)
   }
 
   const handleSaveModeration = (newModerationConfig: ModerationConfig) => {
     if (showModerationSettingModal?.onSaveCallback)
       showModerationSettingModal.onSaveCallback(newModerationConfig)
-
     setShowModerationSettingModal(null)
   }
 
   const handleSaveExternalDataTool = (newExternalDataTool: ExternalDataTool) => {
     if (showExternalDataToolModal?.onSaveCallback)
       showExternalDataToolModal.onSaveCallback(newExternalDataTool)
-
     setShowExternalDataToolModal(null)
   }
 
   const handleValidateBeforeSaveExternalDataTool = (newExternalDataTool: ExternalDataTool) => {
     if (showExternalDataToolModal?.onValidateBeforeSaveCallback)
       return showExternalDataToolModal?.onValidateBeforeSaveCallback(newExternalDataTool)
-
     return true
   }
 
@@ -142,6 +156,7 @@ export const ModalContextProvider = ({
       setShowPricingModal: () => setShowPricingModal(true),
       setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
       setShowModelModal,
+      setShowModelLoadBalancingEntryModal,
     }}>
       <>
         {children}
@@ -205,10 +220,21 @@ export const ModalContextProvider = ({
           !!showModelModal && (
             <ModelModal
               provider={showModelModal.payload.currentProvider}
-              configurateMethod={showModelModal.payload.currentConfigurateMethod}
-              currentCustomConfigrationModelFixedFields={showModelModal.payload.currentCustomConfigrationModelFixedFields}
+              configurateMethod={showModelModal.payload.currentConfigurationMethod}
+              currentCustomConfigurationModelFixedFields={showModelModal.payload.currentCustomConfigurationModelFixedFields}
               onCancel={handleCancelModelModal}
               onSave={handleSaveModelModal}
+            />
+          )
+        }
+        {
+          !!showModelLoadBalancingEntryModal && (
+            <ModelLoadBalancingEntryModal
+              provider={showModelLoadBalancingEntryModal.payload.currentProvider}
+              configurateMethod={showModelLoadBalancingEntryModal.payload.currentConfigurationMethod}
+              currentCustomConfigurationModelFixedFields={showModelLoadBalancingEntryModal.payload.currentCustomConfigurationModelFixedFields}
+              onCancel={handleCancelModelLoadBalancingEntryModal}
+              onSave={handleSaveModelLoadBalancingEntryModal}
             />
           )
         }

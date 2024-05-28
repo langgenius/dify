@@ -7,7 +7,7 @@ import {
 import useSWR, { useSWRConfig } from 'swr'
 import { useContext } from 'use-context-selector'
 import type {
-  CustomConfigrationModelFixedFields,
+  CustomConfigurationModelFixedFields,
   DefaultModel,
   DefaultModelResponse,
   Model,
@@ -66,7 +66,7 @@ export const useProviderCredentialsFormSchemasValue = (
   provider: string,
   configurateMethod: ConfigurationMethodEnum,
   configured?: boolean,
-  currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields,
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
 ) => {
   const { data: predefinedFormSchemasValue } = useSWR(
     (configurateMethod === ConfigurationMethodEnum.predefinedModel && configured)
@@ -75,8 +75,8 @@ export const useProviderCredentialsFormSchemasValue = (
     fetchModelProviderCredentials,
   )
   const { data: customFormSchemasValue } = useSWR(
-    (configurateMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigrationModelFixedFields)
-      ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigrationModelFixedFields?.__model_name}&model_type=${currentCustomConfigrationModelFixedFields?.__model_type}`
+    (configurateMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigurationModelFixedFields)
+      ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}`
       : null,
     fetchModelProviderCredentials,
   )
@@ -87,12 +87,12 @@ export const useProviderCredentialsFormSchemasValue = (
       : customFormSchemasValue?.credentials
         ? {
           ...customFormSchemasValue?.credentials,
-          ...currentCustomConfigrationModelFixedFields,
+          ...currentCustomConfigurationModelFixedFields,
         }
         : undefined
   }, [
     configurateMethod,
-    currentCustomConfigrationModelFixedFields,
+    currentCustomConfigurationModelFixedFields,
     customFormSchemasValue?.credentials,
     predefinedFormSchemasValue?.credentials,
   ])

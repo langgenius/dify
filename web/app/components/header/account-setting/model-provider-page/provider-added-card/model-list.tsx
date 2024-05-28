@@ -12,7 +12,7 @@ import {
 // import Tab from './tab'
 import AddModelButton from './add-model-button'
 import ModelListItem from './model-list-item'
-import ModelBalancingModal from './model-balancing-modal'
+import ModelLoadBalancingModal from './model-load-balancing-modal'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 
 type ModelListProps = {
@@ -83,7 +83,7 @@ const ModelList: FC<ModelListProps> = ({
         }
       </div>
       {Boolean(balancingModel) && (
-        <ModelBalancingModal {...{
+        <ModelLoadBalancingModal {...{
           provider,
           model: balancingModel!,
           open: !!balancingModel,

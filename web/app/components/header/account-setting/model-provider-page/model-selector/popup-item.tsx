@@ -49,7 +49,7 @@ const PopupItem: FC<PopupItemProps> = ({
     setShowModelModal({
       payload: {
         currentProvider,
-        currentConfigurateMethod: ConfigurationMethodEnum.predefinedModel,
+        currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
       },
       onSaveCallback: () => {
         updateModelProviders()

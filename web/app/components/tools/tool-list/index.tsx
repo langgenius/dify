@@ -58,8 +58,8 @@ const ToolList: FC<Props> = ({
         setShowModelModal({
           payload: {
             currentProvider: provider,
-            currentConfigurateMethod: ConfigurationMethodEnum.predefinedModel,
-            currentCustomConfigrationModelFixedFields: undefined,
+            currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
+            currentCustomConfigurationModelFixedFields: undefined,
           },
           onSaveCallback: () => {
             onRefreshData()

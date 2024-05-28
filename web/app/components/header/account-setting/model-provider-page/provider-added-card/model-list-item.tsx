@@ -19,7 +19,7 @@ export type ModelListItemProps = {
   model: ModelItem
   provider: ModelProvider
   isConfigurable: boolean
-  onConfig: (currentCustomConfigrationModelFixedFields?: CustomConfigurationModelFixedFields) => void
+  onConfig: (currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => void
   onModifyLoadBalancing?: (model: ModelItem) => void
 }
 
