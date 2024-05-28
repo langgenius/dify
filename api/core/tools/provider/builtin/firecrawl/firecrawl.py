@@ -1,3 +1,4 @@
+from core.tools.entities.values import ToolLabelEnum
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.firecrawl.tools.crawl import CrawlTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
@@ -8,7 +9,7 @@ class FirecrawlProvider(BuiltinToolProviderController):
         try:
             # Example validation using the Crawl tool
             CrawlTool().fork_tool_runtime(
-                meta={"credentials": credentials}
+                runtime={"credentials": credentials}
             ).invoke(
                 user_id='',
                 tool_parameters={
@@ -21,3 +22,8 @@ class FirecrawlProvider(BuiltinToolProviderController):
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
+        
+    def _get_tool_labels(self) -> list[ToolLabelEnum]:
+        return [
+            ToolLabelEnum.SEARCH, ToolLabelEnum.UTILITIES
+        ]

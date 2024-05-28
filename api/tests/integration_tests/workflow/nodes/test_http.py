@@ -2,6 +2,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.nodes.base_node import UserFrom
 from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
 from tests.integration_tests.workflow.nodes.__mock.http import setup_http_mock
 
@@ -10,7 +11,8 @@ BASIC_NODE_DATA = {
     'app_id': '1',
     'workflow_id': '1',
     'user_id': '1',
-    'user_from': InvokeFrom.WEB_APP,
+    'user_from': UserFrom.ACCOUNT,
+    'invoke_from': InvokeFrom.WEB_APP,
 }
 
 # construct variable pool

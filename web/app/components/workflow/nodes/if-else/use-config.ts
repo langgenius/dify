@@ -3,6 +3,7 @@ import produce from 'immer'
 import type { Var } from '../../types'
 import { VarType } from '../../types'
 import { getVarType } from '../_base/components/variable/utils'
+import useNodeInfo from '../_base/hooks/use-node-info'
 import { LogicalOperator } from './types'
 import type { Condition, IfElseNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
@@ -15,8 +16,11 @@ import {
 const useConfig = (id: string, payload: IfElseNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { getBeforeNodesInSameBranch } = useWorkflow()
+  const {
+    parentNode,
+  } = useNodeInfo(id)
   const isChatMode = useIsChatMode()
-  const availableNodes = getBeforeNodesInSameBranch(id)
+  const beforeNodes = getBeforeNodesInSameBranch(id)
 
   const { inputs, setInputs } = useNodeCrud<IfElseNodeType>(id, payload)
 
@@ -51,7 +55,12 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
   }, [])
 
   const varTypesList = (inputs.conditions || []).map((condition) => {
-    return getVarType(condition.variable_selector, availableNodes, isChatMode)
+    return getVarType({
+      parentNode,
+      valueSelector: condition.variable_selector,
+      availableNodes: beforeNodes,
+      isChatMode,
+    })
   })
 
   return {

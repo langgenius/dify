@@ -1,0 +1,119 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "16",
+			"height": "17",
+			"viewBox": "0 0 16 17",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Tools",
+					"clip-path": "url(#clip0_5381_39479)"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "vector",
+							"d": "M13.4375 14.4375V6.8125H2.5625V14.4375C2.5625 14.9898 3.01022 15.4375 3.5625 15.4375H12.4375C12.9898 15.4375 13.4375 14.9898 13.4375 14.4375Z",
+							"stroke": "currentColor",
+							"stroke-width": "1.25",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "vector_2",
+							"d": "M13.6254 2.875L11.1738 6.47327",
+							"stroke": "currentColor",
+							"stroke-width": "1.25",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "vector_3",
+							"d": "M6.3125 9.8125H9.6875",
+							"stroke": "currentColor",
+							"stroke-width": "1.25",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "vector_4",
+							"d": "M8.63355 1.88044L8.75 1.64754L8.86645 1.88044C8.97531 2.09816 9.15184 2.27469 9.36956 2.38355L9.60246 2.5L9.36956 2.61645C9.15184 2.72531 8.97531 2.90184 8.86645 3.11956L8.75 3.35246L8.63355 3.11956C8.52469 2.90184 8.34816 2.72531 8.13044 2.61645L7.89754 2.5L8.13044 2.38355C8.34816 2.27469 8.52469 2.09816 8.63355 1.88044Z",
+							"stroke": "currentColor",
+							"stroke-width": "1.25",
+							"stroke-linecap": "square",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "vector_5",
+							"d": "M4.625 3.14754L4.61865 3.16025C4.51946 3.35862 4.35862 3.51946 4.16025 3.61865L4.14754 3.625L4.16025 3.63135C4.35862 3.73054 4.51946 3.89138 4.61865 4.08975L4.625 4.10246L4.63135 4.08975C4.73054 3.89138 4.89138 3.73054 5.08975 3.63135L5.10246 3.625L5.08975 3.61865C4.89138 3.51946 4.73054 3.35862 4.63135 3.16025L4.625 3.14754ZM4.625 3.14754L4.63135 3.16025L4.625 3.14754Z",
+							"stroke": "currentColor",
+							"stroke-width": "1.25",
+							"stroke-linecap": "square",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					}
+				]
+			},
+			{
+				"type": "element",
+				"name": "defs",
+				"attributes": {},
+				"children": [
+					{
+						"type": "element",
+						"name": "clipPath",
+						"attributes": {
+							"id": "clip0_5381_39479"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "rect",
+								"attributes": {
+									"width": "16",
+									"height": "16",
+									"fill": "white",
+									"transform": "translate(0 0.5)"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "Tools"
+}
