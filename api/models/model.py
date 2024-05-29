@@ -1,12 +1,19 @@
 import json
-from json import JSONDecodeError
+import re
+import uuid
+from enum import Enum
+from typing import Optional
 
 from flask import current_app, request
 from flask_login import UserMixin
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Float, text
 
-from libs.helper import generate_string
+from core.file.tool_file_parser import ToolFileParser
+from core.file.upload_file_parser import UploadFileParser
 from extensions.ext_database import db
+from libs.helper import generate_string
+
+from . import StringUUID
 from .account import Account, Tenant
 
 
@@ -20,6 +27,28 @@ class DifySetup(db.Model):
     setup_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
 
+class AppMode(Enum):
+    COMPLETION = 'completion'
+    WORKFLOW = 'workflow'
+    CHAT = 'chat'
+    ADVANCED_CHAT = 'advanced-chat'
+    AGENT_CHAT = 'agent-chat'
+    CHANNEL = 'channel'
+
+    @classmethod
+    def value_of(cls, value: str) -> 'AppMode':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid mode value {value}')
+
+
 class App(db.Model):
     __tablename__ = 'apps'
     __table_args__ = (
@@ -27,18 +56,20 @@ class App(db.Model):
         db.Index('app_tenant_id_idx', 'tenant_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
     mode = db.Column(db.String(255), nullable=False)
     icon = db.Column(db.String(255))
     icon_background = db.Column(db.String(255))
-    app_model_config_id = db.Column(UUID, nullable=True)
+    app_model_config_id = db.Column(StringUUID, nullable=True)
+    workflow_id = db.Column(StringUUID, nullable=True)
     status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     enable_site = db.Column(db.Boolean, nullable=False)
     enable_api = db.Column(db.Boolean, nullable=False)
-    api_rpm = db.Column(db.Integer, nullable=False)
-    api_rph = db.Column(db.Integer, nullable=False)
+    api_rpm = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
+    api_rph = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
     is_demo = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     is_public = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     is_universal = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
@@ -46,15 +77,35 @@ class App(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
     @property
+    def desc_or_prompt(self):
+        if self.description:
+            return self.description
+        else:
+            app_model_config = self.app_model_config
+            if app_model_config:
+                return app_model_config.pre_prompt
+            else:
+                return ''
+
+    @property
     def site(self):
         site = db.session.query(Site).filter(Site.app_id == self.id).first()
         return site
 
     @property
-    def app_model_config(self):
-        app_model_config = db.session.query(AppModelConfig).filter(
-            AppModelConfig.id == self.app_model_config_id).first()
-        return app_model_config
+    def app_model_config(self) -> Optional['AppModelConfig']:
+        if self.app_model_config_id:
+            return db.session.query(AppModelConfig).filter(AppModelConfig.id == self.app_model_config_id).first()
+
+        return None
+
+    @property
+    def workflow(self) -> Optional['Workflow']:
+        if self.workflow_id:
+            from .workflow import Workflow
+            return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
+
+        return None
 
     @property
     def api_base_url(self):
@@ -66,6 +117,88 @@ class App(db.Model):
         tenant = db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
         return tenant
 
+    @property
+    def is_agent(self) -> bool:
+        app_model_config = self.app_model_config
+        if not app_model_config:
+            return False
+        if not app_model_config.agent_mode:
+            return False
+        if self.app_model_config.agent_mode_dict.get('enabled', False) \
+                and self.app_model_config.agent_mode_dict.get('strategy', '') in ['function_call', 'react']:
+            self.mode = AppMode.AGENT_CHAT.value
+            db.session.commit()
+            return True
+        return False
+
+    @property
+    def mode_compatible_with_agent(self) -> str:
+        if self.mode == AppMode.CHAT.value and self.is_agent:
+            return AppMode.AGENT_CHAT.value
+
+        return self.mode
+
+    @property
+    def deleted_tools(self) -> list:
+        # get agent mode tools
+        app_model_config = self.app_model_config
+        if not app_model_config:
+            return []
+        if not app_model_config.agent_mode:
+            return []
+        agent_mode = app_model_config.agent_mode_dict
+        tools = agent_mode.get('tools', [])
+
+        provider_ids = []
+
+        for tool in tools:
+            keys = list(tool.keys())
+            if len(keys) >= 4:
+                provider_type = tool.get('provider_type', '')
+                provider_id = tool.get('provider_id', '')
+                if provider_type == 'api':
+                    # check if provider id is a uuid string, if not, skip
+                    try:
+                        uuid.UUID(provider_id)
+                    except Exception:
+                        continue
+                    provider_ids.append(provider_id)
+
+        if not provider_ids:
+            return []
+
+        api_providers = db.session.execute(
+            text('SELECT id FROM tool_api_providers WHERE id IN :provider_ids'),
+            {'provider_ids': tuple(provider_ids)}
+        ).fetchall()
+
+        deleted_tools = []
+        current_api_provider_ids = [str(api_provider.id) for api_provider in api_providers]
+
+        for tool in tools:
+            keys = list(tool.keys())
+            if len(keys) >= 4:
+                provider_type = tool.get('provider_type', '')
+                provider_id = tool.get('provider_id', '')
+                if provider_type == 'api' and provider_id not in current_api_provider_ids:
+                    deleted_tools.append(tool['tool_name'])
+
+        return deleted_tools
+
+    @property
+    def tags(self):
+        tags = db.session.query(Tag).join(
+            TagBinding,
+            Tag.id == TagBinding.tag_id
+        ).filter(
+            TagBinding.target_id == self.id,
+            TagBinding.tenant_id == self.tenant_id,
+            Tag.tenant_id == self.tenant_id,
+            Tag.type == 'app'
+        ).all()
+
+        return tags if tags else []
+
 
 class AppModelConfig(db.Model):
     __tablename__ = 'app_model_configs'
@@ -74,17 +207,18 @@ class AppModelConfig(db.Model):
         db.Index('app_app_id_idx', 'app_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    app_id = db.Column(UUID, nullable=False)
-    provider = db.Column(db.String(255), nullable=False)
-    model_id = db.Column(db.String(255), nullable=False)
-    configs = db.Column(db.JSON, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(StringUUID, nullable=False)
+    provider = db.Column(db.String(255), nullable=True)
+    model_id = db.Column(db.String(255), nullable=True)
+    configs = db.Column(db.JSON, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     opening_statement = db.Column(db.Text)
     suggested_questions = db.Column(db.Text)
     suggested_questions_after_answer = db.Column(db.Text)
     speech_to_text = db.Column(db.Text)
+    text_to_speech = db.Column(db.Text)
     more_like_this = db.Column(db.Text)
     model = db.Column(db.Text)
     user_input_form = db.Column(db.Text)
@@ -93,6 +227,12 @@ class AppModelConfig(db.Model):
     agent_mode = db.Column(db.Text)
     sensitive_word_avoidance = db.Column(db.Text)
     retriever_resource = db.Column(db.Text)
+    prompt_type = db.Column(db.String(255), nullable=False, server_default=db.text("'simple'::character varying"))
+    chat_prompt_config = db.Column(db.Text)
+    completion_prompt_config = db.Column(db.Text)
+    dataset_configs = db.Column(db.Text)
+    external_data_tools = db.Column(db.Text)
+    file_upload = db.Column(db.Text)
 
     @property
     def app(self):
@@ -118,9 +258,33 @@ class AppModelConfig(db.Model):
             else {"enabled": False}
 
     @property
+    def text_to_speech_dict(self) -> dict:
+        return json.loads(self.text_to_speech) if self.text_to_speech \
+            else {"enabled": False}
+
+    @property
     def retriever_resource_dict(self) -> dict:
         return json.loads(self.retriever_resource) if self.retriever_resource \
             else {"enabled": False}
+
+    @property
+    def annotation_reply_dict(self) -> dict:
+        annotation_setting = db.session.query(AppAnnotationSetting).filter(
+            AppAnnotationSetting.app_id == self.app_id).first()
+        if annotation_setting:
+            collection_binding_detail = annotation_setting.collection_binding_detail
+            return {
+                "id": annotation_setting.id,
+                "enabled": True,
+                "score_threshold": annotation_setting.score_threshold,
+                "embedding_model": {
+                    "embedding_provider_name": collection_binding_detail.provider_name,
+                    "embedding_model_name": collection_binding_detail.model_name
+                }
+            }
+
+        else:
+            return {"enabled": False}
 
     @property
     def more_like_this_dict(self) -> dict:
@@ -129,7 +293,12 @@ class AppModelConfig(db.Model):
     @property
     def sensitive_word_avoidance_dict(self) -> dict:
         return json.loads(self.sensitive_word_avoidance) if self.sensitive_word_avoidance \
-            else {"enabled": False, "words": [], "canned_response": []}
+            else {"enabled": False, "type": "", "configs": []}
+
+    @property
+    def external_data_tools_list(self) -> list[dict]:
+        return json.loads(self.external_data_tools) if self.external_data_tools \
+            else []
 
     @property
     def user_input_form_list(self) -> dict:
@@ -137,66 +306,117 @@ class AppModelConfig(db.Model):
 
     @property
     def agent_mode_dict(self) -> dict:
-        return json.loads(self.agent_mode) if self.agent_mode else {"enabled": False, "strategy": None, "tools": []}
+        return json.loads(self.agent_mode) if self.agent_mode else {"enabled": False, "strategy": None, "tools": [],
+                                                                    "prompt": None}
+
+    @property
+    def chat_prompt_config_dict(self) -> dict:
+        return json.loads(self.chat_prompt_config) if self.chat_prompt_config else {}
+
+    @property
+    def completion_prompt_config_dict(self) -> dict:
+        return json.loads(self.completion_prompt_config) if self.completion_prompt_config else {}
+
+    @property
+    def dataset_configs_dict(self) -> dict:
+        if self.dataset_configs:
+            dataset_configs = json.loads(self.dataset_configs)
+            if 'retrieval_model' not in dataset_configs:
+                return {'retrieval_model': 'single'}
+            else:
+                return dataset_configs
+        return {'retrieval_model': 'single'}
+
+    @property
+    def file_upload_dict(self) -> dict:
+        return json.loads(self.file_upload) if self.file_upload else {
+            "image": {"enabled": False, "number_limits": 3, "detail": "high",
+                      "transfer_methods": ["remote_url", "local_file"]}}
 
     def to_dict(self) -> dict:
         return {
-            "provider": "",
-            "model_id": "",
-            "configs": {},
             "opening_statement": self.opening_statement,
             "suggested_questions": self.suggested_questions_list,
             "suggested_questions_after_answer": self.suggested_questions_after_answer_dict,
             "speech_to_text": self.speech_to_text_dict,
+            "text_to_speech": self.text_to_speech_dict,
             "retriever_resource": self.retriever_resource_dict,
+            "annotation_reply": self.annotation_reply_dict,
             "more_like_this": self.more_like_this_dict,
             "sensitive_word_avoidance": self.sensitive_word_avoidance_dict,
+            "external_data_tools": self.external_data_tools_list,
             "model": self.model_dict,
             "user_input_form": self.user_input_form_list,
             "dataset_query_variable": self.dataset_query_variable,
             "pre_prompt": self.pre_prompt,
-            "agent_mode": self.agent_mode_dict
+            "agent_mode": self.agent_mode_dict,
+            "prompt_type": self.prompt_type,
+            "chat_prompt_config": self.chat_prompt_config_dict,
+            "completion_prompt_config": self.completion_prompt_config_dict,
+            "dataset_configs": self.dataset_configs_dict,
+            "file_upload": self.file_upload_dict
         }
 
     def from_model_config_dict(self, model_config: dict):
-        self.provider = ""
-        self.model_id = ""
-        self.configs = {}
-        self.opening_statement = model_config['opening_statement']
-        self.suggested_questions = json.dumps(model_config['suggested_questions'])
-        self.suggested_questions_after_answer = json.dumps(model_config['suggested_questions_after_answer'])
+        self.opening_statement = model_config.get('opening_statement')
+        self.suggested_questions = json.dumps(model_config['suggested_questions']) \
+            if model_config.get('suggested_questions') else None
+        self.suggested_questions_after_answer = json.dumps(model_config['suggested_questions_after_answer']) \
+            if model_config.get('suggested_questions_after_answer') else None
         self.speech_to_text = json.dumps(model_config['speech_to_text']) \
             if model_config.get('speech_to_text') else None
-        self.more_like_this = json.dumps(model_config['more_like_this'])
+        self.text_to_speech = json.dumps(model_config['text_to_speech']) \
+            if model_config.get('text_to_speech') else None
+        self.more_like_this = json.dumps(model_config['more_like_this']) \
+            if model_config.get('more_like_this') else None
         self.sensitive_word_avoidance = json.dumps(model_config['sensitive_word_avoidance']) \
             if model_config.get('sensitive_word_avoidance') else None
-        self.model = json.dumps(model_config['model'])
-        self.user_input_form = json.dumps(model_config['user_input_form'])
+        self.external_data_tools = json.dumps(model_config['external_data_tools']) \
+            if model_config.get('external_data_tools') else None
+        self.model = json.dumps(model_config['model']) \
+            if model_config.get('model') else None
+        self.user_input_form = json.dumps(model_config['user_input_form']) \
+            if model_config.get('user_input_form') else None
         self.dataset_query_variable = model_config.get('dataset_query_variable')
         self.pre_prompt = model_config['pre_prompt']
-        self.agent_mode = json.dumps(model_config['agent_mode'])
+        self.agent_mode = json.dumps(model_config['agent_mode']) \
+            if model_config.get('agent_mode') else None
         self.retriever_resource = json.dumps(model_config['retriever_resource']) \
             if model_config.get('retriever_resource') else None
+        self.prompt_type = model_config.get('prompt_type', 'simple')
+        self.chat_prompt_config = json.dumps(model_config.get('chat_prompt_config')) \
+            if model_config.get('chat_prompt_config') else None
+        self.completion_prompt_config = json.dumps(model_config.get('completion_prompt_config')) \
+            if model_config.get('completion_prompt_config') else None
+        self.dataset_configs = json.dumps(model_config.get('dataset_configs')) \
+            if model_config.get('dataset_configs') else None
+        self.file_upload = json.dumps(model_config.get('file_upload')) \
+            if model_config.get('file_upload') else None
         return self
 
     def copy(self):
         new_app_model_config = AppModelConfig(
             id=self.id,
             app_id=self.app_id,
-            provider="",
-            model_id="",
-            configs={},
             opening_statement=self.opening_statement,
             suggested_questions=self.suggested_questions,
             suggested_questions_after_answer=self.suggested_questions_after_answer,
             speech_to_text=self.speech_to_text,
+            text_to_speech=self.text_to_speech,
             more_like_this=self.more_like_this,
             sensitive_word_avoidance=self.sensitive_word_avoidance,
+            external_data_tools=self.external_data_tools,
             model=self.model,
             user_input_form=self.user_input_form,
             dataset_query_variable=self.dataset_query_variable,
             pre_prompt=self.pre_prompt,
-            agent_mode=self.agent_mode
+            agent_mode=self.agent_mode,
+            retriever_resource=self.retriever_resource,
+            prompt_type=self.prompt_type,
+            chat_prompt_config=self.chat_prompt_config,
+            completion_prompt_config=self.completion_prompt_config,
+            dataset_configs=self.dataset_configs,
+            file_upload=self.file_upload
         )
 
         return new_app_model_config
@@ -210,11 +430,12 @@ class RecommendedApp(db.Model):
         db.Index('recommended_app_is_listed_idx', 'is_listed', 'language')
     )
 
-    id = db.Column(UUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
-    app_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(StringUUID, nullable=False)
     description = db.Column(db.JSON, nullable=False)
     copyright = db.Column(db.String(255), nullable=False)
     privacy_policy = db.Column(db.String(255), nullable=False)
+    custom_disclaimer = db.Column(db.String(255), nullable=True)
     category = db.Column(db.String(255), nullable=False)
     position = db.Column(db.Integer, nullable=False, default=0)
     is_listed = db.Column(db.Boolean, nullable=False, default=True)
@@ -238,10 +459,10 @@ class InstalledApp(db.Model):
         db.UniqueConstraint('tenant_id', 'app_id', name='unique_tenant_app')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
-    app_id = db.Column(UUID, nullable=False)
-    app_owner_tenant_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    app_id = db.Column(StringUUID, nullable=False)
+    app_owner_tenant_id = db.Column(StringUUID, nullable=False)
     position = db.Column(db.Integer, nullable=False, default=0)
     is_pinned = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     last_used_at = db.Column(db.DateTime, nullable=True)
@@ -258,6 +479,7 @@ class InstalledApp(db.Model):
         return tenant
 
 
+
 class Conversation(db.Model):
     __tablename__ = 'conversations'
     __table_args__ = (
@@ -265,12 +487,12 @@ class Conversation(db.Model):
         db.Index('conversation_app_from_user_idx', 'app_id', 'from_source', 'from_end_user_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    app_id = db.Column(UUID, nullable=False)
-    app_model_config_id = db.Column(UUID, nullable=False)
-    model_provider = db.Column(db.String(255), nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(StringUUID, nullable=False)
+    app_model_config_id = db.Column(StringUUID, nullable=True)
+    model_provider = db.Column(db.String(255), nullable=True)
     override_model_configs = db.Column(db.Text)
-    model_id = db.Column(db.String(255), nullable=False)
+    model_id = db.Column(db.String(255), nullable=True)
     mode = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     summary = db.Column(db.Text)
@@ -279,11 +501,12 @@ class Conversation(db.Model):
     system_instruction = db.Column(db.Text)
     system_instruction_tokens = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
     status = db.Column(db.String(255), nullable=False)
+    invoke_from = db.Column(db.String(255), nullable=True)
     from_source = db.Column(db.String(255), nullable=False)
-    from_end_user_id = db.Column(UUID)
-    from_account_id = db.Column(UUID)
+    from_end_user_id = db.Column(StringUUID)
+    from_account_id = db.Column(StringUUID)
     read_at = db.Column(db.DateTime)
-    read_account_id = db.Column(UUID)
+    read_account_id = db.Column(StringUUID)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
@@ -296,45 +519,25 @@ class Conversation(db.Model):
     @property
     def model_config(self):
         model_config = {}
-        if self.override_model_configs:
-            override_model_configs = json.loads(self.override_model_configs)
-
-            if 'model' in override_model_configs:
-                model_config['model'] = override_model_configs['model']
-                model_config['pre_prompt'] = override_model_configs['pre_prompt']
-                model_config['agent_mode'] = override_model_configs['agent_mode']
-                model_config['opening_statement'] = override_model_configs['opening_statement']
-                model_config['suggested_questions'] = override_model_configs['suggested_questions']
-                model_config['suggested_questions_after_answer'] = override_model_configs[
-                    'suggested_questions_after_answer'] \
-                    if 'suggested_questions_after_answer' in override_model_configs else {"enabled": False}
-                model_config['speech_to_text'] = override_model_configs[
-                    'speech_to_text'] \
-                    if 'speech_to_text' in override_model_configs else {"enabled": False}
-                model_config['more_like_this'] = override_model_configs['more_like_this'] \
-                    if 'more_like_this' in override_model_configs else {"enabled": False}
-                model_config['sensitive_word_avoidance'] = override_model_configs['sensitive_word_avoidance'] \
-                    if 'sensitive_word_avoidance' in override_model_configs \
-                    else {"enabled": False, "words": [], "canned_response": []}
-                model_config['user_input_form'] = override_model_configs['user_input_form']
-            else:
-                model_config['configs'] = override_model_configs
+        if self.mode == AppMode.ADVANCED_CHAT.value:
+            if self.override_model_configs:
+                override_model_configs = json.loads(self.override_model_configs)
+                model_config = override_model_configs
         else:
-            app_model_config = db.session.query(AppModelConfig).filter(
-                AppModelConfig.id == self.app_model_config_id).first()
+            if self.override_model_configs:
+                override_model_configs = json.loads(self.override_model_configs)
 
-            model_config['configs'] = app_model_config.configs
-            model_config['model'] = app_model_config.model_dict
-            model_config['pre_prompt'] = app_model_config.pre_prompt
-            model_config['agent_mode'] = app_model_config.agent_mode_dict
-            model_config['opening_statement'] = app_model_config.opening_statement
-            model_config['suggested_questions'] = app_model_config.suggested_questions_list
-            model_config['suggested_questions_after_answer'] = app_model_config.suggested_questions_after_answer_dict
-            model_config['speech_to_text'] = app_model_config.speech_to_text_dict
-            model_config['retriever_resource'] = app_model_config.retriever_resource_dict
-            model_config['more_like_this'] = app_model_config.more_like_this_dict
-            model_config['sensitive_word_avoidance'] = app_model_config.sensitive_word_avoidance_dict
-            model_config['user_input_form'] = app_model_config.user_input_form_list
+                if 'model' in override_model_configs:
+                    app_model_config = AppModelConfig()
+                    app_model_config = app_model_config.from_model_config_dict(override_model_configs)
+                    model_config = app_model_config.to_dict()
+                else:
+                    model_config['configs'] = override_model_configs
+            else:
+                app_model_config = db.session.query(AppModelConfig).filter(
+                    AppModelConfig.id == self.app_model_config_id).first()
+
+                model_config = app_model_config.to_dict()
 
         model_config['model_id'] = self.model_id
         model_config['provider'] = self.model_provider
@@ -424,12 +627,12 @@ class Message(db.Model):
         db.Index('message_account_idx', 'app_id', 'from_source', 'from_account_id'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    app_id = db.Column(UUID, nullable=False)
-    model_provider = db.Column(db.String(255), nullable=False)
-    model_id = db.Column(db.String(255), nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(StringUUID, nullable=False)
+    model_provider = db.Column(db.String(255), nullable=True)
+    model_id = db.Column(db.String(255), nullable=True)
     override_model_configs = db.Column(db.Text)
-    conversation_id = db.Column(UUID, db.ForeignKey('conversations.id'), nullable=False)
+    conversation_id = db.Column(StringUUID, db.ForeignKey('conversations.id'), nullable=False)
     inputs = db.Column(db.JSON)
     query = db.Column(db.Text, nullable=False)
     message = db.Column(db.JSON, nullable=False)
@@ -443,12 +646,82 @@ class Message(db.Model):
     provider_response_latency = db.Column(db.Float, nullable=False, server_default=db.text('0'))
     total_price = db.Column(db.Numeric(10, 7))
     currency = db.Column(db.String(255), nullable=False)
+    status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
+    error = db.Column(db.Text)
+    message_metadata = db.Column(db.Text)
+    invoke_from = db.Column(db.String(255), nullable=True)
     from_source = db.Column(db.String(255), nullable=False)
-    from_end_user_id = db.Column(UUID)
-    from_account_id = db.Column(UUID)
+    from_end_user_id = db.Column(StringUUID)
+    from_account_id = db.Column(StringUUID)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     agent_based = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
+    workflow_run_id = db.Column(StringUUID)
+
+    @property
+    def re_sign_file_url_answer(self) -> str:
+        if not self.answer:
+            return self.answer
+
+        pattern = r'\[!?.*?\]\((((http|https):\/\/.+)?\/files\/(tools\/)?[\w-]+.*?timestamp=.*&nonce=.*&sign=.*)\)'
+        matches = re.findall(pattern, self.answer)
+
+        if not matches:
+            return self.answer
+
+        urls = [match[0] for match in matches]
+
+        # remove duplicate urls
+        urls = list(set(urls))
+
+        if not urls:
+            return self.answer
+
+        re_sign_file_url_answer = self.answer
+        for url in urls:
+            if 'files/tools' in url:
+                # get tool file id
+                tool_file_id_pattern = r'\/files\/tools\/([\.\w-]+)?\?timestamp='
+                result = re.search(tool_file_id_pattern, url)
+                if not result:
+                    continue
+
+                tool_file_id = result.group(1)
+
+                # get extension
+                if '.' in tool_file_id:
+                    split_result = tool_file_id.split('.')
+                    extension = f'.{split_result[-1]}'
+                    if len(extension) > 10:
+                        extension = '.bin'
+                    tool_file_id = split_result[0]
+                else:
+                    extension = '.bin'
+
+                if not tool_file_id:
+                    continue
+
+                sign_url = ToolFileParser.get_tool_file_manager().sign_file(
+                    tool_file_id=tool_file_id,
+                    extension=extension
+                )
+            else:
+                # get upload file id
+                upload_file_id_pattern = r'\/files\/([\w-]+)\/image-preview?\?timestamp='
+                result = re.search(upload_file_id_pattern, url)
+                if not result:
+                    continue
+
+                upload_file_id = result.group(1)
+
+                if not upload_file_id:
+                    continue
+
+                sign_url = UploadFileParser.get_signed_temp_image_url(upload_file_id)
+
+            re_sign_file_url_answer = re_sign_file_url_answer.replace(url, sign_url)
+
+        return re_sign_file_url_answer
 
     @property
     def user_feedback(self):
@@ -473,6 +746,16 @@ class Message(db.Model):
         return annotation
 
     @property
+    def annotation_hit_history(self):
+        annotation_history = (db.session.query(AppAnnotationHitHistory)
+                              .filter(AppAnnotationHitHistory.message_id == self.id).first())
+        if annotation_history:
+            annotation = (db.session.query(MessageAnnotation).
+                          filter(MessageAnnotation.id == annotation_history.annotation_id).first())
+            return annotation
+        return None
+
+    @property
     def app_model_config(self):
         conversation = db.session.query(Conversation).filter(Conversation.id == self.conversation_id).first()
         if conversation:
@@ -486,6 +769,10 @@ class Message(db.Model):
         return self.override_model_configs is not None
 
     @property
+    def message_metadata_dict(self) -> dict:
+        return json.loads(self.message_metadata) if self.message_metadata else {}
+
+    @property
     def agent_thoughts(self):
         return db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == self.id) \
             .order_by(MessageAgentThought.position.asc()).all()
@@ -494,6 +781,61 @@ class Message(db.Model):
     def retriever_resources(self):
         return db.session.query(DatasetRetrieverResource).filter(DatasetRetrieverResource.message_id == self.id) \
             .order_by(DatasetRetrieverResource.position.asc()).all()
+
+    @property
+    def message_files(self):
+        return db.session.query(MessageFile).filter(MessageFile.message_id == self.id).all()
+
+    @property
+    def files(self):
+        message_files = self.message_files
+
+        files = []
+        for message_file in message_files:
+            url = message_file.url
+            if message_file.type == 'image':
+                if message_file.transfer_method == 'local_file':
+                    upload_file = (db.session.query(UploadFile)
+                                   .filter(
+                        UploadFile.id == message_file.upload_file_id
+                    ).first())
+
+                    url = UploadFileParser.get_image_data(
+                        upload_file=upload_file,
+                        force_url=True
+                    )
+                if message_file.transfer_method == 'tool_file':
+                    # get tool file id
+                    tool_file_id = message_file.url.split('/')[-1]
+                    # trim extension
+                    tool_file_id = tool_file_id.split('.')[0]
+
+                    # get extension
+                    if '.' in message_file.url:
+                        extension = f'.{message_file.url.split(".")[-1]}'
+                        if len(extension) > 10:
+                            extension = '.bin'
+                    else:
+                        extension = '.bin'
+                    # add sign url
+                    url = ToolFileParser.get_tool_file_manager().sign_file(tool_file_id=tool_file_id, extension=extension)
+
+            files.append({
+                'id': message_file.id,
+                'type': message_file.type,
+                'url': url,
+                'belongs_to': message_file.belongs_to if message_file.belongs_to else 'user'
+            })
+
+        return files
+
+    @property
+    def workflow_run(self):
+        if self.workflow_run_id:
+            from .workflow import WorkflowRun
+            return db.session.query(WorkflowRun).filter(WorkflowRun.id == self.workflow_run_id).first()
+
+        return None
 
 
 class MessageFeedback(db.Model):
@@ -505,15 +847,15 @@ class MessageFeedback(db.Model):
         db.Index('message_feedback_conversation_idx', 'conversation_id', 'from_source', 'rating')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    app_id = db.Column(UUID, nullable=False)
-    conversation_id = db.Column(UUID, nullable=False)
-    message_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(StringUUID, nullable=False)
+    conversation_id = db.Column(StringUUID, nullable=False)
+    message_id = db.Column(StringUUID, nullable=False)
     rating = db.Column(db.String(255), nullable=False)
     content = db.Column(db.Text)
     from_source = db.Column(db.String(255), nullable=False)
-    from_end_user_id = db.Column(UUID)
-    from_account_id = db.Column(UUID)
+    from_end_user_id = db.Column(StringUUID)
+    from_account_id = db.Column(StringUUID)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
@@ -521,6 +863,26 @@ class MessageFeedback(db.Model):
     def from_account(self):
         account = db.session.query(Account).filter(Account.id == self.from_account_id).first()
         return account
+
+
+class MessageFile(db.Model):
+    __tablename__ = 'message_files'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='message_file_pkey'),
+        db.Index('message_file_message_idx', 'message_id'),
+        db.Index('message_file_created_by_idx', 'created_by')
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    message_id = db.Column(StringUUID, nullable=False)
+    type = db.Column(db.String(255), nullable=False)
+    transfer_method = db.Column(db.String(255), nullable=False)
+    url = db.Column(db.Text, nullable=True)
+    belongs_to = db.Column(db.String(255), nullable=True)
+    upload_file_id = db.Column(StringUUID, nullable=True)
+    created_by_role = db.Column(db.String(255), nullable=False)
+    created_by = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
 
 class MessageAnnotation(db.Model):
@@ -532,12 +894,14 @@ class MessageAnnotation(db.Model):
         db.Index('message_annotation_message_idx', 'message_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    app_id = db.Column(UUID, nullable=False)
-    conversation_id = db.Column(UUID, db.ForeignKey('conversations.id'), nullable=False)
-    message_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(StringUUID, nullable=False)
+    conversation_id = db.Column(StringUUID, db.ForeignKey('conversations.id'), nullable=True)
+    message_id = db.Column(StringUUID, nullable=True)
+    question = db.Column(db.Text, nullable=True)
     content = db.Column(db.Text, nullable=False)
-    account_id = db.Column(UUID, nullable=False)
+    hit_count = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
+    account_id = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
@@ -545,6 +909,84 @@ class MessageAnnotation(db.Model):
     def account(self):
         account = db.session.query(Account).filter(Account.id == self.account_id).first()
         return account
+
+    @property
+    def annotation_create_account(self):
+        account = db.session.query(Account).filter(Account.id == self.account_id).first()
+        return account
+
+
+class AppAnnotationHitHistory(db.Model):
+    __tablename__ = 'app_annotation_hit_histories'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='app_annotation_hit_histories_pkey'),
+        db.Index('app_annotation_hit_histories_app_idx', 'app_id'),
+        db.Index('app_annotation_hit_histories_account_idx', 'account_id'),
+        db.Index('app_annotation_hit_histories_annotation_idx', 'annotation_id'),
+        db.Index('app_annotation_hit_histories_message_idx', 'message_id'),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(StringUUID, nullable=False)
+    annotation_id = db.Column(StringUUID, nullable=False)
+    source = db.Column(db.Text, nullable=False)
+    question = db.Column(db.Text, nullable=False)
+    account_id = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    score = db.Column(Float, nullable=False, server_default=db.text('0'))
+    message_id = db.Column(StringUUID, nullable=False)
+    annotation_question = db.Column(db.Text, nullable=False)
+    annotation_content = db.Column(db.Text, nullable=False)
+
+    @property
+    def account(self):
+        account = (db.session.query(Account)
+                   .join(MessageAnnotation, MessageAnnotation.account_id == Account.id)
+                   .filter(MessageAnnotation.id == self.annotation_id).first())
+        return account
+
+    @property
+    def annotation_create_account(self):
+        account = db.session.query(Account).filter(Account.id == self.account_id).first()
+        return account
+
+
+class AppAnnotationSetting(db.Model):
+    __tablename__ = 'app_annotation_settings'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='app_annotation_settings_pkey'),
+        db.Index('app_annotation_settings_app_idx', 'app_id')
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(StringUUID, nullable=False)
+    score_threshold = db.Column(Float, nullable=False, server_default=db.text('0'))
+    collection_binding_id = db.Column(StringUUID, nullable=False)
+    created_user_id = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_user_id = db.Column(StringUUID, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    @property
+    def created_account(self):
+        account = (db.session.query(Account)
+                   .join(AppAnnotationSetting, AppAnnotationSetting.created_user_id == Account.id)
+                   .filter(AppAnnotationSetting.id == self.annotation_id).first())
+        return account
+
+    @property
+    def updated_account(self):
+        account = (db.session.query(Account)
+                   .join(AppAnnotationSetting, AppAnnotationSetting.updated_user_id == Account.id)
+                   .filter(AppAnnotationSetting.id == self.annotation_id).first())
+        return account
+
+    @property
+    def collection_binding_detail(self):
+        from .dataset import DatasetCollectionBinding
+        collection_binding_detail = (db.session.query(DatasetCollectionBinding)
+                                     .filter(DatasetCollectionBinding.id == self.collection_binding_id).first())
+        return collection_binding_detail
 
 
 class OperationLog(db.Model):
@@ -554,9 +996,9 @@ class OperationLog(db.Model):
         db.Index('operation_log_account_action_idx', 'tenant_id', 'account_id', 'action')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
-    account_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    account_id = db.Column(StringUUID, nullable=False)
     action = db.Column(db.String(255), nullable=False)
     content = db.Column(db.JSON)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
@@ -572,9 +1014,9 @@ class EndUser(UserMixin, db.Model):
         db.Index('end_user_tenant_session_id_idx', 'tenant_id', 'session_id', 'type'),
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
-    app_id = db.Column(UUID, nullable=True)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    app_id = db.Column(StringUUID, nullable=True)
     type = db.Column(db.String(255), nullable=False)
     external_user_id = db.Column(db.String(255), nullable=True)
     name = db.Column(db.String(255))
@@ -592,15 +1034,16 @@ class Site(db.Model):
         db.Index('site_code_idx', 'code', 'status')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    app_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(StringUUID, nullable=False)
     title = db.Column(db.String(255), nullable=False)
     icon = db.Column(db.String(255))
     icon_background = db.Column(db.String(255))
-    description = db.Column(db.String(255))
+    description = db.Column(db.Text)
     default_language = db.Column(db.String(255), nullable=False)
     copyright = db.Column(db.String(255))
     privacy_policy = db.Column(db.String(255))
+    custom_disclaimer = db.Column(db.String(255), nullable=True)
     customize_domain = db.Column(db.String(255))
     customize_token_strategy = db.Column(db.String(255), nullable=False)
     prompt_public = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
@@ -633,9 +1076,9 @@ class ApiToken(db.Model):
         db.Index('api_token_tenant_idx', 'tenant_id', 'type')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    app_id = db.Column(UUID, nullable=True)
-    tenant_id = db.Column(UUID, nullable=True)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(StringUUID, nullable=True)
+    tenant_id = db.Column(StringUUID, nullable=True)
     type = db.Column(db.String(16), nullable=False)
     token = db.Column(db.String(255), nullable=False)
     last_used_at = db.Column(db.DateTime, nullable=True)
@@ -658,18 +1101,19 @@ class UploadFile(db.Model):
         db.Index('upload_file_tenant_idx', 'tenant_id')
     )
 
-    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
     storage_type = db.Column(db.String(255), nullable=False)
     key = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     size = db.Column(db.Integer, nullable=False)
     extension = db.Column(db.String(255), nullable=False)
     mime_type = db.Column(db.String(255), nullable=True)
-    created_by = db.Column(UUID, nullable=False)
+    created_by_role = db.Column(db.String(255), nullable=False, server_default=db.text("'account'::character varying"))
+    created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     used = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
-    used_by = db.Column(UUID, nullable=True)
+    used_by = db.Column(StringUUID, nullable=True)
     used_at = db.Column(db.DateTime, nullable=True)
     hash = db.Column(db.String(255), nullable=True)
 
@@ -681,9 +1125,9 @@ class ApiRequest(db.Model):
         db.Index('api_request_token_idx', 'tenant_id', 'api_token_id')
     )
 
-    id = db.Column(UUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(UUID, nullable=False)
-    api_token_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    api_token_id = db.Column(StringUUID, nullable=False)
     path = db.Column(db.String(255), nullable=False)
     request = db.Column(db.Text, nullable=True)
     response = db.Column(db.Text, nullable=True)
@@ -698,8 +1142,8 @@ class MessageChain(db.Model):
         db.Index('message_chain_message_id_idx', 'message_id')
     )
 
-    id = db.Column(UUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
-    message_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
+    message_id = db.Column(StringUUID, nullable=False)
     type = db.Column(db.String(255), nullable=False)
     input = db.Column(db.Text, nullable=True)
     output = db.Column(db.Text, nullable=True)
@@ -714,20 +1158,23 @@ class MessageAgentThought(db.Model):
         db.Index('message_agent_thought_message_chain_id_idx', 'message_chain_id'),
     )
 
-    id = db.Column(UUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
-    message_id = db.Column(UUID, nullable=False)
-    message_chain_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
+    message_id = db.Column(StringUUID, nullable=False)
+    message_chain_id = db.Column(StringUUID, nullable=True)
     position = db.Column(db.Integer, nullable=False)
     thought = db.Column(db.Text, nullable=True)
     tool = db.Column(db.Text, nullable=True)
+    tool_labels_str = db.Column(db.Text, nullable=False, server_default=db.text("'{}'::text"))
+    tool_meta_str = db.Column(db.Text, nullable=False, server_default=db.text("'{}'::text"))
     tool_input = db.Column(db.Text, nullable=True)
     observation = db.Column(db.Text, nullable=True)
-    # plugin_id = db.Column(UUID, nullable=True)  ## for future design
+    # plugin_id = db.Column(StringUUID, nullable=True)  ## for future design
     tool_process_data = db.Column(db.Text, nullable=True)
     message = db.Column(db.Text, nullable=True)
     message_token = db.Column(db.Integer, nullable=True)
     message_unit_price = db.Column(db.Numeric, nullable=True)
     message_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text('0.001'))
+    message_files = db.Column(db.Text, nullable=True)
     answer = db.Column(db.Text, nullable=True)
     answer_token = db.Column(db.Integer, nullable=True)
     answer_unit_price = db.Column(db.Numeric, nullable=True)
@@ -737,8 +1184,88 @@ class MessageAgentThought(db.Model):
     currency = db.Column(db.String, nullable=True)
     latency = db.Column(db.Float, nullable=True)
     created_by_role = db.Column(db.String, nullable=False)
-    created_by = db.Column(UUID, nullable=False)
+    created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
+
+    @property
+    def files(self) -> list:
+        if self.message_files:
+            return json.loads(self.message_files)
+        else:
+            return []
+
+    @property
+    def tools(self) -> list[str]:
+        return self.tool.split(";") if self.tool else []
+
+    @property
+    def tool_labels(self) -> dict:
+        try:
+            if self.tool_labels_str:
+                return json.loads(self.tool_labels_str)
+            else:
+                return {}
+        except Exception as e:
+            return {}
+
+    @property
+    def tool_meta(self) -> dict:
+        try:
+            if self.tool_meta_str:
+                return json.loads(self.tool_meta_str)
+            else:
+                return {}
+        except Exception as e:
+            return {}
+
+    @property
+    def tool_inputs_dict(self) -> dict:
+        tools = self.tools
+        try:
+            if self.tool_input:
+                data = json.loads(self.tool_input)
+                result = {}
+                for tool in tools:
+                    if tool in data:
+                        result[tool] = data[tool]
+                    else:
+                        if len(tools) == 1:
+                            result[tool] = data
+                        else:
+                            result[tool] = {}
+                return result
+            else:
+                return {
+                    tool: {} for tool in tools
+                }
+        except Exception as e:
+            return {}
+
+    @property
+    def tool_outputs_dict(self) -> dict:
+        tools = self.tools
+        try:
+            if self.observation:
+                data = json.loads(self.observation)
+                result = {}
+                for tool in tools:
+                    if tool in data:
+                        result[tool] = data[tool]
+                    else:
+                        if len(tools) == 1:
+                            result[tool] = data
+                        else:
+                            result[tool] = {}
+                return result
+            else:
+                return {
+                    tool: {} for tool in tools
+                }
+        except Exception as e:
+            if self.observation:
+                return {
+                    tool: self.observation for tool in tools
+                }
 
 
 class DatasetRetrieverResource(db.Model):
@@ -748,15 +1275,15 @@ class DatasetRetrieverResource(db.Model):
         db.Index('dataset_retriever_resource_message_id_idx', 'message_id'),
     )
 
-    id = db.Column(UUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
-    message_id = db.Column(UUID, nullable=False)
+    id = db.Column(StringUUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
+    message_id = db.Column(StringUUID, nullable=False)
     position = db.Column(db.Integer, nullable=False)
-    dataset_id = db.Column(UUID, nullable=False)
+    dataset_id = db.Column(StringUUID, nullable=False)
     dataset_name = db.Column(db.Text, nullable=False)
-    document_id = db.Column(UUID, nullable=False)
+    document_id = db.Column(StringUUID, nullable=False)
     document_name = db.Column(db.Text, nullable=False)
     data_source_type = db.Column(db.Text, nullable=False)
-    segment_id = db.Column(UUID, nullable=False)
+    segment_id = db.Column(StringUUID, nullable=False)
     score = db.Column(db.Float, nullable=True)
     content = db.Column(db.Text, nullable=False)
     hit_count = db.Column(db.Integer, nullable=True)
@@ -764,6 +1291,39 @@ class DatasetRetrieverResource(db.Model):
     segment_position = db.Column(db.Integer, nullable=True)
     index_node_hash = db.Column(db.Text, nullable=True)
     retriever_from = db.Column(db.Text, nullable=False)
-    created_by = db.Column(UUID, nullable=False)
+    created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
+
+class Tag(db.Model):
+    __tablename__ = 'tags'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='tag_pkey'),
+        db.Index('tag_type_idx', 'type'),
+        db.Index('tag_name_idx', 'name'),
+    )
+
+    TAG_TYPE_LIST = ['knowledge', 'app']
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=True)
+    type = db.Column(db.String(16), nullable=False)
+    name = db.Column(db.String(255), nullable=False)
+    created_by = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+
+class TagBinding(db.Model):
+    __tablename__ = 'tag_bindings'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='tag_binding_pkey'),
+        db.Index('tag_bind_target_id_idx', 'target_id'),
+        db.Index('tag_bind_tag_id_idx', 'tag_id'),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=True)
+    tag_id = db.Column(StringUUID, nullable=True)
+    target_id = db.Column(StringUUID, nullable=True)
+    created_by = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))

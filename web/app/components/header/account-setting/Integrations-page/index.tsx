@@ -2,9 +2,9 @@
 
 import { useTranslation } from 'react-i18next'
 import classNames from 'classnames'
-import s from './index.module.css'
 import useSWR from 'swr'
 import Link from 'next/link'
+import s from './index.module.css'
 import { fetchAccountIntegrates } from '@/service/common'
 
 const titleClassName = `
@@ -42,10 +42,10 @@ export default function IntegrationsPage() {
               </div>
               {
                 !integrate.is_bound && (
-                  <Link 
+                  <Link
                     className='flex items-center h-8 px-[7px] bg-white rounded-lg border border-gray-200 text-xs font-medium text-gray-700 cursor-pointer'
                     href={integrate.link}
-                    target={'_blank'}>
+                    target='_blank' rel='noopener noreferrer'>
                     {t('common.integrations.connect')}
                   </Link>
                 )

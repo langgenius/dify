@@ -3,14 +3,6 @@ import { Menu, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { GlobeAltIcon } from '@heroicons/react/24/outline'
 
-export const LOCALES = [
-  { value: 'en', name: 'EN' },
-  { value: 'zh-Hans', name: '简体中文' },
-]
-export const RFC_LOCALES = [
-  { value: 'en-US', name: 'EN' },
-  { value: 'zh-Hans', name: '简体中文' },
-]
 type ISelectProps = {
   items: Array<{ value: string; name: string }>
   value?: string
@@ -47,7 +39,7 @@ export default function Select({
           leaveFrom="transform opacity-100 scale-100"
           leaveTo="transform opacity-0 scale-95"
         >
-          <Menu.Items className="absolute right-0 mt-2 w-[120px] origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+          <Menu.Items className="absolute right-0 mt-2 w-[200px] origin-top-right divide-y divide-gray-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
             <div className="px-1 py-1 ">
               {items.map((item) => {
                 return <Menu.Item key={item.value}>

@@ -12,6 +12,9 @@ import { SimpleSelect } from '@/app/components/base/select'
 import type { AppDetailResponse } from '@/models/app'
 import type { Language } from '@/types/app'
 import EmojiPicker from '@/app/components/base/emoji-picker'
+import { useToastContext } from '@/app/components/base/toast'
+
+import { languages } from '@/i18n/language'
 
 export type ISettingsModalProps = {
   appInfo: AppDetailResponse
@@ -28,13 +31,9 @@ export type ConfigParams = {
   prompt_public: boolean
   copyright: string
   privacy_policy: string
+  custom_disclaimer: string
   icon: string
   icon_background: string
-}
-
-const LANGUAGE_MAP: Record<Language, string> = {
-  'en-US': 'English(United States)',
-  'zh-Hans': '简体中文',
 }
 
 const prefixSettings = 'appOverview.overview.appInfo.settings'
@@ -45,10 +44,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const { notify } = useToastContext()
   const [isShowMore, setIsShowMore] = useState(false)
   const { icon, icon_background } = appInfo
-  const { title, description, copyright, privacy_policy, default_language } = appInfo.site
-  const [inputInfo, setInputInfo] = useState({ title, desc: description, copyright, privacyPolicy: privacy_policy })
+  const { title, description, copyright, privacy_policy, custom_disclaimer, default_language } = appInfo.site
+  const [inputInfo, setInputInfo] = useState({ title, desc: description, copyright, privacyPolicy: privacy_policy, customDisclaimer: custom_disclaimer })
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
@@ -57,7 +57,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [emoji, setEmoji] = useState({ icon, icon_background })
 
   useEffect(() => {
-    setInputInfo({ title, desc: description, copyright, privacyPolicy: privacy_policy })
+    setInputInfo({ title, desc: description, copyright, privacyPolicy: privacy_policy, customDisclaimer: custom_disclaimer })
     setLanguage(default_language)
     setEmoji({ icon, icon_background })
   }, [appInfo])
@@ -70,6 +70,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   }
 
   const onClickSave = async () => {
+    if (!inputInfo.title) {
+      notify({ type: 'error', message: t('app.newApp.nameNotEmpty') })
+      return
+    }
     setSaveLoading(true)
     const params = {
       title: inputInfo.title,
@@ -78,6 +82,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       prompt_public: false,
       copyright: inputInfo.copyright,
       privacy_policy: inputInfo.privacyPolicy,
+      custom_disclaimer: inputInfo.customDisclaimer,
       icon: emoji.icon,
       icon_background: emoji.icon_background,
     }
@@ -125,7 +130,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         />
         <div className={`mt-6 mb-2 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.language`)}</div>
         <SimpleSelect
-          items={Object.keys(LANGUAGE_MAP).map(lang => ({ name: LANGUAGE_MAP[lang as Language], value: lang }))}
+          items={languages.filter(item => item.supported)}
           defaultValue={language}
           onSelect={item => setLanguage(item.value as Language)}
         />
@@ -150,7 +155,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <p className={`mt-1 ${s.settingsTip} text-gray-500`}>
             <Trans
               i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
-              components={{ privacyPolicyLink: <Link href={'https://langgenius.ai/privacy-policy'} target='_blank' className='text-primary-600' /> }}
+              components={{ privacyPolicyLink: <Link href={'https://docs.dify.ai/user-agreement/privacy-policy'} target='_blank' rel='noopener noreferrer' className='text-primary-600' /> }}
             />
           </p>
           <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
@@ -158,14 +163,20 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             onChange={onChange('privacyPolicy')}
             placeholder={t(`${prefixSettings}.more.privacyPolicyPlaceholder`) as string}
           />
+          <div className={`mt-8 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.more.customDisclaimer`)}</div>
+          <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.more.customDisclaimerTip`)}</p>
+          <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
+            value={inputInfo.customDisclaimer}
+            onChange={onChange('customDisclaimer')}
+            placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`) as string}
+          />
         </>}
         <div className='mt-10 flex justify-end'>
-          <Button className='mr-2 flex-shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
-          <Button type='primary' className='flex-shrink-0' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
+          <Button className='mr-2 flex-shrink-0 !text-sm' onClick={onHide}>{t('common.operation.cancel')}</Button>
+          <Button type='primary' className='flex-shrink-0 !text-sm' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
         </div>
         {showEmojiPicker && <EmojiPicker
           onSelect={(icon, icon_background) => {
-            console.log(icon, icon_background)
             setEmoji({ icon, icon_background })
             setShowEmojiPicker(false)
           }}

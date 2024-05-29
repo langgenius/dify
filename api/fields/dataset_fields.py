@@ -1,4 +1,5 @@
 from flask_restful import fields
+
 from libs.helper import TimestampField
 
 dataset_fields = {
@@ -10,6 +11,26 @@ dataset_fields = {
     'indexing_technique': fields.String,
     'created_by': fields.String,
     'created_at': TimestampField,
+}
+
+reranking_model_fields = {
+    'reranking_provider_name': fields.String,
+    'reranking_model_name': fields.String
+}
+
+dataset_retrieval_model_fields = {
+    'search_method': fields.String,
+    'reranking_enable': fields.Boolean,
+    'reranking_model': fields.Nested(reranking_model_fields),
+    'top_k': fields.Integer,
+    'score_threshold_enabled': fields.Boolean,
+    'score_threshold': fields.Float
+}
+
+tag_fields = {
+    'id': fields.String,
+    'name': fields.String,
+    'type': fields.String
 }
 
 dataset_detail_fields = {
@@ -29,7 +50,9 @@ dataset_detail_fields = {
     'updated_at': TimestampField,
     'embedding_model': fields.String,
     'embedding_model_provider': fields.String,
-    'embedding_available': fields.Boolean
+    'embedding_available': fields.Boolean,
+    'retrieval_model_dict': fields.Nested(dataset_retrieval_model_fields),
+    'tags': fields.List(fields.Nested(tag_fields))
 }
 
 dataset_query_detail_fields = {
@@ -41,3 +64,5 @@ dataset_query_detail_fields = {
     "created_by": fields.String,
     "created_at": TimestampField
 }
+
+

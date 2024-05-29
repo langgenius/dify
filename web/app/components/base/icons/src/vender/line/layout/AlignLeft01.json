@@ -1,0 +1,39 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "24",
+			"height": "24",
+			"viewBox": "0 0 24 24",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "align-left-01"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Icon",
+							"d": "M3 3V21M21 12H7M7 12L14 19M7 12L14 5",
+							"stroke": "currentColor",
+							"stroke-width": "2",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					}
+				]
+			}
+		]
+	},
+	"name": "AlignLeft01"
+}

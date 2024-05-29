@@ -5,7 +5,8 @@ from libs.helper import TimestampField
 app_detail_kernel_fields = {
     'id': fields.String,
     'name': fields.String,
-    'mode': fields.String,
+    'description': fields.String,
+    'mode': fields.String(attribute='mode_compatible_with_agent'),
     'icon': fields.String,
     'icon_background': fields.String,
 }
@@ -20,28 +21,35 @@ model_config_fields = {
     'suggested_questions': fields.Raw(attribute='suggested_questions_list'),
     'suggested_questions_after_answer': fields.Raw(attribute='suggested_questions_after_answer_dict'),
     'speech_to_text': fields.Raw(attribute='speech_to_text_dict'),
+    'text_to_speech': fields.Raw(attribute='text_to_speech_dict'),
     'retriever_resource': fields.Raw(attribute='retriever_resource_dict'),
+    'annotation_reply': fields.Raw(attribute='annotation_reply_dict'),
     'more_like_this': fields.Raw(attribute='more_like_this_dict'),
     'sensitive_word_avoidance': fields.Raw(attribute='sensitive_word_avoidance_dict'),
+    'external_data_tools': fields.Raw(attribute='external_data_tools_list'),
     'model': fields.Raw(attribute='model_dict'),
     'user_input_form': fields.Raw(attribute='user_input_form_list'),
     'dataset_query_variable': fields.String,
     'pre_prompt': fields.String,
     'agent_mode': fields.Raw(attribute='agent_mode_dict'),
+    'prompt_type': fields.String,
+    'chat_prompt_config': fields.Raw(attribute='chat_prompt_config_dict'),
+    'completion_prompt_config': fields.Raw(attribute='completion_prompt_config_dict'),
+    'dataset_configs': fields.Raw(attribute='dataset_configs_dict'),
+    'file_upload': fields.Raw(attribute='file_upload_dict'),
+    'created_at': TimestampField
 }
 
 app_detail_fields = {
     'id': fields.String,
     'name': fields.String,
-    'mode': fields.String,
+    'description': fields.String,
+    'mode': fields.String(attribute='mode_compatible_with_agent'),
     'icon': fields.String,
     'icon_background': fields.String,
     'enable_site': fields.Boolean,
     'enable_api': fields.Boolean,
-    'api_rpm': fields.Integer,
-    'api_rph': fields.Integer,
-    'is_demo': fields.Boolean,
-    'model_config': fields.Nested(model_config_fields, attribute='app_model_config'),
+    'model_config': fields.Nested(model_config_fields, attribute='app_model_config', allow_null=True),
     'created_at': TimestampField
 }
 
@@ -54,18 +62,24 @@ model_config_partial_fields = {
     'pre_prompt': fields.String,
 }
 
+tag_fields = {
+    'id': fields.String,
+    'name': fields.String,
+    'type': fields.String
+}
+
 app_partial_fields = {
     'id': fields.String,
     'name': fields.String,
-    'mode': fields.String,
+    'description': fields.String(attribute='desc_or_prompt'),
+    'mode': fields.String(attribute='mode_compatible_with_agent'),
     'icon': fields.String,
     'icon_background': fields.String,
-    'enable_site': fields.Boolean,
-    'enable_api': fields.Boolean,
-    'is_demo': fields.Boolean,
-    'model_config': fields.Nested(model_config_partial_fields, attribute='app_model_config'),
-    'created_at': TimestampField
+    'model_config': fields.Nested(model_config_partial_fields, attribute='app_model_config', allow_null=True),
+    'created_at': TimestampField,
+    'tags': fields.List(fields.Nested(tag_fields))
 }
+
 
 app_pagination_fields = {
     'page': fields.Integer,
@@ -99,6 +113,7 @@ site_fields = {
     'customize_domain': fields.String,
     'copyright': fields.String,
     'privacy_policy': fields.String,
+    'custom_disclaimer': fields.String,
     'customize_token_strategy': fields.String,
     'prompt_public': fields.Boolean,
     'app_base_url': fields.String,
@@ -107,18 +122,17 @@ site_fields = {
 app_detail_fields_with_site = {
     'id': fields.String,
     'name': fields.String,
-    'mode': fields.String,
+    'description': fields.String,
+    'mode': fields.String(attribute='mode_compatible_with_agent'),
     'icon': fields.String,
     'icon_background': fields.String,
     'enable_site': fields.Boolean,
     'enable_api': fields.Boolean,
-    'api_rpm': fields.Integer,
-    'api_rph': fields.Integer,
-    'is_demo': fields.Boolean,
-    'model_config': fields.Nested(model_config_fields, attribute='app_model_config'),
+    'model_config': fields.Nested(model_config_fields, attribute='app_model_config', allow_null=True),
     'site': fields.Nested(site_fields),
     'api_base_url': fields.String,
-    'created_at': TimestampField
+    'created_at': TimestampField,
+    'deleted_tools': fields.List(fields.String),
 }
 
 app_site_fields = {
@@ -133,6 +147,7 @@ app_site_fields = {
     'customize_domain': fields.String,
     'copyright': fields.String,
     'privacy_policy': fields.String,
+    'custom_disclaimer': fields.String,
     'customize_token_strategy': fields.String,
     'prompt_public': fields.Boolean
 }

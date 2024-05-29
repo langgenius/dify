@@ -1,17 +1,17 @@
-from flask_login import current_user
-from libs.login import login_required
 import flask_restful
+from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
-from models.model import App, ApiToken
+from libs.helper import TimestampField
+from libs.login import login_required
 from models.dataset import Dataset
+from models.model import ApiToken, App
 
 from . import api
 from .setup import setup_required
 from .wraps import account_initialization_required
-from libs.helper import TimestampField
 
 api_key_fields = {
     'id': fields.String,
@@ -62,9 +62,7 @@ class BaseApiKeyListResource(Resource):
         resource_id = str(resource_id)
         _get_resource(resource_id, current_user.current_tenant_id,
                       self.resource_model)
-
-        # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         current_key_count = db.session.query(ApiToken). \
@@ -103,7 +101,7 @@ class BaseApiKeyResource(Resource):
                       self.resource_model)
 
         # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         key = db.session.query(ApiToken). \

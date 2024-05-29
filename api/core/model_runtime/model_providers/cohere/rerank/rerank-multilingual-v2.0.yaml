@@ -1,0 +1,4 @@
+model: rerank-multilingual-v2.0
+model_type: rerank
+model_properties:
+  context_size: 5120

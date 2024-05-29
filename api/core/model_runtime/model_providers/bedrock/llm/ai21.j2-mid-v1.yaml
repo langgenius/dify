@@ -1,0 +1,47 @@
+model: ai21.j2-mid-v1
+label:
+  en_US: J2 Mid V1
+model_type: llm
+model_properties:
+  mode: completion
+  context_size: 8191
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: topP
+    use_template: top_p
+  - name: maxTokens
+    use_template: max_tokens
+    required: true
+    default: 2048
+    min: 1
+    max: 2048
+  - name: count_penalty
+    label:
+      en_US: Count Penalty
+    required: false
+    type: float
+    default: 0
+    min: 0
+    max: 1
+  - name: presence_penalty
+    label:
+      en_US: Presence Penalty
+    required: false
+    type: float
+    default: 0
+    min: 0
+    max: 5
+  - name: frequency_penalty
+    label:
+      en_US: Frequency Penalty
+    required: false
+    type: float
+    default: 0
+    min: 0
+    max: 500
+pricing:
+  input: '0.00'
+  output: '0.00'
+  unit: '0.000001'
+  currency: USD

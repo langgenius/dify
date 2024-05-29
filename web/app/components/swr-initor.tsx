@@ -23,7 +23,7 @@ const SwrInitor = ({
 
     if (consoleToken) {
       localStorage?.setItem('console_token', consoleToken!)
-      router.replace('/apps', { forceOptimisticNavigation: false })
+      router.replace('/apps', { forceOptimisticNavigation: false } as any)
     }
     setInit(true)
   }, [])
@@ -32,6 +32,7 @@ const SwrInitor = ({
     ? (
       <SWRConfig value={{
         shouldRetryOnError: false,
+        revalidateOnFocus: false,
       }}>
         {children}
       </SWRConfig>

@@ -1,14 +1,16 @@
 from flask import request
-from flask_restful import reqparse, marshal
+from flask_restful import marshal, reqparse
+
 import services.dataset_service
 from controllers.service_api import api
 from controllers.service_api.dataset.error import DatasetNameDuplicateError
 from controllers.service_api.wraps import DatasetApiResource
-from libs.login import current_user
-from core.model_providers.models.entity.model_params import ModelType
+from core.model_runtime.entities.model_entities import ModelType
+from core.provider_manager import ProviderManager
 from fields.dataset_fields import dataset_detail_fields
+from libs.login import current_user
+from models.dataset import Dataset
 from services.dataset_service import DatasetService
-from services.provider_service import ProviderService
 
 
 def _validate_name(name):
@@ -24,15 +26,26 @@ class DatasetApi(DatasetApiResource):
         page = request.args.get('page', default=1, type=int)
         limit = request.args.get('limit', default=20, type=int)
         provider = request.args.get('provider', default="vendor")
+        search = request.args.get('keyword', default=None, type=str)
+        tag_ids = request.args.getlist('tag_ids')
+
         datasets, total = DatasetService.get_datasets(page, limit, provider,
-                                                      tenant_id, current_user)
+                                                      tenant_id, current_user, search, tag_ids)
         # check embedding setting
-        provider_service = ProviderService()
-        valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id,
-                                                                 ModelType.EMBEDDINGS.value)
+        provider_manager = ProviderManager()
+        configurations = provider_manager.get_configurations(
+            tenant_id=current_user.current_tenant_id
+        )
+
+        embedding_models = configurations.get_models(
+            model_type=ModelType.TEXT_EMBEDDING,
+            only_active=True
+        )
+
         model_names = []
-        for valid_model in valid_model_list:
-            model_names.append(f"{valid_model['model_name']}:{valid_model['model_provider']['provider_name']}")
+        for embedding_model in embedding_models:
+            model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
+
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
             if item['indexing_technique'] == 'high_quality':
@@ -60,7 +73,7 @@ class DatasetApi(DatasetApiResource):
                             help='type is required. Name must be between 1 to 40 characters.',
                             type=_validate_name)
         parser.add_argument('indexing_technique', type=str, location='json',
-                            choices=('high_quality', 'economy'),
+                            choices=Dataset.INDEXING_TECHNIQUE_LIST,
                             help='Invalid indexing technique.')
         args = parser.parse_args()
 

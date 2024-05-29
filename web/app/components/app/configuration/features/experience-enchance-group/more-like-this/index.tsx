@@ -1,10 +1,11 @@
 'use client'
-import React, { FC } from 'react'
-import Panel from '@/app/components/app/configuration/base/feature-panel'
+import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import MoreLikeThisIcon from '../../../base/icons/more-like-this-icon'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useLocalStorageState } from 'ahooks'
+import MoreLikeThisIcon from '../../../base/icons/more-like-this-icon'
+import Panel from '@/app/components/app/configuration/base/feature-panel'
 
 const GENERATE_NUM = 1
 

@@ -7,6 +7,7 @@ import type {
   DataSetListResponse,
   DocumentDetailResponse,
   DocumentListResponse,
+  ErrorDocsResponse,
   FileIndexingEstimateResponse,
   HitTestingRecordsResponse,
   HitTestingResponse,
@@ -27,6 +28,7 @@ import type {
   ApikeysListResponse,
   CreateApiKeyResponse,
 } from '@/models/app'
+import type { RetrievalConfig } from '@/types/app'
 
 // apis for documents in a dataset
 
@@ -48,7 +50,12 @@ export const fetchDatasetDetail: Fetcher<DataSet, string> = (datasetId: string) 
   return get<DataSet>(`/datasets/${datasetId}`)
 }
 
-export const updateDatasetSetting: Fetcher<DataSet, { datasetId: string; body: Partial<Pick<DataSet, 'name' | 'description' | 'permission' | 'indexing_technique'>> }> = ({ datasetId, body }) => {
+export const updateDatasetSetting: Fetcher<DataSet, {
+  datasetId: string
+  body: Partial<Pick<DataSet,
+    'name' | 'description' | 'permission' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider'
+  >>
+}> = ({ datasetId, body }) => {
   return patch<DataSet>(`/datasets/${datasetId}`, { body })
 }
 
@@ -182,8 +189,8 @@ export const checkSegmentBatchImportProgress: Fetcher<{ job_id: string; job_stat
 }
 
 // hit testing
-export const hitTesting: Fetcher<HitTestingResponse, { datasetId: string; queryText: string }> = ({ datasetId, queryText }) => {
-  return post<HitTestingResponse>(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText } })
+export const hitTesting: Fetcher<HitTestingResponse, { datasetId: string; queryText: string; retrieval_model: RetrievalConfig }> = ({ datasetId, queryText, retrieval_model }) => {
+  return post<HitTestingResponse>(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText, retrieval_model } })
 }
 
 export const fetchTestingRecords: Fetcher<HitTestingRecordsResponse, { datasetId: string; params: { page: number; limit: number } }> = ({ datasetId, params }) => {
@@ -212,4 +219,20 @@ export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Re
 
 export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> = (url) => {
   return get<{ api_base_url: string }>(url)
+}
+
+type FileTypesRes = {
+  allowed_extensions: string[]
+}
+
+export const fetchSupportFileTypes: Fetcher<FileTypesRes, { url: string }> = ({ url }) => {
+  return get<FileTypesRes>(url)
+}
+
+export const getErrorDocs: Fetcher<ErrorDocsResponse, { datasetId: string }> = ({ datasetId }) => {
+  return get<ErrorDocsResponse>(`/datasets/${datasetId}/error-docs`)
+}
+
+export const retryErrorDocs: Fetcher<CommonResponse, { datasetId: string; document_ids: string[] }> = ({ datasetId, document_ids }) => {
+  return post<CommonResponse>(`/datasets/${datasetId}/retry`, { body: { document_ids } })
 }

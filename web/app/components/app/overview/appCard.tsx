@@ -22,10 +22,10 @@ import Tag from '@/app/components/base/tag'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import CopyFeedback from '@/app/components/base/copy-feedback'
+import Confirm from '@/app/components/base/confirm'
 import ShareQRCode from '@/app/components/base/qrcode'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import type { AppDetailResponse } from '@/models/app'
-import { AppType } from '@/types/app'
 import { useAppContext } from '@/context/app-context'
 
 export type IAppCardProps = {
@@ -58,6 +58,8 @@ function AppCard({
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
   const [genLoading, setGenLoading] = useState(false)
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+
   const { t } = useTranslation()
 
   const OPERATIONS_MAP = useMemo(() => {
@@ -69,7 +71,7 @@ function AppCard({
       api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: DocumentTextIcon }],
       app: [],
     }
-    if (appInfo.mode === AppType.chat)
+    if (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow')
       operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon })
 
     if (isCurrentWorkspaceManager)
@@ -84,7 +86,8 @@ function AppCard({
     : t('appOverview.overview.apiInfo.title')
   const runningStatus = isApp ? appInfo.enable_site : appInfo.enable_api
   const { app_base_url, access_token } = appInfo.site ?? {}
-  const appUrl = `${app_base_url}/${appInfo.mode}/${access_token}`
+  const appMode = (appInfo.mode !== 'completion' && appInfo.mode !== 'workflow') ? 'chat' : appInfo.mode
+  const appUrl = `${app_base_url}/${appMode}/${access_token}`
   const apiUrl = appInfo?.api_base_url
 
   let bgColor = 'bg-primary-50 bg-opacity-40'
@@ -129,7 +132,7 @@ function AppCard({
 
   return (
     <div
-      className={`min-w-max shadow-xs border-[0.5px] rounded-lg border-gray-200 ${
+      className={`shadow-xs border-[0.5px] rounded-lg border-gray-200 ${
         className ?? ''
       }`}
     >
@@ -163,8 +166,8 @@ function AppCard({
                 : t('appOverview.overview.apiInfo.accessibleAddress')}
             </div>
             <div className="w-full h-9 pl-2 pr-0.5 py-0.5 bg-black bg-opacity-[0.02] rounded-lg border border-black border-opacity-5 justify-start items-center inline-flex">
-              <div className="h-4 px-2 justify-start items-start gap-2 flex flex-1">
-                <div className="text-gray-700 text-xs font-medium">
+              <div className="h-4 px-2 justify-start items-start gap-2 flex flex-1 min-w-0">
+                <div className="text-gray-700 text-xs font-medium text-ellipsis overflow-hidden whitespace-nowrap">
                   {isApp ? appUrl : apiUrl}
                 </div>
               </div>
@@ -176,6 +179,20 @@ function AppCard({
                 className={'hover:bg-gray-200'}
               />
               {/* button copy link/ button regenerate */}
+              {showConfirmDelete && (
+                <Confirm
+                  type='warning'
+                  title={t('appOverview.overview.appInfo.regenerate')}
+                  content={''}
+                  isShow={showConfirmDelete}
+                  onClose={() => setShowConfirmDelete(false)}
+                  onConfirm={() => {
+                    onGenCode()
+                    setShowConfirmDelete(false)
+                  }}
+                  onCancel={() => setShowConfirmDelete(false)}
+                />
+              )}
               {isApp && isCurrentWorkspaceManager && (
                 <Tooltip
                   content={t('appOverview.overview.appInfo.regenerate') || ''}
@@ -183,7 +200,7 @@ function AppCard({
                 >
                   <div
                     className="w-8 h-8 ml-0.5 cursor-pointer hover:bg-gray-200 rounded-lg"
-                    onClick={onGenCode}
+                    onClick={() => setShowConfirmDelete(true)}
                   >
                     <div
                       className={`w-full h-full ${style.refreshIcon} ${
@@ -196,7 +213,7 @@ function AppCard({
             </div>
           </div>
         </div>
-        <div className={'pt-2 flex flex-row items-center'}>
+        <div className={'pt-2 flex flex-row items-center flex-wrap gap-y-2'}>
           {!isApp && <SecretKeyButton className='flex-shrink-0 !h-8 bg-white mr-2' textCls='!text-gray-700 font-medium' iconCls='stroke-[1.2px]' appId={appInfo.id} />}
           {OPERATIONS_MAP[cardType].map((op) => {
             const disabled
@@ -247,6 +264,7 @@ function AppCard({
               linkUrl=""
               onClose={() => setShowCustomizeModal(false)}
               appId={appInfo.id}
+              api_base_url={appInfo.api_base_url}
               mode={appInfo.mode}
             />
           </>

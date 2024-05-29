@@ -5,7 +5,7 @@ import s from './index.module.css'
 import type { DataSet } from '@/models/datasets'
 
 const itemClass = `
-  w-[234px] p-3 rounded-xl bg-gray-25 border border-gray-100 cursor-pointer
+  w-full sm:w-[234px] p-3 rounded-xl bg-gray-25 border border-gray-100 cursor-pointer
 `
 const radioClass = `
   w-4 h-4 border-[2px] border-gray-200 rounded-full
@@ -14,12 +14,14 @@ type IIndexMethodRadioProps = {
   value?: DataSet['indexing_technique']
   onChange: (v?: DataSet['indexing_technique']) => void
   disable?: boolean
+  itemClassName?: string
 }
 
 const IndexMethodRadio = ({
   value,
   onChange,
   disable,
+  itemClassName,
 }: IIndexMethodRadioProps) => {
   const { t } = useTranslation()
   const options = [
@@ -38,13 +40,14 @@ const IndexMethodRadio = ({
   ]
 
   return (
-    <div className={classNames(s.wrapper, 'flex justify-between w-full')}>
+    <div className={classNames(s.wrapper, 'flex justify-between w-full flex-wrap gap-y-2')}>
       {
         options.map(option => (
           <div
             key={option.key}
             className={classNames(
               itemClass,
+              itemClassName,
               s.item,
               option.key === value && s['item-active'],
               disable && s.disable,

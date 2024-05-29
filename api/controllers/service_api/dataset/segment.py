@@ -1,11 +1,17 @@
 from flask_login import current_user
-from flask_restful import reqparse, marshal
+from flask_restful import marshal, reqparse
 from werkzeug.exceptions import NotFound
+
 from controllers.service_api import api
 from controllers.service_api.app.error import ProviderNotInitializeError
-from controllers.service_api.wraps import DatasetApiResource
-from core.model_providers.error import ProviderTokenNotInitError, LLMBadRequestError
-from core.model_providers.model_factory import ModelFactory
+from controllers.service_api.wraps import (
+    DatasetApiResource,
+    cloud_edition_billing_knowledge_limit_check,
+    cloud_edition_billing_resource_check,
+)
+from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from fields.segment_fields import segment_fields
 from models.dataset import Dataset, DocumentSegment
@@ -14,6 +20,9 @@ from services.dataset_service import DatasetService, DocumentService, SegmentSer
 
 class SegmentApi(DatasetApiResource):
     """Resource for segments."""
+
+    @cloud_edition_billing_resource_check('vector_space', 'dataset')
+    @cloud_edition_billing_knowledge_limit_check('add_segment', 'dataset')
     def post(self, tenant_id, dataset_id, document_id):
         """Create single segment."""
         # check dataset
@@ -33,15 +42,17 @@ class SegmentApi(DatasetApiResource):
         # check embedding model setting
         if dataset.indexing_technique == 'high_quality':
             try:
-                ModelFactory.get_embedding_model(
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    "No Embedding Model available. Please configure a valid provider "
+                    "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         # validate args
@@ -75,15 +86,17 @@ class SegmentApi(DatasetApiResource):
         # check embedding model setting
         if dataset.indexing_technique == 'high_quality':
             try:
-                ModelFactory.get_embedding_model(
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    "No Embedding Model available. Please configure a valid provider "
+                    "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
 
@@ -144,6 +157,7 @@ class DatasetSegmentApi(DatasetApiResource):
         SegmentService.delete_segment(segment, document, dataset)
         return {'result': 'success'}, 200
 
+    @cloud_edition_billing_resource_check('vector_space', 'dataset')
     def post(self, tenant_id, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
@@ -164,15 +178,17 @@ class DatasetSegmentApi(DatasetApiResource):
         if dataset.indexing_technique == 'high_quality':
             # check embedding model setting
             try:
-                ModelFactory.get_embedding_model(
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
                     tenant_id=current_user.current_tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model
                 )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
-                    f"No Embedding Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+                    "No Embedding Model available. Please configure a valid provider "
+                    "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
             # check segment
@@ -186,11 +202,11 @@ class DatasetSegmentApi(DatasetApiResource):
 
         # validate args
         parser = reqparse.RequestParser()
-        parser.add_argument('segments', type=dict, required=False, nullable=True, location='json')
+        parser.add_argument('segment', type=dict, required=False, nullable=True, location='json')
         args = parser.parse_args()
 
-        SegmentService.segment_create_args_validate(args['segments'], document)
-        segment = SegmentService.update_segment(args['segments'], segment, document, dataset)
+        SegmentService.segment_create_args_validate(args['segment'], document)
+        segment = SegmentService.update_segment(args['segment'], segment, document, dataset)
         return {
             'data': marshal(segment, segment_fields),
             'doc_form': document.doc_form

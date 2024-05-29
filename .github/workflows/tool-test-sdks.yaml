@@ -1,0 +1,34 @@
+name: Run Unit Test For SDKs
+
+on:
+  pull_request:
+    branches:
+      - main
+jobs:
+  build:
+    name: unit test for Node.js SDK
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16, 18, 20]
+
+    defaults:
+      run:
+        working-directory: sdks/nodejs-client
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: ''
+          cache-dependency-path: 'yarn.lock'
+
+      - name: Install Dependencies
+        run: yarn install
+
+      - name: Test
+        run: yarn test

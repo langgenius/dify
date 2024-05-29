@@ -3,6 +3,8 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import cn from 'classnames'
+import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
@@ -10,12 +12,9 @@ import Button from '@/app/components/base/button'
 import { ToastContext } from '@/app/components/base/toast'
 import { createEmptyDataset } from '@/service/datasets'
 
-import cn from 'classnames'
-import s from './index.module.css'
-
 type IProps = {
-  show: boolean,
-  onHide: () => void,
+  show: boolean
+  onHide: () => void
 }
 
 const EmptyDatasetCreationModal = ({
@@ -27,7 +26,7 @@ const EmptyDatasetCreationModal = ({
   const { notify } = useContext(ToastContext)
   const router = useRouter()
 
-  const submit =  async () => {
+  const submit = async () => {
     if (!inputValue) {
       notify({ type: 'error', message: t('datasetCreation.stepOne.modal.nameNotEmpty') })
       return
@@ -43,7 +42,6 @@ const EmptyDatasetCreationModal = ({
     }
     catch (err) {
       notify({ type: 'error', message: t('datasetCreation.stepOne.modal.failed') })
-      return
     }
   }
 

@@ -1,13 +1,16 @@
-# -*- coding:utf-8 -*-
+import json
+import random
 import re
+import string
 import subprocess
 import uuid
+from collections.abc import Generator
 from datetime import datetime
 from hashlib import sha256
+from typing import Union
 from zoneinfo import available_timezones
-import random
-import string
 
+from flask import Response, stream_with_context
 from flask_restful import fields
 
 
@@ -16,7 +19,7 @@ def run(script):
 
 
 class TimestampField(fields.Raw):
-    def format(self, value):
+    def format(self, value) -> int:
         return int(value.timestamp())
 
 
@@ -43,7 +46,13 @@ def uuid_value(value):
         error = ('{value} is not a valid uuid.'
                  .format(value=value))
         raise ValueError(error)
-
+    
+def alphanumeric(value: str):
+    # check if the value is alphanumeric and underlined
+    if re.match(r'^[a-zA-Z0-9_]+$', value):
+        return value
+    
+    raise ValueError(f'{value} is not a valid alphanumeric value')
 
 def timestamp_value(timestamp):
     try:
@@ -57,7 +66,7 @@ def timestamp_value(timestamp):
         raise ValueError(error)
 
 
-class str_len(object):
+class str_len:
     """ Restrict input to an integer in a range (inclusive) """
 
     def __init__(self, max_length, argument='argument'):
@@ -74,7 +83,7 @@ class str_len(object):
         return value
 
 
-class float_range(object):
+class float_range:
     """ Restrict input to an float in a range (inclusive) """
     def __init__(self, low, high, argument='argument'):
         self.low = low
@@ -91,7 +100,7 @@ class float_range(object):
         return value
 
 
-class datetime_string(object):
+class datetime_string:
     def __init__(self, format, argument='argument'):
         self.format = format
         self.argument = argument
@@ -101,7 +110,7 @@ class datetime_string(object):
             datetime.strptime(value, self.format)
         except ValueError:
             error = ('Invalid {arg}: {val}. {arg} must be conform to the format {format}'
-                     .format(arg=self.argument, val=value, lo=self.format))
+                     .format(arg=self.argument, val=value, format=self.format))
             raise ValueError(error)
 
         return value
@@ -111,17 +120,7 @@ def _get_float(value):
     try:
         return float(value)
     except (TypeError, ValueError):
-        raise ValueError('{0} is not a valid float'.format(value))
-
-
-def supported_language(lang):
-    if lang in ['en-US', 'zh-Hans']:
-        return lang
-
-    error = ('{lang} is not a valid language.'
-             .format(lang=lang))
-    raise ValueError(error)
-
+        raise ValueError('{} is not a valid float'.format(value))
 
 def timezone(timezone_string):
     if timezone_string and timezone_string in available_timezones():
@@ -153,3 +152,14 @@ def get_remote_ip(request):
 def generate_text_hash(text: str) -> str:
     hash_text = str(text) + 'None'
     return sha256(hash_text.encode()).hexdigest()
+
+
+def compact_generate_response(response: Union[dict, Generator]) -> Response:
+    if isinstance(response, dict):
+        return Response(response=json.dumps(response), status=200, mimetype='application/json')
+    else:
+        def generate() -> Generator:
+            yield from response
+
+        return Response(stream_with_context(generate()), status=200,
+                        mimetype='text/event-stream')

@@ -1,10 +1,10 @@
-# -*- coding:utf-8 -*-
 import hashlib
 
-from Crypto.Cipher import PKCS1_OAEP, AES
+from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 
+import libs.gmpy2_pkcs10aep_cipher as gmpy2_pkcs10aep_cipher
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 
@@ -36,7 +36,7 @@ def encrypt(text, public_key):
     ciphertext, tag = cipher_aes.encrypt_and_digest(text.encode())
 
     rsa_key = RSA.import_key(public_key)
-    cipher_rsa = PKCS1_OAEP.new(rsa_key)
+    cipher_rsa = gmpy2_pkcs10aep_cipher.new(rsa_key)
 
     enc_aes_key = cipher_rsa.encrypt(aes_key)
 
@@ -45,7 +45,7 @@ def encrypt(text, public_key):
     return prefix_hybrid + encrypted_data
 
 
-def decrypt(encrypted_text, tenant_id):
+def get_decrypt_decoding(tenant_id):
     filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
 
     cache_key = 'tenant_privkey:{hash}'.format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
@@ -59,8 +59,12 @@ def decrypt(encrypted_text, tenant_id):
         redis_client.setex(cache_key, 120, private_key)
 
     rsa_key = RSA.import_key(private_key)
-    cipher_rsa = PKCS1_OAEP.new(rsa_key)
+    cipher_rsa = gmpy2_pkcs10aep_cipher.new(rsa_key)
 
+    return rsa_key, cipher_rsa
+
+
+def decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa):
     if encrypted_text.startswith(prefix_hybrid):
         encrypted_text = encrypted_text[len(prefix_hybrid):]
 
@@ -77,6 +81,12 @@ def decrypt(encrypted_text, tenant_id):
         decrypted_text = cipher_rsa.decrypt(encrypted_text)
 
     return decrypted_text.decode()
+
+
+def decrypt(encrypted_text, tenant_id):
+    rsa_key, cipher_rsa = get_decrypt_decoding(tenant_id)
+
+    return decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa)
 
 
 class PrivkeyNotFoundError(Exception):

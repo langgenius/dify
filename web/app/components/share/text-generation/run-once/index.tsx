@@ -9,6 +9,8 @@ import type { SiteInfo } from '@/models/share'
 import type { PromptConfig } from '@/models/debug'
 import Button from '@/app/components/base/button'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
+import type { VisionFile, VisionSettings } from '@/types/app'
 
 export type IRunOnceProps = {
   siteInfo: SiteInfo
@@ -16,12 +18,16 @@ export type IRunOnceProps = {
   inputs: Record<string, any>
   onInputsChange: (inputs: Record<string, any>) => void
   onSend: () => void
+  visionConfig: VisionSettings
+  onVisionFilesChange: (files: VisionFile[]) => void
 }
 const RunOnce: FC<IRunOnceProps> = ({
   promptConfig,
   inputs,
   onInputsChange,
   onSend,
+  visionConfig,
+  onVisionFilesChange,
 }) => {
   const { t } = useTranslation()
 
@@ -59,6 +65,12 @@ const RunOnce: FC<IRunOnceProps> = ({
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                     value={inputs[item.key]}
                     onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        onSend()
+                      }
+                    }}
                     maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
                   />
                 )}
@@ -70,9 +82,36 @@ const RunOnce: FC<IRunOnceProps> = ({
                     onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
                   />
                 )}
+                {item.type === 'number' && (
+                  <input
+                    type="number"
+                    className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
+                    placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                    value={inputs[item.key]}
+                    onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                  />
+                )}
               </div>
             </div>
           ))}
+          {
+            visionConfig?.enabled && (
+              <div className="w-full mt-4">
+                <div className="text-gray-900 text-sm font-medium">{t('common.imageUploader.imageUpload')}</div>
+                <div className='mt-2'>
+                  <TextGenerationImageUploader
+                    settings={visionConfig}
+                    onFilesChange={files => onVisionFilesChange(files.filter(file => file.progress !== -1).map(fileItem => ({
+                      type: 'image',
+                      transfer_method: fileItem.type,
+                      url: fileItem.url,
+                      upload_file_id: fileItem.fileId,
+                    })))}
+                  />
+                </div>
+              </div>
+            )
+          }
           {promptConfig.prompt_variables.length > 0 && (
             <div className='mt-4 h-[1px] bg-gray-100'></div>
           )}

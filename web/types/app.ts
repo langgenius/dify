@@ -1,3 +1,8 @@
+import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
+import type { CollectionType } from '@/app/components/tools/types'
+import type { LanguagesSupported } from '@/i18n/language'
+import type { Tag } from '@/app/components/base/tag-management/constant'
+
 export enum ProviderType {
   openai = 'openai',
   anthropic = 'anthropic',
@@ -14,6 +19,25 @@ export enum AppType {
   'completion' = 'completion',
 }
 
+export enum ModelModeType {
+  'chat' = 'chat',
+  'completion' = 'completion',
+  'unset' = '',
+}
+
+export enum RETRIEVE_TYPE {
+  oneWay = 'single',
+  multiWay = 'multiple',
+}
+
+export enum RETRIEVE_METHOD {
+  semantic = 'semantic_search',
+  fullText = 'full_text_search',
+  hybrid = 'hybrid_search',
+  invertedIndex = 'invertedIndex',
+  keywordSearch = 'keyword_search',
+}
+
 export type VariableInput = {
   key: string
   name: string
@@ -23,7 +47,7 @@ export type VariableInput = {
 /**
  * App modes
  */
-export const AppModes = ['completion', 'chat'] as const
+export const AppModes = ['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow'] as const
 export type AppMode = typeof AppModes[number]
 
 /**
@@ -49,6 +73,7 @@ export type PromptVariable = {
 }
 
 export type TextTypeFormItem = {
+  default: string
   label: string
   variable: string
   required: boolean
@@ -56,10 +81,18 @@ export type TextTypeFormItem = {
 }
 
 export type SelectTypeFormItem = {
+  default: string
   label: string
   variable: string
   required: boolean
   options: string[]
+}
+
+export type ParagraphTypeFormItem = {
+  default: string
+  label: string
+  variable: string
+  required: boolean
 }
 /**
  * User Input Form Item
@@ -68,6 +101,20 @@ export type UserInputFormItem = {
   'text-input': TextTypeFormItem
 } | {
   'select': SelectTypeFormItem
+} | {
+  'paragraph': TextTypeFormItem
+}
+
+export type AgentTool = {
+  provider_id: string
+  provider_type: CollectionType
+  provider_name: string
+  tool_name: string
+  tool_label: string
+  tool_parameters: Record<string, any>
+  enabled: boolean
+  isDeleted?: boolean
+  notAuthor?: boolean
 }
 
 export type ToolItem = {
@@ -81,6 +128,11 @@ export type ToolItem = {
     words: string[]
     canned_response: string
   }
+} | AgentTool
+
+export enum AgentStrategy {
+  functionCall = 'function_call',
+  react = 'react',
 }
 
 /**
@@ -88,7 +140,11 @@ export type ToolItem = {
  */
 export type ModelConfig = {
   opening_statement: string
+  suggested_questions?: string[]
   pre_prompt: string
+  prompt_type: PromptMode
+  chat_prompt_config: ChatPromptConfig | {}
+  completion_prompt_config: CompletionPromptConfig | {}
   user_input_form: UserInputFormItem[]
   dataset_query_variable?: string
   more_like_this: {
@@ -100,11 +156,21 @@ export type ModelConfig = {
   speech_to_text: {
     enabled: boolean
   }
+  text_to_speech: {
+    enabled: boolean
+    voice?: string
+    language?: string
+  }
   retriever_resource: {
     enabled: boolean
   }
+  sensitive_word_avoidance: {
+    enabled: boolean
+  }
+  annotation_reply?: AnnotationReplyConfig
   agent_mode: {
     enabled: boolean
+    strategy?: AgentStrategy
     tools: ToolItem[]
   }
   model: {
@@ -112,6 +178,7 @@ export type ModelConfig = {
     provider: string
     /** Model name, e.g, gpt-3.5.turbo */
     name: string
+    mode: ModelModeType
     /** Default Completion call parameters */
     completion_params: {
       /** Maximum number of tokens in the answer message returned by Completion */
@@ -159,9 +226,14 @@ export type ModelConfig = {
       frequency_penalty: number
     }
   }
+  dataset_configs: DatasetConfigs
+  file_upload?: {
+    image: VisionSettings
+  }
+  files?: VisionFile[]
+  created_at?: number
 }
 
-export const LanguagesSupported = ['zh-Hans', 'en-US'] as const
 export type Language = typeof LanguagesSupported[number]
 
 /**
@@ -197,6 +269,8 @@ export type SiteConfig = {
   copyright: string
   /** Privacy Policy */
   privacy_policy: string
+  /** Custom Disclaimer */
+  custom_disclaimer: string
 
   icon: string
   icon_background: string
@@ -210,6 +284,8 @@ export type App = {
   id: string
   /** Name */
   name: string
+  /** Description */
+  description: string
 
   /** Icon */
   icon: string
@@ -237,6 +313,7 @@ export type App = {
   site: SiteConfig
   /** api site url */
   api_base_url: string
+  tags: Tag[]
 }
 
 /**
@@ -251,4 +328,57 @@ export type AppTemplate = {
   mode: AppMode
   /** Model */
   model_config: ModelConfig
+}
+
+export enum Resolution {
+  low = 'low',
+  high = 'high',
+}
+
+export enum TransferMethod {
+  all = 'all',
+  local_file = 'local_file',
+  remote_url = 'remote_url',
+}
+
+export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
+
+export type VisionSettings = {
+  enabled: boolean
+  number_limits: number
+  detail: Resolution
+  transfer_methods: TransferMethod[]
+  image_file_size_limit?: number | string
+}
+
+export type ImageFile = {
+  type: TransferMethod
+  _id: string
+  fileId: string
+  file?: File
+  progress: number
+  url: string
+  base64Url?: string
+  deleted?: boolean
+}
+
+export type VisionFile = {
+  id?: string
+  type: string
+  transfer_method: TransferMethod
+  url: string
+  upload_file_id: string
+  belongs_to?: string
+}
+
+export type RetrievalConfig = {
+  search_method: RETRIEVE_METHOD
+  reranking_enable: boolean
+  reranking_model: {
+    reranking_provider_name: string
+    reranking_model_name: string
+  }
+  top_k: number
+  score_threshold_enabled: boolean
+  score_threshold: number
 }

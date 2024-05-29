@@ -1,23 +1,31 @@
-# -*- coding:utf-8 -*-
-import json
 import logging
-from typing import Generator, Union
 
-from flask import stream_with_context, Response
-from flask_restful import reqparse, fields, marshal_with
+from flask_restful import fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
-from werkzeug.exceptions import NotFound, InternalServerError
+from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
 from controllers.web import api
-from controllers.web.error import NotChatAppError, CompletionRequestError, ProviderNotInitializeError, \
-    AppMoreLikeThisDisabledError, NotCompletionAppError, AppSuggestedQuestionsAfterAnswerDisabledError, \
-    ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError
+from controllers.web.error import (
+    AppMoreLikeThisDisabledError,
+    AppSuggestedQuestionsAfterAnswerDisabledError,
+    CompletionRequestError,
+    NotChatAppError,
+    NotCompletionAppError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
 from controllers.web.wraps import WebApiResource
-from core.model_providers.error import LLMRateLimitError, LLMBadRequestError, LLMAuthorizationError, LLMAPIConnectionError, \
-    ProviderTokenNotInitError, LLMAPIUnavailableError, QuotaExceededError, ModelCurrentlyNotSupportError
-from libs.helper import uuid_value, TimestampField
-from services.completion_service import CompletionService
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.model_runtime.errors.invoke import InvokeError
+from fields.conversation_fields import message_file_fields
+from fields.message_fields import agent_thought_fields
+from libs import helper
+from libs.helper import TimestampField, uuid_value
+from models.model import AppMode
+from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
@@ -53,10 +61,14 @@ class MessageListApi(WebApiResource):
         'conversation_id': fields.String,
         'inputs': fields.Raw,
         'query': fields.String,
-        'answer': fields.String,
+        'answer': fields.String(attribute='re_sign_file_url_answer'),
+        'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
         'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
         'retriever_resources': fields.List(fields.Nested(retriever_resource_fields)),
-        'created_at': TimestampField
+        'created_at': TimestampField,
+        'agent_thoughts': fields.List(fields.Nested(agent_thought_fields)),
+        'status': fields.String,
+        'error': fields.String,
     }
 
     message_infinite_scroll_pagination_fields = {
@@ -67,7 +79,8 @@ class MessageListApi(WebApiResource):
 
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model, end_user):
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -115,8 +128,15 @@ class MessageMoreLikeThisApi(WebApiResource):
         streaming = args['response_mode'] == 'streaming'
 
         try:
-            response = CompletionService.generate_more_like_this(app_model, end_user, message_id, streaming)
-            return compact_response(response)
+            response = AppGenerateService.generate_more_like_this(
+                app_model=app_model,
+                user=end_user,
+                message_id=message_id,
+                invoke_from=InvokeFrom.WEB_APP,
+                streaming=streaming
+            )
+
+            return helper.compact_generate_response(response)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
         except MoreLikeThisDisabledError:
@@ -127,9 +147,8 @@ class MessageMoreLikeThisApi(WebApiResource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
         except Exception:
@@ -137,40 +156,10 @@ class MessageMoreLikeThisApi(WebApiResource):
             raise InternalServerError()
 
 
-def compact_response(response: Union[dict | Generator]) -> Response:
-    if isinstance(response, dict):
-        return Response(response=json.dumps(response), status=200, mimetype='application/json')
-    else:
-        def generate() -> Generator:
-            try:
-                for chunk in response:
-                    yield chunk
-            except MessageNotExistsError:
-                yield "data: " + json.dumps(api.handle_error(NotFound("Message Not Exists.")).get_json()) + "\n\n"
-            except MoreLikeThisDisabledError:
-                yield "data: " + json.dumps(api.handle_error(AppMoreLikeThisDisabledError()).get_json()) + "\n\n"
-            except ProviderTokenNotInitError as ex:
-                yield "data: " + json.dumps(api.handle_error(ProviderNotInitializeError(ex.description)).get_json()) + "\n\n"
-            except QuotaExceededError:
-                yield "data: " + json.dumps(api.handle_error(ProviderQuotaExceededError()).get_json()) + "\n\n"
-            except ModelCurrentlyNotSupportError:
-                yield "data: " + json.dumps(api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
-            except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                    LLMRateLimitError, LLMAuthorizationError) as e:
-                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(str(e))).get_json()) + "\n\n"
-            except ValueError as e:
-                yield "data: " + json.dumps(api.handle_error(e).get_json()) + "\n\n"
-            except Exception:
-                logging.exception("internal server error.")
-                yield "data: " + json.dumps(api.handle_error(InternalServerError()).get_json()) + "\n\n"
-
-        return Response(stream_with_context(generate()), status=200,
-                        mimetype='text/event-stream')
-
-
 class MessageSuggestedQuestionApi(WebApiResource):
     def get(self, app_model, end_user, message_id):
-        if app_model.mode != 'chat':
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
             raise NotCompletionAppError()
 
         message_id = str(message_id)
@@ -179,7 +168,8 @@ class MessageSuggestedQuestionApi(WebApiResource):
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model,
                 user=end_user,
-                message_id=message_id
+                message_id=message_id,
+                invoke_from=InvokeFrom.WEB_APP
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")
@@ -193,9 +183,8 @@ class MessageSuggestedQuestionApi(WebApiResource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()

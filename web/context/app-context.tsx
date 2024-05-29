@@ -18,6 +18,7 @@ export type AppContextValue = {
   mutateUserProfile: VoidFunction
   currentWorkspace: ICurrentWorkspace
   isCurrentWorkspaceManager: boolean
+  isCurrentWorkspaceOwner: boolean
   mutateCurrentWorkspace: VoidFunction
   pageContainerRef: React.RefObject<HTMLDivElement>
   langeniusVersionInfo: LangGeniusVersionResponse
@@ -57,6 +58,7 @@ const AppContext = createContext<AppContextValue>({
   },
   currentWorkspace: initialWorkspaceInfo,
   isCurrentWorkspaceManager: false,
+  isCurrentWorkspaceOwner: false,
   mutateUserProfile: () => { },
   mutateCurrentWorkspace: () => { },
   pageContainerRef: createRef(),
@@ -75,7 +77,7 @@ export type AppContextProviderProps = {
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
   const pageContainerRef = useRef<HTMLDivElement>(null)
 
-  const { data: appList, mutate: mutateApps } = useSWR({ url: '/apps', params: { page: 1 } }, fetchAppList)
+  const { data: appList, mutate: mutateApps } = useSWR({ url: '/apps', params: { page: 1, limit: 30, name: '' } }, fetchAppList)
   const { data: userProfileResponse, mutate: mutateUserProfile } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
   const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
 
@@ -83,7 +85,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const [langeniusVersionInfo, setLangeniusVersionInfo] = useState<LangGeniusVersionResponse>(initialLangeniusVersionInfo)
   const [currentWorkspace, setCurrentWorkspace] = useState<ICurrentWorkspace>(initialWorkspaceInfo)
   const isCurrentWorkspaceManager = useMemo(() => ['owner', 'admin'].includes(currentWorkspace.role), [currentWorkspace.role])
-
+  const isCurrentWorkspaceOwner = useMemo(() => currentWorkspace.role === 'owner', [currentWorkspace.role])
   const updateUserProfileAndVersion = useCallback(async () => {
     if (userProfileResponse && !userProfileResponse.bodyUsed) {
       const result = await userProfileResponse.json()
@@ -118,11 +120,12 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       useSelector,
       currentWorkspace,
       isCurrentWorkspaceManager,
+      isCurrentWorkspaceOwner,
       mutateCurrentWorkspace,
     }}>
-      <div className='flex flex-col h-full'>
+      <div className='flex flex-col h-full overflow-y-auto'>
         {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}
-        <div ref={pageContainerRef} className='grow relative flex flex-col overflow-auto bg-gray-100'>
+        <div ref={pageContainerRef} className='grow relative flex flex-col overflow-y-auto overflow-x-hidden bg-gray-100'>
           {children}
         </div>
       </div>

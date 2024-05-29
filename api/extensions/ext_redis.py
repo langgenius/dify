@@ -1,5 +1,5 @@
 import redis
-from redis.connection import SSLConnection, Connection
+from redis.connection import Connection, SSLConnection
 
 redis_client = redis.Redis()
 

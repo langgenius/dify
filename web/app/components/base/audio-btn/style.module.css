@@ -1,0 +1,10 @@
+.playIcon {
+  background-image: url(~@/app/components/develop/secret-key/assets/play.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.pauseIcon {
+  background-image: url(~@/app/components/develop/secret-key/assets/pause.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}

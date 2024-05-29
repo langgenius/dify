@@ -1,7 +1,5 @@
 import type { App, AppTemplate, SiteConfig } from '@/types/app'
 
-export type AppMode = 'chat' | 'completion'
-
 /* export type App = {
   id: string
   name: string
@@ -81,6 +79,10 @@ export type AppDailyConversationsResponse = {
   data: Array<{ date: string; conversation_count: number }>
 }
 
+export type WorkflowDailyConversationsResponse = {
+  data: Array<{ date: string; runs: number }>
+}
+
 export type AppStatisticsResponse = {
   data: Array<{ date: string }>
 }
@@ -122,3 +124,8 @@ export type UpdateOpenAIKeyResponse = ValidateOpenAIKeyResponse
 export type GenerationIntroductionResponse = {
   introduction: string
 }
+
+export type AppVoicesListResponse = [{
+  name: string
+  value: string
+}]

@@ -28,7 +28,7 @@ export default function Modal({
 }: IModal) {
   return (
     <Transition appear show={isShow} as={Fragment}>
-      <Dialog as="div" className={`relative z-10 ${wrapperClassName}`} onClose={onClose}>
+      <Dialog as="div" className={`relative z-30 ${wrapperClassName}`} onClose={onClose}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -41,7 +41,13 @@ export default function Modal({
           <div className="fixed inset-0 bg-black bg-opacity-25" />
         </Transition.Child>
 
-        <div className="fixed inset-0 overflow-y-auto">
+        <div
+          className="fixed inset-0 overflow-y-auto"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+          }}
+        >
           <div className="flex min-h-full items-center justify-center p-4 text-center">
             <Transition.Child
               as={Fragment}
@@ -63,8 +69,13 @@ export default function Modal({
                   {description}
                 </Dialog.Description>}
                 {closable
-                  && <div className='absolute top-6 right-6 w-5 h-5 rounded-2xl flex items-center justify-center hover:cursor-pointer hover:bg-gray-100'>
-                    <XMarkIcon className='w-4 h-4 text-gray-500' onClick={onClose} />
+                  && <div className='absolute z-10 top-6 right-6 w-5 h-5 rounded-2xl flex items-center justify-center hover:cursor-pointer hover:bg-gray-100'>
+                    <XMarkIcon className='w-4 h-4 text-gray-500' onClick={
+                      (e) => {
+                        e.stopPropagation()
+                        onClose()
+                      }
+                    } />
                   </div>}
                 {children}
               </Dialog.Panel>

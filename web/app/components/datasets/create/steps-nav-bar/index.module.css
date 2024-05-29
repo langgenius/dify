@@ -14,14 +14,15 @@
   background-size: 16px;
 }
 .stepList {
-  @apply p-4;
+  @apply p-4 relative;
   line-height: 18px;
 }
 
 .stepItem {
-  @apply relative flex justify-items-start pt-3 pr-0 pb-3;
+  @apply relative flex justify-items-start pt-3 pr-0 pb-3 box-content;
   padding-left: 52px;
   font-size: 13px;
+  height: 18px;
 }
 
 .stepItem.step1::before {

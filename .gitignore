@@ -148,6 +148,9 @@ docker/volumes/db/data/*
 docker/volumes/redis/data/*
 docker/volumes/weaviate/*
 docker/volumes/qdrant/*
+docker/volumes/etcd/*
+docker/volumes/minio/*
+docker/volumes/milvus/*
 
 sdks/python-client/build
 sdks/python-client/dist
@@ -155,3 +158,4 @@ sdks/python-client/dify_client.egg-info
 
 .vscode/*
 !.vscode/launch.json
+pyrightconfig.json

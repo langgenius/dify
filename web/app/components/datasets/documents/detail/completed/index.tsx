@@ -178,7 +178,7 @@ const SegmentDetailComponent: FC<ISegmentDetailProps> = ({
         }
       </div>
       <div className={cn(s.footer, s.numberInfo)}>
-        <div className='flex items-center'>
+        <div className='flex items-center flex-wrap gap-y-2'>
           <div className={cn(s.commonIcon, s.typeSquareIcon)} /><span className='mr-8'>{formatNumber(segInfo?.word_count as number)} {t('datasetDocuments.segment.characters')}</span>
           <div className={cn(s.commonIcon, s.targetIcon)} /><span className='mr-8'>{formatNumber(segInfo?.hit_count as number)} {t('datasetDocuments.segment.hitCount')}</span>
           <div className={cn(s.commonIcon, s.bezierCurveIcon)} /><span className={s.hashText}>{t('datasetDocuments.segment.vectorHash')}{segInfo?.index_node_hash}</span>

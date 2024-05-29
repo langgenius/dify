@@ -1,23 +1,21 @@
-from cachetools import TTLCache
-from flask import request, current_app
-
-import services
-from libs.login import login_required
+from flask import current_app, request
+from flask_login import current_user
 from flask_restful import Resource, marshal_with
 
+import services
 from controllers.console import api
-from controllers.console.datasets.error import NoFileUploadedError, TooManyFilesError, FileTooLargeError, \
-    UnsupportedFileTypeError
-
+from controllers.console.datasets.error import (
+    FileTooLargeError,
+    NoFileUploadedError,
+    TooManyFilesError,
+    UnsupportedFileTypeError,
+)
 from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
-from fields.file_fields import upload_config_fields, file_fields
+from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from fields.file_fields import file_fields, upload_config_fields
+from libs.login import login_required
+from services.file_service import ALLOWED_EXTENSIONS, UNSTRUSTURED_ALLOWED_EXTENSIONS, FileService
 
-from services.file_service import FileService
-
-cache = TTLCache(maxsize=None, ttl=30)
-
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv']
 PREVIEW_WORDS_LIMIT = 3000
 
 
@@ -30,15 +28,18 @@ class FileApi(Resource):
     def get(self):
         file_size_limit = current_app.config.get("UPLOAD_FILE_SIZE_LIMIT")
         batch_count_limit = current_app.config.get("UPLOAD_FILE_BATCH_LIMIT")
+        image_file_size_limit = current_app.config.get("UPLOAD_IMAGE_FILE_SIZE_LIMIT")
         return {
             'file_size_limit': file_size_limit,
-            'batch_count_limit': batch_count_limit
+            'batch_count_limit': batch_count_limit,
+            'image_file_size_limit': image_file_size_limit
         }, 200
 
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(file_fields)
+    @cloud_edition_billing_resource_check(resource='documents')
     def post(self):
 
         # get file from request
@@ -51,7 +52,7 @@ class FileApi(Resource):
         if len(request.files) > 1:
             raise TooManyFilesError()
         try:
-            upload_file = FileService.upload_file(file)
+            upload_file = FileService.upload_file(file, current_user)
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
@@ -70,5 +71,16 @@ class FilePreviewApi(Resource):
         return {'content': text}
 
 
+class FileSupportTypeApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        etl_type = current_app.config['ETL_TYPE']
+        allowed_extensions = UNSTRUSTURED_ALLOWED_EXTENSIONS if etl_type == 'Unstructured' else ALLOWED_EXTENSIONS
+        return {'allowed_extensions': allowed_extensions}
+
+
 api.add_resource(FileApi, '/files/upload')
 api.add_resource(FilePreviewApi, '/files/<uuid:file_id>/preview')
+api.add_resource(FileSupportTypeApi, '/files/support-type')

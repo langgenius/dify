@@ -1,0 +1,23 @@
+model: amazon.titan-text-express-v1
+label:
+  en_US: Titan Text G1 - Express
+model_type: llm
+model_properties:
+  mode: chat
+  context_size: 8192
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: topP
+    use_template: top_p
+  - name: maxTokenCount
+    use_template: max_tokens
+    required: true
+    default: 2048
+    min: 1
+    max: 8000
+pricing:
+  input: '0.0008'
+  output: '0.0016'
+  unit: '0.001'
+  currency: USD

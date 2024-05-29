@@ -1,0 +1,41 @@
+provider: deepseek
+label:
+  en_US: deepseek
+  zh_Hans: 深度求索
+description:
+  en_US: Models provided by deepseek, such as deepseek-chat、deepseek-coder.
+  zh_Hans: 深度求索提供的模型，例如 deepseek-chat、deepseek-coder 。
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#c0cdff"
+help:
+  title:
+    en_US: Get your API Key from deepseek
+    zh_Hans: 从深度求索获取 API Key
+  url:
+    en_US: https://platform.deepseek.com/api_keys
+supported_model_types:
+  - llm
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
+    - variable: endpoint_url
+      label:
+        zh_Hans: 自定义 API endpoint 地址
+        en_US: Custom API endpoint URL
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: Base URL, e.g. https://api.deepseek.com/v1 or https://api.deepseek.com
+        en_US: Base URL, e.g. https://api.deepseek.com/v1 or https://api.deepseek.com

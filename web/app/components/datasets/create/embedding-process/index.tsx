@@ -1,11 +1,10 @@
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { omit } from 'lodash-es'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
-import { useGetState } from 'ahooks'
 import cn from 'classnames'
 import s from './index.module.css'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
@@ -15,6 +14,14 @@ import { formatNumber } from '@/utils/format'
 import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchIndexingEstimateBatch, fetchProcessRule } from '@/service/datasets'
 import { DataSourceType } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
+import PriorityLabel from '@/app/components/billing/priority-label'
+import { Plan } from '@/app/components/billing/type'
+import { ZapFast } from '@/app/components/base/icons/src/vender/solid/general'
+import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import { useProviderContext } from '@/context/provider-context'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { sleep } from '@/utils'
 
 type Props = {
   datasetId: string
@@ -78,51 +85,63 @@ const RuleDetail: FC<{ sourceData?: ProcessRuleResponse }> = ({ sourceData }) =>
 
 const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], indexingType }) => {
   const { t } = useTranslation()
+  const { enableBilling, plan } = useProviderContext()
 
   const getFirstDocument = documents[0]
 
-  const [indexingStatusBatchDetail, setIndexingStatusDetail, getIndexingStatusDetail] = useGetState<IndexingStatusResponse[]>([])
+  const [indexingStatusBatchDetail, setIndexingStatusDetail] = useState<IndexingStatusResponse[]>([])
   const fetchIndexingStatus = async () => {
     const status = await doFetchIndexingStatus({ datasetId, batchId })
     setIndexingStatusDetail(status.data)
+    return status.data
   }
 
-  const [_, setRunId, getRunId] = useGetState<ReturnType<typeof setInterval>>()
-
+  const [isStopQuery, setIsStopQuery] = useState(false)
+  const isStopQueryRef = useRef(isStopQuery)
+  useEffect(() => {
+    isStopQueryRef.current = isStopQuery
+  }, [isStopQuery])
   const stopQueryStatus = () => {
-    clearInterval(getRunId())
+    setIsStopQuery(true)
   }
 
-  const startQueryStatus = () => {
-    const runId = setInterval(() => {
-      const indexingStatusBatchDetail = getIndexingStatusDetail()
-      const isCompleted = indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error'].includes(indexingStatusDetail.indexing_status))
+  const startQueryStatus = async () => {
+    if (isStopQueryRef.current)
+      return
+
+    try {
+      const indexingStatusBatchDetail = await fetchIndexingStatus()
+      const isCompleted = indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error', 'paused'].includes(indexingStatusDetail.indexing_status))
       if (isCompleted) {
         stopQueryStatus()
         return
       }
-      fetchIndexingStatus()
-    }, 2500)
-    setRunId(runId)
+      await sleep(2500)
+      await startQueryStatus()
+    }
+    catch (e) {
+      await sleep(2500)
+      await startQueryStatus()
+    }
   }
 
   useEffect(() => {
-    fetchIndexingStatus()
     startQueryStatus()
     return () => {
       stopQueryStatus()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // get rule
-  const { data: ruleDetail, error: ruleError } = useSWR({
+  const { data: ruleDetail } = useSWR({
     action: 'fetchProcessRule',
     params: { documentId: getFirstDocument.id },
   }, apiParams => fetchProcessRule(omit(apiParams, 'action')), {
     revalidateOnFocus: false,
   })
   // get cost
-  const { data: indexingEstimateDetail, error: indexingEstimateErr } = useSWR({
+  const { data: indexingEstimateDetail } = useSWR({
     action: 'fetchIndexingEstimateBatch',
     datasetId,
     batchId,
@@ -139,7 +158,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     return indexingStatusBatchDetail.some(indexingStatusDetail => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
   const isEmbeddingCompleted = useMemo(() => {
-    return indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error'].includes(indexingStatusDetail?.indexing_status || ''))
+    return indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error', 'paused'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
 
   const getSourceName = (id: string) => {
@@ -175,7 +194,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
           {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
         </div>
         <div className={s.cost}>
-          {indexingType === 'high_quaility' && (
+          {indexingType === 'high_quality' && (
             <div className='flex items-center'>
               <div className={cn(s.commonIcon, s.highIcon)} />
               {t('datasetDocuments.embedding.highQuality')} · {t('datasetDocuments.embedding.estimate')}
@@ -192,6 +211,19 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
           )}
         </div>
       </div>
+      {
+        enableBilling && plan.type !== Plan.team && (
+          <div className='flex items-center mb-3 p-3 h-14 bg-white border-[0.5px] border-black/5 shadow-md rounded-xl'>
+            <div className='shrink-0 flex items-center justify-center w-8 h-8 bg-[#FFF6ED] rounded-lg'>
+              <ZapFast className='w-4 h-4 text-[#FB6514]' />
+            </div>
+            <div className='grow mx-3 text-[13px] font-medium text-gray-700'>
+              {t('billing.plansCommon.documentProcessingPriorityUpgrade')}
+            </div>
+            <UpgradeBtn loc='knowledge-speed-up' />
+          </div>
+        )
+      }
       <div className={s.progressContainer}>
         {indexingStatusBatchDetail.map(indexingStatusDetail => (
           <div key={indexingStatusDetail.id} className={cn(
@@ -200,11 +232,11 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
             indexingStatusDetail.indexing_status === 'completed' && s.success,
           )}>
             {isSourceEmbedding(indexingStatusDetail) && (
-              <div className={s.progressbar} style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}/>
+              <div className={s.progressbar} style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }} />
             )}
-            <div className={s.info}>
+            <div className={`${s.info} grow`}>
               {getSourceType(indexingStatusDetail.id) === DataSourceType.FILE && (
-                <div className={cn(s.fileIcon, s[getFileType(getSourceName(indexingStatusDetail.id))])}/>
+                <div className={cn(s.fileIcon, s[getFileType(getSourceName(indexingStatusDetail.id))])} />
               )}
               {getSourceType(indexingStatusDetail.id) === DataSourceType.NOTION && (
                 <NotionIcon
@@ -213,14 +245,33 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                   src={getIcon(indexingStatusDetail.id)}
                 />
               )}
-              <div className={s.name}>{getSourceName(indexingStatusDetail.id)}</div>
+              <div className={`${s.name} truncate`} title={getSourceName(indexingStatusDetail.id)}>{getSourceName(indexingStatusDetail.id)}</div>
+              {
+                enableBilling && (
+                  <PriorityLabel />
+                )
+              }
             </div>
             <div className='shrink-0'>
               {isSourceEmbedding(indexingStatusDetail) && (
                 <div className={s.percent}>{`${getSourcePercent(indexingStatusDetail)}%`}</div>
               )}
-              {indexingStatusDetail.indexing_status === 'error' && (
-                <div className={cn(s.percent, s.error)}>Error</div>
+              {indexingStatusDetail.indexing_status === 'error' && indexingStatusDetail.error && (
+                <TooltipPlus popupContent={(
+                  <div className='max-w-[400px]'>
+                    {indexingStatusDetail.error}
+                  </div>
+                )}>
+                  <div className={cn(s.percent, s.error, 'flex items-center')}>
+                    Error
+                    <AlertCircle className='ml-1 w-4 h-4' />
+                  </div>
+                </TooltipPlus>
+              )}
+              {indexingStatusDetail.indexing_status === 'error' && !indexingStatusDetail.error && (
+                <div className={cn(s.percent, s.error, 'flex items-center')}>
+                  Error
+                </div>
               )}
               {indexingStatusDetail.indexing_status === 'completed' && (
                 <div className={cn(s.percent, s.success)}>100%</div>

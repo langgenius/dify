@@ -1,0 +1,27 @@
+identity:
+  name: wolframalpha
+  author: Dify
+  label:
+    en_US: WolframAlpha
+    zh_Hans: WolframAlpha
+    pt_BR: WolframAlpha
+description:
+  human:
+    en_US: WolframAlpha is a powerful computational knowledge engine.
+    zh_Hans: WolframAlpha 是一个强大的计算知识引擎。
+    pt_BR: WolframAlpha is a powerful computational knowledge engine.
+  llm: WolframAlpha is a powerful computational knowledge engine. one single query can get the answer of a question.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 计算语句
+      pt_BR: Query string
+    human_description:
+      en_US: used for calculating
+      zh_Hans: 用于计算最终结果
+      pt_BR: used for calculating
+    llm_description: a single query for calculating
+    form: llm

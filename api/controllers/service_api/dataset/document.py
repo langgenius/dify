@@ -1,20 +1,24 @@
 import json
 
 from flask import request
-from flask_restful import reqparse, marshal
+from flask_restful import marshal, reqparse
 from sqlalchemy import desc
 from werkzeug.exceptions import NotFound
 
 import services.dataset_service
 from controllers.service_api import api
 from controllers.service_api.app.error import ProviderNotInitializeError
-from controllers.service_api.dataset.error import ArchivedDocumentImmutableError, DocumentIndexingError, \
-    NoFileUploadedError, TooManyFilesError
-from controllers.service_api.wraps import DatasetApiResource
-from libs.login import current_user
-from core.model_providers.error import ProviderTokenNotInitError
+from controllers.service_api.dataset.error import (
+    ArchivedDocumentImmutableError,
+    DocumentIndexingError,
+    NoFileUploadedError,
+    TooManyFilesError,
+)
+from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_resource_check
+from core.errors.error import ProviderTokenNotInitError
 from extensions.ext_database import db
 from fields.document_fields import document_fields, document_status_fields
+from libs.login import current_user
 from models.dataset import Dataset, Document, DocumentSegment
 from services.dataset_service import DocumentService
 from services.file_service import FileService
@@ -23,6 +27,8 @@ from services.file_service import FileService
 class DocumentAddByTextApi(DatasetApiResource):
     """Resource for documents."""
 
+    @cloud_edition_billing_resource_check('vector_space', 'dataset')
+    @cloud_edition_billing_resource_check('documents', 'dataset')
     def post(self, tenant_id, dataset_id):
         """Create document by text."""
         parser = reqparse.RequestParser()
@@ -34,6 +40,8 @@ class DocumentAddByTextApi(DatasetApiResource):
         parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
                             location='json')
         parser.add_argument('indexing_technique', type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False,
+                            location='json')
+        parser.add_argument('retrieval_model', type=dict, required=False, nullable=False,
                             location='json')
         args = parser.parse_args()
         dataset_id = str(dataset_id)
@@ -85,6 +93,7 @@ class DocumentAddByTextApi(DatasetApiResource):
 class DocumentUpdateByTextApi(DatasetApiResource):
     """Resource for update documents."""
 
+    @cloud_edition_billing_resource_check('vector_space', 'dataset')
     def post(self, tenant_id, dataset_id, document_id):
         """Update document by text."""
         parser = reqparse.RequestParser()
@@ -93,6 +102,8 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         parser.add_argument('process_rule', type=dict, required=False, nullable=True, location='json')
         parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
         parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
+                            location='json')
+        parser.add_argument('retrieval_model', type=dict, required=False, nullable=False,
                             location='json')
         args = parser.parse_args()
         dataset_id = str(dataset_id)
@@ -142,6 +153,8 @@ class DocumentUpdateByTextApi(DatasetApiResource):
 
 class DocumentAddByFileApi(DatasetApiResource):
     """Resource for documents."""
+    @cloud_edition_billing_resource_check('vector_space', 'dataset')
+    @cloud_edition_billing_resource_check('documents', 'dataset')
     def post(self, tenant_id, dataset_id):
         """Create document by upload file."""
         args = {}
@@ -161,7 +174,7 @@ class DocumentAddByFileApi(DatasetApiResource):
 
         if not dataset:
             raise ValueError('Dataset is not exist.')
-        if not dataset.indexing_technique and not args['indexing_technique']:
+        if not dataset.indexing_technique and not args.get('indexing_technique'):
             raise ValueError('indexing_technique is required.')
 
         # save file info
@@ -173,7 +186,7 @@ class DocumentAddByFileApi(DatasetApiResource):
         if len(request.files) > 1:
             raise TooManyFilesError()
 
-        upload_file = FileService.upload_file(file)
+        upload_file = FileService.upload_file(file, current_user)
         data_source = {
             'type': 'upload_file',
             'info_list': {
@@ -207,6 +220,7 @@ class DocumentAddByFileApi(DatasetApiResource):
 class DocumentUpdateByFileApi(DatasetApiResource):
     """Resource for update documents."""
 
+    @cloud_edition_billing_resource_check('vector_space', 'dataset')
     def post(self, tenant_id, dataset_id, document_id):
         """Update document by upload file."""
         args = {}
@@ -235,7 +249,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             if len(request.files) > 1:
                 raise TooManyFilesError()
 
-            upload_file = FileService.upload_file(file)
+            upload_file = FileService.upload_file(file, current_user)
             data_source = {
                 'type': 'upload_file',
                 'info_list': {

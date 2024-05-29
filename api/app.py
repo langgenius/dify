@@ -1,41 +1,66 @@
-# -*- coding:utf-8 -*-
 import os
-
-from werkzeug.exceptions import Unauthorized
 
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     from gevent import monkey
+
     monkey.patch_all()
 
-import logging
+    import grpc.experimental.gevent
+
+    grpc.experimental.gevent.init_gevent()
+
 import json
+import logging
+import sys
 import threading
+import time
+import warnings
+from logging.handlers import RotatingFileHandler
 
-from flask import Flask, request, Response
+from flask import Flask, Response, request
 from flask_cors import CORS
+from werkzeug.exceptions import Unauthorized
 
-from core.model_providers.providers import hosted
-from extensions import ext_celery, ext_sentry, ext_redis, ext_login, ext_migrate, \
-    ext_database, ext_storage, ext_mail, ext_stripe
-from extensions.ext_database import db
-from extensions.ext_login import login_manager
+from commands import register_commands
+from config import Config
 
 # DO NOT REMOVE BELOW
-from models import model, account, dataset, web, task, source, tool
 from events import event_handlers
+from extensions import (
+    ext_celery,
+    ext_code_based_extension,
+    ext_compress,
+    ext_database,
+    ext_hosting_provider,
+    ext_login,
+    ext_mail,
+    ext_migrate,
+    ext_redis,
+    ext_sentry,
+    ext_storage,
+)
+from extensions.ext_database import db
+from extensions.ext_login import login_manager
+from libs.passport import PassportService
+from models import account, dataset, model, source, task, tool, tools, web
+from services.account_service import AccountService
+
 # DO NOT REMOVE ABOVE
 
-from config import Config, CloudEditionConfig
-from commands import register_commands
-from services.account_service import AccountService
-from libs.passport import PassportService
 
-import warnings
 warnings.simplefilter("ignore", ResourceWarning)
+
+# fix windows platform
+if os.name == "nt":
+    os.system('tzutil /s "UTC"')
+else:
+    os.environ['TZ'] = 'UTC'
+    time.tzset()
 
 
 class DifyApp(Flask):
     pass
+
 
 # -------------
 # Configuration
@@ -44,31 +69,42 @@ class DifyApp(Flask):
 
 config_type = os.getenv('EDITION', default='SELF_HOSTED')  # ce edition first
 
+
 # ----------------------------
 # Application Factory Function
 # ----------------------------
 
 
-def create_app(test_config=None) -> Flask:
+def create_app() -> Flask:
     app = DifyApp(__name__)
-
-    if test_config:
-        app.config.from_object(test_config)
-    else:
-        if config_type == "CLOUD":
-            app.config.from_object(CloudEditionConfig())
-        else:
-            app.config.from_object(Config())
+    app.config.from_object(Config())
 
     app.secret_key = app.config['SECRET_KEY']
 
-    logging.basicConfig(level=app.config.get('LOG_LEVEL', 'INFO'))
+    log_handlers = None
+    log_file = app.config.get('LOG_FILE')
+    if log_file:
+        log_dir = os.path.dirname(log_file)
+        os.makedirs(log_dir, exist_ok=True)
+        log_handlers = [
+            RotatingFileHandler(
+                filename=log_file,
+                maxBytes=1024 * 1024 * 1024,
+                backupCount=5
+            ),
+            logging.StreamHandler(sys.stdout)
+        ]
+
+    logging.basicConfig(
+        level=app.config.get('LOG_LEVEL'),
+        format=app.config.get('LOG_FORMAT'),
+        datefmt=app.config.get('LOG_DATEFORMAT'),
+        handlers=log_handlers
+    )
 
     initialize_extensions(app)
     register_blueprints(app)
     register_commands(app)
-
-    hosted.init_app(app)
 
     return app
 
@@ -76,6 +112,8 @@ def create_app(test_config=None) -> Flask:
 def initialize_extensions(app):
     # Since the application instance is now created, pass it to each Flask
     # extension instance to bind it to the Flask application instance (app)
+    ext_compress.init_app(app)
+    ext_code_based_extension.init()
     ext_database.init_app(app)
     ext_migrate.init(app, db)
     ext_redis.init_app(app)
@@ -83,30 +121,36 @@ def initialize_extensions(app):
     ext_celery.init_app(app)
     ext_login.init_app(app)
     ext_mail.init_app(app)
+    ext_hosting_provider.init_app(app)
     ext_sentry.init_app(app)
-    ext_stripe.init_app(app)
 
 
 # Flask-Login configuration
 @login_manager.request_loader
 def load_user_from_request(request_from_flask_login):
     """Load user based on the request."""
-    if request.blueprint == 'console':
+    if request.blueprint in ['console', 'inner_api']:
         # Check if the user_id contains a dot, indicating the old format
         auth_header = request.headers.get('Authorization', '')
-        if ' ' not in auth_header:
-            raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-        auth_scheme, auth_token = auth_header.split(None, 1)
-        auth_scheme = auth_scheme.lower()
-        if auth_scheme != 'bearer':
-            raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-        
+        if not auth_header:
+            auth_token = request.args.get('_token')
+            if not auth_token:
+                raise Unauthorized('Invalid Authorization token.')
+        else:
+            if ' ' not in auth_header:
+                raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+            auth_scheme, auth_token = auth_header.split(None, 1)
+            auth_scheme = auth_scheme.lower()
+            if auth_scheme != 'bearer':
+                raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+
         decoded = PassportService().verify(auth_token)
         user_id = decoded.get('user_id')
 
         return AccountService.load_user(user_id)
     else:
         return None
+
 
 @login_manager.unauthorized_handler
 def unauthorized_handler():
@@ -119,9 +163,11 @@ def unauthorized_handler():
 
 # register blueprint routers
 def register_blueprints(app):
+    from controllers.console import bp as console_app_bp
+    from controllers.files import bp as files_bp
+    from controllers.inner_api import bp as inner_api_bp
     from controllers.service_api import bp as service_api_bp
     from controllers.web import bp as web_bp
-    from controllers.console import bp as console_app_bp
 
     CORS(service_api_bp,
          allow_headers=['Content-Type', 'Authorization', 'X-App-Code'],
@@ -151,11 +197,18 @@ def register_blueprints(app):
 
     app.register_blueprint(console_app_bp)
 
+    CORS(files_bp,
+         allow_headers=['Content-Type'],
+         methods=['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'PATCH']
+         )
+    app.register_blueprint(files_bp)
+
+    app.register_blueprint(inner_api_bp)
+
 
 # create app
 app = create_app()
 celery = app.extensions["celery"]
-
 
 if app.config['TESTING']:
     print("App is running in TESTING mode")

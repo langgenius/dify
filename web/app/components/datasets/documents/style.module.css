@@ -87,6 +87,9 @@
 .csvIcon {
   background-image: url(~@/assets/csv.svg);
 }
+.docIcon {
+  background-image: url(~@/assets/doc.svg);
+}
 .docxIcon {
   background-image: url(~@/assets/docx.svg);
 }

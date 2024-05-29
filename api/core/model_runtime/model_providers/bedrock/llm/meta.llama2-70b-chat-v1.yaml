@@ -1,0 +1,23 @@
+model: meta.llama2-70b-chat-v1
+label:
+  en_US: Llama 2 Chat 70B
+model_type: llm
+model_properties:
+  mode: chat
+  context_size: 4096
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: max_gen_len
+    use_template: max_tokens
+    required: true
+    default: 2048
+    min: 1
+    max: 2048
+pricing:
+  input: '0.00195'
+  output: '0.00256'
+  unit: '0.001'
+  currency: USD

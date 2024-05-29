@@ -6,7 +6,7 @@ import { Menu, Transition } from '@headlessui/react'
 import { useRouter } from 'next/navigation'
 import Indicator from '../indicator'
 import type { AppDetailResponse } from '@/models/app'
-import NewAppDialog from '@/app/(commonLayout)/apps/NewAppDialog'
+import CreateAppDialog from '@/app/components/app/create-app-dialog'
 import AppIcon from '@/app/components/base/app-icon'
 import { useAppContext } from '@/context/app-context'
 
@@ -65,7 +65,7 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
                 appItems.map((app: AppDetailResponse) => (
                   <Menu.Item key={app.id}>
                     <div className={itemClassName} onClick={() =>
-                      router.push(`/app/${app.id}/overview`)
+                      router.push(`/app/${app.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`)
                     }>
                       <div className='relative w-6 h-6 mr-2 bg-[#D5F5F6] rounded-[6px]'>
                         <AppIcon size='tiny' />
@@ -101,7 +101,11 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
           </Menu.Items>
         </Transition>
       </Menu>
-      <NewAppDialog show={showNewAppDialog} onClose={() => setShowNewAppDialog(false)} />
+      <CreateAppDialog
+        show={showNewAppDialog}
+        onClose={() => setShowNewAppDialog(false)}
+        onSuccess={() => {}}
+      />
     </div>
   )
 }

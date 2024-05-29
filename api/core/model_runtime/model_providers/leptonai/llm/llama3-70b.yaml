@@ -1,0 +1,20 @@
+model: llama3-70b
+label:
+  zh_Hans: llama3-70b
+  en_US: llama3-70b
+model_type: llm
+features:
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 8192
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: max_tokens
+    use_template: max_tokens
+    default: 1024
+    min: 1
+    max: 1024

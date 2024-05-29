@@ -1,0 +1,13 @@
+identity:
+  author: Bowen Liang
+  name: wecom
+  label:
+    en_US: Wecom
+    zh_Hans: 企业微信
+    pt_BR: Wecom
+  description:
+    en_US: Wecom group bot
+    zh_Hans: 企业微信群机器人
+    pt_BR: Wecom group bot
+  icon: icon.png
+credentials_for_provider:

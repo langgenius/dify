@@ -5,17 +5,28 @@ import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
+import produce, { setAutoFreeze } from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import { checkOrSetAccessToken } from '../utils'
 import AppUnavailable from '../../base/app-unavailable'
 import useConversation from './hooks/use-conversation'
-import s from './style.module.css'
 import { ToastContext } from '@/app/components/base/toast'
 import ConfigScene from '@/app/components/share/chatbot/config-scence'
 import Header from '@/app/components/share/header'
-import { fetchAppInfo, fetchAppParams, fetchChatList, fetchConversations, fetchSuggestedQuestions, sendChatMessage, stopChatMessageResponding, updateFeedback } from '@/service/share'
-import type { ConversationItem, SiteInfo } from '@/models/share'
+import {
+  fetchAppInfo,
+  fetchAppMeta,
+  fetchAppParams,
+  fetchChatList,
+  fetchConversations,
+  fetchSuggestedQuestions,
+  generationConversationName,
+  sendChatMessage,
+  stopChatMessageResponding,
+  updateFeedback,
+} from '@/service/share'
+import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
+import type { AppMeta, ConversationItem, SiteInfo } from '@/models/share'
 import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { Feedbacktype, IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
@@ -26,6 +37,11 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import type { InstalledApp } from '@/models/explore'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import LogoHeader from '@/app/components/base/logo/logo-embeded-chat-header'
+import LogoAvatar from '@/app/components/base/logo/logo-embeded-chat-avatar'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import { Resolution, TransferMethod } from '@/types/app'
+import type { Annotation as AnnotationType } from '@/models/log'
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -51,15 +67,27 @@ const Main: FC<IMainProps> = ({
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [inited, setInited] = useState<boolean>(false)
   const [plan, setPlan] = useState<string>('basic') // basic/plus/pro
+  const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
+  const [customConfig, setCustomConfig] = useState<any>(null)
+  const [appMeta, setAppMeta] = useState<AppMeta | null>(null)
+
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
   useEffect(() => {
     if (siteInfo?.title) {
-      if (plan !== 'basic')
+      if (canReplaceLogo)
         document.title = `${siteInfo.title}`
       else
         document.title = `${siteInfo.title} - Powered by Dify`
     }
-  }, [siteInfo?.title, plan])
+  }, [siteInfo?.title, canReplaceLogo])
+
+  // onData change thought (the produce obj). https://github.com/immerjs/immer/issues/576
+  useEffect(() => {
+    setAutoFreeze(false)
+    return () => {
+      setAutoFreeze(true)
+    }
+  }, [])
 
   /*
   * conversation info
@@ -73,6 +101,7 @@ const Main: FC<IMainProps> = ({
     pinnedConversationList,
     setPinnedConversationList,
     currConversationId,
+    getCurrConversationId,
     setCurrConversationId,
     getConversationIdFromStorage,
     isNewConversation,
@@ -123,6 +152,8 @@ const Main: FC<IMainProps> = ({
   }
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
   const [speechToTextConfig, setSpeechToTextConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
+  const [textToSpeechConfig, setTextToSpeechConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
+  const [citationConfig, setCitationConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
 
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
   const [isChatStarted, { setTrue: setChatStarted, setFalse: setChatNotStarted }] = useBoolean(false)
@@ -172,7 +203,7 @@ const Main: FC<IMainProps> = ({
     }
 
     // update chat list of current conversation
-    if (!isNewConversation && !conversationIdChangeBecauseOfNew && !isResponsing) {
+    if (!isNewConversation && !conversationIdChangeBecauseOfNew && !isResponding) {
       fetchChatList(currConversationId, isInstalledApp, installedAppInfo?.id).then((res: any) => {
         const { data } = res
         const newChatList: IChatItem[] = generateNewChatListWithOpenstatement(notSyncToStateIntroduction, notSyncToStateInputs)
@@ -182,13 +213,16 @@ const Main: FC<IMainProps> = ({
             id: `question-${item.id}`,
             content: item.query,
             isAnswer: false,
+            message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
           })
           newChatList.push({
             id: item.id,
             content: item.answer,
+            agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
             feedback: item.feedback,
             isAnswer: true,
             citation: item.retriever_resources,
+            message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
           })
         })
         setChatList(newChatList)
@@ -218,7 +252,7 @@ const Main: FC<IMainProps> = ({
   const createNewChat = async () => {
     // if new chat is already exist, do not create new chat
     abortController?.abort()
-    setResponsingFalse()
+    setRespondingFalse()
     if (conversationList.some(item => item.id === '-1'))
       return
 
@@ -270,17 +304,20 @@ const Main: FC<IMainProps> = ({
         },
         plan: 'basic',
       }
-      : fetchAppInfo(), fetchAllConversations(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
+      : fetchAppInfo(), fetchAllConversations(), fetchAppParams(isInstalledApp, installedAppInfo?.id), fetchAppMeta(isInstalledApp, installedAppInfo?.id)])
   }
 
   // init
   useEffect(() => {
     (async () => {
       try {
-        const [appData, conversationData, appParams]: any = await fetchInitData()
-        const { app_id: appId, site: siteInfo, plan }: any = appData
+        const [appData, conversationData, appParams, appMeta]: any = await fetchInitData()
+        setAppMeta(appMeta)
+        const { app_id: appId, site: siteInfo, plan, can_replace_logo, custom_config }: any = appData
         setAppId(appId)
         setPlan(plan)
+        setCanReplaceLogo(can_replace_logo)
+        setCustomConfig(custom_config)
         const tempIsPublicVersion = siteInfo.prompt_public
         setIsPublicVersion(tempIsPublicVersion)
         const prompt_template = ''
@@ -290,7 +327,11 @@ const Main: FC<IMainProps> = ({
         const isNotNewConversation = allConversations.some(item => item.id === _conversationId)
         setAllConversationList(allConversations)
         // fetch new conversation info
-        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, retriever_resource }: any = appParams
+        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, text_to_speech, retriever_resource, file_upload, sensitive_word_avoidance }: any = appParams
+        setVisionConfig({
+          ...file_upload.image,
+          image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
+        })
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
         if (siteInfo.default_language)
           changeLanguage(siteInfo.default_language)
@@ -306,6 +347,8 @@ const Main: FC<IMainProps> = ({
         } as PromptConfig)
         setSuggestedQuestionsAfterAnswerConfig(suggested_questions_after_answer)
         setSpeechToTextConfig(speech_to_text)
+        setTextToSpeechConfig(text_to_speech)
+        setCitationConfig(retriever_resource)
 
         // setConversationList(conversations as ConversationItem[])
 
@@ -326,7 +369,7 @@ const Main: FC<IMainProps> = ({
     })()
   }, [])
 
-  const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
+  const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const { notify } = useContext(ToastContext)
   const logError = (message: string) => {
@@ -364,21 +407,69 @@ const Main: FC<IMainProps> = ({
 
   const [controlFocus, setControlFocus] = useState(0)
   const [isShowSuggestion, setIsShowSuggestion] = useState(false)
-  const doShowSuggestion = isShowSuggestion && !isResponsing
+  const doShowSuggestion = isShowSuggestion && !isResponding
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
+  const [isRespondingConIsCurrCon, setIsRespondingConCurrCon, getIsRespondingConIsCurrCon] = useGetState(true)
   const [shouldReload, setShouldReload] = useState(false)
+  const [userQuery, setUserQuery] = useState('')
+  const [visionConfig, setVisionConfig] = useState<VisionSettings>({
+    enabled: false,
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.local_file],
+  })
 
-  const handleSend = async (message: string) => {
-    if (isResponsing) {
+  const updateCurrentQA = ({
+    responseItem,
+    questionId,
+    placeholderAnswerId,
+    questionItem,
+  }: {
+    responseItem: IChatItem
+    questionId: string
+    placeholderAnswerId: string
+    questionItem: IChatItem
+  }) => {
+    // closesure new list is outdated.
+    const newListWithAnswer = produce(
+      getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+      (draft) => {
+        if (!draft.find(item => item.id === questionId))
+          draft.push({ ...questionItem })
+
+        draft.push({ ...responseItem })
+      })
+    setChatList(newListWithAnswer)
+  }
+
+  const handleSend = async (message: string, files?: VisionFile[]) => {
+    if (isResponding) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return
     }
-    const data = {
+
+    if (files?.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
+      return false
+    }
+    const data: Record<string, any> = {
       inputs: currInputs,
       query: message,
       conversation_id: isNewConversation ? null : currConversationId,
+    }
+
+    if (visionConfig.enabled && files && files?.length > 0) {
+      data.files = files.map((item) => {
+        if (item.transfer_method === TransferMethod.local_file) {
+          return {
+            ...item,
+            url: '',
+          }
+        }
+        return item
+      })
     }
 
     // qustion
@@ -387,6 +478,7 @@ const Main: FC<IMainProps> = ({
       id: questionId,
       content: message,
       isAnswer: false,
+      message_files: files,
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
@@ -399,48 +491,69 @@ const Main: FC<IMainProps> = ({
     const newList = [...getChatList(), questionItem, placeholderAnswerItem]
     setChatList(newList)
 
+    let isAgentMode = false
+
     // answer
     const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
+      agent_thoughts: [],
+      message_files: [],
       isAnswer: true,
     }
+    let hasSetResponseId = false
 
-    let tempNewConversationId = ''
+    const prevTempNewConversationId = getCurrConversationId() || '-1'
+    let tempNewConversationId = prevTempNewConversationId
 
     setHasStopResponded(false)
-    setResponsingTrue()
+    setRespondingTrue()
     setIsShowSuggestion(false)
     sendChatMessage(data, {
       getAbortController: (abortController) => {
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        responseItem.content = responseItem.content + message
-        responseItem.id = messageId
+        if (!isAgentMode) {
+          responseItem.content = responseItem.content + message
+        }
+        else {
+          const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+          if (lastThought)
+            lastThought.thought = lastThought.thought + message // need immer setAutoFreeze
+        }
+        if (messageId && !hasSetResponseId) {
+          responseItem.id = messageId
+          hasSetResponseId = true
+        }
+
         if (isFirstMessage && newConversationId)
           tempNewConversationId = newConversationId
 
         setMessageTaskId(taskId)
-        // closesure new list is outdated.
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
+        // has switched to other conversation
+        if (prevTempNewConversationId !== getCurrConversationId()) {
+          setIsRespondingConCurrCon(false)
+          return
+        }
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
       },
       async onCompleted(hasError?: boolean) {
-        setResponsingFalse()
         if (hasError)
           return
 
         if (getConversationIdChangeBecauseOfNew()) {
           const { data: allConversations }: any = await fetchAllConversations()
-          setAllConversationList(allConversations)
+          const newItem: any = await generationConversationName(isInstalledApp, installedAppInfo?.id, allConversations[0].id)
+          const newAllConversations = produce(allConversations, (draft: any) => {
+            draft[0].name = newItem.name
+          })
+          setAllConversationList(newAllConversations as any)
           noticeUpdateList()
         }
         setConversationIdChangeBecauseOfNew(false)
@@ -452,11 +565,108 @@ const Main: FC<IMainProps> = ({
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
         }
+        setRespondingFalse()
       },
-      onError(errorMessage, errorCode) {
-        if (['provider_not_initialize', 'completion_request_error'].includes(errorCode as string))
-          setShouldReload(true)
-        setResponsingFalse()
+      onFile(file) {
+        const lastThought = responseItem.agent_thoughts?.[responseItem.agent_thoughts?.length - 1]
+        if (lastThought)
+          lastThought.message_files = [...(lastThought as any).message_files, { ...file }]
+
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
+      },
+      onThought(thought) {
+        isAgentMode = true
+        const response = responseItem as any
+        if (thought.message_id && !hasSetResponseId) {
+          response.id = thought.message_id
+          hasSetResponseId = true
+        }
+        // responseItem.id = thought.message_id;
+        if (response.agent_thoughts.length === 0) {
+          response.agent_thoughts.push(thought)
+        }
+        else {
+          const lastThought = response.agent_thoughts[response.agent_thoughts.length - 1]
+          // thought changed but still the same thought, so update.
+          if (lastThought.id === thought.id) {
+            thought.thought = lastThought.thought
+            thought.message_files = lastThought.message_files
+            responseItem.agent_thoughts![response.agent_thoughts.length - 1] = thought
+          }
+          else {
+            responseItem.agent_thoughts!.push(thought)
+          }
+        }
+        // has switched to other conversation
+        if (prevTempNewConversationId !== getCurrConversationId()) {
+          setIsRespondingConCurrCon(false)
+          return false
+        }
+
+        updateCurrentQA({
+          responseItem,
+          questionId,
+          placeholderAnswerId,
+          questionItem,
+        })
+      },
+      onMessageEnd: (messageEnd) => {
+        if (messageEnd.metadata?.annotation_reply) {
+          responseItem.id = messageEnd.id
+          responseItem.annotation = ({
+            id: messageEnd.metadata.annotation_reply.id,
+            authorName: messageEnd.metadata.annotation_reply.account.name,
+          } as AnnotationType)
+          const newListWithAnswer = produce(
+            getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+            (draft) => {
+              if (!draft.find(item => item.id === questionId))
+                draft.push({ ...questionItem })
+
+              draft.push({
+                ...responseItem,
+              })
+            })
+          setChatList(newListWithAnswer)
+          return
+        }
+        // not support show citation
+        // responseItem.citation = messageEnd.retriever_resources
+        if (!isInstalledApp)
+          return
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
+      },
+      onMessageReplace: (messageReplace) => {
+        if (isInstalledApp) {
+          responseItem.content = messageReplace.answer
+        }
+        else {
+          setChatList(produce(
+            getChatList(),
+            (draft) => {
+              const current = draft.find(item => item.id === messageReplace.id)
+
+              if (current)
+                current.content = messageReplace.answer
+            },
+          ))
+        }
+      },
+      onError() {
+        setRespondingFalse()
         // role back placeholder answer
         setChatList(produce(getChatList(), (draft) => {
           draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
@@ -487,8 +697,21 @@ const Main: FC<IMainProps> = ({
     createNewChat()
   }
 
+  const handleConversationIdChange = (id: string) => {
+    if (id === '-1') {
+      createNewChat()
+      setConversationIdChangeBecauseOfNew(true)
+    }
+    else {
+      setConversationIdChangeBecauseOfNew(false)
+    }
+    // trigger handleConversationSwitch
+    setCurrConversationId(id, appId)
+    setIsShowSuggestion(false)
+  }
+
   const difyIcon = (
-    <div className={s.difyHeader}></div>
+    <LogoHeader />
   )
 
   if (appUnavailable)
@@ -506,14 +729,15 @@ const Main: FC<IMainProps> = ({
         title={siteInfo.title}
         icon=''
         customerIcon={difyIcon}
-        icon_background={siteInfo.icon_background}
+        icon_background={siteInfo.icon_background || ''}
         isEmbedScene={true}
         isMobile={isMobile}
+        onCreateNewChat={() => handleConversationIdChange('-1')}
       />
 
       <div className={'flex bg-white overflow-hidden'}>
         <div className={cn(
-          isInstalledApp ? s.installedApp : 'h-[calc(100vh_-_3rem)]',
+          isInstalledApp ? 'h-full' : 'h-[calc(100vh_-_3rem)]',
           'flex-grow flex flex-col overflow-y-auto',
         )
         }>
@@ -528,6 +752,8 @@ const Main: FC<IMainProps> = ({
             savedInputs={currInputs as Record<string, any>}
             onInputsChange={setCurrInputs}
             plan={plan}
+            canReplaceLogo={canReplaceLogo}
+            customConfig={customConfig}
           ></ConfigScene>
           {
             shouldReload && (
@@ -547,19 +773,21 @@ const Main: FC<IMainProps> = ({
           }
           {
             hasSetInputs && (
-              <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full mx-auto mb-3.5 overflow-hidden')}>
+              <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponding ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full mx-auto mb-3.5 overflow-hidden')}>
                 <div className='h-full overflow-y-auto' ref={chatListDomRef}>
                   <Chat
                     chatList={chatList}
+                    query={userQuery}
+                    onQueryChange={setUserQuery}
                     onSend={handleSend}
                     isHideFeedbackEdit
                     onFeedback={handleFeedback}
-                    isResponsing={isResponsing}
-                    canStopResponsing={!!messageTaskId}
-                    abortResponsing={async () => {
+                    isResponding={isResponding}
+                    canStopResponding={!!messageTaskId && isRespondingConIsCurrCon}
+                    abortResponding={async () => {
                       await stopChatMessageResponding(appId, messageTaskId, isInstalledApp, installedAppInfo?.id)
                       setHasStopResponded(true)
-                      setResponsingFalse()
+                      setRespondingFalse()
                     }}
                     checkCanSend={checkCanSend}
                     controlFocus={controlFocus}
@@ -567,7 +795,12 @@ const Main: FC<IMainProps> = ({
                     suggestionList={suggestQuestions}
                     displayScene='web'
                     isShowSpeechToText={speechToTextConfig?.enabled}
-                    answerIconClassName={s.difyIcon}
+                    isShowTextToSpeech={textToSpeechConfig?.enabled}
+                    isShowCitation={citationConfig?.enabled && isInstalledApp}
+                    answerIcon={<LogoAvatar className='relative shrink-0' />}
+                    visionConfig={visionConfig}
+                    allToolIcons={appMeta?.tool_icons || {}}
+                    customDisclaimer={siteInfo.custom_disclaimer}
                   />
                 </div>
               </div>)

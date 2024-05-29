@@ -1,4 +1,6 @@
-from celery import Task, Celery
+from datetime import timedelta
+
+from celery import Celery, Task
 from flask import Flask
 
 
@@ -26,6 +28,7 @@ def init_app(app: Flask) -> Celery:
 
     celery_app.conf.update(
         result_backend=app.config["CELERY_RESULT_BACKEND"],
+        broker_connection_retry_on_startup=True,
     )
 
     if app.config["BROKER_USE_SSL"]:
@@ -35,4 +38,25 @@ def init_app(app: Flask) -> Celery:
         
     celery_app.set_default()
     app.extensions["celery"] = celery_app
+
+    imports = [
+        "schedule.clean_embedding_cache_task",
+        "schedule.clean_unused_datasets_task",
+    ]
+
+    beat_schedule = {
+        'clean_embedding_cache_task': {
+            'task': 'schedule.clean_embedding_cache_task.clean_embedding_cache_task',
+            'schedule': timedelta(days=1),
+        },
+        'clean_unused_datasets_task': {
+            'task': 'schedule.clean_unused_datasets_task.clean_unused_datasets_task',
+            'schedule': timedelta(days=1),
+        }
+    }
+    celery_app.conf.update(
+        beat_schedule=beat_schedule,
+        imports=imports
+    )
+
     return celery_app

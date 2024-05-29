@@ -1,11 +1,12 @@
-from flask_restful import reqparse, marshal_with, fields
+from flask_restful import fields, marshal_with, reqparse
 from flask_restful.inputs import int_range
 from werkzeug.exceptions import NotFound
 
 from controllers.web import api
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
-from libs.helper import uuid_value, TimestampField
+from fields.conversation_fields import message_file_fields
+from libs.helper import TimestampField, uuid_value
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
@@ -18,6 +19,7 @@ message_fields = {
     'inputs': fields.Raw,
     'query': fields.String,
     'answer': fields.String,
+    'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
     'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
     'created_at': TimestampField
 }

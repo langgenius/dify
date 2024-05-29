@@ -1,0 +1,54 @@
+identity:
+  name: aippt
+  author: Dify
+  label:
+    en_US: AIPPT
+    zh_Hans: AIPPT
+description:
+  human:
+    en_US: AI-generated PPT with one click, input your content topic, and let AI serve you one-stop
+    zh_Hans: AI一键生成PPT，输入你的内容主题，让AI为你一站式服务到底
+  llm: A tool used to generate PPT with AI, input your content topic, and let AI generate PPT for you.
+parameters:
+  - name: title
+    type: string
+    required: true
+    label:
+      en_US: Title
+      zh_Hans: 标题
+    human_description:
+      en_US: The title of the PPT.
+      zh_Hans: PPT的标题。
+    llm_description: The title of the PPT, which will be used to generate the PPT outline.
+    form: llm
+  - name: outline
+    type: string
+    required: false
+    label:
+      en_US: Outline
+      zh_Hans: 大纲
+    human_description:
+      en_US: The outline of the PPT
+      zh_Hans: PPT的大纲
+    llm_description: The outline of the PPT, which will be used to generate the PPT content. provide it if you have.
+    form: llm
+  - name: llm
+    type: select
+    required: true
+    label:
+      en_US: LLM model
+      zh_Hans: 生成大纲的LLM
+    options:
+      - value: aippt
+        label:
+          en_US: AIPPT default model
+          zh_Hans: AIPPT默认模型
+      - value: wenxin
+        label:
+          en_US: Wenxin ErnieBot
+          zh_Hans: 文心一言
+    default: aippt
+    human_description:
+      en_US: The LLM model used for generating PPT outline.
+      zh_Hans: 用于生成PPT大纲的LLM模型。
+    form: form

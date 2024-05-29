@@ -27,12 +27,20 @@ export const routes = {
     url: () => `/conversations`,
   },
   renameConversation: {
-    method: "PATCH",
-    url: (conversation_id) => `/conversations/${conversation_id}`,
+    method: "POST",
+    url: (conversation_id) => `/conversations/${conversation_id}/name`,
   },
   deleteConversation: {
     method: "DELETE",
     url: (conversation_id) => `/conversations/${conversation_id}`,
+  },
+  fileUpload: {
+    method: "POST",
+    url: () => `/files/upload`,
+  },
+  runWorkflow: {
+    method: "POST",
+    url: () => `/workflows/run`,
   },
 };
 
@@ -51,11 +59,15 @@ export class DifyClient {
     endpoint,
     data = null,
     params = null,
-    stream = false
+    stream = false,
+    headerParams = {}
   ) {
     const headers = {
-      Authorization: `Bearer ${this.apiKey}`,
-      "Content-Type": "application/json",
+      ...{
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      ...headerParams
     };
 
     const url = `${this.baseUrl}${endpoint}`;
@@ -73,7 +85,7 @@ export class DifyClient {
       response = await axios({
         method,
         url,
-        data,
+        ...(method !== "GET" && { data }),
         params,
         headers,
         responseType: "json",
@@ -104,19 +116,47 @@ export class DifyClient {
       params
     );
   }
+
+  fileUpload(data) {
+    return this.sendRequest(
+      routes.fileUpload.method,
+      routes.fileUpload.url(),
+      data,
+      null,
+      false,
+      {
+        "Content-Type": 'multipart/form-data'
+      }
+    );
+  }
 }
 
 export class CompletionClient extends DifyClient {
-  createCompletionMessage(inputs, query, user, stream = false) {
+  createCompletionMessage(inputs, user, stream = false, files = null) {
     const data = {
       inputs,
-      query,
       user,
       response_mode: stream ? "streaming" : "blocking",
+      files,
     };
     return this.sendRequest(
       routes.createCompletionMessage.method,
       routes.createCompletionMessage.url(),
+      data,
+      null,
+      stream
+    );
+  }
+
+  runWorkflow(inputs, user, stream = false, files = null) {
+    const data = {
+      inputs,
+      user,
+      response_mode: stream ? "streaming" : "blocking",
+    };
+    return this.sendRequest(
+      routes.runWorkflow.method,
+      routes.runWorkflow.url(),
       data,
       null,
       stream
@@ -130,13 +170,15 @@ export class ChatClient extends DifyClient {
     query,
     user,
     stream = false,
-    conversation_id = null
+    conversation_id = null,
+    files = null
   ) {
     const data = {
       inputs,
       query,
       user,
       response_mode: stream ? "streaming" : "blocking",
+      files,
     };
     if (conversation_id) data.conversation_id = conversation_id;
 
@@ -181,8 +223,8 @@ export class ChatClient extends DifyClient {
     );
   }
 
-  renameConversation(conversation_id, name, user) {
-    const data = { name, user };
+  renameConversation(conversation_id, name, user, auto_generate) {
+    const data = { name, user, auto_generate };
     return this.sendRequest(
       routes.renameConversation.method,
       routes.renameConversation.url(conversation_id),

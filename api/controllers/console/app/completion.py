@@ -1,28 +1,31 @@
-# -*- coding:utf-8 -*-
-import json
 import logging
-from typing import Generator, Union
 
 import flask_login
-from flask import Response, stream_with_context
-from libs.login import login_required
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
 from controllers.console import api
-from controllers.console.app import _get_app
-from controllers.console.app.error import ConversationCompletedError, AppUnavailableError, \
-    ProviderNotInitializeError, CompletionRequestError, ProviderQuotaExceededError, \
-    ProviderModelCurrentlyNotSupportError
+from controllers.console.app.error import (
+    AppUnavailableError,
+    CompletionRequestError,
+    ConversationCompletedError,
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
+from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.conversation_message_task import PubHandler
-from core.model_providers.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
-    LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.model_runtime.errors.invoke import InvokeError
+from libs import helper
 from libs.helper import uuid_value
-from flask_restful import Resource, reqparse
-
-from services.completion_service import CompletionService
+from libs.login import login_required
+from models.model import AppMode
+from services.app_generate_service import AppGenerateService
 
 
 # define completion message api for user
@@ -31,35 +34,32 @@ class CompletionMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app_model = _get_app(app_id, 'completion')
-
+    @get_app_model(mode=AppMode.COMPLETION)
+    def post(self, app_model):
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, location='json')
         parser.add_argument('query', type=str, location='json', default='')
+        parser.add_argument('files', type=list, required=False, location='json')
         parser.add_argument('model_config', type=dict, required=True, location='json')
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
         parser.add_argument('retriever_from', type=str, required=False, default='dev', location='json')
         args = parser.parse_args()
 
         streaming = args['response_mode'] != 'blocking'
+        args['auto_generate_name'] = False
 
         account = flask_login.current_user
 
         try:
-            response = CompletionService.completion(
+            response = AppGenerateService.generate(
                 app_model=app_model,
                 user=account,
                 args=args,
-                from_source='console',
-                streaming=streaming,
-                is_model_config_override=True
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=streaming
             )
 
-            return compact_response(response)
+            return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -73,9 +73,8 @@ class CompletionMessageApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
         except Exception as e:
@@ -87,15 +86,11 @@ class CompletionMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id, task_id):
-        app_id = str(app_id)
-
-        # get app info
-        _get_app(app_id, 'completion')
-
+    @get_app_model(mode=AppMode.COMPLETION)
+    def post(self, app_model, task_id):
         account = flask_login.current_user
 
-        PubHandler.stop(account, task_id)
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
 
         return {'result': 'success'}, 200
 
@@ -104,15 +99,12 @@ class ChatMessageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id):
-        app_id = str(app_id)
-
-        # get app info
-        app_model = _get_app(app_id, 'chat')
-
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
+    def post(self, app_model):
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, location='json')
         parser.add_argument('query', type=str, required=True, location='json')
+        parser.add_argument('files', type=list, required=False, location='json')
         parser.add_argument('model_config', type=dict, required=True, location='json')
         parser.add_argument('conversation_id', type=uuid_value, location='json')
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
@@ -120,20 +112,20 @@ class ChatMessageApi(Resource):
         args = parser.parse_args()
 
         streaming = args['response_mode'] != 'blocking'
+        args['auto_generate_name'] = False
 
         account = flask_login.current_user
 
         try:
-            response = CompletionService.completion(
+            response = AppGenerateService.generate(
                 app_model=app_model,
                 user=account,
                 args=args,
-                from_source='console',
-                streaming=streaming,
-                is_model_config_override=True
+                invoke_from=InvokeFrom.DEBUGGER,
+                streaming=streaming
             )
 
-            return compact_response(response)
+            return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except services.errors.conversation.ConversationCompletedError:
@@ -147,9 +139,8 @@ class ChatMessageApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
         except ValueError as e:
             raise e
         except Exception as e:
@@ -157,53 +148,15 @@ class ChatMessageApi(Resource):
             raise InternalServerError()
 
 
-def compact_response(response: Union[dict | Generator]) -> Response:
-    if isinstance(response, dict):
-        return Response(response=json.dumps(response), status=200, mimetype='application/json')
-    else:
-        def generate() -> Generator:
-            try:
-                for chunk in response:
-                    yield chunk
-            except services.errors.conversation.ConversationNotExistsError:
-                yield "data: " + json.dumps(api.handle_error(NotFound("Conversation Not Exists.")).get_json()) + "\n\n"
-            except services.errors.conversation.ConversationCompletedError:
-                yield "data: " + json.dumps(api.handle_error(ConversationCompletedError()).get_json()) + "\n\n"
-            except services.errors.app_model_config.AppModelConfigBrokenError:
-                logging.exception("App model config broken.")
-                yield "data: " + json.dumps(api.handle_error(AppUnavailableError()).get_json()) + "\n\n"
-            except ProviderTokenNotInitError as ex:
-                yield "data: " + json.dumps(api.handle_error(ProviderNotInitializeError(ex.description)).get_json()) + "\n\n"
-            except QuotaExceededError:
-                yield "data: " + json.dumps(api.handle_error(ProviderQuotaExceededError()).get_json()) + "\n\n"
-            except ModelCurrentlyNotSupportError:
-                yield "data: " + json.dumps(api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
-            except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                    LLMRateLimitError, LLMAuthorizationError) as e:
-                yield "data: " + json.dumps(api.handle_error(CompletionRequestError(str(e))).get_json()) + "\n\n"
-            except ValueError as e:
-                yield "data: " + json.dumps(api.handle_error(e).get_json()) + "\n\n"
-            except Exception:
-                logging.exception("internal server error.")
-                yield "data: " + json.dumps(api.handle_error(InternalServerError()).get_json()) + "\n\n"
-
-        return Response(stream_with_context(generate()), status=200,
-                        mimetype='text/event-stream')
-
-
 class ChatMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, app_id, task_id):
-        app_id = str(app_id)
-
-        # get app info
-        _get_app(app_id, 'chat')
-
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    def post(self, app_model, task_id):
         account = flask_login.current_user
 
-        PubHandler.stop(account, task_id)
+        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
 
         return {'result': 'success'}, 200
 

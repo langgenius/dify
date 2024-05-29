@@ -1,6 +1,8 @@
-from extensions.ext_database import db
+from datetime import datetime, timezone
+
 from celery import states
-from datetime import datetime
+
+from extensions.ext_database import db
 
 
 class CeleryTask(db.Model):
@@ -13,8 +15,8 @@ class CeleryTask(db.Model):
     task_id = db.Column(db.String(155), unique=True)
     status = db.Column(db.String(50), default=states.PENDING)
     result = db.Column(db.PickleType, nullable=True)
-    date_done = db.Column(db.DateTime, default=datetime.utcnow,
-                          onupdate=datetime.utcnow, nullable=True)
+    date_done = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+                          onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=True)
     traceback = db.Column(db.Text, nullable=True)
     name = db.Column(db.String(155), nullable=True)
     args = db.Column(db.LargeBinary, nullable=True)
@@ -33,5 +35,5 @@ class CeleryTaskSet(db.Model):
                    autoincrement=True, primary_key=True)
     taskset_id = db.Column(db.String(155), unique=True)
     result = db.Column(db.PickleType, nullable=True)
-    date_done = db.Column(db.DateTime, default=datetime.utcnow,
+    date_done = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
                           nullable=True)
