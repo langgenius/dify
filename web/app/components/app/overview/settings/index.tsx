@@ -103,7 +103,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     }
 
     const validateColorHex = (hex: string | null) => {
-      if (hex === null)
+      if (hex === null || hex.length === 0)
         return true
 
       const regex = /#([A-Fa-f0-9]{6})/
@@ -189,7 +189,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         <div className={`mt-8 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.chatColorTheme`)}</div>
         <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.chatColorThemeDesc`)}</p>
         <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
-          value={inputInfo.chatColorTheme}
+          value={inputInfo.chatColorTheme ?? ''}
           onChange={onChange('chatColorTheme')}
           placeholder= 'E.g #A020F0'
         />
