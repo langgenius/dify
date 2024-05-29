@@ -10,6 +10,8 @@ identity:
     zh_Hans: 通过生成式 AI 激活人类的潜力
     pt_BR: Activating humanity's potential through generative AI
   icon: icon.svg
+  tags:
+    - image
 credentials_for_provider:
   api_key:
     type: secret-input
