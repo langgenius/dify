@@ -13,6 +13,7 @@ export class Theme {
   public backgroundButtonDefaultColorStyle = 'background-color: #1C64F2'
   public roundedBackgroundColorStyle = 'background-color: rgb(245 248 255)'
   public chatBubbleColorStyle = 'background-color: rgb(225 239 254)'
+  public chatBubbleColor = 'rgb(225 239 254)'
 
   constructor(chatColorTheme: string | null = null, chatColorThemeInverted = false) {
     this.chatColorTheme = chatColorTheme
@@ -28,6 +29,7 @@ export class Theme {
       this.backgroundButtonDefaultColorStyle = `background-color: ${this.primaryColor}`
       this.roundedBackgroundColorStyle = `background-color: ${hexToRGBA(this.primaryColor, 0.05)}`
       this.chatBubbleColorStyle = `background-color: ${hexToRGBA(this.primaryColor, 0.15)}`
+      this.chatBubbleColor = `${hexToRGBA(this.primaryColor, 0.15)}`
     }
   }
 
