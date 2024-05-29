@@ -46,7 +46,6 @@ const LocaleLayout = ({
         <Topbar/>
         <BrowerInitor>
           <SentryInitor>
-            {/* @ts-expect-error Async Server Component */}
             <I18nServer>{children}</I18nServer>
           </SentryInitor>
         </BrowerInitor>
