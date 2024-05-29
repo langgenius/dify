@@ -12,6 +12,7 @@ from core.tools.errors import (
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
+from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 from core.tools.utils.yaml_utils import load_yaml_file
 from core.utils.module_import_helper import load_single_subclass_from_source
 
@@ -200,16 +201,8 @@ class BuiltinToolProviderController(ToolProviderController):
             
             # the parameter is not set currently, set the default value if needed
             if parameter_schema.default is not None:
-                default_value = parameter_schema.default
-                # parse default value into the correct type
-                if parameter_schema.type == ToolParameter.ToolParameterType.STRING or \
-                    parameter_schema.type == ToolParameter.ToolParameterType.SELECT:
-                    default_value = str(default_value)
-                elif parameter_schema.type == ToolParameter.ToolParameterType.NUMBER:
-                    default_value = float(default_value)
-                elif parameter_schema.type == ToolParameter.ToolParameterType.BOOLEAN:
-                    default_value = bool(default_value)
-
+                default_value = ToolParameterConverter.cast_parameter_by_type(parameter_schema.default,
+                                                                              parameter_schema.type)
                 tool_parameters[parameter] = default_value
     
     def validate_credentials(self, credentials: dict[str, Any]) -> None:
