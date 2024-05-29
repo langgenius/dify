@@ -47,7 +47,7 @@ const LocaleLayout = ({
         <BrowerInitor>
           <SentryInitor>
             {/* @ts-expect-error Async Server Component */}
-            <I18nServer locale={locale}>{children}</I18nServer>
+            <I18nServer>{children}</I18nServer>
           </SentryInitor>
         </BrowerInitor>
       </body>
