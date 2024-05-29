@@ -102,7 +102,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       return
     }
 
-    const validateColorHex = (hex: string) => {
+    const validateColorHex = (hex: string | null) => {
+      if (hex === null)
+        return true
+
       const regex = /#([A-Fa-f0-9]{6})/
       const check = regex.test(hex)
       return check

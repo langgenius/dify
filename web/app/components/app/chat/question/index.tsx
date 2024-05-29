@@ -27,8 +27,10 @@ const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar,
   return (
     <div className={`flex items-start justify-end ${isShowPromptLog && 'first-of-type:pt-[14px]'}`} key={id} ref={ref}>
       <div className={s.questionWrapWrap}>
-
         <div className={`${s.question} group relative text-sm text-gray-900`}>
+          <svg width="8" height="12" viewBox="0 0 8 12" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ position: 'absolute', right: '0' }}>
+            <path d="M6.96353 1.5547C7.40657 0.890144 6.93018 0 6.13148 0H0V12L6.96353 1.5547Z" fill={theme?.theme?.chatBubbleColor ?? '#E1EFFE'}/>
+          </svg>
           <div
             className={'mr-2 py-3 px-4 bg-blue-500 rounded-tl-2xl rounded-b-2xl'}
             style={theme?.theme?.chatBubbleColorStyle ? CssTransform(theme.theme.chatBubbleColorStyle) : {}}

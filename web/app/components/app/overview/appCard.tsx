@@ -254,6 +254,7 @@ function AppCard({
               onSave={onSaveSiteConfig}
             />
             <EmbeddedModal
+              siteInfo={appInfo.site}
               isShow={showEmbedded}
               onClose={() => setShowEmbedded(false)}
               appBaseUrl={app_base_url}

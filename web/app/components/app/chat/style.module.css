@@ -24,8 +24,7 @@
   border-radius: 50%;
 }
 
-.answer::before,
-.question::before {
+.answer::before {
   content: '';
   position: absolute;
   top: 0;
@@ -87,10 +86,10 @@ pre:hover .copyBtn {
   display: flex;
 }
 
-.question::before {
+/* .question::before {
   right: 0;
   background: url(./icons/question.svg) no-repeat;
-}
+} */
 
 .textArea {
   padding-top: 13px;

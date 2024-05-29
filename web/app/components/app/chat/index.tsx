@@ -7,9 +7,10 @@ import cn from 'classnames'
 import Recorder from 'js-audio-recorder'
 import { useTranslation } from 'react-i18next'
 import type { ThemeBuilder } from '../../share/chatbot/theme/theme-context'
+import { CssTransform } from '../../share/chatbot/theme/utils'
 import s from './style.module.css'
 import type { DisplayScene, FeedbackFunc, IChatItem } from './type'
-import { TryToAskIcon, stopIcon } from './icon-component'
+import { SendIcon, TryToAskIcon, stopIcon } from './icon-component'
 import Answer from './answer'
 import Question from './question'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
@@ -180,9 +181,23 @@ const Chat: FC<IChatProps> = ({
     }
   }
 
+  const [isActiveIconFocused, setActiveIconFocused] = useState(false)
+
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const sendBtn = <div className={cn(!(!query || query.trim() === '') && s.sendBtnActive, `${s.sendBtn} w-8 h-8 cursor-pointer rounded-md`)} onClick={() => handleSend()}></div>
+  const sendBtn
+    = theme
+      ? <div
+        className={'w-8 h-8 cursor-pointer rounded-md'} onClick={() => handleSend()}
+        onMouseEnter={() => setActiveIconFocused(true)}
+        onMouseLeave={() => setActiveIconFocused(false)}
+        style={isActiveIconFocused ? CssTransform(theme?.theme?.chatBubbleColorStyle ?? '') : {}}
+      >
+        <SendIcon
+          color={(isActiveIconFocused || query || (query.trim() !== '')) ? theme?.theme?.primaryColor : '#d1d5db'}
+        />
+      </div>
+      : <div className={cn(!(!query || query.trim() === '') && s.sendBtnActive, `${s.sendBtn} w-8 h-8 cursor-pointer rounded-md`)} onClick={() => handleSend()}></div>
   const suggestionListRef = useRef<HTMLDivElement>(null)
   const [hasScrollbar, setHasScrollbar] = useState(false)
   useLayoutEffect(() => {

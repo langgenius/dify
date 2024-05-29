@@ -8,8 +8,11 @@ import copyStyle from '@/app/components/app/chat/copy-btn/style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import { useAppContext } from '@/context/app-context'
 import { IS_CE_EDITION } from '@/config'
+import { useThemeContext } from '@/app/components/share/chatbot/theme/theme-context'
+import type { SiteInfo } from '@/models/share'
 
 type Props = {
+  siteInfo: SiteInfo
   isShow: boolean
   onClose: () => void
   accessToken: string
@@ -28,7 +31,7 @@ const OPTION_MAP = {
 </iframe>`,
   },
   scripts: {
-    getContent: (url: string, token: string, isTestEnv?: boolean) =>
+    getContent: (url: string, token: string, primaryColor: string, isTestEnv?: boolean) =>
       `<script>
  window.difyChatbotConfig = {
   token: '${token}'${isTestEnv
@@ -44,7 +47,12 @@ const OPTION_MAP = {
  src="${url}/embed.min.js"
  id="${token}"
  defer>
-</script>`,
+</script>
+<style>
+  #dify-chatbot-bubble-button {
+    background-color: ${primaryColor} !important;
+  }
+</style>`,
   },
   chromePlugin: {
     getContent: (url: string, token: string) => `ChatBot URL: ${url}/chatbot/${token}`,
@@ -60,12 +68,14 @@ type OptionStatus = {
   chromePlugin: boolean
 }
 
-const Embedded = ({ isShow, onClose, appBaseUrl, accessToken, className }: Props) => {
+const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, className }: Props) => {
   const { t } = useTranslation()
   const [option, setOption] = useState<Option>('iframe')
   const [isCopied, setIsCopied] = useState<OptionStatus>({ iframe: false, scripts: false, chromePlugin: false })
 
   const { langeniusVersionInfo } = useAppContext()
+  const themeContext = useThemeContext()
+  themeContext.buildTheme(siteInfo.chat_color_theme, siteInfo.chat_color_theme_inverted)
   const isTestEnv = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
   const onClickCopy = () => {
     if (option === 'chromePlugin') {
@@ -74,7 +84,7 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken, className }: Props
         copy(splitUrl[1])
     }
     else {
-      copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv))
+      copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeContext.theme?.primaryColor ?? 'rgb(21, 94, 239)', isTestEnv))
     }
     setIsCopied({ ...isCopied, [option]: true })
   }
@@ -154,7 +164,7 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken, className }: Props
         </div>
         <div className="flex items-start justify-start w-full gap-2 p-3 overflow-x-auto">
           <div className="grow shrink basis-0 text-slate-700 text-[13px] leading-tight font-mono">
-            <pre className='select-text'>{OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv)}</pre>
+            <pre className='select-text'>{OPTION_MAP[option].getContent(appBaseUrl, accessToken, themeContext.theme?.primaryColor ?? 'rgb(21, 94, 239) ', isTestEnv)}</pre>
           </div>
         </div>
       </div>
