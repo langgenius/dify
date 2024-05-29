@@ -126,17 +126,13 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     return status
   }
 
-  const [isStopQuery, setIsStopQuery] = useState(false)
-  const isStopQueryRef = useRef(isStopQuery)
-  useEffect(() => {
-    isStopQueryRef.current = isStopQuery
-  }, [isStopQuery])
+  const isStopQuery = useRef(false)
   const stopQueryStatus = () => {
-    setIsStopQuery(true)
+    isStopQuery.current = true
   }
 
   const startQueryStatus = async () => {
-    if (isStopQueryRef.current)
+    if (isStopQuery.current)
       return
 
     try {
@@ -146,6 +142,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
         detailUpdate()
         return
       }
+
       await sleep(2500)
       await startQueryStatus()
     }
@@ -156,12 +153,11 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
   }
 
   useEffect(() => {
-    setIsStopQuery(false)
+    isStopQuery.current = false
     startQueryStatus()
     return () => {
       stopQueryStatus()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { data: indexingEstimateDetail, error: indexingEstimateErr } = useSWR({
