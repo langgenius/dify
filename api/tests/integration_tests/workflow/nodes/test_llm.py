@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
 from core.model_manager import ModelInstance
@@ -30,6 +30,7 @@ def test_execute_llm(setup_openai_mock):
         app_id='1',
         workflow_id='1',
         user_id='1',
+        invoke_from=InvokeFrom.WEB_APP,
         user_from=UserFrom.ACCOUNT,
         config={
             'id': 'llm',
@@ -130,6 +131,7 @@ def test_execute_llm_with_jinja2(setup_code_executor_mock, setup_openai_mock):
         app_id='1',
         workflow_id='1',
         user_id='1',
+        invoke_from=InvokeFrom.WEB_APP,
         user_from=UserFrom.ACCOUNT,
         config={
             'id': 'llm',
