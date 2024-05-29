@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 import resend
@@ -16,7 +17,7 @@ class Mail:
         if app.config.get('MAIL_TYPE'):
             if app.config.get('MAIL_DEFAULT_SEND_FROM'):
                 self._default_send_from = app.config.get('MAIL_DEFAULT_SEND_FROM')
-
+            
             if app.config.get('MAIL_TYPE') == 'resend':
                 api_key = app.config.get('RESEND_API_KEY')
                 if not api_key:
@@ -42,6 +43,9 @@ class Mail:
                 )
             else:
                 raise ValueError('Unsupported mail type {}'.format(app.config.get('MAIL_TYPE')))
+        else:
+            logging.warning('MAIL_TYPE is not set')
+            
 
     def send(self, to: str, subject: str, html: str, from_: Optional[str] = None):
         if not self._client:
