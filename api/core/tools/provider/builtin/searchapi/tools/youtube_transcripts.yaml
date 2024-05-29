@@ -19,7 +19,7 @@ parameters:
     human_description:
       en_US: Used to define the video you want to search. You can find the video id's in YouTube page that appears in URL. For example - https://www.youtube.com/watch?v=video_id.
       zh_Hans: 用于定义要搜索的视频。您可以在 URL 中显示的 YouTube 页面中找到视频 ID。例如 - https://www.youtube.com/watch?v=video_id。
-    llm_description:  Used to define the video you want to search.
+    llm_description: Used to define the video you want to search.
     form: llm
   - name: language
     type: string
