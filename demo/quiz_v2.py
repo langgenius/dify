@@ -1,8 +1,10 @@
+import sqlite3
 import os
 import json
 import streamlit as st
 import openai
 from dotenv import load_dotenv
+import sqlite3
 
 load_dotenv()
 
@@ -26,14 +28,29 @@ def get_questions(topics: str, number_of_questions: int, number_of_answers: int)
     return json.loads(response)
 
 
+def saveDB(questions):
+    conn = sqlite3.connect('quiz.db')
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS questions
+                        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        question TEXT,
+                        answers TEXT,
+                        correct_answer TEXT)''')
+    for question in questions:
+        cursor.execute('''INSERT INTO questions (question, answers, correct_answer) VALUES (?, ?, ?)''',
+                       (question['question'], json.dumps(question['answers']), question['correct_answer']))
+    conn.commit()
+    conn.close()
+
+
 class QuizView:
-    def render():
+    def render(self):
         st.title("Quiz Generator version 1")
         topics = st.text_input("Topics", value="python", placeholder="Topics to include in the quiz",
                                help="It is recommended to use a comma-separated list of topics")
         number_of_questions = st.number_input(
             "Number of questions", min_value=1, max_value=30, value=3, help="Number of questions that will be generated")
-        number_of_answers = st.number_input("Number of answers", min_value=3, max_value=5,
+        number_of_answers = st.number_input("Numbe r of answers", min_value=3, max_value=5,
                                             value=4, help="Number of possible answers that will be generated for each question")
         questions = None
         if st.button("Generate", help="Generate the questions according to the parameters"):
@@ -41,6 +58,7 @@ class QuizView:
             try:
                 questions = get_questions(
                     topics, number_of_questions, number_of_answers)
+                saveDB(questions)
             except Exception:
                 st.error(
                     "An error occurred while generating the questions. Please try again")
@@ -49,10 +67,44 @@ class QuizView:
             for question in questions['quiz']:
                 answers = ([f"{key}. {value}" for answer in question['answers']
                            for key, value in answer.items()])
-                st.radio(f"**{question['question']}**",
-                         answers, index=None, disabled=True)
+                answer = st.radio(
+                    f"**{question['question']}**", answers, index=None, disabled=True)
                 st.write("Correct Answer: "+question['correct_answer'])
             st.write(questions)
 
 
-QuizView.render()
+class QuestionsPreview:
+    def render(self):
+        st.title("Questions preview")
+        # Add code to display questions preview here
+
+
+# quiz_view = QuizView()
+# questions_preview = QuestionsPreview()
+
+# page = st.sidebar.selectbox("Page", ["Quiz Generator", "Questions Preview"])
+
+# if page == "Quiz Generator":
+#     quiz_view.render()
+# else:
+#     questions_preview.render()
+
+
+# EDIT_MODE_INSTRUCTION = {
+#     PromptType.MCQ: """
+# Convert the provided multiple-choice questions to a JSON array parseable by Python. Each object should use the following schema:
+
+# {
+#     "question": "",
+#     "correct": "",
+#     "incorrect": ["", "", ""]
+# }
+
+# "correct" and "incorrect" should NOT be a letter (a, b, c, or d). Instead, they should be the complete text of the answer choice. Include code snippets in the "question" and answer fields.
+# """,
+#     PromptType.OPEN_ENDED: """
+# Convert the list of questions into an array of JSON objects parseable by Python.
+# Do not assign the JSON to a variable.
+# Each object should contain keys for "question" and "follow-up".
+# """,
+# }

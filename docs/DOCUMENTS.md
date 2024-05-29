@@ -127,18 +127,51 @@ AI assistant to solve HSU Administrative & Support related questions for Officer
 
 ---
 
-## Version 1: Quiz Generator by topics, number_of_questions, number_of_answers
+## Version 1: Quiz Generator by topics
 
-- Prompt: Create an exam of multiple choice questions with {number_of_questions} questions and {number_of_answers} of possible answers in each question. Put the correct answer in bold (surrounded by \*\*) in its original spot. The exam should be about {topics}. Only generate the questions and answers, not the exam itself.
+- Prompt: Create an exam of multiple choice questions with ... The exam should be about {topics} ...
 - Process ChatGPT 3.5 response from text to array
-- Build Web Application using Streamlit Framework (Python)
+
+![bg right 60%](./quiz_v1.png)
 
 ---
 
-## Version 2: Quiz Generator by Context - To Do
+## Version 1: Quiz Generator by topics
 
-- Need ChatGPT 4, ChatGPT 3.5 is not good enough
-- Need to chunk context for documents, and Long term memory
+- Build Web Application using Streamlit Framework (Python)
+
+![bg right 100%](./streamlit.png)
+
+---
+
+## Version 2: Quiz Generator by Context
+
+- I am trying FlowiseAI, which is an effortless way to experiment and prototype flows
+- Chunk context for documents, and Long term memory
+
+![bg right 100%](./flowise1.png)
+
+---
+
+## Version 2: Quiz Generator by Context
+
 - Prompt based on chunked context and generate Questions one by one
-- Will try FlowiseAI, which is an effortless way to experiment and prototype flows
-- Product may use Flask (Python) and React (Typescript) with MariaDB and Redis
+
+![bg right 100%](./flowise2.png)
+
+---
+
+## Version 2: Quiz Generator by Context
+
+- Product may use Python and React 
+
+![bg right 100%](./flowise3.png)
+
+---
+
+## Odoo - Python Framework (Study)
+
+- Odoo is a suite of open source apps using Python
+
+![bg right 100%](./odoo.png)
+
