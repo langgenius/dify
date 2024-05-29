@@ -539,7 +539,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     help=I18nObject(en_US="The number of layers to offload to the GPU(s). "
                                           "On macOS it defaults to 1 to enable metal support, 0 to disable."
                                           "As long as a model fits into one gpu it stays in one. "
-                                          "It does not set the number of GPUs. "),
+                                          "It does not set the number of GPU(s). "),
                     min=-1,
                     default=1
                 ),
