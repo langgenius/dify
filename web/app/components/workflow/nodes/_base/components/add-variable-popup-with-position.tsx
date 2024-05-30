@@ -43,7 +43,9 @@ const AddVariablePopupWithPosition = ({
     if (!showAssignVariablePopup)
       return ''
 
-    if (showAssignVariablePopup.variableAssignerNodeHandleId === 'target')
+    const groupEnabled = showAssignVariablePopup.variableAssignerNodeData.advanced_settings?.group_enabled
+
+    if (!groupEnabled)
       return showAssignVariablePopup.variableAssignerNodeData.output_type
 
     const group = showAssignVariablePopup.variableAssignerNodeData.advanced_settings?.groups.find(group => group.groupId === showAssignVariablePopup.variableAssignerNodeHandleId)
