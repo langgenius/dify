@@ -1,0 +1,478 @@
+identity:
+  name: google_jobs_api
+  author: SearchApi
+  label:
+    en_US: Google Jobs API
+    zh_Hans: Google Jobs API
+description:
+  human:
+    en_US: A tool to retrieve job titles, company names and description from Google Jobs engine.
+    zh_Hans: 一个从 Google 招聘引擎检索职位名称、公司名称和描述的工具。
+  llm: A tool to retrieve job titles, company names and description from Google Jobs engine.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 询问
+    human_description:
+      en_US: Defines the query you want to search.
+      zh_Hans: 定义您要搜索的查询。
+    llm_description: Defines the search query you want to search.
+    form: llm
+  - name: result_type
+    type: select
+    required: true
+    options:
+      - value: text
+        label:
+          en_US: text
+          zh_Hans: 文本
+      - value: link
+        label:
+          en_US: link
+          zh_Hans: 链接
+    default: text
+    label:
+      en_US: Result type
+      zh_Hans: 结果类型
+    human_description:
+      en_US: used for selecting the result type, text or link
+      zh_Hans: 用于选择结果类型，使用文本还是链接进行展示
+    form: form
+  - name: location
+    type: string
+    required: false
+    label:
+      en_US: Location
+      zh_Hans: 询问
+    human_description:
+      en_US: Defines from where you want the search to originate. (For example - New York)
+      zh_Hans: 定义您想要搜索的起始位置。 （例如 - 纽约）
+    llm_description: Defines from where you want the search to originate. (For example - New York)
+    form: llm
+  - name: gl
+    type: select
+    label:
+      en_US: Country
+      zh_Hans: 国家
+    required: false
+    human_description:
+      en_US: Defines the country of the search. Default is "US".
+      zh_Hans: 定义搜索的国家/地区。默认为“美国”。
+    llm_description: Defines the gl parameter of the Google search.
+    form: form
+    default: US
+    options:
+      - value: AR
+        label:
+          en_US: Argentina
+          zh_Hans: 阿根廷
+          pt_BR: Argentina
+      - value: AU
+        label:
+          en_US: Australia
+          zh_Hans: 澳大利亚
+          pt_BR: Australia
+      - value: AT
+        label:
+          en_US: Austria
+          zh_Hans: 奥地利
+          pt_BR: Austria
+      - value: BE
+        label:
+          en_US: Belgium
+          zh_Hans: 比利时
+          pt_BR: Belgium
+      - value: BR
+        label:
+          en_US: Brazil
+          zh_Hans: 巴西
+          pt_BR: Brazil
+      - value: CA
+        label:
+          en_US: Canada
+          zh_Hans: 加拿大
+          pt_BR: Canada
+      - value: CL
+        label:
+          en_US: Chile
+          zh_Hans: 智利
+          pt_BR: Chile
+      - value: CO
+        label:
+          en_US: Colombia
+          zh_Hans: 哥伦比亚
+          pt_BR: Colombia
+      - value: CN
+        label:
+          en_US: China
+          zh_Hans: 中国
+          pt_BR: China
+      - value: CZ
+        label:
+          en_US: Czech Republic
+          zh_Hans: 捷克共和国
+          pt_BR: Czech Republic
+      - value: DK
+        label:
+          en_US: Denmark
+          zh_Hans: 丹麦
+          pt_BR: Denmark
+      - value: FI
+        label:
+          en_US: Finland
+          zh_Hans: 芬兰
+          pt_BR: Finland
+      - value: FR
+        label:
+          en_US: France
+          zh_Hans: 法国
+          pt_BR: France
+      - value: DE
+        label:
+          en_US: Germany
+          zh_Hans: 德国
+          pt_BR: Germany
+      - value: HK
+        label:
+          en_US: Hong Kong
+          zh_Hans: 香港
+          pt_BR: Hong Kong
+      - value: IN
+        label:
+          en_US: India
+          zh_Hans: 印度
+          pt_BR: India
+      - value: ID
+        label:
+          en_US: Indonesia
+          zh_Hans: 印度尼西亚
+          pt_BR: Indonesia
+      - value: IT
+        label:
+          en_US: Italy
+          zh_Hans: 意大利
+          pt_BR: Italy
+      - value: JP
+        label:
+          en_US: Japan
+          zh_Hans: 日本
+          pt_BR: Japan
+      - value: KR
+        label:
+          en_US: Korea
+          zh_Hans: 韩国
+          pt_BR: Korea
+      - value: MY
+        label:
+          en_US: Malaysia
+          zh_Hans: 马来西亚
+          pt_BR: Malaysia
+      - value: MX
+        label:
+          en_US: Mexico
+          zh_Hans: 墨西哥
+          pt_BR: Mexico
+      - value: NL
+        label:
+          en_US: Netherlands
+          zh_Hans: 荷兰
+          pt_BR: Netherlands
+      - value: NZ
+        label:
+          en_US: New Zealand
+          zh_Hans: 新西兰
+          pt_BR: New Zealand
+      - value: NO
+        label:
+          en_US: Norway
+          zh_Hans: 挪威
+          pt_BR: Norway
+      - value: PH
+        label:
+          en_US: Philippines
+          zh_Hans: 菲律宾
+          pt_BR: Philippines
+      - value: PL
+        label:
+          en_US: Poland
+          zh_Hans: 波兰
+          pt_BR: Poland
+      - value: PT
+        label:
+          en_US: Portugal
+          zh_Hans: 葡萄牙
+          pt_BR: Portugal
+      - value: RU
+        label:
+          en_US: Russia
+          zh_Hans: 俄罗斯
+          pt_BR: Russia
+      - value: SA
+        label:
+          en_US: Saudi Arabia
+          zh_Hans: 沙特阿拉伯
+          pt_BR: Saudi Arabia
+      - value: SG
+        label:
+          en_US: Singapore
+          zh_Hans: 新加坡
+          pt_BR: Singapore
+      - value: ZA
+        label:
+          en_US: South Africa
+          zh_Hans: 南非
+          pt_BR: South Africa
+      - value: ES
+        label:
+          en_US: Spain
+          zh_Hans: 西班牙
+          pt_BR: Spain
+      - value: SE
+        label:
+          en_US: Sweden
+          zh_Hans: 瑞典
+          pt_BR: Sweden
+      - value: CH
+        label:
+          en_US: Switzerland
+          zh_Hans: 瑞士
+          pt_BR: Switzerland
+      - value: TW
+        label:
+          en_US: Taiwan
+          zh_Hans: 台湾
+          pt_BR: Taiwan
+      - value: TH
+        label:
+          en_US: Thailand
+          zh_Hans: 泰国
+          pt_BR: Thailand
+      - value: TR
+        label:
+          en_US: Turkey
+          zh_Hans: 土耳其
+          pt_BR: Turkey
+      - value: GB
+        label:
+          en_US: United Kingdom
+          zh_Hans: 英国
+          pt_BR: United Kingdom
+      - value: US
+        label:
+          en_US: United States
+          zh_Hans: 美国
+          pt_BR: United States
+  - name: hl
+    type: select
+    label:
+      en_US: Language
+      zh_Hans: 语言
+    human_description:
+      en_US: Defines the interface language of the search. Default is "en".
+      zh_Hans: 定义搜索的界面语言。默认为“en”。
+    required: false
+    default: en
+    form: form
+    options:
+      - value: ar
+        label:
+          en_US: Arabic
+          zh_Hans: 阿拉伯语
+      - value: bg
+        label:
+          en_US: Bulgarian
+          zh_Hans: 保加利亚语
+      - value: ca
+        label:
+          en_US: Catalan
+          zh_Hans: 加泰罗尼亚语
+      - value: zh-cn
+        label:
+          en_US: Chinese (Simplified)
+          zh_Hans: 中文（简体）
+      - value: zh-tw
+        label:
+          en_US: Chinese (Traditional)
+          zh_Hans: 中文（繁体）
+      - value: cs
+        label:
+          en_US: Czech
+          zh_Hans: 捷克语
+      - value: da
+        label:
+          en_US: Danish
+          zh_Hans: 丹麦语
+      - value: nl
+        label:
+          en_US: Dutch
+          zh_Hans: 荷兰语
+      - value: en
+        label:
+          en_US: English
+          zh_Hans: 英语
+      - value: et
+        label:
+          en_US: Estonian
+          zh_Hans: 爱沙尼亚语
+      - value: fi
+        label:
+          en_US: Finnish
+          zh_Hans: 芬兰语
+      - value: fr
+        label:
+          en_US: French
+          zh_Hans: 法语
+      - value: de
+        label:
+          en_US: German
+          zh_Hans: 德语
+      - value: el
+        label:
+          en_US: Greek
+          zh_Hans: 希腊语
+      - value: iw
+        label:
+          en_US: Hebrew
+          zh_Hans: 希伯来语
+      - value: hi
+        label:
+          en_US: Hindi
+          zh_Hans: 印地语
+      - value: hu
+        label:
+          en_US: Hungarian
+          zh_Hans: 匈牙利语
+      - value: id
+        label:
+          en_US: Indonesian
+          zh_Hans: 印尼语
+      - value: it
+        label:
+          en_US: Italian
+          zh_Hans: 意大利语
+      - value: jp
+        label:
+          en_US: Japanese
+          zh_Hans: 日语
+      - value: kn
+        label:
+          en_US: Kannada
+          zh_Hans: 卡纳达语
+      - value: ko
+        label:
+          en_US: Korean
+          zh_Hans: 韩语
+      - value: lv
+        label:
+          en_US: Latvian
+          zh_Hans: 拉脱维亚语
+      - value: lt
+        label:
+          en_US: Lithuanian
+          zh_Hans: 立陶宛语
+      - value: my
+        label:
+          en_US: Malay
+          zh_Hans: 马来语
+      - value: ml
+        label:
+          en_US: Malayalam
+          zh_Hans: 马拉雅拉姆语
+      - value: mr
+        label:
+          en_US: Marathi
+          zh_Hans: 马拉地语
+      - value: "no"
+        label:
+          en_US: Norwegian
+          zh_Hans: 挪威语
+      - value: pl
+        label:
+          en_US: Polish
+          zh_Hans: 波兰语
+      - value: pt-br
+        label:
+          en_US: Portuguese (Brazil)
+          zh_Hans: 葡萄牙语（巴西）
+      - value: pt-pt
+        label:
+          en_US: Portuguese (Portugal)
+          zh_Hans: 葡萄牙语（葡萄牙）
+      - value: pa
+        label:
+          en_US: Punjabi
+          zh_Hans: 旁遮普语
+      - value: ro
+        label:
+          en_US: Romanian
+          zh_Hans: 罗马尼亚语
+      - value: ru
+        label:
+          en_US: Russian
+          zh_Hans: 俄语
+      - value: sr
+        label:
+          en_US: Serbian
+          zh_Hans: 塞尔维亚语
+      - value: sk
+        label:
+          en_US: Slovak
+          zh_Hans: 斯洛伐克语
+      - value: sl
+        label:
+          en_US: Slovenian
+          zh_Hans: 斯洛文尼亚语
+      - value: es
+        label:
+          en_US: Spanish
+          zh_Hans: 西班牙语
+      - value: sv
+        label:
+          en_US: Swedish
+          zh_Hans: 瑞典语
+      - value: ta
+        label:
+          en_US: Tamil
+          zh_Hans: 泰米尔语
+      - value: te
+        label:
+          en_US: Telugu
+          zh_Hans: 泰卢固语
+      - value: th
+        label:
+          en_US: Thai
+          zh_Hans: 泰语
+      - value: tr
+        label:
+          en_US: Turkish
+          zh_Hans: 土耳其语
+      - value: uk
+        label:
+          en_US: Ukrainian
+          zh_Hans: 乌克兰语
+      - value: vi
+        label:
+          en_US: Vietnamese
+          zh_Hans: 越南语
+  - name: is_remote
+    type: select
+    label:
+      en_US: is_remote
+      zh_Hans: 很遥远
+    human_description:
+      en_US: Filter results based on the work arrangement. Set it to true to find jobs that offer work from home or remote work opportunities.
+      zh_Hans: 根据工作安排过滤结果。将其设置为 true 可查找提供在家工作或远程工作机会的工作。
+    required: false
+    form: form
+    options:
+      - value: true
+        label:
+          en_US: "true"
+          zh_Hans: "true"
+      - value: false
+        label:
+          en_US: "false"
+          zh_Hans: "false"
