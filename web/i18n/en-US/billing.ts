@@ -28,6 +28,7 @@ const translation = {
     talkToSales: 'Talk to Sales',
     modelProviders: 'Model Providers',
     teamMembers: 'Team Members',
+    annotationQuota: 'Annotation Quota',
     buildApps: 'Build Apps',
     vectorSpace: 'Vector Space',
     vectorSpaceBillingTooltip: 'Each 1MB can store about 1.2million characters of vectorized data(estimated using OpenAI Embeddings, varies across models).',

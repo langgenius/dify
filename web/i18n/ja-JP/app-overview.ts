@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: '公開URL',
       preview: 'プレビュー',
       regenerate: '再生成',
+      regenerateNotice: '公開URLを再生成しますか？',
       preUseReminder: '続行する前にWebAppを有効にしてください。',
       settings: {
         entry: '設定',

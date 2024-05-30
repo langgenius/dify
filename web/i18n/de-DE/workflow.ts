@@ -46,6 +46,20 @@ const translation = {
       content: 'Die Variable wird in anderen Knoten verwendet. Möchten Sie sie trotzdem entfernen?',
     },
     insertVarTip: 'Drücken Sie die \'/\' Taste, um schnell einzufügen',
+    processData: 'Daten verarbeiten',
+    input: 'Eingabe',
+    output: 'Ausgabe',
+    jinjaEditorPlaceholder: 'Tippen Sie \'/\' oder \'{\' um eine Variable einzufügen',
+    viewOnly: 'Nur Ansicht',
+    showRunHistory: 'Ausführungsverlauf anzeigen',
+    enableJinja: 'Jinja-Template-Unterstützung aktivieren',
+    learnMore: 'Mehr erfahren',
+    copy: 'Kopieren',
+    duplicate: 'Duplizieren',
+    addBlock: 'Block hinzufügen',
+    pasteHere: 'Hier einfügen',
+    pointerMode: 'Zeigermodus',
+    handMode: 'Handmodus',
   },
   errorMsg: {
     fieldRequired: '{{field}} wird benötigt',
@@ -201,6 +215,7 @@ const translation = {
       singleRun: {
         variable: 'Variable',
       },
+      sysQueryInUser: 'sys.query in der Benutzeranfrage ist erforderlich',
     },
     knowledgeRetrieval: {
       queryVariable: 'Abfragevariable',
@@ -258,6 +273,9 @@ const translation = {
     code: {
       inputVars: 'Eingabevariablen',
       outputVars: 'Ausgabevariablen',
+      advancedDependencies: 'Erweiterte Abhängigkeiten',
+      advancedDependenciesTip: 'Fügen Sie einige vorab geladene Abhängigkeiten hinzu, die mehr Zeit benötigen oder hier nicht standardmäßig integriert sind',
+      searchDependencies: 'Abhängigkeiten suchen',
     },
     templateTransform: {
       inputVars: 'Eingabevariablen',

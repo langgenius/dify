@@ -8,3 +8,6 @@ identity:
     en_US: A search engine for biomedical literature.
     zh_Hans: 一款生物医学文献搜索引擎。
   icon: icon.svg
+  tags:
+    - medical
+    - search

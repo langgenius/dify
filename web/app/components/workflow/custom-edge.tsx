@@ -3,6 +3,7 @@ import {
   useCallback,
   useState,
 } from 'react'
+import cn from 'classnames'
 import { intersection } from 'lodash-es'
 import type { EdgeProps } from 'reactflow'
 import {
@@ -12,7 +13,7 @@ import {
   getBezierPath,
 } from 'reactflow'
 import {
-  useNodesExtraData,
+  useAvailableBlocks,
   useNodesInteractions,
 } from './hooks'
 import BlockSelector from './block-selector'
@@ -20,6 +21,7 @@ import type {
   Edge,
   OnSelectBlock,
 } from './types'
+import { ITERATION_CHILDREN_Z_INDEX } from './constants'
 
 const CustomEdge = ({
   id,
@@ -49,9 +51,9 @@ const CustomEdge = ({
   })
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
-  const nodesExtraData = useNodesExtraData()
-  const availablePrevNodes = nodesExtraData[(data as Edge['data'])!.targetType]?.availablePrevNodes || []
-  const availableNextNodes = nodesExtraData[(data as Edge['data'])!.sourceType]?.availableNextNodes || []
+  const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration)
+  const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration)
+
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
@@ -83,11 +85,12 @@ const CustomEdge = ({
       />
       <EdgeLabelRenderer>
         <div
-          className={`
-            nopan nodrag hover:scale-125
-            ${data?._hovering ? 'block' : 'hidden'}
-            ${open && '!block'}
-          `}
+          className={cn(
+            'nopan nodrag hover:scale-125',
+            data?._hovering ? 'block' : 'hidden',
+            open && '!block',
+            data.isInIteration && `z-[${ITERATION_CHILDREN_Z_INDEX}]`,
+          )}
           style={{
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
@@ -99,7 +102,7 @@ const CustomEdge = ({
             onOpenChange={handleOpenChange}
             asChild
             onSelect={handleInsert}
-            availableBlocksTypes={intersection(availablePrevNodes, availableNextNodes)}
+            availableBlocksTypes={intersection(availablePrevBlocks, availableNextBlocks)}
             triggerClassName={() => 'hover:scale-150 transition-all'}
           />
         </div>
