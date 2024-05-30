@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import cn from 'classnames'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -8,13 +9,18 @@ import { BlockEnum } from '@/app/components/workflow/types'
 type NodeVariableItemProps = {
   node: Node
   varName: string
+  showBorder?: boolean
 }
 const NodeVariableItem = ({
   node,
   varName,
+  showBorder,
 }: NodeVariableItemProps) => {
   return (
-    <div className='relative flex items-center mt-0.5 h-6 bg-gray-100 rounded-md  px-1 text-xs font-normal text-gray-700' >
+    <div className={cn(
+      'relative flex items-center mt-0.5 h-6 bg-gray-100 rounded-md  px-1 text-xs font-normal text-gray-700',
+      showBorder && '!bg-black/[0.02]',
+    )}>
       <div className='flex items-center'>
         <div className='p-[1px]'>
           <VarBlockIcon
