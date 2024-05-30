@@ -231,7 +231,7 @@ export const ModalContextProvider = ({
           !!showModelLoadBalancingEntryModal && (
             <ModelLoadBalancingEntryModal
               provider={showModelLoadBalancingEntryModal.payload.currentProvider}
-              configurateMethod={showModelLoadBalancingEntryModal.payload.currentConfigurationMethod}
+              configurationMethod={showModelLoadBalancingEntryModal.payload.currentConfigurationMethod}
               currentCustomConfigurationModelFixedFields={showModelLoadBalancingEntryModal.payload.currentCustomConfigurationModelFixedFields}
               onCancel={handleCancelModelLoadBalancingEntryModal}
               onSave={handleSaveModelLoadBalancingEntryModal}

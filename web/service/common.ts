@@ -167,8 +167,12 @@ export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (
   return get<{ data: ModelProvider[] }>(url)
 }
 
-export const fetchModelProviderCredentials: Fetcher<{ credentials?: Record<string, string | undefined | boolean> }, string> = (url) => {
-  return get<{ credentials?: Record<string, string | undefined | boolean> }>(url)
+export type ModelProviderCredentials = {
+  credentials?: Record<string, string | undefined | boolean>
+  load_balancing: ModelLoadBalancingConfig
+}
+export const fetchModelProviderCredentials: Fetcher<ModelProviderCredentials, string> = (url) => {
+  return get<ModelProviderCredentials>(url)
 }
 
 export const fetchModelLoadBalancingConfig: Fetcher<{

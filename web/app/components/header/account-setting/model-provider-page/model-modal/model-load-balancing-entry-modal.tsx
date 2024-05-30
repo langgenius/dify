@@ -11,6 +11,7 @@ import type {
   CredentialFormSchema,
   CredentialFormSchemaRadio,
   CredentialFormSchemaSelect,
+  CredentialFormSchemaTextInput,
   CustomConfigurationModelFixedFields,
   FormValue,
   ModelProvider,
@@ -21,14 +22,12 @@ import {
   FormTypeEnum,
 } from '../declarations'
 import {
-  genModelNameFormSchema,
-  genModelTypeFormSchema,
   removeCredentials,
   saveCredentials,
 } from '../utils'
 import {
   useLanguage,
-  useProviderCredentialsFormSchemasValue,
+  useProviderCredentialsAndLoadBalancing,
 } from '../hooks'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatedStatus } from '../../key-validator/declarations'
@@ -46,7 +45,7 @@ import ConfirmCommon from '@/app/components/base/confirm/common'
 
 type ModelModalProps = {
   provider: ModelProvider
-  configurateMethod: ConfigurationMethodEnum
+  configurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   credentials?: Record<string, string | boolean | undefined>
   onCancel: () => void
@@ -55,16 +54,16 @@ type ModelModalProps = {
 
 const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
   provider,
-  configurateMethod,
+  configurationMethod,
   currentCustomConfigurationModelFixedFields,
   credentials,
   onCancel,
   onSave,
 }) => {
-  const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
-  const formSchemasValue = useProviderCredentialsFormSchemasValue(
+  const providerFormSchemaPredefined = configurationMethod === ConfigurationMethodEnum.predefinedModel
+  const { credentials: formSchemasValue } = useProviderCredentialsAndLoadBalancing(
     provider.provider,
-    configurateMethod,
+    configurationMethod,
     providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
     currentCustomConfigurationModelFixedFields,
   )
@@ -75,19 +74,35 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const formSchemas = useMemo(() => {
-    return providerFormSchemaPredefined
-      ? provider.provider_credential_schema.credential_form_schemas
-      : [
-        genModelTypeFormSchema(provider.supported_model_types),
-        genModelNameFormSchema(provider.model_credential_schema?.model),
-        ...provider.model_credential_schema.credential_form_schemas,
-      ]
+    return [
+      {
+        type: FormTypeEnum.textInput,
+        label: {
+          en_US: 'Config Name',
+          zh_Hans: '配置名称',
+        },
+        variable: '__model_name',
+        required: true,
+        show_on: [],
+        placeholder: {
+          en_US: 'Enter your Config Name here',
+          zh_Hans: '输入配置名称',
+        },
+      } as CredentialFormSchemaTextInput,
+      ...(
+        providerFormSchemaPredefined
+          ? provider.provider_credential_schema.credential_form_schemas
+          : [
+            // genModelTypeFormSchema(provider.supported_model_types),
+            // genModelNameFormSchema(provider.model_credential_schema?.model),
+            ...provider.model_credential_schema.credential_form_schemas,
+          ]
+      ),
+    ]
   }, [
     providerFormSchemaPredefined,
     provider.provider_credential_schema?.credential_form_schemas,
-    provider.supported_model_types,
     provider.model_credential_schema?.credential_form_schemas,
-    provider.model_credential_schema?.model,
   ])
   const [
     requiredFormSchemas,
@@ -142,11 +157,11 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
       showOnVariableMap,
     ]
   }, [formSchemas])
-  const initialFormSchemasValue = useMemo(() => {
+  const initialFormSchemasValue: Record<string, string | number> = useMemo(() => {
     return {
       ...defaultFormSchemaValue,
       ...formSchemasValue,
-    }
+    } as Record<string, string | number>
   }, [formSchemasValue, defaultFormSchemaValue])
   const [value, setValue] = useState(initialFormSchemasValue)
   useEffect(() => {

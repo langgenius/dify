@@ -22,7 +22,6 @@ export type ModelLoadBalancingModalProps = {
 const ModelLoadBalancingModal = ({ provider, model, open = false, onClose }: ModelLoadBalancingModalProps) => {
   const { t } = useTranslation()
 
-  // useProviderCredentialsFormSchemasValue(provider.provider, model.fetch_from)
   const { data } = useSWR(
     `/workspaces/current/model-providers/${provider.provider}/models/credentials?model=${model.model}&model_type=${model.model_type}`,
     fetchModelLoadBalancingConfig,
@@ -102,6 +101,7 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose }: Mod
                 setDraftConfig,
                 provider,
                 configurationMethod: model.fetch_from,
+                className: 'mt-2',
               }} />
             </div>
 

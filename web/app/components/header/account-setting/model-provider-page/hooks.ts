@@ -62,27 +62,27 @@ export const useLanguage = () => {
   return locale.replace('-', '_')
 }
 
-export const useProviderCredentialsFormSchemasValue = (
+export const useProviderCredentialsAndLoadBalancing = (
   provider: string,
-  configurateMethod: ConfigurationMethodEnum,
+  configurationMethod: ConfigurationMethodEnum,
   configured?: boolean,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
 ) => {
   const { data: predefinedFormSchemasValue } = useSWR(
-    (configurateMethod === ConfigurationMethodEnum.predefinedModel && configured)
+    (configurationMethod === ConfigurationMethodEnum.predefinedModel && configured)
       ? `/workspaces/current/model-providers/${provider}/credentials`
       : null,
     fetchModelProviderCredentials,
   )
   const { data: customFormSchemasValue } = useSWR(
-    (configurateMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigurationModelFixedFields)
+    (configurationMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigurationModelFixedFields)
       ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}`
       : null,
     fetchModelProviderCredentials,
   )
 
-  const value = useMemo(() => {
-    return configurateMethod === ConfigurationMethodEnum.predefinedModel
+  const credentials = useMemo(() => {
+    return configurationMethod === ConfigurationMethodEnum.predefinedModel
       ? predefinedFormSchemasValue?.credentials
       : customFormSchemasValue?.credentials
         ? {
@@ -91,13 +91,20 @@ export const useProviderCredentialsFormSchemasValue = (
         }
         : undefined
   }, [
-    configurateMethod,
+    configurationMethod,
     currentCustomConfigurationModelFixedFields,
     customFormSchemasValue?.credentials,
     predefinedFormSchemasValue?.credentials,
   ])
 
-  return value
+  return {
+    credentials,
+    loadBalancing: (configurationMethod === ConfigurationMethodEnum.predefinedModel
+      ? predefinedFormSchemasValue
+      : customFormSchemasValue
+    )?.load_balancing,
+  }
+  // as ([Record<string, string | boolean | undefined> | undefined, ModelLoadBalancingConfig | undefined])
 }
 
 export const useModelList = (type: ModelTypeEnum) => {

@@ -80,6 +80,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
                 {t('common.modelProvider.config')}
               </Button>
             )
+            // TODO: show config for sandbox mode but not CE
             : (modelLoadBalancingEnabled && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status))
               ? (
                 <Button

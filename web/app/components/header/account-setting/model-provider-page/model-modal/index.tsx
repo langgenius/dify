@@ -29,7 +29,7 @@ import {
 } from '../utils'
 import {
   useLanguage,
-  useProviderCredentialsFormSchemasValue,
+  useProviderCredentialsAndLoadBalancing,
 } from '../hooks'
 import ProviderIcon from '../provider-icon'
 import { useValidate } from '../../key-validator/hooks'
@@ -63,7 +63,10 @@ const ModelModal: FC<ModelModalProps> = ({
   onSave,
 }) => {
   const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
-  const formSchemasValue = useProviderCredentialsFormSchemasValue(
+  const {
+    credentials: formSchemasValue,
+    loadBalancing: originalConfig,
+  } = useProviderCredentialsAndLoadBalancing(
     provider.provider,
     configurateMethod,
     providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
@@ -76,10 +79,6 @@ const ModelModal: FC<ModelModalProps> = ({
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
 
-  const originalConfig: ModelLoadBalancingConfig = useMemo(() => ({
-    enabled: false,
-    configs: [],
-  }), [])
   const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig>()
   useEffect(() => {
     if (originalConfig && !draftConfig)
@@ -92,7 +91,7 @@ const ModelModal: FC<ModelModalProps> = ({
       : [
         genModelTypeFormSchema(provider.supported_model_types),
         genModelNameFormSchema(provider.model_credential_schema?.model),
-        ...provider.model_credential_schema.credential_form_schemas,
+        ...(draftConfig?.enabled ? [] : provider.model_credential_schema.credential_form_schemas),
       ]
   }, [
     providerFormSchemaPredefined,
@@ -100,6 +99,7 @@ const ModelModal: FC<ModelModalProps> = ({
     provider.supported_model_types,
     provider.model_credential_schema?.credential_form_schemas,
     provider.model_credential_schema?.model,
+    draftConfig?.enabled,
   ])
   const [
     requiredFormSchemas,
@@ -154,11 +154,11 @@ const ModelModal: FC<ModelModalProps> = ({
       showOnVariableMap,
     ]
   }, [formSchemas])
-  const initialFormSchemasValue = useMemo(() => {
+  const initialFormSchemasValue: Record<string, string | number> = useMemo(() => {
     return {
       ...defaultFormSchemaValue,
       ...formSchemasValue,
-    }
+    } as Record<string, string | number>
   }, [formSchemasValue, defaultFormSchemaValue])
   const [value, setValue] = useState(initialFormSchemasValue)
   useEffect(() => {
@@ -245,6 +245,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 <div className='text-xl font-semibold text-gray-900'>{renderTitlePrefix()}</div>
                 <ProviderIcon provider={provider} />
               </div>
+
               <Form
                 value={value}
                 onChange={handleValueChange}
@@ -255,6 +256,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 isEditMode={isEditMode}
               />
 
+              <div className='mt-1 mb-4 border-t-[0.5px] border-t-gray-100' />
               <ModelLoadBalancingConfigs withSwitch {...{
                 draftConfig,
                 setDraftConfig,
