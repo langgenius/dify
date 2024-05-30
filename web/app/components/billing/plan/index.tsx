@@ -7,7 +7,11 @@ import { Plan } from '../type'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import AppsInfo from '../usage-info/apps-info'
 import UpgradeBtn from '../upgrade-btn'
+import { User01 } from '../../base/icons/src/vender/line/users'
+import { MessageFastPlus } from '../../base/icons/src/vender/line/communication'
+import { FileUpload } from '../../base/icons/src/vender/line/files'
 import { useProviderContext } from '@/context/provider-context'
+import UsageInfo from '@/app/components/billing/usage-info'
 
 const typeStyle = {
   [Plan.sandbox]: {
@@ -39,6 +43,11 @@ const PlanComp: FC<Props> = ({
   const { plan } = useProviderContext()
   const {
     type,
+  } = plan
+
+  const {
+    usage,
+    total,
   } = plan
 
   const isInHeader = loc === 'header'
@@ -76,8 +85,30 @@ const PlanComp: FC<Props> = ({
 
       {/* Plan detail */}
       <div className='rounded-xl bg-white px-6 py-3'>
-        <VectorSpaceInfo className='py-3' />
+
+        <UsageInfo
+          className='py-3'
+          Icon={User01}
+          name={t('billing.plansCommon.teamMembers')}
+          usage={usage.teamMembers}
+          total={total.teamMembers}
+        />
         <AppsInfo className='py-3' />
+        <VectorSpaceInfo className='py-3' />
+        <UsageInfo
+          className='py-3'
+          Icon={MessageFastPlus}
+          name={t('billing.plansCommon.annotationQuota')}
+          usage={usage.annotatedResponse}
+          total={total.annotatedResponse}
+        />
+        <UsageInfo
+          className='py-3'
+          Icon={FileUpload}
+          name={t('billing.plansCommon.documentsUploadQuota')}
+          usage={usage.documentsUploadQuota}
+          total={total.documentsUploadQuota}
+        />
         {isInHeader && type === Plan.sandbox && (
           <UpgradeBtn
             className='flex-shrink-0 my-3'
