@@ -176,6 +176,14 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
         <div className='px-4 pt-4 pb-2'>
           <OutputVars>
             <>
+              {inputs.parameters.map((param, index) => (
+                <VarItem
+                  key={index}
+                  name={param.name}
+                  type={param.type}
+                  description={param.description}
+                />
+              ))}
               <VarItem
                 name='__is_success'
                 type={VarType.number}
@@ -186,14 +194,6 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                 type={VarType.string}
                 description={t(`${i18nPrefix}.errorReason`)}
               />
-              {inputs.parameters.map((param, index) => (
-                <VarItem
-                  key={index}
-                  name={param.name}
-                  type={param.type}
-                  description={param.description}
-                />
-              ))}
             </>
           </OutputVars>
         </div>
