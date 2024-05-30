@@ -10,6 +10,8 @@ identity:
     zh_Hans: 讯飞星火平台工具
     pt_BR: Pacote de Ferramentas da Plataforma Spark
   icon: icon.svg
+  tags:
+    - image
 credentials_for_provider:
   APPID:
     type: secret-input

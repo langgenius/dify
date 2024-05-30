@@ -1,6 +1,5 @@
 from typing import Any
 
-from core.tools.entities.values import ToolLabelEnum
 from core.tools.provider.builtin.stability.tools.base import BaseStabilityAuthorization
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
@@ -14,8 +13,3 @@ class StabilityToolProvider(BuiltinToolProviderController, BaseStabilityAuthoriz
         This method is responsible for validating the credentials.
         """
         self.sd_validate_credentials(credentials)
-
-    def _get_tool_labels(self) -> list[ToolLabelEnum]:
-        return [
-            ToolLabelEnum.IMAGE
-        ]
