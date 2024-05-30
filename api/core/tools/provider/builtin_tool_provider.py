@@ -152,7 +152,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
             returns the labels of the provider
         """
-        return []
+        return self.identity.tags or []
 
     def validate_parameters(self, tool_id: int, tool_name: str, tool_parameters: dict[str, Any]) -> None:
         """

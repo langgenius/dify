@@ -1,12 +1,12 @@
-model: ernie-3.5-4k-0205
+model: ernie-3.5-128k
 label:
-  en_US: Ernie-3.5-4k-0205
+  en_US: Ernie-3.5-128K
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 4096
+  context_size: 128000
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -17,9 +17,9 @@ parameter_rules:
     use_template: top_p
   - name: max_tokens
     use_template: max_tokens
-    default: 1024
+    default: 4096
     min: 2
-    max: 2048
+    max: 4096
   - name: presence_penalty
     use_template: presence_penalty
   - name: frequency_penalty
@@ -35,4 +35,3 @@ parameter_rules:
       zh_Hans: 禁用模型自行进行外部搜索。
       en_US: Disable the model to perform external search.
     required: false
-deprecated: true

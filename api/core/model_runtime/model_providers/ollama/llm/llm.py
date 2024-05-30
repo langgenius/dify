@@ -534,12 +534,14 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ),
                 ParameterRule(
                     name='num_gpu',
-                    label=I18nObject(en_US="Num GPU"),
+                    label=I18nObject(en_US="GPU Layers"),
                     type=ParameterType.INT,
-                    help=I18nObject(en_US="The number of layers to send to the GPU(s). "
-                                          "On macOS it defaults to 1 to enable metal support, 0 to disable."),
-                    min=0,
-                    max=1
+                    help=I18nObject(en_US="The number of layers to offload to the GPU(s). "
+                                          "On macOS it defaults to 1 to enable metal support, 0 to disable."
+                                          "As long as a model fits into one gpu it stays in one. "
+                                          "It does not set the number of GPU(s). "),
+                    min=-1,
+                    default=1
                 ),
                 ParameterRule(
                     name='num_thread',
