@@ -1,8 +1,8 @@
-"""adding chat_color_theme
+"""add chatbot color theme
 
-Revision ID: 12fcede9ef5c
-Revises: 5fda94355fce
-Create Date: 2024-05-26 05:51:41.171154
+Revision ID: 8d5b4339e6a0
+Revises: 64a70a7aab8b
+Create Date: 2024-05-30 19:34:35.665556
 
 """
 import sqlalchemy as sa
@@ -11,8 +11,8 @@ from alembic import op
 import models as models
 
 # revision identifiers, used by Alembic.
-revision = '12fcede9ef5c'
-down_revision = '5fda94355fce'
+revision = '8d5b4339e6a0'
+down_revision = '64a70a7aab8b'
 branch_labels = None
 depends_on = None
 
