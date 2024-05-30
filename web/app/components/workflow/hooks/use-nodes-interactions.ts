@@ -1092,7 +1092,7 @@ export const useNodesInteractions = () => {
       setNodes([...nodes, ...nodesToPaste])
       handleSyncWorkflowDraft()
     }
-  }, [t, getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, reactflow, handleNodeIterationChildrenCopy])
+  }, [getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, reactflow, handleNodeIterationChildrenCopy])
 
   const handleNodesDuplicate = useCallback(() => {
     if (getNodesReadOnly())
