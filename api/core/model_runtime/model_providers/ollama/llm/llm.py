@@ -678,9 +678,9 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     type=ParameterType.STRING,
                     help=I18nObject(
                         en_US="Sets how long the model is kept in memory after generating a response. "
-                        "This can be a duration string (e.g., '10m' or '24h'), a number in seconds "
-                        "(e.g., 3600), a negative number to keep the model loaded indefinitely, or '0' "
-                        "to unload the model immediately after generating a response. (Default: 5m)"
+                        "This must be a duration string with a unit (e.g., '10m' for 10 minutes or '24h' for 24 hours). "
+                        "A negative number keeps the model loaded indefinitely, and '0' unloads the model immediately after generating a response. "
+                        "Valid time units are 's','m','h'. (Default: 5m)"
                     ),
                 ),
                 ParameterRule(
