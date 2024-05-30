@@ -1,6 +1,6 @@
-model: baichuan2-53b
+model: baichuan3-turbo
 label:
-  en_US: Baichuan2-53B
+  en_US: Baichuan3-Turbo
 model_type: llm
 features:
   - agent-thought
@@ -24,9 +24,9 @@ parameter_rules:
   - name: max_tokens
     use_template: max_tokens
     required: true
-    default: 1000
+    default: 8000
     min: 1
-    max: 4000
+    max: 32000
   - name: presence_penalty
     use_template: presence_penalty
   - name: frequency_penalty

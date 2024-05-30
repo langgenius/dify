@@ -10,4 +10,7 @@ identity:
     zh_Hans: 飞书群机器人
     pt_BR: Feishu group bot
   icon: icon.svg
+  tags:
+    - social
+    - productivity
 credentials_for_provider:

@@ -32,9 +32,6 @@ class CotChatAgentRunner(CotAgentRunner):
         # organize system prompt
         system_message = self._organize_system_prompt()
 
-        # organize historic prompt messages
-        historic_messages = self._historic_prompt_messages
-
         # organize current assistant messages
         agent_scratchpad = self._agent_scratchpad
         if not agent_scratchpad:
@@ -57,6 +54,13 @@ class CotChatAgentRunner(CotAgentRunner):
         query_messages = UserPromptMessage(content=self._query)
 
         if assistant_messages:
+            # organize historic prompt messages
+            historic_messages = self._organize_historic_prompt_messages([
+                system_message,
+                query_messages,
+                *assistant_messages,
+                UserPromptMessage(content='continue')
+            ])            
             messages = [
                 system_message,
                 *historic_messages,
@@ -65,6 +69,8 @@ class CotChatAgentRunner(CotAgentRunner):
                 UserPromptMessage(content='continue')
             ]
         else:
+            # organize historic prompt messages
+            historic_messages = self._organize_historic_prompt_messages([system_message, query_messages])
             messages = [system_message, *historic_messages, query_messages]
 
         # join all messages

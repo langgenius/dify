@@ -36,7 +36,7 @@ const InputItem: FC<Props> = ({
   const hasValue = !!value
 
   const [isFocus, setIsFocus] = useState(false)
-  const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
       return [VarType.string, VarType.number].includes(varPayload.type)
@@ -59,7 +59,7 @@ const InputItem: FC<Props> = ({
             onChange={onChange}
             readOnly={readOnly}
             nodesOutputVars={availableVars}
-            availableNodes={availableNodes}
+            availableNodes={availableNodesWithParent}
             onFocusChange={setIsFocus}
             placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
             placeholderClassName='!leading-[21px]'
@@ -78,7 +78,7 @@ const InputItem: FC<Props> = ({
               onChange={onChange}
               readOnly={readOnly}
               nodesOutputVars={availableVars}
-              availableNodes={availableNodes}
+              availableNodes={availableNodesWithParent}
               onFocusChange={setIsFocus}
               placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
               placeholderClassName='!leading-[21px]'
