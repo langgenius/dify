@@ -8,6 +8,9 @@ identity:
     en_US: Firecrawl API integration for web crawling and scraping.
     zh_CN: Firecrawl API 集成，用于网页爬取和数据抓取。
   icon: icon.svg
+  tags:
+    - search
+    - utilities
 credentials_for_provider:
   firecrawl_api_key:
     type: secret-input
