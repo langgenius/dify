@@ -293,7 +293,8 @@ class ApiTool(Tool):
                 elif property['type'] == 'object':
                     if isinstance(value, str):
                         try:
-                            return json.loads(value)
+                            unescaped_string = value.replace("\\", "")  # Remove escape characters from strings
+                            return json.loads(unescaped_string)
                         except ValueError:
                             return value
                     elif isinstance(value, dict):
