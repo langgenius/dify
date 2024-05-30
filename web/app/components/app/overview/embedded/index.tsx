@@ -12,7 +12,7 @@ import { useThemeContext } from '@/app/components/share/chatbot/theme/theme-cont
 import type { SiteInfo } from '@/models/share'
 
 type Props = {
-  siteInfo: SiteInfo
+  siteInfo?: SiteInfo
   isShow: boolean
   onClose: () => void
   accessToken: string
@@ -75,7 +75,7 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
 
   const { langeniusVersionInfo } = useAppContext()
   const themeContext = useThemeContext()
-  themeContext.buildTheme(siteInfo.chat_color_theme, siteInfo.chat_color_theme_inverted)
+  themeContext.buildTheme(siteInfo?.chat_color_theme ?? '#1C64F2', siteInfo?.chat_color_theme_inverted ?? false)
   const isTestEnv = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
   const onClickCopy = () => {
     if (option === 'chromePlugin') {
