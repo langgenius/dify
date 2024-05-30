@@ -150,7 +150,7 @@ const HeaderOptions: FC<Props> = ({
             s.actionIconWrapper,
           )
         }
-        className={'!w-[154px] h-fit !z-20'}
+        className={'!w-[155px] h-fit !z-20'}
         popupClassName='!w-full !overflow-visible'
         manualClose
       />

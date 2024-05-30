@@ -1,10 +1,12 @@
 const translation = {
   title: '도구',
   createCustomTool: '커스텀 도구 만들기',
+  customToolTip: 'Dify 커스텀 도구에 대해 더 알아보기',
   type: {
     all: '모두',
     builtIn: '내장',
     custom: '커스텀',
+    workflow: '워크플로우',
   },
   contribute: {
     line1: '저는 Dify에',
@@ -21,12 +23,26 @@ const translation = {
   },
   includeToolNum: '{{num}}개의 도구가 포함되어 있습니다',
   addTool: '도구 추가',
+  addToolModal: {
+    type: '타입',
+    category: '카테고리',
+    add: '추가',
+    added: '추가됨',
+    manageInTools: '도구에서 관리',
+    emptyTitle: '사용 가능한 워크플로우 도구 없음',
+    emptyTip: '"워크플로우 -> 도구로 등록하기"로 이동',
+  },
   createTool: {
     title: '커스텀 도구 만들기',
     editAction: '설정',
     editTitle: '커스텀 도구 편집',
     name: '이름',
     toolNamePlaceHolder: '도구 이름을 입력하세요',
+    nameForToolCall: '도구 호출 이름',
+    nameForToolCallPlaceHolder: 'getCurrentWeather, list_pets 과 같이, 기계 인지를 위해 사용됩니다.',
+    nameForToolCallTip: '숫자와 문자, 밑줄만 지원합니다.',
+    description: '설명',
+    descriptionPlaceholder: '도구의 목적을 설명합니다. 예시로, 특정 지역의 온도 가져오기',
     schema: '스키마',
     schemaPlaceHolder: '여기에 OpenAPI 스키마를 입력하세요',
     viewSchemaSpec: 'OpenAPI-Swagger 명세 보기',
@@ -71,6 +87,24 @@ const translation = {
     },
     privacyPolicy: '개인정보 처리방침',
     privacyPolicyPlaceholder: '개인정보 처리방침을 입력하세요',
+    toolInput: {
+      title: '도구 입력',
+      name: '이름',
+      required: '필요사항',
+      method: '방식',
+      methodSetting: '설정',
+      methodSettingTip: '도구 설정에서 사용자가 기입',
+      methodParameter: '파라미터',
+      methodParameterTip: '추론 중에 LLM이 기입',
+      label: '태그',
+      labelPlaceholder: '태그를 선택하세요.(선택사항)',
+      description: '설명',
+      descriptionPlaceholder: '파라미터의 의도를 설명하세요.',
+    },
+    customDisclaimer: '사용자 정의 권리 포기 문구',
+    customDisclaimerPlaceholder: '사용자 정의 권리 포기 문구를 입력해주세요.',
+    confirmTitle: '저장하시겠습니까?',
+    confirmTip: '이 도구를 사용하는 앱은 영향을 받습니다.',
   },
   test: {
     title: '테스트',
@@ -110,6 +144,8 @@ const translation = {
   toolRemoved: '도구가 제거되었습니다',
   notAuthorized: '권한이 없습니다',
   howToGet: '획득 방법',
+  openInStudio: '스튜디오에서 열기',
+  toolNameUsageTip: 'Agent 추리와 프롬프트를 위한 도구 호출 이름',
 }
 
 export default translation

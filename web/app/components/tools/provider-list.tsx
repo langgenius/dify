@@ -69,7 +69,7 @@ const ProviderList = () => {
     <div className='relative flex overflow-hidden bg-gray-100 shrink-0 h-0 grow'>
       <div className='relative flex flex-col overflow-y-auto bg-gray-100 grow'>
         <div className={cn(
-          'z-20 sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 flex-wrap gap-y-2',
+          'sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2',
           currentProvider && 'pr-6',
         )}>
           <TabSliderNew

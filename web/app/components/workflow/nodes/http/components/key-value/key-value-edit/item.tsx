@@ -49,8 +49,8 @@ const KeyValueItem: FC<Props> = ({
 
   return (
     // group class name is for hover row show remove button
-    <div className={cn(className, 'group flex items-start h-min-7 border-t border-gray-200')}>
-      <div className='w-1/2 h-full border-r border-gray-200'>
+    <div className={cn(className, 'group flex h-min-7 border-t border-gray-200')}>
+      <div className='w-1/2 border-r border-gray-200'>
         <InputItem
           instanceId={`http-key-${instanceId}`}
           nodeId={nodeId}
@@ -61,7 +61,7 @@ const KeyValueItem: FC<Props> = ({
           readOnly={readonly}
         />
       </div>
-      <div className='w-1/2  h-full'>
+      <div className='w-1/2'>
         <InputItem
           instanceId={`http-value-${instanceId}`}
           nodeId={nodeId}
