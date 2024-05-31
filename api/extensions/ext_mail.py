@@ -33,13 +33,16 @@ class Mail:
                 from libs.smtp import SMTPClient
                 if not app.config.get('SMTP_SERVER') or not app.config.get('SMTP_PORT'):
                     raise ValueError('SMTP_SERVER and SMTP_PORT are required for smtp mail type')
+                if not app.config.get('SMTP_USE_TLS') and app.config.get('SMTP_OPPORTUNISTIC_TLS'):
+                    raise ValueError('SMTP_OPPORTUNISTIC_TLS is not supported without enabling SMTP_USE_TLS')
                 self._client = SMTPClient(
                     server=app.config.get('SMTP_SERVER'),
                     port=app.config.get('SMTP_PORT'),
                     username=app.config.get('SMTP_USERNAME'),
                     password=app.config.get('SMTP_PASSWORD'),
                     _from=app.config.get('MAIL_DEFAULT_SEND_FROM'),
-                    use_tls=app.config.get('SMTP_USE_TLS')
+                    use_tls=app.config.get('SMTP_USE_TLS'),
+                    opportunistic_tls=app.config.get('SMTP_OPPORTUNISTIC_TLS')
                 )
             else:
                 raise ValueError('Unsupported mail type {}'.format(app.config.get('MAIL_TYPE')))

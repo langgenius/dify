@@ -31,10 +31,10 @@ const Filed: FC<Props> = ({
     toggle: toggleFold,
   }] = useBoolean(true)
   return (
-    <div className={cn(className, inline && 'flex justify-between items-center', supportFold && 'cursor-pointer')}>
+    <div className={cn(className, inline && 'flex justify-between items-center')}>
       <div
         onClick={() => supportFold && toggleFold()}
-        className='flex justify-between items-center'>
+        className={cn('flex justify-between items-center', supportFold && 'cursor-pointer')}>
         <div className='flex items-center h-6'>
           <div className='text-[13px] font-medium text-gray-700 uppercase'>{title}</div>
           {tooltip && (
