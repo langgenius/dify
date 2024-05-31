@@ -222,7 +222,6 @@ def _ingest_with_table_transformers(
                 table_text = table.to_html_str()
 
             # Flip y-coordinates to match the top-left origin system
-            # FIXME: incorporate padding into bbox
             fy0 = page.rect.height - table_bbox.bbox[3]
             fy1 = page.rect.height - table_bbox.bbox[1]
 
