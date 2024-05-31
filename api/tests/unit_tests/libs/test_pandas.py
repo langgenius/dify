@@ -12,7 +12,7 @@ def test_pandas_csv(tmp_path, monkeypatch):
     df1.to_csv(csv_file_path, index=False)
 
     # read from csv file
-    df2 = pd.read_csv(csv_file_path)
+    df2 = pd.read_csv(csv_file_path, on_bad_lines='skip')
     assert df2[df2.columns[0]].to_list() == data['col1']
     assert df2[df2.columns[1]].to_list() == data['col2']
 
