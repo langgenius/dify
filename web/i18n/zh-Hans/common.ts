@@ -356,6 +356,10 @@ const translation = {
         addPages: '添加页面',
         preview: '预览',
       },
+      website: {
+        title: '网站',
+        description: '使用网络爬虫从网站导入内容。',
+      },
     },
   },
   plugin: {

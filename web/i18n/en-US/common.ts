@@ -357,6 +357,10 @@ const translation = {
         preview: 'PREVIEW',
       },
     },
+    website: {
+      title: 'Website',
+      description: 'Import content from websites using web crawler.',
+    },
   },
   plugin: {
     serpapi: {

@@ -171,6 +171,32 @@ export type DataSourceNotion = {
   source_info: DataSourceNotionWorkspace
 }
 
+export enum DataSourceCategory {
+  website = 'website',
+}
+export enum WebsiteProvider {
+  fireCrawl = 'firecrawl',
+}
+
+export type WebsiteCredentials = {
+  auth_type: 'bearer'
+  config: {
+    base_url: string
+    api_key: string
+  }
+}
+export type DataSourceWebsiteItem = {
+  id: string
+  category: DataSourceCategory.website
+  provider: WebsiteProvider
+  credentials: WebsiteCredentials
+  created_at: number
+  updated_at: number
+}
+export type DataSourceWebsite = {
+  settings: DataSourceWebsiteItem[]
+}
+
 export type GithubRepo = {
   stargazers_count: number
 }
