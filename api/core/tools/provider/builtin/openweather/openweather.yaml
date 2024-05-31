@@ -10,6 +10,8 @@ identity:
     zh_Hans: 基于open weather的天气查询工具包
     pt_BR: Kit de consulta de clima baseado no Open Weather
   icon: icon.svg
+  tags:
+    - weather
 credentials_for_provider:
   api_key:
     type: secret-input

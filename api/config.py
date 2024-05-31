@@ -81,8 +81,9 @@ DEFAULTS = {
     'INNER_API': 'False',
     'ENTERPRISE_ENABLED': 'False',
     'INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH': 1000,
-    'WORKFLOW_MAX_EXECUTION_STEPS': 50,
-    'WORKFLOW_MAX_EXECUTION_TIME': 600,
+    'WORKFLOW_MAX_EXECUTION_STEPS': 500,
+    'WORKFLOW_MAX_EXECUTION_TIME': 1200,
+    'WORKFLOW_CALL_MAX_DEPTH': 5,
 }
 
 
@@ -294,6 +295,7 @@ class Config:
         self.SMTP_USERNAME = get_env('SMTP_USERNAME')
         self.SMTP_PASSWORD = get_env('SMTP_PASSWORD')
         self.SMTP_USE_TLS = get_bool_env('SMTP_USE_TLS')
+        self.SMTP_OPPORTUNISTIC_TLS = get_bool_env('SMTP_OPPORTUNISTIC_TLS')
 
         # ------------------------
         # Workspace Configurations.
@@ -324,6 +326,7 @@ class Config:
 
         self.WORKFLOW_MAX_EXECUTION_STEPS = int(get_env('WORKFLOW_MAX_EXECUTION_STEPS'))
         self.WORKFLOW_MAX_EXECUTION_TIME = int(get_env('WORKFLOW_MAX_EXECUTION_TIME'))
+        self.WORKFLOW_CALL_MAX_DEPTH = int(get_env('WORKFLOW_CALL_MAX_DEPTH'))
 
         # Moderation in app Configurations.
         self.OUTPUT_MODERATION_BUFFER_SIZE = int(get_env('OUTPUT_MODERATION_BUFFER_SIZE'))

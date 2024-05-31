@@ -6,7 +6,7 @@ on:
       - main
 
 concurrency:
-  group: dep-${{ github.head_ref || github.run_id }}
+  group: style-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:

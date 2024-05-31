@@ -152,7 +152,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
+      placement='left'
       offset={4}
     >
       <div className='relative'>

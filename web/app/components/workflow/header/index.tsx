@@ -88,13 +88,13 @@ const Header: FC = () => {
 
   const handleShowFeatures = useCallback(() => {
     const {
+      showFeaturesPanel,
       isRestoring,
       setShowFeaturesPanel,
     } = workflowStore.getState()
     if (getNodesReadOnly() && !isRestoring)
       return
-
-    setShowFeaturesPanel(true)
+    setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
   const handleCancelRestore = useCallback(() => {

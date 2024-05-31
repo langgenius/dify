@@ -1,6 +1,5 @@
 import json
 
-from core.tools.entities.values import ToolLabelEnum
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.spark.tools.spark_img_generation import spark_response
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
@@ -39,8 +38,3 @@ class SparkProvider(BuiltinToolProviderController):
                 )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-
-    def _get_tool_labels(self) -> list[ToolLabelEnum]:
-        return [
-            ToolLabelEnum.IMAGE
-        ]
