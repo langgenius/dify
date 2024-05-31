@@ -41,7 +41,7 @@ const ConfigItem: FC<Props> = ({
 
   return (
     <div className={cn(s['workspace-item'], 'flex items-center mb-1 py-1 pr-1 bg-white rounded-lg')} key={payload.id}>
-      <payload.logo className='ml-3 mr-[6px]' />
+      <payload.logo className='ml-3 mr-1.5' />
       <div className='grow py-[7px] leading-[18px] text-[13px] font-medium text-gray-700 truncate' title={payload.name}>{payload.name}</div>
       {
         payload.isActive

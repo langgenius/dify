@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useBoolean } from 'ahooks'
+import cn from 'classnames'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
 import { fetchWebsiteDataSource } from '@/service/common'
@@ -17,7 +18,7 @@ import {
 
 type Props = {}
 
-const isUseMock = false
+const isUseMock = true
 const mockList: DataSourceWebsiteItem[] = [
   {
     id: '1',
@@ -67,7 +68,7 @@ const DataSourceWebsite: FC<Props> = () => {
       configuredList={list.map(item => ({
         id: item.id,
         logo: ({ className }: { className: string }) => (
-          <div className={className}>L</div>
+          <div className={cn(className, 'flex items-center justify-center w-5 h-5 bg-white border border-gray-100 text-xs font-medium text-gray-500 rounded ml-3')}>🔥</div>
         ),
         name: 'FireCrawl',
         isActive: true,
