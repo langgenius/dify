@@ -338,6 +338,7 @@ const translation = {
   dataSource: {
     add: '添加数据源',
     connect: '绑定',
+    configure: '配置',
     notion: {
       title: 'Notion',
       description: '使用 Notion 作为知识库的数据源。',
@@ -356,11 +357,11 @@ const translation = {
         addPages: '添加页面',
         preview: '预览',
       },
-      website: {
-        title: '网站',
-        description: '使用网络爬虫从网站导入内容。',
-        with: '使用',
-      },
+    },
+    website: {
+      title: '网站',
+      description: '使用网络爬虫从网站导入内容。',
+      with: '使用',
     },
   },
   plugin: {

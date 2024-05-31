@@ -338,6 +338,7 @@ const translation = {
   dataSource: {
     add: 'Add a data source',
     connect: 'Connect',
+    configure: 'Configure',
     notion: {
       title: 'Notion',
       description: 'Using Notion as a data source for the Knowledge.',

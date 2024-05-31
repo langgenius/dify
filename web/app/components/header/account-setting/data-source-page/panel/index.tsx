@@ -34,6 +34,7 @@ const Panel: FC<Props> = ({
   notionActions,
 }) => {
   const { t } = useTranslation()
+  const isNotion = type === DataSourceType.notion
   const isWebsite = type === DataSourceType.website
 
   return (
@@ -57,35 +58,53 @@ const Panel: FC<Props> = ({
             )
           }
         </div>
-        {
-          isConfigured
-            ? (
-              <div
-                className={
-                  `flex items-center ml-3 px-3 h-7 bg-white border border-gray-200
+        {isNotion && (
+          <>
+            {
+              isConfigured
+                ? (
+                  <div
+                    className={
+                      `flex items-center ml-3 px-3 h-7 bg-white border border-gray-200
                   rounded-md text-xs font-medium text-gray-700
                   ${!readonly ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
-                }
-                onClick={onConfigure}
-              >
-                {t('common.dataSource.connect')}
-              </div>
-            )
-            : (
-              <>
-                {isSupportList && <div
-                  className={
-                    `flex items-center px-3 py-1 min-h-7 bg-white border-[0.5px] border-gray-200 text-xs font-medium text-primary-600 rounded-md
+                    }
+                    onClick={onConfigure}
+                  >
+                    {t('common.dataSource.configure')}
+                  </div>
+                )
+                : (
+                  <>
+                    {isSupportList && <div
+                      className={
+                        `flex items-center px-3 py-1 min-h-7 bg-white border-[0.5px] border-gray-200 text-xs font-medium text-primary-600 rounded-md
                   ${!readonly ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
-                  }
-                  onClick={onConfigure}
-                >
-                  <PlusIcon className='w-[14px] h-[14px] mr-[5px]' />
-                  {t('common.dataSource.notion.addWorkspace')}
-                </div>}
-              </>
-            )
-        }
+                      }
+                      onClick={onConfigure}
+                    >
+                      <PlusIcon className='w-[14px] h-[14px] mr-[5px]' />
+                      {t('common.dataSource.notion.addWorkspace')}
+                    </div>}
+                  </>
+                )
+            }
+          </>
+        )}
+
+        {isWebsite && !isConfigured && (
+          <div
+            className={
+              `flex items-center ml-3 px-3 h-7 bg-white border border-gray-200
+        rounded-md text-xs font-medium text-gray-700
+        ${!readonly ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
+            }
+            onClick={onConfigure}
+          >
+            {t('common.dataSource.configure')}
+          </div>
+        )}
+
       </div>
       {
         isConfigured && (
