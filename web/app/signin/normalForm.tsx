@@ -155,7 +155,7 @@ const NormalForm = () => {
               <div className='w-full'>
                 <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
                   <Button
-                    type='default'
+                    variant='default'
                     disabled={isLoading}
                     className='w-full hover:!bg-gray-50 !text-sm !font-medium'
                   >
@@ -174,7 +174,7 @@ const NormalForm = () => {
               <div className='w-full'>
                 <a href={getPurifyHref(`${apiPrefix}/oauth/login/google`)}>
                   <Button
-                    type='default'
+                    variant='default'
                     disabled={isLoading}
                     className='w-full hover:!bg-gray-50 !text-sm !font-medium'
                   >
@@ -270,7 +270,7 @@ const NormalForm = () => {
                 <div className='mb-2'>
                   <Button
                     tabIndex={0}
-                    type='primary'
+                    variant='primary'
                     onClick={handleEmailPasswordLogin}
                     disabled={isLoading}
                     className="w-full !fone-medium !text-sm"

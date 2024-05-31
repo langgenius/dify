@@ -63,7 +63,7 @@ const CreateAppModal = ({
     <>
       <Modal
         isShow={show}
-        onClose={() => {}}
+        onClose={() => { }}
         wrapperClassName='z-40'
         className='relative !max-w-[480px] px-8'
       >
@@ -103,7 +103,7 @@ const CreateAppModal = ({
           {!isEditModal && isAppsFull && <AppsFull loc='app-explore-create' />}
         </div>
         <div className='flex flex-row-reverse'>
-          <Button disabled={!isEditModal && isAppsFull} className='w-24 ml-2' type='primary' onClick={submit}>{!isEditModal ? t('common.operation.create') : t('common.operation.save')}</Button>
+          <Button disabled={!isEditModal && isAppsFull} className='w-24 ml-2' variant='primary' onClick={submit}>{!isEditModal ? t('common.operation.create') : t('common.operation.save')}</Button>
           <Button className='w-24' onClick={onHide}>{t('common.operation.cancel')}</Button>
         </div>
       </Modal>

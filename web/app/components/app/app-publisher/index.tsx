@@ -119,7 +119,7 @@ const AppPublisher = ({
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         <Button
-          type='primary'
+          variant='primary'
           className={`
             pl-3 pr-2 py-0 h-8 text-[13px] font-medium
             ${disabled && 'cursor-not-allowed opacity-50'}
@@ -168,7 +168,7 @@ const AppPublisher = ({
               )
               : (
                 <Button
-                  type='primary'
+                  variant='primary'
                   className={classNames(
                     'mt-3 px-3 py-0 w-full h-8 border-[0.5px] border-primary-700 rounded-lg text-[13px] font-medium',
                     (publishDisabled || published) && 'border-transparent',

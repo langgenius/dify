@@ -181,7 +181,7 @@ export default function AccountPage() {
             <Button className='mr-2 text-sm font-medium' onClick={() => setEditNameModalVisible(false)}>{t('common.operation.cancel')}</Button>
             <Button
               disabled={editing || !editName}
-              type='primary'
+              variant='primary'
               className='text-sm font-medium'
               onClick={handleSaveName}
             >
@@ -235,7 +235,7 @@ export default function AccountPage() {
             }}>{t('common.operation.cancel')}</Button>
             <Button
               disabled={editing}
-              type='primary'
+              variant='primary'
               className='text-sm font-medium'
               onClick={handleSavePassowrd}
             >

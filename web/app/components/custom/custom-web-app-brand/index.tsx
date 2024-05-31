@@ -152,7 +152,7 @@ const CustomWebAppBrand = () => {
             !uploading && (
               <Button
                 className={`
-                  relative mr-2 !h-8 !px-3 bg-white !text-[13px] 
+                  relative mr-2 !h-8 !px-3 bg-white !text-[13px]
                   ${uploadDisabled ? 'opacity-40' : ''}
                 `}
                 disabled={uploadDisabled}
@@ -192,7 +192,7 @@ const CustomWebAppBrand = () => {
             fileId && (
               <>
                 <Button
-                  type='primary'
+                  variant='primary'
                   className='mr-2 !h-8 !px-3 !py-0 !text-[13px]'
                   onClick={handleApply}
                   disabled={webappBrandRemoved || !isCurrentWorkspaceManager}
@@ -212,7 +212,7 @@ const CustomWebAppBrand = () => {
           <div className='mr-2 h-5 w-[1px] bg-black/5'></div>
           <Button
             className={`
-              !h-8 !px-3 bg-white !text-[13px] 
+              !h-8 !px-3 bg-white !text-[13px]
               ${(uploadDisabled || (!webappLogo && !webappBrandRemoved)) ? 'opacity-40' : ''}
             `}
             disabled={uploadDisabled || (!webappLogo && !webappBrandRemoved)}

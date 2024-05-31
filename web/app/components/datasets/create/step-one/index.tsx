@@ -42,7 +42,7 @@ export const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
       <span className={s.notionIcon} />
       <div className={s.title}>{t('datasetCreation.stepOne.notionSyncTitle')}</div>
       <div className={s.tip}>{t('datasetCreation.stepOne.notionSyncTip')}</div>
-      <Button className='h-8' type='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
+      <Button className='h-8' variant='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
     </div>
   )
 }
@@ -176,7 +176,7 @@ const StepOne = ({
                   <VectorSpaceFull />
                 </div>
               )}
-              <Button disabled={nextDisabled} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+              <Button disabled={nextDisabled} className={s.submitButton} variant='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
             </>
           )}
           {dataSourceType === DataSourceType.NOTION && (
@@ -196,7 +196,7 @@ const StepOne = ({
                       <VectorSpaceFull />
                     </div>
                   )}
-                  <Button disabled={isShowVectorSpaceFull || !notionPages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+                  <Button disabled={isShowVectorSpaceFull || !notionPages.length} className={s.submitButton} variant='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
                 </>
               )}
             </>

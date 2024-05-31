@@ -157,7 +157,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
           </div>
           <div className='flex space-x-2'>
             <Button className='!w-24 !h-9' onClick={onClose}>{t('common.operation.cancel')}</Button>
-            <Button className='!w-24 !h-9' type='primary' onClick={handleSelect} disabled={hasNoData}>{t('common.operation.add')}</Button>
+            <Button className='!w-24 !h-9' variant='primary' onClick={handleSelect} disabled={hasNoData}>{t('common.operation.add')}</Button>
           </div>
         </div>
       )}

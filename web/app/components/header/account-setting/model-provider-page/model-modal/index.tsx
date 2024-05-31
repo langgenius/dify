@@ -276,7 +276,7 @@ const ModelModal: FC<ModelModalProps> = ({
                   </Button>
                   <Button
                     className='h-9 text-sm font-medium'
-                    type='primary'
+                    variant='primary'
                     onClick={handleSave}
                     disabled={loading || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)}
                   >

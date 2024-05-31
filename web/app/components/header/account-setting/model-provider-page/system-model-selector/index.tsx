@@ -146,7 +146,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.systemReasoningModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -166,7 +166,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.embeddingModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -186,7 +186,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.rerankModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -206,7 +206,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.speechToTextModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -226,7 +226,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.ttsModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -245,7 +245,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               {t('common.operation.cancel')}
             </Button>
             <Button
-              type='primary'
+              variant='primary'
               className='!h-8 !text-[13px]'
               onClick={handleSave}
             >

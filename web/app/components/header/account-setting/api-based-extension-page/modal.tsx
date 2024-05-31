@@ -136,7 +136,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
           {t('common.operation.cancel')}
         </Button>
         <Button
-          type='primary'
+          variant='primary'
           className='text-sm font-medium'
           disabled={!localeData.name || !localeData.api_endpoint || !localeData.api_key || loading}
           onClick={handleSave}

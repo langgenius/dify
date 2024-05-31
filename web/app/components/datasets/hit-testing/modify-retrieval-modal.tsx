@@ -115,7 +115,7 @@ const ModifyRetrievalModal: FC<Props> = ({
         }}
       >
         <Button className='mr-2 flex-shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
-        <Button type='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
+        <Button variant='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
       </div>
     </div>
   )
