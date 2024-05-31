@@ -27,11 +27,11 @@ const Popup: FC<PopupProps> = ({
     model => model.models.filter(
       (modelItem) => {
         if (modelItem.label[language] !== undefined)
-          return modelItem.label[language].includes(searchText)
+          return modelItem.label[language].toLowerCase().includes(searchText.toLowerCase())
 
         let found = false
         Object.keys(modelItem.label).forEach((key) => {
-          if (modelItem.label[key].includes(searchText))
+          if (modelItem.label[key].toLowerCase().includes(searchText.toLowerCase()))
             found = true
         })
 
