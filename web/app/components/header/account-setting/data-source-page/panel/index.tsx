@@ -8,7 +8,7 @@ import type { ConfigItemType } from './config-item'
 import ConfigItem from './config-item'
 
 import s from './style.module.css'
-import type { DataSourceType } from './types'
+import { DataSourceType } from './types'
 
 type Props = {
   type: DataSourceType
@@ -34,14 +34,20 @@ const Panel: FC<Props> = ({
   notionActions,
 }) => {
   const { t } = useTranslation()
+  const isWebsite = type === DataSourceType.website
 
   return (
     <div className='mb-2 border-[0.5px] border-gray-200 bg-gray-50 rounded-xl'>
       <div className='flex items-center px-3 py-[9px]'>
         <div className={cn(s[`${type}-icon`], 'w-8 h-8 mr-3 border border-gray-100 rounded-lg')} />
         <div className='grow'>
-          <div className='leading-5 text-sm font-medium text-gray-800'>
-            {t(`common.dataSource.${type}.title`)}
+          <div className='flex items-center h-5'>
+            <div className='text-sm font-medium text-gray-800'>{t(`common.dataSource.${type}.title`)}</div>
+            {isWebsite && (
+              <div className='ml-1 leading-[18px] px-1.5 rounded-md bg-white border border-gray-100 text-xs font-medium text-gray-700'>
+                <span className='text-gray-500'>{t('common.dataSource.website.with')}</span> 🔥 FireCrawl
+              </div>
+            )}
           </div>
           {
             !isConfigured && (

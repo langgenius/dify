@@ -360,6 +360,7 @@ const translation = {
     website: {
       title: 'Website',
       description: 'Import content from websites using web crawler.',
+      with: 'With',
     },
   },
   plugin: {
