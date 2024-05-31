@@ -261,6 +261,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 draftConfig,
                 setDraftConfig,
                 provider,
+                currentCustomConfigurationModelFixedFields,
                 configurationMethod: configurateMethod,
               }} />
 

@@ -100,6 +100,10 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose }: Mod
                 draftConfig,
                 setDraftConfig,
                 provider,
+                currentCustomConfigurationModelFixedFields: {
+                  __model_name: model.model,
+                  __model_type: model.model_type,
+                },
                 configurationMethod: model.fetch_from,
                 className: 'mt-2',
               }} />

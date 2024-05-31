@@ -227,17 +227,17 @@ export type ModelParameterRule = {
 
 export type ModelLoadBalancingConfigEntry = {
   /** model balancing config entry id */
-  id: string
+  id?: string
   /** is config entry enabled */
-  enabled: boolean
+  enabled?: boolean
   /** config entry name */
   name: string
   /** model balancing credential */
   credentials: Record<string, string | undefined | boolean>
   /** is config entry currently removed from Round-robin queue */
-  in_cooldown: boolean
+  in_cooldown?: boolean
   /** cooldown time (in seconds) */
-  ttl: number
+  ttl?: number
 }
 
 export type ModelLoadBalancingConfig = {

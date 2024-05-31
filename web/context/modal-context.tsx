@@ -13,6 +13,7 @@ import ModelModal from '@/app/components/header/account-setting/model-provider-p
 import type {
   ConfigurationMethodEnum,
   CustomConfigurationModelFixedFields,
+  ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
@@ -36,6 +37,9 @@ export type ModelModalType = {
   currentConfigurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
 }
+export type LoadBalancingEntryModalType = ModelModalType & {
+  entry?: ModelLoadBalancingConfigEntry
+}
 export type ModalContextState = {
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<string> | null>>
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
@@ -44,7 +48,7 @@ export type ModalContextState = {
   setShowPricingModal: Dispatch<SetStateAction<any>>
   setShowAnnotationFullModal: () => void
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
-  setShowModelLoadBalancingEntryModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
+  setShowModelLoadBalancingEntryModal: Dispatch<SetStateAction<ModalState<LoadBalancingEntryModalType> | null>>
 }
 const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: () => { },
@@ -76,7 +80,7 @@ export const ModalContextProvider = ({
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
-  const [showModelLoadBalancingEntryModal, setShowModelLoadBalancingEntryModal] = useState<ModalState<ModelModalType> | null>(null)
+  const [showModelLoadBalancingEntryModal, setShowModelLoadBalancingEntryModal] = useState<ModalState<LoadBalancingEntryModalType> | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
@@ -117,9 +121,13 @@ export const ModalContextProvider = ({
       showModelLoadBalancingEntryModal.onCancelCallback()
   }, [showModelLoadBalancingEntryModal])
 
-  const handleSaveModelLoadBalancingEntryModal = useCallback(() => {
-    if (showModelLoadBalancingEntryModal?.onSaveCallback)
-      showModelLoadBalancingEntryModal.onSaveCallback(showModelLoadBalancingEntryModal.payload)
+  const handleSaveModelLoadBalancingEntryModal = useCallback((entry: ModelLoadBalancingConfigEntry) => {
+    if (showModelLoadBalancingEntryModal?.onSaveCallback) {
+      showModelLoadBalancingEntryModal.onSaveCallback({
+        ...showModelLoadBalancingEntryModal.payload,
+        entry,
+      })
+    }
     setShowModelLoadBalancingEntryModal(null)
   }, [showModelLoadBalancingEntryModal])
 
@@ -233,6 +241,7 @@ export const ModalContextProvider = ({
               provider={showModelLoadBalancingEntryModal.payload.currentProvider}
               configurationMethod={showModelLoadBalancingEntryModal.payload.currentConfigurationMethod}
               currentCustomConfigurationModelFixedFields={showModelLoadBalancingEntryModal.payload.currentCustomConfigurationModelFixedFields}
+              entry={showModelLoadBalancingEntryModal.payload.entry}
               onCancel={handleCancelModelLoadBalancingEntryModal}
               onSave={handleSaveModelLoadBalancingEntryModal}
             />

@@ -14,20 +14,16 @@ import type {
   CredentialFormSchemaTextInput,
   CustomConfigurationModelFixedFields,
   FormValue,
+  ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
 import {
   ConfigurationMethodEnum,
-  CustomConfigurationStatusEnum,
   FormTypeEnum,
 } from '../declarations'
-import {
-  removeCredentials,
-  saveCredentials,
-} from '../utils'
+
 import {
   useLanguage,
-  useProviderCredentialsAndLoadBalancing,
 } from '../hooks'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatedStatus } from '../../key-validator/declarations'
@@ -47,27 +43,27 @@ type ModelModalProps = {
   provider: ModelProvider
   configurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
-  credentials?: Record<string, string | boolean | undefined>
+  entry?: ModelLoadBalancingConfigEntry
   onCancel: () => void
-  onSave: () => void
+  onSave: (entry: ModelLoadBalancingConfigEntry) => void
 }
 
 const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
   provider,
   configurationMethod,
   currentCustomConfigurationModelFixedFields,
-  credentials,
+  entry,
   onCancel,
   onSave,
 }) => {
   const providerFormSchemaPredefined = configurationMethod === ConfigurationMethodEnum.predefinedModel
-  const { credentials: formSchemasValue } = useProviderCredentialsAndLoadBalancing(
-    provider.provider,
-    configurationMethod,
-    providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
-    currentCustomConfigurationModelFixedFields,
-  )
-  const isEditMode = !!credentials
+  // const { credentials: formSchemasValue } = useProviderCredentialsAndLoadBalancing(
+  //   provider.provider,
+  //   configurationMethod,
+  //   providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
+  //   currentCustomConfigurationModelFixedFields,
+  // )
+  const isEditMode = !!entry
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const language = useLanguage()
@@ -81,7 +77,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
           en_US: 'Config Name',
           zh_Hans: '配置名称',
         },
-        variable: '__model_name',
+        variable: 'name',
         required: true,
         show_on: [],
         placeholder: {
@@ -92,11 +88,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
       ...(
         providerFormSchemaPredefined
           ? provider.provider_credential_schema.credential_form_schemas
-          : [
-            // genModelTypeFormSchema(provider.supported_model_types),
-            // genModelNameFormSchema(provider.model_credential_schema?.model),
-            ...provider.model_credential_schema.credential_form_schemas,
-          ]
+          : provider.model_credential_schema.credential_form_schemas
       ),
     ]
   }, [
@@ -104,6 +96,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
     provider.provider_credential_schema?.credential_form_schemas,
     provider.model_credential_schema?.credential_form_schemas,
   ])
+
   const [
     requiredFormSchemas,
     secretFormSchemas,
@@ -157,6 +150,19 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
       showOnVariableMap,
     ]
   }, [formSchemas])
+  const [result, setResult] = useState<ModelLoadBalancingConfigEntry['credentials']>()
+  useEffect(() => {
+    if (entry && !result) {
+      setResult({
+        ...defaultFormSchemaValue,
+        ...entry.credentials,
+      } as Record<string, string | undefined | boolean>)
+    }
+  }, [entry, defaultFormSchemaValue, result])
+  const formSchemasValue = useMemo(() => ({
+    ...currentCustomConfigurationModelFixedFields,
+    ...result,
+  }), [currentCustomConfigurationModelFixedFields, result])
   const initialFormSchemasValue: Record<string, string | number> = useMemo(() => {
     return {
       ...defaultFormSchemaValue,
@@ -186,26 +192,32 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
     }, {} as Record<string, string>)
   }, [initialFormSchemasValue, secretFormSchemas])
 
-  const handleValueChange = (v: FormValue) => {
+  const handleValueChange = ({ __model_type, __model_name, ...v }: FormValue) => {
     setValue(v)
+    setResult(v)
   }
   const handleSave = async () => {
     try {
       setLoading(true)
 
-      const res = await saveCredentials(
-        providerFormSchemaPredefined,
-        provider.provider,
-        {
-          ...value,
-          ...getSecretValues(value),
-        },
-      )
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        onSave()
-        onCancel()
-      }
+      // const res = await saveCredentials(
+      //   providerFormSchemaPredefined,
+      //   provider.provider,
+      //   {
+      //     ...value,
+      //     ...getSecretValues(value),
+      //   },
+      // )
+      // if (res.result === 'success') {
+      // notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      getSecretValues(value)
+      onSave({
+        ...(entry || {}),
+        name: result!.name as string,
+        credentials: result!,
+      })
+      //   onCancel()
+      // }
     }
     finally {
       setLoading(false)
@@ -216,16 +228,17 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
     try {
       setLoading(true)
 
-      const res = await removeCredentials(
-        providerFormSchemaPredefined,
-        provider.provider,
-        value,
-      )
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        onSave()
-        onCancel()
-      }
+      // const res = await removeCredentials(
+      //   providerFormSchemaPredefined,
+      //   provider.provider,
+      //   value,
+      // )
+      // if (res.result === 'success') {
+      //   notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      //   // TODO
+      //   onSave()
+      //   onCancel()
+      // }
     }
     finally {
       setLoading(false)

@@ -2,7 +2,7 @@ import classNames from 'classnames'
 import type { Dispatch, SetStateAction } from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ConfigurationMethodEnum, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
+import type { ConfigurationMethodEnum, CustomConfigurationModelFixedFields, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
 import Indicator from '../../../indicator'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import Switch from '@/app/components/base/switch'
@@ -21,6 +21,7 @@ export type ModelLoadBalancingConfigsProps = {
   setDraftConfig: Dispatch<SetStateAction<ModelLoadBalancingConfig | undefined>>
   provider: ModelProvider
   configurationMethod: ConfigurationMethodEnum
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   withSwitch?: boolean
   className?: string
 }
@@ -30,6 +31,7 @@ const ModelLoadBalancingConfigs = ({
   setDraftConfig,
   provider,
   configurationMethod,
+  currentCustomConfigurationModelFixedFields,
   withSwitch = false,
   className,
 }: ModelLoadBalancingConfigsProps) => {
@@ -77,18 +79,34 @@ const ModelLoadBalancingConfigs = ({
 
   const setShowModelLoadBalancingEntryModal = useModalContextSelector(state => state.setShowModelLoadBalancingEntryModal)
 
-  const toggleAddEntryModel = useCallback(() => {
+  const toggleEntryModel = useCallback((index?: number, entry?: ModelLoadBalancingConfigEntry) => {
     setShowModelLoadBalancingEntryModal({
       payload: {
         currentProvider: provider,
         currentConfigurationMethod: configurationMethod,
-        currentCustomConfigurationModelFixedFields: undefined,
+        currentCustomConfigurationModelFixedFields,
+        entry,
       },
-      onSaveCallback: () => {
+      onSaveCallback: ({ entry: result }) => {
+        if (entry) {
+          // edit entry
+          setDraftConfig(prev => ({
+            ...prev,
+            enabled: !!prev?.enabled,
+            configs: prev?.configs.map((config, i) => i === index ? result! : config) || [],
+          }))
+        }
+        else {
+          setDraftConfig(prev => ({
+            ...prev,
+            enabled: !!prev?.enabled,
+            configs: (prev?.configs || []).concat([result!]),
+          }))
+        }
         // onRefreshData()
       },
     })
-  }, [configurationMethod, provider, setShowModelLoadBalancingEntryModal])
+  }, [configurationMethod, currentCustomConfigurationModelFixedFields, provider, setDraftConfig, setShowModelLoadBalancingEntryModal])
 
   if (!draftConfig)
     return null
@@ -139,7 +157,7 @@ const ModelLoadBalancingConfigs = ({
                       {(config.in_cooldown && Boolean(config.ttl))
                         ? (
                           <TooltipPlus popupContent={t('common.modelProvider.apiKeyRateLimit', { seconds: config.ttl })}>
-                            <SimplePieChart percentage={Math.round(config.ttl / 60 * 100)} className='w-3 h-3' />
+                            <SimplePieChart percentage={Math.round((config.ttl ?? 0) / 60 * 100)} className='w-3 h-3' />
                           </TooltipPlus>
                         )
                         : (
@@ -159,7 +177,10 @@ const ModelLoadBalancingConfigs = ({
                     {!isProviderManaged && (
                       <>
                         <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
-                          <span className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'>
+                          <span
+                            className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'
+                            onClick={() => toggleEntryModel(index, config)}
+                          >
                             <Edit02 className='w-4 h-4' />
                           </span>
                           <span
@@ -183,7 +204,10 @@ const ModelLoadBalancingConfigs = ({
               )
             })}
 
-            <div className='flex items-center px-3 mt-1 h-8 text-[13px] font-medium text-primary-600' onClick={toggleAddEntryModel}>
+            <div
+              className='flex items-center px-3 mt-1 h-8 text-[13px] font-medium text-primary-600'
+              onClick={() => toggleEntryModel()}
+            >
               <div className='flex items-center cursor-pointer'>
                 <Plus02 className='mr-2 w-3 h-3' />{t('common.modelProvider.addConfig')}
               </div>
