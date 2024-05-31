@@ -39,7 +39,7 @@ const ApiInput: FC<Props> = ({
   const { t } = useTranslation()
 
   const [isFocus, setIsFocus] = useState(false)
-  const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
       return [VarType.string, VarType.number].includes(varPayload.type)
@@ -70,7 +70,7 @@ const ApiInput: FC<Props> = ({
         onChange={onUrlChange}
         readOnly={readonly}
         nodesOutputVars={availableVars}
-        availableNodes={availableNodes}
+        availableNodes={availableNodesWithParent}
         onFocusChange={setIsFocus}
         placeholder={!readonly ? t('workflow.nodes.http.apiPlaceholder')! : ''}
         placeholderClassName='!leading-[21px]'

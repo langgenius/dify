@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: '公開訪問 URL',
       preview: '預覽',
       regenerate: '重新生成',
+      regenerateNotice: '您是否要重新生成公開訪問 URL？',
       preUseReminder: '使用前請先開啟開關',
       settings: {
         entry: '設定',
@@ -50,6 +51,9 @@ const translation = {
           privacyPolicy: '隱私政策',
           privacyPolicyPlaceholder: '請輸入隱私政策連結',
           privacyPolicyTip: '幫助訪問者瞭解該應用收集的資料，可參考 Dify 的<privacyPolicyLink>隱私政策</privacyPolicyLink>。',
+          customDisclaimer: '自定義免責聲明',
+          customDisclaimerPlaceholder: '請輸入免責聲明',
+          customDisclaimerTip: '客製化的免責聲明文字將在客戶端顯示，提供有關應用程式的額外資訊。',
         },
       },
       embedded: {

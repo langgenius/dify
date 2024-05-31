@@ -2,6 +2,7 @@ from flask import current_app
 from pydantic import BaseModel
 
 from services.billing_service import BillingService
+from services.enterprise.enterprise_service import EnterpriseService
 
 
 class SubscriptionModel(BaseModel):
@@ -31,6 +32,13 @@ class FeatureModel(BaseModel):
     model_load_balancing_enabled: bool = False
 
 
+class SystemFeatureModel(BaseModel):
+    sso_enforced_for_signin: bool = False
+    sso_enforced_for_signin_protocol: str = ''
+    sso_enforced_for_web: bool = False
+    sso_enforced_for_web_protocol: str = ''
+
+
 class FeatureService:
 
     @classmethod
@@ -43,6 +51,15 @@ class FeatureService:
             cls._fulfill_params_from_billing_api(features, tenant_id)
 
         return features
+
+    @classmethod
+    def get_system_features(cls) -> SystemFeatureModel:
+        system_features = SystemFeatureModel()
+
+        if current_app.config['ENTERPRISE_ENABLED']:
+            cls._fulfill_params_from_enterprise(system_features)
+
+        return system_features
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):
@@ -85,3 +102,12 @@ class FeatureService:
 
         if 'model_load_balancing_enabled' in billing_info:
             features.model_load_balancing_enabled = billing_info['model_load_balancing_enabled']
+
+    @classmethod
+    def _fulfill_params_from_enterprise(cls, features):
+        enterprise_info = EnterpriseService.get_info()
+
+        features.sso_enforced_for_signin = enterprise_info['sso_enforced_for_signin']
+        features.sso_enforced_for_signin_protocol = enterprise_info['sso_enforced_for_signin_protocol']
+        features.sso_enforced_for_web = enterprise_info['sso_enforced_for_web']
+        features.sso_enforced_for_web_protocol = enterprise_info['sso_enforced_for_web_protocol']

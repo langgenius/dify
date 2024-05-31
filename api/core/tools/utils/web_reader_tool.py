@@ -54,7 +54,7 @@ def get_url(url: str, user_agent: str = None) -> str:
     if content_type:
         main_content_type = response.headers.get('Content-Type').split(';')[0].strip()
     else:
-        content_disposition = response.headers.get('Content-Disposition')
+        content_disposition = response.headers.get('Content-Disposition', '')
         filename_match = re.search(r'filename="([^"]+)"', content_disposition)
         if filename_match:
             filename = unquote(filename_match.group(1))
@@ -132,17 +132,17 @@ def extract_using_readabilipy(html):
     }
     # Populate article fields from readability fields where present
     if input_json:
-        if "title" in input_json and input_json["title"]:
+        if input_json.get("title"):
             article_json["title"] = input_json["title"]
-        if "byline" in input_json and input_json["byline"]:
+        if input_json.get("byline"):
             article_json["byline"] = input_json["byline"]
-        if "date" in input_json and input_json["date"]:
+        if input_json.get("date"):
             article_json["date"] = input_json["date"]
-        if "content" in input_json and input_json["content"]:
+        if input_json.get("content"):
             article_json["content"] = input_json["content"]
             article_json["plain_content"] = plain_content(article_json["content"], False, False)
             article_json["plain_text"] = extract_text_blocks_as_plain_text(article_json["plain_content"])
-        if "textContent" in input_json and input_json["textContent"]:
+        if input_json.get("textContent"):
             article_json["plain_text"] = input_json["textContent"]
             article_json["plain_text"] = re.sub(r'\n\s*\n', '\n', article_json["plain_text"])
 

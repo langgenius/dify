@@ -37,9 +37,6 @@ from .billing import billing
 # Import datasets controllers
 from .datasets import data_source, datasets, datasets_document, datasets_segments, file, hit_testing
 
-# Import enterprise controllers
-from .enterprise import enterprise_sso
-
 # Import explore controllers
 from .explore import (
     audio,

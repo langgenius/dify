@@ -10,6 +10,9 @@ identity:
     zh_Hans: 一个将 PNG 和 JPG 图像快速轻松地转换为 SVG 矢量图的工具。
     pt_BR: Convert your PNG and JPG images to SVG vectors quickly and easily. Fully automatically. Using AI.
   icon: icon.png
+  tags:
+    - productivity
+    - image
 credentials_for_provider:
   api_key_name:
     type: secret-input

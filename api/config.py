@@ -23,6 +23,7 @@ DEFAULTS = {
     'SERVICE_API_URL': 'https://api.dify.ai',
     'APP_WEB_URL': 'https://udify.app',
     'FILES_URL': '',
+    'FILES_ACCESS_TIMEOUT': 300,
     'S3_ADDRESS_STYLE': 'auto',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
@@ -32,6 +33,7 @@ DEFAULTS = {
     'SQLALCHEMY_POOL_SIZE': 30,
     'SQLALCHEMY_MAX_OVERFLOW': 10,
     'SQLALCHEMY_POOL_RECYCLE': 3600,
+    'SQLALCHEMY_POOL_PRE_PING': 'False',
     'SQLALCHEMY_ECHO': 'False',
     'SENTRY_TRACES_SAMPLE_RATE': 1.0,
     'SENTRY_PROFILES_SAMPLE_RATE': 1.0,
@@ -79,6 +81,10 @@ DEFAULTS = {
     'KEYWORD_DATA_SOURCE_TYPE': 'database',
     'INNER_API': 'False',
     'ENTERPRISE_ENABLED': 'False',
+    'INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH': 1000,
+    'WORKFLOW_MAX_EXECUTION_STEPS': 500,
+    'WORKFLOW_MAX_EXECUTION_TIME': 1200,
+    'WORKFLOW_CALL_MAX_DEPTH': 5,
 }
 
 
@@ -109,7 +115,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.6.8"
+        self.CURRENT_VERSION = "0.6.9"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = get_env('EDITION')
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -140,6 +146,10 @@ class Config:
         # used to display File preview or download Url to the front-end or as Multi-model inputs;
         # Url is signed and has expiration time.
         self.FILES_URL = get_env('FILES_URL') if get_env('FILES_URL') else self.CONSOLE_API_URL
+
+        # File Access Time specifies a time interval in seconds for the file to be accessed.
+        # The default value is 300 seconds.
+        self.FILES_ACCESS_TIMEOUT = int(get_env('FILES_ACCESS_TIMEOUT'))
 
         # Your App secret key will be used for securely signing the session cookie
         # Make sure you are changing this key for your deployment with a strong key.
@@ -176,7 +186,9 @@ class Config:
         self.SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
             'max_overflow': int(get_env('SQLALCHEMY_MAX_OVERFLOW')),
-            'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE'))
+            'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE')),
+            'pool_pre_ping': get_bool_env('SQLALCHEMY_POOL_PRE_PING'),
+            'connect_args': {'options': '-c timezone=UTC'},
         }
 
         self.SQLALCHEMY_ECHO = get_bool_env('SQLALCHEMY_ECHO')
@@ -226,13 +238,13 @@ class Config:
         self.AZURE_BLOB_CONTAINER_NAME = get_env('AZURE_BLOB_CONTAINER_NAME')
         self.AZURE_BLOB_ACCOUNT_URL = get_env('AZURE_BLOB_ACCOUNT_URL')
 
-        # Google Cloud Storage settings
-        self.ALIYUN_OSS_BUCKET_NAME=get_env('ALIYUN_OSS_BUCKET_NAME')
-        self.ALIYUN_OSS_ACCESS_KEY=get_env('ALIYUN_OSS_ACCESS_KEY')
-        self.ALIYUN_OSS_SECRET_KEY=get_env('ALIYUN_OSS_SECRET_KEY')
-        self.ALIYUN_OSS_ENDPOINT=get_env('ALIYUN_OSS_ENDPOINT')
-        self.ALIYUN_OSS_REGION=get_env('ALIYUN_OSS_REGION')
-        self.ALIYUN_OSS_AUTH_VERSION=get_env('ALIYUN_OSS_AUTH_VERSION')
+        # Aliyun Storage settings
+        self.ALIYUN_OSS_BUCKET_NAME = get_env('ALIYUN_OSS_BUCKET_NAME')
+        self.ALIYUN_OSS_ACCESS_KEY = get_env('ALIYUN_OSS_ACCESS_KEY')
+        self.ALIYUN_OSS_SECRET_KEY = get_env('ALIYUN_OSS_SECRET_KEY')
+        self.ALIYUN_OSS_ENDPOINT = get_env('ALIYUN_OSS_ENDPOINT')
+        self.ALIYUN_OSS_REGION = get_env('ALIYUN_OSS_REGION')
+        self.ALIYUN_OSS_AUTH_VERSION = get_env('ALIYUN_OSS_AUTH_VERSION')
 
         # Google Cloud Storage settings
         self.GOOGLE_STORAGE_BUCKET_NAME = get_env('GOOGLE_STORAGE_BUCKET_NAME')
@@ -300,7 +312,8 @@ class Config:
         self.SMTP_USERNAME = get_env('SMTP_USERNAME')
         self.SMTP_PASSWORD = get_env('SMTP_PASSWORD')
         self.SMTP_USE_TLS = get_bool_env('SMTP_USE_TLS')
-        
+        self.SMTP_OPPORTUNISTIC_TLS = get_bool_env('SMTP_OPPORTUNISTIC_TLS')
+
         # ------------------------
         # Workspace Configurations.
         # ------------------------
@@ -332,10 +345,18 @@ class Config:
         # RAG ETL Configurations.
         self.ETL_TYPE = get_env('ETL_TYPE')
         self.UNSTRUCTURED_API_URL = get_env('UNSTRUCTURED_API_URL')
+        self.UNSTRUCTURED_API_KEY = get_env('UNSTRUCTURED_API_KEY')
         self.KEYWORD_DATA_SOURCE_TYPE = get_env('KEYWORD_DATA_SOURCE_TYPE')
+
+        # Indexing Configurations.
+        self.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH = get_env('INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH')
 
         # Tool Configurations.
         self.TOOL_ICON_CACHE_MAX_AGE = get_env('TOOL_ICON_CACHE_MAX_AGE')
+
+        self.WORKFLOW_MAX_EXECUTION_STEPS = int(get_env('WORKFLOW_MAX_EXECUTION_STEPS'))
+        self.WORKFLOW_MAX_EXECUTION_TIME = int(get_env('WORKFLOW_MAX_EXECUTION_TIME'))
+        self.WORKFLOW_CALL_MAX_DEPTH = int(get_env('WORKFLOW_CALL_MAX_DEPTH'))
 
         # Moderation in app Configurations.
         self.OUTPUT_MODERATION_BUFFER_SIZE = int(get_env('OUTPUT_MODERATION_BUFFER_SIZE'))

@@ -37,6 +37,7 @@ const translation = {
       accessibleAddress: 'Publiczny adres URL',
       preview: 'Podgląd',
       regenerate: 'Wygeneruj ponownie',
+      regenerateNotice: 'Czy chcesz wygenerować ponownie publiczny adres URL?',
       preUseReminder: 'Przed kontynuowaniem włącz aplikację WebApp.',
       settings: {
         entry: 'Ustawienia',
@@ -55,6 +56,9 @@ const translation = {
           privacyPolicyPlaceholder: 'Wprowadź link do polityki prywatności',
           privacyPolicyTip:
             'Pomaga odwiedzającym zrozumieć, jakie dane zbiera aplikacja, zobacz <privacyPolicyLink>Politykę prywatności Dify</privacyPolicyLink>.',
+          customDisclaimer: 'Oświadczenie o ochronie danych',
+          customDisclaimerPlaceholder: 'Wprowadź oświadczenie o ochronie danych',
+          customDisclaimerTip: 'Niestandardowy tekst oświadczenia będzie wyświetlany po stronie klienta, dostarczając dodatkowych informacji o aplikacji.',
         },
       },
       embedded: {

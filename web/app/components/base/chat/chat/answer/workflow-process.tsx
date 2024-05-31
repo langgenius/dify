@@ -1,20 +1,23 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
-import type { WorkflowProcess } from '../../types'
+import type { ChatItem, WorkflowProcess } from '../../types'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import NodePanel from '@/app/components/workflow/run/node'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 type WorkflowProcessProps = {
   data: WorkflowProcess
+  item?: ChatItem
   grayBg?: boolean
   expand?: boolean
   hideInfo?: boolean
@@ -22,6 +25,7 @@ type WorkflowProcessProps = {
 }
 const WorkflowProcessItem = ({
   data,
+  item,
   grayBg,
   expand = false,
   hideInfo = false,
@@ -47,6 +51,16 @@ const WorkflowProcessItem = ({
   useEffect(() => {
     setCollapse(!expand)
   }, [expand])
+
+  const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
+  const setShowMessageLogModal = useAppStore(s => s.setShowMessageLogModal)
+  const setCurrentLogModalActiveTab = useAppStore(s => s.setCurrentLogModalActiveTab)
+
+  const showIterationDetail = useCallback(() => {
+    setCurrentLogItem(item)
+    setCurrentLogModalActiveTab('TRACING')
+    setShowMessageLogModal(true)
+  }, [item, setCurrentLogItem, setCurrentLogModalActiveTab, setShowMessageLogModal])
 
   return (
     <div
@@ -97,6 +111,7 @@ const WorkflowProcessItem = ({
                     nodeInfo={node}
                     hideInfo={hideInfo}
                     hideProcessDetail={hideProcessDetail}
+                    onShowIterationDetail={showIterationDetail}
                   />
                 </div>
               ))

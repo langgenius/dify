@@ -10,3 +10,5 @@ identity:
     zh_Hans: 一个二维码工具
     pt_BR: A tool for generating QR code (quick-response code) image.
   icon: icon.svg
+  tags:
+    - utilities
