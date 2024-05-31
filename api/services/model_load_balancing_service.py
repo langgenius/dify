@@ -130,6 +130,9 @@ class ModelLoadBalancingService:
                 # prepend the inherit configuration
                 load_balancing_configs.insert(0, inherit_config)
 
+        # Get credential form schemas from model credential schema or provider credential schema
+        credential_schemas = self._get_credential_schema(provider_configuration)
+
         # fetch status and ttl for each config
         datas = []
         for load_balancing_config in load_balancing_configs:
@@ -141,9 +144,24 @@ class ModelLoadBalancingService:
                 config_id=load_balancing_config.id
             )
 
+            try:
+                if load_balancing_config.encrypted_config:
+                    credentials = json.loads(load_balancing_config.encrypted_config)
+                else:
+                    credentials = {}
+            except JSONDecodeError:
+                credentials = {}
+
+            # Obfuscate credentials
+            credentials = provider_configuration.obfuscated_credentials(
+                credentials=credentials,
+                credential_form_schemas=credential_schemas.credential_form_schemas
+            )
+
             datas.append({
                 'id': load_balancing_config.id,
                 'name': load_balancing_config.name,
+                'credentials': credentials,
                 'enabled': load_balancing_config.enabled,
                 'in_cooldown': in_cooldown,
                 'ttl': ttl
