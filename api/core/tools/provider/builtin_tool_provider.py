@@ -2,6 +2,7 @@ from abc import abstractmethod
 from os import listdir, path
 from typing import Any
 
+from core.helper.module_import_helper import load_single_subclass_from_source
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderCredentials, ToolProviderType
 from core.tools.entities.values import ToolLabelEnum, default_tool_label_dict
 from core.tools.errors import (
@@ -13,7 +14,6 @@ from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
 from core.tools.utils.yaml_utils import load_yaml_file
-from core.utils.module_import_helper import load_single_subclass_from_source
 
 
 class BuiltinToolProviderController(ToolProviderController):
