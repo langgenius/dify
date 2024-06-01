@@ -368,7 +368,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
                         metadata, data = c.data.split(',', 1)
                         mime_type = metadata.split(';', 1)[0].split(':')[1]
                         parts.append(glm.Part.from_data(mime_type=mime_type, data=data))
-                glm_content = glm.Content(role="user", parts=[parts])
+                glm_content = glm.Content(role="user", parts=parts)
             return glm_content
         elif isinstance(message, AssistantPromptMessage):
             if message.content:
