@@ -15,6 +15,7 @@ select = [
     "UP",   # pyupgrade rules
     "RUF019", # unnecessary-key-check
     "S506", # unsafe-yaml-load
+    "W605", # invalid-escape-sequence
 ]
 ignore = [
     "F403", # undefined-local-with-import-star
