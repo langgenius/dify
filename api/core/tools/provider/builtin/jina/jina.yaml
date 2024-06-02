@@ -10,4 +10,7 @@ identity:
     zh_Hans: 将任何URL转换为LLM易读的输入或在网页上搜索引擎上搜索引擎。
     pt_BR: Converte qualquer URL em uma entrada LLm-fácil de ler ou realize pesquisas na web para obter informação de grounding. Tenha uma experiência melhor para seu agente e sistemas RAG sem custo.
   icon: icon.svg
+  tags:
+    - search
+    - productivity
 credentials_for_provider:

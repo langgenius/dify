@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 
 
-class AdvancedSetting(BaseModel):
+class AdvancedSettings(BaseModel):
     """
     Advanced setting.
     """
@@ -30,4 +30,4 @@ class VariableAssignerNodeData(BaseNodeData):
     type: str = 'variable-assigner'
     output_type: str
     variables: list[list[str]]
-    advanced_setting: Optional[AdvancedSetting]
+    advanced_settings: Optional[AdvancedSettings]

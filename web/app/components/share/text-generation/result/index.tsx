@@ -205,7 +205,6 @@ const Result: FC<IResultProps> = ({
               expand: false,
               resultText: '',
             })
-            setRespondingFalse()
           },
           onIterationStart: ({ data }) => {
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
@@ -370,7 +369,7 @@ const Result: FC<IResultProps> = ({
 
   return (
     <div className={cn(isNoData && !isCallBatchAPI && 'h-full')}>
-      {!isCallBatchAPI && (
+      {!isCallBatchAPI && !isWorkflow && (
         (isResponding && !completionRes)
           ? (
             <div className='flex h-full w-full justify-center items-center'>
@@ -378,13 +377,26 @@ const Result: FC<IResultProps> = ({
             </div>)
           : (
             <>
-              {(isNoData && !workflowProcessData)
+              {(isNoData)
                 ? <NoData />
                 : renderTextGenerationRes()
               }
             </>
           )
       )}
+      {
+        !isCallBatchAPI && isWorkflow && (
+          (isResponding && !workflowProcessData)
+            ? (
+              <div className='flex h-full w-full justify-center items-center'>
+                <Loading type='area' />
+              </div>
+            )
+            : !workflowProcessData
+              ? <NoData />
+              : renderTextGenerationRes()
+        )
+      }
       {isCallBatchAPI && (
         <div className='mt-2'>
           {renderTextGenerationRes()}

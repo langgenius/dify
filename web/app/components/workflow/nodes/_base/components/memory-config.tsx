@@ -50,7 +50,10 @@ type Props = {
   canSetRoleName?: boolean
 }
 
-const MEMORY_DEFAULT: Memory = { window: { enabled: false, size: WINDOW_SIZE_DEFAULT } }
+const MEMORY_DEFAULT: Memory = {
+  window: { enabled: false, size: WINDOW_SIZE_DEFAULT },
+  query_prompt_template: '',
+}
 
 const MemoryConfig: FC<Props> = ({
   className,
