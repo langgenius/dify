@@ -130,6 +130,46 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
 
         return self._handle_claude_response(model, credentials, response, prompt_messages)
 
+    def _handle_claude_response(self, model: str, credentials: dict, response: Message,
+                                prompt_messages: list[PromptMessage]) -> LLMResult:
+        """
+        Handle llm chat response
+
+        :param model: model name
+        :param credentials: credentials
+        :param response: response
+        :param prompt_messages: prompt messages
+        :return: full response chunk generator result
+        """
+
+        # transform assistant message to prompt message
+        assistant_prompt_message = AssistantPromptMessage(
+            content=response.content[0].text
+        )
+
+        # calculate num tokens
+        if response.usage:
+            # transform usage
+            prompt_tokens = response.usage.input_tokens
+            completion_tokens = response.usage.output_tokens
+        else:
+            # calculate num tokens
+            prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
+            completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
+
+        # transform usage
+        usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
+
+        # transform response
+        response = LLMResult(
+            model=response.model,
+            prompt_messages=prompt_messages,
+            message=assistant_prompt_message,
+            usage=usage
+        )
+
+        return response
+
     def _handle_claude_stream_response(self, model: str, credentials: dict, response: Stream[MessageStreamEvent],
                                         prompt_messages: list[PromptMessage], ) -> Generator:
         """
