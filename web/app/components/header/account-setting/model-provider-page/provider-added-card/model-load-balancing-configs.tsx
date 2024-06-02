@@ -15,6 +15,7 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import s from '@/app/components/custom/style.module.css'
 import GridMask from '@/app/components/base/grid-mask'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { IS_CE_EDITION } from '@/config'
 
 export type ModelLoadBalancingConfigsProps = {
   draftConfig?: ModelLoadBalancingConfig
@@ -62,13 +63,13 @@ const ModelLoadBalancingConfigs = ({
   )
 
   const toggleModalBalancing = useCallback((enabled: boolean) => {
-    if (draftConfig) {
+    if ((modelLoadBalancingEnabled || !enabled) && draftConfig) {
       setDraftConfig({
         ...draftConfig,
         enabled,
       })
     }
-  }, [draftConfig, setDraftConfig])
+  }, [draftConfig, modelLoadBalancingEnabled, setDraftConfig])
 
   const toggleConfigEntryEnabled = useCallback((index: number, state?: boolean) => {
     updateConfigEntry(index, entry => ({
@@ -86,6 +87,7 @@ const ModelLoadBalancingConfigs = ({
         currentConfigurationMethod: configurationMethod,
         currentCustomConfigurationModelFixedFields,
         entry,
+        index,
       },
       onSaveCallback: ({ entry: result }) => {
         if (entry) {
@@ -100,13 +102,29 @@ const ModelLoadBalancingConfigs = ({
           setDraftConfig(prev => ({
             ...prev,
             enabled: !!prev?.enabled,
-            configs: (prev?.configs || []).concat([result!]),
+            configs: (prev?.configs || []).concat([{ ...result!, enabled: true }]),
           }))
         }
         // onRefreshData()
       },
+      onRemoveCallback: ({ index }) => {
+        if (index !== undefined && (draftConfig?.configs?.length ?? 0) > index) {
+          setDraftConfig(prev => ({
+            ...prev,
+            enabled: !!prev?.enabled,
+            configs: prev?.configs.filter((_, i) => i !== index) || [],
+          }))
+        }
+      },
     })
-  }, [configurationMethod, currentCustomConfigurationModelFixedFields, provider, setDraftConfig, setShowModelLoadBalancingEntryModal])
+  }, [
+    configurationMethod,
+    currentCustomConfigurationModelFixedFields,
+    draftConfig?.configs?.length,
+    provider,
+    setDraftConfig,
+    setShowModelLoadBalancingEntryModal,
+  ])
 
   if (!draftConfig)
     return null
@@ -139,15 +157,16 @@ const ModelLoadBalancingConfigs = ({
             withSwitch && (
               <Switch
                 defaultValue={Boolean(draftConfig.enabled)}
-                size='md'
+                size='l'
                 className='ml-3 justify-self-end'
+                disabled={!modelLoadBalancingEnabled && !draftConfig.enabled}
                 onChange={value => toggleModalBalancing(value)}
               />
             )
           }
         </div>
         {draftConfig.enabled && (
-          <div className='px-3 pb-3'>
+          <div className='flex flex-col gap-1 px-3 pb-3'>
             {draftConfig.configs.map((config, index) => {
               const isProviderManaged = config.name === '__inherit__'
               return (
@@ -224,7 +243,7 @@ const ModelLoadBalancingConfigs = ({
         }
       </div>
 
-      {!modelLoadBalancingEnabled && (
+      {!modelLoadBalancingEnabled && !IS_CE_EDITION && (
         <GridMask canvasClassName='!rounded-xl'>
           <div className='flex items-center justify-between mt-2 px-4 h-14 border-[0.5px] border-gray-200 rounded-xl shadow-md'>
             <div

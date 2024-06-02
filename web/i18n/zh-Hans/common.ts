@@ -345,7 +345,7 @@ const translation = {
     addConfig: '增加配置',
     loadBalancingLeastKeyWarning: '至少启用 2 个 Key 以使用负载均衡',
     loadBalancingInfo: '默认情况下，负载平衡使用 Round-robin 策略。如果触发速率限制，将应用 1 分钟的冷却时间',
-    upgradeForLoadBalancing: '升级以解锁负载均衡',
+    upgradeForLoadBalancing: '升级以解锁负载均衡功能',
   },
   dataSource: {
     add: '添加数据源',

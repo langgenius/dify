@@ -20,12 +20,14 @@ type ModelListProps = {
   models: ModelItem[]
   onCollapse: () => void
   onConfig: (currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => void
+  onChange?: (provider: string) => void
 }
 const ModelList: FC<ModelListProps> = ({
   provider,
   models,
   onCollapse,
   onConfig,
+  onChange,
 }) => {
   const { t } = useTranslation()
   const configurativeMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
@@ -88,6 +90,7 @@ const ModelList: FC<ModelListProps> = ({
           model: balancingModel!,
           open: !!balancingModel,
           onClose: () => setBalancingModel(undefined),
+          onSave: onChange,
         }} />
       )}
     </div>

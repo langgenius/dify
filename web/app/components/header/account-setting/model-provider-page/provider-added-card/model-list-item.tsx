@@ -12,8 +12,9 @@ import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndE
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Switch from '@/app/components/base/switch'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { useProviderContextSelector } from '@/context/provider-context'
+import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
 import { disableModel, enableModel } from '@/service/common'
+import { Plan } from '@/app/components/billing/type'
 
 export type ModelListItemProps = {
   model: ModelItem
@@ -25,6 +26,7 @@ export type ModelListItemProps = {
 
 const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoadBalancing }: ModelListItemProps) => {
   const { t } = useTranslation()
+  const { plan } = useProviderContext()
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
 
   const toggleModelEnablingStatus = useCallback(async (enabled: boolean) => {
@@ -80,8 +82,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
                 {t('common.modelProvider.config')}
               </Button>
             )
-            // TODO: show config for sandbox mode but not CE
-            : (modelLoadBalancingEnabled && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status))
+            : ((modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status))
               ? (
                 <Button
                   className='opacity-0 group-hover:opacity-100 px-3 h-[28px] text-xs text-gray-700 rounded-md transition-opacity'

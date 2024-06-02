@@ -27,6 +27,7 @@ import {
 } from '../hooks'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatedStatus } from '../../key-validator/declarations'
+import { validateLoadBalancingCredentials } from '../utils'
 import Form from './Form'
 import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
@@ -46,6 +47,7 @@ type ModelModalProps = {
   entry?: ModelLoadBalancingConfigEntry
   onCancel: () => void
   onSave: (entry: ModelLoadBalancingConfigEntry) => void
+  onRemove: () => void
 }
 
 const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
@@ -55,6 +57,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
   entry,
   onCancel,
   onSave,
+  onRemove,
 }) => {
   const providerFormSchemaPredefined = configurationMethod === ConfigurationMethodEnum.predefinedModel
   // const { credentials: formSchemasValue } = useProviderCredentialsAndLoadBalancing(
@@ -156,6 +159,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
       setResult({
         ...defaultFormSchemaValue,
         ...entry.credentials,
+        id: entry.id,
       } as Record<string, string | undefined | boolean>)
     }
   }, [entry, defaultFormSchemaValue, result])
@@ -192,57 +196,42 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
     }, {} as Record<string, string>)
   }, [initialFormSchemasValue, secretFormSchemas])
 
-  const handleValueChange = ({ __model_type, __model_name, ...v }: FormValue) => {
+  // const handleValueChange = ({ __model_type, __model_name, ...v }: FormValue) => {
+  const handleValueChange = (v: FormValue) => {
     setValue(v)
-    setResult(v)
   }
   const handleSave = async () => {
     try {
       setLoading(true)
 
-      // const res = await saveCredentials(
-      //   providerFormSchemaPredefined,
-      //   provider.provider,
-      //   {
-      //     ...value,
-      //     ...getSecretValues(value),
-      //   },
-      // )
-      // if (res.result === 'success') {
-      // notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      getSecretValues(value)
-      onSave({
-        ...(entry || {}),
-        name: result!.name as string,
-        credentials: result!,
-      })
-      //   onCancel()
-      // }
+      const res = await validateLoadBalancingCredentials(
+        providerFormSchemaPredefined,
+        provider.provider,
+        {
+          ...value,
+          ...getSecretValues(value),
+        },
+      )
+      if (res.status === ValidatedStatus.Success) {
+        // notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        onSave({
+          ...(entry || {}),
+          name: value.name as string,
+          credentials: value as Record<string, string | boolean | undefined>,
+        })
+        //   onCancel()
+      }
+      else {
+        notify({ type: 'error', message: res.message || '' })
+      }
     }
     finally {
       setLoading(false)
     }
   }
 
-  const handleRemove = async () => {
-    try {
-      setLoading(true)
-
-      // const res = await removeCredentials(
-      //   providerFormSchemaPredefined,
-      //   provider.provider,
-      //   value,
-      // )
-      // if (res.result === 'success') {
-      //   notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      //   // TODO
-      //   onSave()
-      //   onCancel()
-      // }
-    }
-    finally {
-      setLoading(false)
-    }
+  const handleRemove = () => {
+    onRemove?.()
   }
 
   return (

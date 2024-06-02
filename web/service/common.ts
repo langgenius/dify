@@ -197,6 +197,10 @@ export const validateModelProvider: Fetcher<ValidateOpenAIKeyResponse, { url: st
   return post<ValidateOpenAIKeyResponse>(url, { body })
 }
 
+export const validateModelLoadBalancingCredentials: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post<ValidateOpenAIKeyResponse>(url, { body })
+}
+
 export const setModelProvider: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
   return post<CommonResponse>(url, { body })
 }

@@ -14,6 +14,7 @@ import type {
   CustomConfigurationModelFixedFields,
   FormValue,
   ModelLoadBalancingConfig,
+  ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
 import {
@@ -66,6 +67,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const {
     credentials: formSchemasValue,
     loadBalancing: originalConfig,
+    mutate,
   } = useProviderCredentialsAndLoadBalancing(
     provider.provider,
     configurateMethod,
@@ -80,6 +82,15 @@ const ModelModal: FC<ModelModalProps> = ({
   const [showConfirm, setShowConfirm] = useState(false)
 
   const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig>()
+  const originalConfigMap = useMemo(() => {
+    if (!originalConfig)
+      return {}
+    return originalConfig?.configs.reduce((prev, config) => {
+      if (config.id)
+        prev[config.id] = config
+      return prev
+    }, {} as Record<string, ModelLoadBalancingConfigEntry>)
+  }, [originalConfig])
   useEffect(() => {
     if (originalConfig && !draftConfig)
       setDraftConfig(originalConfig)
@@ -103,21 +114,16 @@ const ModelModal: FC<ModelModalProps> = ({
   ])
   const [
     requiredFormSchemas,
-    secretFormSchemas,
     defaultFormSchemaValue,
     showOnVariableMap,
   ] = useMemo(() => {
     const requiredFormSchemas: CredentialFormSchema[] = []
-    const secretFormSchemas: CredentialFormSchema[] = []
     const defaultFormSchemaValue: Record<string, string | number> = {}
     const showOnVariableMap: Record<string, string[]> = {}
 
     formSchemas.forEach((formSchema) => {
       if (formSchema.required)
         requiredFormSchemas.push(formSchema)
-
-      if (formSchema.type === FormTypeEnum.secretInput)
-        secretFormSchemas.push(formSchema)
 
       if (formSchema.default)
         defaultFormSchemaValue[formSchema.variable] = formSchema.default
@@ -149,7 +155,6 @@ const ModelModal: FC<ModelModalProps> = ({
 
     return [
       requiredFormSchemas,
-      secretFormSchemas,
       defaultFormSchemaValue,
       showOnVariableMap,
     ]
@@ -158,7 +163,7 @@ const ModelModal: FC<ModelModalProps> = ({
     return {
       ...defaultFormSchemaValue,
       ...formSchemasValue,
-    } as Record<string, string | number>
+    } as unknown as Record<string, string | number>
   }, [formSchemasValue, defaultFormSchemaValue])
   const [value, setValue] = useState(initialFormSchemasValue)
   useEffect(() => {
@@ -174,32 +179,63 @@ const ModelModal: FC<ModelModalProps> = ({
 
     return false
   })
-  const getSecretValues = useCallback((v: FormValue) => {
-    return secretFormSchemas.reduce((prev, next) => {
-      if (v[next.variable] === initialFormSchemasValue[next.variable])
-        prev[next.variable] = '[__HIDDEN__]'
-
-      return prev
-    }, {} as Record<string, string>)
-  }, [initialFormSchemasValue, secretFormSchemas])
 
   const handleValueChange = (v: FormValue) => {
     setValue(v)
   }
+
+  const extendedSecretFormSchemas = useMemo(
+    () =>
+      (providerFormSchemaPredefined
+        ? provider.provider_credential_schema.credential_form_schemas
+        : [
+          genModelTypeFormSchema(provider.supported_model_types),
+          genModelNameFormSchema(provider.model_credential_schema?.model),
+          ...provider.model_credential_schema.credential_form_schemas,
+        ]).filter(({ type }) => type === FormTypeEnum.secretInput),
+    [
+      provider.model_credential_schema?.credential_form_schemas,
+      provider.model_credential_schema?.model,
+      provider.provider_credential_schema?.credential_form_schemas,
+      provider.supported_model_types,
+      providerFormSchemaPredefined,
+    ],
+  )
+
+  const encodeSecretValues = useCallback((v: FormValue) => {
+    const result = { ...v }
+    extendedSecretFormSchemas.forEach(({ variable }) => {
+      if (result[variable] === formSchemasValue?.[variable])
+        result[variable] = '[__HIDDEN__]'
+    })
+    return result
+  }, [extendedSecretFormSchemas, formSchemasValue])
+
+  const encodeConfigEntrySecretValues = useCallback((entry: ModelLoadBalancingConfigEntry) => {
+    const result = { ...entry }
+    extendedSecretFormSchemas.forEach(({ variable }) => {
+      if (entry.id && result.credentials[variable] === originalConfigMap[entry.id]?.credentials?.[variable])
+        result.credentials[variable] = '[__HIDDEN__]'
+    })
+    return result
+  }, [extendedSecretFormSchemas, originalConfigMap])
+
   const handleSave = async () => {
     try {
       setLoading(true)
-
       const res = await saveCredentials(
         providerFormSchemaPredefined,
         provider.provider,
+        encodeSecretValues(value),
         {
-          ...value,
-          ...getSecretValues(value),
+          ...draftConfig,
+          enabled: Boolean(draftConfig?.enabled),
+          configs: draftConfig?.configs.map(encodeConfigEntrySecretValues) || [],
         },
       )
       if (res.result === 'success') {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        mutate()
         onSave()
         onCancel()
       }
@@ -220,6 +256,7 @@ const ModelModal: FC<ModelModalProps> = ({
       )
       if (res.result === 'success') {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        mutate()
         onSave()
         onCancel()
       }
@@ -265,7 +302,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 configurationMethod: configurateMethod,
               }} />
 
-              <div className='sticky bottom-0 flex justify-between items-center py-6 flex-wrap gap-y-2 bg-white'>
+              <div className='sticky bottom-0 flex justify-between items-center mt-2 -mx-2 pt-4 px-2 pb-6 flex-wrap gap-y-2 bg-white z-10'>
                 {
                   (provider.help && (provider.help.title || provider.help.url))
                     ? (
@@ -302,7 +339,11 @@ const ModelModal: FC<ModelModalProps> = ({
                     className='h-9 text-sm font-medium'
                     type='primary'
                     onClick={handleSave}
-                    disabled={loading || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)}
+                    disabled={
+                      loading
+                      || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)
+                      || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
+                    }
                   >
                     {t('common.operation.save')}
                   </Button>

@@ -1,34 +1,50 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import classNames from 'classnames'
 import useSWR from 'swr'
-import type { ModelItem, ModelLoadBalancingConfig, ModelProvider } from '../declarations'
+import type { ModelItem, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
+import { FormTypeEnum } from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
+import { saveCredentials } from '../utils'
 import ModelLoadBalancingConfigs from './model-load-balancing-configs'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { fetchModelLoadBalancingConfig } from '@/service/common'
 import Loading from '@/app/components/base/loading'
+import { useToastContext } from '@/app/components/base/toast'
 
 export type ModelLoadBalancingModalProps = {
   provider: ModelProvider
   model: ModelItem
   open?: boolean
   onClose?: () => void
+  onSave?: (provider: string) => void
 }
 
 // model balancing config modal
-const ModelLoadBalancingModal = ({ provider, model, open = false, onClose }: ModelLoadBalancingModalProps) => {
+const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSave }: ModelLoadBalancingModalProps) => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
 
-  const { data } = useSWR(
+  const [loading, setLoading] = useState(false)
+
+  const { data, mutate } = useSWR(
     `/workspaces/current/model-providers/${provider.provider}/models/credentials?model=${model.model}&model_type=${model.model_type}`,
     fetchModelLoadBalancingConfig,
   )
 
   const originalConfig = data?.load_balancing
   const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig>()
+  const originalConfigMap = useMemo(() => {
+    if (!originalConfig)
+      return {}
+    return originalConfig?.configs.reduce((prev, config) => {
+      if (config.id)
+        prev[config.id] = config
+      return prev
+    }, {} as Record<string, ModelLoadBalancingConfigEntry>)
+  }, [originalConfig])
   useEffect(() => {
     if (originalConfig && !draftConfig)
       setDraftConfig(originalConfig)
@@ -42,6 +58,50 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose }: Mod
       })
     }
   }, [draftConfig])
+
+  const extendedSecretFormSchemas = useMemo(
+    () => provider.provider_credential_schema.credential_form_schemas.filter(
+      ({ type }) => type === FormTypeEnum.secretInput,
+    ),
+    [provider.provider_credential_schema.credential_form_schemas],
+  )
+
+  const encodeConfigEntrySecretValues = useCallback((entry: ModelLoadBalancingConfigEntry) => {
+    const result = { ...entry }
+    extendedSecretFormSchemas.forEach(({ variable }) => {
+      if (entry.id && result.credentials[variable] === originalConfigMap[entry.id]?.credentials?.[variable])
+        result.credentials[variable] = '[__HIDDEN__]'
+    })
+    return result
+  }, [extendedSecretFormSchemas, originalConfigMap])
+
+  const handleSave = async () => {
+    try {
+      setLoading(true)
+      const res = await saveCredentials(
+        false,
+        provider.provider,
+        {
+          __model_name: model.model,
+          __model_type: model.model_type,
+        },
+        {
+          ...draftConfig,
+          enabled: Boolean(draftConfig?.enabled),
+          configs: draftConfig!.configs.map(encodeConfigEntrySecretValues),
+        },
+      )
+      if (res.result === 'success') {
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        mutate()
+        onSave?.(provider.provider)
+        onClose?.()
+      }
+    }
+    finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <Modal
@@ -111,7 +171,14 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose }: Mod
 
             <div className='flex items-center justify-end gap-2 mt-6'>
               <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
-              <Button type='primary'>{t('common.operation.save')}</Button>
+              <Button
+                type='primary'
+                onClick={handleSave}
+                disabled={
+                  loading
+                  || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
+                }
+              >{t('common.operation.save')}</Button>
             </div>
           </>
         )

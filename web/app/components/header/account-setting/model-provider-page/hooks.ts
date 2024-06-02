@@ -68,13 +68,13 @@ export const useProviderCredentialsAndLoadBalancing = (
   configured?: boolean,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
 ) => {
-  const { data: predefinedFormSchemasValue } = useSWR(
+  const { data: predefinedFormSchemasValue, mutate: mutatePredefined } = useSWR(
     (configurationMethod === ConfigurationMethodEnum.predefinedModel && configured)
       ? `/workspaces/current/model-providers/${provider}/credentials`
       : null,
     fetchModelProviderCredentials,
   )
-  const { data: customFormSchemasValue } = useSWR(
+  const { data: customFormSchemasValue, mutate: mutateCustomized } = useSWR(
     (configurationMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigurationModelFixedFields)
       ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}`
       : null,
@@ -97,12 +97,18 @@ export const useProviderCredentialsAndLoadBalancing = (
     predefinedFormSchemasValue?.credentials,
   ])
 
+  const mutate = useMemo(() => () => {
+    mutatePredefined()
+    mutateCustomized()
+  }, [mutateCustomized, mutatePredefined])
+
   return {
     credentials,
     loadBalancing: (configurationMethod === ConfigurationMethodEnum.predefinedModel
       ? predefinedFormSchemasValue
       : customFormSchemasValue
     )?.load_balancing,
+    mutate,
   }
   // as ([Record<string, string | boolean | undefined> | undefined, ModelLoadBalancingConfig | undefined])
 }

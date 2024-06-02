@@ -29,6 +29,7 @@ export type ModalState<T> = {
   payload: T
   onCancelCallback?: () => void
   onSaveCallback?: (newPayload: T) => void
+  onRemoveCallback?: (newPayload: T) => void
   onValidateBeforeSaveCallback?: (newPayload: T) => boolean
 }
 
@@ -39,6 +40,7 @@ export type ModelModalType = {
 }
 export type LoadBalancingEntryModalType = ModelModalType & {
   entry?: ModelLoadBalancingConfigEntry
+  index?: number
 }
 export type ModalContextState = {
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<string> | null>>
@@ -116,18 +118,20 @@ export const ModalContextProvider = ({
   }, [showModelModal])
 
   const handleCancelModelLoadBalancingEntryModal = useCallback(() => {
+    showModelLoadBalancingEntryModal?.onCancelCallback?.()
     setShowModelLoadBalancingEntryModal(null)
-    if (showModelLoadBalancingEntryModal?.onCancelCallback)
-      showModelLoadBalancingEntryModal.onCancelCallback()
   }, [showModelLoadBalancingEntryModal])
 
   const handleSaveModelLoadBalancingEntryModal = useCallback((entry: ModelLoadBalancingConfigEntry) => {
-    if (showModelLoadBalancingEntryModal?.onSaveCallback) {
-      showModelLoadBalancingEntryModal.onSaveCallback({
-        ...showModelLoadBalancingEntryModal.payload,
-        entry,
-      })
-    }
+    showModelLoadBalancingEntryModal?.onSaveCallback?.({
+      ...showModelLoadBalancingEntryModal.payload,
+      entry,
+    })
+    setShowModelLoadBalancingEntryModal(null)
+  }, [showModelLoadBalancingEntryModal])
+
+  const handleRemoveModelLoadBalancingEntry = useCallback(() => {
+    showModelLoadBalancingEntryModal?.onRemoveCallback?.(showModelLoadBalancingEntryModal.payload)
     setShowModelLoadBalancingEntryModal(null)
   }, [showModelLoadBalancingEntryModal])
 
@@ -244,6 +248,7 @@ export const ModalContextProvider = ({
               entry={showModelLoadBalancingEntryModal.payload.entry}
               onCancel={handleCancelModelLoadBalancingEntryModal}
               onSave={handleSaveModelLoadBalancingEntryModal}
+              onRemove={handleRemoveModelLoadBalancingEntry}
             />
           )
         }

@@ -154,6 +154,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             models={modelList}
             onCollapse={() => setCollapsed(true)}
             onConfig={currentCustomConfigurationModelFixedFields => onOpenModal(ConfigurationMethodEnum.customizableModel, currentCustomConfigurationModelFixedFields)}
+            onChange={(provider: string) => getModelList(provider)}
           />
         )
       }
