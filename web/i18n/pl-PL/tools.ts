@@ -73,6 +73,8 @@ const translation = {
     },
     privacyPolicy: 'Polityka prywatności',
     privacyPolicyPlaceholder: 'Proszę wprowadzić politykę prywatności',
+    customDisclaimer: 'Oświadczenie niestandardowe',
+    customDisclaimerPlaceholder: 'Proszę wprowadzić oświadczenie niestandardowe',
   },
   test: {
     title: 'Test',

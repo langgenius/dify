@@ -6,7 +6,6 @@ import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
-import ChooseTool from './choose-tool'
 import SettingBuiltInTool from './setting-built-in-tool'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Tooltip from '@/app/components/base/tooltip'
@@ -22,6 +21,7 @@ import { MAX_TOOLS_NUM } from '@/config'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
+import AddToolModal from '@/app/components/tools/add-tool-modal'
 
 type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } | null
 const AgentTools: FC = () => {
@@ -31,7 +31,6 @@ const AgentTools: FC = () => {
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
   const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
-  const [selectedProviderId, setSelectedProviderId] = useState<string | undefined>(undefined)
   const [isShowSettingTool, setIsShowSettingTool] = useState(false)
   const tools = (modelConfig?.agentConfig?.tools as AgentTool[] || []).map((item) => {
     const collection = collectionList.find(collection => collection.id === item.provider_id && collection.type === item.provider_type)
@@ -78,10 +77,7 @@ const AgentTools: FC = () => {
             {tools.length < MAX_TOOLS_NUM && (
               <>
                 <div className='ml-3 mr-1 h-3.5 w-px bg-gray-200'></div>
-                <OperationBtn type="add" onClick={() => {
-                  setSelectedProviderId(undefined)
-                  setIsShowChooseTool(true)
-                }} />
+                <OperationBtn type="add" onClick={() => setIsShowChooseTool(true)} />
               </>
             )}
           </div>
@@ -116,10 +112,14 @@ const AgentTools: FC = () => {
                         />
                       ))}
                 <div
-                  title={item.tool_name}
                   className={cn((item.isDeleted || item.notAuthor) ? 'line-through opacity-50' : '', 'grow w-0 ml-2 leading-[18px] text-[13px] font-medium text-gray-800  truncate')}
                 >
-                  {item.tool_label || item.tool_name}
+                  <span className='text-gray-800 pr-2'>{item.provider_type === CollectionType.builtIn ? item.provider_name : item.tool_label}</span>
+                  <TooltipPlus
+                    popupContent={t('tools.toolNameUsageTip')}
+                  >
+                    <span className='text-gray-500'>{item.tool_name}</span>
+                  </TooltipPlus>
                 </div>
               </div>
               <div className='shrink-0 ml-1 flex items-center'>
@@ -130,10 +130,8 @@ const AgentTools: FC = () => {
                         popupContent={t(`tools.${item.isDeleted ? 'toolRemoved' : 'notAuthorized'}`)}
                       >
                         <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
-                          if (item.notAuthor) {
-                            setSelectedProviderId(item.provider_id)
+                          if (item.notAuthor)
                             setIsShowChooseTool(true)
-                          }
                         }}>
                           <AlertTriangle className='w-4 h-4 text-[#F79009]' />
                         </div>
@@ -153,7 +151,6 @@ const AgentTools: FC = () => {
                   )
                   : (
                     <div className='hidden group-hover:flex items-center'>
-                      {/* {item.provider_type === CollectionType.builtIn && ( */}
                       <TooltipPlus
                         popupContent={t('tools.setBuiltInTools.infoAndSetting')}
                       >
@@ -164,7 +161,6 @@ const AgentTools: FC = () => {
                           <InfoCircle className='w-4 h-4 text-gray-500' />
                         </div>
                       </TooltipPlus>
-                      {/* )} */}
 
                       <div className='p-1 rounded-md hover:bg-black/5 cursor-pointer' onClick={() => {
                         const newModelConfig = produce(modelConfig, (draft) => {
@@ -197,11 +193,7 @@ const AgentTools: FC = () => {
         </div >
       </Panel >
       {isShowChooseTool && (
-        <ChooseTool
-          show
-          onHide={() => setIsShowChooseTool(false)}
-          selectedProviderId={selectedProviderId}
-        />
+        <AddToolModal onHide={() => setIsShowChooseTool(false)} />
       )}
       {
         isShowSettingTool && (

@@ -34,6 +34,7 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import type { SystemFeatures } from '@/types/feature'
 
 export const login: Fetcher<CommonResponse & { data: string }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse & { data: string }>
@@ -217,10 +218,6 @@ export const fetchModelParameterRules: Fetcher<{ data: ModelParameterRule[] }, s
   return get<{ data: ModelParameterRule[] }>(url)
 }
 
-export const submitFreeQuota: Fetcher<{ type: string; redirect_url?: string; result?: string }, string> = (url) => {
-  return post<{ type: string; redirect_url?: string; result?: string }>(url)
-}
-
 export const fetchFileUploadConfig: Fetcher<FileUploadConfigResponse, { url: string }> = ({ url }) => {
   return get<FileUploadConfigResponse>(url)
 }
@@ -270,4 +267,8 @@ type RetrievalMethodsRes = {
 }
 export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> = (url) => {
   return get<RetrievalMethodsRes>(url)
+}
+
+export const getSystemFeatures = () => {
+  return get<SystemFeatures>('/system-features')
 }

@@ -12,7 +12,7 @@ class TextToSpeechConfigManager:
         text_to_speech = False
         text_to_speech_dict = config.get('text_to_speech')
         if text_to_speech_dict:
-            if 'enabled' in text_to_speech_dict and text_to_speech_dict['enabled']:
+            if text_to_speech_dict.get('enabled'):
                 text_to_speech = TextToSpeechEntity(
                     enabled=text_to_speech_dict.get('enabled'),
                     voice=text_to_speech_dict.get('voice'),

@@ -36,24 +36,21 @@ const InputVarList: FC<Props> = ({
   filterVar,
 }) => {
   const language = useLanguage()
-
-  // const valueList = (() => {
-  //   const list = []
-  //   Object.keys(value).forEach((key) => {
-  //     list.push({
-  //       variable: key,
-  //       ...value[key],
-  //     })
-  //   })
-  // })()
-
   const { t } = useTranslation()
-  const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
       return [VarType.string, VarType.number].includes(varPayload.type)
     },
   })
+  const paramType = (type: string) => {
+    if (type === FormTypeEnum.textNumber)
+      return 'Number'
+    else if (type === FormTypeEnum.files)
+      return 'Files'
+    else
+      return 'String'
+  }
 
   const handleNotMixedTypeChange = useCallback((variable: string) => {
     return (varValue: ValueSelector | string, varKindType: VarKindType) => {
@@ -125,40 +122,54 @@ const InputVarList: FC<Props> = ({
           tooltip,
         }, index) => {
           const varInput = value[variable]
-          const isString = type !== FormTypeEnum.textNumber
+          const isNumber = type === FormTypeEnum.textNumber
+          const isFile = type === FormTypeEnum.files
+          const isString = type !== FormTypeEnum.textNumber && type !== FormTypeEnum.files
           return (
             <div key={variable} className='space-y-1'>
               <div className='flex items-center h-[18px] space-x-2'>
                 <span className='text-[13px] font-medium text-gray-900'>{label[language] || label.en_US}</span>
-                <span className='text-xs font-normal text-gray-500'>{!isString ? 'Number' : 'String'}</span>
+                <span className='text-xs font-normal text-gray-500'>{paramType(type)}</span>
                 {required && <span className='leading-[18px] text-xs font-normal text-[#EC4A0A]'>Required</span>}
               </div>
-              {isString
-                ? (<Input
+              {isString && (
+                <Input
                   className={cn(inputsIsFocus[variable] ? 'shadow-xs bg-gray-50 border-gray-300' : 'bg-gray-100 border-gray-100', 'rounded-lg px-3 py-[6px] border')}
                   value={varInput?.value as string || ''}
                   onChange={handleMixedTypeChange(variable)}
                   readOnly={readOnly}
                   nodesOutputVars={availableVars}
-                  availableNodes={availableNodes}
+                  availableNodes={availableNodesWithParent}
                   onFocusChange={handleInputFocus(variable)}
                   placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
                   placeholderClassName='!leading-[21px]'
-                />)
-                : (
-                  <VarReferencePicker
-                    readonly={readOnly}
-                    isShowNodeName
-                    nodeId={nodeId}
-                    value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
-                    onChange={handleNotMixedTypeChange(variable)}
-                    onOpen={handleOpen(index)}
-                    isSupportConstantValue={isSupportConstantValue}
-                    defaultVarKindType={varInput?.type}
-                    filterVar={filterVar}
-                  />
-                )}
-
+                />
+              )}
+              {isNumber && (
+                <VarReferencePicker
+                  readonly={readOnly}
+                  isShowNodeName
+                  nodeId={nodeId}
+                  value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
+                  onChange={handleNotMixedTypeChange(variable)}
+                  onOpen={handleOpen(index)}
+                  isSupportConstantValue={isSupportConstantValue}
+                  defaultVarKindType={varInput?.type}
+                  filterVar={filterVar}
+                />
+              )}
+              {isFile && (
+                <VarReferencePicker
+                  readonly={readOnly}
+                  isShowNodeName
+                  nodeId={nodeId}
+                  value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
+                  onChange={handleNotMixedTypeChange(variable)}
+                  onOpen={handleOpen(index)}
+                  defaultVarKindType={VarKindType.variable}
+                  filterVar={(varPayload: Var) => varPayload.type === VarType.arrayFile}
+                />
+              )}
               {tooltip && <div className='leading-[18px] text-xs font-normal text-gray-600'>{tooltip[language] || tooltip.en_US}</div>}
             </div>
           )

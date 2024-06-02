@@ -10,9 +10,10 @@ from yarl import URL
 
 from config import get_env
 from core.helper.code_executor.entities import CodeDependency
-from core.helper.code_executor.javascript_transformer import NodeJsTemplateTransformer
-from core.helper.code_executor.jinja2_transformer import Jinja2TemplateTransformer
-from core.helper.code_executor.python_transformer import PYTHON_STANDARD_PACKAGES, PythonTemplateTransformer
+from core.helper.code_executor.javascript.javascript_transformer import NodeJsTemplateTransformer
+from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTransformer
+from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
+from core.helper.code_executor.template_transformer import TemplateTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class CodeExecutionResponse(BaseModel):
     message: str
     data: Data
 
+
 class CodeLanguage(str, Enum):
     PYTHON3 = 'python3'
     JINJA2 = 'jinja2'
@@ -44,8 +46,8 @@ class CodeExecutor:
     dependencies_cache = {}
     dependencies_cache_lock = Lock()
 
-    code_template_transformers = {
-        CodeLanguage.PYTHON3: PythonTemplateTransformer,
+    code_template_transformers: dict[CodeLanguage, type[TemplateTransformer]] = {
+        CodeLanguage.PYTHON3: Python3TemplateTransformer,
         CodeLanguage.JINJA2: Jinja2TemplateTransformer,
         CodeLanguage.JAVASCRIPT: NodeJsTemplateTransformer,
     }
@@ -54,6 +56,10 @@ class CodeExecutor:
         CodeLanguage.JAVASCRIPT: 'nodejs',
         CodeLanguage.JINJA2: CodeLanguage.PYTHON3,
         CodeLanguage.PYTHON3: CodeLanguage.PYTHON3,
+    }
+
+    supported_dependencies_languages: set[CodeLanguage] = {
+        CodeLanguage.PYTHON3
     }
 
     @classmethod
@@ -93,7 +99,9 @@ class CodeExecutor:
         except CodeExecutionException as e:
             raise e
         except Exception as e:
-            raise CodeExecutionException('Failed to execute code, this is likely a network issue, please check if the sandbox service is running')
+            raise CodeExecutionException('Failed to execute code, which is likely a network issue,'
+                                         ' please check if the sandbox service is running.'
+                                         f' ( Error: {str(e)} )')
         
         try:
             response = response.json()
@@ -133,7 +141,10 @@ class CodeExecutor:
         return template_transformer.transform_response(response)
     
     @classmethod
-    def list_dependencies(cls, language: Literal['python3']) -> list[CodeDependency]:
+    def list_dependencies(cls, language: str) -> list[CodeDependency]:
+        if language not in cls.supported_dependencies_languages:
+            return []
+
         with cls.dependencies_cache_lock:
             if language in cls.dependencies_cache:
                 # check expiration
@@ -178,7 +189,8 @@ class CodeExecutor:
             response = response.json()
             dependencies = response.get('data', {}).get('dependencies', [])
             return [
-                CodeDependency(**dependency) for dependency in dependencies if dependency.get('name') not in PYTHON_STANDARD_PACKAGES
+                CodeDependency(**dependency) for dependency in dependencies
+                if dependency.get('name') not in Python3TemplateTransformer.get_standard_packages()
             ]
         except Exception as e:
             logger.exception(f'Failed to list dependencies: {e}')
