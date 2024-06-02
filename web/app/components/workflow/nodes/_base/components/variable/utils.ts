@@ -206,13 +206,14 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
 
     case BlockEnum.ParameterExtractor: {
       res.vars = [
-        ...PARAMETER_EXTRACTOR_COMMON_STRUCT,
         ...((data as ParameterExtractorNodeType).parameters || []).map((p) => {
           return {
             variable: p.name,
             type: p.type as unknown as VarType,
           }
-        })]
+        }),
+        ...PARAMETER_EXTRACTOR_COMMON_STRUCT,
+      ]
       break
     }
 

@@ -40,7 +40,7 @@ const ModalContext = createContext<{
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
-  setShowPricingModal: Dispatch<SetStateAction<any>>
+  setShowPricingModal: () => void
   setShowAnnotationFullModal: () => void
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
 }>({
@@ -50,7 +50,7 @@ const ModalContext = createContext<{
       setShowExternalDataToolModal: () => { },
       setShowPricingModal: () => { },
       setShowAnnotationFullModal: () => { },
-      setShowModelModal: () => {},
+      setShowModelModal: () => { },
     })
 
 export const useModalContext = () => useContext(ModalContext)

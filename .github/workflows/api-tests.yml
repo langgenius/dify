@@ -4,9 +4,17 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - api/**
+      - docker/**
+
+concurrency:
+  group: api-tests-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   test:
+    name: API Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
