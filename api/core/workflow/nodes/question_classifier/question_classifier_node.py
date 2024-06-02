@@ -127,6 +127,12 @@ class QuestionClassifierNode(LLMNode):
         node_data = node_data
         node_data = cast(cls._node_data_cls, node_data)
         variable_mapping = {'query': node_data.query_variable_selector}
+        variable_selectors = []
+        if node_data.instruction:
+            variable_template_parser = VariableTemplateParser(template=node_data.instruction)
+            variable_selectors.extend(variable_template_parser.extract_variable_selectors())
+        for variable_selector in variable_selectors:
+            variable_mapping[variable_selector.variable] = variable_selector.value_selector
         return variable_mapping
 
     @classmethod
