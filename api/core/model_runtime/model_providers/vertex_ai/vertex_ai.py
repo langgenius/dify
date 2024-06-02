@@ -18,6 +18,7 @@ class VertexAiProvider(ModelProvider):
         """
         try:
             model_instance = self.get_model_instance(ModelType.LLM)
+            print(model_instance)
 
             # Use `gemini-1.0-pro-002` model for validate,
             model_instance.validate_credentials(
