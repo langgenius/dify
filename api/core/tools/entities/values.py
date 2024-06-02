@@ -1,26 +1,5 @@
-from enum import Enum
-
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolLabel
-
-
-class ToolLabelEnum(Enum):
-    SEARCH = 'search'
-    IMAGE = 'image'
-    VIDEOS = 'videos'
-    WEATHER = 'weather'
-    FINANCE = 'finance'
-    DESIGN = 'design'
-    TRAVEL = 'travel'
-    SOCIAL = 'social'
-    NEWS = 'news'
-    MEDICAL = 'medical'
-    PRODUCTIVITY = 'productivity'
-    EDUCATION = 'education'
-    BUSINESS = 'business'
-    ENTERTAINMENT = 'entertainment'
-    UTILITIES = 'utilities'
-    OTHER = 'other'
+from core.tools.entities.tool_entities import ToolLabel, ToolLabelEnum
 
 ICONS = {
     ToolLabelEnum.SEARCH: '''<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
