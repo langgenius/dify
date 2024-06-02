@@ -326,14 +326,6 @@ class Tool(BaseModel, ABC):
 
         return parameters
     
-    def is_tool_available(self) -> bool:
-        """
-            check if the tool is available
-
-            :return: if the tool is available
-        """
-        return True
-
     def create_image_message(self, image: str, save_as: str = '') -> ToolInvokeMessage:
         """
             create an image message

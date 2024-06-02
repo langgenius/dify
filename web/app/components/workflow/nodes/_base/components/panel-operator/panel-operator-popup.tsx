@@ -4,6 +4,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
+import { useNodeHelpLink } from '../../hooks/use-node-help-link'
 import ChangeBlock from './change-block'
 import {
   canRunBySingle,
@@ -26,11 +27,13 @@ type PanelOperatorPopupProps = {
   id: string
   data: Node['data']
   onClosePopup: () => void
+  showHelpLink?: boolean
 }
 const PanelOperatorPopup = ({
   id,
   data,
   onClosePopup,
+  showHelpLink,
 }: PanelOperatorPopupProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -76,6 +79,8 @@ const PanelOperatorPopup = ({
   }, [data, nodesExtraData, language, buildInTools, customTools, workflowTools])
 
   const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly && data.type !== BlockEnum.Iteration
+
+  const link = useNodeHelpLink(data.type)
 
   return (
     <div className='w-[240px] border-[0.5px] border-gray-200 rounded-lg shadow-xl bg-white'>
@@ -157,20 +162,22 @@ const PanelOperatorPopup = ({
           </>
         )
       }
-      <div className='p-1'>
-        <a
-          href={
-            language === 'zh_Hans'
-              ? 'https://docs.dify.ai/v/zh-hans/guides/workflow'
-              : 'https://docs.dify.ai/features/workflow'
-          }
-          target='_blank'
-          className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-        >
-          {t('workflow.panel.helpLink')}
-        </a>
-      </div>
-      <div className='h-[1px] bg-gray-100'></div>
+      {
+        showHelpLink && (
+          <>
+            <div className='p-1'>
+              <a
+                href={link}
+                target='_blank'
+                className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
+              >
+                {t('workflow.panel.helpLink')}
+              </a>
+            </div>
+            <div className='h-[1px] bg-gray-100'></div>
+          </>
+        )
+      }
       <div className='p-1'>
         <div className='px-3 py-2 text-xs text-gray-500'>
           <div className='flex items-center mb-1 h-[22px] font-medium'>
