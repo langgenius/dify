@@ -3,6 +3,7 @@ import type {
   CredentialFormSchemaRadio,
   CredentialFormSchemaTextInput,
   FormValue,
+  ModelLoadBalancingConfig,
 } from './declarations'
 import {
   FormTypeEnum,
@@ -12,6 +13,7 @@ import {
 import {
   deleteModelProvider,
   setModelProvider,
+  validateModelLoadBalancingCredentials,
   validateModelProvider,
 } from '@/service/common'
 
@@ -53,12 +55,37 @@ export const validateCredentials = async (predefined: boolean, provider: string,
   }
 }
 
-export const saveCredentials = async (predefined: boolean, provider: string, v: FormValue) => {
+export const validateLoadBalancingCredentials = async (predefined: boolean, provider: string, v: FormValue): Promise<{
+  status: ValidatedStatus
+  message?: string
+}> => {
+  const { __model_name, __model_type, ...credentials } = v
+  try {
+    const res = await validateModelLoadBalancingCredentials({
+      url: `/workspaces/current/model-providers/${provider}/models/load-balancing-configs/credentials-validate`,
+      body: {
+        model: __model_name,
+        model_type: __model_type,
+        credentials,
+      },
+    })
+    if (res.result === 'success')
+      return Promise.resolve({ status: ValidatedStatus.Success })
+    else
+      return Promise.resolve({ status: ValidatedStatus.Error, message: res.error || 'error' })
+  }
+  catch (e: any) {
+    return Promise.resolve({ status: ValidatedStatus.Error, message: e.message })
+  }
+}
+
+export const saveCredentials = async (predefined: boolean, provider: string, v: FormValue, loadBalancing?: ModelLoadBalancingConfig) => {
   let body, url
 
   if (predefined) {
     body = {
       credentials: v,
+      load_balancing: loadBalancing,
     }
     url = `/workspaces/current/model-providers/${provider}`
   }
@@ -68,6 +95,7 @@ export const saveCredentials = async (predefined: boolean, provider: string, v: 
       model: __model_name,
       model_type: __model_type,
       credentials,
+      load_balancing: loadBalancing,
     }
     url = `/workspaces/current/model-providers/${provider}/models`
   }

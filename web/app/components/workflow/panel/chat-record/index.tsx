@@ -71,7 +71,7 @@ const ChatRecord = () => {
   return (
     <div
       className={`
-        flex flex-col w-[400px] rounded-l-2xl h-full border border-black/[0.02] shadow-xl
+        flex flex-col w-[400px] rounded-l-2xl h-full border border-black/2 shadow-xl
       `}
       style={{
         background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',

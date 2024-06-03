@@ -4,11 +4,11 @@ import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 import ProviderCard from './provider-card'
 import type {
-  CustomConfigrationModelFixedFields,
+  CustomConfigurationModelFixedFields,
   ModelProvider,
 } from './declarations'
 import {
-  ConfigurateMethodEnum,
+  ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
 } from './declarations'
@@ -57,32 +57,32 @@ const ModelProviderPage = () => {
 
   const handleOpenModal = (
     provider: ModelProvider,
-    configurateMethod: ConfigurateMethodEnum,
-    customConfigrationModelFixedFields?: CustomConfigrationModelFixedFields,
+    configurateMethod: ConfigurationMethodEnum,
+    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
   ) => {
     setShowModelModal({
       payload: {
         currentProvider: provider,
-        currentConfigurateMethod: configurateMethod,
-        currentCustomConfigrationModelFixedFields: customConfigrationModelFixedFields,
+        currentConfigurationMethod: configurateMethod,
+        currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
       },
       onSaveCallback: () => {
         updateModelProviders()
 
-        if (configurateMethod === ConfigurateMethodEnum.predefinedModel) {
+        if (configurateMethod === ConfigurationMethodEnum.predefinedModel) {
           provider.supported_model_types.forEach((type) => {
             updateModelList(type)
           })
         }
 
-        if (configurateMethod === ConfigurateMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+        if (configurateMethod === ConfigurationMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
           eventEmitter?.emit({
             type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
             payload: provider.provider,
           } as any)
 
-          if (customConfigrationModelFixedFields?.__model_type)
-            updateModelList(customConfigrationModelFixedFields?.__model_type)
+          if (CustomConfigurationModelFixedFields?.__model_type)
+            updateModelList(CustomConfigurationModelFixedFields?.__model_type)
         }
       },
     })
@@ -117,7 +117,7 @@ const ModelProviderPage = () => {
                 <ProviderAddedCard
                   key={provider.provider}
                   provider={provider}
-                  onOpenModal={(configurateMethod: ConfigurateMethodEnum, currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields) => handleOpenModal(provider, configurateMethod, currentCustomConfigrationModelFixedFields)}
+                  onOpenModal={(configurateMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => handleOpenModal(provider, configurateMethod, currentCustomConfigurationModelFixedFields)}
                 />
               ))
             }
@@ -137,7 +137,7 @@ const ModelProviderPage = () => {
                   <ProviderCard
                     key={provider.provider}
                     provider={provider}
-                    onOpenModal={(configurateMethod: ConfigurateMethodEnum) => handleOpenModal(provider, configurateMethod)}
+                    onOpenModal={(configurateMethod: ConfigurationMethodEnum) => handleOpenModal(provider, configurateMethod)}
                   />
                 ))
               }
