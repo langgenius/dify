@@ -6,6 +6,7 @@ import type {
   ModelLoadBalancingConfig,
 } from './declarations'
 import {
+  ConfigurationMethodEnum,
   FormTypeEnum,
   MODEL_TYPE_TEXT,
   ModelTypeEnum,
@@ -84,6 +85,7 @@ export const saveCredentials = async (predefined: boolean, provider: string, v: 
 
   if (predefined) {
     body = {
+      config_from: ConfigurationMethodEnum.predefinedModel,
       credentials: v,
       load_balancing: loadBalancing,
     }
@@ -99,6 +101,20 @@ export const saveCredentials = async (predefined: boolean, provider: string, v: 
     }
     url = `/workspaces/current/model-providers/${provider}/models`
   }
+
+  return setModelProvider({ url, body })
+}
+
+export const savePredefinedLoadBalancingConfig = async (provider: string, v: FormValue, loadBalancing?: ModelLoadBalancingConfig) => {
+  const { __model_name, __model_type, ...credentials } = v
+  const body = {
+    config_from: ConfigurationMethodEnum.predefinedModel,
+    model: __model_name,
+    model_type: __model_type,
+    credentials,
+    load_balancing: loadBalancing,
+  }
+  const url = `/workspaces/current/model-providers/${provider}/models`
 
   return setModelProvider({ url, body })
 }

@@ -6,7 +6,7 @@ import type { ModelItem, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry
 import { FormTypeEnum } from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
-import { saveCredentials } from '../utils'
+import { savePredefinedLoadBalancingConfig } from '../utils'
 import ModelLoadBalancingConfigs from './model-load-balancing-configs'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
@@ -78,13 +78,13 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
   const handleSave = async () => {
     try {
       setLoading(true)
-      const res = await saveCredentials(
-        false,
+      const res = await savePredefinedLoadBalancingConfig(
         provider.provider,
-        {
-          __model_name: model.model,
+        ({
+          ...(data?.credentials ?? {}),
           __model_type: model.model_type,
-        },
+          __model_name: model.model,
+        }),
         {
           ...draftConfig,
           enabled: Boolean(draftConfig?.enabled),
