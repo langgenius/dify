@@ -107,6 +107,7 @@ class ModelProviderModelApi(Resource):
                             choices=[mt.value for mt in ModelType], location='json')
         parser.add_argument('credentials', type=dict, required=False, nullable=True, location='json')
         parser.add_argument('load_balancing', type=dict, required=False, nullable=True, location='json')
+        parser.add_argument('config_from', type=str, required=False, nullable=True, delocation='json')
         args = parser.parse_args()
 
         model_load_balancing_service = ModelLoadBalancingService()
@@ -141,18 +142,19 @@ class ModelProviderModelApi(Resource):
                 model_type=args['model_type']
             )
 
-            model_provider_service = ModelProviderService()
+            if args.get('config_from', '') != 'predefined-model':
+                model_provider_service = ModelProviderService()
 
-            try:
-                model_provider_service.save_model_credentials(
-                    tenant_id=tenant_id,
-                    provider=provider,
-                    model=args['model'],
-                    model_type=args['model_type'],
-                    credentials=args['credentials']
-                )
-            except CredentialsValidateFailedError as ex:
-                raise ValueError(str(ex))
+                try:
+                    model_provider_service.save_model_credentials(
+                        tenant_id=tenant_id,
+                        provider=provider,
+                        model=args['model'],
+                        model_type=args['model_type'],
+                        credentials=args['credentials']
+                    )
+                except CredentialsValidateFailedError as ex:
+                    raise ValueError(str(ex))
 
         return {'result': 'success'}, 200
 
