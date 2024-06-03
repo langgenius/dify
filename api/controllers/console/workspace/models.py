@@ -107,7 +107,7 @@ class ModelProviderModelApi(Resource):
                             choices=[mt.value for mt in ModelType], location='json')
         parser.add_argument('credentials', type=dict, required=False, nullable=True, location='json')
         parser.add_argument('load_balancing', type=dict, required=False, nullable=True, location='json')
-        parser.add_argument('config_from', type=str, required=False, nullable=True, delocation='json')
+        parser.add_argument('config_from', type=str, required=False, nullable=True, location='json')
         args = parser.parse_args()
 
         model_load_balancing_service = ModelLoadBalancingService()
