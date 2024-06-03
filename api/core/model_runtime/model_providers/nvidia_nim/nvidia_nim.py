@@ -4,6 +4,7 @@ from core.model_runtime.model_providers.__base.model_provider import ModelProvid
 
 logger = logging.getLogger(__name__)
 
+
 class NVIDIANIMProvider(ModelProvider):
 
     def validate_provider_credentials(self, credentials: dict) -> None:
