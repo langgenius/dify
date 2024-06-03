@@ -47,14 +47,14 @@ class QueueLLMChunkEvent(AppQueueEvent):
     """
     QueueLLMChunkEvent entity
     """
-    event: str = QueueEvent.LLM_CHUNK
+    event: QueueEvent = QueueEvent.LLM_CHUNK
     chunk: LLMResultChunk
 
 class QueueIterationStartEvent(AppQueueEvent):
     """
     QueueIterationStartEvent entity
     """
-    event = QueueEvent.ITERATION_START
+    event: QueueEvent = QueueEvent.ITERATION_START
     node_id: str
     node_type: NodeType
     node_data: BaseNodeData
@@ -68,7 +68,7 @@ class QueueIterationNextEvent(AppQueueEvent):
     """
     QueueIterationNextEvent entity
     """
-    event = QueueEvent.ITERATION_NEXT
+    event:QueueEvent = QueueEvent.ITERATION_NEXT
 
     index: int
     node_id: str
@@ -94,7 +94,7 @@ class QueueIterationCompletedEvent(AppQueueEvent):
     """
     QueueIterationCompletedEvent entity
     """
-    event = QueueEvent.ITERATION_COMPLETED
+    event:QueueEvent = QueueEvent.ITERATION_COMPLETED
 
     node_id: str
     node_type: NodeType
@@ -106,7 +106,7 @@ class QueueTextChunkEvent(AppQueueEvent):
     """
     QueueTextChunkEvent entity
     """
-    event: str = QueueEvent.TEXT_CHUNK
+    event: QueueEvent = QueueEvent.TEXT_CHUNK
     text: str
     metadata: Optional[dict] = None
 
@@ -115,7 +115,7 @@ class QueueAgentMessageEvent(AppQueueEvent):
     """
     QueueMessageEvent entity
     """
-    event: str = QueueEvent.AGENT_MESSAGE
+    event: QueueEvent = QueueEvent.AGENT_MESSAGE
     chunk: LLMResultChunk
 
     
@@ -123,7 +123,7 @@ class QueueMessageReplaceEvent(AppQueueEvent):
     """
     QueueMessageReplaceEvent entity
     """
-    event: str = QueueEvent.MESSAGE_REPLACE
+    event: QueueEvent = QueueEvent.MESSAGE_REPLACE
     text: str
 
 
@@ -131,7 +131,7 @@ class QueueRetrieverResourcesEvent(AppQueueEvent):
     """
     QueueRetrieverResourcesEvent entity
     """
-    event: str = QueueEvent.RETRIEVER_RESOURCES
+    event: QueueEvent = QueueEvent.RETRIEVER_RESOURCES
     retriever_resources: list[dict]
 
 
@@ -139,7 +139,7 @@ class QueueAnnotationReplyEvent(AppQueueEvent):
     """
     QueueAnnotationReplyEvent entity
     """
-    event: str = QueueEvent.ANNOTATION_REPLY
+    event: QueueEvent = QueueEvent.ANNOTATION_REPLY
     message_annotation_id: str
 
 
@@ -147,7 +147,7 @@ class QueueMessageEndEvent(AppQueueEvent):
     """
     QueueMessageEndEvent entity
     """
-    event: str = QueueEvent.MESSAGE_END
+    event: QueueEvent = QueueEvent.MESSAGE_END
     llm_result: Optional[LLMResult] = None
 
 
@@ -155,28 +155,28 @@ class QueueAdvancedChatMessageEndEvent(AppQueueEvent):
     """
     QueueAdvancedChatMessageEndEvent entity
     """
-    event: str = QueueEvent.ADVANCED_CHAT_MESSAGE_END
+    event: QueueEvent = QueueEvent.ADVANCED_CHAT_MESSAGE_END
 
 
 class QueueWorkflowStartedEvent(AppQueueEvent):
     """
     QueueWorkflowStartedEvent entity
     """
-    event: str = QueueEvent.WORKFLOW_STARTED
+    event: QueueEvent = QueueEvent.WORKFLOW_STARTED
 
 
 class QueueWorkflowSucceededEvent(AppQueueEvent):
     """
     QueueWorkflowSucceededEvent entity
     """
-    event: str = QueueEvent.WORKFLOW_SUCCEEDED
+    event: QueueEvent = QueueEvent.WORKFLOW_SUCCEEDED
 
 
 class QueueWorkflowFailedEvent(AppQueueEvent):
     """
     QueueWorkflowFailedEvent entity
     """
-    event: str = QueueEvent.WORKFLOW_FAILED
+    event: QueueEvent = QueueEvent.WORKFLOW_FAILED
     error: str
 
 
@@ -184,7 +184,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     """
     QueueNodeStartedEvent entity
     """
-    event: str = QueueEvent.NODE_STARTED
+    event: QueueEvent = QueueEvent.NODE_STARTED
 
     node_id: str
     node_type: NodeType
@@ -197,7 +197,7 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     """
     QueueNodeSucceededEvent entity
     """
-    event: str = QueueEvent.NODE_SUCCEEDED
+    event: QueueEvent = QueueEvent.NODE_SUCCEEDED
 
     node_id: str
     node_type: NodeType
@@ -215,7 +215,7 @@ class QueueNodeFailedEvent(AppQueueEvent):
     """
     QueueNodeFailedEvent entity
     """
-    event: str = QueueEvent.NODE_FAILED
+    event: QueueEvent = QueueEvent.NODE_FAILED
 
     node_id: str
     node_type: NodeType
@@ -232,7 +232,7 @@ class QueueAgentThoughtEvent(AppQueueEvent):
     """
     QueueAgentThoughtEvent entity
     """
-    event: str = QueueEvent.AGENT_THOUGHT
+    event: QueueEvent = QueueEvent.AGENT_THOUGHT
     agent_thought_id: str
 
 
@@ -240,7 +240,7 @@ class QueueMessageFileEvent(AppQueueEvent):
     """
     QueueAgentThoughtEvent entity
     """
-    event: str = QueueEvent.MESSAGE_FILE
+    event: QueueEvent = QueueEvent.MESSAGE_FILE
     message_file_id: str
 
 
@@ -248,7 +248,7 @@ class QueueErrorEvent(AppQueueEvent):
     """
     QueueErrorEvent entity
     """
-    event: str = QueueEvent.ERROR
+    event: QueueEvent = QueueEvent.ERROR
     error: Any = None
 
 
@@ -256,7 +256,7 @@ class QueuePingEvent(AppQueueEvent):
     """
     QueuePingEvent entity
     """
-    event: str = QueueEvent.PING
+    event: QueueEvent = QueueEvent.PING
 
 
 class QueueStopEvent(AppQueueEvent):
@@ -272,7 +272,7 @@ class QueueStopEvent(AppQueueEvent):
         OUTPUT_MODERATION = "output-moderation"
         INPUT_MODERATION = "input-moderation"
 
-    event: str = QueueEvent.STOP
+    event: QueueEvent = QueueEvent.STOP
     stopped_by: StopBy
 
 
