@@ -2,13 +2,19 @@ provider: nvidia_nim
 label:
   en_US: NVIDIA NIM
 description:
-  en_US: NVIDIA NIM
-  zh_Hans: NVIDIA NIM
+  en_US: NVIDIA NIM, a set of easy-to-use inference microservices.
+  zh_Hans: NVIDIA NIM，一组易于使用的模型推理微服务。
 icon_small:
   en_US: icon_s_en.svg
 icon_large:
   en_US: icon_l_en.png
 background: "#EFFDFD"
+help:
+  title:
+    en_US: Learn more about NVIDIA NIM
+    zh_Hans: 了解 NVIDIA NIM 更多信息
+  url:
+    en_US: https://www.nvidia.com/en-us/ai/
 supported_model_types:
   - llm
 configurate_methods:
@@ -29,8 +35,8 @@ model_credential_schema:
       type: text-input
       required: true
       placeholder:
-        zh_Hans: Base URL, e.g. https://api.openai.com/v1
-        en_US: Base URL, e.g. https://api.openai.com/v1
+        zh_Hans: Base URL, e.g. http://192.168.1.100:8000/v1
+        en_US: Base URL, e.g. http://192.168.1.100:8000/v1
     - variable: mode
       show_on:
         - variable: __model_type
@@ -70,32 +76,4 @@ model_credential_schema:
         - variable: __model_type
           value: llm
       default: '4096'
-      type: text-input
-    - variable: vision_support
-      show_on:
-        - variable: __model_type
-          value: llm
-      label:
-        zh_Hans: Vision 支持
-        en_US: Vision Support
-      type: select
-      required: false
-      default: no_support
-      options:
-        - value: support
-          label:
-            en_US: Support
-            zh_Hans: 支持
-        - value: no_support
-          label:
-            en_US: Not Support
-            zh_Hans: 不支持
-    - variable: stream_mode_delimiter
-      label:
-        zh_Hans: 流模式返回结果的分隔符
-        en_US: Delimiter for streaming results
-      show_on:
-        - variable: __model_type
-          value: llm
-      default: '\n\n'
       type: text-input
