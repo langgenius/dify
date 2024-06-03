@@ -1216,12 +1216,12 @@ class SegmentService:
                     created_by=current_user.id
                 )
                 if document.doc_form == 'qa_model':
-                    segment_document.answer = segment_item['answer']
+                    segment_document.answer = segment_item.get('answer')
                 db.session.add(segment_document)
                 segment_data_list.append(segment_document)
 
                 pre_segment_data_list.append(segment_document)
-                keywords_list.append(segment_item['keywords'])
+                keywords_list.append(segment_item.get('keywords'))
 
             try:
                 # save vector index
