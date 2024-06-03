@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.workflow.entities.base_node_data_entities import BaseNodeData
@@ -68,7 +68,7 @@ class QueueIterationNextEvent(AppQueueEvent):
     """
     QueueIterationNextEvent entity
     """
-    event:QueueEvent = QueueEvent.ITERATION_NEXT
+    event: QueueEvent = QueueEvent.ITERATION_NEXT
 
     index: int
     node_id: str
@@ -77,9 +77,7 @@ class QueueIterationNextEvent(AppQueueEvent):
     node_run_index: int
     output: Optional[Any] = None # output for the current iteration
 
-    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
-    @validator('output', pre=True, always=True)
+    @field_validator('output', mode='before')
     def set_output(cls, v):
         """
         Set output
