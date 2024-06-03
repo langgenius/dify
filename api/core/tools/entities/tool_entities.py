@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Optional, Union, cast
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from core.tools.entities.common_entities import I18nObject
 
@@ -115,6 +115,13 @@ class ToolInvokeMessageBinary(BaseModel):
 class ToolParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
+
+    @field_validator('value', mode='before')
+    def transform_id_to_str(cls, value) -> str:
+        if isinstance(value, bool):
+            return str(value)
+        else:
+            return value
 
 
 class ToolParameter(BaseModel):
