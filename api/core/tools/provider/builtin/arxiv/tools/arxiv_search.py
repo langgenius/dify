@@ -44,16 +44,8 @@ class ArxivAPIWrapper(BaseModel):
             arxiv.run("tree of thought llm)
     """
 
-    arxiv_search: arxiv.Search = arxiv.Search  #: :meta private:
-    arxiv_exceptions: (
-        arxiv.ArxivError,
-        arxiv.UnexpectedEmptyPageError,
-        arxiv.HTTPError,
-    ) = (
-        arxiv.ArxivError,
-        arxiv.UnexpectedEmptyPageError,
-        arxiv.HTTPError,
-    )  # :meta private:
+    arxiv_search: type[arxiv.Search] = arxiv.Search  #: :meta private:
+    arxiv_http_error: tuple[type[Exception]] = (arxiv.ArxivError, arxiv.UnexpectedEmptyPageError, arxiv.HTTPError)
     top_k_results: int = 3
     ARXIV_MAX_QUERY_LENGTH: int = 300
     load_max_docs: int = 100
@@ -77,7 +69,7 @@ class ArxivAPIWrapper(BaseModel):
             results = self.arxiv_search(  # type: ignore
                 query[: self.ARXIV_MAX_QUERY_LENGTH], max_results=self.top_k_results
             ).results()
-        except self.arxiv_exceptions as ex:
+        except arxiv_http_error as ex:
             return f"Arxiv exception: {ex}"
         docs = [
             f"Published: {result.updated.date()}\n"
