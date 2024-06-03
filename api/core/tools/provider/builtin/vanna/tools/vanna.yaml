@@ -205,7 +205,7 @@ parameters:
     required: false
     default: True
     label:
-      en_US:  Generate Charts
+      en_US: Generate Charts
       zh_Hans: 生成图表
     human_description:
       en_US: Generate Charts
