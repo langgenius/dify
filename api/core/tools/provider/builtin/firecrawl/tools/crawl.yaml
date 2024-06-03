@@ -69,10 +69,10 @@ parameters:
     options:
       - value: true
         label:
-          en_US: Yes
+          en_US: 'Yes'
           zh_Hans: 是
       - value: false
         label:
-          en_US: No
+          en_US: 'No'
           zh_Hans: 否
     default: false
