@@ -4,7 +4,7 @@ from core.model_runtime.model_providers.openai_api_compatible.llm.llm import OAI
 
 logger = logging.getLogger(__name__)
 
-class NIMCompatLargeLanguageModel(OAIAPICompatLargeLanguageModel):
+class NVIDIANIMProvider(OAIAPICompatLargeLanguageModel):
     """
-    Model class for OpenAI large language model.
+    Model class for NVIDIA NIM large language model.
     """
