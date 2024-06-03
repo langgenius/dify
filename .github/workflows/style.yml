@@ -6,7 +6,7 @@ on:
       - main
 
 concurrency:
-  group: dep-${{ github.head_ref || github.run_id }}
+  group: style-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -76,4 +76,5 @@ jobs:
           VALIDATE_BASH_EXEC: true
           VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_DOCKERFILE_HADOLINT: true
+          VALIDATE_XML: true
           VALIDATE_YAML: true

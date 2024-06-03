@@ -54,7 +54,7 @@ def get_url(url: str, user_agent: str = None) -> str:
     if content_type:
         main_content_type = response.headers.get('Content-Type').split(';')[0].strip()
     else:
-        content_disposition = response.headers.get('Content-Disposition')
+        content_disposition = response.headers.get('Content-Disposition', '')
         filename_match = re.search(r'filename="([^"]+)"', content_disposition)
         if filename_match:
             filename = unquote(filename_match.group(1))

@@ -207,7 +207,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   })
 
   useKeyPress('delete', handleNodesDelete)
-  useKeyPress('delete', handleEdgeDelete)
+  useKeyPress(['delete', 'backspace'], handleEdgeDelete)
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, handleNodesCopy, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.v`, handleNodesPaste, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, handleNodesDuplicate, { exactMatch: true, useCapture: true })

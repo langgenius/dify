@@ -3,7 +3,6 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from core.tools.entities.api_entities import UserToolProviderCredentials
 from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderCredentials,
@@ -27,15 +26,6 @@ class ToolProviderController(BaseModel, ABC):
         """
         return self.credentials_schema.copy()
     
-    def user_get_credentials_schema(self) -> UserToolProviderCredentials:
-        """
-            returns the credentials schema of the provider, this method is used for user
-
-            :return: the credentials schema
-        """
-        credentials = self.credentials_schema.copy()
-        return UserToolProviderCredentials(credentials=credentials)
-
     @abstractmethod
     def get_tools(self) -> list[Tool]:
         """

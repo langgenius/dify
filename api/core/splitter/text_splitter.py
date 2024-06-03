@@ -701,7 +701,7 @@ class RecursiveCharacterTextSplitter(TextSplitter):
                 # Split along section titles
                 "\n=+\n",
                 "\n-+\n",
-                "\n\*+\n",
+                "\n\\*+\n",
                 # Split along directive markers
                 "\n\n.. *\n\n",
                 # Split by the normal type of lines
@@ -800,7 +800,7 @@ class RecursiveCharacterTextSplitter(TextSplitter):
                 # End of code block
                 "```\n",
                 # Horizontal lines
-                "\n\*\*\*+\n",
+                "\n\\*\\*\\*+\n",
                 "\n---+\n",
                 "\n___+\n",
                 # Note that this splitter doesn't handle horizontal lines defined
@@ -813,10 +813,10 @@ class RecursiveCharacterTextSplitter(TextSplitter):
         elif language == Language.LATEX:
             return [
                 # First, try to split along Latex sections
-                "\n\\\chapter{",
-                "\n\\\section{",
-                "\n\\\subsection{",
-                "\n\\\subsubsection{",
+                "\n\\\\chapter{",
+                "\n\\\\section{",
+                "\n\\\\subsection{",
+                "\n\\\\subsubsection{",
                 # Now split by environments
                 "\n\\\begin{enumerate}",
                 "\n\\\begin{itemize}",
