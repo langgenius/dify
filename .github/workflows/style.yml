@@ -103,8 +103,7 @@ jobs:
 
       - name: Super-linter
         uses: super-linter/super-linter/slim@v6
-        # if: steps.changed-files.outputs.any_changed == 'true'
-        if: false
+        if: steps.changed-files.outputs.any_changed == 'true'
         env:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: main
