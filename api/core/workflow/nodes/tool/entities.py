@@ -1,6 +1,6 @@
 from typing import Any, Literal, Union
 
-from pydantic import BaseModel, field_validator, validator
+from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
@@ -14,15 +14,14 @@ class ToolEntity(BaseModel):
     tool_label: str # redundancy
     tool_configurations: dict[str, Any]
 
-    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
-    @validator('tool_configurations', pre=True, always=True)
-    def validate_tool_configurations(cls, value, values):
+    @classmethod
+    @field_validator('tool_configurations', mode='before')
+    def validate_tool_configurations(cls, value, values: ValidationInfo) -> dict[str, Any]:
         if not isinstance(value, dict):
             raise ValueError('tool_configurations must be a dictionary')
         
-        for key in values.get('tool_configurations', {}).keys():
-            value = values.get('tool_configurations', {}).get(key)
+        for key in values.data.get('tool_configurations', {}).keys():
+            value = values.data.get('tool_configurations', {}).get(key)
             if not isinstance(value, str | int | float | bool):
                 raise ValueError(f'{key} must be a string')
             
