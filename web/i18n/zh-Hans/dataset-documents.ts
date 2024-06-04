@@ -13,6 +13,8 @@ const translation = {
         status: '状态',
         action: '操作',
       },
+      rename: '重命名',
+      name: '名称',
     },
     action: {
       uploadFile: '上传新文件',
