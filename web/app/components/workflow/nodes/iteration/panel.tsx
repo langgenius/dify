@@ -53,6 +53,9 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       <div className='px-4 pb-4 space-y-4'>
         <Field
           title={t(`${i18nPrefix}.input`)}
+          operations={(
+            <div className='flex items-center h-[18px] px-1 border border-black/8 rounded-[5px] text-xs font-medium text-gray-500 capitalize'>Array</div>
+          )}
         >
           <VarReferencePicker
             readonly={readOnly}

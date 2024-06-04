@@ -1,16 +1,16 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-// import cn from 'classnames'
-// import Field from '../_base/components/field'
+import cn from 'classnames'
+import Field from '../_base/components/field'
 import RemoveEffectVarConfirm from '../_base/components/remove-effect-var-confirm'
 import useConfig from './use-config'
 import type { VariableAssignerNodeType } from './types'
 import VarGroupItem from './components/var-group-item'
 import { type NodePanelProps } from '@/app/components/workflow/types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-// import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-// import Switch from '@/app/components/base/switch'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Switch from '@/app/components/base/switch'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
@@ -25,7 +25,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
     inputs,
     handleListOrTypeChange,
     isEnableGroup,
-    // handleGroupEnabledChange,
+    handleGroupEnabledChange,
     handleAddGroup,
     handleListOrTypeChangeInGroup,
     handleGroupRemoved,
@@ -81,8 +81,8 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
             />
           </div>)}
       </div>
-      {/* <Split /> */}
-      {/* <div className={cn('px-4 pt-4', isEnableGroup ? 'pb-4' : 'pb-2')}>
+      <Split />
+      <div className={cn('px-4 pt-4', isEnableGroup ? 'pb-4' : 'pb-2')}>
         <Field
           title={t(`${i18nPrefix}.aggregationGroup`)}
           tooltip={t(`${i18nPrefix}.aggregationGroupTip`)!}
@@ -95,8 +95,8 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
             />
           }
         />
-      </div> */}
-      {/* {isEnableGroup && (
+      </div>
+      {isEnableGroup && (
         <>
           <Split />
           <div className='px-4 pt-4 pb-2'>
@@ -116,7 +116,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
             </OutputVars>
           </div>
         </>
-      )} */}
+      )}
       <RemoveEffectVarConfirm
         isShow={isShowRemoveVarConfirm}
         onCancel={hideRemoveVarConfirm}

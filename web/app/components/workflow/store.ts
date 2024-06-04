@@ -120,7 +120,10 @@ type Shape = {
   setHoveringAssignVariableGroupId: (hoveringAssignVariableGroupId?: string) => void
   connectingNodePayload?: { nodeId: string; nodeType: string; handleType: string; handleId: string | null }
   setConnectingNodePayload: (startConnectingPayload?: Shape['connectingNodePayload']) => void
-  enteringNodePayload?: { nodeId: string }
+  enteringNodePayload?: {
+    nodeId: string
+    nodeData: VariableAssignerNodeType
+  }
   setEnteringNodePayload: (enteringNodePayload?: Shape['enteringNodePayload']) => void
 }
 

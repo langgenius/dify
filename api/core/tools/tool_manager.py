@@ -11,7 +11,6 @@ from flask import current_app
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.tools import *
 from core.tools.entities.api_entities import UserToolProvider, UserToolProviderTypeLiteral
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
@@ -31,6 +30,7 @@ from core.tools.utils.configuration import (
     ToolConfigurationManager,
     ToolParameterConfigurationManager,
 )
+from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 from core.utils.module_import_helper import load_single_subclass_from_source
 from core.workflow.nodes.tool.entities import ToolEntity
 from extensions.ext_database import db
@@ -214,30 +214,7 @@ class ToolManager:
                 raise ValueError(
                     f"tool parameter {parameter_rule.name} value {parameter_value} not in options {options}")
 
-        # convert tool parameter config to correct type
-        try:
-            if parameter_rule.type == ToolParameter.ToolParameterType.NUMBER:
-                # check if tool parameter is integer
-                if isinstance(parameter_value, int):
-                    parameter_value = parameter_value
-                elif isinstance(parameter_value, float):
-                    parameter_value = parameter_value
-                elif isinstance(parameter_value, str):
-                    if '.' in parameter_value:
-                        parameter_value = float(parameter_value)
-                    else:
-                        parameter_value = int(parameter_value)
-            elif parameter_rule.type == ToolParameter.ToolParameterType.BOOLEAN:
-                parameter_value = bool(parameter_value)
-            elif parameter_rule.type not in [ToolParameter.ToolParameterType.SELECT,
-                                             ToolParameter.ToolParameterType.STRING]:
-                parameter_value = str(parameter_value)
-            elif parameter_rule.type == ToolParameter.ToolParameterType:
-                parameter_value = str(parameter_value)
-        except Exception as e:
-            raise ValueError(f"tool parameter {parameter_rule.name} value {parameter_value} is not correct type")
-
-        return parameter_value
+        return ToolParameterConverter.cast_parameter_by_type(parameter_value, parameter_rule.type)
 
     @classmethod
     def get_agent_tool_runtime(cls, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, invoke_from: InvokeFrom = InvokeFrom.DEBUGGER) -> Tool:
