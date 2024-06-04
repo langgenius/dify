@@ -362,6 +362,9 @@ const translation = {
       title: 'Website',
       description: 'Import content from websites using web crawler.',
       with: 'With',
+      configuredCrawlers: 'Configured crawlers',
+      active: 'Active',
+      inactive: 'Inactive',
     },
   },
   plugin: {

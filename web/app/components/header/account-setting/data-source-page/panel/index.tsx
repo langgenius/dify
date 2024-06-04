@@ -110,7 +110,7 @@ const Panel: FC<Props> = ({
         isConfigured && (
           <div className='flex items-center px-3 h-[18px]'>
             <div className='text-xs font-medium text-gray-500'>
-              {t('common.dataSource.notion.connectedWorkspace')}
+              {isNotion ? t('common.dataSource.notion.connectedWorkspace') : t('common.dataSource.website.configuredCrawlers')}
             </div>
             <div className='grow ml-3 border-t border-t-gray-100' />
           </div>

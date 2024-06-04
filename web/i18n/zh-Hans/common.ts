@@ -362,6 +362,9 @@ const translation = {
       title: '网站',
       description: '使用网络爬虫从网站导入内容。',
       with: '使用',
+      configuredCrawlers: '已配置的爬虫',
+      active: '可用',
+      inactive: '不可用',
     },
   },
   plugin: {

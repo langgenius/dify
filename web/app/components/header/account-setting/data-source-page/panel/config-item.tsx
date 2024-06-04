@@ -48,11 +48,11 @@ const ConfigItem: FC<Props> = ({
           ? <Indicator className='shrink-0 mr-[6px]' />
           : <Indicator className='shrink-0 mr-[6px]' color='yellow' />
       }
-      <div className='shrink-0 mr-3 text-xs font-medium'>
+      <div className='shrink-0 mr-3 text-xs font-medium uppercase'>
         {
           payload.isActive
-            ? t('common.dataSource.notion.connected')
-            : t('common.dataSource.notion.disconnected')
+            ? t(isNotion ? 'common.dataSource.notion.connected' : 'common.dataSource.website.active')
+            : t(isNotion ? 'common.dataSource.notion.disconnected' : 'common.dataSource.website.inactive')
         }
       </div>
       <div className='mr-2 w-[1px] h-3 bg-gray-100' />
@@ -66,8 +66,8 @@ const ConfigItem: FC<Props> = ({
 
       {
         isWebsite && (
-          <div className='p-1 text-gray-500 cursor-pointer rounded-md hover:bg-black/5' onClick={onRemove} >
-            <Trash03 className='w-3 h-3 ' />
+          <div className='p-2 text-gray-500 cursor-pointer rounded-md hover:bg-black/5' onClick={onRemove} >
+            <Trash03 className='w-4 h-4 ' />
           </div>
         )
       }
