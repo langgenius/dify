@@ -57,8 +57,6 @@ const DataSourceWebsite: FC<Props> = () => {
 
   }, [])
 
-  console.log(list)
-
   return (
     <Panel
       type={DataSourceType.website}
