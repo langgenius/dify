@@ -18,6 +18,7 @@ from core.tools.entities.tool_entities import (
     ToolRuntimeVariablePool,
 )
 from core.tools.tool_file_manager import ToolFileManager
+from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 
 
 class Tool(BaseModel, ABC):
@@ -228,46 +229,8 @@ class Tool(BaseModel, ABC):
         """
         Transform tool parameters type
         """
-        for parameter in self.parameters:
-            if parameter.name in tool_parameters:
-                if parameter.type in [
-                    ToolParameter.ToolParameterType.SECRET_INPUT, 
-                    ToolParameter.ToolParameterType.STRING, 
-                    ToolParameter.ToolParameterType.SELECT,
-                ] and not isinstance(tool_parameters[parameter.name], str):
-                    if tool_parameters[parameter.name] is None:
-                        tool_parameters[parameter.name] = ''
-                    else:
-                        tool_parameters[parameter.name] = str(tool_parameters[parameter.name])
-                elif parameter.type == ToolParameter.ToolParameterType.NUMBER \
-                    and not isinstance(tool_parameters[parameter.name], int | float):
-                    if isinstance(tool_parameters[parameter.name], str):
-                        try:
-                            tool_parameters[parameter.name] = int(tool_parameters[parameter.name])
-                        except ValueError:
-                            tool_parameters[parameter.name] = float(tool_parameters[parameter.name])
-                    elif isinstance(tool_parameters[parameter.name], bool):
-                        tool_parameters[parameter.name] = int(tool_parameters[parameter.name])
-                    elif tool_parameters[parameter.name] is None:
-                        tool_parameters[parameter.name] = 0
-                elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
-                    if not isinstance(tool_parameters[parameter.name], bool):
-                        # check if it is a string
-                        if isinstance(tool_parameters[parameter.name], str):
-                            # check true false
-                            if tool_parameters[parameter.name].lower() in ['true', 'false']:
-                                tool_parameters[parameter.name] = tool_parameters[parameter.name].lower() == 'true'
-                            # check 1 0
-                            elif tool_parameters[parameter.name] in ['1', '0']:
-                                tool_parameters[parameter.name] = tool_parameters[parameter.name] == '1'
-                            else:
-                                tool_parameters[parameter.name] = bool(tool_parameters[parameter.name])
-                        elif isinstance(tool_parameters[parameter.name], int | float):
-                            tool_parameters[parameter.name] = tool_parameters[parameter.name] != 0
-                        else:
-                            tool_parameters[parameter.name] = bool(tool_parameters[parameter.name])
-                            
-        return tool_parameters
+        return {p.name: ToolParameterConverter.cast_parameter_by_type(tool_parameters[p.name], p.type)
+                for p in self.parameters if p.name in tool_parameters}
 
     @abstractmethod
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
