@@ -144,14 +144,14 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
                 onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}
               >
                 <div className='flex items-center px-[15px] py-3 gap-2 select-none'>
-                  <div className='grow-0 flex items-center justify-center w-8 h-8 bg-white border rounded-lg'>
+                  <div className='grow-0 shrink-0 flex items-center justify-center w-8 h-8 bg-white border rounded-lg'>
                     {Boolean(model) && (
                       <ModelIcon className='shrink-0' provider={provider} modelName={model!.model} />
                     )}
                   </div>
                   <div className='grow'>
                     <div className='text-sm'>{t('common.modelProvider.providerManaged')}</div>
-                    <div className='text-xs text-gray-500'>Todo</div>
+                    <div className='text-xs text-gray-500'>{t('common.modelProvider.providerManagedDescription')}</div>
                   </div>
                 </div>
               </div>
