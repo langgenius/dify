@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   CustomConfigurationModelFixedFields,
@@ -12,8 +12,8 @@ import {
 // import Tab from './tab'
 import AddModelButton from './add-model-button'
 import ModelListItem from './model-list-item'
-import ModelLoadBalancingModal from './model-load-balancing-modal'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
+import { useModalContextSelector } from '@/context/modal-context'
 
 type ModelListProps = {
   provider: ModelProvider
@@ -33,10 +33,16 @@ const ModelList: FC<ModelListProps> = ({
   const configurativeMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
   const isConfigurable = configurativeMethods.includes(ConfigurationMethodEnum.customizableModel)
 
-  const [balancingModel, setBalancingModel] = useState<ModelItem | undefined>()
+  const setShowModelLoadBalancingModal = useModalContextSelector(state => state.setShowModelLoadBalancingModal)
   const onModifyLoadBalancing = useCallback((model: ModelItem) => {
-    setBalancingModel(model)
-  }, [])
+    setShowModelLoadBalancingModal({
+      provider,
+      model: model!,
+      open: !!model,
+      onClose: () => setShowModelLoadBalancingModal(null),
+      onSave: onChange,
+    })
+  }, [onChange, provider, setShowModelLoadBalancingModal])
 
   return (
     <div className='px-2 pb-2 rounded-b-xl'>
@@ -84,15 +90,6 @@ const ModelList: FC<ModelListProps> = ({
           ))
         }
       </div>
-      {Boolean(balancingModel) && (
-        <ModelLoadBalancingModal {...{
-          provider,
-          model: balancingModel!,
-          open: !!balancingModel,
-          onClose: () => setBalancingModel(undefined),
-          onSave: onChange,
-        }} />
-      )}
     </div>
   )
 }

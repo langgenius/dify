@@ -19,7 +19,7 @@ import {
 } from './hooks'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { useProviderContext } from '@/context/provider-context'
-import { useModalContext } from '@/context/modal-context'
+import { useModalContextSelector } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 const ModelProviderPage = () => {
@@ -33,7 +33,7 @@ const ModelProviderPage = () => {
   const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
   const { data: ttsDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
   const { modelProviders: providers } = useProviderContext()
-  const { setShowModelModal } = useModalContext()
+  const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel && !ttsDefaultModel
   const [configedProviders, notConfigedProviders] = useMemo(() => {
     const configedProviders: ModelProvider[] = []

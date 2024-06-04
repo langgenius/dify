@@ -24,6 +24,8 @@ import type {
   ExternalDataTool,
 } from '@/models/common'
 import ModelLoadBalancingEntryModal from '@/app/components/header/account-setting/model-provider-page/model-modal/model-load-balancing-entry-modal'
+import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
+import ModelLoadBalancingModal from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 
 export type ModalState<T> = {
   payload: T
@@ -50,6 +52,7 @@ export type ModalContextState = {
   setShowPricingModal: () => void
   setShowAnnotationFullModal: () => void
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
+  setShowModelLoadBalancingModal: Dispatch<SetStateAction<ModelLoadBalancingModalProps | null>>
   setShowModelLoadBalancingEntryModal: Dispatch<SetStateAction<ModalState<LoadBalancingEntryModalType> | null>>
 }
 const ModalContext = createContext<ModalContextState>({
@@ -60,6 +63,7 @@ const ModalContext = createContext<ModalContextState>({
   setShowPricingModal: () => { },
   setShowAnnotationFullModal: () => { },
   setShowModelModal: () => { },
+  setShowModelLoadBalancingModal: () => { },
   setShowModelLoadBalancingEntryModal: () => { },
 })
 
@@ -82,6 +86,7 @@ export const ModalContextProvider = ({
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
+  const [showModelLoadBalancingModal, setShowModelLoadBalancingModal] = useState<ModelLoadBalancingModalProps | null>(null)
   const [showModelLoadBalancingEntryModal, setShowModelLoadBalancingEntryModal] = useState<ModalState<LoadBalancingEntryModalType> | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -168,6 +173,7 @@ export const ModalContextProvider = ({
       setShowPricingModal: () => setShowPricingModal(true),
       setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
       setShowModelModal,
+      setShowModelLoadBalancingModal,
       setShowModelLoadBalancingEntryModal,
     }}>
       <>
@@ -237,6 +243,11 @@ export const ModalContextProvider = ({
               onCancel={handleCancelModelModal}
               onSave={handleSaveModelModal}
             />
+          )
+        }
+        {
+          Boolean(showModelLoadBalancingModal) && (
+            <ModelLoadBalancingModal {...showModelLoadBalancingModal!} />
           )
         }
         {
