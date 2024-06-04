@@ -406,7 +406,8 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
         </thead>
         <tbody className="text-gray-700">
           {localDocs.map((doc) => {
-            const documentType = 'txt'// TODO: wait for api. doc.name.split('.').pop() || 'txt'
+            const isFile = doc.data_source_type === DataSourceType.FILE
+            const fileType = isFile ? doc.data_source_detail_dict?.upload_file.extension : ''
             return <tr
               key={doc.id}
               className={'border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'}
@@ -420,7 +421,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                     {
                       doc?.data_source_type === DataSourceType.NOTION
                         ? <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
-                        : <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? documentType}Icon`], s.commonIcon, 'mr-1.5')}></div>
+                        : <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? fileType}Icon`], s.commonIcon, 'mr-1.5')}></div>
                     }
                     {
                       doc.name
