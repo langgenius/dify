@@ -15,12 +15,12 @@ const translation = {
     filePreview: 'File Preview',
     pagePreview: 'Page Preview',
     dataSourceType: {
-      file: 'Import from text file',
+      file: 'Import from file',
       notion: 'Sync from Notion',
       web: 'Sync from website',
     },
     uploader: {
-      title: 'Upload text file',
+      title: 'Upload file',
       button: 'Drag and drop file, or',
       browse: 'Browse',
       tip: 'Supports {{supportTypes}}. Max {{size}}MB each.',
