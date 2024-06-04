@@ -930,6 +930,28 @@ class DocumentRetryApi(DocumentResource):
         return {'result': 'success'}, 204
 
 
+class DocumentRenameApi(DocumentResource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(document_fields)
+    def post(self, dataset_id, document_id):
+        # The role of the current user in the ta table must be admin or owner
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('name', type=str, required=True, nullable=False, location='json')
+        args = parser.parse_args()
+
+        try:
+            document = DocumentService.rename_document(dataset_id, document_id, args['name'])
+        except services.errors.document.DocumentIndexingError:
+            raise DocumentIndexingError('Cannot delete document during indexing.')
+
+        return document
+
+
 api.add_resource(GetProcessRuleApi, '/datasets/process-rule')
 api.add_resource(DatasetDocumentListApi,
                  '/datasets/<uuid:dataset_id>/documents')
@@ -956,3 +978,5 @@ api.add_resource(DocumentStatusApi,
 api.add_resource(DocumentPauseApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause')
 api.add_resource(DocumentRecoverApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume')
 api.add_resource(DocumentRetryApi, '/datasets/<uuid:dataset_id>/retry')
+api.add_resource(DocumentRenameApi,
+                 '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename')
