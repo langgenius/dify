@@ -153,20 +153,21 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
       showOnVariableMap,
     ]
   }, [formSchemas])
-  const [result, setResult] = useState<ModelLoadBalancingConfigEntry['credentials']>()
+  const [initialValue, setInitialValue] = useState<ModelLoadBalancingConfigEntry['credentials']>()
   useEffect(() => {
-    if (entry && !result) {
-      setResult({
+    if (entry && !initialValue) {
+      setInitialValue({
         ...defaultFormSchemaValue,
         ...entry.credentials,
         id: entry.id,
+        name: entry.name,
       } as Record<string, string | undefined | boolean>)
     }
-  }, [entry, defaultFormSchemaValue, result])
+  }, [entry, defaultFormSchemaValue, initialValue])
   const formSchemasValue = useMemo(() => ({
     ...currentCustomConfigurationModelFixedFields,
-    ...result,
-  }), [currentCustomConfigurationModelFixedFields, result])
+    ...initialValue,
+  }), [currentCustomConfigurationModelFixedFields, initialValue])
   const initialFormSchemasValue: Record<string, string | number> = useMemo(() => {
     return {
       ...defaultFormSchemaValue,
@@ -214,10 +215,11 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
       )
       if (res.status === ValidatedStatus.Success) {
         // notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        const { __model_type, __model_name, name, ...credentials } = value
         onSave({
           ...(entry || {}),
-          name: value.name as string,
-          credentials: value as Record<string, string | boolean | undefined>,
+          name: name as string,
+          credentials: credentials as Record<string, string | boolean | undefined>,
         })
         //   onCancel()
       }

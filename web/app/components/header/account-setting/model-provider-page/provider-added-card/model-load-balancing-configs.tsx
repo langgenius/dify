@@ -80,7 +80,7 @@ const ModelLoadBalancingConfigs = ({
 
   const setShowModelLoadBalancingEntryModal = useModalContextSelector(state => state.setShowModelLoadBalancingEntryModal)
 
-  const toggleEntryModel = useCallback((index?: number, entry?: ModelLoadBalancingConfigEntry) => {
+  const toggleEntryModal = useCallback((index?: number, entry?: ModelLoadBalancingConfigEntry) => {
     setShowModelLoadBalancingEntryModal({
       payload: {
         currentProvider: provider,
@@ -91,6 +91,7 @@ const ModelLoadBalancingConfigs = ({
       },
       onSaveCallback: ({ entry: result }) => {
         if (entry) {
+          // edit
           setDraftConfig(prev => ({
             ...prev,
             enabled: !!prev?.enabled,
@@ -98,13 +99,13 @@ const ModelLoadBalancingConfigs = ({
           }))
         }
         else {
+          // add
           setDraftConfig(prev => ({
             ...prev,
             enabled: !!prev?.enabled,
             configs: (prev?.configs || []).concat([{ ...result!, enabled: true }]),
           }))
         }
-        // onRefreshData()
       },
       onRemoveCallback: ({ index }) => {
         if (index !== undefined && (draftConfig?.configs?.length ?? 0) > index) {
@@ -204,7 +205,7 @@ const ModelLoadBalancingConfigs = ({
                         <div className='flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100'>
                           <span
                             className='flex items-center justify-center w-8 h-8 text-gray-500 bg-white rounded-lg transition-colors cursor-pointer hover:bg-black/5'
-                            onClick={() => toggleEntryModel(index, config)}
+                            onClick={() => toggleEntryModal(index, config)}
                           >
                             <Edit02 className='w-4 h-4' />
                           </span>
@@ -231,7 +232,7 @@ const ModelLoadBalancingConfigs = ({
 
             <div
               className='flex items-center px-3 mt-1 h-8 text-[13px] font-medium text-primary-600'
-              onClick={() => toggleEntryModel()}
+              onClick={() => toggleEntryModal()}
             >
               <div className='flex items-center cursor-pointer'>
                 <Plus02 className='mr-2 w-3 h-3' />{t('common.modelProvider.addConfig')}
