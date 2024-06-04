@@ -141,8 +141,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 if isinstance(chunk, AgentScratchpadUnit.Action):
                     action = chunk
                     # detect action
-                    scratchpad.agent_response += json.dumps(chunk.dict())
-                    scratchpad.action_str = json.dumps(chunk.dict())
+                    scratchpad.agent_response += json.dumps(chunk.model_dump())
+                    scratchpad.action_str = json.dumps(chunk.model_dump())
                     scratchpad.action = action
                 else:
                     scratchpad.agent_response += chunk

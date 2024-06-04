@@ -153,4 +153,4 @@ class ModelWithProviderEntityResponse(ModelWithProviderEntity):
     provider: SimpleProviderEntityResponse
 
     def __init__(self, model: ModelWithProviderEntity) -> None:
-        super().__init__(**model.dict())
+        super().__init__(**model.model_dump())

@@ -285,7 +285,7 @@ class ToolRuntimeVariablePool(BaseModel):
             'conversation_id': self.conversation_id,
             'user_id': self.user_id,
             'tenant_id': self.tenant_id,
-            'pool': [variable.dict() for variable in self.pool],
+            'pool': [variable.model_dump() for variable in self.pool],
         }
     
     def set_text(self, tool_name: str, name: str, value: str) -> None:

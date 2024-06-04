@@ -88,7 +88,7 @@ class CodeExecutor:
         }
 
         if dependencies:
-            data['dependencies'] = [dependency.dict() for dependency in dependencies]
+            data['dependencies'] = [dependency.model_dump() for dependency in dependencies]
 
         try:
             response = post(str(url), json=data, headers=headers, timeout=CODE_EXECUTION_TIMEOUT)
