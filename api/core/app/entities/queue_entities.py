@@ -8,7 +8,7 @@ from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
 
 
-class QueueEvent(Enum):
+class QueueEvent(str, Enum):
     """
     QueueEvent enum
     """
