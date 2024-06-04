@@ -26,7 +26,6 @@ sympy==1.12
 jieba==0.42.1
 celery~=5.3.6
 redis[hiredis]~=5.0.3
-openpyxl==3.1.2
 chardet~=5.1.0
 python-docx~=1.1.0
 pypdfium2~=4.17.0
@@ -51,7 +50,7 @@ dashscope[tokenizer]~=1.17.0
 huggingface_hub~=0.16.4
 transformers~=4.35.0
 tokenizers~=0.15.0
-pandas==1.5.3
+pandas[performance,excel]~=2.2.2
 xinference-client==0.9.4
 safetensors~=0.4.3
 zhipuai==1.0.7
@@ -78,7 +77,6 @@ qrcode~=7.4.2
 azure-storage-blob==12.13.0
 azure-identity==1.15.0
 lxml==5.1.0
-xlrd~=2.0.1
 pydantic~=1.10.0
 pgvecto-rs==0.1.4
 firecrawl-py==0.0.5
