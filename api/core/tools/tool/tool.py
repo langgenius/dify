@@ -3,7 +3,8 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, validator
+from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic_core.core_schema import ValidationInfo
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.file_obj import FileVar
@@ -31,10 +32,9 @@ class Tool(BaseModel, ABC):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
-    @validator('parameters', pre=True, always=True)
-    def set_parameters(cls, v, values):
+    @classmethod
+    @field_validator('parameters', mode='before')
+    def set_parameters(cls, v, validation_info: ValidationInfo) -> list[ToolParameter]:
         return v or []
 
     class Runtime(BaseModel):
