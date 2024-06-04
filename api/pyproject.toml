@@ -22,6 +22,7 @@ select = [
     "E117", # over-indented
     "RUF019", # unnecessary-key-check
     "S506", # unsafe-yaml-load
+    "W191", # tab-indentation
     "W605", # invalid-escape-sequence
 ]
 ignore = [
