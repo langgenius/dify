@@ -7,7 +7,10 @@ from flask import current_app
 from core.model_manager import ModelInstance
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.models.document import Document
-from core.rag.splitter.fixed_text_splitter import EnhanceRecursiveCharacterTextSplitter, FixedRecursiveCharacterTextSplitter
+from core.rag.splitter.fixed_text_splitter import (
+    EnhanceRecursiveCharacterTextSplitter,
+    FixedRecursiveCharacterTextSplitter,
+)
 from core.rag.splitter.text_splitter import TextSplitter
 from models.dataset import Dataset, DatasetProcessRule
 
