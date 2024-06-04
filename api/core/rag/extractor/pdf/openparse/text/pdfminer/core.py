@@ -132,7 +132,7 @@ def process_page_layout(page_num: int, page_height: int, page_width: int, elemen
                     ),
                     image=ele.stream.get_data(),
                     ext="png",
-                    text=ele.name,
+                    text=ele.name+".png",
                 )
             )
         elif isinstance(ele, LTFigure):
@@ -155,8 +155,10 @@ def process_page_layout(page_num: int, page_height: int, page_width: int, elemen
         bbox = _get_bbox(lines)
         # bbox = element.bbox
         # print(bbox, "\n".join(line.text for line in lines))
-        fy0 = page_height - bbox[1]
-        fy1 = page_height - bbox[3]
+        # fy0 = page_height - bbox[1]
+        # fy1 = page_height - bbox[3]
+        fy0 = page_height - bbox[3]
+        fy1 = page_height - bbox[1]
         elements.append(
             TextElement(
                 bbox=Bbox(
@@ -173,20 +175,22 @@ def process_page_layout(page_num: int, page_height: int, page_width: int, elemen
             )
         )
     elif isinstance(element, LTImage):
+        fy0 = page_height - element.bbox[1]
+        fy1 = page_height - element.bbox[3]
         elements.append(
             ImageElement(
                 bbox=Bbox(
                     x0=element.bbox[0],
-                    y0=element.bbox[1],
+                    y0=fy0,
                     x1=element.bbox[2],
-                    y1=element.bbox[3],
+                    y1=fy1,
                     page=page_num,
                     page_width=element.width,
                     page_height=element.height,
                 ),
                 image=element.stream.get_data(),
                 ext="png",
-                text=element.name,
+                text=element.name + ".png",
             )
         )
     elif isinstance(element, LTLine):

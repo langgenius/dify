@@ -125,11 +125,15 @@ def _ingest_with_pdfminer(
                 bbox = table.bbox
                 tab = table.extract()
                 table_with = bbox[2] - bbox[0]
-                if pre_page_num != page_num or pre_table_with == table_with:
+                if pre_page_num != page_num and pre_table_with == table_with :
                     lines = tab[0:]
                 else:
                     headers = tab[0]
-                    lines = tab[1:]
+                    i = 0
+                    while headers is None:
+                        i += 1
+                        headers = tab[i]
+                    lines = tab[i + 1:]
                 pre_page_num = page_num
 
                 for j, header in enumerate(headers):
