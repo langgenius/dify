@@ -65,8 +65,8 @@ class AzureStorage(BaseStorage):
         blob_container.delete_blob(filename)
 
     def _sync_client(self):
-        indexing_cache_key = 'azure_blob_sas_token'
-        cache_result = redis_client.get(indexing_cache_key)
+        cache_key = 'azure_blob_sas_token_{}_{}'.format(self.account_name, self.account_key)
+        cache_result = redis_client.get(cache_key)
         if cache_result is not None:
             sas_token = cache_result.decode('utf-8')
         else:
