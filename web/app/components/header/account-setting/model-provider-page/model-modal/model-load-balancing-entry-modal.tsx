@@ -241,7 +241,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
           <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
             <div className='px-8 pt-8'>
               <div className='flex justify-between items-center mb-2'>
-                <div className='text-xl font-semibold text-gray-900'>{t('common.modelProvider.addConfig')}</div>
+                <div className='text-xl font-semibold text-gray-900'>{t(isEditMode ? 'common.modelProvider.editConfig' : 'common.modelProvider.addConfig')}</div>
               </div>
               <Form
                 value={value}

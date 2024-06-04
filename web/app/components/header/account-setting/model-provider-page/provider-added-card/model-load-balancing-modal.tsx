@@ -46,9 +46,9 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
     }, {} as Record<string, ModelLoadBalancingConfigEntry>)
   }, [originalConfig])
   useEffect(() => {
-    if (originalConfig && !draftConfig)
+    if (originalConfig)
       setDraftConfig(originalConfig)
-  }, [draftConfig, originalConfig])
+  }, [originalConfig])
 
   const toggleModalBalancing = useCallback((enabled: boolean) => {
     if (draftConfig) {
