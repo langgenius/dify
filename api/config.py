@@ -47,7 +47,7 @@ DEFAULTS = {
     'LOG_FILE': '',
     'LOG_FORMAT': '%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s',
     'LOG_DATEFORMAT': '%Y-%m-%d %H:%M:%S',
-    'LOG_TZ': '',  # egg: Asia/Shanghai, default is time.localtime
+    'LOG_TZ': '',  # eg: Asia/Shanghai, default is time.localtime
     'HOSTED_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_OPENAI_TRIAL_ENABLED': 'False',
     'HOSTED_OPENAI_TRIAL_MODELS': 'gpt-3.5-turbo,gpt-3.5-turbo-1106,gpt-3.5-turbo-instruct,gpt-3.5-turbo-16k,gpt-3.5-turbo-16k-0613,gpt-3.5-turbo-0613,gpt-3.5-turbo-0125,text-davinci-003',
