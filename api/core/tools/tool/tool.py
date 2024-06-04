@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from enum import Enum
 from typing import Any, Optional, Union
 
@@ -229,8 +230,13 @@ class Tool(BaseModel, ABC):
         """
         Transform tool parameters type
         """
-        return {p.name: ToolParameterConverter.cast_parameter_by_type(tool_parameters[p.name], p.type)
-                for p in self.parameters if p.name in tool_parameters}
+        # Temp fix for the issue that the tool parameters will be converted to empty while validating the credentials
+        result = deepcopy(tool_parameters)
+        for parameter in self.parameters:
+            if parameter.name in tool_parameters:
+                result[parameter.name] = ToolParameterConverter.cast_parameter_by_type(tool_parameters[parameter.name], parameter.type)
+        
+        return result
 
     @abstractmethod
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
