@@ -16,6 +16,13 @@ select = [
     "RUF019", # unnecessary-key-check
     "S506", # unsafe-yaml-load
     "W605", # invalid-escape-sequence
+    "E101", # mixed-spaces-and-tabs
+    "E111", # indentation-with-invalid-multiple
+    "E112", # no-indented-block
+    "E113", # unexpected-indentation
+    "E115", # no-indented-block-comment
+    "E116", # unexpected-indentation-comment
+    "E117", # over-indented
 ]
 ignore = [
     "F403", # undefined-local-with-import-star
