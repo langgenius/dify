@@ -1,6 +1,6 @@
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator, validator
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.workflow.entities.base_node_data_entities import BaseNodeData
@@ -25,10 +25,9 @@ class ParameterConfig(BaseModel):
     description: str
     required: bool
 
-    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
-    @validator('name', pre=True, always=True)
-    def validate_name(cls, value):
+    @classmethod
+    @field_validator('name', mode='before')
+    def validate_name(cls, value) -> str:
         if not value:
             raise ValueError('Parameter name is required')
         if value in ['__reason', '__is_success']:
