@@ -54,6 +54,10 @@ const translation = {
       fireCrawlNotConfigured: 'Firecrawl is not configured',
       fireCrawlNotConfiguredDescription: 'Configure Firecrawl with API key to use it.',
       configure: 'Configure',
+      run: 'Run',
+      firecrawlTitle: 'Extract web content with 🔥Firecrawl',
+      firecrawlDoc: 'Firecrawl docs',
+      firecrawlDocLink: '',
     },
   },
   stepTwo: {

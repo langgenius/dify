@@ -53,7 +53,11 @@ const translation = {
     website: {
       fireCrawlNotConfigured: 'Firecrawl 未配置',
       fireCrawlNotConfiguredDescription: '请配置 Firecrawl 的 API 密钥以使用它。',
-      configure: 'Configure',
+      configure: '配置',
+      run: '运行',
+      firecrawlTitle: '使用 🔥Firecrawl 提取网页内容',
+      firecrawlDoc: 'Firecrawl 文档',
+      firecrawlDocLink: '',
     },
   },
   stepTwo: {

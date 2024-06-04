@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import NoData from './no-data'
+import Firecrawl from './firecrawl'
 import { useModalContext } from '@/context/modal-context'
 
 type Props = {
@@ -10,6 +11,8 @@ type Props = {
 
 const WebsitePreview: FC<Props> = () => {
   const { setShowAccountSettingModal } = useModalContext()
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [isConfigured, setIsConfigured] = useState(true)
 
   const handleOnConfig = useCallback(() => {
     setShowAccountSettingModal({
@@ -17,10 +20,20 @@ const WebsitePreview: FC<Props> = () => {
     })
   }, [setShowAccountSettingModal])
 
-  // TODO: on Hide
+  // TODO: on Hide account setting modal
+
+  if (isLoaded)
+    return null
+
   return (
     <div>
-      <NoData onConfig={handleOnConfig} />
+      {isConfigured
+        ? (
+          <Firecrawl />
+        )
+        : (
+          <NoData onConfig={handleOnConfig} />
+        )}
     </div>
   )
 }
