@@ -77,6 +77,7 @@ class QueueIterationNextEvent(AppQueueEvent):
     node_run_index: int
     output: Optional[Any] = None # output for the current iteration
 
+    @classmethod
     @field_validator('output', mode='before')
     def set_output(cls, v):
         """

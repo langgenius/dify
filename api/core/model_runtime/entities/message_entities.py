@@ -123,6 +123,7 @@ class AssistantPromptMessage(PromptMessage):
         type: str
         function: ToolCallFunction
 
+        @classmethod
         @field_validator("id", mode='before')
         def transform_id_to_str(cls, value) -> str:
             if not isinstance(value, str):
