@@ -23,7 +23,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const { t } = useTranslation()
   const { setShowAccountSettingModal } = useModalContext()
   const [hasConnection, setHasConnection] = useState(true)
-  const [dataSourceType, setDataSourceType] = useState<DataSourceType>(DataSourceType.FILE)
+  const [dataSourceType, setDataSourceType] = useState<DataSourceType>(DataSourceType.WEB) // TODO: for test. DataSourceType.FILE
   const [step, setStep] = useState(1)
   const [indexingTypeCache, setIndexTypeCache] = useState('')
   const [fileList, setFiles] = useState<FileItem[]>([])

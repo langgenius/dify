@@ -50,6 +50,11 @@ const translation = {
       confirmButton: '创建',
       failed: '创建失败',
     },
+    website: {
+      fireCrawlNotConfigured: 'Firecrawl 未配置',
+      fireCrawlNotConfiguredDescription: '请配置 Firecrawl 的 API 密钥以使用它。',
+      configure: 'Configure',
+    },
   },
   stepTwo: {
     segmentation: '分段设置',

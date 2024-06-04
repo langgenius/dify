@@ -6,6 +6,7 @@ import FilePreview from '../file-preview'
 import FileUploader from '../file-uploader'
 import NotionPagePreview from '../notion-page-preview'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
+import Website from '../website'
 import s from './index.module.css'
 import type { FileItem } from '@/models/datasets'
 import type { NotionPage } from '@/models/common'
@@ -150,10 +151,9 @@ const StepOne = ({
                   {t('datasetCreation.stepOne.dataSourceType.notion')}
                 </div>
                 <div
-                  className={cn(s.dataSourceItem, s.disabled, dataSourceType === DataSourceType.WEB && s.active)}
-                // onClick={() => changeType(DataSourceType.WEB)}
+                  className={cn(s.dataSourceItem, dataSourceType === DataSourceType.WEB ? s.active : s.disabled)}
+                  onClick={() => changeType(DataSourceType.WEB)}
                 >
-                  <span className={s.comingTag}>Coming soon</span>
                   <span className={cn(s.datasetIcon, s.web)} />
                   {t('datasetCreation.stepOne.dataSourceType.web')}
                 </div>
@@ -200,6 +200,9 @@ const StepOne = ({
                 </>
               )}
             </>
+          )}
+          {dataSourceType === DataSourceType.WEB && (
+            <Website />
           )}
           {!datasetId && (
             <>

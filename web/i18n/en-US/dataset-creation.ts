@@ -50,6 +50,11 @@ const translation = {
       confirmButton: 'Create',
       failed: 'Creation failed',
     },
+    website: {
+      fireCrawlNotConfigured: 'Firecrawl is not configured',
+      fireCrawlNotConfiguredDescription: 'Configure Firecrawl with API key to use it.',
+      configure: 'Configure',
+    },
   },
   stepTwo: {
     segmentation: 'Chunk settings',
