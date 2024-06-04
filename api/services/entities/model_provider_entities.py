@@ -142,6 +142,9 @@ class DefaultModelResponse(BaseModel):
     model_type: ModelType
     provider: SimpleProviderEntityResponse
 
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class ModelWithProviderEntityResponse(ModelWithProviderEntity):
     """

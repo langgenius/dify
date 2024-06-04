@@ -6,6 +6,8 @@ from abc import abstractmethod
 from collections.abc import Generator
 from typing import Optional, Union
 
+from pydantic import ConfigDict
+
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.callbacks.logging_callback import LoggingCallback
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -33,6 +35,9 @@ class LargeLanguageModel(AIModel):
     Model class for large language model.
     """
     model_type: ModelType = ModelType.LLM
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
 
     def invoke(self, model: str, credentials: dict,
                prompt_messages: list[PromptMessage], model_parameters: Optional[dict] = None,
