@@ -1,7 +1,7 @@
 import os
 from typing import Literal, Optional, Union
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 
@@ -24,9 +24,8 @@ class HttpRequestNodeData(BaseNodeData):
         type: Literal['no-auth', 'api-key']
         config: Optional[Config]
 
-        # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
-        # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
-        @validator('config', always=True, pre=True)
+        @classmethod
+        @field_validator('config', mode='before')
         def check_config(cls, v, values):
             """
             Check config, if type is no-auth, config should be None, otherwise it should be a dict.
