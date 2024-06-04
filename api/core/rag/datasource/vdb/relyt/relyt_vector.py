@@ -34,7 +34,6 @@ class RelytConfig(BaseModel):
     database: str
 
     @model_validator(mode='before')
-    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values['host']:
             raise ValueError("config RELYT_HOST is required")
