@@ -345,6 +345,7 @@ const translation = {
     apiKeyStatusNormal: 'API Key 正常',
     apiKeyRateLimit: '已达频率上限，{{seconds}}秒后恢复',
     addConfig: '增加配置',
+    editConfig: '修改配置',
     loadBalancingLeastKeyWarning: '至少启用 2 个 Key 以使用负载均衡',
     loadBalancingInfo: '默认情况下，负载平衡使用 Round-robin 策略。如果触发速率限制，将应用 1 分钟的冷却时间',
     upgradeForLoadBalancing: '升级以解锁负载均衡功能',
