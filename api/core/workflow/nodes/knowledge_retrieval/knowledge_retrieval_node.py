@@ -1,4 +1,7 @@
 from typing import Any, cast
+
+from sqlalchemy import func
+
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
@@ -16,7 +19,6 @@ from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalN
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 from models.workflow import WorkflowNodeExecutionStatus
-from sqlalchemy import func
 
 default_retrieval_model = {
     'search_method': 'semantic_search',
