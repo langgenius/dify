@@ -329,6 +329,7 @@ class DatasetRetrieval:
         """
         if not query:
             return
+        dataset_queries = []
         for dataset_id in dataset_ids:
             dataset_query = DatasetQuery(
                 dataset_id=dataset_id,
@@ -338,8 +339,10 @@ class DatasetRetrieval:
                 created_by_role=user_from,
                 created_by=user_id
             )
-            db.session.add(dataset_query)
-        db.session.commit()
+            dataset_queries.append(dataset_query)
+        if dataset_queries:
+            db.session.add_all(dataset_queries)
+            db.session.commit()
 
     def _retriever(self, flask_app: Flask, dataset_id: str, query: str, top_k: int, all_documents: list):
         with flask_app.app_context():
