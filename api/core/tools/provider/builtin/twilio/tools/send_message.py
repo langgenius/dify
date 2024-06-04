@@ -1,6 +1,6 @@
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -32,9 +32,8 @@ class TwilioAPIWrapper(BaseModel):
         must be empty.
     """
 
-    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
-    @validator("client", pre=True, always=True)
+    @classmethod
+    @field_validator("client", mode='before')
     def set_validator(cls, values: dict) -> dict:
         """Validate that api key and python package exists in environment."""
         try:
