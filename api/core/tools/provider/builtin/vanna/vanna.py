@@ -9,7 +9,7 @@ class VannaProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             VannaTool().fork_tool_runtime(
-                meta={
+                runtime={
                     "credentials": credentials,
                 }
             ).invoke(
