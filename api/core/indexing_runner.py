@@ -286,11 +286,7 @@ class IndexingRunner:
                 if len(preview_texts) < 5:
                     preview_texts.append(document.page_content)
                 if indexing_technique == 'high_quality' or embedding_model_instance:
-                    embedding_model_type_instance = embedding_model_instance.model_type_instance
-                    embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
-                    tokens += embedding_model_type_instance.get_num_tokens(
-                        model=embedding_model_instance.model,
-                        credentials=embedding_model_instance.credentials,
+                    tokens += embedding_model_instance.get_text_embedding_num_tokens(
                         texts=[self.filter_string(document.page_content)]
                     )
 
@@ -658,10 +654,6 @@ class IndexingRunner:
         tokens = 0
         chunk_size = 10
 
-        embedding_model_type_instance = None
-        if embedding_model_instance:
-            embedding_model_type_instance = embedding_model_instance.model_type_instance
-            embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
         # create keyword index
         create_keyword_thread = threading.Thread(target=self._process_keyword_index,
                                                  args=(current_app._get_current_object(),
@@ -674,8 +666,7 @@ class IndexingRunner:
                     chunk_documents = documents[i:i + chunk_size]
                     futures.append(executor.submit(self._process_chunk, current_app._get_current_object(), index_processor,
                                                    chunk_documents, dataset,
-                                                   dataset_document, embedding_model_instance,
-                                                   embedding_model_type_instance))
+                                                   dataset_document, embedding_model_instance))
 
                 for future in futures:
                     tokens += future.result()
@@ -716,7 +707,7 @@ class IndexingRunner:
                 db.session.commit()
 
     def _process_chunk(self, flask_app, index_processor, chunk_documents, dataset, dataset_document,
-                       embedding_model_instance, embedding_model_type_instance):
+                       embedding_model_instance):
         with flask_app.app_context():
             # check document is paused
             self._check_document_paused_status(dataset_document.id)
@@ -724,9 +715,7 @@ class IndexingRunner:
             tokens = 0
             if dataset.indexing_technique == 'high_quality' or embedding_model_type_instance:
                 tokens += sum(
-                    embedding_model_type_instance.get_num_tokens(
-                        embedding_model_instance.model,
-                        embedding_model_instance.credentials,
+                    embedding_model_instance.get_text_embedding_num_tokens(
                         [document.page_content]
                     )
                     for document in chunk_documents

@@ -4,7 +4,7 @@ import logging
 import random
 import time
 import uuid
-from typing import Optional, cast
+from typing import Optional
 
 from flask import current_app
 from flask_login import current_user
@@ -13,7 +13,6 @@ from sqlalchemy import func
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.models.document import Document as RAGDocument
 from events.dataset_event import dataset_was_deleted
@@ -1144,10 +1143,7 @@ class SegmentService:
                 model=dataset.embedding_model
             )
             # calc embedding use tokens
-            model_type_instance = cast(TextEmbeddingModel, embedding_model.model_type_instance)
-            tokens = model_type_instance.get_num_tokens(
-                model=embedding_model.model,
-                credentials=embedding_model.credentials,
+            tokens = embedding_model.get_text_embedding_num_tokens(
                 texts=[content]
             )
         lock_name = 'add_segment_lock_document_id_{}'.format(document.id)
@@ -1215,10 +1211,7 @@ class SegmentService:
                 tokens = 0
                 if dataset.indexing_technique == 'high_quality' and embedding_model:
                     # calc embedding use tokens
-                    model_type_instance = cast(TextEmbeddingModel, embedding_model.model_type_instance)
-                    tokens = model_type_instance.get_num_tokens(
-                        model=embedding_model.model,
-                        credentials=embedding_model.credentials,
+                    tokens = embedding_model.get_text_embedding_num_tokens(
                         texts=[content]
                     )
                 segment_document = DocumentSegment(
@@ -1321,10 +1314,7 @@ class SegmentService:
                     )
 
                     # calc embedding use tokens
-                    model_type_instance = cast(TextEmbeddingModel, embedding_model.model_type_instance)
-                    tokens = model_type_instance.get_num_tokens(
-                        model=embedding_model.model,
-                        credentials=embedding_model.credentials,
+                    tokens = embedding_model.get_text_embedding_num_tokens(
                         texts=[content]
                     )
                 segment.content = content

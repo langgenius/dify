@@ -1,11 +1,11 @@
 import os
 from abc import ABC, abstractmethod
 
+from core.helper.module_import_helper import get_subclasses_from_module, import_module_from_source
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.tools.utils.yaml_utils import load_yaml_file
-from core.utils.module_import_helper import get_subclasses_from_module, import_module_from_source
 
 
 class ModelProvider(ABC):

@@ -2,7 +2,6 @@ import datetime
 import logging
 import time
 import uuid
-from typing import cast
 
 import click
 from celery import shared_task
@@ -11,7 +10,6 @@ from sqlalchemy import func
 from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
@@ -59,16 +57,12 @@ def batch_create_segment_to_index_task(job_id: str, content: list, dataset_id: s
                 model=dataset.embedding_model
             )
 
-        model_type_instance = embedding_model.model_type_instance
-        model_type_instance = cast(TextEmbeddingModel, model_type_instance)
         for segment in content:
             content = segment['content']
             doc_id = str(uuid.uuid4())
             segment_hash = helper.generate_text_hash(content)
             # calc embedding use tokens
-            tokens = model_type_instance.get_num_tokens(
-                model=embedding_model.model,
-                credentials=embedding_model.credentials,
+            tokens = embedding_model.get_text_embedding_num_tokens(
                 texts=[content]
             ) if embedding_model else 0
             max_position = db.session.query(func.max(DocumentSegment.position)).filter(
