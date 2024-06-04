@@ -4,9 +4,9 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ConfigurationMethodEnum, CustomConfigurationModelFixedFields, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
 import Indicator from '../../../indicator'
+import CooldownTimer from './cooldown-timer'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import Switch from '@/app/components/base/switch'
-import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Edit02, HelpCircle, Plus02, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
@@ -91,7 +91,6 @@ const ModelLoadBalancingConfigs = ({
       },
       onSaveCallback: ({ entry: result }) => {
         if (entry) {
-          // edit entry
           setDraftConfig(prev => ({
             ...prev,
             enabled: !!prev?.enabled,
@@ -126,6 +125,15 @@ const ModelLoadBalancingConfigs = ({
     setShowModelLoadBalancingEntryModal,
   ])
 
+  const clearCountdown = useCallback((index: number) => {
+    updateConfigEntry(index, ({ ttl: _, ...entry }) => {
+      return {
+        ...entry,
+        in_cooldown: false,
+      }
+    })
+  }, [updateConfigEntry])
+
   if (!draftConfig)
     return null
 
@@ -141,7 +149,7 @@ const ModelLoadBalancingConfigs = ({
         onClick={(!withSwitch && !draftConfig.enabled) ? () => toggleModalBalancing(true) : undefined}
       >
         <div className='flex items-center px-[15px] py-3 gap-2 select-none'>
-          <div className='grow-0 flex items-center justify-center w-8 h-8 text-primary-600 bg-indigo-50 border border-indigo-100 rounded-lg'>
+          <div className='grow-0 shrink-0 flex items-center justify-center w-8 h-8 text-primary-600 bg-indigo-50 border border-indigo-100 rounded-lg'>
             <Balance className='w-4 h-4' />
           </div>
           <div className='grow'>
@@ -151,7 +159,7 @@ const ModelLoadBalancingConfigs = ({
                 <HelpCircle className='w-3 h-3 text-gray-400' />
               </TooltipPlus>
             </div>
-            <div className='text-xs text-gray-500'>Todo</div>
+            <div className='text-xs text-gray-500'>{t('common.modelProvider.loadBalancingDescription')}</div>
           </div>
           {
             withSwitch && (
@@ -175,9 +183,7 @@ const ModelLoadBalancingConfigs = ({
                     <div className='flex items-center justify-center mr-2 w-3 h-3'>
                       {(config.in_cooldown && Boolean(config.ttl))
                         ? (
-                          <TooltipPlus popupContent={t('common.modelProvider.apiKeyRateLimit', { seconds: config.ttl })}>
-                            <SimplePieChart percentage={Math.round((config.ttl ?? 0) / 60 * 100)} className='w-3 h-3' />
-                          </TooltipPlus>
+                          <CooldownTimer secondsRemaining={config.ttl} onFinish={() => clearCountdown(index)} />
                         )
                         : (
                           <TooltipPlus popupContent={t('common.modelProvider.apiKeyStatusNormal')}>
