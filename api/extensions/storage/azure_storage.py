@@ -77,5 +77,5 @@ class AzureStorage(BaseStorage):
                 permission=AccountSasPermissions(read=True, write=True, delete=True, list=True, add=True, create=True),
                 expiry=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1)
             )
-            redis_client.set(indexing_cache_key, sas_token, ex=3000)
+            redis_client.set(cache_key, sas_token, ex=3000)
         return BlobServiceClient(account_url=self.account_url, credential=sas_token)
