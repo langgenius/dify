@@ -342,7 +342,7 @@ class DatasetRetrieval:
             dataset_queries.append(dataset_query)
         if dataset_queries:
             db.session.add_all(dataset_queries)
-            db.session.commit()
+        db.session.commit()
 
     def _retriever(self, flask_app: Flask, dataset_id: str, query: str, top_k: int, all_documents: list):
         with flask_app.app_context():
