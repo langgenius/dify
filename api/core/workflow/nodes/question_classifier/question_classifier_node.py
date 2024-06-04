@@ -50,7 +50,7 @@ class QuestionClassifierNode(LLMNode):
         # fetch memory
         memory = self._fetch_memory(node_data.memory, variable_pool, model_instance)
         # fetch instruction
-        instruction = self._format_instruction(node_data.instruction, variable_pool)
+        instruction = self._format_instruction(node_data.instruction, variable_pool) if node_data.instruction else ''
         node_data.instruction = instruction
         # fetch prompt messages
         prompt_messages, stop = self._fetch_prompt(
