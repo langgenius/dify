@@ -102,7 +102,17 @@ class VannaTool(BuiltinTool):
             if memos:
                 vn.train(documentation=memos)
 
-        generate_chart = tool_parameters.get("generate_chart", True)
+        #########################################################################################
+        # Due to CVE-2024-5565, we have to disable the chart generation feature
+        # The Vanna library uses a prompt function to present the user with visualized results,
+        # it is possible to alter the prompt using prompt injection and run arbitrary Python code
+        # instead of the intended visualization code.
+        # Specifically - allowing external input to the library’s “ask” method
+        # with "visualize" set to True (default behavior) leads to remote code execution.
+        # Affected versions: <= 0.5.5
+        #########################################################################################
+        generate_chart = False
+        # generate_chart = tool_parameters.get("generate_chart", True)
         res = vn.ask(prompt, False, True, generate_chart)
 
         result = []
