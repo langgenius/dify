@@ -85,15 +85,17 @@ class KnowledgeRetrievalNode(BaseNode):
         ).filter(
             Document.indexing_status == 'completed',
             Document.enabled == True,
-            Document.archived == False
-        ).group_by(Document.dataset_id).subquery()
+            Document.archived == False,
+            Document.dataset_id.in_(dataset_ids)
+        ).group_by(Document.dataset_id).having(
+            func.count(Document.id) > 0
+        ).subquery()
 
         results = db.session.query(Dataset).join(
             subquery, Dataset.id == subquery.c.dataset_id
         ).filter(
             Dataset.tenant_id == self.tenant_id,
-            Dataset.id.in_(dataset_ids),
-            subquery.c.available_document_count > 0,
+            Dataset.id.in_(dataset_ids)
         ).all()
 
         for dataset in results:
