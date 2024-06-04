@@ -11,31 +11,23 @@ import type {
   CredentialFormSchema,
   CredentialFormSchemaRadio,
   CredentialFormSchemaSelect,
+  CredentialFormSchemaTextInput,
   CustomConfigurationModelFixedFields,
   FormValue,
-  ModelLoadBalancingConfig,
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
 import {
   ConfigurationMethodEnum,
-  CustomConfigurationStatusEnum,
   FormTypeEnum,
 } from '../declarations'
-import {
-  genModelNameFormSchema,
-  genModelTypeFormSchema,
-  removeCredentials,
-  saveCredentials,
-} from '../utils'
+
 import {
   useLanguage,
-  useProviderCredentialsAndLoadBalancing,
 } from '../hooks'
-import ProviderIcon from '../provider-icon'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatedStatus } from '../../key-validator/declarations'
-import ModelLoadBalancingConfigs from '../provider-added-card/model-load-balancing-configs'
+import { validateLoadBalancingCredentials } from '../utils'
 import Form from './Form'
 import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
@@ -50,80 +42,81 @@ import ConfirmCommon from '@/app/components/base/confirm/common'
 
 type ModelModalProps = {
   provider: ModelProvider
-  configurateMethod: ConfigurationMethodEnum
+  configurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
+  entry?: ModelLoadBalancingConfigEntry
   onCancel: () => void
-  onSave: () => void
+  onSave: (entry: ModelLoadBalancingConfigEntry) => void
+  onRemove: () => void
 }
 
-const ModelModal: FC<ModelModalProps> = ({
+const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
   provider,
-  configurateMethod,
+  configurationMethod,
   currentCustomConfigurationModelFixedFields,
+  entry,
   onCancel,
   onSave,
+  onRemove,
 }) => {
-  const providerFormSchemaPredefined = configurateMethod === ConfigurationMethodEnum.predefinedModel
-  const {
-    credentials: formSchemasValue,
-    loadBalancing: originalConfig,
-    mutate,
-  } = useProviderCredentialsAndLoadBalancing(
-    provider.provider,
-    configurateMethod,
-    providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
-    currentCustomConfigurationModelFixedFields,
-  )
-  const isEditMode = !!formSchemasValue
+  const providerFormSchemaPredefined = configurationMethod === ConfigurationMethodEnum.predefinedModel
+  // const { credentials: formSchemasValue } = useProviderCredentialsAndLoadBalancing(
+  //   provider.provider,
+  //   configurationMethod,
+  //   providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
+  //   currentCustomConfigurationModelFixedFields,
+  // )
+  const isEditMode = !!entry
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const language = useLanguage()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-
-  const [draftConfig, setDraftConfig] = useState<ModelLoadBalancingConfig>()
-  const originalConfigMap = useMemo(() => {
-    if (!originalConfig)
-      return {}
-    return originalConfig?.configs.reduce((prev, config) => {
-      if (config.id)
-        prev[config.id] = config
-      return prev
-    }, {} as Record<string, ModelLoadBalancingConfigEntry>)
-  }, [originalConfig])
-  useEffect(() => {
-    if (originalConfig && !draftConfig)
-      setDraftConfig(originalConfig)
-  }, [draftConfig, originalConfig])
-
   const formSchemas = useMemo(() => {
-    return providerFormSchemaPredefined
-      ? provider.provider_credential_schema.credential_form_schemas
-      : [
-        genModelTypeFormSchema(provider.supported_model_types),
-        genModelNameFormSchema(provider.model_credential_schema?.model),
-        ...(draftConfig?.enabled ? [] : provider.model_credential_schema.credential_form_schemas),
-      ]
+    return [
+      {
+        type: FormTypeEnum.textInput,
+        label: {
+          en_US: 'Config Name',
+          zh_Hans: '配置名称',
+        },
+        variable: 'name',
+        required: true,
+        show_on: [],
+        placeholder: {
+          en_US: 'Enter your Config Name here',
+          zh_Hans: '输入配置名称',
+        },
+      } as CredentialFormSchemaTextInput,
+      ...(
+        providerFormSchemaPredefined
+          ? provider.provider_credential_schema.credential_form_schemas
+          : provider.model_credential_schema.credential_form_schemas
+      ),
+    ]
   }, [
     providerFormSchemaPredefined,
     provider.provider_credential_schema?.credential_form_schemas,
-    provider.supported_model_types,
     provider.model_credential_schema?.credential_form_schemas,
-    provider.model_credential_schema?.model,
-    draftConfig?.enabled,
   ])
+
   const [
     requiredFormSchemas,
+    secretFormSchemas,
     defaultFormSchemaValue,
     showOnVariableMap,
   ] = useMemo(() => {
     const requiredFormSchemas: CredentialFormSchema[] = []
+    const secretFormSchemas: CredentialFormSchema[] = []
     const defaultFormSchemaValue: Record<string, string | number> = {}
     const showOnVariableMap: Record<string, string[]> = {}
 
     formSchemas.forEach((formSchema) => {
       if (formSchema.required)
         requiredFormSchemas.push(formSchema)
+
+      if (formSchema.type === FormTypeEnum.secretInput)
+        secretFormSchemas.push(formSchema)
 
       if (formSchema.default)
         defaultFormSchemaValue[formSchema.variable] = formSchema.default
@@ -155,15 +148,31 @@ const ModelModal: FC<ModelModalProps> = ({
 
     return [
       requiredFormSchemas,
+      secretFormSchemas,
       defaultFormSchemaValue,
       showOnVariableMap,
     ]
   }, [formSchemas])
+  const [initialValue, setInitialValue] = useState<ModelLoadBalancingConfigEntry['credentials']>()
+  useEffect(() => {
+    if (entry && !initialValue) {
+      setInitialValue({
+        ...defaultFormSchemaValue,
+        ...entry.credentials,
+        id: entry.id,
+        name: entry.name,
+      } as Record<string, string | undefined | boolean>)
+    }
+  }, [entry, defaultFormSchemaValue, initialValue])
+  const formSchemasValue = useMemo(() => ({
+    ...currentCustomConfigurationModelFixedFields,
+    ...initialValue,
+  }), [currentCustomConfigurationModelFixedFields, initialValue])
   const initialFormSchemasValue: Record<string, string | number> = useMemo(() => {
     return {
       ...defaultFormSchemaValue,
       ...formSchemasValue,
-    } as unknown as Record<string, string | number>
+    } as Record<string, string | number>
   }, [formSchemasValue, defaultFormSchemaValue])
   const [value, setValue] = useState(initialFormSchemasValue)
   useEffect(() => {
@@ -179,65 +188,43 @@ const ModelModal: FC<ModelModalProps> = ({
 
     return false
   })
+  const getSecretValues = useCallback((v: FormValue) => {
+    return secretFormSchemas.reduce((prev, next) => {
+      if (v[next.variable] === initialFormSchemasValue[next.variable])
+        prev[next.variable] = '[__HIDDEN__]'
 
+      return prev
+    }, {} as Record<string, string>)
+  }, [initialFormSchemasValue, secretFormSchemas])
+
+  // const handleValueChange = ({ __model_type, __model_name, ...v }: FormValue) => {
   const handleValueChange = (v: FormValue) => {
     setValue(v)
   }
-
-  const extendedSecretFormSchemas = useMemo(
-    () =>
-      (providerFormSchemaPredefined
-        ? provider.provider_credential_schema.credential_form_schemas
-        : [
-          genModelTypeFormSchema(provider.supported_model_types),
-          genModelNameFormSchema(provider.model_credential_schema?.model),
-          ...provider.model_credential_schema.credential_form_schemas,
-        ]).filter(({ type }) => type === FormTypeEnum.secretInput),
-    [
-      provider.model_credential_schema?.credential_form_schemas,
-      provider.model_credential_schema?.model,
-      provider.provider_credential_schema?.credential_form_schemas,
-      provider.supported_model_types,
-      providerFormSchemaPredefined,
-    ],
-  )
-
-  const encodeSecretValues = useCallback((v: FormValue) => {
-    const result = { ...v }
-    extendedSecretFormSchemas.forEach(({ variable }) => {
-      if (result[variable] === formSchemasValue?.[variable])
-        result[variable] = '[__HIDDEN__]'
-    })
-    return result
-  }, [extendedSecretFormSchemas, formSchemasValue])
-
-  const encodeConfigEntrySecretValues = useCallback((entry: ModelLoadBalancingConfigEntry) => {
-    const result = { ...entry }
-    extendedSecretFormSchemas.forEach(({ variable }) => {
-      if (entry.id && result.credentials[variable] === originalConfigMap[entry.id]?.credentials?.[variable])
-        result.credentials[variable] = '[__HIDDEN__]'
-    })
-    return result
-  }, [extendedSecretFormSchemas, originalConfigMap])
-
   const handleSave = async () => {
     try {
       setLoading(true)
-      const res = await saveCredentials(
+
+      const res = await validateLoadBalancingCredentials(
         providerFormSchemaPredefined,
         provider.provider,
-        encodeSecretValues(value),
         {
-          ...draftConfig,
-          enabled: Boolean(draftConfig?.enabled),
-          configs: draftConfig?.configs.map(encodeConfigEntrySecretValues) || [],
+          ...value,
+          ...getSecretValues(value),
         },
       )
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        mutate()
-        onSave()
-        onCancel()
+      if (res.status === ValidatedStatus.Success) {
+        // notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        const { __model_type, __model_name, name, ...credentials } = value
+        onSave({
+          ...(entry || {}),
+          name: name as string,
+          credentials: credentials as Record<string, string | boolean | undefined>,
+        })
+        //   onCancel()
+      }
+      else {
+        notify({ type: 'error', message: res.message || '' })
       }
     }
     finally {
@@ -245,31 +232,8 @@ const ModelModal: FC<ModelModalProps> = ({
     }
   }
 
-  const handleRemove = async () => {
-    try {
-      setLoading(true)
-
-      const res = await removeCredentials(
-        providerFormSchemaPredefined,
-        provider.provider,
-        value,
-      )
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        mutate()
-        onSave()
-        onCancel()
-      }
-    }
-    finally {
-      setLoading(false)
-    }
-  }
-
-  const renderTitlePrefix = () => {
-    const prefix = configurateMethod === ConfigurationMethodEnum.customizableModel ? t('common.operation.add') : t('common.operation.setup')
-
-    return `${prefix} ${provider.label[language] || provider.label.en_US}`
+  const handleRemove = () => {
+    onRemove?.()
   }
 
   return (
@@ -279,10 +243,8 @@ const ModelModal: FC<ModelModalProps> = ({
           <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
             <div className='px-8 pt-8'>
               <div className='flex justify-between items-center mb-2'>
-                <div className='text-xl font-semibold text-gray-900'>{renderTitlePrefix()}</div>
-                <ProviderIcon provider={provider} />
+                <div className='text-xl font-semibold text-gray-900'>{t(isEditMode ? 'common.modelProvider.editConfig' : 'common.modelProvider.addConfig')}</div>
               </div>
-
               <Form
                 value={value}
                 onChange={handleValueChange}
@@ -292,17 +254,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 showOnVariableMap={showOnVariableMap}
                 isEditMode={isEditMode}
               />
-
-              <div className='mt-1 mb-4 border-t-[0.5px] border-t-gray-100' />
-              <ModelLoadBalancingConfigs withSwitch {...{
-                draftConfig,
-                setDraftConfig,
-                provider,
-                currentCustomConfigurationModelFixedFields,
-                configurationMethod: configurateMethod,
-              }} />
-
-              <div className='sticky bottom-0 flex justify-between items-center mt-2 -mx-2 pt-4 px-2 pb-6 flex-wrap gap-y-2 bg-white z-10'>
+              <div className='sticky bottom-0 flex justify-between items-center py-6 flex-wrap gap-y-2 bg-white'>
                 {
                   (provider.help && (provider.help.title || provider.help.url))
                     ? (
@@ -339,11 +291,7 @@ const ModelModal: FC<ModelModalProps> = ({
                     className='h-9 text-sm font-medium'
                     type='primary'
                     onClick={handleSave}
-                    disabled={
-                      loading
-                      || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)
-                      || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
-                    }
+                    disabled={loading || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)}
                   >
                     {t('common.operation.save')}
                   </Button>
@@ -393,4 +341,4 @@ const ModelModal: FC<ModelModalProps> = ({
   )
 }
 
-export default memo(ModelModal)
+export default memo(ModelLoadBalancingEntryModal)
