@@ -21,6 +21,7 @@ select = [
     "E116", # unexpected-indentation-comment
     "E117", # over-indented
     "RUF019", # unnecessary-key-check
+    "RUF100", # unused-noqa
     "S506", # unsafe-yaml-load
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
