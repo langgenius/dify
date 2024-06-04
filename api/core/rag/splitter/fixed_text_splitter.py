@@ -5,7 +5,7 @@ from typing import Any, Optional
 
 from core.model_manager import ModelInstance
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
-from core.splitter.text_splitter import (
+from core.rag.splitter.text_splitter import (
     TS,
     Collection,
     Literal,
