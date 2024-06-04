@@ -53,7 +53,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.0
+    image: langgenius/dify-sandbox:0.2.1
     restart: always
     environment:
       # The DifySandbox configurations
@@ -65,6 +65,7 @@ services:
       ENABLE_NETWORK: 'true'
       HTTP_PROXY: 'http://ssrf_proxy:3128'
       HTTPS_PROXY: 'http://ssrf_proxy:3128'
+      SANDBOX_PORT: 8194
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
     networks:
