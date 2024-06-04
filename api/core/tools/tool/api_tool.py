@@ -32,10 +32,10 @@ class ApiTool(Tool):
             :return: the new tool
         """
         return self.__class__(
-            identity=self.identity.copy() if self.identity else None,
+            identity=self.identity.model_copy() if self.identity else None,
             parameters=self.parameters.copy() if self.parameters else None,
-            description=self.description.copy() if self.description else None,
-            api_bundle=self.api_bundle.copy() if self.api_bundle else None,
+            description=self.description.model_copy() if self.description else None,
+            api_bundle=self.api_bundle.model_copy() if self.api_bundle else None,
             runtime=Tool.Runtime(**runtime)
         )
     
