@@ -1,6 +1,6 @@
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, field_validator, validator
+from pydantic import BaseModel, field_validator
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.workflow.entities.base_node_data_entities import BaseNodeData
@@ -45,10 +45,9 @@ class ParameterExtractorNodeData(BaseNodeData):
     memory: Optional[MemoryConfig] = None
     reasoning_mode: Literal['function_call', 'prompt']
 
-    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
-    @validator('reasoning_mode', pre=True, always=True)
-    def set_reasoning_mode(cls, v):
+    @classmethod
+    @field_validator('reasoning_mode', mode='before')
+    def set_reasoning_mode(cls, v) -> str:
         return v or 'function_call'
 
     def get_parameter_json_schema(self) -> dict:
