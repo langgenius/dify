@@ -2,7 +2,6 @@
 from typing import Optional
 
 import pandas as pd
-import xlrd
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -28,35 +27,7 @@ class ExcelExtractor(BaseExtractor):
         self._autodetect_encoding = autodetect_encoding
 
     def extract(self) -> list[Document]:
-        """ parse excel file"""
-        if self._file_path.endswith('.xls'):
-            return self._extract4xls()
-        elif self._file_path.endswith('.xlsx'):
-            return self._extract4xlsx()
-
-    def _extract4xls(self) -> list[Document]:
-        wb = xlrd.open_workbook(filename=self._file_path)
-        documents = []
-        # loop over all sheets
-        for sheet in wb.sheets():
-            row_header = None
-            for row_index, row in enumerate(sheet.get_rows(), start=1):                
-                if self.is_blank_row(row):
-                    continue
-                if row_header is None:
-                    row_header = row
-                    continue
-                item_arr = []
-                for index, cell in enumerate(row):
-                    txt_value = str(cell.value)
-                    item_arr.append(f'"{row_header[index].value}":"{txt_value}"')
-                item_str = ",".join(item_arr)
-                document = Document(page_content=item_str, metadata={'source': self._file_path})
-                documents.append(document)
-        return documents
-
-    def _extract4xlsx(self) -> list[Document]:
-        """Load from file path using Pandas."""
+        """ Load from Excel file in xls or xlsx format using Pandas."""
         data = []
         # Read each worksheet of an Excel file using Pandas
         xls = pd.ExcelFile(self._file_path)
