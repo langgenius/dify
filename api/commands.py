@@ -7,6 +7,7 @@ import click
 from flask import current_app
 from werkzeug.exceptions import NotFound
 
+from constants.languages import languages
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -510,9 +511,21 @@ def create_tenant(email: str, language: Optional[str] = None):
     """
     Create tenant account
     """
+    if not email:
+        click.echo(click.style('Sorry, email is required.', fg='red'))
+        return
+
     # Create account
     email = email.strip()
+
+    if '@' not in email:
+        click.echo(click.style('Sorry, invalid email address.', fg='red'))
+        return
+
     account_name = email.split('@')[0]
+
+    if language not in languages:
+        language = 'en-US'
 
     # generate random password
     new_password = secrets.token_urlsafe(16)
