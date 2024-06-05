@@ -43,17 +43,3 @@ class ExcelExtractor(BaseExtractor):
                      for _, row in df.iterrows()]
 
         return data
-
-    @staticmethod
-    def is_blank_row(row):
-        """
-
-        Determine whether the specified line is a blank line.
-        :param row: row object。
-        :return: Returns True if the row is blank, False otherwise.
-        """
-        # Iterates through the cells and returns False if a non-empty cell is found
-        for cell in row:
-            if cell.value is not None and cell.value != '':
-                return False
-        return True
