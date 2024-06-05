@@ -28,7 +28,7 @@ class ExcelExtractor(BaseExtractor):
 
     def extract(self) -> list[Document]:
         """ Load from Excel file in xls or xlsx format using Pandas."""
-        data = []
+        documents = []
         # Read each worksheet of an Excel file using Pandas
         xls = pd.ExcelFile(self._file_path)
         for sheet_name in xls.sheet_names:
@@ -38,8 +38,8 @@ class ExcelExtractor(BaseExtractor):
             df.dropna(how='all', inplace=True)
 
             # transform each row into a Document
-            data += [Document(page_content=';'.join(f'"{k}":"{v}"' for k, v in row.items() if pd.notna(v)),
-                              metadata={'source': self._file_path})
-                     for _, row in df.iterrows()]
+            documents += [Document(page_content=';'.join(f'"{k}":"{v}"' for k, v in row.items() if pd.notna(v)),
+                                   metadata={'source': self._file_path},
+                                   ) for _, row in df.iterrows()]
 
-        return data
+        return documents
