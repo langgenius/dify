@@ -11,7 +11,7 @@ import {
   generateNewNode,
 } from '../utils'
 import {
-  useNodesExtraData,
+  useAvailableBlocks,
   useNodesReadOnly,
   usePanelInteractions,
 } from '../hooks'
@@ -38,11 +38,10 @@ const AddBlock = ({
   const { t } = useTranslation()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
-  const nodesExtraData = useNodesExtraData()
   const { nodesReadOnly } = useNodesReadOnly()
   const { handlePaneContextmenuCancel } = usePanelInteractions()
   const [open, setOpen] = useState(false)
-  const availableNextNodes = nodesExtraData[BlockEnum.Start].availableNextNodes
+  const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, false)
 
   const handleOpenChange = useCallback((open: boolean) => {
     setOpen(open)
@@ -102,7 +101,7 @@ const AddBlock = ({
       }}
       trigger={renderTrigger || renderTriggerElement}
       popupClassName='!min-w-[256px]'
-      availableBlocksTypes={availableNextNodes}
+      availableBlocksTypes={availableNextBlocks}
     />
   )
 }

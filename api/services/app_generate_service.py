@@ -76,6 +76,35 @@ class AppGenerateService:
             raise ValueError(f'Invalid app mode {app_model.mode}')
 
     @classmethod
+    def generate_single_iteration(cls, app_model: App,
+                                  user: Union[Account, EndUser],
+                                  node_id: str,
+                                  args: Any,
+                                  streaming: bool = True):
+        if app_model.mode == AppMode.ADVANCED_CHAT.value:
+            workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
+            return AdvancedChatAppGenerator().single_iteration_generate(
+                app_model=app_model,
+                workflow=workflow,
+                node_id=node_id,
+                user=user,
+                args=args,
+                stream=streaming
+            )
+        elif app_model.mode == AppMode.WORKFLOW.value:
+            workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
+            return WorkflowAppGenerator().single_iteration_generate(
+                app_model=app_model,
+                workflow=workflow,
+                node_id=node_id,
+                user=user,
+                args=args,
+                stream=streaming
+            )
+        else:
+            raise ValueError(f'Invalid app mode {app_model.mode}')
+
+    @classmethod
     def generate_more_like_this(cls, app_model: App, user: Union[Account, EndUser],
                                 message_id: str, invoke_from: InvokeFrom, streaming: bool = True) \
             -> Union[dict, Generator]:

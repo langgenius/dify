@@ -3,8 +3,10 @@ import type {
   CredentialFormSchemaRadio,
   CredentialFormSchemaTextInput,
   FormValue,
+  ModelLoadBalancingConfig,
 } from './declarations'
 import {
+  ConfigurationMethodEnum,
   FormTypeEnum,
   MODEL_TYPE_TEXT,
   ModelTypeEnum,
@@ -12,10 +14,10 @@ import {
 import {
   deleteModelProvider,
   setModelProvider,
+  validateModelLoadBalancingCredentials,
   validateModelProvider,
 } from '@/service/common'
 
-export const MODEL_PROVIDER_QUOTA_GET_FREE = ['minimax', 'spark', 'zhipuai']
 export const MODEL_PROVIDER_QUOTA_GET_PAID = ['anthropic', 'openai', 'azure_openai']
 
 export const DEFAULT_BACKGROUND_COLOR = '#F3F4F6'
@@ -54,12 +56,38 @@ export const validateCredentials = async (predefined: boolean, provider: string,
   }
 }
 
-export const saveCredentials = async (predefined: boolean, provider: string, v: FormValue) => {
+export const validateLoadBalancingCredentials = async (predefined: boolean, provider: string, v: FormValue): Promise<{
+  status: ValidatedStatus
+  message?: string
+}> => {
+  const { __model_name, __model_type, ...credentials } = v
+  try {
+    const res = await validateModelLoadBalancingCredentials({
+      url: `/workspaces/current/model-providers/${provider}/models/load-balancing-configs/credentials-validate`,
+      body: {
+        model: __model_name,
+        model_type: __model_type,
+        credentials,
+      },
+    })
+    if (res.result === 'success')
+      return Promise.resolve({ status: ValidatedStatus.Success })
+    else
+      return Promise.resolve({ status: ValidatedStatus.Error, message: res.error || 'error' })
+  }
+  catch (e: any) {
+    return Promise.resolve({ status: ValidatedStatus.Error, message: e.message })
+  }
+}
+
+export const saveCredentials = async (predefined: boolean, provider: string, v: FormValue, loadBalancing?: ModelLoadBalancingConfig) => {
   let body, url
 
   if (predefined) {
     body = {
+      config_from: ConfigurationMethodEnum.predefinedModel,
       credentials: v,
+      load_balancing: loadBalancing,
     }
     url = `/workspaces/current/model-providers/${provider}`
   }
@@ -69,9 +97,24 @@ export const saveCredentials = async (predefined: boolean, provider: string, v: 
       model: __model_name,
       model_type: __model_type,
       credentials,
+      load_balancing: loadBalancing,
     }
     url = `/workspaces/current/model-providers/${provider}/models`
   }
+
+  return setModelProvider({ url, body })
+}
+
+export const savePredefinedLoadBalancingConfig = async (provider: string, v: FormValue, loadBalancing?: ModelLoadBalancingConfig) => {
+  const { __model_name, __model_type, ...credentials } = v
+  const body = {
+    config_from: ConfigurationMethodEnum.predefinedModel,
+    model: __model_name,
+    model_type: __model_type,
+    credentials,
+    load_balancing: loadBalancing,
+  }
+  const url = `/workspaces/current/model-providers/${provider}/models`
 
   return setModelProvider({ url, body })
 }

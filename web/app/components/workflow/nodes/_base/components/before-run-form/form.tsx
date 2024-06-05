@@ -32,20 +32,22 @@ const Form: FC<Props> = ({
       onChange(newValues)
     }
   }, [values, onChange])
-
+  const isArrayLikeType = [InputVarType.contexts, InputVarType.iterator].includes(inputs[0]?.type)
+  const isContext = inputs[0]?.type === InputVarType.contexts
   const handleAddContext = useCallback(() => {
     const newValues = produce(values, (draft: any) => {
       const key = inputs[0].variable
-      draft[key].push(RETRIEVAL_OUTPUT_STRUCT)
+      draft[key].push(isContext ? RETRIEVAL_OUTPUT_STRUCT : '')
     })
     onChange(newValues)
-  }, [values, onChange, inputs])
+  }, [values, onChange, inputs, isContext])
+
   return (
     <div className={cn(className, 'space-y-2')}>
       {label && (
         <div className='mb-1 flex items-center justify-between'>
           <div className='flex items-center h-6 text-xs font-medium text-gray-500 uppercase'>{label}</div>
-          {inputs[0]?.type === InputVarType.contexts && (
+          {isArrayLikeType && (
             <AddButton onClick={handleAddContext} />
           )}
         </div>

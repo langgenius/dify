@@ -28,11 +28,12 @@ const Panel: FC = () => {
     enableShortcuts,
     disableShortcuts,
   } = useWorkflow()
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
+  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showMessageLogModal: state.showMessageLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
+    currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
 
   return (
@@ -55,6 +56,7 @@ const Panel: FC = () => {
               setCurrentLogItem()
               setShowMessageLogModal(false)
             }}
+            defaultTab={currentLogModalActiveTab}
           />
         )
       }

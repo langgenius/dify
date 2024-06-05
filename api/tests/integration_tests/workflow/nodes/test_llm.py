@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
 from core.model_manager import ModelInstance
@@ -30,6 +30,7 @@ def test_execute_llm(setup_openai_mock):
         app_id='1',
         workflow_id='1',
         user_id='1',
+        invoke_from=InvokeFrom.WEB_APP,
         user_from=UserFrom.ACCOUNT,
         config={
             'id': 'llm',
@@ -91,7 +92,8 @@ def test_execute_llm(setup_openai_mock):
                 provider=CustomProviderConfiguration(
                     credentials=credentials
                 )
-            )
+            ),
+            model_settings=[]
         ),
         provider_instance=provider_instance,
         model_type_instance=model_type_instance
@@ -130,6 +132,7 @@ def test_execute_llm_with_jinja2(setup_code_executor_mock, setup_openai_mock):
         app_id='1',
         workflow_id='1',
         user_id='1',
+        invoke_from=InvokeFrom.WEB_APP,
         user_from=UserFrom.ACCOUNT,
         config={
             'id': 'llm',
@@ -204,10 +207,11 @@ def test_execute_llm_with_jinja2(setup_code_executor_mock, setup_openai_mock):
                 provider=CustomProviderConfiguration(
                     credentials=credentials
                 )
-            )
+            ),
+            model_settings=[]
         ),
         provider_instance=provider_instance,
-        model_type_instance=model_type_instance
+        model_type_instance=model_type_instance,
     )
 
     model_instance = ModelInstance(provider_model_bundle=provider_model_bundle, model='gpt-3.5-turbo')

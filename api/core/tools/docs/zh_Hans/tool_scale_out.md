@@ -24,10 +24,32 @@ identity: # 工具供应商的基本信息
     en_US: Google # 英文描述
     zh_Hans: Google # 中文描述
   icon: icon.svg # 图标，需要放置在当前模块的_assets文件夹下
+  tags: # 标签，用于前端展示
+    - search
 
 ```
  - `identity` 字段是必须的，它包含了工具供应商的基本信息，包括作者、名称、标签、描述、图标等
     - 图标需要放置在当前模块的`_assets`文件夹下，可以参考[这里](../../provider/builtin/google/_assets/icon.svg)。
+    - 标签用于前端展示，可以帮助用户快速找到这个工具供应商，下面列出了目前所支持的所有标签
+    ```python
+    class ToolLabelEnum(Enum):
+      SEARCH = 'search'
+      IMAGE = 'image'
+      VIDEOS = 'videos'
+      WEATHER = 'weather'
+      FINANCE = 'finance'
+      DESIGN = 'design'
+      TRAVEL = 'travel'
+      SOCIAL = 'social'
+      NEWS = 'news'
+      MEDICAL = 'medical'
+      PRODUCTIVITY = 'productivity'
+      EDUCATION = 'education'
+      BUSINESS = 'business'
+      ENTERTAINMENT = 'entertainment'
+      UTILITIES = 'utilities'
+      OTHER = 'other'
+    ```
 
 ## 2. 准备供应商凭据
 
