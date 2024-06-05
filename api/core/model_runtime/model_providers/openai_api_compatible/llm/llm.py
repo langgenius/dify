@@ -263,7 +263,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
                   tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                   stream: bool = True, \
-                  user: Optional[str] = None) -> Union[LLMResult, Generator]:
+                  user: Optional[str] = None, extra_headers: Optional[dict] = None) -> Union[LLMResult, Generator]:
         """
         Invoke llm completion model
 
@@ -280,6 +280,11 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             'Content-Type': 'application/json',
             'Accept-Charset': 'utf-8',
         }
+        if extra_headers is not None:
+            headers = {
+              **headers,
+              **extra_headers,
+            }
 
         api_key = credentials.get('api_key')
         if api_key:
