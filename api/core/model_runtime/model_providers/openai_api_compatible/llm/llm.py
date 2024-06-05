@@ -49,7 +49,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
                 tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                stream: bool = True, user: Optional[str] = None, extra_headers: Optional[dict] = None) \
+                stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -62,7 +62,6 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         :param stop: stop words
         :param stream: is stream response
         :param user: unique user id
-        :param extra_headers: extra headers
         :return: full response or stream response chunk generator result
         """
 
@@ -76,7 +75,6 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             stop=stop,
             stream=stream,
             user=user,
-            extra_headers=extra_headers,
         )
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
@@ -264,9 +262,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
     # validate_credentials method has been rewritten to use the requests library for compatibility with all providers following OpenAI's API standard.
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
                   tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                  stream: bool = True,
-                  user: Optional[str] = None,
-                  extra_headers: Optional[dict] = None) -> Union[LLMResult, Generator]:
+                  stream: bool = True, \
+                  user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke llm completion model
 
@@ -277,13 +274,11 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         :param stop: stop words
         :param stream: is stream response
         :param user: unique user id
-        :param extra_headers: extra headers
         :return: full response or stream response chunk generator result
         """
         headers = {
             'Content-Type': 'application/json',
             'Accept-Charset': 'utf-8',
-            **extra_headers
         }
 
         api_key = credentials.get('api_key')
