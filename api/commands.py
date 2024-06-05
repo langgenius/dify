@@ -1,6 +1,7 @@
 import base64
 import json
 import secrets
+from typing import Optional
 
 import click
 from flask import current_app
@@ -17,6 +18,7 @@ from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
+from services.account_service import RegisterService, TenantService
 
 
 @click.command('reset-password', help='Reset the account password.')
@@ -57,7 +59,7 @@ def reset_password(email, new_password, password_confirm):
     account.password = base64_password_hashed
     account.password_salt = base64_salt
     db.session.commit()
-    click.echo(click.style('Congratulations!, password has been reset.', fg='green'))
+    click.echo(click.style('Congratulations! Password has been reset.', fg='green'))
 
 
 @click.command('reset-email', help='Reset the account email.')
@@ -501,6 +503,34 @@ def add_qdrant_doc_id_index(field: str):
                     fg='green'))
 
 
+@click.command('create-tenant', help='Create account and tenant.')
+@click.option('--email', prompt=True, help='The email address of the tenant account.')
+@click.option('--language', prompt=True, help='Account language, default: en-US.')
+def create_tenant(email: str, language: Optional[str] = None):
+    """
+    Create tenant account
+    """
+    # Create account
+    email = email.strip()
+    account_name = email.split('@')[0]
+
+    # generate random password
+    new_password = secrets.token_urlsafe(16)
+
+    # register account
+    account = RegisterService.register(
+        email=email,
+        name=account_name,
+        password=new_password,
+        language=language
+    )
+
+    TenantService.create_owner_tenant_if_not_exist(account)
+
+    click.echo(click.style('Congratulations! Account and tenant created.\n'
+                           'Account: {}\nPassword: {}'.format(email, new_password), fg='green'))
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
@@ -508,4 +538,5 @@ def register_commands(app):
     app.cli.add_command(vdb_migrate)
     app.cli.add_command(convert_to_agent_apps)
     app.cli.add_command(add_qdrant_doc_id_index)
+    app.cli.add_command(create_tenant)
 
