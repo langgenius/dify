@@ -3,6 +3,8 @@ import json
 import logging
 from collections.abc import Generator
 from typing import Optional, Union, cast
+import google.auth
+import google.auth.transport.requests
 
 import google.api_core.exceptions as exceptions
 import vertexai.generative_models as glm
@@ -95,17 +97,32 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         """
         # use Anthropic official SDK references
         # - https://github.com/anthropics/anthropic-sdk-python
+        service_account_info = json.loads(base64.b64decode(credentials["vertex_service_account_key"]))
         project_id = credentials["vertex_project_id"]
+        SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
+        token = ''
+        if service_account_info:
+            credentials = service_account.Credentials.from_service_account_info(service_account_info,scopes=SCOPES)
+            request = google.auth.transport.requests.Request()
+            credentials.refresh(request)
+            token = credentials.token
 
         if 'opus' in model:
             location = 'us-east5'
         else:
             location = 'us-central1'
-            
-        client = AnthropicVertex(
-            region=location, 
-            project_id=project_id
-        )
+        
+        if token:
+            client = AnthropicVertex(
+                region=location, 
+                project_id=project_id,
+                access_token=token
+            )
+        else:
+            client = AnthropicVertex(
+                region=location, 
+                project_id=project_id,
+            )
 
         extra_model_kwargs = {}
         if stop:
