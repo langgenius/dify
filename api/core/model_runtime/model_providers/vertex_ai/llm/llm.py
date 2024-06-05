@@ -100,23 +100,28 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         project_id = credentials["vertex_project_id"]
         SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
         token = ''
+
+        # get access token from service account credential
         if service_account_info:
             credentials = service_account.Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
             request = google.auth.transport.requests.Request()
             credentials.refresh(request)
             token = credentials.token
 
+        # Vertex AI Anthropic Claude3 Opus model avaiable in us-east5 region, Sonnet and Haiku avaiable in us-central1 region
         if 'opus' in model:
             location = 'us-east5'
         else:
             location = 'us-central1'
         
+        # use access token to authenticate
         if token:
             client = AnthropicVertex(
                 region=location, 
                 project_id=project_id,
                 access_token=token
             )
+        # When access token is empty, try to use the Google Cloud VM's built-in service account or the GOOGLE_APPLICATION_CREDENTIALS environment variable
         else:
             client = AnthropicVertex(
                 region=location, 
