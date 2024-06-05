@@ -31,8 +31,7 @@ const DeleteConfirmModal: FC<Props> = ({
     <Modal
       isShow={isShow}
       onClose={onHide}
-      wrapperClassName='z-50'
-      className={cn(s.delModal, 'z-50')}
+      className={s.delModal}
       closable
     >
       <div onClick={(e) => {
