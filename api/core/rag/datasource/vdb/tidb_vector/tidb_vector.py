@@ -92,7 +92,7 @@ class TiDBVector(BaseVector):
                     );
                 """)
                 session.execute(create_statement)
-                # TODO: create tidb-vector index
+                # tidb vector not support 'CREATE/ADD INDEX' now
                 session.commit()
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
