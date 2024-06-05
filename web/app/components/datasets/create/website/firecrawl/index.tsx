@@ -36,8 +36,7 @@ const FireCrawl: FC<Props> = () => {
       <Header onSetting={handleSetting} />
       <div className='mt-2 p-3 pb-4 rounded-xl border border-gray-200'>
         <UrlInput onRun={handleRun} />
-
-        <OptionsWrap className='mt-3 space-y-2'>
+        <OptionsWrap className='mt-3'>
           <Options className='mt-2' payload={crawlOptions} onChange={setCrawlOptions} />
         </OptionsWrap>
       </div>

@@ -59,6 +59,12 @@ const translation = {
       firecrawlDoc: 'Firecrawl docs',
       firecrawlDocLink: '',
       options: 'Options',
+      crawlSubPage: 'Crawl sub-pages',
+      limit: 'Limit',
+      maxDepth: 'Max depth',
+      excludePaths: 'Exclude paths',
+      includeOnlyPaths: 'Include only paths',
+      extractOnlyMainContent: 'Extract only main content (no headers, navs, footers, etc.)',
     },
   },
   stepTwo: {

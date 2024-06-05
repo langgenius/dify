@@ -32,7 +32,7 @@ const OptionsWrap: FC<Props> = ({
       >
         <div className='flex items-center text-gray-700'>
           <Settings04 className='mr-1 w-4 h-4' />
-          <div>{t(`${I18N_PREFIX}.options`)}</div>
+          <div className='text-[13px] font-semibold text-gray-800 uppercase'>{t(`${I18N_PREFIX}.options`)}</div>
         </div>
         <ChevronRight className={cn(!fold && 'rotate-90', 'w-4 h-4 text-gray-500')} />
       </div>

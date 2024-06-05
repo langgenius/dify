@@ -59,6 +59,12 @@ const translation = {
       firecrawlDoc: 'Firecrawl 文档',
       firecrawlDocLink: '',
       options: '选项',
+      crawlSubPage: '爬取子页面',
+      limit: '限制数量',
+      maxDepth: '最大深度',
+      excludePaths: '排除路径',
+      includeOnlyPaths: '仅包含路径',
+      extractOnlyMainContent: '仅提取主要内容（无标题、导航、页脚等）',
     },
   },
   stepTwo: {
