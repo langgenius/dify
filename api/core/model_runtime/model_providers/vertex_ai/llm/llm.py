@@ -5,7 +5,6 @@ from collections.abc import Generator
 from typing import Optional, Union, cast
 
 import google.api_core.exceptions as exceptions
-import google.auth
 import google.auth.transport.requests
 import vertexai.generative_models as glm
 from anthropic import AnthropicVertex, Stream
