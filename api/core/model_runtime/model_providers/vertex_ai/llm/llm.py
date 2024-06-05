@@ -45,15 +45,6 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 
 logger = logging.getLogger(__name__)
 
-GEMINI_BLOCK_MODE_PROMPT = """You should always follow the instructions and output a valid {{block}} object.
-The structure of the {{block}} object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
-if you are not sure about the structure.
-
-<instructions>
-{{instructions}}
-</instructions>
-"""
-
 
 class VertexAiLargeLanguageModel(LargeLanguageModel):
 
@@ -483,7 +474,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
             aiplatform.init(project=project_id, location=location)
 
         history = []
-        system_instruction = GEMINI_BLOCK_MODE_PROMPT
+        system_instruction = ""
         # hack for gemini-pro-vision, which currently does not support multi-turn chat
         if model == "gemini-1.0-pro-vision-001":
             last_msg = prompt_messages[-1]
