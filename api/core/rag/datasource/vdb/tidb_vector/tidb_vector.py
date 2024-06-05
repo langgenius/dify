@@ -147,7 +147,7 @@ class TiDBVector(BaseVector):
                     conn.execute(table.delete().where(delete_condition))
                     return True
         except Exception as e:
-            print("Delete operation failed:", str(e))  # noqa: T201
+            print("Delete operation failed:", str(e))
             return False
 
     def delete_by_document_id(self, document_id: str):
