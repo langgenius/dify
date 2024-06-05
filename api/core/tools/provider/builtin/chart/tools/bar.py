@@ -13,37 +13,38 @@ class BarChartTool(BuiltinTool):
         data = tool_parameters.get('data', '')
         if not data:
             return self.create_text_message('Please input data')
-        data = data.split(';')
-
-        # if all data is int, convert to int
-        if all([i.isdigit() for i in data]):
-            data = [int(i) for i in data]
-        else:
-            data = [float(i) for i in data]
-
-        axis = tool_parameters.get('x_axis', None) or None
-        if axis:
-            axis = axis.split(';')
-            if len(axis) != len(data):
-                axis = None
-
-        flg, ax = plt.subplots(figsize=(10, 8))
-
-        if axis:
-            axis = [label[:10] + '...' if len(label) > 10 else label for label in axis]
-            ax.set_xticklabels(axis, rotation=45, ha='right')
-            ax.bar(axis, data)
-        else:
-            ax.bar(range(len(data)), data)
-
+        
+        # Split data into groups
+        data_groups = data.split(';')
+        
+        # Process each group of data
+        for group in data_groups:
+            group_data = group.split(',')
+            if not all(i.replace('.', '', 1).isdigit() for i in group_data):
+                return self.create_text_message('Invalid data format')
+        
+        # Extract x-axis labels
+        axis_labels = tool_parameters.get('x_axis', '').split(';') if 'x_axis' in tool_parameters else None
+        
+        fig, ax = plt.subplots(figsize=(10, 8))
+        
+        for i, group in enumerate(data_groups):
+            group_data = [int(point) if point.isdigit() else float(point) for point in group.split(',')]
+            if axis_labels:
+                ax.bar(axis_labels[i], group_data)
+            else:
+                ax.bar(range(1, len(group_data) + 1), group_data)
+        
+        if axis_labels:
+            ax.set_xticks(range(len(axis_labels)))
+            ax.set_xticklabels(axis_labels, rotation=45, ha='right')
+        
         buf = io.BytesIO()
-        flg.savefig(buf, format='png')
+        fig.savefig(buf, format='png')
         buf.seek(0)
-        plt.close(flg)
-
+        plt.close(fig)
+        
         return [
-            self.create_text_message('the bar chart is saved as an image.'),
-            self.create_blob_message(blob=buf.read(),
-                                    meta={'mime_type': 'image/png'})
+            self.create_text_message('The bar chart is saved as an image.'),
+            self.create_blob_message(blob=buf.read(), meta={'mime_type': 'image/png'})
         ]
-    

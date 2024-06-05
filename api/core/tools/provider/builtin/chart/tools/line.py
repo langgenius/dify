@@ -8,44 +8,44 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class LinearChartTool(BuiltinTool):
-    def _invoke(self, 
-                user_id: str, 
-               tool_parameters: dict[str, Any], 
-        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(self,
+                user_id: str,
+                tool_parameters: dict[str, Any],
+                ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         data = tool_parameters.get('data', '')
         if not data:
             return self.create_text_message('Please input data')
-        data = data.split(';')
 
-        axis = tool_parameters.get('x_axis', None) or None
-        if axis:
-            axis = axis.split(';')
-            if len(axis) != len(data):
-                axis = None
+        # Split data into groups
+        data_groups = data.split(';')
 
-        # if all data is int, convert to int
-        if all([i.isdigit() for i in data]):
-            data = [int(i) for i in data]
-        else:
-            data = [float(i) for i in data]
+        # Process each group of data
+        for group in data_groups:
+            group_data = group.split(',')
+            if not all(i.replace('.', '', 1).isdigit() for i in group_data):
+                return self.create_text_message('Invalid data format')
 
-        flg, ax = plt.subplots(figsize=(10, 8))
+        # Extract x-axis labels
+        axis_labels = tool_parameters.get('x_axis', '').split(';') if 'x_axis' in tool_parameters else None
 
-        if axis:
-            axis = [label[:10] + '...' if len(label) > 10 else label for label in axis]
-            ax.set_xticklabels(axis, rotation=45, ha='right')
-            ax.plot(axis, data)
-        else:
-            ax.plot(data)
+        fig, ax = plt.subplots(figsize=(10, 8))
 
+        for i, group in enumerate(data_groups):
+            group_data = [int(point) if point.isdigit() else float(point) for point in group.split(',')]
+            x_values = range(1, len(group_data) + 1)  # Assuming x values are indices of data points
+            ax.plot(x_values, group_data, label=axis_labels[i] if axis_labels else None)
+
+        if axis_labels:
+            ax.set_xticks(x_values)
+            ax.set_xticklabels(axis_labels, rotation=45, ha='right')
+
+        ax.legend()
         buf = io.BytesIO()
-        flg.savefig(buf, format='png')
+        fig.savefig(buf, format='png')
         buf.seek(0)
-        plt.close(flg)
+        plt.close(fig)
 
         return [
-            self.create_text_message('the linear chart is saved as an image.'),
-            self.create_blob_message(blob=buf.read(),
-                                    meta={'mime_type': 'image/png'})
+            self.create_text_message('The linear chart is saved as an image.'),
+            self.create_blob_message(blob=buf.read(), meta={'mime_type': 'image/png'})
         ]
-    
