@@ -187,6 +187,31 @@ class Vector:
                     database=config.get("PGVECTOR_DATABASE"),
                 ),
             )
+        elif vector_type == "tidb_vector":
+            from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVector, TiDBVectorConfig
+
+            if self._dataset.index_struct_dict:
+                class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
+                collection_name = class_prefix.lower()
+            else:
+                dataset_id = self._dataset.id
+                collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
+                index_struct_dict = {
+                    "type": 'tidb_vector',
+                    "vector_store": {"class_prefix": collection_name}
+                }
+                self._dataset.index_struct = json.dumps(index_struct_dict)
+
+            return TiDBVector(
+                collection_name=collection_name,
+                config=TiDBVectorConfig(
+                    host=config.get('TIDB_VECTOR_HOST'),
+                    port=config.get('TIDB_VECTOR_PORT'),
+                    user=config.get('TIDB_VECTOR_USER'),
+                    password=config.get('TIDB_VECTOR_PASSWORD'),
+                    database=config.get('TIDB_VECTOR_DATABASE'),
+                ),
+            )
         else:
             raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
 
