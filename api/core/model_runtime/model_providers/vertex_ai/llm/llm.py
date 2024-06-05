@@ -3,10 +3,10 @@ import json
 import logging
 from collections.abc import Generator
 from typing import Optional, Union, cast
-import google.auth
-import google.auth.transport.requests
 
 import google.api_core.exceptions as exceptions
+import google.auth
+import google.auth.transport.requests
 import vertexai.generative_models as glm
 from anthropic import AnthropicVertex, Stream
 from anthropic.types import (
@@ -102,7 +102,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
         token = ''
         if service_account_info:
-            credentials = service_account.Credentials.from_service_account_info(service_account_info,scopes=SCOPES)
+            credentials = service_account.Credentials.from_service_account_info(service_account_info, scopes=SCOPES)
             request = google.auth.transport.requests.Request()
             credentials.refresh(request)
             token = credentials.token
