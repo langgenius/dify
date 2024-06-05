@@ -37,6 +37,10 @@ const translation = {
     duplicate: '复制',
     rename: '重命名',
   },
+  errorMsg: {
+    fieldRequired: '{{field}} 为必填项',
+    urlError: 'url 应该以 http:// 或 https:// 开头',
+  },
   placeholder: {
     input: '请输入',
     select: '请选择',

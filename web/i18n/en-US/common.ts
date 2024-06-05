@@ -37,6 +37,10 @@ const translation = {
     duplicate: 'Duplicate',
     rename: 'Rename',
   },
+  errorMsg: {
+    fieldRequired: '{{field}} is required',
+    urlError: 'url should start with http:// or https://',
+  },
   placeholder: {
     input: 'Please enter',
     select: 'Please select',

@@ -44,8 +44,8 @@ export type CrawlOptions = {
   only_main_content: boolean
   includes: string
   excludes: string
-  limit: number
-  max_depth: number
+  limit: number | string
+  max_depth: number | string
 }
 
 export type FileItem = {
