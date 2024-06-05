@@ -1,9 +1,7 @@
 import type { FC } from 'react'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import { memo } from 'react'
 import { useNodes } from 'reactflow'
+import cn from 'classnames'
 import { useShallow } from 'zustand/react/shallow'
 import type { CommonNodeType } from '../types'
 import { Panel as NodePanel } from '../nodes'
@@ -23,42 +21,27 @@ const Panel: FC = () => {
   const nodes = useNodes<CommonNodeType>()
   const isChatMode = useIsChatMode()
   const selectedNode = nodes.find(node => node.data.selected)
-  const showInputsPanel = useStore(s => s.showInputsPanel)
-  const workflowRunningData = useStore(s => s.workflowRunningData)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
+  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const isRestoring = useStore(s => s.isRestoring)
   const {
     enableShortcuts,
     disableShortcuts,
   } = useWorkflow()
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
+  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showMessageLogModal: state.showMessageLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
+    currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
-  const {
-    showNodePanel,
-    showDebugAndPreviewPanel,
-    showWorkflowPreview,
-  } = useMemo(() => {
-    return {
-      showNodePanel: !!selectedNode && !workflowRunningData && !historyWorkflowData && !showInputsPanel,
-      showDebugAndPreviewPanel: isChatMode && workflowRunningData && !historyWorkflowData,
-      showWorkflowPreview: !isChatMode && !historyWorkflowData && (workflowRunningData || showInputsPanel),
-    }
-  }, [
-    showInputsPanel,
-    selectedNode,
-    isChatMode,
-    workflowRunningData,
-    historyWorkflowData,
-  ])
 
   return (
     <div
       tabIndex={-1}
-      className='absolute top-14 right-0 bottom-2 flex z-10 outline-none'
+      className={cn(
+        'absolute top-14 right-0 bottom-2 flex z-10 outline-none',
+      )}
       onFocus={disableShortcuts}
       onBlur={enableShortcuts}
       key={`${isRestoring}`}
@@ -73,7 +56,13 @@ const Panel: FC = () => {
               setCurrentLogItem()
               setShowMessageLogModal(false)
             }}
+            defaultTab={currentLogModalActiveTab}
           />
+        )
+      }
+      {
+        !!selectedNode && (
+          <NodePanel {...selectedNode!} />
         )
       }
       {
@@ -87,18 +76,13 @@ const Panel: FC = () => {
         )
       }
       {
-        showDebugAndPreviewPanel && (
+        showDebugAndPreviewPanel && isChatMode && (
           <DebugAndPreview />
         )
       }
       {
-        showWorkflowPreview && (
+        showDebugAndPreviewPanel && !isChatMode && (
           <WorkflowPreview />
-        )
-      }
-      {
-        showNodePanel && (
-          <NodePanel {...selectedNode!} />
         )
       }
     </div>

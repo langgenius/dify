@@ -6,7 +6,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
-import dayjs from 'dayjs'
 import type {
   ChatConfig,
   ChatItem,
@@ -20,6 +19,7 @@ import { ssePost } from '@/service/base'
 import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { Annotation } from '@/models/log'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import useTimestamp from '@/hooks/use-timestamp'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -78,6 +78,7 @@ export const useChat = (
   stopChat?: (taskId: string) => void,
 ) => {
   const { t } = useTranslation()
+  const { formatTime } = useTimestamp()
   const { notify } = useToastContext()
   const connversationId = useRef('')
   const hasStopResponded = useRef(false)
@@ -236,6 +237,8 @@ export const useChat = (
       isAnswer: true,
     }
 
+    let isInIteration = false
+
     handleResponding(true)
     hasStopResponded.current = false
 
@@ -336,7 +339,7 @@ export const useChat = (
                       : []),
                   ],
                   more: {
-                    time: dayjs.unix(newResponseItem.created_at).format('hh:mm A'),
+                    time: formatTime(newResponseItem.created_at, 'hh:mm A'),
                     tokens: newResponseItem.answer_tokens + newResponseItem.message_tokens,
                     latency: newResponseItem.provider_response_latency.toFixed(2),
                   },
@@ -466,8 +469,45 @@ export const useChat = (
             }
           }))
         },
+        onIterationStart: ({ data }) => {
+          responseItem.workflowProcess!.tracing!.push({
+            ...data,
+            status: WorkflowRunningStatus.Running,
+          } as any)
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
+          isInIteration = true
+        },
+        onIterationFinish: ({ data }) => {
+          const tracing = responseItem.workflowProcess!.tracing!
+          tracing[tracing.length - 1] = {
+            ...tracing[tracing.length - 1],
+            ...data,
+            status: WorkflowRunningStatus.Succeeded,
+          } as any
+
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
+          isInIteration = false
+        },
         onNodeStarted: ({ data }) => {
-          responseItem.workflowProcess!.tracing!.push(data as any)
+          if (isInIteration)
+            return
+
+          responseItem.workflowProcess!.tracing!.push({
+            ...data,
+            status: WorkflowRunningStatus.Running,
+          } as any)
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
             const currentIndex = draft.findIndex(item => item.id === responseItem.id)
             draft[currentIndex] = {
@@ -477,6 +517,9 @@ export const useChat = (
           }))
         },
         onNodeFinished: ({ data }) => {
+          if (isInIteration)
+            return
+
           const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
           responseItem.workflowProcess!.tracing[currentIndex] = data as any
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
@@ -498,6 +541,7 @@ export const useChat = (
     promptVariablesConfig,
     handleUpdateChatList,
     handleResponding,
+    formatTime,
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {

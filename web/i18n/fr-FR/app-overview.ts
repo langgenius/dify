@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: 'URL publique',
       preview: 'Aperçu',
       regenerate: 'Regénérer',
+      regenerateNotice: 'Voulez-vous régénérer l\'URL publique ?',
       preUseReminder: 'Veuillez activer WebApp avant de continuer.',
       settings: {
         entry: 'Paramètres',
@@ -50,6 +51,9 @@ const translation = {
           privacyPolicy: 'Politique de confidentialité',
           privacyPolicyPlaceholder: 'Entrez le lien de la politique de confidentialité',
           privacyPolicyTip: 'Aide les visiteurs à comprendre les données collectées par l\'application, voir la <privacyPolicyLink>Politique de confidentialité</privacyPolicyLink> de Dify.',
+          customDisclaimer: 'Clause de non-responsabilité personnalisée',
+          customDisclaimerPlaceholder: 'Entrez le texte de la clause de non-responsabilité personnalisée',
+          customDisclaimerTip: 'Le texte de la clause de non-responsabilité personnalisée sera affiché côté client, fournissant des informations supplémentaires sur l\'application',
         },
       },
       embedded: {

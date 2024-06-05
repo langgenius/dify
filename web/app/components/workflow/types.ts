@@ -1,6 +1,7 @@
 import type {
   Edge as ReactFlowEdge,
   Node as ReactFlowNode,
+  Viewport,
 } from 'reactflow'
 import type { TransferMethod } from '@/types/app'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
@@ -20,7 +21,10 @@ export enum BlockEnum {
   TemplateTransform = 'template-transform',
   HttpRequest = 'http-request',
   VariableAssigner = 'variable-assigner',
+  VariableAggregator = 'variable-aggregator',
   Tool = 'tool',
+  ParameterExtractor = 'parameter-extractor',
+  Iteration = 'iteration',
 }
 
 export type Branch = {
@@ -29,17 +33,29 @@ export type Branch = {
 }
 
 export type CommonNodeType<T = {}> = {
-  _isInvalidConnection?: boolean
   _connectedSourceHandleIds?: string[]
   _connectedTargetHandleIds?: string[]
   _targetBranches?: Branch[]
   _isSingleRun?: boolean
   _runningStatus?: NodeRunningStatus
   _singleRunningStatus?: NodeRunningStatus
+  _isCandidate?: boolean
+  _isBundled?: boolean
+  _children?: string[]
+  _isEntering?: boolean
+  _showAddVariablePopup?: boolean
+  _holdAddVariablePopup?: boolean
+  _iterationLength?: number
+  _iterationIndex?: number
+  isIterationStart?: boolean
+  isInIteration?: boolean
+  iteration_id?: string
   selected?: boolean
   title: string
   desc: string
   type: BlockEnum
+  width?: number
+  height?: number
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
 export type CommonEdgeType = {
@@ -47,6 +63,9 @@ export type CommonEdgeType = {
   _connectedNodeIsHovering?: boolean
   _connectedNodeIsSelected?: boolean
   _runned?: boolean
+  _isBundled?: boolean
+  isInIteration?: boolean
+  iteration_id?: string
   sourceType: BlockEnum
   targetType: BlockEnum
 }
@@ -59,6 +78,12 @@ export type NodePanelProps<T> = {
   data: CommonNodeType<T>
 }
 export type Edge = ReactFlowEdge<CommonEdgeType>
+
+export type WorkflowDataUpdator = {
+  nodes: Node[]
+  edges: Edge[]
+  viewport: Viewport
+}
 
 export type ValueSelector = string[] // [nodeId, key | obj key path]
 
@@ -91,6 +116,7 @@ export enum InputVarType {
   files = 'files',
   json = 'json', // obj, array
   contexts = 'contexts', // knowledge retrieval
+  iterator = 'iterator', // iteration input
 }
 
 export type InputVar = {
@@ -121,10 +147,17 @@ export enum PromptRole {
   assistant = 'assistant',
 }
 
+export enum EditionType {
+  basic = 'basic',
+  jinja2 = 'jinja2',
+}
+
 export type PromptItem = {
   id?: string
   role?: PromptRole
   text: string
+  edition_type?: EditionType
+  jinja2_text?: string
 }
 
 export enum MemoryRole {
@@ -143,6 +176,7 @@ export type Memory = {
     enabled: boolean
     size: number | string | null
   }
+  query_prompt_template: string
 }
 
 export enum VarType {
@@ -155,6 +189,7 @@ export enum VarType {
   arrayNumber = 'array[number]',
   arrayObject = 'array[object]',
   arrayFile = 'array[file]',
+  any = 'any',
 }
 
 export type Var = {

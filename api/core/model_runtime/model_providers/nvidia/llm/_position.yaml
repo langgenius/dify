@@ -1,7 +1,11 @@
 - google/gemma-7b
 - google/codegemma-7b
+- google/recurrentgemma-2b
 - meta/llama2-70b
-- meta/llama3-8b
-- meta/llama3-70b
+- meta/llama3-8b-instruct
+- meta/llama3-70b-instruct
+- mistralai/mistral-large
 - mistralai/mixtral-8x7b-instruct-v0.1
+- mistralai/mixtral-8x22b-instruct-v0.1
 - fuyu-8b
+- snowflake/arctic

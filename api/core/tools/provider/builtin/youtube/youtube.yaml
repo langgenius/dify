@@ -10,6 +10,8 @@ identity:
     zh_Hans: YouTube（油管）是全球最大的视频分享网站，用户可以在上面上传、观看和分享视频。
     pt_BR: YouTube é o maior site de compartilhamento de vídeos do mundo, onde os usuários podem fazer upload, assistir e compartilhar vídeos.
   icon: icon.svg
+  tags:
+    - videos
 credentials_for_provider:
   google_api_key:
     type: secret-input

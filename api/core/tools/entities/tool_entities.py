@@ -6,14 +6,33 @@ from pydantic import BaseModel, Field
 from core.tools.entities.common_entities import I18nObject
 
 
+class ToolLabelEnum(Enum):
+    SEARCH = 'search'
+    IMAGE = 'image'
+    VIDEOS = 'videos'
+    WEATHER = 'weather'
+    FINANCE = 'finance'
+    DESIGN = 'design'
+    TRAVEL = 'travel'
+    SOCIAL = 'social'
+    NEWS = 'news'
+    MEDICAL = 'medical'
+    PRODUCTIVITY = 'productivity'
+    EDUCATION = 'education'
+    BUSINESS = 'business'
+    ENTERTAINMENT = 'entertainment'
+    UTILITIES = 'utilities'
+    OTHER = 'other'
+
 class ToolProviderType(Enum):
     """
         Enum class for tool provider
     """
-    BUILT_IN = "built-in"
+    BUILT_IN = "builtin"
+    WORKFLOW = "workflow"
+    API = "api"
+    APP = "app"
     DATASET_RETRIEVAL = "dataset-retrieval"
-    APP_BASED = "app-based"
-    API_BASED = "api-based"
 
     @classmethod
     def value_of(cls, value: str) -> 'ToolProviderType':
@@ -77,6 +96,7 @@ class ToolInvokeMessage(BaseModel):
         LINK = "link"
         BLOB = "blob"
         IMAGE_LINK = "image_link"
+        FILE_VAR = "file_var"
 
     type: MessageType = MessageType.TEXT
     """
@@ -90,18 +110,21 @@ class ToolInvokeMessageBinary(BaseModel):
     mimetype: str = Field(..., description="The mimetype of the binary")
     url: str = Field(..., description="The url of the binary")
     save_as: str = ''
+    file_var: Optional[dict[str, Any]] = None
 
 class ToolParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
 
+
 class ToolParameter(BaseModel):
-    class ToolParameterType(Enum):
+    class ToolParameterType(str, Enum):
         STRING = "string"
         NUMBER = "number"
         BOOLEAN = "boolean"
         SELECT = "select"
         SECRET_INPUT = "secret-input"
+        FILE = "file"
 
     class ToolParameterForm(Enum):
         SCHEMA = "schema" # should be set while adding tool
@@ -153,6 +176,7 @@ class ToolProviderIdentity(BaseModel):
     description: I18nObject = Field(..., description="The description of the tool")
     icon: str = Field(..., description="The icon of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
+    tags: Optional[list[ToolLabelEnum]] = Field(default=[], description="The tags of the tool", )
 
 class ToolDescription(BaseModel):
     human: I18nObject = Field(..., description="The description presented to the user")
@@ -331,6 +355,15 @@ class ModelToolProviderConfiguration(BaseModel):
     models: list[ModelToolConfiguration] = Field(..., description="The models of the model tool")
     label: I18nObject = Field(..., description="The label of the model tool")
 
+
+class WorkflowToolParameterConfiguration(BaseModel):
+    """
+    Workflow tool configuration
+    """
+    name: str = Field(..., description="The name of the parameter")
+    description: str = Field(..., description="The description of the parameter")
+    form: ToolParameter.ToolParameterForm = Field(..., description="The form of the parameter")
+
 class ToolInvokeMeta(BaseModel):
     """
     Tool invoke meta
@@ -359,3 +392,18 @@ class ToolInvokeMeta(BaseModel):
             'error': self.error,
             'tool_config': self.tool_config,
         }
+    
+class ToolLabel(BaseModel):
+    """
+    Tool label
+    """
+    name: str = Field(..., description="The name of the tool")
+    label: I18nObject = Field(..., description="The label of the tool")
+    icon: str = Field(..., description="The icon of the tool")
+
+class ToolInvokeFrom(Enum):
+    """
+    Enum class for tool invoke
+    """
+    WORKFLOW = "workflow"
+    AGENT = "agent"

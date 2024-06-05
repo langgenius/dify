@@ -4,6 +4,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.nodes.base_node import UserFrom
 from core.workflow.nodes.code.code_node import CodeNode
 from models.workflow import WorkflowNodeExecutionStatus
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
@@ -25,7 +26,8 @@ def test_execute_code(setup_code_executor_mock):
         app_id='1',
         workflow_id='1',
         user_id='1',
-        user_from=InvokeFrom.WEB_APP,
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.WEB_APP,
         config={
             'id': '1',
             'data': {
@@ -78,7 +80,8 @@ def test_execute_code_output_validator(setup_code_executor_mock):
         app_id='1',
         workflow_id='1',
         user_id='1',
-        user_from=InvokeFrom.WEB_APP,
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.WEB_APP,
         config={
             'id': '1',
             'data': {
@@ -114,7 +117,7 @@ def test_execute_code_output_validator(setup_code_executor_mock):
     result = node.run(pool)
 
     assert result.status == WorkflowNodeExecutionStatus.FAILED
-    assert result.error == 'result in output form must be a string'
+    assert result.error == 'Output variable `result` must be a string'
 
 def test_execute_code_output_validator_depth():
     code = '''
@@ -132,7 +135,8 @@ def test_execute_code_output_validator_depth():
         app_id='1',
         workflow_id='1',
         user_id='1',
-        user_from=InvokeFrom.WEB_APP,
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.WEB_APP,
         config={
             'id': '1',
             'data': {
@@ -285,7 +289,8 @@ def test_execute_code_output_object_list():
         app_id='1',
         workflow_id='1',
         user_id='1',
-        user_from=InvokeFrom.WEB_APP,
+        invoke_from=InvokeFrom.WEB_APP,
+        user_from=UserFrom.ACCOUNT,
         config={
             'id': '1',
             'data': {

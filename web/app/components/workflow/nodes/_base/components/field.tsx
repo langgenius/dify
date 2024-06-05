@@ -3,11 +3,14 @@ import type { FC } from 'react'
 import React from 'react'
 import cn from 'classnames'
 import { useBoolean } from 'ahooks'
+import type { DefaultTFuncReturn } from 'i18next'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+
 type Props = {
-  title: string
+  className?: string
+  title: JSX.Element | string | DefaultTFuncReturn
   tooltip?: string
   supportFold?: boolean
   children?: JSX.Element | string | null
@@ -16,6 +19,7 @@ type Props = {
 }
 
 const Filed: FC<Props> = ({
+  className,
   title,
   tooltip,
   children,
@@ -27,10 +31,10 @@ const Filed: FC<Props> = ({
     toggle: toggleFold,
   }] = useBoolean(true)
   return (
-    <div className={cn(inline && 'flex justify-between items-center', supportFold && 'cursor-pointer')}>
+    <div className={cn(className, inline && 'flex justify-between items-center')}>
       <div
         onClick={() => supportFold && toggleFold()}
-        className='flex justify-between items-center'>
+        className={cn('flex justify-between items-center', supportFold && 'cursor-pointer')}>
         <div className='flex items-center h-6'>
           <div className='text-[13px] font-medium text-gray-700 uppercase'>{title}</div>
           {tooltip && (
