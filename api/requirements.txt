@@ -68,7 +68,7 @@ yfinance~=0.2.40
 pydub~=0.25.1
 gmpy2~=2.1.5
 numexpr~=2.9.0
-duckduckgo-search==5.2.2
+duckduckgo-search~=6.1.5
 arxiv==2.1.0
 yarl~=1.9.4
 twilio~=9.0.4
