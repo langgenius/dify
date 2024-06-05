@@ -39,6 +39,15 @@ export type CustomFile = File & {
   created_at?: number
 }
 
+export type CrawlOptions = {
+  crawl_sub_pages: boolean
+  only_main_content: boolean
+  includes: string
+  excludes: string
+  limit: number
+  max_depth: number
+}
+
 export type FileItem = {
   fileID: string
   file: CustomFile
