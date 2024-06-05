@@ -2,7 +2,6 @@
 from typing import Optional
 
 import pandas as pd
-from pandas import DataFrame
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -33,7 +32,7 @@ class ExcelExtractor(BaseExtractor):
         # Read each worksheet of an Excel file using Pandas
         excel_file = pd.ExcelFile(self._file_path)
         for sheet_name in excel_file.sheet_names:
-            df: DataFrame = excel_file.parse(sheet_name=sheet_name)
+            df: pd.DataFrame = excel_file.parse(sheet_name=sheet_name)
 
             # filter out rows with all NaN values
             df.dropna(how='all', inplace=True)
