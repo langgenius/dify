@@ -38,10 +38,9 @@ class ExcelExtractor(BaseExtractor):
             df.dropna(how='all', inplace=True)
 
             # transform each row into a Document
-            for _, row in df.iterrows():
-                item = ';'.join(f'"{k}":"{v}"' for k, v in row.items() if pd.notna(v))
-                document = Document(page_content=item, metadata={'source': self._file_path})
-                data.append(document)
+            data += [Document(page_content=';'.join(f'"{k}":"{v}"' for k, v in row.items() if pd.notna(v)),
+                              metadata={'source': self._file_path}) for _, row in df.iterrows()]
+
         return data
 
     @staticmethod
