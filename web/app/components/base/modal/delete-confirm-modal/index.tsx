@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
