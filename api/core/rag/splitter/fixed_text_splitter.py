@@ -1,12 +1,11 @@
 """Functionality for splitting text."""
 from __future__ import annotations
 
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from core.model_manager import ModelInstance
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
-from core.splitter.text_splitter import (
+from core.rag.splitter.text_splitter import (
     TS,
     Collection,
     Literal,
@@ -35,11 +34,7 @@ class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
                 return 0
 
             if embedding_model_instance:
-                embedding_model_type_instance = embedding_model_instance.model_type_instance
-                embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
-                return embedding_model_type_instance.get_num_tokens(
-                    model=embedding_model_instance.model,
-                    credentials=embedding_model_instance.credentials,
+                return embedding_model_instance.get_text_embedding_num_tokens(
                     texts=[text]
                 )
             else:

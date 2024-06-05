@@ -2,6 +2,7 @@ from abc import abstractmethod
 from os import listdir, path
 from typing import Any
 
+from core.helper.module_import_helper import load_single_subclass_from_source
 from core.tools.entities.tool_entities import ToolParameter, ToolProviderCredentials, ToolProviderType
 from core.tools.entities.values import ToolLabelEnum, default_tool_label_dict
 from core.tools.errors import (
@@ -14,7 +15,6 @@ from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
 from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 from core.tools.utils.yaml_utils import load_yaml_file
-from core.utils.module_import_helper import load_single_subclass_from_source
 
 
 class BuiltinToolProviderController(ToolProviderController):
@@ -82,7 +82,7 @@ class BuiltinToolProviderController(ToolProviderController):
             return {}
         
         return self.credentials_schema.copy()
-    
+
     def get_tools(self) -> list[Tool]:
         """
             returns a list of tools that the provider can provide
@@ -127,7 +127,7 @@ class BuiltinToolProviderController(ToolProviderController):
             :return: type of the provider
         """
         return ToolProviderType.BUILT_IN
-    
+
     @property
     def tool_labels(self) -> list[str]:
         """
@@ -137,7 +137,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         label_enums = self._get_tool_labels()
         return [default_tool_label_dict[label].name for label in label_enums]
-    
+
     def _get_tool_labels(self) -> list[ToolLabelEnum]:
         """
             returns the labels of the provider

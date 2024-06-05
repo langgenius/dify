@@ -72,8 +72,8 @@ const BlockIcon: FC<BlockIconProps> = ({
 }) => {
   return (
     <div className={`
-      flex items-center justify-center border-[0.5px] border-white/[0.02] text-white
-      ${ICON_CONTAINER_CLASSNAME_SIZE_MAP[size]} 
+      flex items-center justify-center border-[0.5px] border-white/2 text-white
+      ${ICON_CONTAINER_CLASSNAME_SIZE_MAP[size]}
       ${ICON_CONTAINER_BG_COLOR_MAP[type]}
       ${toolIcon && '!shadow-none'}
       ${className}

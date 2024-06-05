@@ -178,6 +178,12 @@ export type SimpleDocumentDetail = InitialDocumentDetail & {
   updated_at: number
   hit_count: number
   dataset_process_rule_id?: string
+  data_source_detail_dict?: {
+    upload_file: {
+      name: string
+      extension: string
+    }
+  }
 }
 
 export type DocumentListResponse = {
