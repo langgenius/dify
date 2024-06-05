@@ -58,6 +58,7 @@ const translation = {
       firecrawlTitle: '使用 🔥Firecrawl 提取网页内容',
       firecrawlDoc: 'Firecrawl 文档',
       firecrawlDocLink: '',
+      options: '选项',
     },
   },
   stepTwo: {

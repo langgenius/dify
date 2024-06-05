@@ -58,6 +58,7 @@ const translation = {
       firecrawlTitle: 'Extract web content with 🔥Firecrawl',
       firecrawlDoc: 'Firecrawl docs',
       firecrawlDocLink: '',
+      options: 'Options',
     },
   },
   stepTwo: {
