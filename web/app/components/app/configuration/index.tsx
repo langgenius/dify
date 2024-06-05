@@ -255,7 +255,7 @@ const Configuration: FC = () => {
     })
   }
 
-  const { hasSettedApiKey } = useProviderContext()
+  const { isAPIKeySet } = useProviderContext()
   const {
     currentModel: currModel,
     textGenerationModelList,
@@ -678,7 +678,7 @@ const Configuration: FC = () => {
   return (
     <ConfigContext.Provider value={{
       appId,
-      hasSetAPIKEY: hasSettedApiKey,
+      isAPIKeySet,
       isTrailFinished: false,
       mode,
       modelModeType,
@@ -818,7 +818,7 @@ const Configuration: FC = () => {
             {!isMobile && <div className="relative flex flex-col w-1/2 h-full overflow-y-auto grow " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
               <div className='flex flex-col h-0 border-t border-l grow rounded-tl-2xl bg-gray-50 '>
                 <Debug
-                  hasSetAPIKEY={hasSettedApiKey}
+                  isAPIKeySet={isAPIKeySet}
                   onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
                   inputs={inputs}
                   modelParameterParams={{
@@ -881,7 +881,7 @@ const Configuration: FC = () => {
         {isMobile && (
           <Drawer showClose isOpen={isShowDebugPanel} onClose={hideDebugPanel} mask footer={null} panelClassname='!bg-gray-50'>
             <Debug
-              hasSetAPIKEY={hasSettedApiKey}
+              isAPIKeySet={isAPIKeySet}
               onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
               inputs={inputs}
               modelParameterParams={{
