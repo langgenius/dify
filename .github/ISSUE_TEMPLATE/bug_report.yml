@@ -8,13 +8,13 @@ body:
       label: Self Checks
       description: "To make sure we get to you in time, please check the following :)"
       options:
-        - label: This is only for bug report, if you would like to ask a quesion, please head to [Discussions](https://github.com/langgenius/dify/discussions/categories/general).
+        - label: This is only for bug report, if you would like to ask a question, please head to [Discussions](https://github.com/langgenius/dify/discussions/categories/general).
           required: true
         - label: I have searched for existing issues [search for existing issues](https://github.com/langgenius/dify/issues), including closed ones.
           required: true
         - label: I confirm that I am using English to submit this report (我已阅读并同意 [Language Policy](https://github.com/langgenius/dify/issues/1542)).
           required: true
-        - label: "Pleas do not modify this template :) and fill in all the required fields."
+        - label: "Please do not modify this template :) and fill in all the required fields."
           required: true
 
   - type: input

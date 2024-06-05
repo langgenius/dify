@@ -2,7 +2,9 @@
 - anthropic
 - azure_openai
 - google
+- vertex_ai
 - nvidia
+- nvidia_nim
 - cohere
 - bedrock
 - togetherai

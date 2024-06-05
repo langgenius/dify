@@ -7,7 +7,7 @@ from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
 from controllers.console import api
-from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist
+from controllers.console.app.error import ConversationCompletedError, DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
@@ -20,6 +20,7 @@ from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
+from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -59,6 +60,7 @@ class DraftWorkflowApi(Resource):
             parser = reqparse.RequestParser()
             parser.add_argument('graph', type=dict, required=True, nullable=False, location='json')
             parser.add_argument('features', type=dict, required=True, nullable=False, location='json')
+            parser.add_argument('hash', type=str, required=False, location='json')
             args = parser.parse_args()
         elif 'text/plain' in content_type:
             try:
@@ -71,7 +73,8 @@ class DraftWorkflowApi(Resource):
 
                 args = {
                     'graph': data.get('graph'),
-                    'features': data.get('features')
+                    'features': data.get('features'),
+                    'hash': data.get('hash')
                 }
             except json.JSONDecodeError:
                 return {'message': 'Invalid JSON data'}, 400
@@ -79,15 +82,21 @@ class DraftWorkflowApi(Resource):
             abort(415)
 
         workflow_service = WorkflowService()
-        workflow = workflow_service.sync_draft_workflow(
-            app_model=app_model,
-            graph=args.get('graph'),
-            features=args.get('features'),
-            account=current_user
-        )
+
+        try:
+            workflow = workflow_service.sync_draft_workflow(
+                app_model=app_model,
+                graph=args.get('graph'),
+                features=args.get('features'),
+                unique_hash=args.get('hash'),
+                account=current_user
+            )
+        except WorkflowHashNotEqualError:
+            raise DraftWorkflowNotSync()
 
         return {
             "result": "success",
+            "hash": workflow.unique_hash,
             "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at)
         }
 
@@ -128,6 +137,71 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
             logging.exception("internal server error.")
             raise InternalServerError()
 
+class AdvancedChatDraftRunIterationNodeApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    def post(self, app_model: App, node_id: str):
+        """
+        Run draft workflow iteration node
+        """
+        parser = reqparse.RequestParser()
+        parser.add_argument('inputs', type=dict, location='json')
+        args = parser.parse_args()
+
+        try:
+            response = AppGenerateService.generate_single_iteration(
+                app_model=app_model,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                streaming=True
+            )
+
+            return helper.compact_generate_response(response)
+        except services.errors.conversation.ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationCompletedError:
+            raise ConversationCompletedError()
+        except ValueError as e:
+            raise e
+        except Exception as e:
+            logging.exception("internal server error.")
+            raise InternalServerError()
+
+class WorkflowDraftRunIterationNodeApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    def post(self, app_model: App, node_id: str):
+        """
+        Run draft workflow iteration node
+        """
+        parser = reqparse.RequestParser()
+        parser.add_argument('inputs', type=dict, location='json')
+        args = parser.parse_args()
+
+        try:
+            response = AppGenerateService.generate_single_iteration(
+                app_model=app_model,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                streaming=True
+            )
+
+            return helper.compact_generate_response(response)
+        except services.errors.conversation.ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+        except services.errors.conversation.ConversationCompletedError:
+            raise ConversationCompletedError()
+        except ValueError as e:
+            raise e
+        except Exception as e:
+            logging.exception("internal server error.")
+            raise InternalServerError()
 
 class DraftWorkflowRunApi(Resource):
     @setup_required
@@ -317,6 +391,8 @@ api.add_resource(AdvancedChatDraftWorkflowRunApi, '/apps/<uuid:app_id>/advanced-
 api.add_resource(DraftWorkflowRunApi, '/apps/<uuid:app_id>/workflows/draft/run')
 api.add_resource(WorkflowTaskStopApi, '/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop')
 api.add_resource(DraftWorkflowNodeRunApi, '/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/run')
+api.add_resource(AdvancedChatDraftRunIterationNodeApi, '/apps/<uuid:app_id>/advanced-chat/workflows/draft/iteration/nodes/<string:node_id>/run')
+api.add_resource(WorkflowDraftRunIterationNodeApi, '/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run')
 api.add_resource(PublishedWorkflowApi, '/apps/<uuid:app_id>/workflows/publish')
 api.add_resource(DefaultBlockConfigsApi, '/apps/<uuid:app_id>/workflows/default-workflow-block-configs')
 api.add_resource(DefaultBlockConfigApi, '/apps/<uuid:app_id>/workflows/default-workflow-block-configs'

@@ -25,7 +25,7 @@ class _CommonOpenAI:
             "max_retries": 1,
         }
 
-        if 'openai_api_base' in credentials and credentials['openai_api_base']:
+        if credentials.get('openai_api_base'):
             credentials['openai_api_base'] = credentials['openai_api_base'].rstrip('/')
             credentials_kwargs['base_url'] = credentials['openai_api_base'] + '/v1'
 

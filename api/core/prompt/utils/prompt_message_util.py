@@ -1,6 +1,7 @@
 from typing import cast
 
 from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
@@ -21,13 +22,25 @@ class PromptMessageUtil:
         """
         prompts = []
         if model_mode == ModelMode.CHAT.value:
+            tool_calls = []
             for prompt_message in prompt_messages:
                 if prompt_message.role == PromptMessageRole.USER:
                     role = 'user'
                 elif prompt_message.role == PromptMessageRole.ASSISTANT:
                     role = 'assistant'
+                    if isinstance(prompt_message, AssistantPromptMessage):
+                        tool_calls = [{
+                            'id': tool_call.id,
+                            'type': 'function',
+                            'function': {
+                                'name': tool_call.function.name,
+                                'arguments': tool_call.function.arguments,
+                            }
+                        } for tool_call in prompt_message.tool_calls]
                 elif prompt_message.role == PromptMessageRole.SYSTEM:
                     role = 'system'
+                elif prompt_message.role == PromptMessageRole.TOOL:
+                    role = 'tool'
                 else:
                     continue
 
@@ -48,11 +61,16 @@ class PromptMessageUtil:
                 else:
                     text = prompt_message.content
 
-                prompts.append({
+                prompt = {
                     "role": role,
                     "text": text,
                     "files": files
-                })
+                }
+                
+                if tool_calls:
+                    prompt['tool_calls'] = tool_calls
+
+                prompts.append(prompt)
         else:
             prompt_message = prompt_messages[0]
             text = ''

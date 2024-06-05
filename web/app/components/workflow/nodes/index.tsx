@@ -8,16 +8,18 @@ import {
 import BaseNode from './_base/node'
 import BasePanel from './_base/panel'
 
-const CustomNode = memo((props: NodeProps) => {
+const CustomNode = (props: NodeProps) => {
   const nodeData = props.data
   const NodeComponent = NodeComponentMap[nodeData.type]
 
   return (
-    <BaseNode { ...props }>
-      <NodeComponent />
-    </BaseNode>
+    <>
+      <BaseNode { ...props }>
+        <NodeComponent />
+      </BaseNode>
+    </>
   )
-})
+}
 CustomNode.displayName = 'CustomNode'
 
 export const Panel = memo((props: Node) => {

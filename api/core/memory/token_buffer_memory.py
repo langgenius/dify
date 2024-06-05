@@ -9,8 +9,6 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.model_providers import model_provider_factory
 from extensions.ext_database import db
 from models.model import AppMode, Conversation, Message
 
@@ -78,12 +76,7 @@ class TokenBufferMemory:
             return []
 
         # prune the chat message if it exceeds the max token limit
-        provider_instance = model_provider_factory.get_provider_instance(self.model_instance.provider)
-        model_type_instance = provider_instance.get_model_instance(ModelType.LLM)
-
-        curr_message_tokens = model_type_instance.get_num_tokens(
-            self.model_instance.model,
-            self.model_instance.credentials,
+        curr_message_tokens = self.model_instance.get_llm_num_tokens(
             prompt_messages
         )
 
@@ -91,9 +84,7 @@ class TokenBufferMemory:
             pruned_memory = []
             while curr_message_tokens > max_token_limit and prompt_messages:
                 pruned_memory.append(prompt_messages.pop(0))
-                curr_message_tokens = model_type_instance.get_num_tokens(
-                    self.model_instance.model,
-                    self.model_instance.credentials,
+                curr_message_tokens = self.model_instance.get_llm_num_tokens(
                     prompt_messages
                 )
 
