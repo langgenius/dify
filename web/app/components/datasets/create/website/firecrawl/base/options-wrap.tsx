@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import ErrorMessage from './error-message'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
@@ -41,9 +42,7 @@ const OptionsWrap: FC<Props> = ({
           {!errorMsg
             ? children
             : (
-              <div >
-                {errorMsg}
-              </div>
+              <ErrorMessage className='mt-3 relative left-[-12px] w-[calc(100%_+_24px)] rounded-b-xl' title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={errorMsg} />
             )}
         </div>
       )}

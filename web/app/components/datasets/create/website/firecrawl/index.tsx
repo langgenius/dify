@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import Header from './header'
 import UrlInput from './base/url-input'
 import OptionsWrap from './base/options-wrap'
@@ -12,6 +13,8 @@ import Toast from '@/app/components/base/toast'
 
 const ERROR_I18N_PREFIX = 'common.errorMsg'
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
+
+// const testCrawlErrorMsg = 'Firecrawl currently does not support social media scraping due to policy restrictions. We are actively working on building support for it.'
 
 type Props = {
 
@@ -65,10 +68,11 @@ const FireCrawl: FC<Props> = () => {
     }
   }, [crawlOptions, t])
 
-  const [isCrawlFinished, setIsCrawlFinished] = useState(false)
+  const [isCrawlFinished, setIsCrawlFinished] = useState(true)
   const [crawlErrorMsg, setCrawlErrorMsg] = useState('')
-
+  const showCrawlError = isCrawlFinished && !!crawlErrorMsg
   const handleRun = useCallback((url: string) => {
+    setIsCrawlFinished(false)
     const { isValid, errorMsg } = checkValid(url)
     if (!isValid) {
       Toast.notify({
@@ -85,9 +89,9 @@ const FireCrawl: FC<Props> = () => {
   return (
     <div>
       <Header onSetting={handleSetting} />
-      <div className='mt-2 p-3 pb-4 rounded-xl border border-gray-200'>
+      <div className={cn(!showCrawlError ? 'pb-4' : 'pb-0', 'mt-2 p-3 rounded-xl border border-gray-200')}>
         <UrlInput onRun={handleRun} />
-        <OptionsWrap className='mt-3'>
+        <OptionsWrap className='mt-3' errorMsg={isCrawlFinished ? crawlErrorMsg : ''} >
           {!isCrawlFinished
             ? (
               <Options className='mt-2' payload={crawlOptions} onChange={setCrawlOptions} />
