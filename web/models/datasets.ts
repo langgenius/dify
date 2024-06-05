@@ -48,6 +48,13 @@ export type CrawlOptions = {
   max_depth: number | string
 }
 
+export type CrawlResultItem = {
+  title: string
+  markdown: string
+  description: string
+  source_url: string
+}
+
 export type FileItem = {
   fileID: string
   file: CustomFile

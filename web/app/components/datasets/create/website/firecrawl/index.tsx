@@ -7,8 +7,10 @@ import Header from './header'
 import UrlInput from './base/url-input'
 import OptionsWrap from './base/options-wrap'
 import Options from './options'
+import mockCrawlResult from './mock-crawl-result'
+import CrawledResult from './crawled-result'
 import { useModalContext } from '@/context/modal-context'
-import type { CrawlOptions } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import Toast from '@/app/components/base/toast'
 
 const ERROR_I18N_PREFIX = 'common.errorMsg'
@@ -69,6 +71,9 @@ const FireCrawl: FC<Props> = () => {
   }, [crawlOptions, t])
 
   const [isCrawlFinished, setIsCrawlFinished] = useState(true)
+  const [crawlResult, setCrawlResult] = useState<CrawlResultItem[]>(mockCrawlResult)
+  const [checkedCrawlResult, setCheckedCrawlResult] = useState<CrawlResultItem[]>([])
+
   const [crawlErrorMsg, setCrawlErrorMsg] = useState('')
   const showCrawlError = isCrawlFinished && !!crawlErrorMsg
   const handleRun = useCallback((url: string) => {
@@ -97,7 +102,11 @@ const FireCrawl: FC<Props> = () => {
               <Options className='mt-2' payload={crawlOptions} onChange={setCrawlOptions} />
             )
             : (
-              <div>Result list</div>
+              <CrawledResult
+                list={crawlResult}
+                checkedList={checkedCrawlResult}
+                onSelectedChange={setCheckedCrawlResult}
+              />
             )}
         </OptionsWrap>
       </div>
