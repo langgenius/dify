@@ -8,7 +8,7 @@ import {
 
 const Page = () => {
   return (
-    <div className='w-full h-full p-10 overflow-x-auto'>
+    <div className='w-full h-full p-10 pt-20 overflow-x-auto'>
       <div>
         <NoteEditorContextProvider>
           <NoteEditorToolbar />

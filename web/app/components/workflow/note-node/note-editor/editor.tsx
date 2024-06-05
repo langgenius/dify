@@ -5,7 +5,7 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
-// import TreeView from './plugins/tree-view'
+import TreeView from '@/app/components/base/prompt-editor/plugins/tree-view'
 import Placeholder from '@/app/components/base/prompt-editor/plugins/placeholder'
 
 type EditorProps = {
@@ -17,12 +17,12 @@ const Editor = ({
   return (
     <div className='relative h-full'>
       <RichTextPlugin
-        contentEditable={<ContentEditable />}
+        contentEditable={<ContentEditable className='outline-none' />}
         placeholder={<Placeholder value={placeholder} />}
         ErrorBoundary={LexicalErrorBoundary}
       />
       <HistoryPlugin />
-      {/* <TreeView /> */}
+      <TreeView />
     </div>
   )
 }
