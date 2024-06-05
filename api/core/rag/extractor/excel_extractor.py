@@ -39,7 +39,8 @@ class ExcelExtractor(BaseExtractor):
 
             # transform each row into a Document
             data += [Document(page_content=';'.join(f'"{k}":"{v}"' for k, v in row.items() if pd.notna(v)),
-                              metadata={'source': self._file_path}) for _, row in df.iterrows()]
+                              metadata={'source': self._file_path})
+                     for _, row in df.iterrows()]
 
         return data
 
