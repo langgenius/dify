@@ -8,10 +8,12 @@ import Button from '@/app/components/base/button'
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
 type Props = {
+  isRunning: boolean
   onRun: (url: string) => void
 }
 
 const UrlInput: FC<Props> = ({
+  isRunning,
   onRun,
 }) => {
   const { t } = useTranslation()
@@ -20,8 +22,10 @@ const UrlInput: FC<Props> = ({
     setUrl(url as string)
   }, [])
   const handleOnRun = useCallback(() => {
+    if (isRunning)
+      return
     onRun(url)
-  }, [onRun, url])
+  }, [isRunning, onRun, url])
 
   return (
     <div className='flex items-center justify-between'>
@@ -34,8 +38,9 @@ const UrlInput: FC<Props> = ({
         type='primary'
         onClick={handleOnRun}
         className='ml-2 !h-8 text-[13px] font-medium'
+        loading={isRunning}
       >
-        {t(`${I18N_PREFIX}.run`)}
+        {!isRunning ? t(`${I18N_PREFIX}.run`) : ''}
       </Button>
     </div>
   )

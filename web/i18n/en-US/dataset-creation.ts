@@ -66,6 +66,7 @@ const translation = {
       includeOnlyPaths: 'Include only paths',
       extractOnlyMainContent: 'Extract only main content (no headers, navs, footers, etc.)',
       exceptionErrorTitle: 'An exception occurred while running Firecrawl job:',
+      totalPageScraped: 'Total pages scraped:',
     },
   },
   stepTwo: {

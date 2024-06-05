@@ -12,6 +12,7 @@ const I18N_PREFIX = 'datasetCreation.stepOne.website'
 type Props = {
   className?: string
   children: React.ReactNode
+  isFilledFull?: boolean
   errorMsg?: string
 }
 
@@ -19,6 +20,7 @@ const OptionsWrap: FC<Props> = ({
   className = '',
   children,
   errorMsg,
+  isFilledFull = false,
 }) => {
   const { t } = useTranslation()
 
@@ -38,11 +40,11 @@ const OptionsWrap: FC<Props> = ({
         <ChevronRight className={cn(!fold && 'rotate-90', 'w-4 h-4 text-gray-500')} />
       </div>
       {!fold && (
-        <div>
+        <div className={cn(isFilledFull && 'mt-3 relative left-[-12px] w-[calc(100%_+_24px)] rounded-b-xl')}>
           {!errorMsg
             ? children
             : (
-              <ErrorMessage className='mt-3 relative left-[-12px] w-[calc(100%_+_24px)] rounded-b-xl' title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={errorMsg} />
+              <ErrorMessage title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={errorMsg} />
             )}
         </div>
       )}

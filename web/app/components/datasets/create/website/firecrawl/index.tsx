@@ -9,9 +9,11 @@ import OptionsWrap from './base/options-wrap'
 import Options from './options'
 import mockCrawlResult from './mock-crawl-result'
 import CrawledResult from './crawled-result'
+import Crawling from './crawling'
 import { useModalContext } from '@/context/modal-context'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import Toast from '@/app/components/base/toast'
+import { sleep } from '@/utils'
 
 const ERROR_I18N_PREFIX = 'common.errorMsg'
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
@@ -30,8 +32,15 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
   max_depth: 2,
 }
 
+enum Step {
+  init = 'init',
+  running = 'running',
+  finished = 'finished',
+}
+
 const FireCrawl: FC<Props> = () => {
   const { t } = useTranslation()
+  const [step, setStep] = useState<Step>(Step.running)
 
   const { setShowAccountSettingModal } = useModalContext()
   const handleSetting = useCallback(() => {
@@ -70,14 +79,15 @@ const FireCrawl: FC<Props> = () => {
     }
   }, [crawlOptions, t])
 
-  const [isCrawlFinished, setIsCrawlFinished] = useState(true)
+  const isInit = step === Step.init
+  const isCrawlFinished = step === Step.finished
+  const isRunning = step === Step.running
   const [crawlResult, setCrawlResult] = useState<CrawlResultItem[]>(mockCrawlResult)
   const [checkedCrawlResult, setCheckedCrawlResult] = useState<CrawlResultItem[]>([])
 
   const [crawlErrorMsg, setCrawlErrorMsg] = useState('')
-  const showCrawlError = isCrawlFinished && !!crawlErrorMsg
-  const handleRun = useCallback((url: string) => {
-    setIsCrawlFinished(false)
+  const showCrawlError = step === Step.finished && !!crawlErrorMsg
+  const handleRun = useCallback(async (url: string) => {
     const { isValid, errorMsg } = checkValid(url)
     if (!isValid) {
       Toast.notify({
@@ -86,28 +96,39 @@ const FireCrawl: FC<Props> = () => {
       })
       return
     }
+    setStep(Step.running)
     // TODO: crawl
-    setIsCrawlFinished(true)
+    await sleep(2000)
+    setCrawlResult(mockCrawlResult) // TODO:
+
+    setStep(Step.finished)
     setCrawlErrorMsg('')
   }, [checkValid])
 
   return (
     <div>
       <Header onSetting={handleSetting} />
-      <div className={cn(!showCrawlError ? 'pb-4' : 'pb-0', 'mt-2 p-3 rounded-xl border border-gray-200')}>
-        <UrlInput onRun={handleRun} />
-        <OptionsWrap className='mt-3' errorMsg={isCrawlFinished ? crawlErrorMsg : ''} >
-          {!isCrawlFinished
-            ? (
-              <Options className='mt-2' payload={crawlOptions} onChange={setCrawlOptions} />
-            )
-            : (
-              <CrawledResult
-                list={crawlResult}
-                checkedList={checkedCrawlResult}
-                onSelectedChange={setCheckedCrawlResult}
-              />
-            )}
+      <div className={cn(isInit ? 'pb-4' : 'pb-0', 'mt-2 p-3 rounded-xl border border-gray-200')}>
+        <UrlInput onRun={handleRun} isRunning={isRunning} />
+        <OptionsWrap
+          className={cn('mt-3')}
+          isFilledFull={!isInit}
+          errorMsg={isCrawlFinished ? crawlErrorMsg : ''}
+        >
+          {isInit && <Options className='mt-2' payload={crawlOptions} onChange={setCrawlOptions} />}
+          {isRunning
+            && <Crawling
+              className='mt-2'
+              crawledNum={8}
+              totalNum={10}
+            />}
+          {isCrawlFinished && (
+            <CrawledResult
+              list={crawlResult}
+              checkedList={checkedCrawlResult}
+              onSelectedChange={setCheckedCrawlResult}
+            />
+          )}
         </OptionsWrap>
       </div>
     </div>
