@@ -9,17 +9,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+azure_openai_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+azure_openai_key = os.environ.get("AZURE_OPENAI_KEY")
 
-askyourpdf_key = os.environ.get("ASKYOURPDF_TEST_KEY")
-assistant_title = "AskYourPDF API UI"
+openai_api_key = os.environ.get("OPENAI_API_KEY")
+client = None
+if azure_openai_endpoint and azure_openai_key:
+    client = openai.AzureOpenAI(
+        api_key=azure_openai_key,
+        api_version="2024-02-15-preview",
+        azure_endpoint=azure_openai_endpoint,
+    )
+else:
+    client = openai.OpenAI(api_key=openai_api_key)
+assistant_id = os.environ.get("ASSISTANT_ID")
+instructions = os.environ.get("RUN_INSTRUCTIONS", "")
+assistant_title = os.environ.get("ASSISTANT_TITLE", "Assistants API UI")
 enabled_file_upload_message = os.environ.get(
     "ENABLED_FILE_UPLOAD_MESSAGE", "Upload a file"
 )
-
-headers = {
-    'Content-Type': 'application/json',
-    'x-api-key': askyourpdf_key
-}
 
 client = None
 
