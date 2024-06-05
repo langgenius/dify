@@ -54,6 +54,9 @@ class ProviderConfiguration(BaseModel):
     custom_configuration: CustomConfiguration
     model_settings: list[ModelSettings]
 
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
     def __init__(self, **data):
         super().__init__(**data)
 
