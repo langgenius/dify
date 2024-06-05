@@ -21,7 +21,11 @@ logger = logging.getLogger(__name__)
 CODE_EXECUTION_ENDPOINT = get_env('CODE_EXECUTION_ENDPOINT')
 CODE_EXECUTION_API_KEY = get_env('CODE_EXECUTION_API_KEY')
 
-CODE_EXECUTION_TIMEOUT= (10, 60)
+# CODE_EXECUTION_TIMEOUT= (10, 60)
+CODE_EXECUTION_READ_TIMEOUT = int(get_env('CODE_EXECUTION_READ_TIMEOUT'))
+CODE_EXECUTION_CONNECT_TIMEOUT = int(get_env('CODE_EXECUTION_CONNECT_TIMEOUT'))
+CODE_EXECUTION_TIMEOUT = (CODE_EXECUTION_READ_TIMEOUT, CODE_EXECUTION_CONNECT_TIMEOUT)
+
 
 class CodeExecutionException(Exception):
     pass
@@ -63,10 +67,10 @@ class CodeExecutor:
     }
 
     @classmethod
-    def execute_code(cls, 
-                     language: Literal['python3', 'javascript', 'jinja2'], 
-                     preload: str, 
-                     code: str, 
+    def execute_code(cls,
+                     language: Literal['python3', 'javascript', 'jinja2'],
+                     preload: str,
+                     code: str,
                      dependencies: Optional[list[CodeDependency]] = None) -> str:
         """
         Execute code
@@ -102,20 +106,20 @@ class CodeExecutor:
             raise CodeExecutionException('Failed to execute code, which is likely a network issue,'
                                          ' please check if the sandbox service is running.'
                                          f' ( Error: {str(e)} )')
-        
+
         try:
             response = response.json()
         except:
             raise CodeExecutionException('Failed to parse response')
-        
+
         response = CodeExecutionResponse(**response)
 
         if response.code != 0:
             raise CodeExecutionException(response.message)
-        
+
         if response.data.error:
             raise CodeExecutionException(response.data.error)
-        
+
         return response.data.stdout
 
     @classmethod
@@ -139,7 +143,7 @@ class CodeExecutor:
             raise e
 
         return template_transformer.transform_response(response)
-    
+
     @classmethod
     def list_dependencies(cls, language: str) -> list[CodeDependency]:
         if language not in cls.supported_dependencies_languages:
@@ -153,16 +157,16 @@ class CodeExecutor:
                     return dependencies['data']
                 # remove expired cache
                 del cls.dependencies_cache[language]
-        
+
         dependencies = cls._get_dependencies(language)
         with cls.dependencies_cache_lock:
             cls.dependencies_cache[language] = {
                 'data': dependencies,
                 'expiration': time.time() + 60
             }
-        
+
         return dependencies
-        
+
     @classmethod
     def _get_dependencies(cls, language: Literal['python3']) -> list[CodeDependency]:
         """

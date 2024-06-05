@@ -61,7 +61,7 @@ services:
       # You can generate a strong key using `openssl rand -base64 42`.
       API_KEY: dify-sandbox
       GIN_MODE: 'release'
-      WORKER_TIMEOUT: 15
+      WORKER_TIMEOUT: 120
       ENABLE_NETWORK: 'true'
       HTTP_PROXY: 'http://ssrf_proxy:3128'
       HTTPS_PROXY: 'http://ssrf_proxy:3128'
