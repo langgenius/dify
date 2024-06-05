@@ -13,8 +13,18 @@ select = [
     "F", # pyflakes rules
     "I", # isort rules
     "UP",   # pyupgrade rules
+    "E101", # mixed-spaces-and-tabs
+    "E111", # indentation-with-invalid-multiple
+    "E112", # no-indented-block
+    "E113", # unexpected-indentation
+    "E115", # no-indented-block-comment
+    "E116", # unexpected-indentation-comment
+    "E117", # over-indented
     "RUF019", # unnecessary-key-check
+    "RUF100", # unused-noqa
+    "RUF101", # redirected-noqa
     "S506", # unsafe-yaml-load
+    "W191", # tab-indentation
     "W605", # invalid-escape-sequence
 ]
 ignore = [

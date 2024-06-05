@@ -332,10 +332,11 @@ class Tool(BaseModel, ABC):
             :param text: the text
             :return: the text message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, 
-                                 message=text,
-                                 save_as=save_as
-                                 )
+        return ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.TEXT,
+            message=text,
+            save_as=save_as
+        )
     
     def create_blob_message(self, blob: bytes, meta: dict = None, save_as: str = '') -> ToolInvokeMessage:
         """
@@ -344,7 +345,8 @@ class Tool(BaseModel, ABC):
             :param blob: the blob
             :return: the blob message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB, 
-                                 message=blob, meta=meta,
-                                 save_as=save_as
-                                 )
+        return ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB,
+            message=blob, meta=meta,
+            save_as=save_as
+        )
