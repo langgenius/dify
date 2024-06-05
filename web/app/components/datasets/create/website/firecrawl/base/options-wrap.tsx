@@ -44,7 +44,7 @@ const OptionsWrap: FC<Props> = ({
           {!errorMsg
             ? children
             : (
-              <ErrorMessage title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={errorMsg} />
+              <ErrorMessage className='rounded-b-xl' title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={errorMsg} />
             )}
         </div>
       )}

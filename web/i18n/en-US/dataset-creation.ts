@@ -67,6 +67,9 @@ const translation = {
       extractOnlyMainContent: 'Extract only main content (no headers, navs, footers, etc.)',
       exceptionErrorTitle: 'An exception occurred while running Firecrawl job:',
       totalPageScraped: 'Total pages scraped:',
+      selectAll: 'Select All',
+      resetAll: 'Reset All',
+      scrapTimeInfo: 'Scraped {{total}} pages in total within {{time}}',
     },
   },
   stepTwo: {

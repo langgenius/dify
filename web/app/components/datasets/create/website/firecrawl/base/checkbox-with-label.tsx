@@ -9,6 +9,7 @@ type Props = {
   isChecked: boolean
   onChange: (isChecked: boolean) => void
   label: string
+  labelClassName?: string
 }
 
 const CheckboxWithLabel: FC<Props> = ({
@@ -16,11 +17,12 @@ const CheckboxWithLabel: FC<Props> = ({
   isChecked,
   onChange,
   label,
+  labelClassName,
 }) => {
   return (
     <label className={cn(className, 'flex items-center h-7 space-x-2')}>
       <Checkbox checked={isChecked} onCheck={() => onChange(!isChecked)} />
-      <div className='text-sm font-normal text-gray-800'>{label}</div>
+      <div className={cn(labelClassName, 'text-sm font-normal text-gray-800')}>{label}</div>
     </label>
   )
 }

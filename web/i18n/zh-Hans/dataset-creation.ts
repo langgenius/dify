@@ -67,6 +67,9 @@ const translation = {
       extractOnlyMainContent: '仅提取主要内容（无标题、导航、页脚等）',
       exceptionErrorTitle: '运行 Firecrawl 时发生异常:',
       totalPageScraped: '抓取页面总数:',
+      selectAll: '全选',
+      resetAll: '重置全部',
+      scrapTimeInfo: '总共在 {{time}} 内抓取了 {{total}} 个页面',
     },
   },
   stepTwo: {

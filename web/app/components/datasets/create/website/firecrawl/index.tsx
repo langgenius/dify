@@ -40,7 +40,7 @@ enum Step {
 
 const FireCrawl: FC<Props> = () => {
   const { t } = useTranslation()
-  const [step, setStep] = useState<Step>(Step.running)
+  const [step, setStep] = useState<Step>(Step.finished)
 
   const { setShowAccountSettingModal } = useModalContext()
   const handleSetting = useCallback(() => {
@@ -86,7 +86,6 @@ const FireCrawl: FC<Props> = () => {
   const [checkedCrawlResult, setCheckedCrawlResult] = useState<CrawlResultItem[]>([])
 
   const [crawlErrorMsg, setCrawlErrorMsg] = useState('')
-  const showCrawlError = step === Step.finished && !!crawlErrorMsg
   const handleRun = useCallback(async (url: string) => {
     const { isValid, errorMsg } = checkValid(url)
     if (!isValid) {
