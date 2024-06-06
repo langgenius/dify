@@ -3,8 +3,10 @@ from typing import Optional
 
 from flashrank import Ranker, RerankRequest
 from flask import current_app
+from rank_bm25 import BM25Okapi
 
 from core.model_manager import ModelInstance
+from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.models.document import Document
 
 
@@ -38,18 +40,37 @@ class RerankRunner:
         for document in documents:
             passage = {
                 'id': i,
-                'text': document.page_content,
-                'meta': document.metadata
+                'text': document.page_content
             }
             passages.append(passage)
             i += 1
         folder = current_app.config.get('STORAGE_LOCAL_PATH')
         if not os.path.isabs(folder):
             folder = os.path.join(current_app.root_path, folder)
-        ranker = Ranker(model_name="ms-marco-MiniLM-L-12-v2", cache_dir=folder)
+        ranker = Ranker(model_name="rank-T5-flan", cache_dir=folder)
         rerank_request = RerankRequest(query=query, passages=passages)
         results = ranker.rerank(rerank_request)
         print(results)
+        document_BM25 = []
+        for document in documents:
+            document_BM25.append(document.page_content)
+
+        # 预处理：分词
+        keyword_table_handler = JiebaKeywordTableHandler()
+
+        tokenized_documents = [keyword_table_handler.extract_keywords(doc, 20) for doc in document_BM25]
+
+        tokenized_query = keyword_table_handler.extract_keywords(query, 20)
+
+        # 创建BM25对象
+        bm25 = BM25Okapi(tokenized_documents)
+
+        # 计算查询与每个文档的BM25分数
+        doc_scores = bm25.get_scores(tokenized_query)
+
+        # 输出BM25分数
+        for i, score in enumerate(doc_scores):
+            print(f"Document {i + 1}: BM25 Score = {score}")
 
         rerank_result = self.rerank_model_instance.invoke_rerank(
             query=query,
