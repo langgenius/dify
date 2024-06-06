@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type {
   ModelProvider,
 } from '../declarations'
-import { ConfigurateMethodEnum } from '../declarations'
+import { ConfigurationMethodEnum } from '../declarations'
 import {
   DEFAULT_BACKGROUND_COLOR,
   modelTypeFormat,
@@ -19,7 +19,7 @@ import Button from '@/app/components/base/button'
 
 type ProviderCardProps = {
   provider: ModelProvider
-  onOpenModal: (configurateMethod: ConfigurateMethodEnum) => void
+  onOpenModal: (configurateMethod: ConfigurationMethodEnum) => void
 }
 
 const ProviderCard: FC<ProviderCardProps> = ({
@@ -28,8 +28,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
-
-  const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
+  const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
 
   return (
     <div
@@ -59,7 +58,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
         <div className={`hidden group-hover:grid grid-cols-${configurateMethods.length} gap-1`}>
           {
             configurateMethods.map((method) => {
-              if (method === ConfigurateMethodEnum.predefinedModel) {
+              if (method === ConfigurationMethodEnum.predefinedModel) {
                 return (
                   <Button
                     key={method}

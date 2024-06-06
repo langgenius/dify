@@ -7,7 +7,7 @@ from core.workflow.entities.base_node_data_entities import BaseNodeData
 
 class ToolEntity(BaseModel):
     provider_id: str
-    provider_type: Literal['builtin', 'api']
+    provider_type: Literal['builtin', 'api', 'workflow']
     provider_name: str # redundancy
     tool_name: str
     tool_label: str # redundancy

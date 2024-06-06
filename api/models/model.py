@@ -100,7 +100,7 @@ class App(db.Model):
         return None
 
     @property
-    def workflow(self):
+    def workflow(self) -> Optional['Workflow']:
         if self.workflow_id:
             from .workflow import Workflow
             return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()

@@ -39,6 +39,7 @@ type NodeSelectorProps = {
   asChild?: boolean
   availableBlocksTypes?: BlockEnum[]
   disabled?: boolean
+  noBlocks?: boolean
 }
 const NodeSelector: FC<NodeSelectorProps> = ({
   open: openFromProps,
@@ -54,6 +55,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   asChild,
   availableBlocksTypes,
   disabled,
+  noBlocks = false,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -136,6 +138,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             onSelect={handleSelect}
             searchText={searchText}
             availableBlocksTypes={availableBlocksTypes}
+            noBlocks={noBlocks}
           />
         </div>
       </PortalToFollowElemContent>
