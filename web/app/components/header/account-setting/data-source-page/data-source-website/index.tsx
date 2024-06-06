@@ -1,50 +1,34 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import cn from 'classnames'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
 import ConfigFirecrawlModal from './config-firecrawl-modal'
-import { fetchWebsiteDataSource } from '@/service/common'
+import { fetchFirecrawlApiKey, removeFirecrawlApiKey } from '@/service/datasets'
+
 import type {
   DataSourceWebsiteItem,
 } from '@/models/common'
 import { useAppContext } from '@/context/app-context'
 
 import {
-  DataSourceCategory,
   WebsiteProvider,
 } from '@/models/common'
+import Toast from '@/app/components/base/toast'
 
 type Props = {}
 
-const isUseMock = false
-const mockList: DataSourceWebsiteItem[] = [
-  {
-    id: '1',
-    category: DataSourceCategory.website,
-    provider: WebsiteProvider.fireCrawl,
-    credentials: {
-      auth_type: 'bearer',
-      config: {
-        base_url: 'https://xxx',
-        api_key: '123456',
-      },
-    },
-    created_at: 1627584000,
-    updated_at: 1627584000,
-  },
-]
-
 const DataSourceWebsite: FC<Props> = () => {
+  const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const [list, setList] = useState<DataSourceWebsiteItem[]>(isUseMock ? mockList : [])
+  const [list, setList] = useState<DataSourceWebsiteItem[]>([])
   useEffect(() => {
     (async () => {
-      const { data } = await fetchWebsiteDataSource()
-      const list = data.settings.filter(item => item.provider === WebsiteProvider.fireCrawl)
-
+      const res = await fetchFirecrawlApiKey() as any
+      const list = res.settings.filter((item: DataSourceWebsiteItem) => item.provider === WebsiteProvider.fireCrawl && !item.disabled)
       setList(list)
     })()
   }, [])
@@ -54,9 +38,14 @@ const DataSourceWebsite: FC<Props> = () => {
     setFalse: hideConfig,
   }] = useBoolean(false)
 
-  const handleRemove = useCallback(() => {
-
-  }, [])
+  const handleRemove = useCallback(async () => {
+    await removeFirecrawlApiKey(list[0].id)
+    setList([])
+    Toast.notify({
+      type: 'success',
+      message: t('common.operation.saveSuccess'),
+    })
+  }, [list, t])
 
   return (
     <>

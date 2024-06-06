@@ -196,6 +196,7 @@ export type DataSourceWebsiteItem = {
   category: DataSourceCategory.website
   provider: WebsiteProvider
   credentials: WebsiteCredentials
+  disabled: boolean
   created_at: number
   updated_at: number
 }
