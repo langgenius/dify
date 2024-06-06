@@ -18,8 +18,6 @@ import { sleep } from '@/utils'
 const ERROR_I18N_PREFIX = 'common.errorMsg'
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
-// const testCrawlErrorMsg = 'Firecrawl currently does not support social media scraping due to policy restrictions. We are actively working on building support for it.'
-
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
   checkedCrawlResult: CrawlResultItem[]

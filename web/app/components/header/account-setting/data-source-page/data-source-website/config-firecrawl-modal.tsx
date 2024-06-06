@@ -18,6 +18,8 @@ type Props = {
   onSaved: () => void
 }
 
+const I18N_PREFIX = 'datasetCreation.firecrawl'
+
 const DEFAULT_BASE_URL = 'https://api.firecrawl.dev'
 
 const ConfigFirecrawlModal: FC<Props> = ({
@@ -37,10 +39,21 @@ const ConfigFirecrawlModal: FC<Props> = ({
   }, [])
 
   const handleSave = useCallback(async () => {
-    if (!config.api_key) {
-      const errorMsg = t('common.errorMsg.fieldRequired', {
-        field: 'API Key',
-      })
+    let errorMsg = ''
+    if (config.base_url && !((config.base_url.startsWith('http://') || config.base_url.startsWith('https://'))))
+      errorMsg = t('common.errorMsg.urlError')
+    if (!errorMsg) {
+      if (!config.api_key) {
+        errorMsg = t('common.errorMsg.fieldRequired', {
+          field: 'API Key',
+        })
+      }
+      else if (!config.api_key.startsWith('fc-')) {
+        errorMsg = t(`${I18N_PREFIX}.apiKeyFormatError`)
+      }
+    }
+
+    if (errorMsg) {
       Toast.notify({
         type: 'error',
         message: errorMsg,
@@ -73,7 +86,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
           <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
             <div className='px-8 pt-8'>
               <div className='flex justify-between items-center mb-4'>
-                <div className='text-xl font-semibold text-gray-900'>{t('common.modelProvider.editConfig')}</div>
+                <div className='text-xl font-semibold text-gray-900'>{t(`${I18N_PREFIX}.configFirecrawl`)}</div>
               </div>
 
               <div className='space-y-4'>
@@ -90,12 +103,12 @@ const ConfigFirecrawlModal: FC<Props> = ({
                   isRequired
                   value={config.api_key}
                   onChange={handleConfigChange('api_key')}
-                  placeholder={t('common.modelProvider.apiKey')!}
+                  placeholder={t(`${I18N_PREFIX}.apiKeyPlaceholder`)!}
                 />
               </div>
               <div className='my-8 flex justify-between items-center h-8'>
                 <a className='flex items-center space-x-1 leading-[18px] text-xs font-normal text-[#155EEF]' target='_blank' href='https://www.firecrawl.dev/account'>
-                  <span>Get your API key from firecrawl.dev</span>
+                  <span>{t(`${I18N_PREFIX}.getApiKeyLinkText`)}</span>
                   <LinkExternal02 className='w-3 h-3' />
                 </a>
                 <div className='flex'>

@@ -11,6 +11,12 @@ const translation = {
   error: {
     unavailable: 'This Knowledge is not available',
   },
+  firecrawl: {
+    configFirecrawl: 'Configure 🔥Firecrawl',
+    apiKeyPlaceholder: 'API key from firecrawl.dev, starting with "fc-"',
+    apiKeyFormatError: 'API key should start with "fc-"',
+    getApiKeyLinkText: 'Get your API key from firecrawl.dev',
+  },
   stepOne: {
     filePreview: 'File Preview',
     pagePreview: 'Page Preview',

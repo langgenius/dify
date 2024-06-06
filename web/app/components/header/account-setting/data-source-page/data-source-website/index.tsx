@@ -52,7 +52,7 @@ const DataSourceWebsite: FC<Props> = () => {
   const [isShowConfig, {
     setTrue: showConfig,
     setFalse: hideConfig,
-  }] = useBoolean(true)
+  }] = useBoolean(false)
 
   const handleRemove = useCallback(() => {
 
