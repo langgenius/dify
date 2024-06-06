@@ -1,10 +1,10 @@
-from typing import Optional, cast
+from typing import Optional
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.model_runtime.entities.model_entities import ModelPropertyKey
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 
 
@@ -25,12 +25,12 @@ class PromptTransform:
 
         model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
         if model_context_tokens:
-            model_type_instance = model_config.provider_model_bundle.model_type_instance
-            model_type_instance = cast(LargeLanguageModel, model_type_instance)
+            model_instance = ModelInstance(
+                provider_model_bundle=model_config.provider_model_bundle,
+                model=model_config.model
+            )
 
-            curr_message_tokens = model_type_instance.get_num_tokens(
-                model_config.model,
-                model_config.credentials,
+            curr_message_tokens = model_instance.get_llm_num_tokens(
                 prompt_messages
             )
 

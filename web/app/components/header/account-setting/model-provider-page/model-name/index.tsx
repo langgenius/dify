@@ -1,4 +1,5 @@
-import type { FC } from 'react'
+import type { FC, PropsWithChildren } from 'react'
+import classNames from 'classnames'
 import {
   modelTypeFormat,
   sizeFormat,
@@ -8,7 +9,7 @@ import type { ModelItem } from '../declarations'
 import ModelBadge from '../model-badge'
 import FeatureIcon from '../model-selector/feature-icon'
 
-type ModelNameProps = {
+type ModelNameProps = PropsWithChildren<{
   modelItem: ModelItem
   className?: string
   showModelType?: boolean
@@ -18,7 +19,7 @@ type ModelNameProps = {
   showFeatures?: boolean
   featuresClassName?: string
   showContextSize?: boolean
-}
+}>
 const ModelName: FC<ModelNameProps> = ({
   modelItem,
   className,
@@ -29,6 +30,7 @@ const ModelName: FC<ModelNameProps> = ({
   showFeatures,
   featuresClassName,
   showContextSize,
+  children,
 }) => {
   const language = useLanguage()
 
@@ -42,21 +44,21 @@ const ModelName: FC<ModelNameProps> = ({
       `}
     >
       <div
-        className='mr-1 truncate'
+        className='truncate'
         title={modelItem.label[language] || modelItem.label.en_US}
       >
         {modelItem.label[language] || modelItem.label.en_US}
       </div>
       {
         showModelType && modelItem.model_type && (
-          <ModelBadge className={`mr-0.5 ${modelTypeClassName}`}>
+          <ModelBadge className={classNames('ml-1', modelTypeClassName)}>
             {modelTypeFormat(modelItem.model_type)}
           </ModelBadge>
         )
       }
       {
         modelItem.model_properties.mode && showMode && (
-          <ModelBadge className={`mr-0.5 ${modeClassName}`}>
+          <ModelBadge className={classNames('ml-1', modeClassName)}>
             {(modelItem.model_properties.mode as string).toLocaleUpperCase()}
           </ModelBadge>
         )
@@ -72,11 +74,12 @@ const ModelName: FC<ModelNameProps> = ({
       }
       {
         showContextSize && modelItem.model_properties.context_size && (
-          <ModelBadge>
+          <ModelBadge className='ml-1'>
             {sizeFormat(modelItem.model_properties.context_size as number)}
           </ModelBadge>
         )
       }
+      {children}
     </div>
   )
 }

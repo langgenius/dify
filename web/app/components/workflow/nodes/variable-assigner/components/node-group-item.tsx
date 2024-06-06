@@ -18,7 +18,7 @@ import {
   useVariableAssigner,
 } from '../hooks'
 import { filterVar } from '../utils'
-import NodeHandle from './node-handle'
+import AddVariable from './add-variable'
 import NodeVariableItem from './node-variable-item'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
@@ -47,40 +47,75 @@ const NodeGroupItem = ({
     handleGroupItemMouseLeave,
   } = useVariableAssigner()
   const getAvailableVars = useGetAvailableVars()
+  const groupEnabled = item.groupEnabled
   const outputType = useMemo(() => {
-    if (item.targetHandleId === 'target')
+    if (!groupEnabled)
       return item.variableAssignerNodeData.output_type
 
     const group = item.variableAssignerNodeData.advanced_settings?.groups.find(group => group.groupId === item.targetHandleId)
     return group?.output_type || ''
-  }, [item.variableAssignerNodeData, item.targetHandleId])
+  }, [item.variableAssignerNodeData, item.targetHandleId, groupEnabled])
   const availableVars = getAvailableVars(item.variableAssignerNodeId, item.targetHandleId, filterVar(outputType as VarType))
-  const showSelectionBorder = enteringNodePayload?.nodeId === item.variableAssignerNodeId && item.groupEnabled && hoveringAssignVariableGroupId === item.targetHandleId
-  const connected = item.variableAssignerNodeData._connectedTargetHandleIds?.includes(item.targetHandleId)
+  const showSelectionBorder = useMemo(() => {
+    if (groupEnabled && enteringNodePayload?.nodeId === item.variableAssignerNodeId) {
+      if (hoveringAssignVariableGroupId)
+        return hoveringAssignVariableGroupId !== item.targetHandleId
+      else
+        return enteringNodePayload?.nodeData.advanced_settings?.groups[0].groupId !== item.targetHandleId
+    }
+
+    return false
+  }, [enteringNodePayload, groupEnabled, hoveringAssignVariableGroupId, item.targetHandleId, item.variableAssignerNodeId])
+  const showSelectedBorder = useMemo(() => {
+    if (groupEnabled && enteringNodePayload?.nodeId === item.variableAssignerNodeId) {
+      if (hoveringAssignVariableGroupId)
+        return hoveringAssignVariableGroupId === item.targetHandleId
+      else
+        return enteringNodePayload?.nodeData.advanced_settings?.groups[0].groupId === item.targetHandleId
+    }
+
+    return false
+  }, [enteringNodePayload, groupEnabled, hoveringAssignVariableGroupId, item.targetHandleId, item.variableAssignerNodeId])
 
   return (
     <div
       className={cn(
-        'relative pt-1 px-1.5 pb-1.5 rounded-lg border border-transparent',
-        showSelectionBorder && '!border-primary-600',
+        'relative pt-1 px-1.5 pb-1.5 rounded-lg border-[1.5px] border-transparent',
+        showSelectionBorder && '!border-gray-300 !border-dashed bg-black/[0.02]',
+        showSelectedBorder && '!border-primary-600 !bg-primary-50',
       )}
-      onMouseEnter={() => handleGroupItemMouseEnter(item.targetHandleId)}
+      onMouseEnter={() => groupEnabled && handleGroupItemMouseEnter(item.targetHandleId)}
       onMouseLeave={handleGroupItemMouseLeave}
     >
       <div className='flex items-center justify-between h-4 text-[10px] font-medium text-gray-500'>
-        <NodeHandle
-          connected={connected}
-          variableAssignerNodeId={item.variableAssignerNodeId}
-          variableAssignerNodeData={item.variableAssignerNodeData}
-          handleId={item.targetHandleId}
-          availableVars={availableVars}
-        />
-        <span className='grow uppercase truncate' title={item.title}>{item.title}</span>
-        <span className='shrink-0 ml-2'>{item.type}</span>
+        <span
+          className={cn(
+            'grow uppercase truncate',
+            showSelectedBorder && 'text-primary-600',
+          )}
+          title={item.title}
+        >
+          {item.title}
+        </span>
+        <div className='flex items-center'>
+          <span className='shrink-0 ml-2'>{item.type}</span>
+          <div className='ml-2 mr-1 w-[1px] h-2.5 bg-gray-200'></div>
+          <AddVariable
+            availableVars={availableVars}
+            variableAssignerNodeId={item.variableAssignerNodeId}
+            variableAssignerNodeData={item.variableAssignerNodeData}
+            handleId={item.targetHandleId}
+          />
+        </div>
       </div>
       {
         !item.variables.length && (
-          <div className='relative flex items-center px-1 h-[22px] justify-between bg-gray-100 rounded-md space-x-1 text-[10px] font-normal text-gray-400 uppercase'>
+          <div
+            className={cn(
+              'relative flex items-center px-1 h-[22px] justify-between bg-gray-100 rounded-md space-x-1 text-[10px] font-normal text-gray-400 uppercase',
+              (showSelectedBorder || showSelectionBorder) && '!bg-black/[0.02]',
+            )}
+          >
             {t(`${i18nPrefix}.varNotSet`)}
           </div>
         )
@@ -96,6 +131,7 @@ const NodeGroupItem = ({
               key={index}
               node={node as Node}
               varName={varName}
+              showBorder={showSelectedBorder || showSelectionBorder}
             />
           )
         })

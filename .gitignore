@@ -134,7 +134,8 @@ dmypy.json
 web/.vscode/settings.json
 
 # Intellij IDEA Files
-.idea/
+.idea/*
+!.idea/vcs.xml
 .ideaDataSources/
 
 api/.env

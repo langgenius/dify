@@ -123,7 +123,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           onStepChange={nextStep}
         />}
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
-          hasSetAPIKEY={!!embeddingsDefaultModel}
+          isAPIKeySet={!!embeddingsDefaultModel}
           onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
           indexingType={detail?.indexing_technique}
           datasetId={datasetId}
