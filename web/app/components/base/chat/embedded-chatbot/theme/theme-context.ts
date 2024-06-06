@@ -2,8 +2,8 @@ import { createContext, useContext } from 'use-context-selector'
 import { hexToRGBA } from './utils'
 
 export class Theme {
-  private chatColorTheme: string | null
-  private chatColorThemeInverted: boolean
+  public chatColorTheme: string | null
+  public chatColorThemeInverted: boolean
 
   public primaryColor = '#1C64F2'
   public backgroundHeaderColorStyle = 'backgroundImage: linear-gradient(to right, #2563eb, #0ea5e9)'
@@ -51,6 +51,12 @@ export class ThemeBuilder {
     if (!this.buildChecker) {
       this.theme = new Theme(chatColorTheme, chatColorThemeInverted)
       this.buildChecker = true
+    }
+    else {
+      if (this.theme?.chatColorTheme !== chatColorTheme || this.theme?.chatColorThemeInverted !== chatColorThemeInverted) {
+        this.theme = new Theme(chatColorTheme, chatColorThemeInverted)
+        this.buildChecker = true
+      }
     }
   }
 }
