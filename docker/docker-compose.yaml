@@ -134,6 +134,12 @@ services:
       PGVECTOR_USER: postgres
       PGVECTOR_PASSWORD: difyai123456
       PGVECTOR_DATABASE: dify
+      # tidb vector configurations
+      TIDB_VECTOR_HOST: tidb
+      TIDB_VECTOR_PORT: 4000
+      TIDB_VECTOR_USER: xxx.root
+      TIDB_VECTOR_PASSWORD: xxxxxx
+      TIDB_VECTOR_DATABASE: dify
       # Mail configuration, support: resend, smtp
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -289,6 +295,12 @@ services:
       PGVECTOR_USER: postgres
       PGVECTOR_PASSWORD: difyai123456
       PGVECTOR_DATABASE: dify
+      # tidb vector configurations
+      TIDB_VECTOR_HOST: tidb
+      TIDB_VECTOR_PORT: 4000
+      TIDB_VECTOR_USER: xxx.root
+      TIDB_VECTOR_PASSWORD: xxxxxx
+      TIDB_VECTOR_DATABASE: dify
       # Notion import configuration, support public and internal
       NOTION_INTEGRATION_TYPE: public
       NOTION_CLIENT_SECRET: you-client-secret

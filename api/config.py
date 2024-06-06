@@ -299,6 +299,13 @@ class Config:
         self.PGVECTOR_PASSWORD = get_env('PGVECTOR_PASSWORD')
         self.PGVECTOR_DATABASE = get_env('PGVECTOR_DATABASE')
 
+        # tidb-vector settings
+        self.TIDB_VECTOR_HOST = get_env('TIDB_VECTOR_HOST')
+        self.TIDB_VECTOR_PORT = get_env('TIDB_VECTOR_PORT')
+        self.TIDB_VECTOR_USER = get_env('TIDB_VECTOR_USER')
+        self.TIDB_VECTOR_PASSWORD = get_env('TIDB_VECTOR_PASSWORD')
+        self.TIDB_VECTOR_DATABASE = get_env('TIDB_VECTOR_DATABASE')
+
         # ------------------------
         # Mail Configurations.
         # ------------------------
