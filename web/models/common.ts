@@ -185,6 +185,12 @@ export type WebsiteCredentials = {
     api_key: string
   }
 }
+
+export type FirecrawlConfig = {
+  api_key: string
+  base_url: string
+}
+
 export type DataSourceWebsiteItem = {
   id: string
   category: DataSourceCategory.website

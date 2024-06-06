@@ -227,6 +227,10 @@ export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> =
   return get<{ api_base_url: string }>(url)
 }
 
+export const createFirecrawlApiKey: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('api-key-auth/data-source/binding', { body })
+}
+
 type FileTypesRes = {
   allowed_extensions: string[]
 }

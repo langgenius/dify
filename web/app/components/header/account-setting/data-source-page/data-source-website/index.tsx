@@ -5,6 +5,7 @@ import { useBoolean } from 'ahooks'
 import cn from 'classnames'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
+import ConfigFirecrawlModal from './config-firecrawl-modal'
 import { fetchWebsiteDataSource } from '@/service/common'
 import type {
   DataSourceWebsiteItem,
@@ -18,7 +19,7 @@ import {
 
 type Props = {}
 
-const isUseMock = true
+const isUseMock = false
 const mockList: DataSourceWebsiteItem[] = [
   {
     id: '1',
@@ -51,29 +52,34 @@ const DataSourceWebsite: FC<Props> = () => {
   const [isShowConfig, {
     setTrue: showConfig,
     setFalse: hideConfig,
-  }] = useBoolean(false)
+  }] = useBoolean(true)
 
   const handleRemove = useCallback(() => {
 
   }, [])
 
   return (
-    <Panel
-      type={DataSourceType.website}
-      isConfigured={list.length > 0}
-      onConfigure={showConfig}
-      readonly={!isCurrentWorkspaceManager}
-      configuredList={list.map(item => ({
-        id: item.id,
-        logo: ({ className }: { className: string }) => (
-          <div className={cn(className, 'flex items-center justify-center w-5 h-5 bg-white border border-gray-100 text-xs font-medium text-gray-500 rounded ml-3')}>🔥</div>
-        ),
-        name: 'FireCrawl',
-        isActive: true,
-      }))}
-      onRemove={handleRemove}
+    <>
+      <Panel
+        type={DataSourceType.website}
+        isConfigured={list.length > 0}
+        onConfigure={showConfig}
+        readonly={!isCurrentWorkspaceManager}
+        configuredList={list.map(item => ({
+          id: item.id,
+          logo: ({ className }: { className: string }) => (
+            <div className={cn(className, 'flex items-center justify-center w-5 h-5 bg-white border border-gray-100 text-xs font-medium text-gray-500 rounded ml-3')}>🔥</div>
+          ),
+          name: 'FireCrawl',
+          isActive: true,
+        }))}
+        onRemove={handleRemove}
+      />
+      {isShowConfig && (
+        <ConfigFirecrawlModal onSaved={hideConfig} onCancel={hideConfig} />
+      )}
+    </>
 
-    />
   )
 }
 export default React.memo(DataSourceWebsite)
