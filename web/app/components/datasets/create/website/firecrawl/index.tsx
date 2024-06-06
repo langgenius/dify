@@ -22,6 +22,8 @@ const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
+  checkedCrawlResult: CrawlResultItem[]
+  onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
 }
 
 const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
@@ -41,6 +43,8 @@ enum Step {
 
 const FireCrawl: FC<Props> = ({
   onPreview,
+  checkedCrawlResult,
+  onCheckedCrawlResultChange,
 }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.finished)
@@ -86,7 +90,6 @@ const FireCrawl: FC<Props> = ({
   const isCrawlFinished = step === Step.finished
   const isRunning = step === Step.running
   const [crawlResult, setCrawlResult] = useState<CrawlResultItem[]>(mockCrawlResult)
-  const [checkedCrawlResult, setCheckedCrawlResult] = useState<CrawlResultItem[]>([])
 
   const [crawlErrorMsg, setCrawlErrorMsg] = useState('')
   const handleRun = useCallback(async (url: string) => {
@@ -128,7 +131,7 @@ const FireCrawl: FC<Props> = ({
             <CrawledResult
               list={crawlResult}
               checkedList={checkedCrawlResult}
-              onSelectedChange={setCheckedCrawlResult}
+              onSelectedChange={onCheckedCrawlResultChange}
               onPreview={onPreview}
             />
           )}

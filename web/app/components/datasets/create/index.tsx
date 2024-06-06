@@ -8,7 +8,7 @@ import StepOne from './step-one'
 import StepTwo from './step-two'
 import StepThree from './step-three'
 import { DataSourceType } from '@/models/datasets'
-import type { DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
+import type { CrawlResultItem, DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
 import { fetchDatasetDetail } from '@/service/datasets'
 import type { NotionPage } from '@/models/common'
@@ -36,6 +36,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setNotionPages(value)
   }
 
+  const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
+  console.log(websitePages)
   const updateFileList = (preparedFiles: FileItem[]) => {
     setFiles(preparedFiles)
   }
@@ -121,6 +123,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           notionPages={notionPages}
           updateNotionPages={updateNotionPages}
           onStepChange={nextStep}
+          websitePages={websitePages}
+          updateWebsitePages={setWebsitePages}
         />}
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
           hasSetAPIKEY={!!embeddingsDefaultModel}

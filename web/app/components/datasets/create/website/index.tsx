@@ -8,10 +8,14 @@ import type { CrawlResultItem } from '@/models/datasets'
 
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
+  checkedCrawlResult: CrawlResultItem[]
+  onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
 }
 
 const WebsitePreview: FC<Props> = ({
   onPreview,
+  checkedCrawlResult,
+  onCheckedCrawlResultChange,
 }) => {
   const { setShowAccountSettingModal } = useModalContext()
   const [isLoaded, setIsLoaded] = useState(false)
@@ -32,7 +36,11 @@ const WebsitePreview: FC<Props> = ({
     <div>
       {isConfigured
         ? (
-          <Firecrawl onPreview={onPreview} />
+          <Firecrawl
+            onPreview={onPreview}
+            checkedCrawlResult={checkedCrawlResult}
+            onCheckedCrawlResultChange={onCheckedCrawlResultChange}
+          />
         )
         : (
           <NoData onConfig={handleOnConfig} />

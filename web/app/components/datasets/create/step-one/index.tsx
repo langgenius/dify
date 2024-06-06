@@ -31,6 +31,8 @@ type IStepOneProps = {
   updateNotionPages: (value: NotionPage[]) => void
   onStepChange: () => void
   changeType: (type: DataSourceType) => void
+  websitePages?: CrawlResultItem[]
+  updateWebsitePages: (value: CrawlResultItem[]) => void
 }
 
 type NotionConnectorProps = {
@@ -62,6 +64,8 @@ const StepOne = ({
   updateFile,
   notionPages = [],
   updateNotionPages,
+  websitePages = [],
+  updateWebsitePages,
 }: IStepOneProps) => {
   const { dataset } = useDatasetDetailContext()
   const [showModal, setShowModal] = useState(false)
@@ -210,14 +214,18 @@ const StepOne = ({
           {dataSourceType === DataSourceType.WEB && (
             <>
               <div className='mb-8 w-[640px]'>
-                <Website onPreview={setCurrentWebsite} />
+                <Website
+                  onPreview={setCurrentWebsite}
+                  checkedCrawlResult={websitePages}
+                  onCheckedCrawlResultChange={updateWebsitePages}
+                />
               </div>
               {isShowVectorSpaceFull && (
                 <div className='max-w-[640px] mb-4'>
                   <VectorSpaceFull />
                 </div>
               )}
-              <Button disabled={isShowVectorSpaceFull || !notionPages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+              <Button disabled={isShowVectorSpaceFull || !websitePages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
             </>
           )}
           {!datasetId && (
