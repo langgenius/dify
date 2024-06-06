@@ -1,6 +1,7 @@
 from flask_login import current_user
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
+from controllers.console.auth.error import ApiKeyAuthFailedError
 
 from controllers.console import api
 from libs.login import login_required
@@ -42,7 +43,7 @@ class ApiKeyAuthDataSourceBinding(Resource):
         try:
             ApiKeyAuthService.create_provider_auth(current_user.current_tenant_id, args)
         except Exception as e:
-            return {'error': str(e)}, 500
+            raise ApiKeyAuthFailedError(str(e))
         return {'result': 'success'}, 200
 
 
