@@ -1,6 +1,7 @@
 from flask_login import current_user
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
+from controllers.console.auth.error import ApiKeyAuthFailedError
 
 from controllers.console import api
 from libs.login import login_required
