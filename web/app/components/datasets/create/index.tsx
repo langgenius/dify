@@ -134,6 +134,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           dataSourceType={dataSourceType}
           files={fileList.map(file => file.file)}
           notionPages={notionPages}
+          websitePages={websitePages}
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
           updateResultCache={updateResultCache}

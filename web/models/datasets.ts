@@ -5,7 +5,7 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 export enum DataSourceType {
   FILE = 'upload_file',
   NOTION = 'notion_import',
-  WEB = 'web_import',
+  WEB = 'website',
 }
 
 export type DataSet = {
@@ -228,6 +228,11 @@ export type DataSource = {
     notion_info_list?: NotionInfo[]
     file_info_list?: {
       file_ids: string[]
+    }
+    website_info_list?: {
+      provider: string
+      job_id: string
+      urls: string[]
     }
   }
 }
