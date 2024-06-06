@@ -235,7 +235,6 @@ const AppPublisher = ({
         onClose={() => setEmbeddingModalOpen(false)}
         appBaseUrl={appBaseURL}
         accessToken={accessToken}
-        className='z-50'
       />
     </PortalToFollowElem >
   )
