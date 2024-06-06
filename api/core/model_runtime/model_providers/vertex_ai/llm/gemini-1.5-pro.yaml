@@ -1,0 +1,39 @@
+model: gemini-1.5-pro-preview-0514
+label:
+  en_US: Gemini 1.5 Pro
+model_type: llm
+features:
+  - agent-thought
+  - vision
+  - tool-call
+  - stream-tool-call
+model_properties:
+  mode: chat
+  context_size: 1048576
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: top_k
+    label:
+      en_US: Top k
+    type: int
+    help:
+      en_US: Only sample from the top K options for each subsequent token.
+    required: false
+  - name: presence_penalty
+    use_template: presence_penalty
+  - name: frequency_penalty
+    use_template: frequency_penalty
+  - name: max_output_tokens
+    use_template: max_tokens
+    required: true
+    default: 8192
+    min: 1
+    max: 8192
+pricing:
+  input: '0.00'
+  output: '0.00'
+  unit: '0.000001'
+  currency: USD

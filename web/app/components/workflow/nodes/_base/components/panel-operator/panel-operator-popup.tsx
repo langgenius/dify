@@ -4,6 +4,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
+import { useNodeHelpLink } from '../../hooks/use-node-help-link'
 import ChangeBlock from './change-block'
 import {
   canRunBySingle,
@@ -20,16 +21,19 @@ import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import type { Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
+import { CollectionType } from '@/app/components/tools/types'
 
 type PanelOperatorPopupProps = {
   id: string
   data: Node['data']
   onClosePopup: () => void
+  showHelpLink?: boolean
 }
 const PanelOperatorPopup = ({
   id,
   data,
   onClosePopup,
+  showHelpLink,
 }: PanelOperatorPopupProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -46,28 +50,37 @@ const PanelOperatorPopup = ({
   const nodesExtraData = useNodesExtraData()
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
   const edge = edges.find(edge => edge.target === id)
   const author = useMemo(() => {
     if (data.type !== BlockEnum.Tool)
       return nodesExtraData[data.type].author
 
-    if (data.provider_type === 'builtin')
+    if (data.provider_type === CollectionType.builtIn)
       return buildInTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.author
 
+    if (data.provider_type === CollectionType.workflow)
+      return workflowTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.author
+
     return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.author
-  }, [data, nodesExtraData, buildInTools, customTools])
+  }, [data, nodesExtraData, buildInTools, customTools, workflowTools])
 
   const about = useMemo(() => {
     if (data.type !== BlockEnum.Tool)
       return nodesExtraData[data.type].about
 
-    if (data.provider_type === 'builtin')
+    if (data.provider_type === CollectionType.builtIn)
       return buildInTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
 
-    return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
-  }, [data, nodesExtraData, language, buildInTools, customTools])
+    if (data.provider_type === CollectionType.workflow)
+      return workflowTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
 
-  const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly
+    return customTools.find(toolWithProvider => toolWithProvider.id === data.provider_id)?.description[language]
+  }, [data, nodesExtraData, language, buildInTools, customTools, workflowTools])
+
+  const showChangeBlock = data.type !== BlockEnum.Start && !nodesReadOnly && data.type !== BlockEnum.Iteration
+
+  const link = useNodeHelpLink(data.type)
 
   return (
     <div className='w-[240px] border-[0.5px] border-gray-200 rounded-lg shadow-xl bg-white'>
@@ -97,7 +110,7 @@ const PanelOperatorPopup = ({
                 showChangeBlock && (
                   <ChangeBlock
                     nodeId={id}
-                    nodeType={data.type}
+                    nodeData={data}
                     sourceHandle={edge?.sourceHandle || 'source'}
                   />
                 )
@@ -108,7 +121,7 @@ const PanelOperatorPopup = ({
         )
       }
       {
-        data.type !== BlockEnum.Start && data.type !== BlockEnum.End && !nodesReadOnly && (
+        data.type !== BlockEnum.Start && !nodesReadOnly && (
           <>
             <div className='p-1'>
               <div
@@ -149,20 +162,22 @@ const PanelOperatorPopup = ({
           </>
         )
       }
-      <div className='p-1'>
-        <a
-          href={
-            language === 'zh_Hans'
-              ? 'https://docs.dify.ai/v/zh-hans/guides/workflow'
-              : 'https://docs.dify.ai/features/workflow'
-          }
-          target='_blank'
-          className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-        >
-          {t('workflow.panel.helpLink')}
-        </a>
-      </div>
-      <div className='h-[1px] bg-gray-100'></div>
+      {
+        showHelpLink && (
+          <>
+            <div className='p-1'>
+              <a
+                href={link}
+                target='_blank'
+                className='flex items-center px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
+              >
+                {t('workflow.panel.helpLink')}
+              </a>
+            </div>
+            <div className='h-[1px] bg-gray-100'></div>
+          </>
+        )
+      }
       <div className='p-1'>
         <div className='px-3 py-2 text-xs text-gray-500'>
           <div className='flex items-center mb-1 h-[22px] font-medium'>

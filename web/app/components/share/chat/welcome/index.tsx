@@ -357,7 +357,7 @@ const Welcome: FC<IWelcomeProps> = ({
             {siteInfo.privacy_policy
               ? <div>{t('share.chat.privacyPolicyLeft')}
                 <a
-                  className='text-gray-500'
+                  className='text-gray-500 px-1'
                   href={siteInfo.privacy_policy}
                   target='_blank' rel='noopener noreferrer'>{t('share.chat.privacyPolicyMiddle')}</a>
                 {t('share.chat.privacyPolicyRight')}

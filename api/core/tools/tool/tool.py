@@ -1,12 +1,16 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from enum import Enum
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, validator
 
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.file.file_obj import FileVar
 from core.tools.entities.tool_entities import (
     ToolDescription,
     ToolIdentity,
+    ToolInvokeFrom,
     ToolInvokeMessage,
     ToolParameter,
     ToolProviderType,
@@ -15,6 +19,7 @@ from core.tools.entities.tool_entities import (
     ToolRuntimeVariablePool,
 )
 from core.tools.tool_file_manager import ToolFileManager
+from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 
 
 class Tool(BaseModel, ABC):
@@ -25,10 +30,7 @@ class Tool(BaseModel, ABC):
 
     @validator('parameters', pre=True, always=True)
     def set_parameters(cls, v, values):
-        if not v:
-            return []
-
-        return v
+        return v or []
 
     class Runtime(BaseModel):
         """
@@ -41,6 +43,8 @@ class Tool(BaseModel, ABC):
 
         tenant_id: str = None
         tool_id: str = None
+        invoke_from: InvokeFrom = None
+        tool_invoke_from: ToolInvokeFrom = None
         credentials: dict[str, Any] = None
         runtime_parameters: dict[str, Any] = None
 
@@ -53,7 +57,7 @@ class Tool(BaseModel, ABC):
     class VARIABLE_KEY(Enum):
         IMAGE = 'image'
 
-    def fork_tool_runtime(self, meta: dict[str, Any]) -> 'Tool':
+    def fork_tool_runtime(self, runtime: dict[str, Any]) -> 'Tool':
         """
             fork a new tool with meta data
 
@@ -64,7 +68,7 @@ class Tool(BaseModel, ABC):
             identity=self.identity.copy() if self.identity else None,
             parameters=self.parameters.copy() if self.parameters else None,
             description=self.description.copy() if self.description else None,
-            runtime=Tool.Runtime(**meta),
+            runtime=Tool.Runtime(**runtime),
         )
     
     @abstractmethod
@@ -208,17 +212,17 @@ class Tool(BaseModel, ABC):
             if response.type == ToolInvokeMessage.MessageType.TEXT:
                 result += response.message
             elif response.type == ToolInvokeMessage.MessageType.LINK:
-                result += f"result link: {response.message}. please tell user to check it."
+                result += f"result link: {response.message}. please tell user to check it. \n"
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
-                result += "image has been created and sent to user already, you do not need to create it, just tell the user to check it now."
+                result += "image has been created and sent to user already, you do not need to create it, just tell the user to check it now. \n"
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 if len(response.message) > 114:
                     result += str(response.message[:114]) + '...'
                 else:
                     result += str(response.message)
             else:
-                result += f"tool response: {response.message}."
+                result += f"tool response: {response.message}. \n"
 
         return result
     
@@ -226,46 +230,13 @@ class Tool(BaseModel, ABC):
         """
         Transform tool parameters type
         """
+        # Temp fix for the issue that the tool parameters will be converted to empty while validating the credentials
+        result = deepcopy(tool_parameters)
         for parameter in self.parameters:
             if parameter.name in tool_parameters:
-                if parameter.type in [
-                    ToolParameter.ToolParameterType.SECRET_INPUT, 
-                    ToolParameter.ToolParameterType.STRING, 
-                    ToolParameter.ToolParameterType.SELECT,
-                ] and not isinstance(tool_parameters[parameter.name], str):
-                    if tool_parameters[parameter.name] is None:
-                        tool_parameters[parameter.name] = ''
-                    else:
-                        tool_parameters[parameter.name] = str(tool_parameters[parameter.name])
-                elif parameter.type == ToolParameter.ToolParameterType.NUMBER \
-                    and not isinstance(tool_parameters[parameter.name], int | float):
-                    if isinstance(tool_parameters[parameter.name], str):
-                        try:
-                            tool_parameters[parameter.name] = int(tool_parameters[parameter.name])
-                        except ValueError:
-                            tool_parameters[parameter.name] = float(tool_parameters[parameter.name])
-                    elif isinstance(tool_parameters[parameter.name], bool):
-                        tool_parameters[parameter.name] = int(tool_parameters[parameter.name])
-                    elif tool_parameters[parameter.name] is None:
-                        tool_parameters[parameter.name] = 0
-                elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
-                    if not isinstance(tool_parameters[parameter.name], bool):
-                        # check if it is a string
-                        if isinstance(tool_parameters[parameter.name], str):
-                            # check true false
-                            if tool_parameters[parameter.name].lower() in ['true', 'false']:
-                                tool_parameters[parameter.name] = tool_parameters[parameter.name].lower() == 'true'
-                            # check 1 0
-                            elif tool_parameters[parameter.name] in ['1', '0']:
-                                tool_parameters[parameter.name] = tool_parameters[parameter.name] == '1'
-                            else:
-                                tool_parameters[parameter.name] = bool(tool_parameters[parameter.name])
-                        elif isinstance(tool_parameters[parameter.name], int | float):
-                            tool_parameters[parameter.name] = tool_parameters[parameter.name] != 0
-                        else:
-                            tool_parameters[parameter.name] = bool(tool_parameters[parameter.name])
-                            
-        return tool_parameters
+                result[parameter.name] = ToolParameterConverter.cast_parameter_by_type(tool_parameters[parameter.name], parameter.type)
+        
+        return result
 
     @abstractmethod
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
@@ -324,14 +295,6 @@ class Tool(BaseModel, ABC):
 
         return parameters
     
-    def is_tool_available(self) -> bool:
-        """
-            check if the tool is available
-
-            :return: if the tool is available
-        """
-        return True
-
     def create_image_message(self, image: str, save_as: str = '') -> ToolInvokeMessage:
         """
             create an image message
@@ -342,6 +305,14 @@ class Tool(BaseModel, ABC):
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE, 
                                  message=image, 
                                  save_as=save_as)
+    
+    def create_file_var_message(self, file_var: FileVar) -> ToolInvokeMessage:
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.FILE_VAR,
+                                 message='',
+                                 meta={
+                                     'file_var': file_var
+                                 },
+                                 save_as='')
     
     def create_link_message(self, link: str, save_as: str = '') -> ToolInvokeMessage:
         """
@@ -361,10 +332,11 @@ class Tool(BaseModel, ABC):
             :param text: the text
             :return: the text message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, 
-                                 message=text,
-                                 save_as=save_as
-                                 )
+        return ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.TEXT,
+            message=text,
+            save_as=save_as
+        )
     
     def create_blob_message(self, blob: bytes, meta: dict = None, save_as: str = '') -> ToolInvokeMessage:
         """
@@ -373,7 +345,8 @@ class Tool(BaseModel, ABC):
             :param blob: the blob
             :return: the blob message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB, 
-                                 message=blob, meta=meta,
-                                 save_as=save_as
-                                 )
+        return ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB,
+            message=blob, meta=meta,
+            save_as=save_as
+        )

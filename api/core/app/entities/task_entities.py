@@ -1,12 +1,14 @@
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.answer.entities import GenerateRouteChunk
+from models.workflow import WorkflowNodeExecutionStatus
 
 
 class WorkflowStreamGenerateNodes(BaseModel):
@@ -65,6 +67,7 @@ class WorkflowTaskState(TaskState):
 
     current_stream_generate_state: Optional[WorkflowStreamGenerateNodes] = None
 
+    iteration_nested_node_ids: list[str] = None
 
 class AdvancedChatTaskState(WorkflowTaskState):
     """
@@ -91,6 +94,9 @@ class StreamEvent(Enum):
     WORKFLOW_FINISHED = "workflow_finished"
     NODE_STARTED = "node_started"
     NODE_FINISHED = "node_finished"
+    ITERATION_STARTED = "iteration_started"
+    ITERATION_NEXT = "iteration_next"
+    ITERATION_COMPLETED = "iteration_completed"
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
 
@@ -246,6 +252,24 @@ class NodeStartStreamResponse(StreamResponse):
     workflow_run_id: str
     data: Data
 
+    def to_ignore_detail_dict(self):
+        return {
+            "event": self.event.value,
+            "task_id": self.task_id,
+            "workflow_run_id": self.workflow_run_id,
+            "data": {
+                "id": self.data.id,
+                "node_id": self.data.node_id,
+                "node_type": self.data.node_type,
+                "title": self.data.title,
+                "index": self.data.index,
+                "predecessor_node_id": self.data.predecessor_node_id,
+                "inputs": None,
+                "created_at": self.data.created_at,
+                "extras": {}
+            }
+        }
+
 
 class NodeFinishStreamResponse(StreamResponse):
     """
@@ -276,6 +300,99 @@ class NodeFinishStreamResponse(StreamResponse):
     workflow_run_id: str
     data: Data
 
+    def to_ignore_detail_dict(self):
+        return {
+            "event": self.event.value,
+            "task_id": self.task_id,
+            "workflow_run_id": self.workflow_run_id,
+            "data": {
+                "id": self.data.id,
+                "node_id": self.data.node_id,
+                "node_type": self.data.node_type,
+                "title": self.data.title,
+                "index": self.data.index,
+                "predecessor_node_id": self.data.predecessor_node_id,
+                "inputs": None,
+                "process_data": None,
+                "outputs": None,
+                "status": self.data.status,
+                "error": None,
+                "elapsed_time": self.data.elapsed_time,
+                "execution_metadata": None,
+                "created_at": self.data.created_at,
+                "finished_at": self.data.finished_at,
+                "files": []
+            }
+        }
+
+class IterationNodeStartStreamResponse(StreamResponse):
+    """
+    NodeStartStreamResponse entity
+    """
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+        id: str
+        node_id: str
+        node_type: str
+        title: str
+        created_at: int
+        extras: dict = {}
+        metadata: dict = {}
+        inputs: dict = {}
+
+    event: StreamEvent = StreamEvent.ITERATION_STARTED
+    workflow_run_id: str
+    data: Data
+
+class IterationNodeNextStreamResponse(StreamResponse):
+    """
+    NodeStartStreamResponse entity
+    """
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+        id: str
+        node_id: str
+        node_type: str
+        title: str
+        index: int
+        created_at: int
+        pre_iteration_output: Optional[Any]
+        extras: dict = {}
+
+    event: StreamEvent = StreamEvent.ITERATION_NEXT
+    workflow_run_id: str
+    data: Data
+
+class IterationNodeCompletedStreamResponse(StreamResponse):
+    """
+    NodeStartStreamResponse entity
+    """
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+        id: str
+        node_id: str
+        node_type: str
+        title: str
+        outputs: Optional[dict]
+        created_at: int
+        extras: dict = None
+        inputs: dict = None
+        status: WorkflowNodeExecutionStatus
+        error: Optional[str]
+        elapsed_time: float
+        total_tokens: int
+        finished_at: int
+        steps: int
+
+    event: StreamEvent = StreamEvent.ITERATION_COMPLETED
+    workflow_run_id: str
+    data: Data
 
 class TextChunkStreamResponse(StreamResponse):
     """
@@ -411,3 +528,23 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
 
     workflow_run_id: str
     data: Data
+
+class WorkflowIterationState(BaseModel):
+    """
+    WorkflowIterationState entity
+    """
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+        parent_iteration_id: Optional[str] = None
+        iteration_id: str
+        current_index: int
+        iteration_steps_boundary: list[int] = None
+        node_execution_id: str
+        started_at: float
+        inputs: dict = None
+        total_tokens: int = 0
+        node_data: BaseNodeData
+
+    current_iterations: dict[str, Data] = None

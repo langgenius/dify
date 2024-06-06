@@ -31,6 +31,7 @@ type AnswerProps = {
   allToolIcons?: Record<string, string | Emoji>
   showPromptLog?: boolean
   chatAnswerContainerInner?: string
+  hideProcessDetail?: boolean
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -42,6 +43,7 @@ const Answer: FC<AnswerProps> = ({
   allToolIcons,
   showPromptLog,
   chatAnswerContainerInner,
+  hideProcessDetail,
 }) => {
   const { t } = useTranslation()
   const {
@@ -95,7 +97,7 @@ const Answer: FC<AnswerProps> = ({
           )
         }
       </div>
-      <div className='chat-answer-container grow w-0 ml-4' ref={containerRef}>
+      <div className='chat-answer-container group grow w-0 ml-4' ref={containerRef}>
         <div className={`group relative pr-10 ${chatAnswerContainerInner}`}>
           <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
           <div
@@ -129,7 +131,12 @@ const Answer: FC<AnswerProps> = ({
             }
             {
               workflowProcess && (
-                <WorkflowProcess data={workflowProcess} hideInfo />
+                <WorkflowProcess
+                  data={workflowProcess}
+                  item={item}
+                  hideInfo
+                  hideProcessDetail={hideProcessDetail}
+                />
               )
             }
             {

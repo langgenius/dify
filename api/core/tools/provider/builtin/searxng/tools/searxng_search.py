@@ -121,4 +121,5 @@ class SearXNGSearchTool(BuiltinTool):
             query=query, 
             search_type=search_type, 
             result_type=result_type, 
-            topK=num_results)
+            topK=num_results
+        )

@@ -314,6 +314,7 @@ export const useLanguages = () => {
     cs: t(`${langPrefix}cs`),
     th: t(`${langPrefix}th`),
     id: t(`${langPrefix}id`),
+    ro: t(`${langPrefix}ro`),
   }
 }
 

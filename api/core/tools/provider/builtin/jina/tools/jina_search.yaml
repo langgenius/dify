@@ -1,0 +1,21 @@
+identity:
+  name: jina_search
+  author: Dify
+  label:
+    en_US: JinaSearch
+    zh_Hans: JinaSearch
+    pt_BR: JinaSearch
+description:
+  human:
+    en_US: Search on the web and get the top 5 results. Useful for grounding using information from the web.
+  llm: A tool for searching results on the web for grounding. Input should be a simple question.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Question (Query)
+    human_description:
+      en_US: used to find information on the web
+    llm_description: simple question to ask on the web
+    form: llm

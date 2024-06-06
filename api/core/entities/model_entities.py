@@ -16,6 +16,7 @@ class ModelStatus(Enum):
     NO_CONFIGURE = "no-configure"
     QUOTA_EXCEEDED = "quota-exceeded"
     NO_PERMISSION = "no-permission"
+    DISABLED = "disabled"
 
 
 class SimpleModelProviderEntity(BaseModel):
@@ -43,12 +44,19 @@ class SimpleModelProviderEntity(BaseModel):
         )
 
 
-class ModelWithProviderEntity(ProviderModel):
+class ProviderModelWithStatusEntity(ProviderModel):
+    """
+    Model class for model response.
+    """
+    status: ModelStatus
+    load_balancing_enabled: bool = False
+
+
+class ModelWithProviderEntity(ProviderModelWithStatusEntity):
     """
     Model with provider entity.
     """
     provider: SimpleModelProviderEntity
-    status: ModelStatus
 
 
 class DefaultModelProviderEntity(BaseModel):

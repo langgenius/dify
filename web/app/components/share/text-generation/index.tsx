@@ -80,8 +80,10 @@ const TextGeneration: FC<IMainProps> = ({
   const pathname = usePathname()
   useEffect(() => {
     const params = new URLSearchParams(searchParams)
-    params.delete('mode')
-    router.replace(`${pathname}?${params.toString()}`)
+    if (params.has('mode')) {
+      params.delete('mode')
+      router.replace(`${pathname}?${params.toString()}`)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -618,7 +620,7 @@ const TextGeneration: FC<IMainProps> = ({
                 <div>·</div>
                 <div>{t('share.chat.privacyPolicyLeft')}
                   <a
-                    className='text-gray-500'
+                    className='text-gray-500 px-1'
                     href={siteInfo.privacy_policy}
                     target='_blank' rel='noopener noreferrer'>{t('share.chat.privacyPolicyMiddle')}</a>
                   {t('share.chat.privacyPolicyRight')}

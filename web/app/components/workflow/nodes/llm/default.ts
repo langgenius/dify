@@ -44,7 +44,14 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
 
     if (!errorMessages && !payload.memory) {
       const isChatModel = payload.model.mode === 'chat'
-      const isPromptyEmpty = isChatModel ? !(payload.prompt_template as PromptItem[]).some(t => t.text !== '') : (payload.prompt_template as PromptItem).text === ''
+      const isPromptyEmpty = isChatModel
+        ? !(payload.prompt_template as PromptItem[]).some((t) => {
+          if (t.edition_type === EditionType.jinja2)
+            return t.jinja2_text !== ''
+
+          return t.text !== ''
+        })
+        : ((payload.prompt_template as PromptItem).edition_type === EditionType.jinja2 ? (payload.prompt_template as PromptItem).jinja2_text === '' : (payload.prompt_template as PromptItem).text === '')
       if (isPromptyEmpty)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.llm.prompt') })
     }

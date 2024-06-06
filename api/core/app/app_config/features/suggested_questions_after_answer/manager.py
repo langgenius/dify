@@ -9,7 +9,7 @@ class SuggestedQuestionsAfterAnswerConfigManager:
         suggested_questions_after_answer = False
         suggested_questions_after_answer_dict = config.get('suggested_questions_after_answer')
         if suggested_questions_after_answer_dict:
-            if 'enabled' in suggested_questions_after_answer_dict and suggested_questions_after_answer_dict['enabled']:
+            if suggested_questions_after_answer_dict.get('enabled'):
                 suggested_questions_after_answer = True
 
         return suggested_questions_after_answer
