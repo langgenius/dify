@@ -17,6 +17,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import { languages } from '@/i18n/language'
 
 export type ISettingsModalProps = {
+  isChat: boolean
   appInfo: AppDetailResponse
   isShow: boolean
   defaultValue?: string
@@ -42,6 +43,7 @@ export type ConfigParams = {
 const prefixSettings = 'appOverview.overview.appInfo.settings'
 
 const SettingsModal: FC<ISettingsModalProps> = ({
+  isChat,
   appInfo,
   isShow = false,
   onClose,
@@ -199,17 +201,17 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             onSelect={item => setInputInfo({ ...inputInfo, show_workflow_steps: item.value === 'true' })}
           />
         </>}
-        <div className={`mt-8 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.chatColorTheme`)}</div>
-        <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.chatColorThemeDesc`)}</p>
-        <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
-          value={inputInfo.chatColorTheme ?? ''}
-          onChange={onChange('chatColorTheme')}
-          placeholder= 'E.g #A020F0'
-        />
-        <div className='flex gap-x-1 items-center'>
-          <input type='checkbox' onChange={onChange('chatColorThemeInverted')} checked ={inputInfo.chatColorThemeInverted}></input>
-          <p className={`mt-1 ${s.settingsTip} text-gray-500 pb-1`}>{t(`${prefixSettings}.chatColorThemeInverted`)}</p>
-        </div>
+        {isChat && <> <div className={`mt-8 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.chatColorTheme`)}</div>
+          <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.chatColorThemeDesc`)}</p>
+          <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
+            value={inputInfo.chatColorTheme ?? ''}
+            onChange={onChange('chatColorTheme')}
+            placeholder= 'E.g #A020F0'
+          />
+          <div className='flex gap-x-1 items-center'>
+            <input type='checkbox' onChange={onChange('chatColorThemeInverted')} checked ={inputInfo.chatColorThemeInverted}></input>
+            <p className={`mt-1 ${s.settingsTip} text-gray-500 pb-1`}>{t(`${prefixSettings}.chatColorThemeInverted`)}</p>
+          </div> </>}
         {!isShowMore && <div className='w-full cursor-pointer mt-8' onClick={() => setIsShowMore(true)}>
           <div className='flex justify-between'>
             <div className={`font-medium ${s.settingTitle} flex-grow text-gray-900`}>{t(`${prefixSettings}.more.entry`)}</div>
