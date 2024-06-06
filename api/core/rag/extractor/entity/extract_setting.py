@@ -21,6 +21,23 @@ class NotionInfo(BaseModel):
         super().__init__(**data)
 
 
+class WebsiteInfo(BaseModel):
+    """
+    website import info.
+    """
+    provider: str
+    job_id: str
+    url: str
+    mode: str
+    only_main_content: bool = False
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, **data) -> None:
+        super().__init__(**data)
+
+
 class ExtractSetting(BaseModel):
     """
     Model class for provider response.
@@ -28,6 +45,7 @@ class ExtractSetting(BaseModel):
     datasource_type: str
     upload_file: UploadFile = None
     notion_info: NotionInfo = None
+    website_info: WebsiteInfo = None
     document_model: str = None
 
     class Config:

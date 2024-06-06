@@ -256,7 +256,7 @@ class DatasetDocumentListApi(Resource):
         DocumentService.document_create_args_validate(args)
 
         try:
-            documents, batch = DocumentService.save_document_with_dataset_id(dataset, args, current_user)
+            documents, batch = DocumentService. save_document_with_dataset_id(dataset, args, current_user)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -952,6 +952,32 @@ class DocumentRenameApi(DocumentResource):
         return document
 
 
+class WebsiteDocumentSyncApi(DocumentResource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, dataset_id, document_id):
+        """sync website document."""
+        dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound('Dataset not found.')
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset.id, document_id)
+        if not document:
+            raise NotFound('Document not found.')
+        if document.tenant_id != current_user.current_tenant_id:
+            raise Forbidden('No permission.')
+        if document.data_source_type != 'website_crawl':
+            raise ValueError('Document is not a website document.')
+        # 403 if document is archived
+        if DocumentService.check_archived(document):
+            raise ArchivedDocumentImmutableError()
+        # sync document
+        DocumentService.sync_website_document(dataset_id, document)
+
+        return {'result': 'success'}, 204
+
 api.add_resource(GetProcessRuleApi, '/datasets/process-rule')
 api.add_resource(DatasetDocumentListApi,
                  '/datasets/<uuid:dataset_id>/documents')
@@ -980,3 +1006,5 @@ api.add_resource(DocumentRecoverApi, '/datasets/<uuid:dataset_id>/documents/<uui
 api.add_resource(DocumentRetryApi, '/datasets/<uuid:dataset_id>/retry')
 api.add_resource(DocumentRenameApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename')
+
+api.add_resource(WebsiteDocumentSyncApi, '/datasets/<uuid:dataset_id>/<uuid:document_id>/website-sync')
