@@ -13,6 +13,7 @@ import cn from 'classnames'
 import dayjs from 'dayjs'
 import { Edit03 } from '../../base/icons/src/vender/solid/general'
 import TooltipPlus from '../../base/tooltip-plus'
+import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
 import s from './style.module.css'
 import RenameModal from './rename-modal'
 import Switch from '@/app/components/base/switch'
@@ -418,10 +419,10 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
               <td>
                 <div className='group flex items-center justify-between'>
                   <span className={s.tdValue}>
-                    {
-                      doc?.data_source_type === DataSourceType.NOTION
-                        ? <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
-                        : <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? fileType}Icon`], s.commonIcon, 'mr-1.5')}></div>
+                    {doc?.data_source_type === DataSourceType.NOTION && <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
+                    }
+                    {doc?.data_source_type === DataSourceType.FILE && <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? fileType}Icon`], s.commonIcon, 'mr-1.5')}></div>}
+                    {doc?.data_source_type === DataSourceType.WEB && <Globe01 className='inline-flex -mt-[3px] mr-1.5 align-middle' />
                     }
                     {
                       doc.name
@@ -450,6 +451,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
               </td>
               <td>
                 {
+                  // TODO: Maybe add website
                   (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status) && doc?.data_source_type === DataSourceType.NOTION)
                     ? <ProgressBar percent={doc.percent || 0} />
                     : <StatusItem status={doc.display_status} />

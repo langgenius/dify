@@ -37,7 +37,6 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   }
 
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
-  console.log(websitePages)
   const updateFileList = (preparedFiles: FileItem[]) => {
     setFiles(preparedFiles)
   }
