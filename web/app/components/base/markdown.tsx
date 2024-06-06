@@ -39,6 +39,23 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 
   return language.charAt(0).toUpperCase() + language.substring(1)
 }
+
+export const preprocessLaTeX = (content: string) => {
+  // Replace block-level LaTeX delimiters \[ \] with $$ $$
+  const blockProcessedContent = content.replace(
+    /\\\[(.*?)\\\]/gs,
+    (_, equation) => `$$${equation}$$`,
+  )
+
+  // Replace inline LaTeX delimiters \( \) with $ $
+  const inlineProcessedContent = blockProcessedContent.replace(
+    /\\\((.*?)\\\)/gs,
+    (_, equation) => `$${equation}$`,
+  )
+
+  return inlineProcessedContent
+}
+
 export function PreCode(props: { children: any }) {
   const ref = useRef<HTMLPreElement>(null)
 
@@ -82,6 +99,7 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
 
 export function Markdown(props: { content: string; className?: string }) {
   const [isSVG, setIsSVG] = useState(false)
+  const latexContent = preprocessLaTeX(props.content)
   return (
     <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown
@@ -179,7 +197,7 @@ export function Markdown(props: { content: string; className?: string }) {
         linkTarget='_blank'
       >
         {/* Markdown detect has problem. */}
-        {props.content}
+        {latexContent}
       </ReactMarkdown>
     </div>
   )
