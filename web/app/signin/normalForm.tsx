@@ -7,7 +7,7 @@ import useSWR from 'swr'
 import Link from 'next/link'
 import Toast from '../components/base/toast'
 import style from './page.module.css'
-import { IS_CE_EDITION, apiPrefix } from '@/config'
+import { IS_CE_EDITION, SUPPORT_MAIL_LOGIN, apiPrefix } from '@/config'
 import Button from '@/app/components/base/button'
 import { login, oauth } from '@/service/common'
 import { getPurifyHref } from '@/utils'
@@ -61,6 +61,7 @@ function reducer(state: IState, action: IAction) {
 }
 
 const NormalForm = () => {
+  console.log(SUPPORT_MAIL_LOGIN)
   const { t } = useTranslation()
   const router = useRouter()
 
