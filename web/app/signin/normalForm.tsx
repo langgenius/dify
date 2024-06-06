@@ -61,8 +61,9 @@ function reducer(state: IState, action: IAction) {
 }
 
 const NormalForm = () => {
-  console.log(SUPPORT_MAIL_LOGIN)
   const { t } = useTranslation()
+  const useEmailLogin = IS_CE_EDITION || SUPPORT_MAIL_LOGIN
+
   const router = useRouter()
 
   const [state, dispatch] = useReducer(reducer, {
@@ -151,7 +152,7 @@ const NormalForm = () => {
 
       <div className="w-full mx-auto mt-8">
         <div className="bg-white ">
-          {!IS_CE_EDITION && (
+          {!useEmailLogin && (
             <div className="flex flex-col gap-3 mt-6">
               <div className='w-full'>
                 <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
@@ -195,7 +196,7 @@ const NormalForm = () => {
           )}
 
           {
-            IS_CE_EDITION && <>
+            useEmailLogin && <>
               {/* <div className="relative mt-6">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
                   <div className="w-full border-t border-gray-300" />
