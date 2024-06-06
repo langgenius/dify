@@ -5,6 +5,7 @@ from werkzeug.exceptions import Forbidden
 from controllers.console import api
 from libs.login import login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService
+from .error import ApiKeyAuthFailedError
 
 from ..setup import setup_required
 from ..wraps import account_initialization_required
@@ -40,7 +41,10 @@ class ApiKeyAuthDataSourceBinding(Resource):
         parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
         args = parser.parse_args()
         ApiKeyAuthService.validate_api_key_auth_args(args)
-        ApiKeyAuthService.create_provider_auth(current_user.current_tenant_id, args)
+        try:
+            ApiKeyAuthService.create_provider_auth(current_user.current_tenant_id, args)
+        except Exception as e:
+            raise ApiKeyAuthFailedError(str(e))
         return {'result': 'success'}, 200
 
 

@@ -1,3 +1,5 @@
+import json
+
 import requests
 
 from services.auth.api_key_auth_base import ApiKeyAuthBase
@@ -48,4 +50,7 @@ class FirecrawlAuth(ApiKeyAuthBase):
             error_message = response.json().get('error', 'Unknown error occurred')
             raise Exception(f'Failed to authorize. Status code: {response.status_code}. Error: {error_message}')
         else:
+            if response.text:
+                error_message = json.loads(response.text).get('error', 'Unknown error occurred')
+                raise Exception(f'Failed to authorize. Status code: {response.status_code}. Error: {error_message}')
             raise Exception(f'Unexpected error occurred while trying to authorize. Status code: {response.status_code}')
