@@ -54,7 +54,7 @@ class PGVectoRS(BaseVector):
 
         class _Table(CollectionORM):
             __tablename__ = collection_name
-            __table_args__ = {"extend_existing": True}  # noqa: RUF012
+            __table_args__ = {"extend_existing": True}
             id: Mapped[UUID] = mapped_column(
                 postgresql.UUID(as_uuid=True),
                 primary_key=True,

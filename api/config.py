@@ -115,7 +115,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.6.9"
+        self.CURRENT_VERSION = "0.6.10"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = get_env('EDITION')
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -298,6 +298,13 @@ class Config:
         self.PGVECTOR_USER = get_env('PGVECTOR_USER')
         self.PGVECTOR_PASSWORD = get_env('PGVECTOR_PASSWORD')
         self.PGVECTOR_DATABASE = get_env('PGVECTOR_DATABASE')
+
+        # tidb-vector settings
+        self.TIDB_VECTOR_HOST = get_env('TIDB_VECTOR_HOST')
+        self.TIDB_VECTOR_PORT = get_env('TIDB_VECTOR_PORT')
+        self.TIDB_VECTOR_USER = get_env('TIDB_VECTOR_USER')
+        self.TIDB_VECTOR_PASSWORD = get_env('TIDB_VECTOR_PASSWORD')
+        self.TIDB_VECTOR_DATABASE = get_env('TIDB_VECTOR_DATABASE')
 
         # ------------------------
         # Mail Configurations.

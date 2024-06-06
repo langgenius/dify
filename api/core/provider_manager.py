@@ -27,6 +27,7 @@ from core.model_runtime.entities.provider_entities import (
 from core.model_runtime.model_providers import model_provider_factory
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -406,7 +407,15 @@ class ProviderManager:
         :param tenant_id: workspace id
         :return:
         """
-        model_load_balancing_enabled = FeatureService.get_features(tenant_id).model_load_balancing_enabled
+        cache_key = f"tenant:{tenant_id}:model_load_balancing_enabled"
+        cache_result = redis_client.get(cache_key)
+        if cache_result is None:
+            model_load_balancing_enabled = FeatureService.get_features(tenant_id).model_load_balancing_enabled
+            redis_client.setex(cache_key, 120, str(model_load_balancing_enabled))
+        else:
+            cache_result = cache_result.decode('utf-8')
+            model_load_balancing_enabled = cache_result == 'True'
+
         if not model_load_balancing_enabled:
             return dict()
 

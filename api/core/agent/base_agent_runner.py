@@ -528,4 +528,3 @@ class BaseAgentRunner(AppRunner):
                 return UserPromptMessage(content=prompt_message_contents)
         else:
             return UserPromptMessage(content=message.query)
-         

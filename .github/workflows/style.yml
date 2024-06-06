@@ -36,7 +36,7 @@ jobs:
 
       - name: Ruff check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: ruff check ./api
+        run: ruff check --preview ./api
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
