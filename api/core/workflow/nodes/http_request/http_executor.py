@@ -28,7 +28,7 @@ class HttpExecutorResponse:
         self.headers = {}
         if isinstance(response, httpx.Response | requests.Response):
             for k, v in response.headers.items():
-                self.headers[k] = v
+                self.headers[k.lower()] = v
         self.response = response
 
     @property
