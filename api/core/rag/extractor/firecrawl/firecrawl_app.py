@@ -63,6 +63,8 @@ class FirecrawlApp:
             if crawl_status_response.get('status') != 'completed':
                 return {
                     'status': crawl_status_response.get('status'),
+                    'total': crawl_status_response.get('total'),
+                    'current': crawl_status_response.get('current'),
                     'data': []
                 }
             else:
@@ -78,6 +80,8 @@ class FirecrawlApp:
                     url_data_list.append(url_data)
                 return {
                     'status': 'completed',
+                    'total': crawl_status_response.get('total'),
+                    'current': crawl_status_response.get('current'),
                     'data': url_data_list
                 }
         else:
