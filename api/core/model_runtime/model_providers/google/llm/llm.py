@@ -204,6 +204,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
             stream=stream,
             safety_settings=safety_settings,
             tools=self._convert_tools_to_glm_tool(tools) if tools else None,
+            request_options={"timeout": 600}
         )
 
         if stream:

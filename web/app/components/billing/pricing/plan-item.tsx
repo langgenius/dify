@@ -119,7 +119,6 @@ const PlanItem: FC<Props> = ({
             <div className='flex items-center'>
               <div className='mr-0.5'>&nbsp;{t('billing.plansCommon.supportItems.workflow')}</div>
             </div>
-            <div>{comingSoon}</div>
           </div>
         </div>)
       case Plan.professional:
@@ -131,6 +130,17 @@ const PlanItem: FC<Props> = ({
             </div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div>+ {t('billing.plansCommon.supportItems.bulkUpload')}</div>
+            </div>
+            <div className='mt-3.5 flex items-center space-x-1'>
+              <span>+ </span>
+              <div>{t('billing.plansCommon.supportItems.llmLoadingBalancing')}</div>
+              <TooltipPlus
+                popupContent={
+                  <div className='w-[200px]'>{t('billing.plansCommon.supportItems.llmLoadingBalancingTooltip')}</div>
+                }
+              >
+                <HelpCircle className='w-3 h-3 text-gray-400' />
+              </TooltipPlus>
             </div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div className='flex items-center'>

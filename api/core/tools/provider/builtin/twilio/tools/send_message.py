@@ -30,7 +30,7 @@ class TwilioAPIWrapper(BaseModel):
         Twilio also work here. You cannot, for example, spoof messages from a private 
         cell phone number. If you are using `messaging_service_sid`, this parameter 
         must be empty.
-    """  # noqa: E501
+    """
 
     @validator("client", pre=True, always=True)
     def set_validator(cls, values: dict) -> dict:
@@ -60,7 +60,7 @@ class TwilioAPIWrapper(BaseModel):
                 SMS/MMS or
                 [Channel user address](https://www.twilio.com/docs/sms/channels#channel-addresses)
                 for other 3rd-party channels.
-        """  # noqa: E501
+        """
         message = self.client.messages.create(to, from_=self.from_number, body=body)
         return message.sid
 

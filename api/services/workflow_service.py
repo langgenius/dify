@@ -68,7 +68,7 @@ class WorkflowService:
                             account: Account) -> Workflow:
         """
         Sync draft workflow
-        @throws WorkflowHashNotEqualError
+        :raises WorkflowHashNotEqualError
         """
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow(app_model=app_model)

@@ -123,7 +123,7 @@ const AssistantTypePicker: FC<Props> = ({
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{ zIndex: 1000 }}>
-          <div className='relative left-0.5 p-6 bg-white border border-black/[0.08] shadow-lg rounded-xl w-[480px]'>
+          <div className='relative left-0.5 p-6 bg-white border border-black/8 shadow-lg rounded-xl w-[480px]'>
             <div className='mb-2 leading-5 text-sm font-semibold text-gray-900'>{t('appDebug.assistantType.name')}</div>
             <SelectItem
               Icon={BubbleText}

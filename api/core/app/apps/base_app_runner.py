@@ -1,6 +1,6 @@
 import time
 from collections.abc import Generator
-from typing import Optional, Union, cast
+from typing import Optional, Union
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -16,11 +16,11 @@ from core.app.features.hosting_moderation.hosting_moderation import HostingModer
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.file.file_obj import FileVar
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.invoke import InvokeBadRequestError
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.moderation.input_moderation import InputModeration
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
@@ -45,8 +45,11 @@ class AppRunner:
         :param query: query
         :return:
         """
-        model_type_instance = model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
+        # Invoke model
+        model_instance = ModelInstance(
+            provider_model_bundle=model_config.provider_model_bundle,
+            model=model_config.model
+        )
 
         model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
 
@@ -73,9 +76,7 @@ class AppRunner:
             query=query
         )
 
-        prompt_tokens = model_type_instance.get_num_tokens(
-            model_config.model,
-            model_config.credentials,
+        prompt_tokens = model_instance.get_llm_num_tokens(
             prompt_messages
         )
 
@@ -89,8 +90,10 @@ class AppRunner:
     def recalc_llm_max_tokens(self, model_config: ModelConfigWithCredentialsEntity,
                               prompt_messages: list[PromptMessage]):
         # recalc max_tokens if sum(prompt_token +  max_tokens) over model token limit
-        model_type_instance = model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
+        model_instance = ModelInstance(
+            provider_model_bundle=model_config.provider_model_bundle,
+            model=model_config.model
+        )
 
         model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
 
@@ -107,9 +110,7 @@ class AppRunner:
         if max_tokens is None:
             max_tokens = 0
 
-        prompt_tokens = model_type_instance.get_num_tokens(
-            model_config.model,
-            model_config.credentials,
+        prompt_tokens = model_instance.get_llm_num_tokens(
             prompt_messages
         )
 
