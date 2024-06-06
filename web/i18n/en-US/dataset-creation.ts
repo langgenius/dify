@@ -70,6 +70,7 @@ const translation = {
       selectAll: 'Select All',
       resetAll: 'Reset All',
       scrapTimeInfo: 'Scraped {{total}} pages in total within {{time}}',
+      preview: 'Preview',
     },
   },
   stepTwo: {

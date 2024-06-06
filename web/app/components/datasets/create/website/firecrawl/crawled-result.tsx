@@ -41,6 +41,13 @@ const CrawledResult: FC<Props> = ({
     }
   }, [checkedList, onSelectedChange])
 
+  const [previewIndex, setPreviewIndex] = React.useState<number>(-1)
+  const handlePreview = useCallback((index: number) => {
+    return () => {
+      setPreviewIndex(index)
+    }
+  }, [])
+
   return (
     <div className='border-t border-gray-200'>
       <div className='flex items-center justify-between h-[34px] px-4 bg-gray-50 shadow-xs border-b-[0.5px] border-black/8 text-xs font-normal text-gray-700'>
@@ -55,9 +62,11 @@ const CrawledResult: FC<Props> = ({
         })}</div>
       </div>
       <div className='p-2'>
-        {list.map(item => (
+        {list.map((item, index) => (
           <CrawledResultItem
             key={item.source_url}
+            isPreview={index === previewIndex}
+            onPreview={handlePreview(index)}
             payload={item}
             isChecked={checkedList.some(checkedItem => checkedItem.source_url === item.source_url)}
             onCheckChange={handleItemCheckChange(item)}

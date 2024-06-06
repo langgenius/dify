@@ -70,6 +70,7 @@ const translation = {
       selectAll: '全选',
       resetAll: '重置全部',
       scrapTimeInfo: '总共在 {{time}} 内抓取了 {{total}} 个页面',
+      preview: '预览',
     },
   },
   stepTwo: {
