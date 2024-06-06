@@ -190,7 +190,7 @@ class RelytVector(BaseVector):
                     conn.execute(chunks_table.delete().where(delete_condition))
                     return True
         except Exception as e:
-            print("Delete operation failed:", str(e))  # noqa: T201
+            print("Delete operation failed:", str(e))
             return False
 
     def delete_by_metadata_field(self, key: str, value: str):

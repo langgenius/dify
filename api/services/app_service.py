@@ -47,10 +47,10 @@ class AppService:
         elif args['mode'] == 'channel':
             filters.append(App.mode == AppMode.CHANNEL.value)
 
-        if 'name' in args and args['name']:
+        if args.get('name'):
             name = args['name'][:30]
             filters.append(App.name.ilike(f'%{name}%'))
-        if 'tag_ids' in args and args['tag_ids']:
+        if args.get('tag_ids'):
             target_ids = TagService.get_target_ids_by_tag_ids('app',
                                                               tenant_id,
                                                               args['tag_ids'])
@@ -196,6 +196,7 @@ class AppService:
                 app_model=app,
                 graph=workflow.get('graph'),
                 features=workflow.get('features'),
+                unique_hash=None,
                 account=account
             )
             workflow_service.publish_workflow(

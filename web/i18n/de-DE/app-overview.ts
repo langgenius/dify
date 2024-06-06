@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: 'Öffentliche URL',
       preview: 'Vorschau',
       regenerate: 'Regenerieren',
+      regenerateNotice: 'Möchten Sie die öffentliche URL neu generieren?',
       preUseReminder: 'Bitte aktivieren Sie WebApp, bevor Sie fortfahren.',
       settings: {
         entry: 'Einstellungen',
@@ -50,6 +51,9 @@ const translation = {
           privacyPolicy: 'Datenschutzrichtlinie',
           privacyPolicyPlaceholder: 'Geben Sie den Link zur Datenschutzrichtlinie ein',
           privacyPolicyTip: 'Hilft Besuchern zu verstehen, welche Daten die Anwendung sammelt, siehe Difys <privacyPolicyLink>Datenschutzrichtlinie</privacyPolicyLink>.',
+          customDisclaimer: 'Benutzerdefinierte Haftungsausschluss',
+          customDisclaimerPlaceholder: 'Geben Sie den benutzerdefinierten Haftungsausschluss-Text ein',
+          customDisclaimerTip: 'Der ben userdefinierte Haftungsausschluss-Text wird auf der Clientseite angezeigt und bietet zusätzliche Informationen über die Anwendung',
         },
       },
       embedded: {

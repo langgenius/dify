@@ -137,8 +137,8 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
 
         if (item.annotation) {
           return {
-            id: '',
-            authorName: '',
+            id: item.annotation.id,
+            authorName: item.annotation.account.name,
             logAnnotation: item.annotation,
             created_at: 0,
           }
@@ -164,7 +164,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal, showMessageLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showPromptLogModal: state.showPromptLogModal,
@@ -173,6 +173,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     setShowAgentLogModal: state.setShowAgentLogModal,
     showMessageLogModal: state.showMessageLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
+    currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
   const { t } = useTranslation()
   const [items, setItems] = React.useState<IChatItem[]>([])
@@ -444,6 +445,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             setCurrentLogItem()
             setShowMessageLogModal(false)
           }}
+          defaultTab={currentLogModalActiveTab}
         />
       )}
     </div>

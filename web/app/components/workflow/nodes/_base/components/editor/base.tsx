@@ -46,6 +46,9 @@ const Base: FC<Props> = ({
   const handleCopy = useCallback(() => {
     copy(value)
     setIsCopied(true)
+    setTimeout(() => {
+      setIsCopied(false)
+    }, 2000)
   }, [value])
 
   return (

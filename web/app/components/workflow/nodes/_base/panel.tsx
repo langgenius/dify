@@ -12,6 +12,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import NextStep from './components/next-step'
 import PanelOperator from './components/panel-operator'
+import HelpLink from './components/help-link'
 import {
   DescriptionInput,
   TitleInput,
@@ -22,8 +23,8 @@ import {
 } from '@/app/components/base/icons/src/vender/line/general'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
+  useAvailableBlocks,
   useNodeDataUpdate,
-  useNodesExtraData,
   useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
@@ -56,8 +57,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { handleNodeSelect } = useNodesInteractions()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { nodesReadOnly } = useNodesReadOnly()
-  const nodesExtraData = useNodesExtraData()
-  const availableNextNodes = nodesExtraData[data.type].availableNextNodes
+  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration)
   const toolIcon = useToolIcon(data)
 
   const handleResize = useCallback((width: number) => {
@@ -134,7 +134,8 @@ const BasePanel: FC<BasePanelProps> = ({
                   </TooltipPlus>
                 )
               }
-              <PanelOperator id={id} data={data} />
+              <HelpLink nodeType={data.type} />
+              <PanelOperator id={id} data={data} showHelpLink={false} />
               <div className='mx-3 w-[1px] h-3.5 bg-gray-200' />
               <div
                 className='flex items-center justify-center w-6 h-6 cursor-pointer'
@@ -155,7 +156,7 @@ const BasePanel: FC<BasePanelProps> = ({
           {cloneElement(children, { id, data })}
         </div>
         {
-          !!availableNextNodes.length && (
+          !!availableNextBlocks.length && (
             <div className='p-4 border-t-[0.5px] border-t-black/5'>
               <div className='flex items-center mb-1 text-gray-700 text-[13px] font-semibold'>
                 {t('workflow.panel.nextStep').toLocaleUpperCase()}

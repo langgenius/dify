@@ -10,6 +10,9 @@ identity:
     zh_Hans: WolframAlpha 是一个强大的计算知识引擎。
     pt_BR: WolframAlpha is a powerful computational knowledge engine.
   icon: icon.svg
+  tags:
+    - productivity
+    - utilities
 credentials_for_provider:
   appid:
     type: secret-input

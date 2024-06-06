@@ -8,7 +8,8 @@ import Drawer from '@/app/components/base/drawer-plus'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import type { Collection, Tool } from '@/app/components/tools/types'
-import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList } from '@/service/tools'
+import { CollectionType } from '@/app/components/tools/types'
+import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
@@ -64,6 +65,8 @@ const SettingBuiltInTool: FC<Props> = ({
               resolve(await fetchModelToolList(collection.name))
             else if (isBuiltIn)
               resolve(await fetchBuiltInToolList(collection.name))
+            else if (collection.type === CollectionType.workflow)
+              resolve(await fetchWorkflowToolList(collection.id))
             else
               resolve(await fetchCustomToolList(collection.name))
           }())
@@ -78,7 +81,7 @@ const SettingBuiltInTool: FC<Props> = ({
       catch (e) { }
       setIsLoading(false)
     })()
-  }, [collection?.name])
+  }, [collection?.name, collection?.id, collection?.type])
 
   useEffect(() => {
     setCurrType((!readonly && hasSetting) ? 'setting' : 'info')
@@ -150,7 +153,7 @@ const SettingBuiltInTool: FC<Props> = ({
       onHide={onHide}
       title={(
         <div className='flex'>
-          {collection.icon === 'string'
+          {typeof collection.icon === 'string'
             ? (
               <div
                 className='w-6 h-6 bg-cover bg-center rounded-md'
@@ -189,8 +192,8 @@ const SettingBuiltInTool: FC<Props> = ({
           </>)}
         </div>
       )}
-      panelClassName='mt-[65px] !w-[480px]'
-      maxWidthClassName='!max-w-[480px]'
+      panelClassName='mt-[65px] !w-[405px]'
+      maxWidthClassName='!max-w-[405px]'
       height='calc(100vh - 65px)'
       headerClassName='!border-b-black/5'
       body={
@@ -212,7 +215,7 @@ const SettingBuiltInTool: FC<Props> = ({
             </div>)}
         </div>
       }
-      isShowMask={true}
+      isShowMask={false}
       clickOutsideNotOpen={false}
     />
   )

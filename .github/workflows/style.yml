@@ -6,7 +6,7 @@ on:
       - main
 
 concurrency:
-  group: dep-${{ github.head_ref || github.run_id }}
+  group: style-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -18,54 +18,89 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: api/**
+
       - name: Set up Python
         uses: actions/setup-python@v5
+        if: steps.changed-files.outputs.any_changed == 'true'
         with:
           python-version: '3.10'
 
       - name: Python dependencies
+        if: steps.changed-files.outputs.any_changed == 'true'
         run: pip install ruff dotenv-linter
 
       - name: Ruff check
-        run: ruff check ./api
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: ruff check --preview ./api
 
       - name: Dotenv check
+        if: steps.changed-files.outputs.any_changed == 'true'
         run: dotenv-linter ./api/.env.example ./web/.env.example
 
       - name: Lint hints
         if: failure()
         run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
 
-  test:
-    name: ESLint and SuperLinter
+  web-style:
+    name: Web Style
     runs-on: ubuntu-latest
-    needs: python-style
+    defaults:
+      run:
+        working-directory: ./web
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
         with:
-          fetch-depth: 0
+          files: web/**
 
       - name: Setup NodeJS
         uses: actions/setup-node@v4
+        if: steps.changed-files.outputs.any_changed == 'true'
         with:
           node-version: 20
           cache: yarn
           cache-dependency-path: ./web/package.json
 
       - name: Web dependencies
-        run: |
-          cd ./web
-          yarn install --frozen-lockfile
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: yarn install --frozen-lockfile
 
       - name: Web style check
-        run: |
-          cd ./web
-          yarn run lint
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: yarn run lint
+
+
+  superlinter:
+    name: SuperLinter
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            **.sh
+            **.yaml
+            **.yml
+            Dockerfile
 
       - name: Super-linter
         uses: super-linter/super-linter/slim@v6
+        if: steps.changed-files.outputs.any_changed == 'true'
         env:
           BASH_SEVERITY: warning
           DEFAULT_BRANCH: main
@@ -76,4 +111,5 @@ jobs:
           VALIDATE_BASH_EXEC: true
           VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_DOCKERFILE_HADOLINT: true
+          VALIDATE_XML: true
           VALIDATE_YAML: true

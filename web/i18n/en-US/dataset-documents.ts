@@ -13,6 +13,8 @@ const translation = {
         status: 'STATUS',
         action: 'ACTION',
       },
+      rename: 'Rename',
+      name: 'Name',
     },
     action: {
       uploadFile: 'Upload new file',

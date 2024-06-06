@@ -23,7 +23,7 @@ const ProgressBar: FC<{ percent: number; loading: boolean }> = ({ percent, loadi
       <div className={cn(s.progress, loading ? s.progressLoading : '')}>
         <div
           className={s.progressInner}
-          style={{ width: `${loading ? 0 : (percent * 100).toFixed(2)}%` }}
+          style={{ width: `${loading ? 0 : (Math.min(percent, 1) * 100).toFixed(2)}%` }}
         />
       </div>
       <div className={loading ? s.progressTextLoading : s.progressText}>{loading ? null : percent.toFixed(2)}</div>
