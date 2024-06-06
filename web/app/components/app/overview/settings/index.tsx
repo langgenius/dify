@@ -209,8 +209,13 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             placeholder= 'E.g #A020F0'
           />
           <div className='flex gap-x-1 items-center'>
-            <input type='checkbox' onChange={onChange('chatColorThemeInverted')} checked ={inputInfo.chatColorThemeInverted}></input>
-            <p className={`mt-1 ${s.settingsTip} text-gray-500 pb-1`}>{t(`${prefixSettings}.chatColorThemeInverted`)}</p>
+            <input
+              type='checkbox'
+              className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-700"
+              onChange={onChange('chatColorThemeInverted')}
+              checked={inputInfo.chatColorThemeInverted}>
+            </input>
+            <p className={`mt-1 ${s.settingsTip} text-gray-500 pb-1 ml-1`}>{t(`${prefixSettings}.chatColorThemeInverted`)}</p>
           </div> </>}
         {!isShowMore && <div className='w-full cursor-pointer mt-8' onClick={() => setIsShowMore(true)}>
           <div className='flex justify-between'>
