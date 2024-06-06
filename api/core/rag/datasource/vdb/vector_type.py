@@ -2,6 +2,7 @@ from enum import Enum
 
 
 class VectorType(str, Enum):
+    CHROMA = 'chroma'
     MILVUS = 'milvus'
     PGVECTOR = 'pgvector'
     PGVECTO_RS = 'pgvecto-rs'
