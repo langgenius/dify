@@ -12,12 +12,14 @@ type Props = {
   list: CrawlResultItem[]
   checkedList: CrawlResultItem[]
   onSelectedChange: (selected: CrawlResultItem[]) => void
+  onPreview: (payload: CrawlResultItem) => void
 }
 
 const CrawledResult: FC<Props> = ({
   list,
   checkedList,
   onSelectedChange,
+  onPreview,
 }) => {
   const { t } = useTranslation()
 
@@ -45,8 +47,9 @@ const CrawledResult: FC<Props> = ({
   const handlePreview = useCallback((index: number) => {
     return () => {
       setPreviewIndex(index)
+      onPreview(list[index])
     }
-  }, [])
+  }, [list, onPreview])
 
   return (
     <div className='border-t border-gray-200'>

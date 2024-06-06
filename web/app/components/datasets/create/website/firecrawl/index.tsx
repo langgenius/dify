@@ -21,8 +21,9 @@ const I18N_PREFIX = 'datasetCreation.stepOne.website'
 // const testCrawlErrorMsg = 'Firecrawl currently does not support social media scraping due to policy restrictions. We are actively working on building support for it.'
 
 type Props = {
-
+  onPreview: (payload: CrawlResultItem) => void
 }
+
 const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
   crawl_sub_pages: true,
   only_main_content: true,
@@ -38,7 +39,9 @@ enum Step {
   finished = 'finished',
 }
 
-const FireCrawl: FC<Props> = () => {
+const FireCrawl: FC<Props> = ({
+  onPreview,
+}) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.finished)
 
@@ -126,6 +129,7 @@ const FireCrawl: FC<Props> = () => {
               list={crawlResult}
               checkedList={checkedCrawlResult}
               onSelectedChange={setCheckedCrawlResult}
+              onPreview={onPreview}
             />
           )}
         </OptionsWrap>

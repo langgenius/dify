@@ -4,12 +4,15 @@ import React, { useCallback, useState } from 'react'
 import NoData from './no-data'
 import Firecrawl from './firecrawl'
 import { useModalContext } from '@/context/modal-context'
+import type { CrawlResultItem } from '@/models/datasets'
 
 type Props = {
-
+  onPreview: (payload: CrawlResultItem) => void
 }
 
-const WebsitePreview: FC<Props> = () => {
+const WebsitePreview: FC<Props> = ({
+  onPreview,
+}) => {
   const { setShowAccountSettingModal } = useModalContext()
   const [isLoaded, setIsLoaded] = useState(false)
   const [isConfigured, setIsConfigured] = useState(true)
@@ -29,7 +32,7 @@ const WebsitePreview: FC<Props> = () => {
     <div>
       {isConfigured
         ? (
-          <Firecrawl />
+          <Firecrawl onPreview={onPreview} />
         )
         : (
           <NoData onConfig={handleOnConfig} />
