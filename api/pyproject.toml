@@ -7,7 +7,6 @@ exclude = [
 line-length = 120
 
 [tool.ruff.lint]
-ignore-init-module-imports = true
 select = [
     "B", # flake8-bugbear rules
     "F", # pyflakes rules
@@ -38,6 +37,7 @@ ignore = [
     "B006", # mutable-argument-default
     "B007", # unused-loop-control-variable
     "B026", # star-arg-unpacking-after-keyword-arg
+    "B901", # return-in-generator
     "B904", # raise-without-from-inside-except
     "B905", # zip-without-explicit-strict
 ]
