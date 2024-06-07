@@ -1,4 +1,3 @@
-import json
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -8,8 +7,15 @@ from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.entity.embedding import Embeddings
+from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
+from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRSFactory
+from core.rag.datasource.vdb.pgvector.pgvector import PGVectorFactory
+from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantVectorFactory
+from core.rag.datasource.vdb.relyt.relyt_vector import RelytVectorFactory
+from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
@@ -33,89 +39,21 @@ class Vector:
         if not vector_type:
             raise ValueError("Vector store must be specified.")
 
-        if vector_type == VectorType.WEAVIATE:
-            from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
-            return WeaviateVectorFactory.create_vector(self._dataset, self._attributes)
+        vector_factories_map: dict[str, type[AbstractVectorFactory]] = {
+            VectorType.MILVUS: MilvusVectorFactory,
+            VectorType.PGVECTOR: PGVectorFactory,
+            VectorType.PGVECTO_RS: PGVectoRSFactory,
+            VectorType.QDRANT: QdrantVectorFactory,
+            VectorType.RELYT: RelytVectorFactory,
+            VectorType.TIDB_VECTOR: TiDBVectorFactory,
+            VectorType.WEAVIATE: WeaviateVectorFactory,
+        }
 
-        elif vector_type == VectorType.QDRANT:
-            from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantVectorFactory
-            return QdrantVectorFactory.create_vector(self._dataset, self._attributes)
+        vector_factory = vector_factories_map.get(vector_type)
+        if vector_factory is None:
+            raise ValueError(f"Vector store {vector_type} is not supported.")
 
-        elif vector_type == VectorType.MILVUS:
-            from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
-            return MilvusVectorFactory.create_vector(self._dataset, self._attributes)
-
-        elif vector_type == VectorType.RELYT:
-            from core.rag.datasource.vdb.relyt.relyt_vector import RelytVectorFactory
-            return RelytVectorFactory.create_vector(self._dataset, self._attributes)
-
-        elif vector_type == VectorType.PGVECTO_RS:
-            from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRS, PgvectoRSConfig
-            if self._dataset.index_struct_dict:
-                class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
-                collection_name = class_prefix.lower()
-            else:
-                dataset_id = self._dataset.id
-                collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
-                self._dataset.index_struct = json.dumps(
-                    self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
-            dim = len(self._embeddings.embed_query("pgvecto_rs"))
-            return PGVectoRS(
-                collection_name=collection_name,
-                config=PgvectoRSConfig(
-                    host=config.get('PGVECTO_RS_HOST'),
-                    port=config.get('PGVECTO_RS_PORT'),
-                    user=config.get('PGVECTO_RS_USER'),
-                    password=config.get('PGVECTO_RS_PASSWORD'),
-                    database=config.get('PGVECTO_RS_DATABASE'),
-                ),
-                dim=dim
-            )
-        elif vector_type == VectorType.PGVECTOR:
-            from core.rag.datasource.vdb.pgvector.pgvector import PGVector, PGVectorConfig
-
-            if self._dataset.index_struct_dict:
-                class_prefix: str = self._dataset.index_struct_dict["vector_store"]["class_prefix"]
-                collection_name = class_prefix
-            else:
-                dataset_id = self._dataset.id
-                collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                self._dataset.index_struct = json.dumps(
-                    self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
-            return PGVector(
-                collection_name=collection_name,
-                config=PGVectorConfig(
-                    host=config.get("PGVECTOR_HOST"),
-                    port=config.get("PGVECTOR_PORT"),
-                    user=config.get("PGVECTOR_USER"),
-                    password=config.get("PGVECTOR_PASSWORD"),
-                    database=config.get("PGVECTOR_DATABASE"),
-                ),
-            )
-        elif vector_type == VectorType.TIDB_VECTOR:
-            from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVector, TiDBVectorConfig
-
-            if self._dataset.index_struct_dict:
-                class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
-                collection_name = class_prefix.lower()
-            else:
-                dataset_id = self._dataset.id
-                collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
-                self._dataset.index_struct = json.dumps(
-                    self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
-
-            return TiDBVector(
-                collection_name=collection_name,
-                config=TiDBVectorConfig(
-                    host=config.get('TIDB_VECTOR_HOST'),
-                    port=config.get('TIDB_VECTOR_PORT'),
-                    user=config.get('TIDB_VECTOR_USER'),
-                    password=config.get('TIDB_VECTOR_PASSWORD'),
-                    database=config.get('TIDB_VECTOR_DATABASE'),
-                ),
-            )
-        else:
-            raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
+        return vector_factory.create_vector(self._dataset, self._attributes, self._embeddings)
 
     def create(self, texts: list = None, **kwargs):
         if texts:
@@ -202,7 +140,7 @@ class Vector:
 class AbstractVectorFactory(ABC):
     @staticmethod
     @abstractmethod
-    def create_vector(dataset: Dataset, attributes: list = None) -> BaseVector:
+    def create_vector(dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> BaseVector:
         raise NotImplementedError
 
     @staticmethod

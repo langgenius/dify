@@ -19,6 +19,7 @@ from qdrant_client.http.models import (
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
 
+from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
@@ -418,7 +419,7 @@ class QdrantVector(BaseVector):
 
 class QdrantVectorFactory(AbstractVectorFactory):
     @staticmethod
-    def create_vector(dataset: Dataset, attributes: list = None) -> QdrantVector:
+    def create_vector(dataset: Dataset, attributes: list = None, embeddings:Embeddings = None) -> QdrantVector:
         if dataset.collection_binding_id:
             dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
                 filter(DatasetCollectionBinding.id == dataset.collection_binding_id). \

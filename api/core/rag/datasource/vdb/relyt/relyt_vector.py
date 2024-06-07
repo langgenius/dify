@@ -9,6 +9,7 @@ from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import JSON, TEXT
 from sqlalchemy.orm import Session
 
+from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from models.dataset import Dataset
@@ -308,7 +309,7 @@ class RelytVector(BaseVector):
 
 class RelytVectorFactory(AbstractVectorFactory):
     @staticmethod
-    def create_vector(dataset: Dataset, attributes: list = None) -> RelytVector:
+    def create_vector(dataset: Dataset, attributes: list = None, embeddings:Embeddings = None) -> RelytVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
             collection_name = class_prefix

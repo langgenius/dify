@@ -5,12 +5,16 @@ from typing import Any
 
 import psycopg2.extras
 import psycopg2.pool
+from flask import current_app
 from pydantic import BaseModel, root_validator
 
+from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
+from models.dataset import Dataset
 
 
 class PGVectorConfig(BaseModel):
@@ -168,3 +172,28 @@ class PGVector(BaseVector):
                 cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name, dimension=dimension))
                 # TODO: create index https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
+
+
+class PGVectorFactory(AbstractVectorFactory):
+    @staticmethod
+    def create_vector(dataset: Dataset, attributes: list = None, embeddings:Embeddings = None) -> PGVector:
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
+            collection_name = class_prefix
+        else:
+            dataset_id = dataset.id
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+            dataset.index_struct = json.dumps(
+                AbstractVectorFactory.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
+
+        config = current_app.config
+        return PGVector(
+            collection_name=collection_name,
+            config=PGVectorConfig(
+                host=config.get("PGVECTOR_HOST"),
+                port=config.get("PGVECTOR_PORT"),
+                user=config.get("PGVECTOR_USER"),
+                password=config.get("PGVECTOR_PASSWORD"),
+                database=config.get("PGVECTOR_DATABASE"),
+            ),
+        )

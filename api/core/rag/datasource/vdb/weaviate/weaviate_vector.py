@@ -7,6 +7,7 @@ import weaviate
 from flask import current_app
 from pydantic import BaseModel, root_validator
 
+from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
@@ -263,7 +264,7 @@ class WeaviateVector(BaseVector):
 
 class WeaviateVectorFactory(AbstractVectorFactory):
     @staticmethod
-    def create_vector(dataset: Dataset, attributes: list = None) -> WeaviateVector:
+    def create_vector(dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> WeaviateVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
             collection_name = class_prefix
