@@ -83,3 +83,4 @@ jobs:
         run: |
           mkdir -p $HOME/.kube
           echo "${{ env.KUBECONFIG }}" > $HOME/.kube/config
+          kubectl get pod -n -n ${{ env.NAMESPACE }}
