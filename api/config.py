@@ -368,6 +368,10 @@ class Config:
         self.NOTION_INTERNAL_SECRET = get_env('NOTION_INTERNAL_SECRET')
         self.NOTION_INTEGRATION_TOKEN = get_env('NOTION_INTEGRATION_TOKEN')
 
+        # Lark wiki setting
+        self.LARK_APP_ID = get_env('LARK_APP_ID')
+        self.LARK_APP_SECRET = get_env('LARK_APP_SECRET')
+
         # ------------------------
         # Platform Configurations.
         # ------------------------

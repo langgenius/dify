@@ -8,7 +8,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
 from libs.login import login_required
-from libs.oauth_data_source import NotionOAuth
+from libs.oauth_data_source import NotionOAuth, LarkOAuth
 
 from ..setup import setup_required
 from ..wraps import account_initialization_required
@@ -22,9 +22,14 @@ def get_oauth_providers():
                                    redirect_uri=current_app.config.get(
                                        'CONSOLE_API_URL') + '/console/api/oauth/data-source/callback/notion')
 
+        lark_oauth = LarkOAuth(app_id=current_app.config.get('LARK_APP_ID'),
+                               app_secret=current_app.config.get('LARK_APP_SECRET'))
+
         OAUTH_PROVIDERS = {
-            'notion': notion_oauth
+            'notion': notion_oauth,
+            'lark': lark_oauth,
         }
+
         return OAUTH_PROVIDERS
 
 
@@ -39,14 +44,18 @@ class OAuthDataSource(Resource):
             print(vars(oauth_provider))
         if not oauth_provider:
             return {'error': 'Invalid provider'}, 400
-        if current_app.config.get('NOTION_INTEGRATION_TYPE') == 'internal':
-            internal_secret = current_app.config.get('NOTION_INTERNAL_SECRET')
-            oauth_provider.save_internal_access_token(internal_secret)
-            return { 'data': '' }
-        else:
-            auth_url = oauth_provider.get_authorization_url()
-            return { 'data': auth_url }, 200
 
+        if provider == 'notion':
+            if current_app.config.get('NOTION_INTEGRATION_TYPE') == 'internal':
+                internal_secret = current_app.config.get('NOTION_INTERNAL_SECRET')
+                oauth_provider.save_internal_access_token(internal_secret)
+                return {'data': ''}
+            else:
+                auth_url = oauth_provider.get_authorization_url()
+                return {'data': auth_url}, 200
+        elif provider == 'lark':
+            oauth_provider.save_lark_wiki_data_source()
+            return {'data': ''}
 
 
 

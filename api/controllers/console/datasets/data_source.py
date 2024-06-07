@@ -36,7 +36,7 @@ class DataSourceApi(Resource):
 
         base_url = request.url_root.rstrip('/')
         data_source_oauth_base_path = "/console/api/oauth/data-source"
-        providers = ["notion"]
+        providers = ["notion", "lark"]
 
         integrate_data = []
         for provider in providers:

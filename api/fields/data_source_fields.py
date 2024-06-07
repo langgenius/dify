@@ -39,7 +39,12 @@ integrate_page_fields = {
     'page_id': fields.String,
     'page_icon': fields.Nested(integrate_icon_fields, allow_null=True),
     'parent_id': fields.String,
-    'type': fields.String
+    'type': fields.String,
+    # lark wiki
+    'obj_token': fields.String,
+    'obj_type': fields.String,
+    'space_id': fields.String,
+    'level': fields.Integer,
 }
 
 integrate_workspace_fields = {
