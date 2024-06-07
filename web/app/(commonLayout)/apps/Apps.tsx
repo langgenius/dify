@@ -24,7 +24,6 @@ import SearchInput from '@/app/components/base/search-input'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
-import { useModalContext } from '@/context/modal-context'
 
 const getKey = (
   pageIndex: number,
@@ -50,13 +49,6 @@ const getKey = (
 }
 
 const Apps = () => {
-  const { setShowAccountSettingModal } = useModalContext()
-  useEffect(() => {
-    setShowAccountSettingModal({
-      payload: 'data-source',
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
