@@ -80,9 +80,16 @@ jobs:
       #     version: 'v1.29.3'
 
       - name: generate kubeconfig
-        uses: appleboy/kubernetes-action@master
+        uses: appleboy/kubernetes-action
         with:
           server: ${{ secrets.K8S_SERVER }}
           ca_cert: ${{ secrets.K8S_CA_CERT }}
           token: ${{ secrets.K8S_TOKEN }}
           output: kubeconfig.yaml
+
+      - name: get pods in github-action namespace
+        env:
+          KUBECONFIG: kubeconfig.yaml
+        run: |
+          sudo chmod 644 kubeconfig.yaml
+          kubectl get pods -n sqhd-dify-test
