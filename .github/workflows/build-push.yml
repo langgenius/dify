@@ -24,10 +24,10 @@ jobs:
       matrix:
         include:
           - service_name: "web"
-            image_name_env: "DIFY_WEB_IMAGE_NAME"
+            image_name_env: "${{ env.registry }}/DIFY_WEB_IMAGE_NAME"
             context: "web"
           - service_name: "api"
-            image_name_env: "DIFY_API_IMAGE_NAME"
+            image_name_env: "${{ env.registry }}/DIFY_API_IMAGE_NAME"
             context: "api"
     steps:
       - name: Set up QEMU
@@ -69,9 +69,8 @@ jobs:
           platforms: ${{ startsWith(github.ref, 'refs/tags/') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
           push: true
-          # tags: ${{ steps.meta.outputs.tags }}
-          tags: |
-            ${{ env.registry }}/${{ env[matrix.image_name_env] }}:${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
+          # tags: /${{ env[matrix.image_name_env] }}:${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
