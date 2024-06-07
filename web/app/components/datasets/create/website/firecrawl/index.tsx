@@ -7,7 +7,6 @@ import Header from './header'
 import UrlInput from './base/url-input'
 import OptionsWrap from './base/options-wrap'
 import Options from './options'
-import mockCrawlResult from './mock-crawl-result'
 import CrawledResult from './crawled-result'
 import Crawling from './crawling'
 import { useModalContext } from '@/context/modal-context'
@@ -89,8 +88,11 @@ const FireCrawl: FC<Props> = ({
   const isInit = step === Step.init
   const isCrawlFinished = step === Step.finished
   const isRunning = step === Step.running
-  const [crawlResult, setCrawlResult] = useState<CrawlResultItem[]>(mockCrawlResult)
-
+  const [crawlResult, setCrawlResult] = useState<{
+    current: number
+    total: number
+    data: CrawlResultItem[]
+  } | undefined>(undefined)
   const [crawlHasError, setCrawlHasError] = useState(false)
 
   const waitForCrawlFinished = useCallback(async (jobId: string) => {
@@ -98,18 +100,24 @@ const FireCrawl: FC<Props> = ({
     if (res.status === 'completed') {
       return {
         isError: false,
-        data: res.data,
+        data: {
+          ...res,
+          total: Math.min(res.total, parseFloat(crawlOptions.limit as string)),
+        },
       }
     }
     if (res.status === 'error') {
       // can't get the error message from the firecrawl api
       return {
         isError: true,
+        data: {
+          data: [],
+        },
       }
     }
     await sleep(2500)
     return await waitForCrawlFinished(jobId)
-  }, [])
+  }, [crawlOptions.limit])
 
   const handleRun = useCallback(async (url: string) => {
     const { isValid, errorMsg } = checkValid(url)
@@ -153,12 +161,12 @@ const FireCrawl: FC<Props> = ({
           {isRunning
             && <Crawling
               className='mt-2'
-              crawledNum={8}
-              totalNum={10}
+              crawledNum={crawlResult?.current || 0}
+              totalNum={crawlResult?.total || parseFloat(crawlOptions.limit as string) || 0}
             />}
           {isCrawlFinished && (
             <CrawledResult
-              list={crawlResult}
+              list={crawlResult?.data || []}
               checkedList={checkedCrawlResult}
               onSelectedChange={onCheckedCrawlResultChange}
               onPreview={onPreview}
