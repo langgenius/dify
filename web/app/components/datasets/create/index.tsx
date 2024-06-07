@@ -110,7 +110,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
         <StepsNavBar step={step} datasetId={datasetId} />
       </div>
       <div className="grow bg-white">
-        <div className={step === 1 ? 'block h-full' : 'none'}>
+        <div className={step === 1 ? 'block h-full' : 'hidden'}>
           <StepOne
             hasConnection={hasConnection}
             onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
