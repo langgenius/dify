@@ -81,4 +81,6 @@ jobs:
 
       - name: Configure kubeconfig
         run: |
-          kubectl get pod -n ${{ env.NAMESPACE }} --kubeconfig ${{ env.KUBECONFIG }}
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+          chmod 600 $HOME/.kube/config
+          kubectl get pod -n sqhd-dify-test
