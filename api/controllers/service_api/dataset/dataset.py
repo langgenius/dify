@@ -1,5 +1,6 @@
 from flask import request
 from flask_restful import marshal, reqparse
+from werkzeug.exceptions import NotFound
 
 import services.dataset_service
 from controllers.service_api import api
@@ -19,10 +20,12 @@ def _validate_name(name):
     return name
 
 
-class DatasetApi(DatasetApiResource):
-    """Resource for get datasets."""
+class DatasetListApi(DatasetApiResource):
+    """Resource for datasets."""
 
     def get(self, tenant_id):
+        """Resource for getting datasets."""
+
         page = request.args.get('page', default=1, type=int)
         limit = request.args.get('limit', default=20, type=int)
         provider = request.args.get('provider', default="vendor")
@@ -65,9 +68,9 @@ class DatasetApi(DatasetApiResource):
         }
         return response, 200
 
-    """Resource for datasets."""
 
     def post(self, tenant_id):
+        """Resource for creating datasets."""
         parser = reqparse.RequestParser()
         parser.add_argument('name', nullable=False, required=True,
                             help='type is required. Name must be between 1 to 40 characters.',
@@ -89,6 +92,31 @@ class DatasetApi(DatasetApiResource):
 
         return marshal(dataset, dataset_detail_fields), 200
 
+class DatasetApi(DatasetApiResource):
+    """Resource for dataset."""
 
-api.add_resource(DatasetApi, '/datasets')
+    def delete(self, _, dataset_id):
+        """
+        Deletes a dataset given its ID.
 
+        Args:
+            dataset_id (UUID): The ID of the dataset to be deleted.
+
+        Returns:
+            dict: A dictionary with a key 'result' and a value 'success' 
+                  if the dataset was successfully deleted. Omitted in HTTP response.
+            int: HTTP status code 204 indicating that the operation was successful.
+
+        Raises:
+            NotFound: If the dataset with the given ID does not exist.
+        """
+
+        dataset_id_str = str(dataset_id)
+
+        if DatasetService.delete_dataset(dataset_id_str, current_user):
+            return {'result': 'success'}, 204
+        else:
+            raise NotFound("Dataset not found.")
+
+api.add_resource(DatasetListApi, '/datasets')
+api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
