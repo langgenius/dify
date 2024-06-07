@@ -30,8 +30,8 @@ export default function LanguagePage() {
     setEditing(true)
     try {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
-
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+
       setLocaleOnClient(item.value.toString())
     }
     catch (e) {
@@ -50,6 +50,7 @@ export default function LanguagePage() {
     try {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+
       mutateUserProfile()
     }
     catch (e) {
