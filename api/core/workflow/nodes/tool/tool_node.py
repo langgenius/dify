@@ -227,23 +227,25 @@ class ToolNode(BaseNode):
         Get audio link
         """
         if message.type == ToolInvokeMessage.MessageType.AUDIO_LINK:
-                url = message.message
-                ext = path.splitext(url)[1]
-                mimetype = message.meta.get('mime_type', 'audio/mpeg')
-                filename = message.save_as or url.split('/')[-1]
+            url = message.message
+            ext = path.splitext(url)[1]
+            mimetype = message.meta.get('mime_type', 'audio/mpeg')
+            filename = message.save_as or url.split('/')[-1]
 
-                # get tool file id
-                tool_file_id = url.split('/')[-1].split('.')[0]
-                file = FileVar(
-                    tenant_id=self.tenant_id,
-                    type=FileType.AUDIO,
-                    transfer_method=FileTransferMethod.TOOL_FILE,
-                    related_id=tool_file_id,
-                    filename=filename,
-                    extension=ext,
-                    mime_type=mimetype,
-                )
-                return file.preview_url
+            # get tool file id
+            tool_file_id = url.split('/')[-1].split('.')[0]
+            file = FileVar(
+                tenant_id=self.tenant_id,
+                type=FileType.AUDIO,
+                transfer_method=FileTransferMethod.TOOL_FILE,
+                related_id=tool_file_id,
+                filename=filename,
+                extension=ext,
+                mime_type=mimetype,
+            )
+            return file.preview_url
+        
+        return ''
     
 
     @classmethod

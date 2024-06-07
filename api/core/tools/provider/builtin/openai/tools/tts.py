@@ -1,4 +1,3 @@
-from base64 import b64decode
 from typing import Any, Union
 
 from openai import OpenAI
@@ -6,7 +5,6 @@ from yarl import URL
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.tool_file_manager import ToolFileManager
 
 
 class OpenAITTSTool(BuiltinTool):
