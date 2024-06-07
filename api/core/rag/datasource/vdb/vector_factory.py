@@ -20,6 +20,33 @@ from core.rag.models.document import Document
 from models.dataset import Dataset
 
 
+class AbstractVectorFactory(ABC):
+    @abstractmethod
+    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> BaseVector:
+        raise NotImplementedError
+
+
+class VectorHelper:
+    @staticmethod
+    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> dict:
+        index_struct_dict = {
+            "type": vector_type,
+            "vector_store": {"class_prefix": collection_name}
+        }
+        return index_struct_dict
+
+
+vector_factories_map: dict[str, type[AbstractVectorFactory]] = {
+    VectorType.MILVUS: MilvusVectorFactory,
+    VectorType.PGVECTOR: PGVectorFactory,
+    VectorType.PGVECTO_RS: PGVectoRSFactory,
+    VectorType.QDRANT: QdrantVectorFactory,
+    VectorType.RELYT: RelytVectorFactory,
+    VectorType.TIDB_VECTOR: TiDBVectorFactory,
+    VectorType.WEAVIATE: WeaviateVectorFactory,
+}
+
+
 class Vector:
     def __init__(self, dataset: Dataset, attributes: list = None):
         if attributes is None:
@@ -38,16 +65,6 @@ class Vector:
 
         if not vector_type:
             raise ValueError("Vector store must be specified.")
-
-        vector_factories_map: dict[str, type[AbstractVectorFactory]] = {
-            VectorType.MILVUS: MilvusVectorFactory,
-            VectorType.PGVECTOR: PGVectorFactory,
-            VectorType.PGVECTO_RS: PGVectoRSFactory,
-            VectorType.QDRANT: QdrantVectorFactory,
-            VectorType.RELYT: RelytVectorFactory,
-            VectorType.TIDB_VECTOR: TiDBVectorFactory,
-            VectorType.WEAVIATE: WeaviateVectorFactory,
-        }
 
         vector_factory = vector_factories_map.get(vector_type)
         if vector_factory is None:
@@ -127,19 +144,3 @@ class Vector:
                 return method
 
         raise AttributeError(f"'vector_processor' object has no attribute '{name}'")
-
-
-class AbstractVectorFactory(ABC):
-    @abstractmethod
-    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> BaseVector:
-        raise NotImplementedError
-
-
-class VectorHelper:
-    @staticmethod
-    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> dict:
-        index_struct_dict = {
-            "type": vector_type,
-            "vector_store": {"class_prefix": collection_name}
-        }
-        return index_struct_dict
