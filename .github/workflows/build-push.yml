@@ -79,9 +79,17 @@ jobs:
         with:
           version: 'v1.29.3'
 
-      - name: Configure kubeconfig
+      - name: generate kubeconfig
+        uses: ./
+        with:
+          server: ${{ secrets.K8S_SERVER }}
+          ca_cert: ${{ secrets.K8S_CA_CERT }}
+          token: ${{ secrets.K8S_TOKEN }}
+          output: kubeconfig.yaml
+
+      - name: get pods in github-action namespace
+        env:
+          KUBECONFIG: kubeconfig.yaml
         run: |
-          mkdir $HOME/.kube
-          echo "${{ env.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
-          chmod 600 $HOME/.kube/config
-          cat $HOME/.kube/config
+          sudo chmod 644 kubeconfig.yaml
+          kubectl get pods -n sqhd-dify-test
