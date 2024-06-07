@@ -145,7 +145,7 @@ const Item: FC<ItemProps> = ({
   return (
     <div className='space-y-2'>
       {isShowLogicalOperator && (
-        <div className='flex items-center select-none'>
+        <div className='flex items-center justify-center select-none'>
           <div className='flex items-center '>
             {Line}
             <div
@@ -168,7 +168,7 @@ const Item: FC<ItemProps> = ({
           nodeId={nodeId}
           readonly={readonly}
           isShowNodeName
-          className='w-[162px]'
+          className='min-w-[162px] flex-grow'
           value={payload.variable_selector}
           onChange={handleVarReferenceChange}
           filterVar={filterVar}
@@ -229,7 +229,7 @@ const Item: FC<ItemProps> = ({
           value={!isValueReadOnly ? payload.value : ''}
           onChange={handleValueChange}
           placeholder={(!readonly && !isValueReadOnly) ? t(`${i18nPrefix}.enterValue`)! : ''}
-          className='w-[80px] h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+          className='min-w-[80px] flex-grow h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
           type='text'
         />
         {!readonly && (
