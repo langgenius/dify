@@ -10,7 +10,7 @@ from pydantic import BaseModel, root_validator
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
-from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory, VectorHelper
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
@@ -271,7 +271,7 @@ class WeaviateVectorFactory(AbstractVectorFactory):
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
             dataset.index_struct = json.dumps(
-                super().gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
+                VectorHelper.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
 
         return WeaviateVector(
             collection_name=collection_name,

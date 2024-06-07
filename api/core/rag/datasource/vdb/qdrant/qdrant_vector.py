@@ -22,7 +22,7 @@ from qdrant_client.local.qdrant_local import QdrantLocal
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
-from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory, VectorHelper
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -437,7 +437,7 @@ class QdrantVectorFactory(AbstractVectorFactory):
 
         if not dataset.index_struct_dict:
             dataset.index_struct = json.dumps(
-                super().gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
+                VectorHelper.gen_index_struct_dict(VectorType.QDRANT, collection_name))
 
         config = current_app.config
         return QdrantVector(

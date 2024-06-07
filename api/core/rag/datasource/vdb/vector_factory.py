@@ -134,7 +134,10 @@ class AbstractVectorFactory(ABC):
     def create_vector(self, dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> BaseVector:
         raise NotImplementedError
 
-    def gen_index_struct_dict(self, vector_type: VectorType, collection_name: str) -> dict:
+
+class VectorHelper:
+    @staticmethod
+    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> dict:
         index_struct_dict = {
             "type": vector_type,
             "vector_store": {"class_prefix": collection_name}
