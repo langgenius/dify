@@ -8,13 +8,12 @@ on:
     types: [published]
 
 env:
-  DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
-  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
   DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME }}
   DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME }}
   registry: ${{ secrets.CI_HOSTNAME }}
   username: ${{ secrets.CI_USERNAME }}
   password: ${{ secrets.CI_PASSWORD }}
+  NAMESPACE: ${{ secrets.sqhd-dify-test }}
 
 jobs:
   build-and-push:
@@ -70,7 +69,14 @@ jobs:
           build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          # tags: /${{ env[matrix.image_name_env] }}:${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Get image revision
+        run: | 
+          IMAGE_TAG=${{ steps.meta.outputs.json.labels['org.opencontainers.image.revision'] }}
+          echo "${{ env.KUBECONFIG }}" > $HOME/.kube/config
+          kubectl set image deployment/dify-${{ matrix.service_name }} dify-${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:$IMAGE_TAG -n ${{ env.NAMESPACE }}
+
+
