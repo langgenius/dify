@@ -418,8 +418,7 @@ class QdrantVector(BaseVector):
 
 
 class QdrantVectorFactory(AbstractVectorFactory):
-    @staticmethod
-    def create_vector(dataset: Dataset, attributes: list = None, embeddings:Embeddings = None) -> QdrantVector:
+    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings:Embeddings = None) -> QdrantVector:
         if dataset.collection_binding_id:
             dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
                 filter(DatasetCollectionBinding.id == dataset.collection_binding_id). \
@@ -438,7 +437,7 @@ class QdrantVectorFactory(AbstractVectorFactory):
 
         if not dataset.index_struct_dict:
             dataset.index_struct = json.dumps(
-                AbstractVectorFactory.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
+                super().gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
 
         config = current_app.config
         return QdrantVector(

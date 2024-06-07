@@ -263,8 +263,7 @@ class WeaviateVector(BaseVector):
 
 
 class WeaviateVectorFactory(AbstractVectorFactory):
-    @staticmethod
-    def create_vector(dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> WeaviateVector:
+    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> WeaviateVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
             collection_name = class_prefix
@@ -272,7 +271,7 @@ class WeaviateVectorFactory(AbstractVectorFactory):
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
             dataset.index_struct = json.dumps(
-                AbstractVectorFactory.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
+                super().gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
 
         return WeaviateVector(
             collection_name=collection_name,

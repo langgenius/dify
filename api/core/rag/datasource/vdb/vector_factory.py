@@ -130,9 +130,8 @@ class Vector:
 
 
 class AbstractVectorFactory(ABC):
-    @staticmethod
     @abstractmethod
-    def create_vector(dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> BaseVector:
+    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> BaseVector:
         raise NotImplementedError
 
     def gen_index_struct_dict(self, vector_type: VectorType, collection_name: str) -> dict:

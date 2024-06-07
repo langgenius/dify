@@ -231,8 +231,7 @@ class PGVectoRS(BaseVector):
 
 
 class PGVectoRSFactory(AbstractVectorFactory):
-    @staticmethod
-    def create_vector(dataset: Dataset, attributes: list = None, embeddings:Embeddings = None) -> PGVectoRS:
+    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings:Embeddings = None) -> PGVectoRS:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
             collection_name = class_prefix.lower()
@@ -240,7 +239,7 @@ class PGVectoRSFactory(AbstractVectorFactory):
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
             dataset.index_struct = json.dumps(
-                AbstractVectorFactory.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
+                super().gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
         dim = len(embeddings.embed_query("pgvecto_rs"))
         config = current_app.config
         return PGVectoRS(

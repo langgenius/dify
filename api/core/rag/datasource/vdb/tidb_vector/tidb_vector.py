@@ -225,8 +225,7 @@ class TiDBVector(BaseVector):
 
 
 class TiDBVectorFactory(AbstractVectorFactory):
-    @staticmethod
-    def create_vector(dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> TiDBVector:
+    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> TiDBVector:
 
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
@@ -235,7 +234,7 @@ class TiDBVectorFactory(AbstractVectorFactory):
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
             dataset.index_struct = json.dumps(
-                AbstractVectorFactory.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
+                super().gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
 
         config = current_app.config
         return TiDBVector(
