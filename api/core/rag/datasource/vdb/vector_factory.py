@@ -8,6 +8,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetCollectionBinding
@@ -32,7 +33,7 @@ class Vector:
         if not vector_type:
             raise ValueError("Vector store must be specified.")
 
-        if vector_type == "weaviate":
+        if vector_type == VectorType.WEAVIATE:
             from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
             if self._dataset.index_struct_dict:
                 class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
@@ -41,7 +42,7 @@ class Vector:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                 index_struct_dict = {
-                    "type": 'weaviate',
+                    "type": VectorType.WEAVIATE,
                     "vector_store": {"class_prefix": collection_name}
                 }
                 self._dataset.index_struct = json.dumps(index_struct_dict)
@@ -54,7 +55,7 @@ class Vector:
                 ),
                 attributes=self._attributes
             )
-        elif vector_type == "qdrant":
+        elif vector_type == VectorType.QDRANT:
             from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig, QdrantVector
             if self._dataset.collection_binding_id:
                 dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
@@ -74,7 +75,7 @@ class Vector:
 
             if not self._dataset.index_struct_dict:
                 index_struct_dict = {
-                    "type": 'qdrant',
+                    "type": VectorType.QDRANT,
                     "vector_store": {"class_prefix": collection_name}
                 }
                 self._dataset.index_struct = json.dumps(index_struct_dict)
@@ -91,7 +92,7 @@ class Vector:
                     prefer_grpc=config.get('QDRANT_GRPC_ENABLED')
                 )
             )
-        elif vector_type == "milvus":
+        elif vector_type == VectorType.MILVUS:
             from core.rag.datasource.vdb.milvus.milvus_vector import MilvusConfig, MilvusVector
             if self._dataset.index_struct_dict:
                 class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
@@ -100,7 +101,7 @@ class Vector:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                 index_struct_dict = {
-                    "type": 'milvus',
+                    "type": VectorType.MILVUS,
                     "vector_store": {"class_prefix": collection_name}
                 }
                 self._dataset.index_struct = json.dumps(index_struct_dict)
@@ -115,7 +116,7 @@ class Vector:
                     database=config.get('MILVUS_DATABASE'),
                 )
             )
-        elif vector_type == "relyt":
+        elif vector_type == VectorType.RELYT:
             from core.rag.datasource.vdb.relyt.relyt_vector import RelytConfig, RelytVector
             if self._dataset.index_struct_dict:
                 class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
@@ -124,7 +125,7 @@ class Vector:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                 index_struct_dict = {
-                    "type": 'relyt',
+                    "type": VectorType.RELYT,
                     "vector_store": {"class_prefix": collection_name}
                 }
                 self._dataset.index_struct = json.dumps(index_struct_dict)
@@ -139,7 +140,7 @@ class Vector:
                 ),
                 group_id=self._dataset.id
             )
-        elif vector_type == "pgvecto_rs":
+        elif vector_type == VectorType.PGVECTO_RS:
             from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRS, PgvectoRSConfig
             if self._dataset.index_struct_dict:
                 class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
@@ -148,7 +149,7 @@ class Vector:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
                 index_struct_dict = {
-                    "type": 'pgvecto_rs',
+                    "type": VectorType.PGVECTO_RS,
                     "vector_store": {"class_prefix": collection_name}
                 }
                 self._dataset.index_struct = json.dumps(index_struct_dict)
@@ -164,7 +165,7 @@ class Vector:
                 ),
                 dim=dim
             )
-        elif vector_type == "pgvector":
+        elif vector_type == VectorType.PGVECTOR:
             from core.rag.datasource.vdb.pgvector.pgvector import PGVector, PGVectorConfig
 
             if self._dataset.index_struct_dict:
@@ -174,7 +175,7 @@ class Vector:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                 index_struct_dict = {
-                    "type": "pgvector",
+                    "type": VectorType.PGVECTOR,
                     "vector_store": {"class_prefix": collection_name}}
                 self._dataset.index_struct = json.dumps(index_struct_dict)
             return PGVector(
@@ -187,7 +188,7 @@ class Vector:
                     database=config.get("PGVECTOR_DATABASE"),
                 ),
             )
-        elif vector_type == "tidb_vector":
+        elif vector_type == VectorType.TIDB_VECTOR:
             from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVector, TiDBVectorConfig
 
             if self._dataset.index_struct_dict:
@@ -197,7 +198,7 @@ class Vector:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
                 index_struct_dict = {
-                    "type": 'tidb_vector',
+                    "type": VectorType.TIDB_VECTOR,
                     "vector_store": {"class_prefix": collection_name}
                 }
                 self._dataset.index_struct = json.dumps(index_struct_dict)
