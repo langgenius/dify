@@ -14,6 +14,7 @@ env:
   username: ${{ secrets.CI_USERNAME }}
   password: ${{ secrets.CI_PASSWORD }}
   NAMESPACE: ${{ secrets.sqhd-dify-test }}
+  KUBECONFIG: ${{ secrets.KUBECONFIG }}
 
 jobs:
   build-and-push:
@@ -77,4 +78,4 @@ jobs:
         env:
           KUBE_CONFIG: ${{ env.KUBECONFIG }}
         with:
-          args: get pods
+          args: get pods -n ${{ env.NAMESPACE }}
