@@ -1,0 +1,11 @@
+identity:
+  author: Shaun
+  name: youtubetranscript
+  label:
+    en_US: YouTube Video Transcription
+  description:
+    en_US: The tool will get the audio transcript of a YouTube video (if available).
+  icon: icon.png
+  tags:
+    - videos
+credentials_for_provider:

@@ -1,0 +1,31 @@
+identity:
+  name: transcription.yaml
+  author: Shaun
+  label:
+    en_US: YouTube Video transcription
+  icon: icon.png
+description:
+  human:
+    en_US: The tool will get the audio transcript of a YouTube video (if available).
+  llm: The tool will get the audio transcript of a YouTube video (if available).
+parameters:
+  - name: link
+    type: string
+    required: true
+    label:
+      en_US: YouTube video link
+    human_description:
+      en_US: The link to the YouTube video you want to transcribe.
+    llm_description: The link to the YouTube video you want to transcribe.
+    form: llm
+  - name: max_output_length
+    type: number
+    required: true
+    human_description:
+      en_US: The maximum length of the output text.
+    label:
+      en_US: Maximum output length
+    form: form
+    min: 1
+    max: 100000
+    default: 1000
