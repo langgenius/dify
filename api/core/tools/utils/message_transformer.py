@@ -73,6 +73,13 @@ class ToolFileMessageTransformer:
                         save_as=message.save_as,
                         meta=message.meta.copy() if message.meta is not None else {},
                     ))
+                elif 'audio' in mimetype:
+                    result.append(ToolInvokeMessage(
+                        type=ToolInvokeMessage.MessageType.AUDIO_LINK,
+                        message=url,
+                        save_as=message.save_as,
+                        meta=message.meta.copy() if message.meta is not None else {},
+                    ))
                 else:
                     result.append(ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.LINK,

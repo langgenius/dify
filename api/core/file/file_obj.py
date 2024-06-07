@@ -13,6 +13,7 @@ from models.model import UploadFile
 
 class FileType(enum.Enum):
     IMAGE = 'image'
+    AUDIO = 'audio'
 
     @staticmethod
     def value_of(value):
@@ -79,6 +80,8 @@ class FileVar(BaseModel):
         preview_url = self.preview_url
         if self.type == FileType.IMAGE:
             text = f'![{self.filename or ""}]({preview_url})'
+        elif self.type == FileType.AUDIO:
+            text = f'[{self.filename or "Audio"}]({preview_url})'
         else:
             text = f'[{self.filename or preview_url}]({preview_url})'
 
@@ -113,7 +116,7 @@ class FileVar(BaseModel):
             )
 
     def _get_data(self, force_url: bool = False) -> Optional[str]:
-        if self.type == FileType.IMAGE:
+        if self.type == FileType.IMAGE or self.type == FileType.AUDIO:
             if self.transfer_method == FileTransferMethod.REMOTE_URL:
                 return self.url
             elif self.transfer_method == FileTransferMethod.LOCAL_FILE:

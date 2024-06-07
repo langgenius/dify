@@ -1,0 +1,65 @@
+identity:
+  name: tts
+  author: Dify
+  label:
+    en_US: Text-to-speech
+  description:
+    en_US: Text-to-speech
+description:
+  human:
+    en_US: Text-to-speech tool
+  llm: Text-to-speech is a tool used to generate speech files from text
+parameters:
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: Text
+    human_description:
+      en_US: Text to generate speech
+    llm_description: Text to generate speech
+    form: llm
+  - name: voice
+    type: select
+    required: true
+    human_description:
+      en_US: selecting the voice
+    label:
+      en_US: Voice
+    form: form
+    options:
+      - value: alloy
+        label:
+          en_US: Alloy voice
+      - value: echo
+        label:
+          en_US: Echo voice
+      - value: fable
+        label:
+          en_US: Fable voice
+      - value: onyx
+        label:
+          en_US: Onyx voice
+      - value: nova
+        label:
+          en_US: Nova voice
+      - value: shimmer
+        label:
+          en_US: Shimmer voice
+    default: alloy
+  - name: model
+    type: select
+    required: true
+    human_description:
+      en_US: selecting the model
+    label:
+      en_US: Model
+    form: form
+    options:
+      - value: tts-1
+        label:
+          en_US: TTS-1
+      - value: tts-1-hd
+        label:
+          en_US: TTS-1 HD
+    default: tts-1

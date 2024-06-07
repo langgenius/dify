@@ -97,6 +97,7 @@ class ToolInvokeMessage(BaseModel):
         BLOB = "blob"
         IMAGE_LINK = "image_link"
         FILE_VAR = "file_var"
+        AUDIO_LINK = "audio_link"
 
     type: MessageType = MessageType.TEXT
     """

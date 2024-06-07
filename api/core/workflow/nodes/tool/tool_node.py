@@ -177,6 +177,23 @@ class ToolNode(BaseNode):
                     extension=ext,
                     mime_type=mimetype,
                 ))
+            elif response.type == ToolInvokeMessage.MessageType.AUDIO_LINK:
+                url = response.message
+                ext = path.splitext(url)[1]
+                mimetype = response.meta.get('mime_type', 'audio/mpeg')
+                filename = response.save_as or url.split('/')[-1]
+
+                # get tool file id
+                tool_file_id = url.split('/')[-1].split('.')[0]
+                result.append(FileVar(
+                    tenant_id=self.tenant_id,
+                    type=FileType.AUDIO,
+                    transfer_method=FileTransferMethod.TOOL_FILE,
+                    related_id=tool_file_id,
+                    filename=filename,
+                    extension=ext,
+                    mime_type=mimetype,
+                ))
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 # get tool file id
                 tool_file_id = response.message.split('/')[-1].split('.')[0]
@@ -200,9 +217,33 @@ class ToolNode(BaseNode):
         """
         return '\n'.join([
             f'{message.message}' if message.type == ToolInvokeMessage.MessageType.TEXT else
+            f'{self._get_audio_link(message)}' if message.type == ToolInvokeMessage.MessageType.AUDIO_LINK else
             f'Link: {message.message}' if message.type == ToolInvokeMessage.MessageType.LINK else ''
             for message in tool_response
         ])
+    
+    def _get_audio_link(self, message):
+        """
+        Get audio link
+        """
+        if message.type == ToolInvokeMessage.MessageType.AUDIO_LINK:
+                url = message.message
+                ext = path.splitext(url)[1]
+                mimetype = message.meta.get('mime_type', 'audio/mpeg')
+                filename = message.save_as or url.split('/')[-1]
+
+                # get tool file id
+                tool_file_id = url.split('/')[-1].split('.')[0]
+                file = FileVar(
+                    tenant_id=self.tenant_id,
+                    type=FileType.AUDIO,
+                    transfer_method=FileTransferMethod.TOOL_FILE,
+                    related_id=tool_file_id,
+                    filename=filename,
+                    extension=ext,
+                    mime_type=mimetype,
+                )
+                return file.preview_url
     
 
     @classmethod
