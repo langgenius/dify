@@ -81,4 +81,4 @@ jobs:
 
       - name: Configure kubeconfig
         run: |
-          kubectl --kubeconfig ${{ env.KUBECONFIG }} get pod -n -n ${{ env.NAMESPACE }}
+          kubectl get pod -n ${{ env.NAMESPACE }} --kubeconfig ${{ env.KUBECONFIG }}
