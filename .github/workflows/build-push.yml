@@ -77,6 +77,8 @@ jobs:
         uses: imranismail/setup-kubectl@v1
         with:
           version: 'latest'
+
+      - name: deploy
         run: | 
           IMAGE_TAG=${{ steps.meta.outputs.json.labels['org.opencontainers.image.revision'] }}
           echo "${{ env.KUBECONFIG }}" > $HOME/config
