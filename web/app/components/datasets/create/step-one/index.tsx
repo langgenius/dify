@@ -6,8 +6,10 @@ import FilePreview from '../file-preview'
 import FileUploader from '../file-uploader'
 import NotionPagePreview from '../notion-page-preview'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
+import Website from '../website'
+import WebsitePreview from '../website/preview'
 import s from './index.module.css'
-import type { FileItem } from '@/models/datasets'
+import type { CrawlResultItem, FileItem } from '@/models/datasets'
 import type { NotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
@@ -29,6 +31,9 @@ type IStepOneProps = {
   updateNotionPages: (value: NotionPage[]) => void
   onStepChange: () => void
   changeType: (type: DataSourceType) => void
+  websitePages?: CrawlResultItem[]
+  updateWebsitePages: (value: CrawlResultItem[]) => void
+  onFireCrawlJobIdChange: (jobId: string) => void
 }
 
 type NotionConnectorProps = {
@@ -60,11 +65,15 @@ const StepOne = ({
   updateFile,
   notionPages = [],
   updateNotionPages,
+  websitePages = [],
+  updateWebsitePages,
+  onFireCrawlJobIdChange,
 }: IStepOneProps) => {
   const { dataset } = useDatasetDetailContext()
   const [showModal, setShowModal] = useState(false)
   const [currentFile, setCurrentFile] = useState<File | undefined>()
   const [currentNotionPage, setCurrentNotionPage] = useState<NotionPage | undefined>()
+  const [currentWebsite, setCurrentWebsite] = useState<CrawlResultItem | undefined>()
   const { t } = useTranslation()
 
   const modalShowHandle = () => setShowModal(true)
@@ -83,6 +92,10 @@ const StepOne = ({
 
   const hideNotionPagePreview = () => {
     setCurrentNotionPage(undefined)
+  }
+
+  const hideWebsitePreview = () => {
+    setCurrentWebsite(undefined)
   }
 
   const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
@@ -150,10 +163,9 @@ const StepOne = ({
                   {t('datasetCreation.stepOne.dataSourceType.notion')}
                 </div>
                 <div
-                  className={cn(s.dataSourceItem, s.disabled, dataSourceType === DataSourceType.WEB && s.active)}
-                // onClick={() => changeType(DataSourceType.WEB)}
+                  className={cn(s.dataSourceItem, dataSourceType === DataSourceType.WEB ? s.active : s.disabled)}
+                  onClick={() => changeType(DataSourceType.WEB)}
                 >
-                  <span className={s.comingTag}>Coming soon</span>
                   <span className={cn(s.datasetIcon, s.web)} />
                   {t('datasetCreation.stepOne.dataSourceType.web')}
                 </div>
@@ -201,6 +213,24 @@ const StepOne = ({
               )}
             </>
           )}
+          {dataSourceType === DataSourceType.WEB && (
+            <>
+              <div className='mb-8 w-[640px]'>
+                <Website
+                  onPreview={setCurrentWebsite}
+                  checkedCrawlResult={websitePages}
+                  onCheckedCrawlResultChange={updateWebsitePages}
+                  onJobIdChange={onFireCrawlJobIdChange}
+                />
+              </div>
+              {isShowVectorSpaceFull && (
+                <div className='max-w-[640px] mb-4'>
+                  <VectorSpaceFull />
+                </div>
+              )}
+              <Button disabled={isShowVectorSpaceFull || !websitePages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+            </>
+          )}
           {!datasetId && (
             <>
               <div className={s.dividerLine} />
@@ -212,6 +242,7 @@ const StepOne = ({
       </div>
       {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
       {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
+      {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
     </div>
   )
 }

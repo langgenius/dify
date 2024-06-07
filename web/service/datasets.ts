@@ -227,6 +227,35 @@ export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> =
   return get<{ api_base_url: string }>(url)
 }
 
+export const fetchFirecrawlApiKey = () => {
+  return get<CommonResponse>('api-key-auth/data-source')
+}
+
+export const createFirecrawlApiKey: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('api-key-auth/data-source/binding', { body })
+}
+
+export const removeFirecrawlApiKey: Fetcher<CommonResponse, string> = (id: string) => {
+  return del<CommonResponse>(`api-key-auth/data-source/${id}`)
+}
+
+export const createFirecrawlTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('website/crawl', {
+    body: {
+      ...body,
+      provider: 'firecrawl',
+    },
+  })
+}
+
+export const checkFirecrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
+  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
+    params: {
+      provider: 'firecrawl',
+    },
+  })
+}
+
 type FileTypesRes = {
   allowed_extensions: string[]
 }

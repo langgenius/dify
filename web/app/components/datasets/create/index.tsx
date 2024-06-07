@@ -8,7 +8,7 @@ import StepOne from './step-one'
 import StepTwo from './step-two'
 import StepThree from './step-three'
 import { DataSourceType } from '@/models/datasets'
-import type { DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
+import type { CrawlResultItem, DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
 import { fetchDatasetDetail } from '@/service/datasets'
 import type { NotionPage } from '@/models/common'
@@ -23,7 +23,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const { t } = useTranslation()
   const { setShowAccountSettingModal } = useModalContext()
   const [hasConnection, setHasConnection] = useState(true)
-  const [dataSourceType, setDataSourceType] = useState<DataSourceType>(DataSourceType.FILE)
+  const [dataSourceType, setDataSourceType] = useState<DataSourceType>(DataSourceType.WEB) // TODO: for test. DataSourceType.FILE
   const [step, setStep] = useState(1)
   const [indexingTypeCache, setIndexTypeCache] = useState('')
   const [fileList, setFiles] = useState<FileItem[]>([])
@@ -36,9 +36,11 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setNotionPages(value)
   }
 
+  const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
   const updateFileList = (preparedFiles: FileItem[]) => {
     setFiles(preparedFiles)
   }
+  const [fireCrawlJobId, setFireCrawlJobId] = useState('')
 
   const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
     const targetIndex = list.findIndex(file => file.fileID === fileItem.fileID)
@@ -121,6 +123,9 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           notionPages={notionPages}
           updateNotionPages={updateNotionPages}
           onStepChange={nextStep}
+          websitePages={websitePages}
+          updateWebsitePages={setWebsitePages}
+          onFireCrawlJobIdChange={setFireCrawlJobId}
         />}
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
           isAPIKeySet={!!embeddingsDefaultModel}
@@ -130,6 +135,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           dataSourceType={dataSourceType}
           files={fileList.map(file => file.file)}
           notionPages={notionPages}
+          websitePages={websitePages}
+          fireCrawlJobId={fireCrawlJobId}
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
           updateResultCache={updateResultCache}
