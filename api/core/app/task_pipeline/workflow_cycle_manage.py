@@ -1,9 +1,9 @@
 import json
 import time
 from datetime import datetime, timezone
-from typing import Any, Optional, Union, cast
+from typing import Optional, Union, cast
 
-from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     QueueNodeFailedEvent,
     QueueNodeStartedEvent,
@@ -13,18 +13,17 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import (
-    AdvancedChatTaskState,
     NodeExecutionInfo,
     NodeFinishStreamResponse,
     NodeStartStreamResponse,
     WorkflowFinishStreamResponse,
     WorkflowStartStreamResponse,
-    WorkflowTaskState,
 )
+from core.app.task_pipeline.workflow_iteration_cycle_manage import WorkflowIterationCycleManage
 from core.file.file_obj import FileVar
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.tool_manager import ToolManager
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType, SystemVariable
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
@@ -42,13 +41,7 @@ from models.workflow import (
 )
 
 
-class WorkflowCycleManage:
-    _application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity]
-    _workflow: Workflow
-    _user: Union[Account, EndUser]
-    _task_state: Union[AdvancedChatTaskState, WorkflowTaskState]
-    _workflow_system_variables: dict[SystemVariable, Any]
-
+class WorkflowCycleManage(WorkflowIterationCycleManage):
     def _init_workflow_run(self, workflow: Workflow,
                            triggered_from: WorkflowRunTriggeredFrom,
                            user: Union[Account, EndUser],
@@ -237,6 +230,7 @@ class WorkflowCycleManage:
                                         inputs: Optional[dict] = None,
                                         process_data: Optional[dict] = None,
                                         outputs: Optional[dict] = None,
+                                        execution_metadata: Optional[dict] = None
                                         ) -> WorkflowNodeExecution:
         """
         Workflow node execution failed
@@ -255,6 +249,8 @@ class WorkflowCycleManage:
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
         workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
         workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
+        workflow_node_execution.execution_metadata = json.dumps(jsonable_encoder(execution_metadata)) \
+            if execution_metadata else None
 
         db.session.commit()
         db.session.refresh(workflow_node_execution)
@@ -444,6 +440,23 @@ class WorkflowCycleManage:
         current_node_execution = self._task_state.ran_node_execution_infos[event.node_id]
         workflow_node_execution = db.session.query(WorkflowNodeExecution).filter(
             WorkflowNodeExecution.id == current_node_execution.workflow_node_execution_id).first()
+        
+        execution_metadata = event.execution_metadata if isinstance(event, QueueNodeSucceededEvent) else None
+        
+        if self._iteration_state and self._iteration_state.current_iterations:
+            if not execution_metadata:
+                execution_metadata = {}
+            current_iteration_data = None
+            for iteration_node_id in self._iteration_state.current_iterations:
+                data = self._iteration_state.current_iterations[iteration_node_id]
+                if data.parent_iteration_id == None:
+                    current_iteration_data = data
+                    break
+
+            if current_iteration_data:
+                execution_metadata[NodeRunMetadataKey.ITERATION_ID] = current_iteration_data.iteration_id
+                execution_metadata[NodeRunMetadataKey.ITERATION_INDEX] = current_iteration_data.current_index
+
         if isinstance(event, QueueNodeSucceededEvent):
             workflow_node_execution = self._workflow_node_execution_success(
                 workflow_node_execution=workflow_node_execution,
@@ -451,12 +464,18 @@ class WorkflowCycleManage:
                 inputs=event.inputs,
                 process_data=event.process_data,
                 outputs=event.outputs,
-                execution_metadata=event.execution_metadata
+                execution_metadata=execution_metadata
             )
 
-            if event.execution_metadata and event.execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
+            if execution_metadata and execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
                 self._task_state.total_tokens += (
-                    int(event.execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS)))
+                    int(execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS)))
+                
+                if self._iteration_state:
+                    for iteration_node_id in self._iteration_state.current_iterations:
+                        data = self._iteration_state.current_iterations[iteration_node_id]
+                        if execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
+                            data.total_tokens += int(execution_metadata.get(NodeRunMetadataKey.TOTAL_TOKENS))
 
             if workflow_node_execution.node_type == NodeType.LLM.value:
                 outputs = workflow_node_execution.outputs_dict
@@ -469,7 +488,8 @@ class WorkflowCycleManage:
                 error=event.error,
                 inputs=event.inputs,
                 process_data=event.process_data,
-                outputs=event.outputs
+                outputs=event.outputs,
+                execution_metadata=execution_metadata
             )
 
         db.session.close()

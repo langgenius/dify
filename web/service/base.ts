@@ -3,6 +3,9 @@ import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/app/chat/type'
 import type { VisionFile } from '@/types/app'
 import type {
+  IterationFinishedResponse,
+  IterationNextedResponse,
+  IterationStartedResponse,
   NodeFinishedResponse,
   NodeStartedResponse,
   TextChunkResponse,
@@ -52,6 +55,9 @@ export type IOnWorkflowStarted = (workflowStarted: WorkflowStartedResponse) => v
 export type IOnWorkflowFinished = (workflowFinished: WorkflowFinishedResponse) => void
 export type IOnNodeStarted = (nodeStarted: NodeStartedResponse) => void
 export type IOnNodeFinished = (nodeFinished: NodeFinishedResponse) => void
+export type IOnIterationStarted = (workflowStarted: IterationStartedResponse) => void
+export type IOnIterationNexted = (workflowStarted: IterationNextedResponse) => void
+export type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => void
 export type IOnTextChunk = (textChunk: TextChunkResponse) => void
 export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
 
@@ -74,6 +80,9 @@ export type IOtherOptions = {
   onWorkflowFinished?: IOnWorkflowFinished
   onNodeStarted?: IOnNodeStarted
   onNodeFinished?: IOnNodeFinished
+  onIterationStart?: IOnIterationStarted
+  onIterationNext?: IOnIterationNexted
+  onIterationFinish?: IOnIterationFinished
   onTextChunk?: IOnTextChunk
   onTextReplace?: IOnTextReplace
 }
@@ -122,6 +131,9 @@ const handleStream = (
   onWorkflowFinished?: IOnWorkflowFinished,
   onNodeStarted?: IOnNodeStarted,
   onNodeFinished?: IOnNodeFinished,
+  onIterationStart?: IOnIterationStarted,
+  onIterationNext?: IOnIterationNexted,
+  onIterationFinish?: IOnIterationFinished,
   onTextChunk?: IOnTextChunk,
   onTextReplace?: IOnTextReplace,
 ) => {
@@ -199,6 +211,15 @@ const handleStream = (
             }
             else if (bufferObj.event === 'node_finished') {
               onNodeFinished?.(bufferObj as NodeFinishedResponse)
+            }
+            else if (bufferObj.event === 'iteration_started') {
+              onIterationStart?.(bufferObj as IterationStartedResponse)
+            }
+            else if (bufferObj.event === 'iteration_next') {
+              onIterationNext?.(bufferObj as IterationNextedResponse)
+            }
+            else if (bufferObj.event === 'iteration_completed') {
+              onIterationFinish?.(bufferObj as IterationFinishedResponse)
             }
             else if (bufferObj.event === 'text_chunk') {
               onTextChunk?.(bufferObj as TextChunkResponse)
@@ -450,6 +471,9 @@ export const ssePost = (
     onWorkflowFinished,
     onNodeStarted,
     onNodeFinished,
+    onIterationStart,
+    onIterationNext,
+    onIterationFinish,
     onTextChunk,
     onTextReplace,
     onError,
@@ -503,7 +527,7 @@ export const ssePost = (
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onTextChunk, onTextReplace)
+      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onTextChunk, onTextReplace)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.')
         Toast.notify({ type: 'error', message: e })

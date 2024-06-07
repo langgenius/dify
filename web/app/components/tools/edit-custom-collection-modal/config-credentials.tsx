@@ -12,6 +12,7 @@ import Radio from '@/app/components/base/radio/ui'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 
 type Props = {
+  positionCenter?: boolean
   credential: Credential
   onChange: (credential: Credential) => void
   onHide: () => void
@@ -38,6 +39,7 @@ const SelectItem: FC<ItemProps> = ({ text, value, isChecked, onClick }) => {
 }
 
 const ConfigCredential: FC<Props> = ({
+  positionCenter,
   credential,
   onChange,
   onHide,
@@ -48,6 +50,7 @@ const ConfigCredential: FC<Props> = ({
   return (
     <Drawer
       isShow
+      positionCenter={positionCenter}
       onHide={onHide}
       title={t('tools.createTool.authMethod.title')!}
       panelClassName='mt-2 !w-[520px]'

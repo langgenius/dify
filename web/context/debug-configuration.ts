@@ -28,7 +28,7 @@ import type { Collection } from '@/app/components/tools/types'
 
 type IDebugConfiguration = {
   appId: string
-  hasSetAPIKEY: boolean
+  isAPIKeySet: boolean
   isTrailFinished: boolean
   mode: string
   modelModeType: ModelModeType
@@ -101,7 +101,7 @@ type IDebugConfiguration = {
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
   appId: '',
-  hasSetAPIKEY: false,
+  isAPIKeySet: false,
   isTrailFinished: false,
   mode: '',
   modelModeType: ModelModeType.chat,
@@ -134,7 +134,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   introduction: '',
   setIntroduction: () => { },
   suggestedQuestions: [],
-  setSuggestedQuestions: () => {},
+  setSuggestedQuestions: () => { },
   controlClearChatMessage: 0,
   setControlClearChatMessage: () => { },
   prevPromptConfig: {

@@ -115,7 +115,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
-            extras=extras
+            extras=extras,
+            call_depth=0
         )
 
         # init generate records

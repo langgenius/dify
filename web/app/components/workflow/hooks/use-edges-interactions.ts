@@ -5,14 +5,11 @@ import type {
   OnEdgesChange,
 } from 'reactflow'
 import {
-  getConnectedEdges,
   useStoreApi,
 } from 'reactflow'
 import type {
-  Edge,
   Node,
 } from '../types'
-import { BlockEnum } from '../types'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../utils'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
@@ -146,61 +143,6 @@ export const useEdgesInteractions = () => {
     setEdges(newEdges)
   }, [store, getNodesReadOnly])
 
-  const handleVariableAssignerEdgesChange = useCallback((nodeId: string, variables: any) => {
-    const {
-      getNodes,
-      setNodes,
-      edges,
-      setEdges,
-    } = store.getState()
-    const nodes = getNodes()
-    const newEdgesTargetHandleIds = variables.map((item: any) => item[0])
-    const connectedEdges = getConnectedEdges([{ id: nodeId } as Node], edges).filter(edge => edge.target === nodeId)
-    const needDeleteEdges = connectedEdges.filter(edge => !newEdgesTargetHandleIds.includes(edge.targetHandle))
-    const needAddEdgesTargetHandleIds = newEdgesTargetHandleIds.filter((targetHandle: string) => !connectedEdges.some(edge => edge.targetHandle === targetHandle))
-    const needAddEdges = needAddEdgesTargetHandleIds.map((targetHandle: string) => {
-      return {
-        id: `${targetHandle}-${nodeId}`,
-        type: 'custom',
-        source: targetHandle,
-        sourceHandle: 'source',
-        target: nodeId,
-        targetHandle,
-        data: {
-          sourceType: nodes.find(node => node.id === targetHandle)?.data.type,
-          targetType: BlockEnum.VariableAssigner,
-        },
-      }
-    })
-
-    const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
-      [
-        ...needDeleteEdges.map(edge => ({ type: 'remove', edge })),
-        ...needAddEdges.map((edge: Edge) => ({ type: 'add', edge })),
-      ],
-      nodes,
-    )
-    const newNodes = produce(nodes, (draft) => {
-      draft.forEach((node) => {
-        if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
-          node.data = {
-            ...node.data,
-            ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
-          }
-        }
-      })
-    })
-    setNodes(newNodes)
-    const newEdges = produce(edges, (draft) => {
-      const filtered = draft.filter(edge => !needDeleteEdges.map(needDeleteEdge => needDeleteEdge.id).includes(edge.id))
-
-      filtered.push(...needAddEdges)
-
-      return filtered
-    })
-    setEdges(newEdges)
-  }, [store])
-
   const handleEdgeCancelRunningStatus = useCallback(() => {
     const {
       edges,
@@ -221,7 +163,6 @@ export const useEdgesInteractions = () => {
     handleEdgeDeleteByDeleteBranch,
     handleEdgeDelete,
     handleEdgesChange,
-    handleVariableAssignerEdgesChange,
     handleEdgeCancelRunningStatus,
   }
 }

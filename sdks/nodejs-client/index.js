@@ -85,7 +85,7 @@ export class DifyClient {
       response = await axios({
         method,
         url,
-        data,
+        ...(method !== "GET" && { data }),
         params,
         headers,
         responseType: "json",

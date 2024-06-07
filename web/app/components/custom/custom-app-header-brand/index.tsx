@@ -14,7 +14,7 @@ const CustomAppHeaderBrand = () => {
   return (
     <div className='py-3'>
       <div className='mb-2 text-sm font-medium text-gray-900'>{t('custom.app.title')}</div>
-      <div className='relative mb-4 rounded-xl bg-gray-100 border-[0.5px] border-black/[0.08] shadow-xs'>
+      <div className='relative mb-4 rounded-xl bg-gray-100 border-[0.5px] border-black/8 shadow-xs'>
         <div className={`${s.mask} absolute inset-0 rounded-xl`}></div>
         <div className='flex items-center pl-5 h-14 rounded-t-xl'>
           <div className='relative flex items-center mr-[199px] w-[120px] h-10 bg-[rgba(217,45,32,0.12)]'>
@@ -43,7 +43,7 @@ const CustomAppHeaderBrand = () => {
       <div className='flex items-center mb-2'>
         <Button
           className={`
-            !h-8 !px-3 bg-white !text-[13px] 
+            !h-8 !px-3 bg-white !text-[13px]
             ${plan.type === Plan.sandbox ? 'opacity-40' : ''}
           `}
           disabled={plan.type === Plan.sandbox}
@@ -54,7 +54,7 @@ const CustomAppHeaderBrand = () => {
         <div className='mx-2 h-5 w-[1px] bg-black/5'></div>
         <Button
           className={`
-            !h-8 !px-3 bg-white !text-[13px] 
+            !h-8 !px-3 bg-white !text-[13px]
             ${plan.type === Plan.sandbox ? 'opacity-40' : ''}
           `}
           disabled={plan.type === Plan.sandbox}

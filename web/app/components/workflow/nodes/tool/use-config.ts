@@ -34,7 +34,20 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const isBuiltIn = provider_type === CollectionType.builtIn
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
-  const currentTools = isBuiltIn ? buildInTools : customTools
+  const workflowTools = useStore(s => s.workflowTools)
+
+  const currentTools = (() => {
+    switch (provider_type) {
+      case CollectionType.builtIn:
+        return buildInTools
+      case CollectionType.custom:
+        return customTools
+      case CollectionType.workflow:
+        return workflowTools
+      default:
+        return []
+    }
+  })()
   const currCollection = currentTools.find(item => item.id === provider_id)
 
   // Auth

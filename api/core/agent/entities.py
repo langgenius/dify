@@ -8,7 +8,7 @@ class AgentToolEntity(BaseModel):
     """
     Agent Tool Entity.
     """
-    provider_type: Literal["builtin", "api"]
+    provider_type: Literal["builtin", "api", "workflow"]
     provider_id: str
     tool_name: str
     tool_parameters: dict[str, Any] = {}

@@ -114,6 +114,12 @@ export const fetchDocumentDetail: Fetcher<DocumentDetailResponse, CommonDocReq &
   return get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params })
 }
 
+export const renameDocumentName: Fetcher<CommonResponse, CommonDocReq & { name: string }> = ({ datasetId, documentId, name }) => {
+  return post<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/rename`, {
+    body: { name },
+  })
+}
+
 export const pauseDocIndexing: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/processing/pause`)
 }
