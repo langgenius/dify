@@ -10,8 +10,8 @@ on:
 env:
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-  DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME || 'dify/dify-web' }}
-  DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME || 'dify/dify-api' }}
+  DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME }}
+  DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME }}
   registry: ${{ secrets.CI_HOSTNAME }}
   username: ${{ secrets.CI_USERNAME }}
   password: ${{ secrets.CI_PASSWORD }}
@@ -24,10 +24,10 @@ jobs:
       matrix:
         include:
           - service_name: "web"
-            image_name_env: ${{ env.registry }}/"DIFY_WEB_IMAGE_NAME"
+            image_name_env: "DIFY_WEB_IMAGE_NAME"
             context: "web"
           - service_name: "api"
-            image_name_env: ${{ env.registry }}/"DIFY_API_IMAGE_NAME"
+            image_name_env: "DIFY_API_IMAGE_NAME"
             context: "api"
     steps:
       - name: Set up QEMU
