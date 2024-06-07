@@ -49,5 +49,20 @@ class ApiKeyAuthDataSourceBinding(Resource):
         return {'result': 'success'}, 200
 
 
+class ApiKeyAuthDataSourceBindingDelete(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, binding_id):
+        # The role of the current user in the table must be admin or owner
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+
+        ApiKeyAuthService.delete_provider_auth(current_user.current_tenant_id, binding_id)
+
+        return {'result': 'success'}, 200
+
+
 api.add_resource(ApiKeyAuthDataSource, '/api-key-auth/data-source')
 api.add_resource(ApiKeyAuthDataSourceBinding, '/api-key-auth/data-source/binding')
+api.add_resource(ApiKeyAuthDataSourceBindingDelete, '/api-key-auth/data-source/<uuid:binding_id>')
