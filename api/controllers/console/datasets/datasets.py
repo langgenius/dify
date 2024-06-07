@@ -492,7 +492,7 @@ class DatasetRetrievalSettingApi(Resource):
                     ]
                 }
             case _:
-                raise ValueError("Unsupported vector db type.")
+                raise ValueError(f"Unsupported vector db type {vector_type}.")
 
 
 class DatasetRetrievalSettingMockApi(Resource):
@@ -500,20 +500,21 @@ class DatasetRetrievalSettingMockApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, vector_type):
-        if vector_type in {'milvus', 'relyt', 'pgvector', 'tidb_vector'}:
-            return {
-                'retrieval_method': [
-                    'semantic_search'
-                ]
-            }
-        elif vector_type in {'qdrant', 'weaviate'}:
-            return {
-                'retrieval_method': [
-                    'semantic_search', 'full_text_search', 'hybrid_search'
-                ]
-            }
-        else:
-            raise ValueError("Unsupported vector db type.")
+        match vector_type:
+            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR:
+                return {
+                    'retrieval_method': [
+                        'semantic_search'
+                    ]
+                }
+            case VectorType.QDRANT | VectorType.WEAVIATE:
+                return {
+                    'retrieval_method': [
+                        'semantic_search', 'full_text_search', 'hybrid_search'
+                    ]
+                }
+            case _:
+                raise ValueError(f"Unsupported vector db type {vector_type}.")
 
 
 class DatasetErrorDocs(Resource):
