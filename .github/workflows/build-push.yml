@@ -74,8 +74,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - uses: actions-hub/kubectl@master
-        env:
-          KUBE_CONFIG: ${{ env.KUBECONFIG }}
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
         with:
-          args: get pods -n ${{ env.NAMESPACE }}
+          version: 'v1.29.3'
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ env.KUBECONFIG }}" > $HOME/.kube/config
