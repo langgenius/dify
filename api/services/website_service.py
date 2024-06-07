@@ -97,6 +97,8 @@ class WebsiteService:
             crawl_status_data = {
                 'status': result.get('status', 'active'),
                 'job_id': job_id,
+                'total': result.get('total', 0),
+                'current': result.get('current', 0),
                 'data': result.get('data', [])
             }
         else:
