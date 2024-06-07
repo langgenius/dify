@@ -45,6 +45,16 @@ class ApiKeyAuthService:
         credentials = json.loads(data_source_api_key_bindings.credentials)
         return credentials
 
+    @staticmethod
+    def delete_provider_auth(tenant_id: str, binding_id: str):
+        data_source_api_key_binding = db.session.query(DataSourceApiKeyAuthBinding).filter(
+            DataSourceApiKeyAuthBinding.tenant_id == tenant_id,
+            DataSourceApiKeyAuthBinding.id == binding_id
+        ).first()
+        if data_source_api_key_binding:
+            db.session.delete(data_source_api_key_binding)
+            db.session.commit()
+
     @classmethod
     def validate_api_key_auth_args(cls, args):
         if 'category' not in args or not args['category']:
