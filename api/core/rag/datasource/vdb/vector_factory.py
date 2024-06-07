@@ -1,4 +1,5 @@
 import json
+from abc import ABC, abstractmethod
 from typing import Any
 
 from flask import current_app
@@ -34,24 +35,9 @@ class Vector:
             raise ValueError("Vector store must be specified.")
 
         if vector_type == VectorType.WEAVIATE:
-            from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateConfig, WeaviateVector
-            if self._dataset.index_struct_dict:
-                class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
-                collection_name = class_prefix
-            else:
-                dataset_id = self._dataset.id
-                collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                self._dataset.index_struct = json.dumps(
-                    self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
-            return WeaviateVector(
-                collection_name=collection_name,
-                config=WeaviateConfig(
-                    endpoint=config.get('WEAVIATE_ENDPOINT'),
-                    api_key=config.get('WEAVIATE_API_KEY'),
-                    batch_size=int(config.get('WEAVIATE_BATCH_SIZE'))
-                ),
-                attributes=self._attributes
-            )
+            from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
+            return WeaviateVectorFactory.create_vector(self._dataset, self._attributes)
+
         elif vector_type == VectorType.QDRANT:
             from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig, QdrantVector
             if self._dataset.collection_binding_id:
@@ -271,6 +257,21 @@ class Vector:
 
     @classmethod
     def gen_index_struct_dict(cls, vector_type: VectorType, collection_name: str) -> dict:
+        index_struct_dict = {
+            "type": vector_type,
+            "vector_store": {"class_prefix": collection_name}
+        }
+        return index_struct_dict
+
+
+class AbstractVectorFactory(ABC):
+    @staticmethod
+    @abstractmethod
+    def create_vector(dataset: Dataset, attributes: list = None) -> BaseVector:
+        raise NotImplementedError
+
+    @staticmethod
+    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> dict:
         index_struct_dict = {
             "type": vector_type,
             "vector_store": {"class_prefix": collection_name}
