@@ -80,7 +80,7 @@ jobs:
           version: 'v1.29.3'
 
       - name: generate kubeconfig
-        uses: ./
+        uses: appleboy/kubernetes-action@master
         with:
           server: ${{ secrets.K8S_SERVER }}
           ca_cert: ${{ secrets.K8S_CA_CERT }}
