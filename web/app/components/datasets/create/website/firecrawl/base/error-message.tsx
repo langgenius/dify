@@ -7,7 +7,7 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 type Props = {
   className?: string
   title: string
-  errorMsg: string
+  errorMsg?: string
 }
 
 const ErrorMessage: FC<Props> = ({
@@ -21,7 +21,9 @@ const ErrorMessage: FC<Props> = ({
         <AlertTriangle className='mr-2 w-4 h-4 text-[#F79009]' />
         <div className='text-sm font-medium text-[#DC6803]'>{title}</div>
       </div>
-      <div className='mt-1 pl-6 leading-[18px] text-xs font-normal text-gray-700'>{errorMsg}</div>
+      {errorMsg && (
+        <div className='mt-1 pl-6 leading-[18px] text-xs font-normal text-gray-700'>{errorMsg}</div>
+      )}
     </div>
   )
 }

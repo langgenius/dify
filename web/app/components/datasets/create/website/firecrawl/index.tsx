@@ -91,7 +91,7 @@ const FireCrawl: FC<Props> = ({
   const isRunning = step === Step.running
   const [crawlResult, setCrawlResult] = useState<CrawlResultItem[]>(mockCrawlResult)
 
-  const [crawlErrorMsg, setCrawlErrorMsg] = useState('')
+  const [crawlHasError, setCrawlHasError] = useState(false)
 
   const waitForCrawlFinished = useCallback(async (jobId: string) => {
     const res = await checkFirecrawlTaskStatus(jobId) as any
@@ -102,9 +102,9 @@ const FireCrawl: FC<Props> = ({
       }
     }
     if (res.status === 'error') {
+      // can't get the error message from the firecrawl api
       return {
         isError: true,
-        errorMessage: res.errorMessage, // TODO: wait for the api structure
       }
     }
     await sleep(2500)
@@ -120,6 +120,7 @@ const FireCrawl: FC<Props> = ({
       })
       return
     }
+    setCrawlHasError(false)
     setStep(Step.running)
     const res = await createFirecrawlTask({
       url,
@@ -127,15 +128,15 @@ const FireCrawl: FC<Props> = ({
     }) as any
     const jobId = res.job_id
     onJobIdChange(jobId)
-    const { isError, data, errorMessage } = await waitForCrawlFinished(jobId)
+    const { isError, data } = await waitForCrawlFinished(jobId)
     if (isError) {
-      setCrawlErrorMsg(errorMessage)
+      setCrawlHasError(true)
       setCrawlResult(data)
     }
 
     setStep(Step.finished)
     setCrawlResult(data)
-    setCrawlErrorMsg('')
+    setCrawlHasError(false)
   }, [checkValid, crawlOptions, onJobIdChange, waitForCrawlFinished])
 
   return (
@@ -146,7 +147,7 @@ const FireCrawl: FC<Props> = ({
         <OptionsWrap
           className={cn('mt-3')}
           isFilledFull={!isInit}
-          errorMsg={isCrawlFinished ? crawlErrorMsg : ''}
+          hasError={isCrawlFinished && crawlHasError}
         >
           {isInit && <Options className='mt-2' payload={crawlOptions} onChange={setCrawlOptions} />}
           {isRunning

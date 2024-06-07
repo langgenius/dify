@@ -13,13 +13,13 @@ type Props = {
   className?: string
   children: React.ReactNode
   isFilledFull?: boolean
-  errorMsg?: string
+  hasError?: boolean
 }
 
 const OptionsWrap: FC<Props> = ({
   className = '',
   children,
-  errorMsg,
+  hasError,
   isFilledFull = false,
 }) => {
   const { t } = useTranslation()
@@ -41,10 +41,10 @@ const OptionsWrap: FC<Props> = ({
       </div>
       {!fold && (
         <div className={cn(isFilledFull && 'mt-3 relative left-[-12px] w-[calc(100%_+_24px)] rounded-b-xl')}>
-          {!errorMsg
+          {!hasError
             ? children
             : (
-              <ErrorMessage className='rounded-b-xl' title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={errorMsg} />
+              <ErrorMessage className='rounded-b-xl' title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} />
             )}
         </div>
       )}
