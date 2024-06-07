@@ -116,8 +116,9 @@ class ToolParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
 
+
 class ToolParameter(BaseModel):
-    class ToolParameterType(Enum):
+    class ToolParameterType(str, Enum):
         STRING = "string"
         NUMBER = "number"
         BOOLEAN = "boolean"

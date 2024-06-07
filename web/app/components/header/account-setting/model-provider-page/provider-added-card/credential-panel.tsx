@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ModelProvider } from '../declarations'
 import {
-  ConfigurateMethodEnum,
+  ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   PreferredProviderTypeEnum,
 } from '../declarations'
@@ -51,7 +51,7 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
       updateModelProviders()
 
       configurateMethods.forEach((method) => {
-        if (method === ConfigurateMethodEnum.predefinedModel)
+        if (method === ConfigurationMethodEnum.predefinedModel)
           provider.supported_model_types.forEach(modelType => updateModelList(modelType))
       })
 

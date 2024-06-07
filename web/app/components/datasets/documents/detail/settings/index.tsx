@@ -68,7 +68,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
         {!documentDetail && <Loading type='app' />}
         {dataset && documentDetail && (
           <StepTwo
-            hasSetAPIKEY={!!embeddingsDefaultModel}
+            isAPIKeySet={!!embeddingsDefaultModel}
             onSetting={showSetAPIKey}
             datasetId={datasetId}
             dataSourceType={documentDetail.data_source_type}

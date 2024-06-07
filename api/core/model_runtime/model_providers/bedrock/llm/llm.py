@@ -358,26 +358,25 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         return message_dict
 
-    def get_num_tokens(self, model: str, credentials: dict, messages: list[PromptMessage] | str,
+    def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage] | str,
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
         """
         Get number of tokens for given prompt messages
 
         :param model: model name
         :param credentials: model credentials
-        :param messages: prompt messages or message string
+        :param prompt_messages: prompt messages or message string
         :param tools: tools for tool calling
         :return:md = genai.GenerativeModel(model)
         """
         prefix = model.split('.')[0]
         model_name = model.split('.')[1]
-        if isinstance(messages, str):
-            prompt = messages
+        if isinstance(prompt_messages, str):
+            prompt = prompt_messages
         else:
-            prompt = self._convert_messages_to_prompt(messages, prefix, model_name)
+            prompt = self._convert_messages_to_prompt(prompt_messages, prefix, model_name)
 
         return self._get_num_tokens_by_gpt2(prompt)
-    
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
