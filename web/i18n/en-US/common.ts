@@ -180,6 +180,8 @@ const translation = {
     builderTip: 'Can build & edit own apps',
     editor: 'Editor',
     editorTip: 'Can build & edit apps',
+    knowledgeAdmin: 'Knowledge Admin',
+    knowledgeAdminTip: 'Only can manage the knowledge base',
     inviteTeamMember: 'Add team member',
     inviteTeamMemberTip: 'They can access your team data directly after signing in.',
     email: 'Email',

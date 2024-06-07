@@ -38,6 +38,7 @@ const Operation = ({
     admin: t('common.members.admin'),
     editor: t('common.members.editor'),
     normal: t('common.members.normal'),
+    knowledgeAdmin: t('common.members.knowledgeAdmin'),
   }
   const { notify } = useContext(ToastContext)
   const handleDeleteMemberOrCancelInvitation = async () => {
@@ -99,7 +100,7 @@ const Operation = ({
               >
                 <div className="px-1 py-1">
                   {
-                    ['admin', 'editor', 'normal'].map(role => (
+                    ['admin', 'editor', 'normal', 'knowledgeAdmin'].map(role => (
                       <Menu.Item key={role}>
                         <div className={itemClassName} onClick={() => handleUpdateMemberRole(role)}>
                           {
