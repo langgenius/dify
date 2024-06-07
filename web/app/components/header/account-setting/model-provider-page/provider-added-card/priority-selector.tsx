@@ -18,7 +18,7 @@ const Selector: FC<SelectorProps> = ({
   const options = [
     {
       key: PreferredProviderTypeEnum.custom,
-      text: 'API',
+      text: t('common.modelProvider.apiKey'),
     },
     {
       key: PreferredProviderTypeEnum.system,

@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.9
+    image: langgenius/dify-api:0.6.10
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -134,15 +134,22 @@ services:
       PGVECTOR_USER: postgres
       PGVECTOR_PASSWORD: difyai123456
       PGVECTOR_DATABASE: dify
+      # tidb vector configurations
+      TIDB_VECTOR_HOST: tidb
+      TIDB_VECTOR_PORT: 4000
+      TIDB_VECTOR_USER: xxx.root
+      TIDB_VECTOR_PASSWORD: xxxxxx
+      TIDB_VECTOR_DATABASE: dify
       # Mail configuration, support: resend, smtp
       MAIL_TYPE: ''
       # default send from email address, if not specified
       MAIL_DEFAULT_SEND_FROM: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
       SMTP_SERVER: ''
-      SMTP_PORT: 587
+      SMTP_PORT: 465
       SMTP_USERNAME: ''
       SMTP_PASSWORD: ''
       SMTP_USE_TLS: 'true'
+      SMTP_OPPORTUNISTIC_TLS: 'false'
       # the api-key for resend (https://resend.com)
       RESEND_API_KEY: ''
       RESEND_API_URL: https://api.resend.com
@@ -188,7 +195,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.9
+    image: langgenius/dify-api:0.6.10
     restart: always
     environment:
       CONSOLE_WEB_URL: ''
@@ -268,10 +275,11 @@ services:
       # default send from email address, if not specified
       MAIL_DEFAULT_SEND_FROM: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
       SMTP_SERVER: ''
-      SMTP_PORT: 587
+      SMTP_PORT: 465
       SMTP_USERNAME: ''
       SMTP_PASSWORD: ''
       SMTP_USE_TLS: 'true'
+      SMTP_OPPORTUNISTIC_TLS: 'false'
       # the api-key for resend (https://resend.com)
       RESEND_API_KEY: ''
       RESEND_API_URL: https://api.resend.com
@@ -287,6 +295,12 @@ services:
       PGVECTOR_USER: postgres
       PGVECTOR_PASSWORD: difyai123456
       PGVECTOR_DATABASE: dify
+      # tidb vector configurations
+      TIDB_VECTOR_HOST: tidb
+      TIDB_VECTOR_PORT: 4000
+      TIDB_VECTOR_USER: xxx.root
+      TIDB_VECTOR_PASSWORD: xxxxxx
+      TIDB_VECTOR_DATABASE: dify
       # Notion import configuration, support public and internal
       NOTION_INTEGRATION_TYPE: public
       NOTION_CLIENT_SECRET: you-client-secret
@@ -306,7 +320,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.6.9
+    image: langgenius/dify-web:0.6.10
     restart: always
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
@@ -387,7 +401,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.0
+    image: langgenius/dify-sandbox:0.2.1
     restart: always
     environment:
       # The DifySandbox configurations
@@ -399,6 +413,7 @@ services:
       ENABLE_NETWORK: 'true'
       HTTP_PROXY: 'http://ssrf_proxy:3128'
       HTTPS_PROXY: 'http://ssrf_proxy:3128'
+      SANDBOX_PORT: 8194
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
     networks:

@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useState,
 } from 'react'
 import cn from 'classnames'
 import { useVariableAssigner } from '../../hooks'
@@ -19,21 +20,18 @@ import type {
 } from '@/app/components/workflow/types'
 
 export type AddVariableProps = {
-  open: boolean
-  onOpenChange: (open: boolean) => void
   variableAssignerNodeId: string
   variableAssignerNodeData: VariableAssignerNodeType
   availableVars: NodeOutPutVar[]
   handleId?: string
 }
 const AddVariable = ({
-  open,
-  onOpenChange,
   availableVars,
   variableAssignerNodeId,
   variableAssignerNodeData,
   handleId,
 }: AddVariableProps) => {
+  const [open, setOpen] = useState(false)
   const { handleAssignVariableValueChange } = useVariableAssigner()
 
   const handleSelectVariable = useCallback((v: ValueSelector, varDetail: Var) => {
@@ -43,34 +41,38 @@ const AddVariable = ({
       varDetail,
       handleId,
     )
-    onOpenChange(false)
-  }, [handleAssignVariableValueChange, variableAssignerNodeId, handleId, onOpenChange])
+    setOpen(false)
+  }, [handleAssignVariableValueChange, variableAssignerNodeId, handleId, setOpen])
 
   return (
     <div className={cn(
-      'hidden group-hover:flex absolute top-0 left-0 z-10 pointer-events-none',
       open && '!flex',
       variableAssignerNodeData.selected && '!flex',
     )}>
       <PortalToFollowElem
-        placement={'left-start'}
-        offset={{
-          mainAxis: 4,
-          crossAxis: -60,
-        }}
+        placement={'right'}
+        offset={4}
         open={open}
-        onOpenChange={onOpenChange}
+        onOpenChange={setOpen}
       >
         <PortalToFollowElemTrigger
-          onClick={() => onOpenChange(!open)}
+          onClick={() => setOpen(!open)}
         >
           <div
             className={cn(
-              'flex items-center justify-center',
-              'w-4 h-4 rounded-full bg-primary-600 cursor-pointer z-10',
+              'group/addvariable flex items-center justify-center',
+              'w-4 h-4 cursor-pointer',
+              'hover:rounded-full hover:bg-primary-600',
+              open && '!rounded-full !bg-primary-600',
             )}
           >
-            <Plus02 className='w-2.5 h-2.5 text-white' />
+            <Plus02
+              className={cn(
+                'w-2.5 h-2.5 text-gray-500',
+                'group-hover/addvariable:text-white',
+                open && '!text-white',
+              )}
+            />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>

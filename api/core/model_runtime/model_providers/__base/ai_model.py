@@ -3,6 +3,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from core.helper.position_helper import get_position_map, sort_by_position_map
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from core.model_runtime.entities.model_entities import (
@@ -17,7 +18,6 @@ from core.model_runtime.entities.model_entities import (
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
 from core.tools.utils.yaml_utils import load_yaml_file
-from core.utils.position_helper import get_position_map, sort_by_position_map
 
 
 class AIModel(ABC):
