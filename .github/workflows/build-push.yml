@@ -43,8 +43,13 @@ jobs:
       #     password: ${{ env.DOCKERHUB_TOKEN }}
 
       - name: Login to CI
-        run: |
-          echo $password | buildah login --username $username --password-stdin $registry
+        # run: |
+        #   echo $password | buildah login --username $username --password-stdin $registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.registry }}
+          username: ${{ env.username }}
+          password: ${{ env.password }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
