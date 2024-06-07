@@ -74,10 +74,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # - name: Set up kubectl
-      #   uses: azure/setup-kubectl@v3
-      #   with:
-      #     version: 'v1.29.3'
 
       - name: generate kubeconfig
         uses: appleboy/kubernetes-action@v0.0.1
@@ -87,11 +83,11 @@ jobs:
           token: ${{ secrets.K8S_TOKEN }}
           output: kubeconfig.yaml
 
-      - name: get pods in github-action namespace
+      - name: deploy
         env:
           KUBECONFIG: kubeconfig.yaml
         run: |
           sudo chmod 644 kubeconfig.yaml
           kubectl get pods -n sqhd-dify-test
           IMAGE_TAG=${{ steps.meta.outputs.json.labels['org.opencontainers.image.revision'] }}
-          kubectl -n sqhd-dify-test set image deployment/dify-${{ matrix.service_name }} ${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:$IMAGE_TAG
+          echo ${{ steps.meta.outputs.json.labels['org.opencontainers.image.revision'] }}
