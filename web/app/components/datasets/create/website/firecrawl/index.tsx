@@ -23,15 +23,8 @@ type Props = {
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
-}
-
-const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
-  crawl_sub_pages: true,
-  only_main_content: true,
-  includes: '',
-  excludes: '',
-  limit: 10,
-  max_depth: 2,
+  crawlOptions: CrawlOptions
+  onCrawlOptionsChange: (payload: CrawlOptions) => void
 }
 
 enum Step {
@@ -45,6 +38,8 @@ const FireCrawl: FC<Props> = ({
   checkedCrawlResult,
   onCheckedCrawlResultChange,
   onJobIdChange,
+  crawlOptions,
+  onCrawlOptionsChange,
 }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
@@ -55,7 +50,6 @@ const FireCrawl: FC<Props> = ({
     })
   }, [setShowAccountSettingModal])
 
-  const [crawlOptions, setCrawlOptions] = useState<CrawlOptions>(DEFAULT_CRAWL_OPTIONS)
   const checkValid = useCallback((url: string) => {
     let errorMsg = ''
     if (!url) {
@@ -172,7 +166,7 @@ const FireCrawl: FC<Props> = ({
           isFilledFull={!isInit}
           hasError={isCrawlFinished && crawlHasError}
         >
-          {isInit && <Options className='mt-2' payload={crawlOptions} onChange={setCrawlOptions} />}
+          {isInit && <Options className='mt-2' payload={crawlOptions} onChange={onCrawlOptionsChange} />}
           {isRunning
             && <Crawling
               className='mt-2'

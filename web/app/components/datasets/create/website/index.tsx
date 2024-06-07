@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import NoData from './no-data'
 import Firecrawl from './firecrawl'
 import { useModalContext } from '@/context/modal-context'
-import type { CrawlResultItem } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fetchFirecrawlApiKey } from '@/service/datasets'
 import { type DataSourceWebsiteItem, WebsiteProvider } from '@/models/common'
 
@@ -13,6 +13,8 @@ type Props = {
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
   onJobIdChange: (jobId: string) => void
+  crawlOptions: CrawlOptions
+  onCrawlOptionsChange: (payload: CrawlOptions) => void
 }
 
 const Website: FC<Props> = ({
@@ -20,6 +22,8 @@ const Website: FC<Props> = ({
   checkedCrawlResult,
   onCheckedCrawlResultChange,
   onJobIdChange,
+  crawlOptions,
+  onCrawlOptionsChange,
 }) => {
   const { setShowAccountSettingModal } = useModalContext()
   const [isLoaded, setIsLoaded] = useState(false)
@@ -55,6 +59,8 @@ const Website: FC<Props> = ({
             checkedCrawlResult={checkedCrawlResult}
             onCheckedCrawlResultChange={onCheckedCrawlResultChange}
             onJobIdChange={onJobIdChange}
+            crawlOptions={crawlOptions}
+            onCrawlOptionsChange={onCrawlOptionsChange}
           />
         )
         : (

@@ -9,7 +9,7 @@ import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import Website from '../website'
 import WebsitePreview from '../website/preview'
 import s from './index.module.css'
-import type { CrawlResultItem, FileItem } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import type { NotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
@@ -34,6 +34,8 @@ type IStepOneProps = {
   websitePages?: CrawlResultItem[]
   updateWebsitePages: (value: CrawlResultItem[]) => void
   onFireCrawlJobIdChange: (jobId: string) => void
+  crawlOptions: CrawlOptions
+  onCrawlOptionsChange: (payload: CrawlOptions) => void
 }
 
 type NotionConnectorProps = {
@@ -68,6 +70,8 @@ const StepOne = ({
   websitePages = [],
   updateWebsitePages,
   onFireCrawlJobIdChange,
+  crawlOptions,
+  onCrawlOptionsChange,
 }: IStepOneProps) => {
   const { dataset } = useDatasetDetailContext()
   const [showModal, setShowModal] = useState(false)
@@ -221,6 +225,8 @@ const StepOne = ({
                   checkedCrawlResult={websitePages}
                   onCheckedCrawlResultChange={updateWebsitePages}
                   onJobIdChange={onFireCrawlJobIdChange}
+                  crawlOptions={crawlOptions}
+                  onCrawlOptionsChange={onCrawlOptionsChange}
                 />
               </div>
               {isShowVectorSpaceFull && (

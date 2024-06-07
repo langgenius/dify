@@ -61,7 +61,7 @@ const CrawledResult: FC<Props> = ({
         />
         <div>{t(`${I18N_PREFIX}.scrapTimeInfo`, {
           total: list.length,
-          time: '12.4 seconds',
+          time: '12.4 seconds', // TODO toFixed(1)
         })}</div>
       </div>
       <div className='p-2'>
