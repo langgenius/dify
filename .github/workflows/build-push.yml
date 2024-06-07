@@ -73,15 +73,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Install kubectl
-        uses: imranismail/setup-kubectl@v1
+      - uses: actions-hub/kubectl@master
+        env:
+          KUBE_CONFIG: ${{ env.KUBECONFIG }}
         with:
-          version: 'latest'
-
-      - name: deploy
-        run: | 
-          IMAGE_TAG=${{ steps.meta.outputs.json.labels['org.opencontainers.image.revision'] }}
-          echo "${{ env.KUBECONFIG }}" > $HOME/config
-          kubectl --kubeconfig $HOME/config set image -n ${{ env.NAMESPACE }} deployment/dify-${{ matrix.service_name }} dify-${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:$IMAGE_TAG
-
-
+          args: get pods
