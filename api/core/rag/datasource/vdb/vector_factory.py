@@ -11,8 +11,7 @@ from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
-from extensions.ext_database import db
-from models.dataset import Dataset, DatasetCollectionBinding
+from models.dataset import Dataset
 
 
 class Vector:
@@ -39,39 +38,9 @@ class Vector:
             return WeaviateVectorFactory.create_vector(self._dataset, self._attributes)
 
         elif vector_type == VectorType.QDRANT:
-            from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig, QdrantVector
-            if self._dataset.collection_binding_id:
-                dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
-                    filter(DatasetCollectionBinding.id == self._dataset.collection_binding_id). \
-                    one_or_none()
-                if dataset_collection_binding:
-                    collection_name = dataset_collection_binding.collection_name
-                else:
-                    raise ValueError('Dataset Collection Bindings is not exist!')
-            else:
-                if self._dataset.index_struct_dict:
-                    class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
-                    collection_name = class_prefix
-                else:
-                    dataset_id = self._dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+            from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantVectorFactory
+            return QdrantVectorFactory.create_vector(self._dataset, self._attributes)
 
-            if not self._dataset.index_struct_dict:
-                self._dataset.index_struct = json.dumps(
-                    self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
-
-            return QdrantVector(
-                collection_name=collection_name,
-                group_id=self._dataset.id,
-                config=QdrantConfig(
-                    endpoint=config.get('QDRANT_URL'),
-                    api_key=config.get('QDRANT_API_KEY'),
-                    root_path=current_app.root_path,
-                    timeout=config.get('QDRANT_CLIENT_TIMEOUT'),
-                    grpc_port=config.get('QDRANT_GRPC_PORT'),
-                    prefer_grpc=config.get('QDRANT_GRPC_ENABLED')
-                )
-            )
         elif vector_type == VectorType.MILVUS:
             from core.rag.datasource.vdb.milvus.milvus_vector import MilvusConfig, MilvusVector
             if self._dataset.index_struct_dict:
