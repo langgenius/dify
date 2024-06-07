@@ -74,9 +74,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Get image revision
-        run: | 
-          IMAGE_TAG=${{ steps.meta.outputs.json.labels['org.opencontainers.image.revision'] }}
-          echo "${{ env.KUBECONFIG }}" > $HOME/config
-          kubectl --kubeconfig $HOME/config set image -n ${{ env.NAMESPACE }} deployment/dify-${{ matrix.service_name }} dify-${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:$IMAGE_TAG
-
-
+        run:
+          - IMAGE_TAG=${{ steps.meta.outputs.json.labels['org.opencontainers.image.revision'] }}
+          - echo "${{ env.KUBECONFIG }}" > $HOME/config
+          - kubectl --kubeconfig $HOME/config set image -n ${{ env.NAMESPACE }} deployment/dify-${{ matrix.service_name }} dify-${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:$IMAGE_TAG
