@@ -465,6 +465,19 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     document_model=document.doc_form
                 )
                 extract_settings.append(extract_setting)
+            elif document.data_source_type == 'website_crawl':
+                extract_setting = ExtractSetting(
+                    datasource_type="website",
+                    website_info={
+                        "provider": data_source_info['provider'],
+                        "job_id": data_source_info['job_id'],
+                        "url": data_source_info['url'],
+                        "mode": data_source_info['mode'],
+                        "only_main_content": data_source_info['only_main_content']
+                    },
+                    document_model=document.doc_form
+                )
+                extract_settings.append(extract_setting)
 
             else:
                 raise ValueError('Data source type not support')

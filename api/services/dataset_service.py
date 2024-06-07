@@ -749,7 +749,9 @@ class DocumentService:
                     data_source_info = {
                         'url': url,
                         'provider': website_info['provider'],
-                        'job_id': website_info['job_id']
+                        'job_id': website_info['job_id'],
+                        'only_main_content': website_info.get('only_main_content', False),
+                        'mode': 'crawl',
                     }
                     document = DocumentService.build_document(dataset, dataset_process_rule.id,
                                                               document_data["data_source"]["type"],
@@ -887,7 +889,9 @@ class DocumentService:
                     data_source_info = {
                         'url': url,
                         'provider': website_info['provider'],
-                        'job_id': website_info['job_id']
+                        'job_id': website_info['job_id'],
+                        'only_main_content': website_info.get('only_main_content', False),
+                        'mode': 'crawl',
                     }
             document.data_source_type = document_data["data_source"]["type"]
             document.data_source_info = json.dumps(data_source_info)
@@ -1030,7 +1034,7 @@ class DocumentService:
             if 'notion_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list'][
                 'notion_info_list']:
                 raise ValueError("Notion source info is required")
-        if args['data_source']['type'] == 'website':
+        if args['data_source']['type'] == 'website_crawl':
             if 'website_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list'][
                 'website_info_list']:
                 raise ValueError("Website source info is required")
