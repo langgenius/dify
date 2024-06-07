@@ -75,7 +75,7 @@ jobs:
           cache-to: type=gha,mode=max
 
 
-      - name: generate kubeconfig
+      - name: generate config
         uses: appleboy/kubernetes-action@v0.0.1
         with:
           server: ${{ secrets.K8S_SERVER }}
@@ -88,7 +88,4 @@ jobs:
           KUBECONFIG: kubeconfig.yaml
         run: |
           sudo chmod 644 kubeconfig.yaml
-          kubectl get pods -n sqhd-dify-test
-          kubectl -n sqhd-dify-test set image deployment/dify-${{ matrix.service_name }} ${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-          
-          
+          kubectl -n ${{ env.NAMESPACE }} set image deployment/dify-${{ matrix.service_name }} ${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
