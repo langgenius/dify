@@ -7,6 +7,8 @@ from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import JSON, TEXT
 from sqlalchemy.orm import Session
 
+from core.rag.datasource.vdb.vector_type import VectorType
+
 try:
     from sqlalchemy.orm import declarative_base
 except ImportError:
@@ -53,7 +55,7 @@ class RelytVector(BaseVector):
         self._group_id = group_id
 
     def get_type(self) -> str:
-        return 'relyt'
+        return VectorType.RELYT
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         index_params = {}

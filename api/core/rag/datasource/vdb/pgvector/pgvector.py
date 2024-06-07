@@ -8,6 +8,7 @@ import psycopg2.pool
 from pydantic import BaseModel, root_validator
 
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 
@@ -51,7 +52,7 @@ class PGVector(BaseVector):
         self.table_name = f"embedding_{collection_name}"
 
     def get_type(self) -> str:
-        return "pgvector"
+        return VectorType.PGVECTOR
 
     def _create_connection_pool(self, config: PGVectorConfig):
         return psycopg2.pool.SimpleConnectionPool(

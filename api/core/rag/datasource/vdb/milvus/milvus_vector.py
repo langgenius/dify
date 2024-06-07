@@ -7,6 +7,7 @@ from pymilvus import MilvusClient, MilvusException, connections
 
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 
@@ -55,7 +56,7 @@ class MilvusVector(BaseVector):
         self._fields = []
 
     def get_type(self) -> str:
-        return 'milvus'
+        return VectorType.MILVUS
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         index_params = {

@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from core.rag.datasource.vdb.pgvecto_rs.collection import CollectionORM
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 
@@ -67,7 +68,7 @@ class PGVectoRS(BaseVector):
         self._distance_op = "<=>"
 
     def get_type(self) -> str:
-        return 'pgvecto-rs'
+        return VectorType.PGVECTO_RS
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self.create_collection(len(embeddings[0]))

@@ -9,6 +9,7 @@ from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session, declarative_base
 
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 
@@ -38,6 +39,9 @@ class TiDBVectorConfig(BaseModel):
 
 
 class TiDBVector(BaseVector):
+
+    def get_type(self) -> str:
+        return VectorType.TIDB_VECTOR
 
     def _table(self, dim: int) -> Table:
         from tidb_vector.sqlalchemy import VectorType

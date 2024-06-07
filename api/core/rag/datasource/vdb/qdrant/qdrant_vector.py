@@ -19,6 +19,7 @@ from qdrant_client.local.qdrant_local import QdrantLocal
 
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 
@@ -69,7 +70,7 @@ class QdrantVector(BaseVector):
         self._group_id = group_id
 
     def get_type(self) -> str:
-        return 'qdrant'
+        return VectorType.QDRANT
 
     def to_index_struct(self) -> dict:
         return {

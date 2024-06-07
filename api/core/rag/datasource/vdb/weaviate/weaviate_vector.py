@@ -7,6 +7,7 @@ from pydantic import BaseModel, root_validator
 
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -59,7 +60,7 @@ class WeaviateVector(BaseVector):
         return client
 
     def get_type(self) -> str:
-        return 'weaviate'
+        return VectorType.WEAVIATE
 
     def get_collection_name(self, dataset: Dataset) -> str:
         if dataset.index_struct_dict:
