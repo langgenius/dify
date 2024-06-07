@@ -13,6 +13,7 @@ import Crawling from './crawling'
 import { useModalContext } from '@/context/modal-context'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import Toast from '@/app/components/base/toast'
+import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
 
 const ERROR_I18N_PREFIX = 'common.errorMsg'
@@ -45,8 +46,7 @@ const FireCrawl: FC<Props> = ({
   onCheckedCrawlResultChange,
 }) => {
   const { t } = useTranslation()
-  const [step, setStep] = useState<Step>(Step.finished)
-
+  const [step, setStep] = useState<Step>(Step.init)
   const { setShowAccountSettingModal } = useModalContext()
   const handleSetting = useCallback(() => {
     setShowAccountSettingModal({
@@ -90,6 +90,25 @@ const FireCrawl: FC<Props> = ({
   const [crawlResult, setCrawlResult] = useState<CrawlResultItem[]>(mockCrawlResult)
 
   const [crawlErrorMsg, setCrawlErrorMsg] = useState('')
+
+  const waitForCrawlFinished = useCallback(async (jobId: string) => {
+    const res = await checkFirecrawlTaskStatus(jobId) as any
+    if (res.status === 'completed') {
+      return {
+        isError: false,
+        data: res.data,
+      }
+    }
+    if (res.status === 'error') {
+      return {
+        isError: true,
+        errorMessage: res.errorMessage, // TODO: wait for the api structure
+      }
+    }
+    await sleep(2500)
+    return await waitForCrawlFinished(jobId)
+  }, [])
+
   const handleRun = useCallback(async (url: string) => {
     const { isValid, errorMsg } = checkValid(url)
     if (!isValid) {
@@ -100,13 +119,21 @@ const FireCrawl: FC<Props> = ({
       return
     }
     setStep(Step.running)
-    // TODO: crawl
-    await sleep(2000)
-    setCrawlResult(mockCrawlResult) // TODO:
+    const res = await createFirecrawlTask({
+      url,
+      options: crawlOptions,
+    }) as any
+    const jobId = res.job_id
+    const { isError, data, errorMessage } = await waitForCrawlFinished(jobId)
+    if (isError) {
+      setCrawlErrorMsg(errorMessage)
+      setCrawlResult(data)
+    }
 
     setStep(Step.finished)
+    setCrawlResult(data)
     setCrawlErrorMsg('')
-  }, [checkValid])
+  }, [checkValid, crawlOptions, waitForCrawlFinished])
 
   return (
     <div>
