@@ -128,14 +128,6 @@ class Vector:
 
         raise AttributeError(f"'vector_processor' object has no attribute '{name}'")
 
-    @classmethod
-    def gen_index_struct_dict(cls, vector_type: VectorType, collection_name: str) -> dict:
-        index_struct_dict = {
-            "type": vector_type,
-            "vector_store": {"class_prefix": collection_name}
-        }
-        return index_struct_dict
-
 
 class AbstractVectorFactory(ABC):
     @staticmethod
@@ -143,8 +135,7 @@ class AbstractVectorFactory(ABC):
     def create_vector(dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> BaseVector:
         raise NotImplementedError
 
-    @staticmethod
-    def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> dict:
+    def gen_index_struct_dict(self, vector_type: VectorType, collection_name: str) -> dict:
         index_struct_dict = {
             "type": vector_type,
             "vector_store": {"class_prefix": collection_name}
