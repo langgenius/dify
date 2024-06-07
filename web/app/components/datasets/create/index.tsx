@@ -110,23 +110,25 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
         <StepsNavBar step={step} datasetId={datasetId} />
       </div>
       <div className="grow bg-white">
-        {step === 1 && <StepOne
-          hasConnection={hasConnection}
-          onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
-          datasetId={datasetId}
-          dataSourceType={dataSourceType}
-          dataSourceTypeDisable={!!detail?.data_source_type}
-          changeType={setDataSourceType}
-          files={fileList}
-          updateFile={updateFile}
-          updateFileList={updateFileList}
-          notionPages={notionPages}
-          updateNotionPages={updateNotionPages}
-          onStepChange={nextStep}
-          websitePages={websitePages}
-          updateWebsitePages={setWebsitePages}
-          onFireCrawlJobIdChange={setFireCrawlJobId}
-        />}
+        <div className={step === 1 ? 'block h-full' : 'none'}>
+          <StepOne
+            hasConnection={hasConnection}
+            onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
+            datasetId={datasetId}
+            dataSourceType={dataSourceType}
+            dataSourceTypeDisable={!!detail?.data_source_type}
+            changeType={setDataSourceType}
+            files={fileList}
+            updateFile={updateFile}
+            updateFileList={updateFileList}
+            notionPages={notionPages}
+            updateNotionPages={updateNotionPages}
+            onStepChange={nextStep}
+            websitePages={websitePages}
+            updateWebsitePages={setWebsitePages}
+            onFireCrawlJobIdChange={setFireCrawlJobId}
+          />
+        </div>
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
           isAPIKeySet={!!embeddingsDefaultModel}
           onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
