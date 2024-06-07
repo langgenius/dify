@@ -96,18 +96,35 @@ const FireCrawl: FC<Props> = ({
   const [crawlHasError, setCrawlHasError] = useState(false)
 
   const waitForCrawlFinished = useCallback(async (jobId: string) => {
-    const res = await checkFirecrawlTaskStatus(jobId) as any
-    if (res.status === 'completed') {
-      return {
-        isError: false,
-        data: {
-          ...res,
-          total: Math.min(res.total, parseFloat(crawlOptions.limit as string)),
-        },
+    try {
+      const res = await checkFirecrawlTaskStatus(jobId) as any
+      if (res.status === 'completed') {
+        return {
+          isError: false,
+          data: {
+            ...res,
+            total: Math.min(res.total, parseFloat(crawlOptions.limit as string)),
+          },
+        }
       }
+      if (res.status === 'error') {
+        // can't get the error message from the firecrawl api
+        return {
+          isError: true,
+          data: {
+            data: [],
+          },
+        }
+      }
+      // update the progress
+      setCrawlResult({
+        ...res,
+        total: Math.min(res.total, parseFloat(crawlOptions.limit as string)),
+      })
+      await sleep(2500)
+      return await waitForCrawlFinished(jobId)
     }
-    if (res.status === 'error') {
-      // can't get the error message from the firecrawl api
+    catch (e) {
       return {
         isError: true,
         data: {
@@ -115,8 +132,6 @@ const FireCrawl: FC<Props> = ({
         },
       }
     }
-    await sleep(2500)
-    return await waitForCrawlFinished(jobId)
   }, [crawlOptions.limit])
 
   const handleRun = useCallback(async (url: string) => {
