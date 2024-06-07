@@ -11,10 +11,10 @@ from typing_extensions import override
 from dotenv import load_dotenv
 load_dotenv()
 
-azure_openai_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
-azure_openai_key = os.environ.get("AZURE_OPENAI_KEY")
+azure_openai_endpoint = os.environ.get("AZURE_OPENAI_TEST_ENDPOINT")
+azure_openai_key = os.environ.get("AZURE_OPENAI_TEST_KEY")
 
-openai_api_key = os.environ.get("OPENAI_API_KEY")
+# openai_api_key = os.environ.get("OPENAI_API_KEY")
 client = None
 if azure_openai_endpoint and azure_openai_key:
     client = openai.AzureOpenAI(

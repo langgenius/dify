@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-askyourpdf_key = os.environ.get("ASKYOURPDF_TEST_KEY")
+askyourpdf_key = os.environ.get("ASKYOURPDF_PRO_KEY")
 assistant_title = "AskYourPDF API UI"
 enabled_file_upload_message = os.environ.get(
     "ENABLED_FILE_UPLOAD_MESSAGE", "Upload a file"
