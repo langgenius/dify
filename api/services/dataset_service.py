@@ -1031,8 +1031,8 @@ class DocumentService:
                 'notion_info_list']:
                 raise ValueError("Notion source info is required")
         if args['data_source']['type'] == 'website':
-            if 'website_info' not in args['data_source']['info_list'] or not args['data_source']['info_list'][
-                'website_info']:
+            if 'website_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list'][
+                'website_info_list']:
                 raise ValueError("Website source info is required")
 
     @classmethod
