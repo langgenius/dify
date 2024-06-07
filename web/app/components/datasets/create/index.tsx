@@ -8,7 +8,7 @@ import StepOne from './step-one'
 import StepTwo from './step-two'
 import StepThree from './step-three'
 import { DataSourceType } from '@/models/datasets'
-import type { CrawlResultItem, DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
 import { fetchDatasetDetail } from '@/service/datasets'
 import type { NotionPage } from '@/models/common'
@@ -17,6 +17,15 @@ import { useDefaultModel } from '@/app/components/header/account-setting/model-p
 
 type DatasetUpdateFormProps = {
   datasetId?: string
+}
+
+const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
+  crawl_sub_pages: true,
+  only_main_content: true,
+  includes: '',
+  excludes: '',
+  limit: 10,
+  max_depth: 2,
 }
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
@@ -37,6 +46,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   }
 
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
+  const [crawlOptions, setCrawlOptions] = useState<CrawlOptions>(DEFAULT_CRAWL_OPTIONS)
+
   const updateFileList = (preparedFiles: FileItem[]) => {
     setFiles(preparedFiles)
   }
@@ -127,6 +138,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
             websitePages={websitePages}
             updateWebsitePages={setWebsitePages}
             onFireCrawlJobIdChange={setFireCrawlJobId}
+            crawlOptions={crawlOptions}
+            onCrawlOptionsChange={setCrawlOptions}
           />
         </div>
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
@@ -142,6 +155,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
           updateResultCache={updateResultCache}
+          crawlOptions={crawlOptions}
         />}
         {step === 3 && <StepThree
           datasetId={datasetId}

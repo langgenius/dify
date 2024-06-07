@@ -12,7 +12,7 @@ import RetrievalMethodInfo from '../../common/retrieval-method-info'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
-import type { CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, IndexingEstimateResponse, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, IndexingEstimateResponse, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
   createDocument,
   createFirstDocument,
@@ -58,6 +58,7 @@ type StepTwoProps = {
   files: CustomFile[]
   notionPages?: NotionPage[]
   websitePages?: CrawlResultItem[]
+  crawlOptions?: CrawlOptions
   fireCrawlJobId?: string
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
@@ -86,6 +87,7 @@ const StepTwo = ({
   files,
   notionPages = [],
   websitePages = [],
+  crawlOptions,
   fireCrawlJobId = '',
   onStepChange,
   updateIndexingTypeCache,
@@ -252,6 +254,7 @@ const StepTwo = ({
       provider: 'firecrawl',
       job_id: fireCrawlJobId,
       urls: websitePages.map(page => page.source_url),
+      only_main_content: crawlOptions?.only_main_content,
     }
   }
 
