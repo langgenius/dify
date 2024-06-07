@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - "main"
-      - "deploy/dev"
   release:
     types: [published]
 
@@ -60,5 +59,8 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          registry: ${{ secrets.CI_HOSTNAME }}
+          username: ${{ secrets.CI_USERNAME }}
+          password: ${{ secrets.CI_PASSWORD }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
