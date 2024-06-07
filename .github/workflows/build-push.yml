@@ -76,7 +76,6 @@ jobs:
       - name: Get image revision
         run: | 
           IMAGE_TAG=${{ steps.meta.outputs.json.labels['org.opencontainers.image.revision'] }}
-          mkdir > $HOME/.kube
           echo "${{ env.KUBECONFIG }}" > $HOME/config
           kubectl --kubeconfig $HOME/config set image deployment/dify-${{ matrix.service_name }} dify-${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:$IMAGE_TAG -n ${{ env.NAMESPACE }}
 
