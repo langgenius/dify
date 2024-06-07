@@ -12,7 +12,10 @@ const Page = () => {
       <div>
         <NoteEditorContextProvider>
           <NoteEditorToolbar />
-          <NoteEditor />
+          <div className='h-[300px] overflow-y-auto'>
+            <NoteEditor />
+          </div>
+
         </NoteEditorContextProvider>
       </div>
     </div>
