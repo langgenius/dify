@@ -1,28 +1,24 @@
-import logging
 import json
-
+import logging
 from collections.abc import Generator
 
+from tencentcloud.common import credential
 from tencentcloud.common.exception import TencentCloudSDKException
+from tencentcloud.common.profile.client_profile import ClientProfile
+from tencentcloud.common.profile.http_profile import HttpProfile
+from tencentcloud.hunyuan.v20230901 import hunyuan_client, models
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
-    PromptMessageTool, UserPromptMessage, SystemPromptMessage,
+    PromptMessageTool,
+    SystemPromptMessage,
+    UserPromptMessage,
 )
-
-from core.model_runtime.errors.invoke import (
-    InvokeError,
-)
-
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-
+from core.model_runtime.errors.invoke import InvokeError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from tencentcloud.common import credential
-from tencentcloud.common.profile.client_profile import ClientProfile
-from tencentcloud.common.profile.http_profile import HttpProfile
-from tencentcloud.hunyuan.v20230901 import hunyuan_client, models
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
 logger = logging.getLogger(__name__)
 
