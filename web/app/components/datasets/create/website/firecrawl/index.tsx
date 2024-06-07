@@ -107,7 +107,7 @@ const FireCrawl: FC<Props> = ({
           },
         }
       }
-      if (res.status === 'error') {
+      if (res.status === 'error' || !res.status) {
         // can't get the error message from the firecrawl api
         return {
           isError: true,
