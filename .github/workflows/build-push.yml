@@ -91,7 +91,6 @@ jobs:
         env:
           KUBECONFIG: kubeconfig.yaml
         run: |
-          kubectl get pods -n sqhd-dify-test
           sudo chmod 644 kubeconfig.yaml
+          kubectl get pods -n sqhd-dify-test
           IMAGE_TAG=${{ steps.meta.outputs.json.labels['org.opencontainers.image.revision'] }}
-          kubectl get pods -n sqhd-dify-test set image -n ${{ env.NAMESPACE }} deployment/dify-${{ matrix.service_name }} dify-${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:$IMAGE_TAG
