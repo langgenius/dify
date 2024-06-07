@@ -37,7 +37,7 @@ const InputVarList: FC<Props> = ({
 }) => {
   const language = useLanguage()
   const { t } = useTranslation()
-  const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
       return [VarType.string, VarType.number].includes(varPayload.type)
@@ -139,7 +139,7 @@ const InputVarList: FC<Props> = ({
                   onChange={handleMixedTypeChange(variable)}
                   readOnly={readOnly}
                   nodesOutputVars={availableVars}
-                  availableNodes={availableNodes}
+                  availableNodes={availableNodesWithParent}
                   onFocusChange={handleInputFocus(variable)}
                   placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
                   placeholderClassName='!leading-[21px]'

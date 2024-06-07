@@ -206,13 +206,14 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
 
     case BlockEnum.ParameterExtractor: {
       res.vars = [
-        ...PARAMETER_EXTRACTOR_COMMON_STRUCT,
         ...((data as ParameterExtractorNodeType).parameters || []).map((p) => {
           return {
             variable: p.name,
             type: p.type as unknown as VarType,
           }
-        })]
+        }),
+        ...PARAMETER_EXTRACTOR_COMMON_STRUCT,
+      ]
       break
     }
 
@@ -510,7 +511,10 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.QuestionClassifier: {
-      res = [(data as QuestionClassifierNodeType).query_variable_selector]
+      const payload = (data as QuestionClassifierNodeType)
+      res = [payload.query_variable_selector]
+      const varInInstructions = matchNotSystemVars([payload.instruction || ''])
+      res.push(...varInInstructions)
       break
     }
     case BlockEnum.HttpRequest: {
@@ -725,6 +729,7 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
         const payload = data as QuestionClassifierNodeType
         if (payload.query_variable_selector.join('.') === oldVarSelector.join('.'))
           payload.query_variable_selector = newVarSelector
+        payload.instruction = replaceOldVarInText(payload.instruction, oldVarSelector, newVarSelector)
         break
       }
       case BlockEnum.HttpRequest: {

@@ -1,5 +1,7 @@
 from typing import Any, cast
 
+from sqlalchemy import func
+
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
@@ -73,30 +75,33 @@ class KnowledgeRetrievalNode(BaseNode):
 
     def _fetch_dataset_retriever(self, node_data: KnowledgeRetrievalNodeData, query: str) -> list[
         dict[str, Any]]:
-        """
-        A dataset tool is a tool that can be used to retrieve information from a dataset
-        :param node_data: node data
-        :param query: query
-        """
-        tools = []
         available_datasets = []
         dataset_ids = node_data.dataset_ids
-        for dataset_id in dataset_ids:
-            # get dataset from dataset id
-            dataset = db.session.query(Dataset).filter(
-                Dataset.tenant_id == self.tenant_id,
-                Dataset.id == dataset_id
-            ).first()
 
+        # Subquery: Count the number of available documents for each dataset
+        subquery = db.session.query(
+            Document.dataset_id,
+            func.count(Document.id).label('available_document_count')
+        ).filter(
+            Document.indexing_status == 'completed',
+            Document.enabled == True,
+            Document.archived == False,
+            Document.dataset_id.in_(dataset_ids)
+        ).group_by(Document.dataset_id).having(
+            func.count(Document.id) > 0
+        ).subquery()
+
+        results = db.session.query(Dataset).join(
+            subquery, Dataset.id == subquery.c.dataset_id
+        ).filter(
+            Dataset.tenant_id == self.tenant_id,
+            Dataset.id.in_(dataset_ids)
+        ).all()
+
+        for dataset in results:
             # pass if dataset is not available
             if not dataset:
                 continue
-
-            # pass if dataset is not available
-            if (dataset and dataset.available_document_count == 0
-                    and dataset.available_document_count == 0):
-                continue
-
             available_datasets.append(dataset)
         all_documents = []
         dataset_retrieval = DatasetRetrieval()

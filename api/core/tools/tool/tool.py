@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from enum import Enum
 from typing import Any, Optional, Union
 
@@ -18,6 +19,7 @@ from core.tools.entities.tool_entities import (
     ToolRuntimeVariablePool,
 )
 from core.tools.tool_file_manager import ToolFileManager
+from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 
 
 class Tool(BaseModel, ABC):
@@ -228,46 +230,13 @@ class Tool(BaseModel, ABC):
         """
         Transform tool parameters type
         """
+        # Temp fix for the issue that the tool parameters will be converted to empty while validating the credentials
+        result = deepcopy(tool_parameters)
         for parameter in self.parameters:
             if parameter.name in tool_parameters:
-                if parameter.type in [
-                    ToolParameter.ToolParameterType.SECRET_INPUT, 
-                    ToolParameter.ToolParameterType.STRING, 
-                    ToolParameter.ToolParameterType.SELECT,
-                ] and not isinstance(tool_parameters[parameter.name], str):
-                    if tool_parameters[parameter.name] is None:
-                        tool_parameters[parameter.name] = ''
-                    else:
-                        tool_parameters[parameter.name] = str(tool_parameters[parameter.name])
-                elif parameter.type == ToolParameter.ToolParameterType.NUMBER \
-                    and not isinstance(tool_parameters[parameter.name], int | float):
-                    if isinstance(tool_parameters[parameter.name], str):
-                        try:
-                            tool_parameters[parameter.name] = int(tool_parameters[parameter.name])
-                        except ValueError:
-                            tool_parameters[parameter.name] = float(tool_parameters[parameter.name])
-                    elif isinstance(tool_parameters[parameter.name], bool):
-                        tool_parameters[parameter.name] = int(tool_parameters[parameter.name])
-                    elif tool_parameters[parameter.name] is None:
-                        tool_parameters[parameter.name] = 0
-                elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
-                    if not isinstance(tool_parameters[parameter.name], bool):
-                        # check if it is a string
-                        if isinstance(tool_parameters[parameter.name], str):
-                            # check true false
-                            if tool_parameters[parameter.name].lower() in ['true', 'false']:
-                                tool_parameters[parameter.name] = tool_parameters[parameter.name].lower() == 'true'
-                            # check 1 0
-                            elif tool_parameters[parameter.name] in ['1', '0']:
-                                tool_parameters[parameter.name] = tool_parameters[parameter.name] == '1'
-                            else:
-                                tool_parameters[parameter.name] = bool(tool_parameters[parameter.name])
-                        elif isinstance(tool_parameters[parameter.name], int | float):
-                            tool_parameters[parameter.name] = tool_parameters[parameter.name] != 0
-                        else:
-                            tool_parameters[parameter.name] = bool(tool_parameters[parameter.name])
-                            
-        return tool_parameters
+                result[parameter.name] = ToolParameterConverter.cast_parameter_by_type(tool_parameters[parameter.name], parameter.type)
+        
+        return result
 
     @abstractmethod
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
@@ -326,14 +295,6 @@ class Tool(BaseModel, ABC):
 
         return parameters
     
-    def is_tool_available(self) -> bool:
-        """
-            check if the tool is available
-
-            :return: if the tool is available
-        """
-        return True
-
     def create_image_message(self, image: str, save_as: str = '') -> ToolInvokeMessage:
         """
             create an image message
@@ -371,10 +332,11 @@ class Tool(BaseModel, ABC):
             :param text: the text
             :return: the text message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, 
-                                 message=text,
-                                 save_as=save_as
-                                 )
+        return ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.TEXT,
+            message=text,
+            save_as=save_as
+        )
     
     def create_blob_message(self, blob: bytes, meta: dict = None, save_as: str = '') -> ToolInvokeMessage:
         """
@@ -383,7 +345,8 @@ class Tool(BaseModel, ABC):
             :param blob: the blob
             :return: the blob message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB, 
-                                 message=blob, meta=meta,
-                                 save_as=save_as
-                                 )
+        return ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB,
+            message=blob, meta=meta,
+            save_as=save_as
+        )

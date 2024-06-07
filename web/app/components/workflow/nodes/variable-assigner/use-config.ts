@@ -5,7 +5,7 @@ import { v4 as uuid4 } from 'uuid'
 import type { ValueSelector, Var } from '../../types'
 import { VarType } from '../../types'
 import type { VarGroupItem, VariableAssignerNodeType } from './types'
-import { useGetAvailableVars, useVariableAssigner } from './hooks'
+import { useGetAvailableVars } from './hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 
 import {
@@ -19,7 +19,6 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
 
   const { inputs, setInputs } = useNodeCrud<VariableAssignerNodeType>(id, payload)
   const isEnableGroup = !!inputs.advanced_settings?.group_enabled
-  const { handleRemoveEdges } = useVariableAssigner()
 
   // Not Enable Group
   const handleListOrTypeChange = useCallback((payload: VarGroupItem) => {
@@ -114,8 +113,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       draft.advanced_settings.group_enabled = enabled
     })
     setInputs(newInputs)
-    handleRemoveEdges(id, enabled)
-  }, [handleOutVarRenameChange, id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm, handleRemoveEdges])
+  }, [handleOutVarRenameChange, id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm])
 
   const handleAddGroup = useCallback(() => {
     let maxInGroupName = 1

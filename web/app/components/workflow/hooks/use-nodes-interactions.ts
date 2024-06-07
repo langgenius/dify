@@ -164,6 +164,7 @@ export const useNodesInteractions = () => {
       if (sameLevel) {
         setEnteringNodePayload({
           nodeId: node.id,
+          nodeData: node.data as VariableAssignerNodeType,
         })
         const fromType = connectingNodePayload.handleType
 
@@ -360,6 +361,11 @@ export const useNodesInteractions = () => {
       const { getNodes } = store.getState()
       const node = getNodes().find(n => n.id === nodeId)!
 
+      if (node.data.type === BlockEnum.VariableAggregator || node.data.type === BlockEnum.VariableAssigner) {
+        if (handleType === 'target')
+          return
+      }
+
       if (!node.data.isIterationStart) {
         setConnectingNodePayload({
           nodeId,
@@ -395,7 +401,6 @@ export const useNodesInteractions = () => {
       const fromHandleType = connectingNodePayload.handleType
       const fromHandleId = connectingNodePayload.handleId
       const fromNode = nodes.find(n => n.id === connectingNodePayload.nodeId)!
-      const fromNodeParent = nodes.find(n => n.id === fromNode.parentId)
       const toNode = nodes.find(n => n.id === enteringNodePayload.nodeId)!
       const toParentNode = nodes.find(n => n.id === toNode.parentId)
 
@@ -406,39 +411,15 @@ export const useNodesInteractions = () => {
 
       if (fromHandleType === 'source' && (toNode.data.type === BlockEnum.VariableAssigner || toNode.data.type === BlockEnum.VariableAggregator)) {
         const groupEnabled = toNode.data.advanced_settings?.group_enabled
+        const firstGroupId = toNode.data.advanced_settings?.groups[0].groupId
+        let handleId = 'target'
 
-        if (
-          (groupEnabled && hoveringAssignVariableGroupId)
-          || !groupEnabled
-        ) {
-          const newNodes = produce(nodes, (draft) => {
-            draft.forEach((node) => {
-              if (node.id === toNode.id) {
-                node.data._showAddVariablePopup = true
-                node.data._holdAddVariablePopup = true
-              }
-            })
-          })
-          setNodes(newNodes)
-          setShowAssignVariablePopup({
-            nodeId: fromNode.id,
-            nodeData: fromNode.data,
-            variableAssignerNodeId: toNode.id,
-            variableAssignerNodeData: toNode.data,
-            variableAssignerNodeHandleId: hoveringAssignVariableGroupId || 'target',
-            parentNode: toParentNode,
-            x: x - toNode.positionAbsolute!.x,
-            y: y - toNode.positionAbsolute!.y,
-          })
-          handleNodeConnect({
-            source: fromNode.id,
-            sourceHandle: fromHandleId,
-            target: toNode.id,
-            targetHandle: hoveringAssignVariableGroupId || 'target',
-          })
+        if (groupEnabled) {
+          if (hoveringAssignVariableGroupId)
+            handleId = hoveringAssignVariableGroupId
+          else
+            handleId = firstGroupId
         }
-      }
-      if (fromHandleType === 'target' && (fromNode.data.type === BlockEnum.VariableAssigner || fromNode.data.type === BlockEnum.VariableAggregator) && toNode.data.type !== BlockEnum.IfElse && toNode.data.type !== BlockEnum.QuestionClassifier) {
         const newNodes = produce(nodes, (draft) => {
           draft.forEach((node) => {
             if (node.id === toNode.id) {
@@ -449,20 +430,20 @@ export const useNodesInteractions = () => {
         })
         setNodes(newNodes)
         setShowAssignVariablePopup({
-          nodeId: toNode.id,
-          nodeData: toNode.data,
-          variableAssignerNodeId: fromNode.id,
-          variableAssignerNodeData: fromNode.data,
-          variableAssignerNodeHandleId: fromHandleId || 'target',
-          parentNode: fromNodeParent,
+          nodeId: fromNode.id,
+          nodeData: fromNode.data,
+          variableAssignerNodeId: toNode.id,
+          variableAssignerNodeData: toNode.data,
+          variableAssignerNodeHandleId: handleId,
+          parentNode: toParentNode,
           x: x - toNode.positionAbsolute!.x,
           y: y - toNode.positionAbsolute!.y,
         })
         handleNodeConnect({
-          source: toNode.id,
-          sourceHandle: 'source',
-          target: fromNode.id,
-          targetHandle: fromHandleId,
+          source: fromNode.id,
+          sourceHandle: fromHandleId,
+          target: toNode.id,
+          targetHandle: 'target',
         })
       }
     }
@@ -1111,7 +1092,7 @@ export const useNodesInteractions = () => {
       setNodes([...nodes, ...nodesToPaste])
       handleSyncWorkflowDraft()
     }
-  }, [t, getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, reactflow, handleNodeIterationChildrenCopy])
+  }, [getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, reactflow, handleNodeIterationChildrenCopy])
 
   const handleNodesDuplicate = useCallback(() => {
     if (getNodesReadOnly())

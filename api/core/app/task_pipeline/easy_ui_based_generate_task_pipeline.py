@@ -37,6 +37,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
+from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -317,29 +318,30 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
         """
         model_config = self._model_config
         model = model_config.model
-        model_type_instance = model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
+
+        model_instance = ModelInstance(
+            provider_model_bundle=model_config.provider_model_bundle,
+            model=model_config.model
+        )
 
         # calculate num tokens
         prompt_tokens = 0
         if event.stopped_by != QueueStopEvent.StopBy.ANNOTATION_REPLY:
-            prompt_tokens = model_type_instance.get_num_tokens(
-                model,
-                model_config.credentials,
+            prompt_tokens = model_instance.get_llm_num_tokens(
                 self._task_state.llm_result.prompt_messages
             )
 
         completion_tokens = 0
         if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
-            completion_tokens = model_type_instance.get_num_tokens(
-                model,
-                model_config.credentials,
+            completion_tokens = model_instance.get_llm_num_tokens(
                 [self._task_state.llm_result.message]
             )
 
         credentials = model_config.credentials
 
         # transform usage
+        model_type_instance = model_config.provider_model_bundle.model_type_instance
+        model_type_instance = cast(LargeLanguageModel, model_type_instance)
         self._task_state.llm_result.usage = model_type_instance._calc_response_usage(
             model,
             credentials,
