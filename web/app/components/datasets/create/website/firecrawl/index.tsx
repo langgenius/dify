@@ -23,6 +23,7 @@ type Props = {
   onPreview: (payload: CrawlResultItem) => void
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
+  onJobIdChange: (jobId: string) => void
 }
 
 const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
@@ -44,6 +45,7 @@ const FireCrawl: FC<Props> = ({
   onPreview,
   checkedCrawlResult,
   onCheckedCrawlResultChange,
+  onJobIdChange,
 }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
@@ -124,6 +126,7 @@ const FireCrawl: FC<Props> = ({
       options: crawlOptions,
     }) as any
     const jobId = res.job_id
+    onJobIdChange(jobId)
     const { isError, data, errorMessage } = await waitForCrawlFinished(jobId)
     if (isError) {
       setCrawlErrorMsg(errorMessage)
@@ -133,7 +136,7 @@ const FireCrawl: FC<Props> = ({
     setStep(Step.finished)
     setCrawlResult(data)
     setCrawlErrorMsg('')
-  }, [checkValid, crawlOptions, waitForCrawlFinished])
+  }, [checkValid, crawlOptions, onJobIdChange, waitForCrawlFinished])
 
   return (
     <div>

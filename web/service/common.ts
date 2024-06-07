@@ -6,7 +6,6 @@ import type {
   CodeBasedExtension,
   CommonResponse,
   DataSourceNotion,
-  DataSourceWebsite,
   FileUploadConfigResponse,
   ICurrentWorkspace,
   IWorkspace,
@@ -144,10 +143,6 @@ export const syncDataSourceNotion: Fetcher<CommonResponse, { url: string }> = ({
 
 export const updateDataSourceNotionAction: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
   return patch<CommonResponse>(url)
-}
-
-export const fetchWebsiteDataSource = () => {
-  return get<{ data: DataSourceWebsite }>('/api-key-auth/data-source')
 }
 
 export const fetchPluginProviders: Fetcher<PluginProvider[] | null, string> = (url) => {

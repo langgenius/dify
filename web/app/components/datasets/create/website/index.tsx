@@ -1,45 +1,60 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import NoData from './no-data'
 import Firecrawl from './firecrawl'
 import { useModalContext } from '@/context/modal-context'
 import type { CrawlResultItem } from '@/models/datasets'
+import { fetchFirecrawlApiKey } from '@/service/datasets'
+import { type DataSourceWebsiteItem, WebsiteProvider } from '@/models/common'
 
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
   checkedCrawlResult: CrawlResultItem[]
   onCheckedCrawlResultChange: (payload: CrawlResultItem[]) => void
+  onJobIdChange: (jobId: string) => void
 }
 
-const WebsitePreview: FC<Props> = ({
+const Website: FC<Props> = ({
   onPreview,
   checkedCrawlResult,
   onCheckedCrawlResultChange,
+  onJobIdChange,
 }) => {
   const { setShowAccountSettingModal } = useModalContext()
   const [isLoaded, setIsLoaded] = useState(false)
-  const [isConfigured, setIsConfigured] = useState(true)
+  const [isSetFirecrawlApiKey, setIsSetFirecrawlApiKey] = useState(false)
+  const checkSetApiKey = useCallback(async () => {
+    const res = await fetchFirecrawlApiKey() as any
+    const list = res.settings.filter((item: DataSourceWebsiteItem) => item.provider === WebsiteProvider.fireCrawl && !item.disabled)
+    setIsSetFirecrawlApiKey(list.length > 0)
+  }, [])
 
+  useEffect(() => {
+    checkSetApiKey().then(() => {
+      setIsLoaded(true)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const handleOnConfig = useCallback(() => {
     setShowAccountSettingModal({
       payload: 'data-source',
+      onCancelCallback: checkSetApiKey,
     })
-  }, [setShowAccountSettingModal])
+  }, [checkSetApiKey, setShowAccountSettingModal])
 
-  // TODO: on Hide account setting modal
-
-  if (isLoaded)
+  if (!isLoaded)
     return null
 
   return (
     <div>
-      {isConfigured
+      {isSetFirecrawlApiKey
         ? (
           <Firecrawl
             onPreview={onPreview}
             checkedCrawlResult={checkedCrawlResult}
             onCheckedCrawlResultChange={onCheckedCrawlResultChange}
+            onJobIdChange={onJobIdChange}
           />
         )
         : (
@@ -48,4 +63,4 @@ const WebsitePreview: FC<Props> = ({
     </div>
   )
 }
-export default React.memo(WebsitePreview)
+export default React.memo(Website)

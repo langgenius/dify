@@ -40,6 +40,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const updateFileList = (preparedFiles: FileItem[]) => {
     setFiles(preparedFiles)
   }
+  const [fireCrawlJobId, setFireCrawlJobId] = useState('')
 
   const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
     const targetIndex = list.findIndex(file => file.fileID === fileItem.fileID)
@@ -124,6 +125,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           onStepChange={nextStep}
           websitePages={websitePages}
           updateWebsitePages={setWebsitePages}
+          onFireCrawlJobIdChange={setFireCrawlJobId}
         />}
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
           isAPIKeySet={!!embeddingsDefaultModel}
@@ -134,6 +136,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           files={fileList.map(file => file.file)}
           notionPages={notionPages}
           websitePages={websitePages}
+          fireCrawlJobId={fireCrawlJobId}
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
           updateResultCache={updateResultCache}

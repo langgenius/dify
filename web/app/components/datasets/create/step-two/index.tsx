@@ -58,6 +58,7 @@ type StepTwoProps = {
   files: CustomFile[]
   notionPages?: NotionPage[]
   websitePages?: CrawlResultItem[]
+  fireCrawlJobId?: string
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
   updateResultCache?: (res: createDocumentResponse) => void
@@ -85,6 +86,7 @@ const StepTwo = ({
   files,
   notionPages = [],
   websitePages = [],
+  fireCrawlJobId = '',
   onStepChange,
   updateIndexingTypeCache,
   updateResultCache,
@@ -248,7 +250,7 @@ const StepTwo = ({
   const getWebsiteInfo = () => {
     return {
       provider: 'firecrawl',
-      job_id: 'xxx',
+      job_id: fireCrawlJobId,
       urls: websitePages.map(page => page.source_url),
     }
   }

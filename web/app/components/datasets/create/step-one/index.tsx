@@ -33,6 +33,7 @@ type IStepOneProps = {
   changeType: (type: DataSourceType) => void
   websitePages?: CrawlResultItem[]
   updateWebsitePages: (value: CrawlResultItem[]) => void
+  onFireCrawlJobIdChange: (jobId: string) => void
 }
 
 type NotionConnectorProps = {
@@ -66,6 +67,7 @@ const StepOne = ({
   updateNotionPages,
   websitePages = [],
   updateWebsitePages,
+  onFireCrawlJobIdChange,
 }: IStepOneProps) => {
   const { dataset } = useDatasetDetailContext()
   const [showModal, setShowModal] = useState(false)
@@ -218,6 +220,7 @@ const StepOne = ({
                   onPreview={setCurrentWebsite}
                   checkedCrawlResult={websitePages}
                   onCheckedCrawlResultChange={updateWebsitePages}
+                  onJobIdChange={onFireCrawlJobIdChange}
                 />
               </div>
               {isShowVectorSpaceFull && (
