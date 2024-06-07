@@ -270,7 +270,7 @@ class Document(db.Model):
         255), nullable=False, server_default=db.text("'text_model'::character varying"))
     doc_language = db.Column(db.String(255), nullable=True)
 
-    DATA_SOURCES = ['upload_file', 'notion_import']
+    DATA_SOURCES = ['upload_file', 'notion_import', 'website']
 
     @property
     def display_status(self):
