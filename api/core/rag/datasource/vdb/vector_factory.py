@@ -41,11 +41,8 @@ class Vector:
             else:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                index_struct_dict = {
-                    "type": VectorType.WEAVIATE,
-                    "vector_store": {"class_prefix": collection_name}
-                }
-                self._dataset.index_struct = json.dumps(index_struct_dict)
+                self._dataset.index_struct = json.dumps(
+                    self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
             return WeaviateVector(
                 collection_name=collection_name,
                 config=WeaviateConfig(
@@ -74,11 +71,8 @@ class Vector:
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
 
             if not self._dataset.index_struct_dict:
-                index_struct_dict = {
-                    "type": VectorType.QDRANT,
-                    "vector_store": {"class_prefix": collection_name}
-                }
-                self._dataset.index_struct = json.dumps(index_struct_dict)
+                self._dataset.index_struct = json.dumps(
+                    self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
 
             return QdrantVector(
                 collection_name=collection_name,
@@ -100,11 +94,8 @@ class Vector:
             else:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                index_struct_dict = {
-                    "type": VectorType.MILVUS,
-                    "vector_store": {"class_prefix": collection_name}
-                }
-                self._dataset.index_struct = json.dumps(index_struct_dict)
+                self._dataset.index_struct = json.dumps(
+                    self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
             return MilvusVector(
                 collection_name=collection_name,
                 config=MilvusConfig(
@@ -124,11 +115,8 @@ class Vector:
             else:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                index_struct_dict = {
-                    "type": VectorType.RELYT,
-                    "vector_store": {"class_prefix": collection_name}
-                }
-                self._dataset.index_struct = json.dumps(index_struct_dict)
+                self._dataset.index_struct = json.dumps(
+                    self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
             return RelytVector(
                 collection_name=collection_name,
                 config=RelytConfig(
@@ -148,11 +136,8 @@ class Vector:
             else:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
-                index_struct_dict = {
-                    "type": VectorType.PGVECTO_RS,
-                    "vector_store": {"class_prefix": collection_name}
-                }
-                self._dataset.index_struct = json.dumps(index_struct_dict)
+                self._dataset.index_struct = json.dumps(
+                    self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
             dim = len(self._embeddings.embed_query("pgvecto_rs"))
             return PGVectoRS(
                 collection_name=collection_name,
@@ -174,10 +159,8 @@ class Vector:
             else:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                index_struct_dict = {
-                    "type": VectorType.PGVECTOR,
-                    "vector_store": {"class_prefix": collection_name}}
-                self._dataset.index_struct = json.dumps(index_struct_dict)
+                self._dataset.index_struct = json.dumps(
+                    self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
             return PGVector(
                 collection_name=collection_name,
                 config=PGVectorConfig(
@@ -197,11 +180,8 @@ class Vector:
             else:
                 dataset_id = self._dataset.id
                 collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
-                index_struct_dict = {
-                    "type": VectorType.TIDB_VECTOR,
-                    "vector_store": {"class_prefix": collection_name}
-                }
-                self._dataset.index_struct = json.dumps(index_struct_dict)
+                self._dataset.index_struct = json.dumps(
+                    self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
 
             return TiDBVector(
                 collection_name=collection_name,
@@ -288,3 +268,11 @@ class Vector:
                 return method
 
         raise AttributeError(f"'vector_processor' object has no attribute '{name}'")
+
+    @classmethod
+    def gen_index_struct_dict(cls, vector_type: VectorType, collection_name: str) -> dict:
+        index_struct_dict = {
+            "type": vector_type,
+            "vector_store": {"class_prefix": collection_name}
+        }
+        return index_struct_dict
