@@ -52,32 +52,30 @@ class Vector:
         return vector_factory().create_vector(self._dataset, self._attributes, self._embeddings)
 
     def get_vector_factory(self, vector_type) -> type[AbstractVectorFactory]:
-        vector_factory: type[AbstractVectorFactory]
         match vector_type:
             case VectorType.MILVUS:
                 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
-                vector_factory = MilvusVectorFactory
+                return MilvusVectorFactory
             case VectorType.PGVECTOR:
                 from core.rag.datasource.vdb.pgvector.pgvector import PGVectorFactory
-                vector_factory = PGVectorFactory
+                return PGVectorFactory
             case VectorType.PGVECTO_RS:
                 from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRSFactory
-                vector_factory = PGVectoRSFactory
+                return PGVectoRSFactory
             case VectorType.QDRANT:
                 from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantVectorFactory
-                vector_factory = QdrantVectorFactory
+                return QdrantVectorFactory
             case VectorType.RELYT:
                 from core.rag.datasource.vdb.relyt.relyt_vector import RelytVectorFactory
-                vector_factory = RelytVectorFactory
+                return RelytVectorFactory
             case VectorType.TIDB_VECTOR:
                 from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
-                vector_factory = TiDBVectorFactory
+                return TiDBVectorFactory
             case VectorType.WEAVIATE:
                 from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
-                vector_factory = WeaviateVectorFactory
+                return WeaviateVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
-        return vector_factory
 
     def create(self, texts: list = None, **kwargs):
         if texts:
