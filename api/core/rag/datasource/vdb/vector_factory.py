@@ -48,6 +48,11 @@ class Vector:
         if not vector_type:
             raise ValueError("Vector store must be specified.")
 
+        vector_factory = self.get_vector_factory(vector_type)
+        return vector_factory().create_vector(self._dataset, self._attributes, self._embeddings)
+
+    def get_vector_factory(self, vector_type) -> type[AbstractVectorFactory]:
+        vector_factory: type[AbstractVectorFactory]
         match vector_type:
             case VectorType.MILVUS:
                 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
@@ -72,8 +77,7 @@ class Vector:
                 vector_factory = WeaviateVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
-
-        return vector_factory.create_vector(self._dataset, self._attributes, self._embeddings)
+        return vector_factory
 
     def create(self, texts: list = None, **kwargs):
         if texts:
