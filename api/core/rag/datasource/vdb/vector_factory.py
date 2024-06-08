@@ -48,8 +48,8 @@ class Vector:
         if not vector_type:
             raise ValueError("Vector store must be specified.")
 
-        vector_factory = self.get_vector_factory(vector_type)
-        return vector_factory().create_vector(self._dataset, self._attributes, self._embeddings)
+        vector_factory_cls = self.get_vector_factory(vector_type)
+        return vector_factory_cls().create_vector(self._dataset, self._attributes, self._embeddings)
 
     def get_vector_factory(self, vector_type: str) -> type[AbstractVectorFactory]:
         match vector_type:
