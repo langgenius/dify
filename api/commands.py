@@ -318,7 +318,7 @@ def migrate_knowledge_vector_database():
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
                 else:
-                    raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
+                    raise ValueError(f"Vector store {vector_type} is not supported.")
 
                 vector = Vector(dataset)
                 click.echo(f"Start to migrate dataset {dataset.id}.")

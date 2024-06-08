@@ -51,7 +51,7 @@ class Vector:
         vector_factory = self.get_vector_factory(vector_type)
         return vector_factory().create_vector(self._dataset, self._attributes, self._embeddings)
 
-    def get_vector_factory(self, vector_type) -> type[AbstractVectorFactory]:
+    def get_vector_factory(self, vector_type: str) -> type[AbstractVectorFactory]:
         match vector_type:
             case VectorType.MILVUS:
                 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
