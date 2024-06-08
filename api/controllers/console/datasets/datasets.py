@@ -15,6 +15,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from extensions.ext_database import db
 from fields.app_fields import related_app_list
@@ -476,20 +477,22 @@ class DatasetRetrievalSettingApi(Resource):
     @account_initialization_required
     def get(self):
         vector_type = current_app.config['VECTOR_STORE']
-        if vector_type in {"milvus", "relyt", "pgvector", "pgvecto_rs", 'tidb_vector'}:
-            return {
-                'retrieval_method': [
-                    'semantic_search'
-                ]
-            }
-        elif vector_type in {"qdrant", "weaviate"}:
-            return {
-                'retrieval_method': [
-                    'semantic_search', 'full_text_search', 'hybrid_search'
-                ]
-            }
-        else:
-            raise ValueError("Unsupported vector db type.")
+
+        match vector_type:
+            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR:
+                return {
+                    'retrieval_method': [
+                        'semantic_search'
+                    ]
+                }
+            case VectorType.QDRANT | VectorType.WEAVIATE:
+                return {
+                    'retrieval_method': [
+                        'semantic_search', 'full_text_search', 'hybrid_search'
+                    ]
+                }
+            case _:
+                raise ValueError(f"Unsupported vector db type {vector_type}.")
 
 
 class DatasetRetrievalSettingMockApi(Resource):
@@ -497,20 +500,22 @@ class DatasetRetrievalSettingMockApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, vector_type):
-        if vector_type in {'milvus', 'relyt', 'pgvector', 'tidb_vector'}:
-            return {
-                'retrieval_method': [
-                    'semantic_search'
-                ]
-            }
-        elif vector_type in {'qdrant', 'weaviate'}:
-            return {
-                'retrieval_method': [
-                    'semantic_search', 'full_text_search', 'hybrid_search'
-                ]
-            }
-        else:
-            raise ValueError("Unsupported vector db type.")
+        match vector_type:
+            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR:
+                return {
+                    'retrieval_method': [
+                        'semantic_search'
+                    ]
+                }
+            case VectorType.QDRANT | VectorType.WEAVIATE:
+                return {
+                    'retrieval_method': [
+                        'semantic_search', 'full_text_search', 'hybrid_search'
+                    ]
+                }
+            case _:
+                raise ValueError(f"Unsupported vector db type {vector_type}.")
+
 
 class DatasetErrorDocs(Resource):
     @setup_required
