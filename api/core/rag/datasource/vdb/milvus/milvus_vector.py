@@ -271,7 +271,7 @@ class MilvusVector(BaseVector):
 
 
 class MilvusVectorFactory(AbstractVectorFactory):
-    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> MilvusVector:
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> MilvusVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
             collection_name = class_prefix

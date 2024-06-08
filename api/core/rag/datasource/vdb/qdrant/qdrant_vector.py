@@ -418,7 +418,7 @@ class QdrantVector(BaseVector):
 
 
 class QdrantVectorFactory(AbstractVectorFactory):
-    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings:Embeddings = None) -> QdrantVector:
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> QdrantVector:
         if dataset.collection_binding_id:
             dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
                 filter(DatasetCollectionBinding.id == dataset.collection_binding_id). \

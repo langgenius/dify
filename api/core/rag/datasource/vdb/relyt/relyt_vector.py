@@ -308,7 +308,7 @@ class RelytVector(BaseVector):
 
 
 class RelytVectorFactory(AbstractVectorFactory):
-    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings:Embeddings = None) -> RelytVector:
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> RelytVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
             collection_name = class_prefix

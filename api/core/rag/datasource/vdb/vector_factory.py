@@ -15,7 +15,7 @@ from models.dataset import Dataset
 
 class AbstractVectorFactory(ABC):
     @abstractmethod
-    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> BaseVector:
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaseVector:
         raise NotImplementedError
 
     @staticmethod
@@ -47,7 +47,7 @@ class Vector:
             raise ValueError("Vector store must be specified.")
 
         vector_factory_cls = self.get_vector_factory(vector_type)
-        return vector_factory_cls().create_vector(self._dataset, self._attributes, self._embeddings)
+        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
 
     @staticmethod
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:

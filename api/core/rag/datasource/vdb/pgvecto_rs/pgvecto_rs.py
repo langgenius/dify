@@ -231,7 +231,7 @@ class PGVectoRS(BaseVector):
 
 
 class PGVectoRSFactory(AbstractVectorFactory):
-    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings:Embeddings = None) -> PGVectoRS:
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> PGVectoRS:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
             collection_name = class_prefix.lower()

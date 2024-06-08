@@ -225,7 +225,7 @@ class TiDBVector(BaseVector):
 
 
 class TiDBVectorFactory(AbstractVectorFactory):
-    def create_vector(self, dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> TiDBVector:
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TiDBVector:
 
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
