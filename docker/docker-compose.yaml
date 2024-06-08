@@ -407,9 +407,13 @@ services:
       - "127.0.0.1:8080:80"
     networks:
       - llm
+      - proxy
 
 
 networks:
   llm:
     name: llm
+    external: true
+  proxy:
+    name: proxy
     external: true
