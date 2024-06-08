@@ -20,7 +20,7 @@ jobs:
       matrix:
         python-version:
           - "3.10"
-          # - "3.11"
+          - "3.11"
 
     steps:
       - name: Checkout code
