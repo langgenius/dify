@@ -7,15 +7,8 @@ from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.entity.embedding import Embeddings
-from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
-from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRSFactory
-from core.rag.datasource.vdb.pgvector.pgvector import PGVectorFactory
-from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantVectorFactory
-from core.rag.datasource.vdb.relyt.relyt_vector import RelytVectorFactory
-from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_type import VectorType
-from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
@@ -34,17 +27,6 @@ class VectorHelper:
             "vector_store": {"class_prefix": collection_name}
         }
         return index_struct_dict
-
-
-vector_factories_map: dict[str, type[AbstractVectorFactory]] = {
-    VectorType.MILVUS: MilvusVectorFactory,
-    VectorType.PGVECTOR: PGVectorFactory,
-    VectorType.PGVECTO_RS: PGVectoRSFactory,
-    VectorType.QDRANT: QdrantVectorFactory,
-    VectorType.RELYT: RelytVectorFactory,
-    VectorType.TIDB_VECTOR: TiDBVectorFactory,
-    VectorType.WEAVIATE: WeaviateVectorFactory,
-}
 
 
 class Vector:
@@ -66,9 +48,30 @@ class Vector:
         if not vector_type:
             raise ValueError("Vector store must be specified.")
 
-        vector_factory = vector_factories_map.get(vector_type)
-        if vector_factory is None:
-            raise ValueError(f"Vector store {vector_type} is not supported.")
+        match vector_type:
+            case VectorType.MILVUS:
+                from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
+                vector_factory = MilvusVectorFactory
+            case VectorType.PGVECTOR:
+                from core.rag.datasource.vdb.pgvector.pgvector import PGVectorFactory
+                vector_factory = PGVectorFactory
+            case VectorType.PGVECTO_RS:
+                from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRSFactory
+                vector_factory = PGVectoRSFactory
+            case VectorType.QDRANT:
+                from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantVectorFactory
+                vector_factory = QdrantVectorFactory
+            case VectorType.RELYT:
+                from core.rag.datasource.vdb.relyt.relyt_vector import RelytVectorFactory
+                vector_factory = RelytVectorFactory
+            case VectorType.TIDB_VECTOR:
+                from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
+                vector_factory = TiDBVectorFactory
+            case VectorType.WEAVIATE:
+                from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
+                vector_factory = WeaviateVectorFactory
+            case _:
+                raise ValueError(f"Vector store {vector_type} is not supported.")
 
         return vector_factory.create_vector(self._dataset, self._attributes, self._embeddings)
 
