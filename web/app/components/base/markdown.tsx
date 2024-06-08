@@ -40,7 +40,7 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
   return language.charAt(0).toUpperCase() + language.substring(1)
 }
 
-export const preprocessLaTeX = (content: string) => {
+const preprocessLaTeX = (content: string) => {
   // Replace block-level LaTeX delimiters \[ \] with $$ $$
   const blockProcessedContent = content.replace(
     /\\\[(.*?)\\\]/gs,
