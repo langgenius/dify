@@ -18,8 +18,6 @@ class AbstractVectorFactory(ABC):
     def create_vector(self, dataset: Dataset, attributes: list = None, embeddings: Embeddings = None) -> BaseVector:
         raise NotImplementedError
 
-
-class VectorHelper:
     @staticmethod
     def gen_index_struct_dict(vector_type: VectorType, collection_name: str) -> dict:
         index_struct_dict = {
@@ -51,7 +49,8 @@ class Vector:
         vector_factory_cls = self.get_vector_factory(vector_type)
         return vector_factory_cls().create_vector(self._dataset, self._attributes, self._embeddings)
 
-    def get_vector_factory(self, vector_type: str) -> type[AbstractVectorFactory]:
+    @staticmethod
+    def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
         match vector_type:
             case VectorType.MILVUS:
                 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory

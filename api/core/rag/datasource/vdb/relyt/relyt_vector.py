@@ -10,7 +10,7 @@ from sqlalchemy.dialects.postgresql import JSON, TEXT
 from sqlalchemy.orm import Session
 
 from core.rag.datasource.entity.embedding import Embeddings
-from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory, VectorHelper
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from models.dataset import Dataset
 
@@ -316,7 +316,7 @@ class RelytVectorFactory(AbstractVectorFactory):
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
             dataset.index_struct = json.dumps(
-                VectorHelper.gen_index_struct_dict(VectorType.RELYT, collection_name))
+                self.gen_index_struct_dict(VectorType.RELYT, collection_name))
 
         config = current_app.config
         return RelytVector(
