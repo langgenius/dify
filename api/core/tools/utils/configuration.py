@@ -1,16 +1,12 @@
-import os
 from copy import deepcopy
-from typing import Any, Union
+from typing import Any
 
 from pydantic import BaseModel
-from yaml import FullLoader, load
 
 from core.helper import encrypter
 from core.helper.tool_parameter_cache import ToolParameterCache, ToolParameterCacheType
 from core.helper.tool_provider_cache import ToolProviderCredentialsCache, ToolProviderCredentialsCacheType
 from core.tools.entities.tool_entities import (
-    ModelToolConfiguration,
-    ModelToolProviderConfiguration,
     ToolParameter,
     ToolProviderCredentials,
 )
@@ -27,7 +23,7 @@ class ToolConfigurationManager(BaseModel):
         deep copy credentials
         """
         return deepcopy(credentials)
-    
+
     def encrypt_tool_credentials(self, credentials: dict[str, str]) -> dict[str, str]:
         """
         encrypt tool credentials with tenant id
@@ -43,9 +39,9 @@ class ToolConfigurationManager(BaseModel):
                 if field_name in credentials:
                     encrypted = encrypter.encrypt_token(self.tenant_id, credentials[field_name])
                     credentials[field_name] = encrypted
-        
+
         return credentials
-    
+
     def mask_tool_credentials(self, credentials: dict[str, Any]) -> dict[str, Any]:
         """
         mask tool credentials
@@ -62,7 +58,7 @@ class ToolConfigurationManager(BaseModel):
                     if len(credentials[field_name]) > 6:
                         credentials[field_name] = \
                             credentials[field_name][:2] + \
-                            '*' * (len(credentials[field_name]) - 4) +\
+                            '*' * (len(credentials[field_name]) - 4) + \
                             credentials[field_name][-2:]
                     else:
                         credentials[field_name] = '*' * len(credentials[field_name])
@@ -77,7 +73,7 @@ class ToolConfigurationManager(BaseModel):
         """
         cache = ToolProviderCredentialsCache(
             tenant_id=self.tenant_id, 
-            identity_id=f'{self.provider_controller.app_type.value}.{self.provider_controller.identity.name}',
+            identity_id=f'{self.provider_controller.provider_type.value}.{self.provider_controller.identity.name}',
             cache_type=ToolProviderCredentialsCacheType.PROVIDER
         )
         cached_credentials = cache.get()
@@ -96,11 +92,11 @@ class ToolConfigurationManager(BaseModel):
 
         cache.set(credentials)
         return credentials
-    
+
     def delete_tool_credentials_cache(self):
         cache = ToolProviderCredentialsCache(
             tenant_id=self.tenant_id, 
-            identity_id=f'{self.provider_controller.app_type.value}.{self.provider_controller.identity.name}',
+            identity_id=f'{self.provider_controller.provider_type.value}.{self.provider_controller.identity.name}',
             cache_type=ToolProviderCredentialsCacheType.PROVIDER
         )
         cache.delete()
@@ -120,7 +116,7 @@ class ToolParameterConfigurationManager(BaseModel):
         deep copy parameters
         """
         return deepcopy(parameters)
-    
+
     def _merge_parameters(self) -> list[ToolParameter]:
         """
         merge parameters
@@ -143,7 +139,7 @@ class ToolParameterConfigurationManager(BaseModel):
                 current_parameters.append(runtime_parameter)
 
         return current_parameters
-    
+
     def mask_tool_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """
         mask tool parameters
@@ -161,13 +157,13 @@ class ToolParameterConfigurationManager(BaseModel):
                     if len(parameters[parameter.name]) > 6:
                         parameters[parameter.name] = \
                             parameters[parameter.name][:2] + \
-                            '*' * (len(parameters[parameter.name]) - 4) +\
+                            '*' * (len(parameters[parameter.name]) - 4) + \
                             parameters[parameter.name][-2:]
                     else:
                         parameters[parameter.name] = '*' * len(parameters[parameter.name])
 
         return parameters
-    
+
     def encrypt_tool_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """
         encrypt tool parameters with tenant id
@@ -184,9 +180,9 @@ class ToolParameterConfigurationManager(BaseModel):
                 if parameter.name in parameters:
                     encrypted = encrypter.encrypt_token(self.tenant_id, parameters[parameter.name])
                     parameters[parameter.name] = encrypted
-        
+
         return parameters
-    
+
     def decrypt_tool_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """
         decrypt tool parameters with tenant id
@@ -194,7 +190,7 @@ class ToolParameterConfigurationManager(BaseModel):
         return a deep copy of parameters with decrypted values
         """
         cache = ToolParameterCache(
-            tenant_id=self.tenant_id, 
+            tenant_id=self.tenant_id,
             provider=f'{self.provider_type}.{self.provider_name}',
             tool_name=self.tool_runtime.identity.name,
             cache_type=ToolParameterCacheType.PARAMETER,
@@ -216,80 +212,18 @@ class ToolParameterConfigurationManager(BaseModel):
                         parameters[parameter.name] = encrypter.decrypt_token(self.tenant_id, parameters[parameter.name])
                     except:
                         pass
-        
+
         if has_secret_input:
             cache.set(parameters)
 
         return parameters
-    
+
     def delete_tool_parameters_cache(self):
         cache = ToolParameterCache(
-            tenant_id=self.tenant_id, 
+            tenant_id=self.tenant_id,
             provider=f'{self.provider_type}.{self.provider_name}',
             tool_name=self.tool_runtime.identity.name,
             cache_type=ToolParameterCacheType.PARAMETER,
             identity_id=self.identity_id
         )
         cache.delete()
-
-class ModelToolConfigurationManager:
-    """
-    Model as tool configuration
-    """
-    _configurations: dict[str, ModelToolProviderConfiguration] = {}
-    _model_configurations: dict[str, ModelToolConfiguration] = {}
-    _inited = False
-
-    @classmethod
-    def _init_configuration(cls):
-        """
-        init configuration
-        """
-        
-        absolute_path = os.path.abspath(os.path.dirname(__file__))
-        model_tools_path = os.path.join(absolute_path, '..', 'model_tools')
-
-        # get all .yaml file
-        files = [f for f in os.listdir(model_tools_path) if f.endswith('.yaml')]
-
-        for file in files:
-            provider = file.split('.')[0]
-            with open(os.path.join(model_tools_path, file), encoding='utf-8') as f:
-                configurations = ModelToolProviderConfiguration(**load(f, Loader=FullLoader))
-                models = configurations.models or []
-                for model in models:
-                    model_key = f'{provider}.{model.model}'
-                    cls._model_configurations[model_key] = model
-
-                cls._configurations[provider] = configurations
-        cls._inited = True
-
-    @classmethod
-    def get_configuration(cls, provider: str) -> Union[ModelToolProviderConfiguration, None]:
-        """
-        get configuration by provider
-        """
-        if not cls._inited:
-            cls._init_configuration()
-        return cls._configurations.get(provider, None)
-    
-    @classmethod
-    def get_all_configuration(cls) -> dict[str, ModelToolProviderConfiguration]:
-        """
-        get all configurations
-        """
-        if not cls._inited:
-            cls._init_configuration()
-        return cls._configurations
-    
-    @classmethod
-    def get_model_configuration(cls, provider: str, model: str) -> Union[ModelToolConfiguration, None]:
-        """
-        get model configuration
-        """
-        key = f'{provider}.{model}'
-
-        if not cls._inited:
-            cls._init_configuration()
-
-        return cls._model_configurations.get(key, None)

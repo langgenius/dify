@@ -35,6 +35,7 @@
   <a href="./README_ES.md"><img alt="Commits last month" src="https://img.shields.io/badge/Español-d9d9d9"></a>
   <a href="./README_KL.md"><img alt="Commits last month" src="https://img.shields.io/badge/Français-d9d9d9"></a>
   <a href="./README_FR.md"><img alt="Commits last month" src="https://img.shields.io/badge/Klingon-d9d9d9"></a>
+  <a href="./README_KR.md"><img alt="Commits last month" src="https://img.shields.io/badge/한국어-d9d9d9"></a>
 </p>
 
 #
@@ -111,7 +112,7 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
     <td align="center">Agent</td>
     <td align="center">✅</td>
     <td align="center">✅</td>
-    <td align="center">✅</td>
+    <td align="center">❌</td>
     <td align="center">✅</td>
   </tr>
   <tr>

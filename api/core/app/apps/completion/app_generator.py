@@ -75,7 +75,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             )
 
         # parse files
-        files = args['files'] if 'files' in args and args['files'] else []
+        files = args['files'] if args.get('files') else []
         message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
         file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
         if file_extra_config:

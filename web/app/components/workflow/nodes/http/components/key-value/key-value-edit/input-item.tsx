@@ -36,7 +36,7 @@ const InputItem: FC<Props> = ({
   const hasValue = !!value
 
   const [isFocus, setIsFocus] = useState(false)
-  const { availableVars, availableNodes } = useAvailableVarList(nodeId, {
+  const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
       return [VarType.string, VarType.number].includes(varPayload.type)
@@ -49,7 +49,7 @@ const InputItem: FC<Props> = ({
   }, [onRemove])
 
   return (
-    <div className={cn(className, 'hover:bg-gray-50 hover:cursor-text', 'relative flex h-full items-center')}>
+    <div className={cn(className, 'hover:bg-gray-50 hover:cursor-text', 'relative flex h-full')}>
       {(!readOnly)
         ? (
           <Input
@@ -59,10 +59,11 @@ const InputItem: FC<Props> = ({
             onChange={onChange}
             readOnly={readOnly}
             nodesOutputVars={availableVars}
-            availableNodes={availableNodes}
+            availableNodes={availableNodesWithParent}
             onFocusChange={setIsFocus}
             placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
             placeholderClassName='!leading-[21px]'
+            promptMinHeightClassName='h-full'
           />
         )
         : <div
@@ -77,10 +78,11 @@ const InputItem: FC<Props> = ({
               onChange={onChange}
               readOnly={readOnly}
               nodesOutputVars={availableVars}
-              availableNodes={availableNodes}
+              availableNodes={availableNodesWithParent}
               onFocusChange={setIsFocus}
               placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
               placeholderClassName='!leading-[21px]'
+              promptMinHeightClassName='h-full'
             />
           )}
 

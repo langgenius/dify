@@ -1,7 +1,6 @@
-from typing import Any
 
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_bundle import ApiBasedToolBundle
+from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolCredentialsOption,
@@ -15,11 +14,11 @@ from extensions.ext_database import db
 from models.tools import ApiToolProvider
 
 
-class ApiBasedToolProviderController(ToolProviderController):
+class ApiToolProviderController(ToolProviderController):
     provider_id: str
 
     @staticmethod
-    def from_db(db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> 'ApiBasedToolProviderController':
+    def from_db(db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> 'ApiToolProviderController':
         credentials_schema = {
             'auth_type': ToolProviderCredentials(
                 name='auth_type',
@@ -79,9 +78,11 @@ class ApiBasedToolProviderController(ToolProviderController):
         else:
             raise ValueError(f'invalid auth type {auth_type}')
 
-        return ApiBasedToolProviderController(**{
+        user_name = db_provider.user.name if db_provider.user_id else ''
+
+        return ApiToolProviderController(**{
             'identity': {
-                'author': db_provider.user.name if db_provider.user_id and db_provider.user else '',
+                'author': user_name,
                 'name': db_provider.name,
                 'label': {
                     'en_US': db_provider.name,
@@ -98,16 +99,10 @@ class ApiBasedToolProviderController(ToolProviderController):
         })
 
     @property
-    def app_type(self) -> ToolProviderType:
-        return ToolProviderType.API_BASED
-    
-    def _validate_credentials(self, tool_name: str, credentials: dict[str, Any]) -> None:
-        pass
+    def provider_type(self) -> ToolProviderType:
+        return ToolProviderType.API
 
-    def validate_parameters(self, tool_name: str, tool_parameters: dict[str, Any]) -> None:
-        pass
-
-    def _parse_tool_bundle(self, tool_bundle: ApiBasedToolBundle) -> ApiTool:
+    def _parse_tool_bundle(self, tool_bundle: ApiToolBundle) -> ApiTool:
         """
             parse tool bundle to tool
 
@@ -136,7 +131,7 @@ class ApiBasedToolProviderController(ToolProviderController):
             'parameters' : tool_bundle.parameters if tool_bundle.parameters else [],
         })
 
-    def load_bundled_tools(self, tools: list[ApiBasedToolBundle]) -> list[ApiTool]:
+    def load_bundled_tools(self, tools: list[ApiToolBundle]) -> list[ApiTool]:
         """
             load bundled tools
 

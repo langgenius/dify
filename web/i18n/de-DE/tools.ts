@@ -71,6 +71,8 @@ const translation = {
     },
     privacyPolicy: 'Datenschutzrichtlinie',
     privacyPolicyPlaceholder: 'Bitte Datenschutzrichtlinie eingeben',
+    customDisclaimer: 'Benutzer Haftungsausschluss',
+    customDisclaimerPlaceholder: 'Bitte benutzerdefinierten Haftungsausschluss eingeben',
   },
   test: {
     title: 'Test',

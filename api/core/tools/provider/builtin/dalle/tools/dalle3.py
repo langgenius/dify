@@ -1,8 +1,8 @@
 from base64 import b64decode
-from os.path import join
 from typing import Any, Union
 
 from openai import OpenAI
+from yarl import URL
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -23,7 +23,7 @@ class DallE3Tool(BuiltinTool):
         if not openai_base_url:
             openai_base_url = None
         else:
-            openai_base_url = join(openai_base_url, 'v1')
+            openai_base_url = str(URL(openai_base_url) / 'v1')
 
         client = OpenAI(
             api_key=self.runtime.credentials['openai_api_key'],

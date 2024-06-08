@@ -7,6 +7,8 @@ import useConfig from './use-config'
 import ResolutionPicker from './components/resolution-picker'
 import type { LLMNodeType } from './types'
 import ConfigPrompt from './components/config-prompt'
+import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
+import AddButton2 from '@/app/components/base/button/add-button'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -43,8 +45,13 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     filterInputVar,
     filterVar,
     availableVars,
-    availableNodes,
+    availableNodesWithParent,
+    isShowVars,
     handlePromptChange,
+    handleAddEmptyVariable,
+    handleAddVariable,
+    handleVarListChange,
+    handleVarNameChange,
     handleSyeQueryChange,
     handleMemoryChange,
     handleVisionResolutionEnabledChange,
@@ -169,7 +176,27 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             payload={inputs.prompt_template}
             onChange={handlePromptChange}
             hasSetBlockStatus={hasSetBlockStatus}
+            varList={inputs.prompt_config?.jinja2_variables || []}
+            handleAddVariable={handleAddVariable}
           />
+        )}
+
+        {isShowVars && (
+          <Field
+            title={t('workflow.nodes.templateTransform.inputVars')}
+            operations={
+              !readOnly ? <AddButton2 onClick={handleAddEmptyVariable} /> : undefined
+            }
+          >
+            <VarList
+              nodeId={id}
+              readonly={readOnly}
+              list={inputs.prompt_config?.jinja2_variables || []}
+              onChange={handleVarListChange}
+              onVarNameChange={handleVarNameChange}
+              filterVar={filterVar}
+            />
+          </Field>
         )}
 
         {/* Memory put place examples. */}
@@ -207,7 +234,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 isChatModel
                 hasSetBlockStatus={hasSetBlockStatus}
                 nodesOutputVars={availableVars}
-                availableNodes={availableNodes}
+                availableNodes={availableNodesWithParent}
               />
 
               {inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (

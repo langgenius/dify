@@ -29,6 +29,7 @@ const CustomWebAppBrand = () => {
     isCurrentWorkspaceManager,
   } = useAppContext()
   const [fileId, setFileId] = useState('')
+  const [imgKey, setImgKey] = useState(Date.now())
   const [uploadProgress, setUploadProgress] = useState(0)
   const isSandbox = enableBilling && plan.type === Plan.sandbox
   const uploading = uploadProgress > 0 && uploadProgress < 100
@@ -73,6 +74,7 @@ const CustomWebAppBrand = () => {
     })
     mutateCurrentWorkspace()
     setFileId('')
+    setImgKey(Date.now())
   }
 
   const handleRestore = async () => {
@@ -80,7 +82,7 @@ const CustomWebAppBrand = () => {
       url: '/workspaces/custom-config',
       body: {
         remove_webapp_brand: false,
-        replace_webapp_logo: null,
+        replace_webapp_logo: '',
       },
     })
     mutateCurrentWorkspace()
@@ -91,7 +93,6 @@ const CustomWebAppBrand = () => {
       url: '/workspaces/custom-config',
       body: {
         remove_webapp_brand: checked,
-        replace_webapp_logo: webappLogo,
       },
     })
     mutateCurrentWorkspace()
@@ -105,7 +106,7 @@ const CustomWebAppBrand = () => {
   return (
     <div className='py-4'>
       <div className='mb-2 text-sm font-medium text-gray-900'>{t('custom.webapp.title')}</div>
-      <div className='relative mb-4 pl-4 pb-6 pr-[119px] rounded-xl border-[0.5px] border-black/[0.08] shadow-xs bg-gray-50 overflow-hidden'>
+      <div className='relative mb-4 pl-4 pb-6 pr-[119px] rounded-xl border-[0.5px] border-black/8 shadow-xs bg-gray-50 overflow-hidden'>
         <div className={`${s.mask} absolute top-0 left-0 w-full -bottom-2 z-10`}></div>
         <div className='flex items-center -mt-2 mb-4 p-6 bg-white rounded-xl'>
           <div className='flex items-center px-4 w-[125px] h-9 rounded-lg bg-primary-600 border-[0.5px] border-primary-700 shadow-xs'>
@@ -121,7 +122,7 @@ const CustomWebAppBrand = () => {
                 POWERED BY
                 {
                   webappLogo
-                    ? <img key={webappLogo} src={webappLogo} alt='logo' className='ml-2 block w-auto h-5' />
+                    ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='ml-2 block w-auto h-5' />
                     : <LogoSite className='ml-2 !h-5' />
                 }
               </div>
@@ -151,7 +152,7 @@ const CustomWebAppBrand = () => {
             !uploading && (
               <Button
                 className={`
-                  relative mr-2 !h-8 !px-3 bg-white !text-[13px] 
+                  relative mr-2 !h-8 !px-3 bg-white !text-[13px]
                   ${uploadDisabled ? 'opacity-40' : ''}
                 `}
                 disabled={uploadDisabled}
@@ -211,7 +212,7 @@ const CustomWebAppBrand = () => {
           <div className='mr-2 h-5 w-[1px] bg-black/5'></div>
           <Button
             className={`
-              !h-8 !px-3 bg-white !text-[13px] 
+              !h-8 !px-3 bg-white !text-[13px]
               ${(uploadDisabled || (!webappLogo && !webappBrandRemoved)) ? 'opacity-40' : ''}
             `}
             disabled={uploadDisabled || (!webappLogo && !webappBrandRemoved)}

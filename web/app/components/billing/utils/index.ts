@@ -16,12 +16,14 @@ export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
       buildApps: data.apps?.size || 0,
       teamMembers: data.members.size,
       annotatedResponse: data.annotation_quota_limit.size,
+      documentsUploadQuota: data.documents_upload_quota.size,
     },
     total: {
       vectorSpace: parseLimit(data.vector_space.limit),
       buildApps: parseLimit(data.apps?.limit) || 0,
       teamMembers: parseLimit(data.members.limit),
       annotatedResponse: parseLimit(data.annotation_quota_limit.limit),
+      documentsUploadQuota: parseLimit(data.documents_upload_quota.limit),
     },
   }
 }

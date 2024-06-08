@@ -6,19 +6,20 @@ import Loading from '../components/base/loading'
 import Forms from './forms'
 import Header from './_header'
 import style from './page.module.css'
-import EnterpriseSSOForm from './enterpriseSSOForm'
+import UserSSOForm from './userSSOForm'
 import { IS_CE_EDITION } from '@/config'
-import { getEnterpriseFeatures } from '@/service/enterprise'
-import type { EnterpriseFeatures } from '@/types/enterprise'
-import { defaultEnterpriseFeatures } from '@/types/enterprise'
+
+import type { SystemFeatures } from '@/types/feature'
+import { defaultSystemFeatures } from '@/types/feature'
+import { getSystemFeatures } from '@/service/common'
 
 const SignIn = () => {
   const [loading, setLoading] = useState<boolean>(true)
-  const [enterpriseFeatures, setEnterpriseFeatures] = useState<EnterpriseFeatures>(defaultEnterpriseFeatures)
+  const [systemFeatures, setSystemFeatures] = useState<SystemFeatures>(defaultSystemFeatures)
 
   useEffect(() => {
-    getEnterpriseFeatures().then((res) => {
-      setEnterpriseFeatures(res)
+    getSystemFeatures().then((res) => {
+      setSystemFeatures(res)
     }).finally(() => {
       setLoading(false)
     })
@@ -70,7 +71,7 @@ gtag('config', 'AW-11217955271"');
             </div>
           )}
 
-          {!loading && !enterpriseFeatures.sso_enforced_for_signin && (
+          {!loading && !systemFeatures.sso_enforced_for_signin && (
             <>
               <Forms />
               <div className='px-8 py-6 text-sm font-normal text-gray-500'>
@@ -79,8 +80,8 @@ gtag('config', 'AW-11217955271"');
             </>
           )}
 
-          {!loading && enterpriseFeatures.sso_enforced_for_signin && (
-            <EnterpriseSSOForm protocol={enterpriseFeatures.sso_enforced_for_signin_protocol} />
+          {!loading && systemFeatures.sso_enforced_for_signin && (
+            <UserSSOForm protocol={systemFeatures.sso_enforced_for_signin_protocol} />
           )}
         </div>
 

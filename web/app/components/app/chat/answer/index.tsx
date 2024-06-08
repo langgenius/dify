@@ -362,7 +362,7 @@ const Answer: FC<IAnswerProps> = ({
                 {!item.isOpeningStatement && (
                   <CopyBtn
                     value={content}
-                    className='mr-1'
+                    className={cn(s.copyBtn, 'mr-1')}
                   />
                 )}
                 {((isShowPromptLog && !isResponding) || (!item.isOpeningStatement && isShowTextToSpeech)) && (
@@ -375,6 +375,7 @@ const Answer: FC<IAnswerProps> = ({
                         <div className='mx-1 w-[1px] h-[14px] bg-gray-200'/>
                         <AudioBtn
                           value={content}
+                          noCache={false}
                           className={cn(s.playBtn)}
                         />
                       </>

@@ -9,9 +9,10 @@ class StableDiffusionProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             StableDiffusionTool().fork_tool_runtime(
-                meta={
+                runtime={
                     "credentials": credentials,
                 }
             ).validate_models()
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
+    
