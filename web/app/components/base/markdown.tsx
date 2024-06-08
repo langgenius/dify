@@ -40,21 +40,9 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
   return language.charAt(0).toUpperCase() + language.substring(1)
 }
 
-const preprocessLaTeX = (content: string) => {
-  // Replace block-level LaTeX delimiters \[ \] with $$ $$
-  const blockProcessedContent = content.replace(
-    /\\\[(.*?)\\\]/gs,
-    (_, equation) => `$$${equation}$$`,
-  )
-
-  // Replace inline LaTeX delimiters \( \) with $ $
-  const inlineProcessedContent = blockProcessedContent.replace(
-    /\\\((.*?)\\\)/gs,
-    (_, equation) => `$${equation}$`,
-  )
-
-  return inlineProcessedContent
-}
+const preprocessLaTeX = (content: string) => 
+  content.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
+         .replace(/\\\((.*?)\\\)/gs, (_, equation) => `$${equation}$`);
 
 export function PreCode(props: { children: any }) {
   const ref = useRef<HTMLPreElement>(null)
