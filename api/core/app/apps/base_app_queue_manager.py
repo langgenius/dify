@@ -127,7 +127,7 @@ class AppQueueManager:
             return
 
         stopped_cache_key = cls._generate_stopped_cache_key(task_id)
-        redis_client.setex(stopped_cache_key, 600, 1)
+        redis_client.setex(stopped_cache_key, 6000, 1)
 
     def _is_stopped(self) -> bool:
         """
