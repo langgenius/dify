@@ -127,6 +127,18 @@ model_credential_schema:
             - variable: __model_type
               value: llm
         - label:
+            en_US: Llama3-8B
+          value: Llama3-8B
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Llama3-70B
+          value: Llama3-70B
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
             en_US: Doubao-embedding
           value: Doubao-embedding
           show_on:
