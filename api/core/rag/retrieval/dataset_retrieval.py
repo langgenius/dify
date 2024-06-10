@@ -15,6 +15,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
 from core.rag.rerank.rerank import RerankRunner
+from core.rag.retrieval.retrival_methods import RetrievalMethod
 from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
 from core.tools.tool.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
@@ -25,7 +26,7 @@ from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
 
 default_retrieval_model = {
-    'search_method': 'semantic_search',
+    'search_method': RetrievalMethod.SEMANTIC_SEARCH,
     'reranking_enable': False,
     'reranking_model': {
         'reranking_provider_name': '',
@@ -419,7 +420,7 @@ class DatasetRetrieval:
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             # get retrieval model config
             default_retrieval_model = {
-                'search_method': 'semantic_search',
+                'search_method': RetrievalMethod.SEMANTIC_SEARCH,
                 'reranking_enable': False,
                 'reranking_model': {
                     'reranking_provider_name': '',
