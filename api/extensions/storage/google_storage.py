@@ -1,6 +1,6 @@
 import base64
-import json
 import io
+import json
 from collections.abc import Generator
 from contextlib import closing
 
