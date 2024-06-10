@@ -21,6 +21,7 @@ class GoogleStorage(BaseStorage):
         # if service_account_json_str is empty, use Application Default Credentials
         if service_account_json_str:
             service_account_json = base64.b64decode(service_account_json_str).decode('utf-8')
+            # convert str to object
             service_account_obj = json.loads(service_account_json)
             self.client = GoogleCloudStorage.Client.from_service_account_info(service_account_obj)
         else:
