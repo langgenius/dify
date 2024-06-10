@@ -1,5 +1,5 @@
 .modal-dialog {
-  @apply relative z-10;
+  @apply relative z-50;
 }
 
 .modal-panel {

@@ -152,7 +152,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='left'
+      placement={isInWorkflow ? 'left' : 'bottom-end'}
       offset={4}
     >
       <div className='relative'>
