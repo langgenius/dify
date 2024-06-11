@@ -72,3 +72,22 @@ class CustomConfiguration(BaseModel):
     """
     provider: Optional[CustomProviderConfiguration] = None
     models: list[CustomModelConfiguration] = []
+
+
+class ModelLoadBalancingConfiguration(BaseModel):
+    """
+    Class for model load balancing configuration.
+    """
+    id: str
+    name: str
+    credentials: dict
+
+
+class ModelSettings(BaseModel):
+    """
+    Model class for model settings.
+    """
+    model: str
+    model_type: ModelType
+    enabled: bool = True
+    load_balancing_configs: list[ModelLoadBalancingConfiguration] = []

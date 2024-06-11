@@ -12,14 +12,14 @@ import { useModalContext } from '@/context/modal-context'
 const APIKeyInfoPanel: FC = () => {
   const isCloud = !IS_CE_EDITION
 
-  const { hasSettedApiKey } = useProviderContext()
+  const { isAPIKeySet } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 
   const { t } = useTranslation()
 
   const [isShow, setIsShow] = useState(true)
 
-  if (hasSettedApiKey)
+  if (isAPIKeySet)
     return null
 
   if (!(isShow))
