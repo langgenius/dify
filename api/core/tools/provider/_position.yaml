@@ -1,29 +1,29 @@
-- google
-- bing
-- duckduckgo
-- searxng
-- dalle
-- azuredalle
-- stability
-- wikipedia
-- yahoo
-- arxiv
-- pubmed
-- stablediffusion
+# - google
+# - bing
+# - duckduckgo
+# - searxng
+# - dalle
+# - azuredalle
+# - stability
+# - wikipedia
+# - yahoo
+# - arxiv
+# - pubmed
+# - stablediffusion
 - webscraper
-- jina
-- aippt
-- youtube
+# - jina
+# - aippt
+# - youtube
 - code
-- wolframalpha
-- maths
-- github
-- chart
+# - wolframalpha
+# - maths
+# - github
+# - chart
 - time
-- vectorizer
-- gaode
-- wecom
-- qrcode
-- dingtalk
-- feishu
-- slack
+# - vectorizer
+# - gaode
+# - wecom
+# - qrcode
+# - dingtalk
+# - feishu
+# - slack

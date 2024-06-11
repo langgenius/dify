@@ -228,7 +228,7 @@ const ActivateForm = () => {
           </div>
           <div className="w-full mx-auto mt-6">
             <Button type='primary' className='w-full !fone-medium !text-sm'>
-              <a href="/signin">{t('login.activated')}</a>
+              <a href="/dify/signin">{t('login.activated')}</a>
             </Button>
           </div>
         </div>

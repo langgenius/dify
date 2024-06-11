@@ -1,14 +1,25 @@
-provider: openai_api_compatible
+provider: magico
 label:
-  en_US: OpenAI-API-compatible
-background: "#F0F0F2"
+  en_US: Magico
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#F7F0EA"
+help:
+  title:
+    en_US: Get your API Key from Magico.
+    zh_Hans: 从Magico获取您的 API Key
+  url:
+    en_US: https://magico.duoyioa.com/key
 description:
-  en_US: Model providers compatible with OpenAI's API standard, such as LM Studio.
-  zh_Hans: 兼容 OpenAI API 的模型供应商，例如 LM Studio 。
+  en_US: Dedicated to providing a more efficient programming experience, providing models such as qwen1.5-32b and yi-34b.
+  zh_Hans: 致力于提供更高效的编程体验，提供qwen1.5-32b、yi-34b等模型。
 supported_model_types:
   - llm
   - text-embedding
 configurate_methods:
+  - predefined-model
   - customizable-model
 model_credential_schema:
   model:
@@ -34,8 +45,8 @@ model_credential_schema:
       type: text-input
       required: true
       placeholder:
-        zh_Hans: Base URL, e.g. https://api.openai.com/v1
-        en_US: Base URL, e.g. https://api.openai.com/v1
+        zh_Hans: Base URL, e.g. https://magico.duoyioa.com/api/v1
+        en_US: Base URL, e.g. https://magico.duoyioa.com/api/v1
     - variable: mode
       show_on:
         - variable: __model_type
@@ -144,3 +155,22 @@ model_credential_schema:
           value: llm
       default: '\n\n'
       type: text-input
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
+    - variable: base_url
+      label:
+        zh_Hans: API Base
+        en_US: API Base
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: 在此输入您的 Magico API Base, 如：https://magico.duoyioa.com/api/v1
+        en_US: Enter your Magico API Base, e.g. https://magico.duoyioa.com/api/v1

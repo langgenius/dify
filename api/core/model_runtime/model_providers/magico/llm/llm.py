@@ -2,7 +2,6 @@ import logging
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
-import tiktoken
 from openai import OpenAI, Stream
 from openai.types import Completion
 from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessageToolCall
@@ -25,7 +24,7 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, I18nObject, ModelType, PriceConfig
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.model_providers.openai._common import _CommonOpenAI
+from core.model_runtime.model_providers.magico._common import _CommonOAI_API_Compat
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +37,7 @@ if you are not sure about the structure.
 </instructions>
 """
 
-class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
+class OpenAILargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
     """
     Model class for OpenAI large language model.
     """
@@ -94,9 +93,9 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             )
 
     def _code_block_mode_wrapper(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
-                           model_parameters: dict, tools: Optional[list[PromptMessageTool]] = None,
-                           stop: Optional[list[str]] = None, stream: bool = True, user: Optional[str] = None,
-                           callbacks: list[Callback] = None) -> Union[LLMResult, Generator]:
+                                 model_parameters: dict, tools: Optional[list[PromptMessageTool]] = None,
+                                 stop: Optional[list[str]] = None, stream: bool = True, user: Optional[str] = None,
+                                 callbacks: list[Callback] = None) -> Union[LLMResult, Generator]:
         """
         Code block mode wrapper for invoking large language model
         """
@@ -149,11 +148,11 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             user=user
         )
 
-    def _transform_chat_json_prompts(self, model: str, credentials: dict, 
-                               prompt_messages: list[PromptMessage], model_parameters: dict, 
-                               tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
-                               stream: bool = True, user: str | None = None, response_format: str = 'JSON') \
-                            -> None:
+    def _transform_chat_json_prompts(self, model: str, credentials: dict,
+                                     prompt_messages: list[PromptMessage], model_parameters: dict,
+                                     tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
+                                     stream: bool = True, user: str | None = None, response_format: str = 'JSON') \
+            -> None:
         """
         Transform json prompts
         """
@@ -167,23 +166,23 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             # override the system message
             prompt_messages[0] = SystemPromptMessage(
                 content=OPENAI_BLOCK_MODE_PROMPT
-                    .replace("{{instructions}}", prompt_messages[0].content)
-                    .replace("{{block}}", response_format)
+                .replace("{{instructions}}", prompt_messages[0].content)
+                .replace("{{block}}", response_format)
             )
             prompt_messages.append(AssistantPromptMessage(content=f"\n```{response_format}\n"))
         else:
             # insert the system message
             prompt_messages.insert(0, SystemPromptMessage(
                 content=OPENAI_BLOCK_MODE_PROMPT
-                    .replace("{{instructions}}", f"Please output a valid {response_format} object.")
-                    .replace("{{block}}", response_format)
+                .replace("{{instructions}}", f"Please output a valid {response_format} object.")
+                .replace("{{block}}", response_format)
             ))
             prompt_messages.append(AssistantPromptMessage(content=f"\n```{response_format}"))
-    
+
     def _transform_completion_json_prompts(self, model: str, credentials: dict,
-                                            prompt_messages: list[PromptMessage], model_parameters: dict,
-                                            tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
-                                            stream: bool = True, user: str | None = None, response_format: str = 'JSON') \
+                                           prompt_messages: list[PromptMessage], model_parameters: dict,
+                                           tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
+                                           stream: bool = True, user: str | None = None, response_format: str = 'JSON') \
             -> None:
         """
         Transform json prompts
@@ -206,15 +205,15 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 prompt_messages[i].content = prompt_messages[i].content[:-11]
                 prompt_messages[i] = UserPromptMessage(
                     content=OPENAI_BLOCK_MODE_PROMPT
-                        .replace("{{instructions}}", user_message.content)
-                        .replace("{{block}}", response_format)
+                    .replace("{{instructions}}", user_message.content)
+                    .replace("{{block}}", response_format)
                 )
                 prompt_messages[i].content += f"Assistant:\n```{response_format}\n"
             else:
                 prompt_messages[i] = UserPromptMessage(
                     content=OPENAI_BLOCK_MODE_PROMPT
-                        .replace("{{instructions}}", user_message.content)
-                        .replace("{{block}}", response_format)
+                    .replace("{{instructions}}", user_message.content)
+                    .replace("{{block}}", response_format)
                 )
                 prompt_messages[i].content += f"\n```{response_format}\n"
 
@@ -382,7 +381,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             extra_model_kwargs['stream_options'] = {
                 "include_usage": True
             }
-        
+
         # text completion model
         response = client.completions.create(
             prompt=prompt_messages[0].content,
@@ -551,7 +550,6 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
             model_parameters["response_format"] = response_format
 
-
         extra_model_kwargs = {}
 
         if tools:
@@ -642,7 +640,8 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         return response
 
-    def _handle_chat_generate_stream_response(self, model: str, credentials: dict, response: Stream[ChatCompletionChunk],
+    def _handle_chat_generate_stream_response(self, model: str, credentials: dict,
+                                              response: Stream[ChatCompletionChunk],
                                               prompt_messages: list[PromptMessage],
                                               tools: Optional[list[PromptMessageTool]] = None) -> Generator:
         """
@@ -680,7 +679,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             has_finish_reason = delta.finish_reason is not None
 
             if not has_finish_reason and (delta.delta.content is None or delta.delta.content == '') and \
-                delta.delta.function_call is None:
+                    delta.delta.function_call is None:
                 continue
 
             # assistant_message_tool_calls = delta.delta.tool_calls
@@ -899,66 +898,40 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
     def _num_tokens_from_string(self, model: str, text: str,
                                 tools: Optional[list[PromptMessageTool]] = None) -> int:
         """
-        Calculate num tokens for text completion model with tiktoken package.
+        Approximate num tokens for model with gpt2 tokenizer.
 
         :param model: model name
         :param text: prompt text
         :param tools: tools for tool calling
         :return: number of tokens
         """
-        class Encoding():
-            def __init__(self, base_pri):
-                self.base_pri = base_pri
+        if isinstance(text, str):
+            full_text = text
+        else:
+            full_text = ''
+            for message_content in text:
+                if message_content.type == PromptMessageContentType.TEXT:
+                    message_content = cast(PromptMessageContent, message_content)
+                    full_text += message_content.data
 
-            def encode(self, item):
-                return self.base_pri._get_num_tokens_by_gpt2(item)
-        encoding = Encoding(self)
-
-        # try:
-        #     encoding = tiktoken.encoding_for_model(model)
-        # except KeyError:
-        #     encoding = tiktoken.get_encoding("cl100k_base")
-
-        encoding = Encoding(self)
-
-        num_tokens = len(encoding.encode(text))
+        num_tokens = self._get_num_tokens_by_gpt2(full_text)
 
         if tools:
-            num_tokens += self._num_tokens_for_tools(encoding, tools)
+            num_tokens += self._num_tokens_for_tools(tools)
 
         return num_tokens
 
     def _num_tokens_from_messages(self, model: str, messages: list[PromptMessage],
                                   tools: Optional[list[PromptMessageTool]] = None) -> int:
-        """Calculate num tokens for gpt-3.5-turbo and gpt-4 with tiktoken package.
-
-        Official documentation: https://github.com/openai/openai-cookbook/blob/
-        main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb"""
+        """
+        Approximate num tokens with GPT2 tokenizer.
+        """
         if model.startswith('ft:'):
             model = model.split(':')[1]
 
-        try:
-            encoding = tiktoken.encoding_for_model(model)
-        except KeyError:
-            logger.warning("Warning: model not found. Using cl100k_base encoding.")
-            model = "cl100k_base"
-            encoding = tiktoken.get_encoding(model)
+        tokens_per_message = 3
+        tokens_per_name = 1
 
-        if model.startswith("gpt-3.5-turbo-0301"):
-            # every message follows <im_start>{role/name}\n{content}<im_end>\n
-            tokens_per_message = 4
-            # if there's a name, the role is omitted
-            tokens_per_name = -1
-        elif model.startswith("gpt-3.5-turbo") or model.startswith("gpt-4"):
-            tokens_per_message = 3
-            tokens_per_name = 1
-        else:
-            raise NotImplementedError(
-                f"get_num_tokens_from_messages() is not presently implemented "
-                f"for model {model}."
-                "See https://github.com/openai/openai-python/blob/main/chatml.md for "
-                "information on how messages are converted to tokens."
-            )
         num_tokens = 0
         messages_dict = [self._convert_prompt_message_to_dict(m) for m in messages]
         for message in messages_dict:
@@ -980,16 +953,16 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 if key == "tool_calls":
                     for tool_call in value:
                         for t_key, t_value in tool_call.items():
-                            num_tokens += len(encoding.encode(t_key))
+                            num_tokens += self._get_num_tokens_by_gpt2(t_key)
                             if t_key == "function":
                                 for f_key, f_value in t_value.items():
-                                    num_tokens += len(encoding.encode(f_key))
-                                    num_tokens += len(encoding.encode(f_value))
+                                    num_tokens += self._get_num_tokens_by_gpt2(f_key)
+                                    num_tokens += self._get_num_tokens_by_gpt2(f_value)
                             else:
-                                num_tokens += len(encoding.encode(t_key))
-                                num_tokens += len(encoding.encode(t_value))
+                                num_tokens += self._get_num_tokens_by_gpt2(t_key)
+                                num_tokens += self._get_num_tokens_by_gpt2(t_value)
                 else:
-                    num_tokens += len(encoding.encode(str(value)))
+                    num_tokens += self._get_num_tokens_by_gpt2(str(value))
 
                 if key == "name":
                     num_tokens += tokens_per_name
@@ -998,53 +971,53 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         num_tokens += 3
 
         if tools:
-            num_tokens += self._num_tokens_for_tools(encoding, tools)
+            num_tokens += self._num_tokens_for_tools(tools)
 
         return num_tokens
 
-    def _num_tokens_for_tools(self, encoding: tiktoken.Encoding, tools: list[PromptMessageTool]) -> int:
+    def _num_tokens_for_tools(self, tools: list[PromptMessageTool]) -> int:
         """
         Calculate num tokens for tool calling with tiktoken package.
 
-        :param encoding: encoding
         :param tools: tools for tool calling
         :return: number of tokens
         """
         num_tokens = 0
         for tool in tools:
-            num_tokens += len(encoding.encode('type'))
-            num_tokens += len(encoding.encode('function'))
+            num_tokens += self._get_num_tokens_by_gpt2('type')
+            num_tokens += self._get_num_tokens_by_gpt2('function')
+            num_tokens += self._get_num_tokens_by_gpt2('function')
 
             # calculate num tokens for function object
-            num_tokens += len(encoding.encode('name'))
-            num_tokens += len(encoding.encode(tool.name))
-            num_tokens += len(encoding.encode('description'))
-            num_tokens += len(encoding.encode(tool.description))
+            num_tokens += self._get_num_tokens_by_gpt2('name')
+            num_tokens += self._get_num_tokens_by_gpt2(tool.name)
+            num_tokens += self._get_num_tokens_by_gpt2('description')
+            num_tokens += self._get_num_tokens_by_gpt2(tool.description)
             parameters = tool.parameters
-            num_tokens += len(encoding.encode('parameters'))
+            num_tokens += self._get_num_tokens_by_gpt2('parameters')
             if 'title' in parameters:
-                num_tokens += len(encoding.encode('title'))
-                num_tokens += len(encoding.encode(parameters.get("title")))
-            num_tokens += len(encoding.encode('type'))
-            num_tokens += len(encoding.encode(parameters.get("type")))
+                num_tokens += self._get_num_tokens_by_gpt2('title')
+                num_tokens += self._get_num_tokens_by_gpt2(parameters.get("title"))
+            num_tokens += self._get_num_tokens_by_gpt2('type')
+            num_tokens += self._get_num_tokens_by_gpt2(parameters.get("type"))
             if 'properties' in parameters:
-                num_tokens += len(encoding.encode('properties'))
+                num_tokens += self._get_num_tokens_by_gpt2('properties')
                 for key, value in parameters.get('properties').items():
-                    num_tokens += len(encoding.encode(key))
+                    num_tokens += self._get_num_tokens_by_gpt2(key)
                     for field_key, field_value in value.items():
-                        num_tokens += len(encoding.encode(field_key))
+                        num_tokens += self._get_num_tokens_by_gpt2(field_key)
                         if field_key == 'enum':
                             for enum_field in field_value:
                                 num_tokens += 3
-                                num_tokens += len(encoding.encode(enum_field))
+                                num_tokens += self._get_num_tokens_by_gpt2(enum_field)
                         else:
-                            num_tokens += len(encoding.encode(field_key))
-                            num_tokens += len(encoding.encode(str(field_value)))
+                            num_tokens += self._get_num_tokens_by_gpt2(field_key)
+                            num_tokens += self._get_num_tokens_by_gpt2(str(field_value))
             if 'required' in parameters:
-                num_tokens += len(encoding.encode('required'))
+                num_tokens += self._get_num_tokens_by_gpt2('required')
                 for required_field in parameters['required']:
                     num_tokens += 3
-                    num_tokens += len(encoding.encode(required_field))
+                    num_tokens += self._get_num_tokens_by_gpt2(required_field)
 
         return num_tokens
 
@@ -1069,7 +1042,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         model_map = {model.model: model for model in models}
         if base_model not in model_map:
             raise ValueError(f'Base model {base_model} not found')
-        
+
         base_model_schema = model_map[base_model]
 
         base_model_schema_features = base_model_schema.features or []
@@ -1089,7 +1062,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 key: property for key, property in base_model_schema_model_properties.items()
             },
             parameter_rules=[rule for rule in base_model_schema_parameters_rules],
-            pricing=base_model_schema.pricing    
+            pricing=base_model_schema.pricing
         )
 
         return entity

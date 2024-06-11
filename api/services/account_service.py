@@ -145,7 +145,7 @@ class AccountService:
         account.interface_theme = interface_theme
 
         # Set timezone based on language
-        account.timezone = language_timezone_mapping.get(interface_language, 'UTC')
+        account.timezone = language_timezone_mapping.get(interface_language, timezone)
 
         db.session.add(account)
         db.session.commit()
@@ -425,7 +425,7 @@ class RegisterService:
 
     @classmethod
     def register(cls, email, name, password: str = None, open_id: str = None, provider: str = None,
-                 language: str = None, status: AccountStatus = None) -> Account:
+                 language: str = None, status: AccountStatus = None, timezone_: str = 'America/New_York') -> Account:
         db.session.begin_nested()
         """Register account"""
         try:
@@ -433,7 +433,8 @@ class RegisterService:
                 email=email,
                 name=name,
                 interface_language=language if language else languages[0],
-                password=password
+                password=password,
+                timezone=timezone_,
             )
             account.status = AccountStatus.ACTIVE.value if not status else status.value
             account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)

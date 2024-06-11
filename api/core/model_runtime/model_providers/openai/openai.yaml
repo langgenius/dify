@@ -1,14 +1,14 @@
 provider: openai
 label:
-  en_US: OpenAI
+  en_US: OpenAI Base
 description:
   en_US: Models provided by OpenAI, such as GPT-3.5-Turbo and GPT-4.
   zh_Hans: OpenAI 提供的模型，例如 GPT-3.5-Turbo 和 GPT-4。
-icon_small:
-  en_US: icon_s_en.svg
-icon_large:
-  en_US: icon_l_en.svg
-background: "#E5E7EB"
+# icon_small:
+#   en_US: icon_s_en.svg
+# icon_large:
+#   en_US: icon_l_en.svg
+background: "#E2E2E2"
 help:
   title:
     en_US: Get your API Key from OpenAI

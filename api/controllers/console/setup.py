@@ -30,14 +30,14 @@ class SetupApi(Resource):
 
     @only_edition_self_hosted
     def post(self):
-        # is set up
-        if get_setup_status():
-            raise AlreadySetupError()
+        # # is set up
+        # if get_setup_status():
+        #     raise AlreadySetupError()
 
-        # is tenant created
-        tenant_count = TenantService.get_tenant_count()
-        if tenant_count > 0:
-            raise AlreadySetupError()
+        # # is tenant created
+        # tenant_count = TenantService.get_tenant_count()
+        # if tenant_count > 0:
+        #     raise AlreadySetupError()
     
         if not get_init_validate_status():
             raise NotInitValidateError()
@@ -55,7 +55,9 @@ class SetupApi(Resource):
         account = RegisterService.register(
             email=args['email'],
             name=args['name'],
-            password=args['password']
+            password=args['password'],
+            language='zh_Hans',
+            timezone_='Asia/Shanghai'
         )
 
         TenantService.create_owner_tenant_if_not_exist(account)
@@ -70,7 +72,7 @@ def setup():
     dify_setup = DifySetup(
         version=current_app.config['CURRENT_VERSION']
     )
-    db.session.add(dify_setup)
+    db.session.merge(dify_setup)
 
 
 def setup_required(view):

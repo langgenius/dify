@@ -261,6 +261,87 @@
                 "Translate"
             ],
             "recommended_apps": [
+            {
+                "app": {
+                    "icon": "eye-in-speech-bubble",
+                    "icon_background": "#FFEAD5",
+                    "id": "dad6a1e0-0fe9-47e1-91a9-e16de48f1276",
+                    "mode": "chat",
+                    "name": "\u4ee3\u7801\u89e3\u91ca\u5668"
+                },
+                "app_id": "dad6a1e0-0fe9-47e1-91a9-e16de48f1276",
+                "category": "Programming",
+                "copyright": "Copyright 2023 Dify",
+                "description": "\u9610\u660e\u4ee3\u7801\u7684\u8bed\u6cd5\u548c\u8bed\u4e49\u3002",
+                "is_listed": true,
+                "position": 2,
+                "privacy_policy": "https://dify.ai",
+                "custom_disclaimer": null
+            },
+            {
+                "app": {
+                    "icon": "clipboard",
+                    "icon_background": "#D1E0FF",
+                    "id": "6786ce62-fa85-4ea7-a4d1-5dbe3e3ff59f",
+                    "mode": "chat",
+                    "name": "\u4f1a\u8bae\u7eaa\u8981"
+                },
+                "app_id": "6786ce62-fa85-4ea7-a4d1-5dbe3e3ff59f",
+                "category": "Writing",
+                "copyright": "Copyright 2023 Dify",
+                "description": "\u5e2e\u4f60\u91cd\u65b0\u7ec4\u7ec7\u548c\u8f93\u51fa\u6df7\u4e71\u590d\u6742\u7684\u4f1a\u8bae\u7eaa\u8981\u3002",
+                "is_listed": true,
+                "position": 6,
+                "privacy_policy": "https://dify.ai",
+                "custom_disclaimer": null
+            },
+            {
+                "app": {
+                    "icon": "\ud83e\udd16",
+                    "icon_background": "#FFEAD5",
+                    "id": "89ad1e65-6711-4c80-b469-a71a434e2dbd",
+                    "mode": "chat",
+                    "name": "\u4e2a\u4eba\u5b66\u4e60\u5bfc\u5e08"
+                },
+                "app_id": "89ad1e65-6711-4c80-b469-a71a434e2dbd",
+                "category": "Assistant",
+                "copyright": "Copyright 2023 Dify",
+                "description": "\u60a8\u7684\u79c1\u4eba\u5b66\u4e60\u5bfc\u5e08\uff0c\u5e2e\u60a8\u5236\u5b9a\u5b66\u4e60\u8ba1\u5212\u5e76\u8f85\u5bfc",
+                "is_listed": true,
+                "position": 26,
+                "privacy_policy": "https://dify.ai",
+                "custom_disclaimer": null
+            },
+            {
+                "app": {
+                    "icon": "\ud83e\udd16",
+                    "icon_background": null,
+                    "id": "94b509ad-4225-4924-8b50-5c25c2bd7e3c",
+                    "mode": "completion",
+                    "name": "\u6587\u7ae0\u7ffb\u8bd1\u52a9\u7406 "
+                },
+                "app_id": "94b509ad-4225-4924-8b50-5c25c2bd7e3c",
+                "category": "Assistant",
+                "copyright": null,
+                "description": "\u4e00\u4e2a\u591a\u8bed\u8a00\u7ffb\u8bd1\u5668\uff0c\u63d0\u4f9b\u591a\u79cd\u8bed\u8a00\u7ffb\u8bd1\u80fd\u529b\uff0c\u8f93\u5165\u4f60\u9700\u8981\u7ffb\u8bd1\u7684\u6587\u672c\uff0c\u9009\u62e9\u76ee\u6807\u8bed\u8a00\u5373\u53ef\u3002\u63d0\u793a\u8bcd\u6765\u81ea\u5b9d\u7389\u3002",
+                "is_listed": true,
+                "position": 10,
+                "privacy_policy": null,
+                "custom_disclaimer": null
+            }
+        ]
+        },
+        "pt-BR": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "es-ES": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "fr-FR": {
+            "categories": [],
+            "recommended_apps": [
                 {
                     "app": {
                         "icon": "\ud83e\udd16",
@@ -517,18 +598,6 @@
                     "custom_disclaimer": null
                 }
             ]
-        },
-        "pt-BR": {
-            "categories": [],
-            "recommended_apps": []
-        },
-        "es-ES": {
-            "categories": [],
-            "recommended_apps": []
-        },
-        "fr-FR": {
-            "categories": [],
-            "recommended_apps": []
         },
         "de-DE": {
             "categories": [],

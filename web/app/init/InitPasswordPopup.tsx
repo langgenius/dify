@@ -41,7 +41,7 @@ const InitPasswordPopup = () => {
   useEffect(() => {
     fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
       if (res.status === 'finished')
-        window.location.href = '/install'
+        window.location.href = '/dify/install'
       else
         setLoading(false)
     })

@@ -9,7 +9,7 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import './style.css'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
-loader.config({ paths: { vs: '/vs' } })
+loader.config({ paths: { vs: '/dify/vs' } })
 
 const CODE_EDITOR_LINE_HEIGHT = 18
 
