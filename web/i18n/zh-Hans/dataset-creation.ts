@@ -63,7 +63,7 @@ const translation = {
       run: '运行',
       firecrawlTitle: '使用 🔥Firecrawl 提取网页内容',
       firecrawlDoc: 'Firecrawl 文档',
-      firecrawlDocLink: '',
+      firecrawlDocLink: 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/sync_from_website',
       options: '选项',
       crawlSubPage: '爬取子页面',
       limit: '限制数量',
