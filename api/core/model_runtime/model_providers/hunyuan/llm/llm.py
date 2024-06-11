@@ -121,13 +121,13 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
                 role=delta.get('Role', 'assistant'),
                 message=assistant_prompt_message,
                 usage=usage,
+                finish_reason=finish_reason,
             )
 
             yield LLMResultChunk(
                 model=model,
                 prompt_messages=prompt_messages,
                 delta=delta_chunk,
-                finish_reason=finish_reason,
             )
 
     def _handle_chat_response(self, credentials, model, prompt_messages, response):
