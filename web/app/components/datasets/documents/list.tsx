@@ -27,7 +27,7 @@ import type { IndicatorProps } from '@/app/components/header/indicator'
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument, unArchiveDocument } from '@/service/datasets'
+import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument, syncWebsite, unArchiveDocument } from '@/service/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
 import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
@@ -147,7 +147,12 @@ export const OperationAction: FC<{
         opApi = disableDocument
         break
       case 'sync':
-        opApi = syncDocument
+        if (data_source_type === 'notion_import')
+          opApi = syncDocument
+
+        else
+          opApi = syncWebsite
+
         break
       default:
         opApi = deleteDocument
@@ -250,7 +255,7 @@ export const OperationAction: FC<{
                   <SettingsIcon />
                   <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
                 </div>
-                {data_source_type === 'notion_import' && (
+                {['notion_import', DataSourceType.WEB].includes(data_source_type) && (
                   <div className={s.actionItem} onClick={() => onOperate('sync')}>
                     <SyncIcon />
                     <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
