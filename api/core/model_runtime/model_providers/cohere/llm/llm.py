@@ -19,9 +19,9 @@ from cohere import (
     Tool,
     ToolCall,
     ToolParameterDefinitionsValue,
-    ToolResult,
 )
 from cohere.core import RequestOptions
+from cohere.types.tool_result import ToolResult
 
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
