@@ -43,7 +43,7 @@ const DataSourceWebsite: FC<Props> = () => {
     setList([])
     Toast.notify({
       type: 'success',
-      message: t('common.operation.saveSuccess'),
+      message: t('common.api.remove'),
     })
   }, [list, t])
 

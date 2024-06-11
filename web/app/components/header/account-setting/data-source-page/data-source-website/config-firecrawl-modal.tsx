@@ -74,7 +74,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
     await createFirecrawlApiKey(postData)
     Toast.notify({
       type: 'success',
-      message: t('common.operation.saveSuccess'),
+      message: t('common.api.create'),
     })
     onSaved()
   }, [config.api_key, config.base_url, onSaved, t])
