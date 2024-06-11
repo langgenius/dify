@@ -1,0 +1,47 @@
+identity:
+  name: create_base
+  author: Doug Lea
+  label:
+    en_US: Create Base
+    zh_Hans: 创建多维表格
+description:
+  human:
+    en_US: Create base
+    zh_Hans: 在指定目录下创建多维表格
+  llm: A tool for create a multidimensional table in the specified directory.
+parameters:
+  - name: Authorization
+    type: string
+    required: true
+    label:
+      en_US: token
+      zh_Hans: 凭证
+    human_description:
+      en_US: API access token parameter, tenant_access_token or user_access_token
+      zh_Hans: API 的访问凭证参数，tenant_access_token 或 user_access_token
+    llm_description: API access token parameter, tenant_access_token or user_access_token
+    form: llm
+
+  - name: name
+    type: string
+    required: false
+    label:
+      en_US: name
+      zh_Hans: name
+    human_description:
+      en_US: Base App Name
+      zh_Hans: 多维表格App名字
+    llm_description: Base App Name
+    form: llm
+
+  - name: folder_token
+    type: string
+    required: false
+    label:
+      en_US: folder_token
+      zh_Hans: 多维表格App归属文件夹
+    human_description:
+      en_US: Base App home folder. The default is empty, indicating that Base will be created in the cloud space root directory.
+      zh_Hans: 多维表格App归属文件夹。默认为空，表示多维表格将被创建在云空间根目录。
+    llm_description: Base App home folder. The default is empty, indicating that Base will be created in the cloud space root directory.
+    form: llm
