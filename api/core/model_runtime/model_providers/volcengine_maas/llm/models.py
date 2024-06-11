@@ -69,4 +69,24 @@ ModelConfigs = {
             'mode': 'chat',
         }
     },
+    'Llama3-8B': {
+         'req_params': {
+            'max_prompt_tokens': 8192,
+            'max_new_tokens': 8192,
+        },
+        'model_properties': {
+            'context_size': 8192,
+            'mode': 'chat',
+        }
+    },
+    'Llama3-70B': {
+         'req_params': {
+            'max_prompt_tokens': 8192,
+            'max_new_tokens': 8192,
+        },
+        'model_properties': {
+            'context_size': 8192,
+            'mode': 'chat',
+        }
+    }
 }
