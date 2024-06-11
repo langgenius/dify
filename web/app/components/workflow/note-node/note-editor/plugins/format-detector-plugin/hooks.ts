@@ -8,6 +8,7 @@ import {
 } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import type { LinkNode } from '@lexical/link'
 import { $isLinkNode } from '@lexical/link'
 import { getSelectedNode } from '../../utils'
 import { useNoteEditorStore } from '../../store'
@@ -18,27 +19,26 @@ export const useFormatDetector = () => {
 
   const handleFormat = useCallback(() => {
     editor.getEditorState().read(() => {
-      // Should not to pop up the floating toolbar when using IME input
       if (editor.isComposing())
         return
 
       const selection = $getSelection()
-      if (!$isRangeSelection(selection))
+      if (!($isRangeSelection(selection) && !selection?.isCollapsed()))
         return
 
       const node = getSelectedNode(selection)
       const {
-        setIsBold,
-        setIsStrikeThrough,
-        setIsLink,
+        setSelectedIsBold,
+        setSelectedIsStrikeThrough,
+        setSelectedLinkUrl,
       } = noteEditorStore.getState()
-      setIsBold(selection.hasFormat('bold'))
-      setIsStrikeThrough(selection.hasFormat('strikethrough'))
+      setSelectedIsBold(selection.hasFormat('bold'))
+      setSelectedIsStrikeThrough(selection.hasFormat('strikethrough'))
       const parent = node.getParent()
       if ($isLinkNode(parent) || $isLinkNode(node))
-        setIsLink(true)
+        setSelectedLinkUrl($isLinkNode(parent) ? parent.getURL() : (node as LinkNode).getURL())
       else
-        setIsLink(false)
+        setSelectedLinkUrl('')
     })
   }, [editor, noteEditorStore])
 

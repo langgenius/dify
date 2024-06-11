@@ -9,6 +9,7 @@ import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { LinkNode } from '@lexical/link'
 import { createNoteEditorStore } from './store'
+import theme from './theme'
 
 type NoteEditorStore = ReturnType<typeof createNoteEditorStore>
 const NoteEditorContext = createContext<NoteEditorStore | null>(null)
@@ -33,6 +34,7 @@ export const NoteEditorContextProvider = memo(({
     onError: (error: Error) => {
       throw error
     },
+    theme,
   }
 
   return (

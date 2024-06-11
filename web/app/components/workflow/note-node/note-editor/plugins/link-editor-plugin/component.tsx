@@ -1,6 +1,6 @@
 import {
   memo,
-  useCallback,
+  useEffect,
   useState,
 } from 'react'
 import {
@@ -13,21 +13,30 @@ import {
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useStore } from '../../store'
+import { useLink } from './hooks'
 import Button from '@/app/components/base/button'
+import {
+  Edit03,
+  LinkBroken01,
+  LinkExternal01,
+} from '@/app/components/base/icons/src/vender/line/general'
 
 type LinkEditorComponentProps = {
   containerElement: HTMLDivElement | null
-  linkUrl?: string
-  showInput?: boolean
 }
 const LinkEditorComponent = ({
   containerElement,
-  linkUrl,
-  showInput = true,
 }: LinkEditorComponentProps) => {
   const { t } = useTranslation()
-  const [url, setUrl] = useState(linkUrl)
-  const anchorElement = useStore(s => s.anchorElement)
+  const {
+    handleSaveLink,
+    handleUnlink,
+  } = useLink()
+  const selectedLinkUrl = useStore(s => s.selectedLinkUrl)
+  const linkAnchorElement = useStore(s => s.linkAnchorElement)
+  const linkOperatorShow = useStore(s => s.linkOperatorShow)
+  const setLinkOperatorShow = useStore(s => s.setLinkOperatorShow)
+  const [url, setUrl] = useState(selectedLinkUrl)
   const { refs, floatingStyles, elements } = useFloating({
     placement: 'top',
     middleware: [
@@ -37,13 +46,13 @@ const LinkEditorComponent = ({
     ],
   })
 
-  const handleConfirm = useCallback(() => {}, [])
+  useEffect(() => {
+    if (linkAnchorElement)
+      refs.setReference(linkAnchorElement)
+  }, [linkAnchorElement, refs])
 
-  if (!anchorElement)
+  if (!linkAnchorElement)
     return null
-
-  if (!elements.reference && anchorElement)
-    refs.setReference(anchorElement)
 
   return (
     <>
@@ -53,21 +62,65 @@ const LinkEditorComponent = ({
             <div
               className={cn(
                 'inline-flex items-center rounded-md border-[0.5px] border-black/5 bg-white z-10',
-                showInput && 'p-1 shadow-md',
-                !showInput && 'p-0.5 shadow-sm',
+                !linkOperatorShow && 'p-1 shadow-md',
+                linkOperatorShow && 'p-0.5 shadow-sm text-xs text-gray-500 font-medium',
               )}
               style={floatingStyles}
               ref={refs.setFloating}
             >
               {
-                showInput && (
+                !linkOperatorShow && (
                   <>
                     <input
-                      className='mr-0.5 p-1 w-[196px] h-6 rounded-sm text-[13px]'
+                      className='mr-0.5 p-1 w-[196px] h-6 rounded-sm text-[13px] appearance-none outline-none'
                       value={url}
                       onChange={e => setUrl(e.target.value)}
+                      placeholder='Enter URL...'
                     />
-                    <Button onClick={handleConfirm}>{t('common.operation.ok')}</Button>
+                    <Button
+                      type='primary'
+                      className={cn(
+                        'py-0 px-2 h-6 text-xs',
+                        !url && 'cursor-not-allowed',
+                      )}
+                      disabled={!url}
+                      onClick={() => handleSaveLink(url)}
+                    >
+                      {t('common.operation.ok')}
+                    </Button>
+                  </>
+                )
+              }
+              {
+                linkOperatorShow && (
+                  <>
+                    <div className='flex items-center mr-4'>
+                      <LinkExternal01 className='mr-1 w-3 h-3' />
+                      <div className='mr-1'>Open</div>
+                      <a
+                        href={url}
+                        target='_blank'
+                        rel='noreferrer'
+                        className='text-primary-600'
+                      >
+                        {url}
+                      </a>
+                    </div>
+                    <div className='mr-1 w-[1px] h-3.5 bg-gray-100'></div>
+                    <div
+                      className='flex items-center mr-0.5 px-2 h-6 rounded-md cursor-pointer hover:bg-gray-50'
+                      onClick={() => setLinkOperatorShow(false)}
+                    >
+                      <Edit03 className='mr-1 w-3 h-3' />
+                      Edit
+                    </div>
+                    <div
+                      className='flex items-center px-2 h-6 rounded-md cursor-pointer hover:bg-gray-50'
+                      onClick={handleUnlink}
+                    >
+                      <LinkBroken01 className='mr-1 w-3 h-3' />
+                      Unlink
+                    </div>
                   </>
                 )
               }

@@ -1,0 +1,12 @@
+.note-editor-theme_paragraph {
+  font-size: 12px;
+}
+
+.note-editor-theme_link {
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.note-editor-theme_text-strikethrough {
+  text-decoration: line-through;
+}

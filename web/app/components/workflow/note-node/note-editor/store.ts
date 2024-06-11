@@ -6,26 +6,44 @@ import { createStore } from 'zustand/vanilla'
 import NoteEditorContext from './context'
 
 type Shape = {
-  anchorElement: HTMLElement | null
-  setAnchorElement: (anchorElement: HTMLElement | null) => void
-  isBold: boolean
-  setIsBold: (isBold: boolean) => void
-  isStrikeThrough: boolean
-  setIsStrikeThrough: (isStrikeThrough: boolean) => void
-  isLink: boolean
-  setIsLink: (isLink: boolean) => void
+  linkAnchorElement: HTMLElement | null
+  setLinkAnchorElement: (open?: boolean) => void
+  linkOperatorShow: boolean
+  setLinkOperatorShow: (linkOperatorShow: boolean) => void
+  selectedIsBold: boolean
+  setSelectedIsBold: (selectedIsBold: boolean) => void
+  selectedIsStrikeThrough: boolean
+  setSelectedIsStrikeThrough: (selectedIsStrikeThrough: boolean) => void
+  selectedLinkUrl: string
+  setSelectedLinkUrl: (selectedLinkUrl: string) => void
 }
 
 export const createNoteEditorStore = () => {
   return createStore<Shape>(set => ({
-    anchorElement: null,
-    setAnchorElement: anchorElement => set(() => ({ anchorElement })),
-    isBold: false,
-    setIsBold: isBold => set(() => ({ isBold })),
-    isStrikeThrough: false,
-    setIsStrikeThrough: isStrikeThrough => set(() => ({ isStrikeThrough })),
-    isLink: false,
-    setIsLink: isLink => set(() => ({ isLink })),
+    linkAnchorElement: null,
+    setLinkAnchorElement: (open) => {
+      if (open) {
+        setTimeout(() => {
+          const nativeSelection = window.getSelection()
+
+          if (nativeSelection?.focusNode) {
+            const parent = nativeSelection.focusNode.parentElement
+            set(() => ({ linkAnchorElement: parent }))
+          }
+        })
+      }
+      else {
+        set(() => ({ linkAnchorElement: null }))
+      }
+    },
+    linkOperatorShow: false,
+    setLinkOperatorShow: linkOperatorShow => set(() => ({ linkOperatorShow })),
+    selectedIsBold: false,
+    setSelectedIsBold: selectedIsBold => set(() => ({ selectedIsBold })),
+    selectedIsStrikeThrough: false,
+    setSelectedIsStrikeThrough: selectedIsStrikeThrough => set(() => ({ selectedIsStrikeThrough })),
+    selectedLinkUrl: '',
+    setSelectedLinkUrl: selectedLinkUrl => set(() => ({ selectedLinkUrl })),
   }))
 }
 

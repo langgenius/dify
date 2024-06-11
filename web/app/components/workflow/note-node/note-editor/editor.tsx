@@ -6,8 +6,9 @@ import {
 } from 'react'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
+import { ClickableLinkPlugin } from '@lexical/react/LexicalClickableLinkPlugin'
 import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin'
-import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import LinkEditorPlugin from './plugins/link-editor-plugin'
 import FormatDetectorPlugin from './plugins/format-detector-plugin'
@@ -40,6 +41,7 @@ const Editor = ({
         placeholder={<Placeholder value={placeholder} />}
         ErrorBoundary={LexicalErrorBoundary}
       />
+      <ClickableLinkPlugin disabled />
       <LinkPlugin />
       <LinkEditorPlugin
         containerElement={containerElement}

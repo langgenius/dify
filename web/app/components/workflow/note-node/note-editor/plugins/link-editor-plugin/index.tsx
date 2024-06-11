@@ -1,4 +1,7 @@
-import { memo } from 'react'
+import {
+  memo,
+} from 'react'
+import { useOpenLink } from './hooks'
 import LinkEditorComponent from './component'
 
 type LinkEditorPluginProps = {
@@ -7,6 +10,8 @@ type LinkEditorPluginProps = {
 const LinkEditorPlugin = ({
   containerElement,
 }: LinkEditorPluginProps) => {
+  useOpenLink()
+
   return (
     <LinkEditorComponent containerElement={containerElement} />
   )

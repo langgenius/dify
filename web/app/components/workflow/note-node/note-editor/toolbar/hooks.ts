@@ -24,6 +24,7 @@ export const useCommand = () => {
 
     if (type === 'strikethrough')
       editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')
+
     if (type === 'link') {
       editor.update(() => {
         const selection = $getSelection()
@@ -32,24 +33,11 @@ export const useCommand = () => {
           const node = getSelectedNode(selection)
           const parent = node.getParent()
 
-          if ($isLinkNode(parent) || $isLinkNode(node))
-            editor.dispatchCommand(TOGGLE_LINK_COMMAND, null)
-          else
-            editor.dispatchCommand(TOGGLE_LINK_COMMAND, 'https://')
+          if (!($isLinkNode(parent) && $isLinkNode(node)))
+            editor.dispatchCommand(TOGGLE_LINK_COMMAND, '')
 
-          // setTimeout(() => {
-          //   const nativeSelection = window.getSelection()
-          //   editor.getEditorState().read(() => {
-          //     const node = getSelectedNode(selection)
-          //     console.log(node, 'node')
-          //   })
-
-          //   if (nativeSelection?.focusNode) {
-          //     const { setAnchorElement } = noteEditorStore.getState()
-          //     const parent = nativeSelection.focusNode.parentElement
-          //     setAnchorElement(parent)
-          //   }
-          // })
+          const { setLinkAnchorElement } = noteEditorStore.getState()
+          setLinkAnchorElement(true)
         }
       })
     }
