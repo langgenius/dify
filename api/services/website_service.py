@@ -106,14 +106,14 @@ class WebsiteService:
         return crawl_status_data
 
     @classmethod
-    def get_crawl_url_data(cls, job_id: str, provider: str, url: str) -> dict | None:
-        credentials = ApiKeyAuthService.get_auth_credentials(current_user.current_tenant_id,
+    def get_crawl_url_data(cls, job_id: str, provider: str, url: str, tenant_id: str) -> dict | None:
+        credentials = ApiKeyAuthService.get_auth_credentials(tenant_id,
                                                              'website',
                                                              provider)
         if provider == 'firecrawl':
             # decrypt api_key
             api_key = encrypter.decrypt_token(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=tenant_id,
                 token=credentials.get('config').get('api_key')
             )
             firecrawl_app = FirecrawlApp(api_key=api_key,
@@ -124,7 +124,7 @@ class WebsiteService:
             data = result.get('data')
             if data:
                 for item in data:
-                    if item.get('data').get('source_url') == url:
+                    if item.get('source_url') == url:
                         return item
             return None
         else:

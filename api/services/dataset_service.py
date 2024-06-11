@@ -758,7 +758,7 @@ class DocumentService:
                                                               document_data["doc_form"],
                                                               document_data["doc_language"],
                                                               data_source_info, created_from, position,
-                                                              account, website_info['url'], batch)
+                                                              account, url, batch)
                     db.session.add(document)
                     db.session.flush()
                     document_ids.append(document.id)

@@ -467,11 +467,12 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 extract_settings.append(extract_setting)
             elif document.data_source_type == 'website_crawl':
                 extract_setting = ExtractSetting(
-                    datasource_type="website",
+                    datasource_type="website_crawl",
                     website_info={
                         "provider": data_source_info['provider'],
                         "job_id": data_source_info['job_id'],
                         "url": data_source_info['url'],
+                        "tenant_id": current_user.current_tenant_id,
                         "mode": data_source_info['mode'],
                         "only_main_content": data_source_info['only_main_content']
                     },

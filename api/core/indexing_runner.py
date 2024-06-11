@@ -384,6 +384,7 @@ class IndexingRunner:
                 website_info={
                     "provider": data_source_info['provider'],
                     "job_id": data_source_info['job_id'],
+                    "tenant_id": dataset_document.tenant_id,
                     "url": data_source_info['url'],
                     "mode": data_source_info['mode'],
                     "only_main_content": data_source_info['only_main_content']

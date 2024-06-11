@@ -315,11 +315,12 @@ class DatasetIndexingEstimateApi(Resource):
             website_info_list = args['info_list']['website_info_list']
             for url in website_info_list['urls']:
                 extract_setting = ExtractSetting(
-                    datasource_type="website",
+                    datasource_type="website_crawl",
                     website_info={
                         "provider": website_info_list['provider'],
                         "job_id": website_info_list['job_id'],
                         "url": url,
+                        "tenant_id": current_user.current_tenant_id,
                         "mode": 'crawl',
                         "only_main_content": website_info_list['only_main_content']
                     },
