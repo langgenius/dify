@@ -456,7 +456,6 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
               </td>
               <td>
                 {
-                  // TODO: Maybe add website
                   (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status) && doc?.data_source_type === DataSourceType.NOTION)
                     ? <ProgressBar percent={doc.percent || 0} />
                     : <StatusItem status={doc.display_status} />
