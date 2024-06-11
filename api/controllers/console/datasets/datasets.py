@@ -320,6 +320,7 @@ class DatasetIndexingEstimateApi(Resource):
                         "provider": website_info_list['provider'],
                         "job_id": website_info_list['job_id'],
                         "url": url,
+                        "tenant_id": current_user.current_tenant_id,
                         "mode": 'crawl',
                         "only_main_content": website_info_list['only_main_content']
                     },

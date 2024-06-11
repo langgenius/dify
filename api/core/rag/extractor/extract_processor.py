@@ -160,6 +160,7 @@ class ExtractProcessor:
                 extractor = FirecrawlWebExtractor(
                     url=extract_setting.website_info.url,
                     job_id=extract_setting.website_info.job_id,
+                    tenant_id=extract_setting.website_info.tenant_id,
                     mode=extract_setting.website_info.mode,
                     only_main_content=extract_setting.website_info.only_main_content
                 )

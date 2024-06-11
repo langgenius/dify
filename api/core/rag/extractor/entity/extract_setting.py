@@ -29,6 +29,7 @@ class WebsiteInfo(BaseModel):
     job_id: str
     url: str
     mode: str
+    tenant_id: str
     only_main_content: bool = False
 
     class Config:

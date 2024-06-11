@@ -472,6 +472,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                         "provider": data_source_info['provider'],
                         "job_id": data_source_info['job_id'],
                         "url": data_source_info['url'],
+                        "tenant_id": current_user.current_tenant_id,
                         "mode": data_source_info['mode'],
                         "only_main_content": data_source_info['only_main_content']
                     },
