@@ -25,18 +25,26 @@ const DataSourceWebsite: FC<Props> = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const [list, setList] = useState<DataSourceWebsiteItem[]>([])
+  const checkSetApiKey = useCallback(async () => {
+    const res = await fetchFirecrawlApiKey() as any
+    const list = res.settings.filter((item: DataSourceWebsiteItem) => item.provider === WebsiteProvider.fireCrawl && !item.disabled)
+    setList(list)
+  }, [])
+
   useEffect(() => {
-    (async () => {
-      const res = await fetchFirecrawlApiKey() as any
-      const list = res.settings.filter((item: DataSourceWebsiteItem) => item.provider === WebsiteProvider.fireCrawl && !item.disabled)
-      setList(list)
-    })()
+    checkSetApiKey()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const [isShowConfig, {
     setTrue: showConfig,
     setFalse: hideConfig,
   }] = useBoolean(false)
+
+  const handleAdded = useCallback(() => {
+    checkSetApiKey()
+    hideConfig()
+  }, [checkSetApiKey, hideConfig])
 
   const handleRemove = useCallback(async () => {
     await removeFirecrawlApiKey(list[0].id)
@@ -65,7 +73,7 @@ const DataSourceWebsite: FC<Props> = () => {
         onRemove={handleRemove}
       />
       {isShowConfig && (
-        <ConfigFirecrawlModal onSaved={hideConfig} onCancel={hideConfig} />
+        <ConfigFirecrawlModal onSaved={handleAdded} onCancel={hideConfig} />
       )}
     </>
 
