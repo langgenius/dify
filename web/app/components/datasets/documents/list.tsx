@@ -288,7 +288,7 @@ export const OperationAction: FC<{
           </div>
         }
         btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!bg-gray-100 !shadow-none' : '!bg-transparent')}
-        className={`!w-[200px] h-fit !z-20 ${className}`}
+        className={`flex justify-end !w-[200px] h-fit !z-20 ${className}`}
       />
     )}
     {showModal && <Modal isShow={showModal} onClose={() => setShowModal(false)} className={s.delModal} closable>
@@ -456,7 +456,6 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
               </td>
               <td>
                 {
-                  // TODO: Maybe add website
                   (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status) && doc?.data_source_type === DataSourceType.NOTION)
                     ? <ProgressBar percent={doc.percent || 0} />
                     : <StatusItem status={doc.display_status} />

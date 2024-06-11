@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import Header from './header'
@@ -9,6 +9,7 @@ import OptionsWrap from './base/options-wrap'
 import Options from './options'
 import CrawledResult from './crawled-result'
 import Crawling from './crawling'
+import ErrorMessage from './base/error-message'
 import { useModalContext } from '@/context/modal-context'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import Toast from '@/app/components/base/toast'
@@ -43,6 +44,11 @@ const FireCrawl: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
+  const [controlFoldOptions, setControlFoldOptions] = useState<number>(0)
+  useEffect(() => {
+    if (step !== Step.init)
+      setControlFoldOptions(Date.now())
+  }, [step])
   const { setShowAccountSettingModal } = useModalContext()
   const handleSetting = useCallback(() => {
     setShowAccountSettingModal({
@@ -86,8 +92,10 @@ const FireCrawl: FC<Props> = ({
     current: number
     total: number
     data: CrawlResultItem[]
+    time_consuming: number
   } | undefined>(undefined)
   const [crawlHasError, setCrawlHasError] = useState(false)
+  const showError = isCrawlFinished && crawlHasError
 
   const waitForCrawlFinished = useCallback(async (jobId: string) => {
     try {
@@ -139,49 +147,61 @@ const FireCrawl: FC<Props> = ({
     }
     setCrawlHasError(false)
     setStep(Step.running)
-    const res = await createFirecrawlTask({
-      url,
-      options: crawlOptions,
-    }) as any
-    const jobId = res.job_id
-    onJobIdChange(jobId)
-    const { isError, data } = await waitForCrawlFinished(jobId)
-    if (isError) {
-      setCrawlHasError(true)
-      setCrawlResult(data)
-    }
+    try {
+      const res = await createFirecrawlTask({
+        url,
+        options: crawlOptions,
+      }) as any
+      const jobId = res.job_id
+      onJobIdChange(jobId)
+      const { isError, data } = await waitForCrawlFinished(jobId)
+      if (isError) {
+        setCrawlHasError(true)
+        setCrawlResult(data)
+      }
 
-    setStep(Step.finished)
-    setCrawlResult(data)
-    setCrawlHasError(false)
+      setCrawlResult(data)
+      setCrawlHasError(false)
+    }
+    finally {
+      setStep(Step.finished)
+    }
   }, [checkValid, crawlOptions, onJobIdChange, waitForCrawlFinished])
 
   return (
     <div>
       <Header onSetting={handleSetting} />
-      <div className={cn(isInit ? 'pb-4' : 'pb-0', 'mt-2 p-3 rounded-xl border border-gray-200')}>
+      <div className={cn('mt-2 p-4 pb-0 rounded-xl border border-gray-200')}>
         <UrlInput onRun={handleRun} isRunning={isRunning} />
         <OptionsWrap
-          className={cn('mt-3')}
-          isFilledFull={!isInit}
-          hasError={isCrawlFinished && crawlHasError}
+          className={cn('mt-4')}
+          controlFoldOptions={controlFoldOptions}
         >
-          {isInit && <Options className='mt-2' payload={crawlOptions} onChange={onCrawlOptionsChange} />}
-          {isRunning
-            && <Crawling
-              className='mt-2'
-              crawledNum={crawlResult?.current || 0}
-              totalNum={crawlResult?.total || parseFloat(crawlOptions.limit as string) || 0}
-            />}
-          {isCrawlFinished && (
-            <CrawledResult
-              list={crawlResult?.data || []}
-              checkedList={checkedCrawlResult}
-              onSelectedChange={onCheckedCrawlResultChange}
-              onPreview={onPreview}
-            />
-          )}
+          <Options className='mt-2' payload={crawlOptions} onChange={onCrawlOptionsChange} />
         </OptionsWrap>
+        {!isInit && (
+          <div className='mt-3 relative left-[-16px] w-[calc(100%_+_32px)] rounded-b-xl'>
+            {isRunning
+              && <Crawling
+                className='mt-2'
+                crawledNum={crawlResult?.current || 0}
+                totalNum={crawlResult?.total || parseFloat(crawlOptions.limit as string) || 0}
+              />}
+            {showError && (
+              <ErrorMessage className='rounded-b-xl' title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} />
+            )}
+            {isCrawlFinished && !showError
+              && <CrawledResult
+                className='mb-2'
+                list={crawlResult?.data || []}
+                checkedList={checkedCrawlResult}
+                onSelectedChange={onCheckedCrawlResultChange}
+                onPreview={onPreview}
+                usedTime={crawlResult?.time_consuming || 0}
+              />
+            }
+          </div>
+        )}
       </div>
     </div>
   )
