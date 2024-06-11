@@ -14,7 +14,6 @@ concurrency:
 
 jobs:
   test:
-    name: API Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -81,6 +80,7 @@ jobs:
         run: dev/pytest/pytest_vdb.sh
 
   test-in-poetry:
+    name: API Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -89,26 +89,26 @@ jobs:
           - "3.11"
 
     steps:
-      - name: Install poetry
-        uses: abatilo/actions-poetry@v3
-        with:
-          poetry-version: "1.8.1"
-
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v3
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'poetry'
-          cache-dependency-path: ./api/poetry.lock
+          cache-dependency-path: |
+            api/pyproject.toml
+            api/poetry.lock
 
       - name: Poetry check
         run: poetry check -C api
 
       - name: Install dependencies
-        run: poetry install -C api
+        run: poetry install -C api --with dev
 
       - name: Run Unit tests
         run: poetry run -C api bash dev/pytest/pytest_unit_tests.sh
