@@ -27,6 +27,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
   onSaved,
 }) => {
   const { t } = useTranslation()
+  const [isSaving, setIsSaving] = useState(false)
   const [config, setConfig] = useState<FirecrawlConfig>({
     api_key: '',
     base_url: '',
@@ -39,6 +40,8 @@ const ConfigFirecrawlModal: FC<Props> = ({
   }, [])
 
   const handleSave = useCallback(async () => {
+    if (isSaving)
+      return
     let errorMsg = ''
     if (config.base_url && !((config.base_url.startsWith('http://') || config.base_url.startsWith('https://'))))
       errorMsg = t('common.errorMsg.urlError')
@@ -71,13 +74,20 @@ const ConfigFirecrawlModal: FC<Props> = ({
         },
       },
     }
-    await createFirecrawlApiKey(postData)
-    Toast.notify({
-      type: 'success',
-      message: t('common.api.create'),
-    })
+    try {
+      setIsSaving(true)
+      await createFirecrawlApiKey(postData)
+      Toast.notify({
+        type: 'success',
+        message: t('common.api.success'),
+      })
+    }
+    finally {
+      setIsSaving(false)
+    }
+
     onSaved()
-  }, [config.api_key, config.base_url, onSaved, t])
+  }, [config.api_key, config.base_url, onSaved, t, isSaving])
 
   return (
     <PortalToFollowElem open>
@@ -122,6 +132,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
                     className='h-9 text-sm font-medium'
                     type='primary'
                     onClick={handleSave}
+                    loading={isSaving}
                   >
                     {t('common.operation.save')}
                   </Button>
