@@ -21,12 +21,12 @@ const WebSSOForm: FC = () => {
   const { t } = useTranslation()
 
   const [isLoading, setIsLoading] = useState(false)
-  const [protocal, setProtocal] = useState('')
+  const [protocol, setProtocol] = useState('')
 
   useEffect(() => {
     const fetchFeaturesAndSetToken = async () => {
       await fetchSystemFeatures().then((res) => {
-        setProtocal(res.sso_enforced_for_web_protocol)
+        setProtocol(res.sso_enforced_for_web_protocol)
       })
 
       // Callback from SSO, process token and redirect
@@ -76,21 +76,21 @@ const WebSSOForm: FC = () => {
       return
     }
 
-    if (protocal === 'saml') {
+    if (protocol === 'saml') {
       fetchWebSAMLSSOUrl(appCode, redirectUrl).then((res) => {
         router.push(res.url)
       }).finally(() => {
         setIsLoading(false)
       })
     }
-    else if (protocal === 'oidc') {
+    else if (protocol === 'oidc') {
       fetchWebOIDCSSOUrl(appCode, redirectUrl).then((res) => {
         router.push(res.url)
       }).finally(() => {
         setIsLoading(false)
       })
     }
-    else if (protocal === 'oauth2') {
+    else if (protocol === 'oauth2') {
       fetchWebOAuth2SSOUrl(appCode, redirectUrl).then((res) => {
         router.push(res.url)
       }).finally(() => {
@@ -100,7 +100,7 @@ const WebSSOForm: FC = () => {
     else {
       Toast.notify({
         type: 'error',
-        message: 'sso protocal is not supported.',
+        message: 'sso protocol is not supported.',
       })
       setIsLoading(false)
     }

@@ -1,11 +1,10 @@
 from collections.abc import Sequence
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
 from sqlalchemy import func
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment
@@ -95,11 +94,7 @@ class DatasetDocumentStore:
 
             # calc embedding use tokens
             if embedding_model:
-                model_type_instance = embedding_model.model_type_instance
-                model_type_instance = cast(TextEmbeddingModel, model_type_instance)
-                tokens = model_type_instance.get_num_tokens(
-                    model=embedding_model.model,
-                    credentials=embedding_model.credentials,
+                tokens = embedding_model.get_text_embedding_num_tokens(
                     texts=[doc.page_content]
                 )
             else:
