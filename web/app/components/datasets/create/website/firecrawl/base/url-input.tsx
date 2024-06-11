@@ -17,7 +17,7 @@ const UrlInput: FC<Props> = ({
   onRun,
 }) => {
   const { t } = useTranslation()
-  const [url, setUrl] = useState('https://docs.dify.ai') // TODO: for test
+  const [url, setUrl] = useState('')
   const handleUrlChange = useCallback((url: string | number) => {
     setUrl(url as string)
   }, [])

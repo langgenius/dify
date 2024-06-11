@@ -163,6 +163,9 @@ const FireCrawl: FC<Props> = ({
       setCrawlResult(data)
       setCrawlHasError(false)
     }
+    catch (e) {
+      setCrawlHasError(true)
+    }
     finally {
       setStep(Step.finished)
     }
