@@ -36,7 +36,7 @@ const Filed: FC<Props> = ({
         onClick={() => supportFold && toggleFold()}
         className={cn('flex justify-between items-center', supportFold && 'cursor-pointer')}>
         <div className='flex items-center h-6'>
-          <div className='text-[13px] font-medium text-gray-700 uppercase'>{title}</div>
+          <div className='text-[13px] font-semibold text-gray-700 uppercase'>{title}</div>
           {tooltip && (
             <TooltipPlus popupContent={
               <div className='w-[120px]'>

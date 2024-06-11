@@ -12,6 +12,8 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import Tooltip from '@/app/components/base/tooltip-plus'
+import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { VarType } from '@/app/components/workflow/types'
 type Props = {
@@ -128,9 +130,20 @@ const InputVarList: FC<Props> = ({
           return (
             <div key={variable} className='space-y-1'>
               <div className='flex items-center h-[18px] space-x-2'>
-                <span className='text-[13px] font-medium text-gray-900'>{label[language] || label.en_US}</span>
+                <span className='text-sm font-semibold text-gray-700 uppercase'>{label[language] || label.en_US}</span>
                 <span className='text-xs font-normal text-gray-500'>{paramType(type)}</span>
-                {required && <span className='leading-[18px] text-xs font-normal text-[#EC4A0A]'>Required</span>}
+                {required && <span className='ml-1 text-red-500'>*</span>}
+                {tooltip && (
+                  <span className='ml-1'>
+                    <Tooltip popupContent={
+                      // w-[100px] caused problem
+                      <div className=''>
+                        {tooltip[language] || tooltip.en_US}
+                      </div>
+                    } >
+                      <HelpCircle className='w-3 h-3  text-gray-500' />
+                    </Tooltip>
+                  </span>)}
               </div>
               {isString && (
                 <Input
@@ -170,7 +183,6 @@ const InputVarList: FC<Props> = ({
                   filterVar={(varPayload: Var) => varPayload.type === VarType.arrayFile}
                 />
               )}
-              {tooltip && <div className='leading-[18px] text-xs font-normal text-gray-600'>{tooltip[language] || tooltip.en_US}</div>}
             </div>
           )
         })
