@@ -11,6 +11,7 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.model_runtime.entities.model_entities import AIModelEntity, ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from models.model import Conversation
@@ -25,13 +26,17 @@ def test_get_prompt():
         SystemPromptMessage(content='System Prompt 1'),
         UserPromptMessage(content='User Prompt 1'),
         AssistantPromptMessage(content='Assistant Thought 1'),
-        ToolPromptMessage(content='Tool 1-1', name='Tool 1-1', tool_call_id='1'),
-        ToolPromptMessage(content='Tool 1-2', name='Tool 1-2', tool_call_id='2'),
+        ToolPromptMessage(content='Tool 1-1',
+                          name='Tool 1-1', tool_call_id='1'),
+        ToolPromptMessage(content='Tool 1-2',
+                          name='Tool 1-2', tool_call_id='2'),
         SystemPromptMessage(content='System Prompt 2'),
         UserPromptMessage(content='User Prompt 2'),
         AssistantPromptMessage(content='Assistant Thought 2'),
-        ToolPromptMessage(content='Tool 2-1', name='Tool 2-1', tool_call_id='3'),
-        ToolPromptMessage(content='Tool 2-2', name='Tool 2-2', tool_call_id='4'),
+        ToolPromptMessage(content='Tool 2-1',
+                          name='Tool 2-1', tool_call_id='3'),
+        ToolPromptMessage(content='Tool 2-2',
+                          name='Tool 2-2', tool_call_id='4'),
         UserPromptMessage(content='User Prompt 3'),
         AssistantPromptMessage(content='Assistant Thought 3'),
     ]
@@ -40,15 +45,20 @@ def test_get_prompt():
     def side_effect_get_num_tokens(*args):
         return len(args[2])
     large_language_model_mock = MagicMock(spec=LargeLanguageModel)
-    large_language_model_mock.get_num_tokens = MagicMock(side_effect=side_effect_get_num_tokens)
+    large_language_model_mock.get_num_tokens = MagicMock(
+        side_effect=side_effect_get_num_tokens)
 
     provider_model_bundle_mock = MagicMock(spec=ProviderModelBundle)
     provider_model_bundle_mock.model_type_instance = large_language_model_mock
+
+    model_entity_mock = MagicMock(spec=AIModelEntity)
+    model_entity_mock.features = [ModelFeature.TOOL_CALL]
 
     model_config_mock = MagicMock(spec=ModelConfigWithCredentialsEntity)
     model_config_mock.model = 'openai'
     model_config_mock.credentials = {}
     model_config_mock.provider_model_bundle = provider_model_bundle_mock
+    model_config_mock.model_schema = model_entity_mock
 
     memory = TokenBufferMemory(
         conversation=Conversation(),
