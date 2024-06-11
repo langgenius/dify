@@ -13,6 +13,7 @@ type Props = {
   checkedList: CrawlResultItem[]
   onSelectedChange: (selected: CrawlResultItem[]) => void
   onPreview: (payload: CrawlResultItem) => void
+  usedTime: number
 }
 
 const CrawledResult: FC<Props> = ({
@@ -20,6 +21,7 @@ const CrawledResult: FC<Props> = ({
   checkedList,
   onSelectedChange,
   onPreview,
+  usedTime,
 }) => {
   const { t } = useTranslation()
 
@@ -61,7 +63,7 @@ const CrawledResult: FC<Props> = ({
         />
         <div>{t(`${I18N_PREFIX}.scrapTimeInfo`, {
           total: list.length,
-          time: '12.4 seconds', // TODO toFixed(1)
+          time: usedTime.toFixed(1),
         })}</div>
       </div>
       <div className='p-2'>

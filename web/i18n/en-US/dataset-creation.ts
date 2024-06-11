@@ -75,7 +75,7 @@ const translation = {
       totalPageScraped: 'Total pages scraped:',
       selectAll: 'Select All',
       resetAll: 'Reset All',
-      scrapTimeInfo: 'Scraped {{total}} pages in total within {{time}}',
+      scrapTimeInfo: 'Scraped {{total}} pages in total within {{time}}s',
       preview: 'Preview',
     },
   },

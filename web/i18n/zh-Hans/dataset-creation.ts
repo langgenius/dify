@@ -75,7 +75,7 @@ const translation = {
       totalPageScraped: '抓取页面总数:',
       selectAll: '全选',
       resetAll: '重置全部',
-      scrapTimeInfo: '总共在 {{time}} 内抓取了 {{total}} 个页面',
+      scrapTimeInfo: '总共在 {{time}}秒 内抓取了 {{total}} 个页面',
       preview: '预览',
     },
   },

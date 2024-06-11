@@ -86,6 +86,7 @@ const FireCrawl: FC<Props> = ({
     current: number
     total: number
     data: CrawlResultItem[]
+    time_consuming: number
   } | undefined>(undefined)
   const [crawlHasError, setCrawlHasError] = useState(false)
 
@@ -179,6 +180,7 @@ const FireCrawl: FC<Props> = ({
               checkedList={checkedCrawlResult}
               onSelectedChange={onCheckedCrawlResultChange}
               onPreview={onPreview}
+              usedTime={crawlResult?.time_consuming || 0}
             />
           )}
         </OptionsWrap>
