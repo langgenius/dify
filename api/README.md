@@ -39,7 +39,7 @@
    ```base
    poetry shell                                               # activate current environment
    poetry add $(cat requirements.txt)           # install dependencies of production and update pyproject.toml
-   poetry add $(cat requirements-dev.txt)    # install dependencies of development and update pyproject.toml
+   poetry add $(cat requirements-dev.txt) --group dev    # install dependencies of development and update pyproject.toml
    ```
 6. Run migrate
 
