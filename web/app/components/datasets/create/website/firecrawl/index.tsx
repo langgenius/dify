@@ -140,21 +140,25 @@ const FireCrawl: FC<Props> = ({
     }
     setCrawlHasError(false)
     setStep(Step.running)
-    const res = await createFirecrawlTask({
-      url,
-      options: crawlOptions,
-    }) as any
-    const jobId = res.job_id
-    onJobIdChange(jobId)
-    const { isError, data } = await waitForCrawlFinished(jobId)
-    if (isError) {
-      setCrawlHasError(true)
-      setCrawlResult(data)
-    }
+    try {
+      const res = await createFirecrawlTask({
+        url,
+        options: crawlOptions,
+      }) as any
+      const jobId = res.job_id
+      onJobIdChange(jobId)
+      const { isError, data } = await waitForCrawlFinished(jobId)
+      if (isError) {
+        setCrawlHasError(true)
+        setCrawlResult(data)
+      }
 
-    setStep(Step.finished)
-    setCrawlResult(data)
-    setCrawlHasError(false)
+      setCrawlResult(data)
+      setCrawlHasError(false)
+    }
+    finally {
+      setStep(Step.finished)
+    }
   }, [checkValid, crawlOptions, onJobIdChange, waitForCrawlFinished])
 
   return (
