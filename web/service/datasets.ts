@@ -152,6 +152,10 @@ export const syncDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId,
   return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/notion/sync`)
 }
 
+export const syncWebsite: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+  return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/website-sync`)
+}
+
 export const preImportNotionPages: Fetcher<{ notion_info: DataSourceNotionWorkspace[] }, { url: string; datasetId?: string }> = ({ url, datasetId }) => {
   return get<{ notion_info: DataSourceNotionWorkspace[] }>(url, { params: { dataset_id: datasetId } })
 }
