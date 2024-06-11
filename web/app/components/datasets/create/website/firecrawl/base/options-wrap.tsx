@@ -32,7 +32,7 @@ const OptionsWrap: FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controlFoldOptions])
   return (
-    <div className={className}>
+    <div className={cn(className, !fold ? 'mb-0' : 'mb-3')}>
       <div
         className='flex justify-between items-center h-[26px] py-1 cursor-pointer select-none'
         onClick={foldToggle}
@@ -44,7 +44,7 @@ const OptionsWrap: FC<Props> = ({
         <ChevronRight className={cn(!fold && 'rotate-90', 'w-4 h-4 text-gray-500')} />
       </div>
       {!fold && (
-        <div>
+        <div className='mb-4'>
           {children}
         </div>
       )}

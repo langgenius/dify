@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import CheckboxWithLabel from './base/checkbox-with-label'
 import CrawledResultItem from './crawled-result-item'
 import type { CrawlResultItem } from '@/models/datasets'
@@ -9,6 +10,7 @@ import type { CrawlResultItem } from '@/models/datasets'
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
 type Props = {
+  className?: string
   list: CrawlResultItem[]
   checkedList: CrawlResultItem[]
   onSelectedChange: (selected: CrawlResultItem[]) => void
@@ -17,6 +19,7 @@ type Props = {
 }
 
 const CrawledResult: FC<Props> = ({
+  className = '',
   list,
   checkedList,
   onSelectedChange,
@@ -54,7 +57,7 @@ const CrawledResult: FC<Props> = ({
   }, [list, onPreview])
 
   return (
-    <div className='border-t border-gray-200'>
+    <div className={cn(className, 'border-t border-gray-200')}>
       <div className='flex items-center justify-between h-[34px] px-4 bg-gray-50 shadow-xs border-b-[0.5px] border-black/8 text-xs font-normal text-gray-700'>
         <CheckboxWithLabel
           isChecked={isCheckAll}

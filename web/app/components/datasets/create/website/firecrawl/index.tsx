@@ -171,16 +171,16 @@ const FireCrawl: FC<Props> = ({
   return (
     <div>
       <Header onSetting={handleSetting} />
-      <div className={cn(isInit ? 'pb-4' : 'pb-0', 'mt-2 p-3 rounded-xl border border-gray-200')}>
+      <div className={cn('mt-2 p-4 pb-0 rounded-xl border border-gray-200')}>
         <UrlInput onRun={handleRun} isRunning={isRunning} />
         <OptionsWrap
-          className={cn('mt-3')}
+          className={cn('mt-4')}
           controlFoldOptions={controlFoldOptions}
         >
           <Options className='mt-2' payload={crawlOptions} onChange={onCrawlOptionsChange} />
         </OptionsWrap>
         {!isInit && (
-          <div className='mt-3 relative left-[-12px] w-[calc(100%_+_24px)] rounded-b-xl'>
+          <div className='mt-3 relative left-[-16px] w-[calc(100%_+_32px)] rounded-b-xl'>
             {isRunning
               && <Crawling
                 className='mt-2'
@@ -192,6 +192,7 @@ const FireCrawl: FC<Props> = ({
             )}
             {isCrawlFinished && !showError
               && <CrawledResult
+                className='mb-2'
                 list={crawlResult?.data || []}
                 checkedList={checkedCrawlResult}
                 onSelectedChange={onCheckedCrawlResultChange}
