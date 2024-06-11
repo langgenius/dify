@@ -1,3 +1,4 @@
+import datetime
 import json
 from typing import Any
 
@@ -7,6 +8,7 @@ from werkzeug.exceptions import NotFound
 from core.helper import encrypter
 from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
@@ -73,6 +75,9 @@ class WebsiteService:
                     }
                 }
             job_id = firecrawl_app.crawl_url(url, params)
+            website_crawl_time_cache_key = f'website_crawl_{job_id}'
+            time = str(datetime.datetime.now().timestamp())
+            redis_client.setex(website_crawl_time_cache_key, 3600, time)
             return {
                 'status': 'active',
                 'job_id': job_id
@@ -101,6 +106,14 @@ class WebsiteService:
                 'current': result.get('current', 0),
                 'data': result.get('data', [])
             }
+            if crawl_status_data['status'] == 'completed':
+                website_crawl_time_cache_key = f'website_crawl_{job_id}'
+                start_time = redis_client.get(website_crawl_time_cache_key)
+                if start_time:
+                    end_time = datetime.datetime.now().timestamp()
+                    time_consuming = abs(end_time - float(start_time))
+                    crawl_status_data['time_consuming'] = f"{time_consuming:.2f}"
+                    redis_client.delete(website_crawl_time_cache_key)
         else:
             raise ValueError('Invalid provider')
         return crawl_status_data
@@ -131,14 +144,14 @@ class WebsiteService:
             raise ValueError('Invalid provider')
 
     @classmethod
-    def get_scrape_url_data(cls, provider: str, url: str, only_main_content: bool) -> dict | None:
-        credentials = ApiKeyAuthService.get_auth_credentials(current_user.current_tenant_id,
+    def get_scrape_url_data(cls, provider: str, url: str, tenant_id: str, only_main_content: bool) -> dict | None:
+        credentials = ApiKeyAuthService.get_auth_credentials(tenant_id,
                                                              'website',
                                                              provider)
         if provider == 'firecrawl':
             # decrypt api_key
             api_key = encrypter.decrypt_token(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=tenant_id,
                 token=credentials.get('config').get('api_key')
             )
             firecrawl_app = FirecrawlApp(api_key=api_key,

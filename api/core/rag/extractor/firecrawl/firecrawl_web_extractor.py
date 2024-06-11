@@ -46,7 +46,8 @@ class FirecrawlWebExtractor(BaseExtractor):
                                 )
             documents.append(document)
         elif self.mode == 'scrape':
-            scrape_data = WebsiteService.get_scrape_url_data('firecrawl', self._url, self.only_main_content)
+            scrape_data = WebsiteService.get_scrape_url_data('firecrawl', self._url, self.tenant_id,
+                                                             self.only_main_content)
 
             document = Document(page_content=scrape_data.get('markdown', ''),
                                 metadata={

@@ -256,7 +256,7 @@ class DatasetDocumentListApi(Resource):
         DocumentService.document_create_args_validate(args)
 
         try:
-            documents, batch = DocumentService. save_document_with_dataset_id(dataset, args, current_user)
+            documents, batch = DocumentService.save_document_with_dataset_id(dataset, args, current_user)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -970,7 +970,7 @@ class WebsiteDocumentSyncApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self, dataset_id, document_id):
+    def get(self, dataset_id, document_id):
         """sync website document."""
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -990,7 +990,8 @@ class WebsiteDocumentSyncApi(DocumentResource):
         # sync document
         DocumentService.sync_website_document(dataset_id, document)
 
-        return {'result': 'success'}, 204
+        return {'result': 'success'}, 200
+
 
 api.add_resource(GetProcessRuleApi, '/datasets/process-rule')
 api.add_resource(DatasetDocumentListApi,
@@ -1021,4 +1022,4 @@ api.add_resource(DocumentRetryApi, '/datasets/<uuid:dataset_id>/retry')
 api.add_resource(DocumentRenameApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename')
 
-api.add_resource(WebsiteDocumentSyncApi, '/datasets/<uuid:dataset_id>/<uuid:document_id>/website-sync')
+api.add_resource(WebsiteDocumentSyncApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync')
