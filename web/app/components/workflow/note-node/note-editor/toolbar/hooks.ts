@@ -1,11 +1,21 @@
 import {
   useCallback,
+  useEffect,
+  useState,
 } from 'react'
 import {
   $getSelection,
   $isRangeSelection,
+  $setSelection,
+  COMMAND_PRIORITY_CRITICAL,
   FORMAT_TEXT_COMMAND,
+  SELECTION_CHANGE_COMMAND,
 } from 'lexical'
+import {
+  $getSelectionStyleValueForProperty,
+  $patchStyleText,
+} from '@lexical/selection'
+import { mergeRegister } from '@lexical/utils'
 import {
   $isLinkNode,
   TOGGLE_LINK_COMMAND,
@@ -45,5 +55,68 @@ export const useCommand = () => {
 
   return {
     handleCommand,
+  }
+}
+
+export const useFontSize = () => {
+  const [editor] = useLexicalComposerContext()
+  const [fontSize, setFontSize] = useState('12px')
+  const [fontSizeSelectorShow, setFontSizeSelectorShow] = useState(false)
+
+  const handleFontSize = useCallback((fontSize: string) => {
+    editor.update(() => {
+      const selection = $getSelection()
+
+      if ($isRangeSelection(selection))
+        $patchStyleText(selection, { 'font-size': fontSize })
+    })
+  }, [editor])
+
+  const handleOpenFontSizeSelector = useCallback((newFontSizeSelectorShow: boolean) => {
+    if (newFontSizeSelectorShow) {
+      editor.update(() => {
+        const selection = $getSelection()
+
+        if ($isRangeSelection(selection))
+          $setSelection(selection.clone())
+      })
+    }
+    setFontSizeSelectorShow(newFontSizeSelectorShow)
+  }, [editor])
+
+  useEffect(() => {
+    return mergeRegister(
+      editor.registerUpdateListener(() => {
+        editor.getEditorState().read(() => {
+          const selection = $getSelection()
+
+          if ($isRangeSelection(selection)) {
+            const fontSize = $getSelectionStyleValueForProperty(selection, 'font-size', '12px')
+            setFontSize(fontSize)
+          }
+        })
+      }),
+      editor.registerCommand(
+        SELECTION_CHANGE_COMMAND,
+        () => {
+          const selection = $getSelection()
+
+          if ($isRangeSelection(selection)) {
+            const fontSize = $getSelectionStyleValueForProperty(selection, 'font-size', '12px')
+            setFontSize(fontSize)
+          }
+
+          return false
+        },
+        COMMAND_PRIORITY_CRITICAL,
+      ),
+    )
+  }, [editor])
+
+  return {
+    fontSize,
+    handleFontSize,
+    fontSizeSelectorShow,
+    handleOpenFontSizeSelector,
   }
 }

@@ -9,40 +9,54 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 
-const COLOR_LIST = [
+export const COLOR_MAP = {
+  blue: '#D1E9FF',
+  cyan: '#CFF9FE',
+  green: '#D3F8DF',
+  yellow: '#FEF7C3',
+  pink: '#FCE7F6',
+  violet: '#ECE9FE',
+} as Record<string, string>
+export const COLOR_LIST = [
   {
     key: 'blue',
-    inner: '#D1E9FF',
+    inner: COLOR_MAP.blue,
     outer: '#2E90FA',
   },
   {
     key: 'cyan',
-    inner: '#CFF9FE',
+    inner: COLOR_MAP.cyan,
     outer: '#06AED4',
   },
   {
     key: 'green',
-    inner: '#D3F8DF',
+    inner: COLOR_MAP.green,
     outer: '#16B364',
   },
   {
     key: 'yellow',
-    inner: '#FEF7C3',
+    inner: COLOR_MAP.yellow,
     outer: '#EAAA08',
   },
   {
     key: 'pink',
-    inner: '#FCE7F6',
+    inner: COLOR_MAP.pink,
     outer: '#EE46BC',
   },
   {
     key: 'violet',
-    inner: '#ECE9FE',
+    inner: COLOR_MAP.violet,
     outer: '#875BF7',
   },
 ]
 
-const ColorPicker = () => {
+export type ColorPickerProps = {
+  onColorChange?: (color: string) => void
+}
+const ColorPicker = ({
+  onColorChange,
+}: ColorPickerProps) => {
+  const [color, setColor] = useState('blue')
   const [open, setOpen] = useState(false)
 
   return (
@@ -57,7 +71,10 @@ const ColorPicker = () => {
           'flex items-center justify-center w-8 h-8 rounded-md cursor-pointer hover:bg-black/5',
           open && 'bg-black/5',
         )}>
-          <div className='w-4 h-4 rounded-full border border-black/5 bg-blue-100'></div>
+          <div
+            className='w-4 h-4 rounded-full border border-black/5'
+            style={{ backgroundColor: COLOR_MAP[color] }}
+          ></div>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
@@ -67,6 +84,11 @@ const ColorPicker = () => {
               <div
                 key={color.key}
                 className='group relative flex items-center justify-center w-8 h-8 rounded-md cursor-pointer'
+                onClick={() => {
+                  setColor(color.key)
+                  onColorChange?.(color.key)
+                  setOpen(false)
+                }}
               >
                 <div
                   className='hidden group-hover:block absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full border-[1.5px]'

@@ -1,16 +1,12 @@
 import {
   useCallback,
   useEffect,
-  useState,
 } from 'react'
-import type { RangeSelection } from 'lexical'
 import {
   $getSelection,
   $isRangeSelection,
   CLICK_COMMAND,
-  COMMAND_PRIORITY_CRITICAL,
   COMMAND_PRIORITY_LOW,
-  SELECTION_CHANGE_COMMAND,
 } from 'lexical'
 import {
   mergeRegister,
@@ -26,22 +22,10 @@ import { getSelectedNode } from '../../utils'
 
 export const useOpenLink = () => {
   const [editor] = useLexicalComposerContext()
-  const [lastSelection, setLastSelection] = useState<RangeSelection | null>(null)
   const noteEditorStore = useNoteEditorStore()
 
   useEffect(() => {
     return mergeRegister(
-      editor.registerCommand(
-        SELECTION_CHANGE_COMMAND,
-        () => {
-          const selection = $getSelection()
-
-          if ($isRangeSelection(selection))
-            setLastSelection(selection)
-          return false
-        },
-        COMMAND_PRIORITY_CRITICAL,
-      ),
       editor.registerCommand(
         CLICK_COMMAND,
         (payload) => {
@@ -82,7 +66,7 @@ export const useOpenLink = () => {
         COMMAND_PRIORITY_LOW,
       ),
     )
-  }, [editor, noteEditorStore, lastSelection])
+  }, [editor, noteEditorStore])
 }
 
 export const useLink = () => {

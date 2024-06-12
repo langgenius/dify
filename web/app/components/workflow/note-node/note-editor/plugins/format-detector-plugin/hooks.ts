@@ -23,22 +23,22 @@ export const useFormatDetector = () => {
         return
 
       const selection = $getSelection()
-      if (!($isRangeSelection(selection) && !selection?.isCollapsed()))
-        return
 
-      const node = getSelectedNode(selection)
-      const {
-        setSelectedIsBold,
-        setSelectedIsStrikeThrough,
-        setSelectedLinkUrl,
-      } = noteEditorStore.getState()
-      setSelectedIsBold(selection.hasFormat('bold'))
-      setSelectedIsStrikeThrough(selection.hasFormat('strikethrough'))
-      const parent = node.getParent()
-      if ($isLinkNode(parent) || $isLinkNode(node))
-        setSelectedLinkUrl($isLinkNode(parent) ? parent.getURL() : (node as LinkNode).getURL())
-      else
-        setSelectedLinkUrl('')
+      if ($isRangeSelection(selection)) {
+        const node = getSelectedNode(selection)
+        const {
+          setSelectedIsBold,
+          setSelectedIsStrikeThrough,
+          setSelectedLinkUrl,
+        } = noteEditorStore.getState()
+        setSelectedIsBold(selection.hasFormat('bold'))
+        setSelectedIsStrikeThrough(selection.hasFormat('strikethrough'))
+        const parent = node.getParent()
+        if ($isLinkNode(parent) || $isLinkNode(node))
+          setSelectedLinkUrl($isLinkNode(parent) ? parent.getURL() : (node as LinkNode).getURL())
+        else
+          setSelectedLinkUrl('')
+      }
     })
   }, [editor, noteEditorStore])
 

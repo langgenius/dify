@@ -1,8 +1,6 @@
-import {
-  memo,
-  useState,
-} from 'react'
+import { memo } from 'react'
 import cn from 'classnames'
+import { useFontSize } from './hooks'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -15,35 +13,39 @@ import { Check } from '@/app/components/base/icons/src/vender/line/general'
 const FONT_SIZE_LIST = [
   {
     key: 'Small',
-    value: 12,
+    value: '12px',
   },
   {
     key: 'Medium',
-    value: 14,
+    value: '14px',
   },
   {
     key: 'Large',
-    value: 16,
+    value: '16px',
   },
 ]
 const FontSizeSelector = () => {
-  const [value] = useState(FONT_SIZE_LIST[0].key)
-  const [open, setOpen] = useState(false)
+  const {
+    fontSizeSelectorShow,
+    handleOpenFontSizeSelector,
+    fontSize,
+    handleFontSize,
+  } = useFontSize()
 
   return (
     <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
+      open={fontSizeSelectorShow}
+      onOpenChange={handleOpenFontSizeSelector}
       placement='bottom-start'
       offset={2}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(!open)}>
+      <PortalToFollowElemTrigger onClick={() => handleOpenFontSizeSelector(!fontSizeSelectorShow)}>
         <div className={cn(
           'flex items-center pl-2 pr-1.5 h-8 rounded-md text-[13px] font-medium text-gray-700 cursor-pointer hover:bg-gray-50',
-          open && 'bg-gray-50',
+          fontSizeSelectorShow && 'bg-gray-50',
         )}>
           <TitleCase className='mr-1 w-4 h-4' />
-          {value}
+          {FONT_SIZE_LIST.find(font => font.value === fontSize)?.key || 'Small'}
           <ChevronDown className='ml-0.5 w-3 h-3' />
         </div>
       </PortalToFollowElemTrigger>
@@ -54,6 +56,10 @@ const FontSizeSelector = () => {
               <div
                 key={font.key}
                 className='flex items-center justify-between pl-3 pr-2 h-8 rounded-md cursor-pointer hover:bg-gray-50'
+                onClick={() => {
+                  handleFontSize(font.value)
+                  handleOpenFontSizeSelector(false)
+                }}
               >
                 <div
                   style={{ fontSize: font.value }}
@@ -61,7 +67,7 @@ const FontSizeSelector = () => {
                   {font.key}
                 </div>
                 {
-                  value === font.key && (
+                  fontSize === font.value && (
                     <Check className='w-4 h-4 text-primary-500' />
                   )
                 }

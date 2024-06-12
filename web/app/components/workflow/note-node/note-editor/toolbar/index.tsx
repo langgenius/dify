@@ -1,14 +1,18 @@
 import { memo } from 'react'
 import Divider from './divider'
+import type { ColorPickerProps } from './color-picker'
 import ColorPicker from './color-picker'
 import FontSizeSelector from './font-size-selector'
 import Command from './command'
 import Operator from './operator'
 
-const Toolbar = () => {
+type ToolbarProps = ColorPickerProps
+const Toolbar = ({
+  onColorChange,
+}: ToolbarProps) => {
   return (
     <div className='inline-flex items-center p-0.5 bg-white rounded-lg border-[0.5px] border-black/5 shadow-sm'>
-      <ColorPicker />
+      <ColorPicker onColorChange={onColorChange} />
       <Divider />
       <FontSizeSelector />
       <Divider />
