@@ -1,6 +1,7 @@
 from flask_restful import Resource, reqparse
 
 from controllers.console import api
+from controllers.console.datasets.error import WebsiteCrawlError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from libs.login import login_required
@@ -21,7 +22,10 @@ class WebsiteCrawlApi(Resource):
         args = parser.parse_args()
         WebsiteService.document_create_args_validate(args)
         # crawl url
-        result = WebsiteService.crawl_url(args)
+        try:
+            result = WebsiteService.crawl_url(args)
+        except Exception as e:
+            raise WebsiteCrawlError(str(e))
         return result, 200
 
 
@@ -34,7 +38,10 @@ class WebsiteCrawlStatusApi(Resource):
         parser.add_argument('provider', type=str, choices=['firecrawl'], required=True, location='args')
         args = parser.parse_args()
         # get crawl status
-        result = WebsiteService.get_crawl_status(job_id, args['provider'])
+        try:
+            result = WebsiteService.get_crawl_status(job_id, args['provider'])
+        except Exception as e:
+            raise WebsiteCrawlError(str(e))
         return result, 200
 
 
