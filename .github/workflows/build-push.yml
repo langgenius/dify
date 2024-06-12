@@ -88,5 +88,5 @@ jobs:
           KUBECONFIG: kubeconfig.yaml
         run: |
           sudo chmod 644 kubeconfig.yaml
-          kubectl -n ${{ env.NAMESPACE }} set image deployment/dify-${{ matrix.service_name }} ${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+          kubectl set image -n ${{ env.NAMESPACE }} deployment/dify-${{ matrix.service_name }} ${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
           
