@@ -21,6 +21,7 @@ const Command = ({
   const selectedIsBold = useStore(s => s.selectedIsBold)
   const selectedIsStrikeThrough = useStore(s => s.selectedIsStrikeThrough)
   const selectedLinkUrl = useStore(s => s.selectedLinkUrl)
+  const selectedIsBullet = useStore(s => s.selectedIsBullet)
   const { handleCommand } = useCommand()
 
   const icon = useMemo(() => {
@@ -32,9 +33,9 @@ const Command = ({
       case 'link':
         return <Link01 className={cn('w-4 h-4', selectedLinkUrl && 'text-primary-600')} />
       case 'bullet':
-        return <Dotpoints01 className='w-4 h-4' />
+        return <Dotpoints01 className={cn('w-4 h-4', selectedIsBullet && 'text-primary-600')} />
     }
-  }, [type, selectedIsBold, selectedIsStrikeThrough, selectedLinkUrl])
+  }, [type, selectedIsBold, selectedIsStrikeThrough, selectedLinkUrl, selectedIsBullet])
 
   return (
     <div
@@ -43,6 +44,7 @@ const Command = ({
         type === 'bold' && selectedIsBold && 'bg-primary-50',
         type === 'strikethrough' && selectedIsStrikeThrough && 'bg-primary-50',
         type === 'link' && selectedLinkUrl && 'bg-primary-50',
+        type === 'bullet' && selectedIsBullet && 'bg-primary-50',
       )}
       onClick={() => handleCommand(type)}
     >

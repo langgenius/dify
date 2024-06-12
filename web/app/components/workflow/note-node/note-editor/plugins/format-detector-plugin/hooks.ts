@@ -10,6 +10,7 @@ import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import type { LinkNode } from '@lexical/link'
 import { $isLinkNode } from '@lexical/link'
+import { $isListItemNode } from '@lexical/list'
 import { getSelectedNode } from '../../utils'
 import { useNoteEditorStore } from '../../store'
 
@@ -30,6 +31,7 @@ export const useFormatDetector = () => {
           setSelectedIsBold,
           setSelectedIsStrikeThrough,
           setSelectedLinkUrl,
+          setSelectedIsBullet,
         } = noteEditorStore.getState()
         setSelectedIsBold(selection.hasFormat('bold'))
         setSelectedIsStrikeThrough(selection.hasFormat('strikethrough'))
@@ -38,6 +40,11 @@ export const useFormatDetector = () => {
           setSelectedLinkUrl($isLinkNode(parent) ? parent.getURL() : (node as LinkNode).getURL())
         else
           setSelectedLinkUrl('')
+
+        if ($isListItemNode(parent) || $isListItemNode(node))
+          setSelectedIsBullet(true)
+        else
+          setSelectedIsBullet(false)
       }
     })
   }, [editor, noteEditorStore])

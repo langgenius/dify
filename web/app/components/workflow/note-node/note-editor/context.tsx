@@ -5,9 +5,12 @@ import {
   memo,
   useRef,
 } from 'react'
-import { CodeNode } from '@lexical/code'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { LinkNode } from '@lexical/link'
+import {
+  ListItemNode,
+  ListNode,
+} from '@lexical/list'
 import { createNoteEditorStore } from './store'
 import theme from './theme'
 
@@ -28,8 +31,9 @@ export const NoteEditorContextProvider = memo(({
   const initialConfig = {
     namespace: 'note-editor',
     nodes: [
-      CodeNode,
       LinkNode,
+      ListNode,
+      ListItemNode,
     ],
     onError: (error: Error) => {
       throw error

@@ -15,6 +15,7 @@ import {
   $getSelectionStyleValueForProperty,
   $patchStyleText,
 } from '@lexical/selection'
+import { INSERT_UNORDERED_LIST_COMMAND } from '@lexical/list'
 import { mergeRegister } from '@lexical/utils'
 import {
   $isLinkNode,
@@ -51,6 +52,9 @@ export const useCommand = () => {
         }
       })
     }
+
+    if (type === 'bullet')
+      editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)
   }, [editor, noteEditorStore])
 
   return {

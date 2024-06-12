@@ -16,6 +16,8 @@ type Shape = {
   setSelectedIsStrikeThrough: (selectedIsStrikeThrough: boolean) => void
   selectedLinkUrl: string
   setSelectedLinkUrl: (selectedLinkUrl: string) => void
+  selectedIsBullet: boolean
+  setSelectedIsBullet: (selectedIsBullet: boolean) => void
 }
 
 export const createNoteEditorStore = () => {
@@ -44,6 +46,8 @@ export const createNoteEditorStore = () => {
     setSelectedIsStrikeThrough: selectedIsStrikeThrough => set(() => ({ selectedIsStrikeThrough })),
     selectedLinkUrl: '',
     setSelectedLinkUrl: selectedLinkUrl => set(() => ({ selectedLinkUrl })),
+    selectedIsBullet: false,
+    setSelectedIsBullet: selectedIsBullet => set(() => ({ selectedIsBullet })),
   }))
 }
 

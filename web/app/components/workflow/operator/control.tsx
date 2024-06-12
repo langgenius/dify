@@ -20,6 +20,7 @@ import {
   Hand02 as Hand02Solid,
 } from '@/app/components/base/icons/src/vender/solid/editor'
 import { OrganizeGrid } from '@/app/components/base/icons/src/vender/line/layout'
+import { StickerSquare } from '@/app/components/base/icons/src/vender/line/files'
 
 const Control = () => {
   const { t } = useTranslation()
@@ -75,9 +76,27 @@ const Control = () => {
     handleLayout()
   }
 
+  const addNote = () => {
+    if (getNodesReadOnly())
+      return
+
+    console.log('add note')
+  }
+
   return (
     <div className='flex items-center p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-lg text-gray-500'>
       <AddBlock />
+      <TipPopup title={'Add Note'}>
+        <div
+          className={cn(
+            'flex items-center justify-center ml-[1px] w-8 h-8 rounded-lg hover:bg-black/5 hover:text-gray-700 cursor-pointer',
+            `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
+          )}
+          onClick={addNote}
+        >
+          <StickerSquare />
+        </div>
+      </TipPopup>
       <div className='mx-[3px] w-[1px] h-3.5 bg-gray-200'></div>
       <TipPopup title={t('workflow.common.pointerMode')}>
         <div
