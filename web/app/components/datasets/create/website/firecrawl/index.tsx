@@ -152,16 +152,17 @@ const FireCrawl: FC<Props> = ({
         url,
         options: crawlOptions,
       }) as any
+      console.log(res)
       const jobId = res.job_id
       onJobIdChange(jobId)
       const { isError, data } = await waitForCrawlFinished(jobId)
       if (isError) {
         setCrawlHasError(true)
-        setCrawlResult(data)
       }
-
-      setCrawlResult(data)
-      setCrawlHasError(false)
+      else {
+        setCrawlResult(data)
+        setCrawlHasError(false)
+      }
     }
     catch (e) {
       setCrawlHasError(true)
