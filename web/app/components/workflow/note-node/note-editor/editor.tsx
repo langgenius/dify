@@ -16,7 +16,7 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import LinkEditorPlugin from './plugins/link-editor-plugin'
 import FormatDetectorPlugin from './plugins/format-detector-plugin'
-import TreeView from '@/app/components/base/prompt-editor/plugins/tree-view'
+// import TreeView from '@/app/components/base/prompt-editor/plugins/tree-view'
 import Placeholder from '@/app/components/base/prompt-editor/plugins/placeholder'
 
 type EditorProps = {
@@ -58,7 +58,7 @@ const Editor = ({
       <FormatDetectorPlugin />
       <HistoryPlugin />
       <OnChangePlugin onChange={handleEditorChange} />
-      <TreeView />
+      {/* <TreeView /> */}
     </div>
   )
 }

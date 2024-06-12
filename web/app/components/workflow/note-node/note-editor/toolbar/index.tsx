@@ -8,11 +8,15 @@ import Operator from './operator'
 
 type ToolbarProps = ColorPickerProps
 const Toolbar = ({
-  onColorChange,
+  theme,
+  onThemeChange,
 }: ToolbarProps) => {
   return (
     <div className='inline-flex items-center p-0.5 bg-white rounded-lg border-[0.5px] border-black/5 shadow-sm'>
-      <ColorPicker onColorChange={onColorChange} />
+      <ColorPicker
+        theme={theme}
+        onThemeChange={onThemeChange}
+      />
       <Divider />
       <FontSizeSelector />
       <Divider />

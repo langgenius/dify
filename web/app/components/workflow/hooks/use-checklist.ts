@@ -14,7 +14,10 @@ import {
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
-import { MAX_TREE_DEEPTH } from '../constants'
+import {
+  CUSTOM_NODE,
+  MAX_TREE_DEEPTH,
+} from '../constants'
 import type { ToolNodeType } from '../nodes/tool/types'
 import { useIsChatMode } from './use-workflow'
 import { useNodesExtraData } from './use-nodes-data'
@@ -33,7 +36,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
   const needWarningNodes = useMemo(() => {
     const list = []
-    const { validNodes } = getValidTreeNodes(nodes, edges)
+    const { validNodes } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges)
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i]
@@ -53,17 +56,20 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         if (provider_type === CollectionType.workflow)
           toolIcon = workflowTools.find(tool => tool.id === node.data.provider_id)?.icon
       }
-      const { errorMessage } = nodesExtraData[node.data.type].checkValid(node.data, t, moreDataForCheckValid)
 
-      if (errorMessage || !validNodes.find(n => n.id === node.id)) {
-        list.push({
-          id: node.id,
-          type: node.data.type,
-          title: node.data.title,
-          toolIcon,
-          unConnected: !validNodes.find(n => n.id === node.id),
-          errorMessage,
-        })
+      if (node.type === CUSTOM_NODE) {
+        const { errorMessage } = nodesExtraData[node.data.type].checkValid(node.data, t, moreDataForCheckValid)
+
+        if (errorMessage || !validNodes.find(n => n.id === node.id)) {
+          list.push({
+            id: node.id,
+            type: node.data.type,
+            title: node.data.title,
+            toolIcon,
+            unConnected: !validNodes.find(n => n.id === node.id),
+            errorMessage,
+          })
+        }
       }
     }
 
@@ -107,11 +113,11 @@ export const useChecklistBeforePublish = () => {
       getNodes,
       edges,
     } = store.getState()
-    const nodes = getNodes()
+    const nodes = getNodes().filter(node => node.type === CUSTOM_NODE)
     const {
       validNodes,
       maxDepth,
-    } = getValidTreeNodes(nodes, edges)
+    } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges)
 
     if (maxDepth > MAX_TREE_DEEPTH) {
       notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEEPTH }) })

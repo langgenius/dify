@@ -1,4 +1,8 @@
-import { memo, useCallback } from 'react'
+import type { MouseEvent } from 'react'
+import {
+  memo,
+  useCallback,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useKeyPress } from 'ahooks'
@@ -11,6 +15,7 @@ import { isEventTargetInputArea } from '../utils'
 import { useStore } from '../store'
 import AddBlock from './add-block'
 import TipPopup from './tip-popup'
+import { useOperator } from './hooks'
 import {
   Cursor02C,
   Hand02,
@@ -27,6 +32,7 @@ const Control = () => {
   const controlMode = useStore(s => s.controlMode)
   const setControlMode = useStore(s => s.setControlMode)
   const { handleLayout } = useWorkflow()
+  const { handleAddNote } = useOperator()
   const {
     nodesReadOnly,
     getNodesReadOnly,
@@ -76,11 +82,12 @@ const Control = () => {
     handleLayout()
   }
 
-  const addNote = () => {
+  const addNote = (e: MouseEvent<HTMLDivElement>) => {
     if (getNodesReadOnly())
       return
 
-    console.log('add note')
+    e.stopPropagation()
+    handleAddNote()
   }
 
   return (

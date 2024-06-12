@@ -3,60 +3,55 @@ import {
   useState,
 } from 'react'
 import cn from 'classnames'
+import { NoteTheme } from '../../types'
+import { THEME_MAP } from '../../constants'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 
-export const COLOR_MAP = {
-  blue: '#D1E9FF',
-  cyan: '#CFF9FE',
-  green: '#D3F8DF',
-  yellow: '#FEF7C3',
-  pink: '#FCE7F6',
-  violet: '#ECE9FE',
-} as Record<string, string>
 export const COLOR_LIST = [
   {
-    key: 'blue',
-    inner: COLOR_MAP.blue,
-    outer: '#2E90FA',
+    key: NoteTheme.blue,
+    inner: THEME_MAP[NoteTheme.blue].title,
+    outer: THEME_MAP[NoteTheme.blue].outer,
   },
   {
-    key: 'cyan',
-    inner: COLOR_MAP.cyan,
-    outer: '#06AED4',
+    key: NoteTheme.cyan,
+    inner: THEME_MAP[NoteTheme.cyan].title,
+    outer: THEME_MAP[NoteTheme.cyan].outer,
   },
   {
-    key: 'green',
-    inner: COLOR_MAP.green,
-    outer: '#16B364',
+    key: NoteTheme.green,
+    inner: THEME_MAP[NoteTheme.green].title,
+    outer: THEME_MAP[NoteTheme.green].outer,
   },
   {
-    key: 'yellow',
-    inner: COLOR_MAP.yellow,
-    outer: '#EAAA08',
+    key: NoteTheme.yellow,
+    inner: THEME_MAP[NoteTheme.yellow].title,
+    outer: THEME_MAP[NoteTheme.yellow].outer,
   },
   {
-    key: 'pink',
-    inner: COLOR_MAP.pink,
-    outer: '#EE46BC',
+    key: NoteTheme.pink,
+    inner: THEME_MAP[NoteTheme.pink].title,
+    outer: THEME_MAP[NoteTheme.pink].outer,
   },
   {
-    key: 'violet',
-    inner: COLOR_MAP.violet,
-    outer: '#875BF7',
+    key: NoteTheme.violet,
+    inner: THEME_MAP[NoteTheme.violet].title,
+    outer: THEME_MAP[NoteTheme.violet].outer,
   },
 ]
 
 export type ColorPickerProps = {
-  onColorChange?: (color: string) => void
+  theme: NoteTheme
+  onThemeChange: (theme: NoteTheme) => void
 }
 const ColorPicker = ({
-  onColorChange,
+  theme,
+  onThemeChange,
 }: ColorPickerProps) => {
-  const [color, setColor] = useState('blue')
   const [open, setOpen] = useState(false)
 
   return (
@@ -73,7 +68,7 @@ const ColorPicker = ({
         )}>
           <div
             className='w-4 h-4 rounded-full border border-black/5'
-            style={{ backgroundColor: COLOR_MAP[color] }}
+            style={{ backgroundColor: THEME_MAP[theme].title }}
           ></div>
         </div>
       </PortalToFollowElemTrigger>
@@ -85,8 +80,7 @@ const ColorPicker = ({
                 key={color.key}
                 className='group relative flex items-center justify-center w-8 h-8 rounded-md cursor-pointer'
                 onClick={() => {
-                  setColor(color.key)
-                  onColorChange?.(color.key)
+                  onThemeChange(color.key)
                   setOpen(false)
                 }}
               >

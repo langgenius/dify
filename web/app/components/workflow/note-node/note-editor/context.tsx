@@ -18,9 +18,11 @@ type NoteEditorStore = ReturnType<typeof createNoteEditorStore>
 const NoteEditorContext = createContext<NoteEditorStore | null>(null)
 
 type NoteEditorContextProviderProps = {
+  value?: string
   children: JSX.Element | string | (JSX.Element | string)[]
 }
 export const NoteEditorContextProvider = memo(({
+  value,
   children,
 }: NoteEditorContextProviderProps) => {
   const storeRef = useRef<NoteEditorStore>()
@@ -35,6 +37,7 @@ export const NoteEditorContextProvider = memo(({
       ListNode,
       ListItemNode,
     ],
+    editorState: value || null,
     onError: (error: Error) => {
       throw error
     },
