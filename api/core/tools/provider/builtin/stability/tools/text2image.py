@@ -23,7 +23,7 @@ class StableDiffusionTool(BuiltinTool, BaseStabilityAuthorization):
         """
         payload = {
             'prompt': tool_parameters.get('prompt', ''),
-            'aspect_radio': tool_parameters.get('aspect_radio', '16:9'),
+            'aspect_ratio': tool_parameters.get('aspect_ratio', '16:9') or tool_parameters.get('aspect_radio', '16:9'),
             'mode': 'text-to-image',
             'seed': tool_parameters.get('seed', 0),
             'output_format': 'png',

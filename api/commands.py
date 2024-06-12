@@ -9,6 +9,7 @@ from werkzeug.exceptions import NotFound
 
 from constants.languages import languages
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from libs.helper import email as email_validate
@@ -266,15 +267,15 @@ def migrate_knowledge_vector_database():
                         skipped_count = skipped_count + 1
                         continue
                 collection_name = ''
-                if vector_type == "weaviate":
+                if vector_type == VectorType.WEAVIATE:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
-                        "type": 'weaviate',
+                        "type": VectorType.WEAVIATE,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == "qdrant":
+                elif vector_type == VectorType.QDRANT:
                     if dataset.collection_binding_id:
                         dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
                             filter(DatasetCollectionBinding.id == dataset.collection_binding_id). \
@@ -287,20 +288,20 @@ def migrate_knowledge_vector_database():
                         dataset_id = dataset.id
                         collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
-                        "type": 'qdrant',
+                        "type": VectorType.QDRANT,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
 
-                elif vector_type == "milvus":
+                elif vector_type == VectorType.MILVUS:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
-                        "type": 'milvus',
+                        "type": VectorType.MILVUS,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == "relyt":
+                elif vector_type == VectorType.RELYT:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
@@ -308,16 +309,16 @@ def migrate_knowledge_vector_database():
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == "pgvector":
+                elif vector_type == VectorType.PGVECTOR:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
-                        "type": 'pgvector',
+                        "type": VectorType.PGVECTOR,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
                 else:
-                    raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
+                    raise ValueError(f"Vector store {vector_type} is not supported.")
 
                 vector = Vector(dataset)
                 click.echo(f"Start to migrate dataset {dataset.id}.")
