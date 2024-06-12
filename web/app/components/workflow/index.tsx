@@ -55,6 +55,7 @@ import HelpLine from './help-line'
 import CandidateNode from './candidate-node'
 import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
+import SyncingDataModal from './syncing-data-modal'
 import {
   useStore,
   useWorkflowStore,
@@ -99,7 +100,10 @@ const Workflow: FC<WorkflowProps> = memo(({
   const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const showConfirm = useStore(s => s.showConfirm)
-  const { setShowConfirm } = workflowStore.getState()
+  const {
+    setShowConfirm,
+    setControlPromptEditorRerenderKey,
+  } = workflowStore.getState()
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -113,6 +117,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     if (v.type === WORKFLOW_DATA_UPDATE) {
       setNodes(v.payload.nodes)
       setEdges(v.payload.edges)
+      setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     }
   })
 
@@ -135,7 +140,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     if (document.visibilityState === 'hidden')
       syncWorkflowDraftWhenPageClose()
     else if (document.visibilityState === 'visible')
-      handleRefreshWorkflowDraft()
+      setTimeout(() => handleRefreshWorkflowDraft(), 500)
   }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft])
 
   useEffect(() => {
@@ -223,6 +228,7 @@ const Workflow: FC<WorkflowProps> = memo(({
       `}
       ref={workflowContainerRef}
     >
+      <SyncingDataModal />
       <CandidateNode />
       <Header />
       <Panel />

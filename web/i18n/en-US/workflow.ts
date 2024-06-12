@@ -67,6 +67,7 @@ const translation = {
     manageInTools: 'Manage in Tools',
     workflowAsToolTip: 'Tool reconfiguration is required after the workflow update.',
     viewDetailInTracingPanel: 'View details',
+    syncingData: 'Syncing data, just a few seconds.',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
