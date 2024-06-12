@@ -353,7 +353,7 @@ parameters:
         label:
           en_US: Italian
           zh_Hans: 意大利语
-      - value: jp
+      - value: ja
         label:
           en_US: Japanese
           zh_Hans: 日语
