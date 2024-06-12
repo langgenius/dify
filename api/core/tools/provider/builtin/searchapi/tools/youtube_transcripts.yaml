@@ -1,0 +1,34 @@
+identity:
+  name: youtube_transcripts_api
+  author: SearchApi
+  label:
+    en_US: YouTube Transcripts API
+    zh_Hans: YouTube 脚本 API
+description:
+  human:
+    en_US: A tool to retrieve transcripts from the specific YouTube video.
+    zh_Hans: 一种从特定 YouTube 视频检索文字记录的工具。
+  llm: A tool to retrieve transcripts from the specific YouTube video.
+parameters:
+  - name: video_id
+    type: string
+    required: true
+    label:
+      en_US: video_id
+      zh_Hans: 视频ID
+    human_description:
+      en_US: Used to define the video you want to search. You can find the video id's in YouTube page that appears in URL. For example - https://www.youtube.com/watch?v=video_id.
+      zh_Hans: 用于定义要搜索的视频。您可以在 URL 中显示的 YouTube 页面中找到视频 ID。例如 - https://www.youtube.com/watch?v=video_id。
+    llm_description: Used to define the video you want to search.
+    form: llm
+  - name: language
+    type: string
+    required: false
+    label:
+      en_US: language
+      zh_Hans: 语言
+    human_description:
+      en_US: Used to set the language for transcripts. The default value is "en". You can find all supported languages in SearchApi documentation.
+      zh_Hans: 用于设置成绩单的语言。默认值为“en”。您可以在 SearchApi 文档中找到所有支持的语言。
+    llm_description: Used to set the language for transcripts.
+    form: llm

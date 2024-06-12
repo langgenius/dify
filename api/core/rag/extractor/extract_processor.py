@@ -16,7 +16,6 @@ from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
 from core.rag.extractor.text_extractor import TextExtractor
-from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
 from core.rag.extractor.unstructured.unstructured_eml_extractor import UnstructuredEmailExtractor
 from core.rag.extractor.unstructured.unstructured_epub_extractor import UnstructuredEpubExtractor
 from core.rag.extractor.unstructured.unstructured_markdown_extractor import UnstructuredMarkdownExtractor
@@ -30,7 +29,7 @@ from core.rag.models.document import Document
 from extensions.ext_storage import storage
 from models.model import UploadFile
 
-SUPPORT_URL_CONTENT_TYPES = ['application/pdf', 'text/plain']
+SUPPORT_URL_CONTENT_TYPES = ['application/pdf', 'text/plain', 'application/json']
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
 
@@ -108,7 +107,7 @@ class ExtractProcessor:
                     elif file_extension in ['.htm', '.html']:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension in ['.docx']:
-                        extractor = UnstructuredWordExtractor(file_path, unstructured_api_url)
+                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == '.csv':
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == '.msg':
@@ -137,7 +136,7 @@ class ExtractProcessor:
                     elif file_extension in ['.htm', '.html']:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension in ['.docx']:
-                        extractor = WordExtractor(file_path)
+                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == '.csv':
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == 'epub':

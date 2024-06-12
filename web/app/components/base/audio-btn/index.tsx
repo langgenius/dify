@@ -13,6 +13,7 @@ type AudioBtnProps = {
   voice?: string
   className?: string
   isAudition?: boolean
+  noCache: boolean
 }
 
 type AudioState = 'initial' | 'loading' | 'playing' | 'paused' | 'ended'
@@ -22,6 +23,7 @@ const AudioBtn = ({
   voice,
   className,
   isAudition,
+  noCache,
 }: AudioBtnProps) => {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [audioState, setAudioState] = useState<AudioState>('initial')
@@ -38,11 +40,11 @@ const AudioBtn = ({
 
   const loadAudio = async () => {
     const formData = new FormData()
+    formData.append('text', removeCodeBlocks(value))
+    formData.append('voice', removeCodeBlocks(voice))
+
     if (value !== '') {
       setAudioState('loading')
-
-      formData.append('text', removeCodeBlocks(value))
-      formData.append('voice', removeCodeBlocks(voice))
 
       let url = ''
       let isPublic = false
@@ -72,15 +74,16 @@ const AudioBtn = ({
     }
   }
 
-  const handleToggle = () => {
-    if (audioState === 'initial')
-      loadAudio()
-    if (audioRef.current) {
+  const handleToggle = async () => {
+    if (audioState === 'initial' || noCache) {
+      await loadAudio()
+    }
+    else if (audioRef.current) {
       if (audioState === 'playing') {
         audioRef.current.pause()
         setAudioState('paused')
       }
-      else if (audioState === 'paused' || audioState === 'ended') {
+      else {
         audioRef.current.play()
         setAudioState('playing')
       }
@@ -89,27 +92,31 @@ const AudioBtn = ({
 
   useEffect(() => {
     const currentAudio = audioRef.current
+
     const handleLoading = () => {
       setAudioState('loading')
     }
+
     const handlePlay = () => {
       currentAudio?.play()
       setAudioState('playing')
     }
+
     const handleEnded = () => {
       setAudioState('ended')
     }
+
     currentAudio?.addEventListener('progress', handleLoading)
     currentAudio?.addEventListener('canplaythrough', handlePlay)
     currentAudio?.addEventListener('ended', handleEnded)
+
     return () => {
-      if (currentAudio) {
-        currentAudio.removeEventListener('progress', handleLoading)
-        currentAudio.removeEventListener('canplaythrough', handlePlay)
-        currentAudio.removeEventListener('ended', handleEnded)
-        URL.revokeObjectURL(currentAudio.src)
-        currentAudio.src = ''
-      }
+      currentAudio?.removeEventListener('progress', handleLoading)
+      currentAudio?.removeEventListener('canplaythrough', handlePlay)
+      currentAudio?.removeEventListener('ended', handleEnded)
+      URL.revokeObjectURL(currentAudio?.src || '')
+      currentAudio?.pause()
+      currentAudio?.setAttribute('src', '')
     }
   }, [])
 
@@ -131,9 +138,17 @@ const AudioBtn = ({
         <button
           disabled={audioState === 'loading'}
           className={`box-border p-0.5 flex items-center justify-center cursor-pointer ${isAudition || '!p-0 rounded-md bg-white'}`}
-          onClick={handleToggle}>
-          {audioState === 'loading' && <div className='w-6 h-6 rounded-md flex items-center justify-center p-2'><Loading /></div>}
-          {audioState !== 'loading' && <div className={`w-6 h-6 rounded-md ${!isAudition ? 'w-4 h-4 hover:bg-gray-50' : 'hover:bg-gray-50'} ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>}
+          onClick={handleToggle}
+        >
+          {audioState === 'loading'
+            ? (
+              <div className='w-6 h-6 rounded-md flex items-center justify-center p-2'>
+                <Loading />
+              </div>
+            )
+            : (
+              <div className={`w-6 h-6 rounded-md ${!isAudition ? 'w-4 h-4 hover:bg-gray-50' : 'hover:bg-gray-50'} ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>
+            )}
         </button>
       </Tooltip>
       <audio ref={audioRef} src='' className='hidden' />

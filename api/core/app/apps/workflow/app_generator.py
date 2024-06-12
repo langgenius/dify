@@ -34,7 +34,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                  user: Union[Account, EndUser],
                  args: dict,
                  invoke_from: InvokeFrom,
-                 stream: bool = True) \
+                 stream: bool = True,
+                 call_depth: int = 0) \
             -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
@@ -75,9 +76,38 @@ class WorkflowAppGenerator(BaseAppGenerator):
             files=file_objs,
             user_id=user.id,
             stream=stream,
-            invoke_from=invoke_from
+            invoke_from=invoke_from,
+            call_depth=call_depth
         )
 
+        return self._generate(
+            app_model=app_model,
+            workflow=workflow,
+            user=user,
+            application_generate_entity=application_generate_entity,
+            invoke_from=invoke_from,
+            stream=stream,
+            call_depth=call_depth
+        )
+
+    def _generate(self, app_model: App,
+                 workflow: Workflow,
+                 user: Union[Account, EndUser],
+                 application_generate_entity: WorkflowAppGenerateEntity,
+                 invoke_from: InvokeFrom,
+                 stream: bool = True,
+                 call_depth: int = 0) \
+            -> Union[dict, Generator[dict, None, None]]:
+        """
+        Generate App response.
+
+        :param app_model: App
+        :param workflow: Workflow
+        :param user: account or end user
+        :param application_generate_entity: application generate entity
+        :param invoke_from: invoke from source
+        :param stream: is stream
+        """
         # init queue manager
         queue_manager = WorkflowAppQueueManager(
             task_id=application_generate_entity.task_id,
@@ -109,6 +139,64 @@ class WorkflowAppGenerator(BaseAppGenerator):
             invoke_from=invoke_from
         )
 
+    def single_iteration_generate(self, app_model: App,
+                                  workflow: Workflow,
+                                  node_id: str,
+                                  user: Account,
+                                  args: dict,
+                                  stream: bool = True) \
+            -> Union[dict, Generator[dict, None, None]]:
+        """
+        Generate App response.
+
+        :param app_model: App
+        :param workflow: Workflow
+        :param user: account or end user
+        :param args: request args
+        :param invoke_from: invoke from source
+        :param stream: is stream
+        """
+        if not node_id:
+            raise ValueError('node_id is required')
+        
+        if args.get('inputs') is None:
+            raise ValueError('inputs is required')
+        
+        extras = {
+            "auto_generate_conversation_name": False
+        }
+
+        # convert to app config
+        app_config = WorkflowAppConfigManager.get_app_config(
+            app_model=app_model,
+            workflow=workflow
+        )
+
+        # init application generate entity
+        application_generate_entity = WorkflowAppGenerateEntity(
+            task_id=str(uuid.uuid4()),
+            app_config=app_config,
+            inputs={},
+            files=[],
+            user_id=user.id,
+            stream=stream,
+            invoke_from=InvokeFrom.DEBUGGER,
+            extras=extras,
+            single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
+                node_id=node_id,
+                inputs=args['inputs']
+            )
+        )
+
+        return self._generate(
+            app_model=app_model,
+            workflow=workflow,
+            user=user,
+            invoke_from=InvokeFrom.DEBUGGER,
+            application_generate_entity=application_generate_entity,
+            stream=stream
+        )
+
     def _generate_worker(self, flask_app: Flask,
                          application_generate_entity: WorkflowAppGenerateEntity,
                          queue_manager: AppQueueManager) -> None:
@@ -123,10 +211,21 @@ class WorkflowAppGenerator(BaseAppGenerator):
             try:
                 # workflow app
                 runner = WorkflowAppRunner()
-                runner.run(
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager
-                )
+                if application_generate_entity.single_iteration_run:
+                    single_iteration_run = application_generate_entity.single_iteration_run
+                    runner.single_iteration_run(
+                        app_id=application_generate_entity.app_config.app_id,
+                        workflow_id=application_generate_entity.app_config.workflow_id,
+                        queue_manager=queue_manager,
+                        inputs=single_iteration_run.inputs,
+                        node_id=single_iteration_run.node_id,
+                        user_id=application_generate_entity.user_id
+                    )
+                else:
+                    runner.run(
+                        application_generate_entity=application_generate_entity,
+                        queue_manager=queue_manager
+                    )
             except GenerateTaskStoppedException:
                 pass
             except InvokeAuthorizationError:

@@ -17,6 +17,7 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
@@ -24,20 +25,17 @@ from models.model import Message
 logger = logging.getLogger(__name__)
 
 class FunctionCallAgentRunner(BaseAgentRunner):
+
     def run(self, 
             message: Message, query: str, **kwargs: Any
     ) -> Generator[LLMResultChunk, None, None]:
         """
         Run FunctionCall agent application
         """
+        self.query = query
         app_generate_entity = self.application_generate_entity
 
         app_config = self.app_config
-
-        prompt_template = app_config.prompt_template.simple_prompt_template or ''
-        prompt_messages = self.history_prompt_messages
-        prompt_messages = self._init_system_message(prompt_template, prompt_messages)
-        prompt_messages = self._organize_user_query(query, prompt_messages)
 
         # convert tools into ModelRuntime Tool format
         tool_instances, prompt_messages_tools = self._init_prompt_tools()
@@ -81,6 +79,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             )
 
             # recalc llm max tokens
+            prompt_messages = self._organize_prompt_messages()
             self.recalc_llm_max_tokens(self.model_config, prompt_messages)
             # invoke model
             chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = model_instance.invoke_llm(
@@ -203,7 +202,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             else:
                 assistant_message.content = response
             
-            prompt_messages.append(assistant_message)
+            self._current_thoughts.append(assistant_message)
 
             # save thought
             self.save_agent_thought(
@@ -265,12 +264,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     }
                 
                 tool_responses.append(tool_response)
-                prompt_messages = self._organize_assistant_message(
-                    tool_call_id=tool_call_id,
-                    tool_call_name=tool_call_name,
-                    tool_response=tool_response['tool_response'],
-                    prompt_messages=prompt_messages,
-                )
+                if tool_response['tool_response'] is not None:
+                    self._current_thoughts.append(
+                        ToolPromptMessage(
+                            content=tool_response['tool_response'],
+                            tool_call_id=tool_call_id,
+                            name=tool_call_name,
+                        )
+                    ) 
 
             if len(tool_responses) > 0:
                 # save agent thought
@@ -299,8 +300,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
 
             iteration_step += 1
-
-            prompt_messages = self._clear_user_prompt_image_messages(prompt_messages)
 
         self.update_db_variables(self.variables_pool, self.db_variables_pool)
         # publish end event
@@ -393,24 +392,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return prompt_messages
     
-    def _organize_assistant_message(self, tool_call_id: str = None, tool_call_name: str = None, tool_response: str = None, 
-                                    prompt_messages: list[PromptMessage] = None) -> list[PromptMessage]:
-        """
-        Organize assistant message
-        """
-        prompt_messages = deepcopy(prompt_messages)
-
-        if tool_response is not None:
-            prompt_messages.append(
-                ToolPromptMessage(
-                    content=tool_response,
-                    tool_call_id=tool_call_id,
-                    name=tool_call_name,
-                )
-            )
-
-        return prompt_messages
-    
     def _clear_user_prompt_image_messages(self, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         As for now, gpt supports both fc and vision at the first iteration.
@@ -428,4 +409,26 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         for content in prompt_message.content 
                     ])
 
+        return prompt_messages
+
+    def _organize_prompt_messages(self):
+        prompt_template = self.app_config.prompt_template.simple_prompt_template or ''
+        self.history_prompt_messages = self._init_system_message(prompt_template, self.history_prompt_messages)
+        query_prompt_messages = self._organize_user_query(self.query, [])
+
+        self.history_prompt_messages = AgentHistoryPromptTransform(
+            model_config=self.model_config,
+            prompt_messages=[*query_prompt_messages, *self._current_thoughts],
+            history_messages=self.history_prompt_messages,
+            memory=self.memory
+        ).get_prompt()
+
+        prompt_messages = [
+            *self.history_prompt_messages,
+            *query_prompt_messages,
+            *self._current_thoughts
+        ]
+        if len(self._current_thoughts) != 0:
+            # clear messages after the first iteration
+            prompt_messages = self._clear_user_prompt_image_messages(prompt_messages)
         return prompt_messages
