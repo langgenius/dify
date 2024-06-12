@@ -13,7 +13,7 @@ env:
   registry: ${{ secrets.CI_HOSTNAME }}
   username: ${{ secrets.CI_USERNAME }}
   password: ${{ secrets.CI_PASSWORD }}
-  NAMESPACE: ${{ secrets.sqhd-dify-test }}
+  NAMESPACE: ${{ secrets.NAMESPACE }}
   KUBECONFIG: ${{ secrets.KUBECONFIG }}
 
 jobs:
@@ -88,5 +88,5 @@ jobs:
           KUBECONFIG: kubeconfig.yaml
         run: |
           sudo chmod 644 kubeconfig.yaml
-          kubectl set image -n ${{ env.NAMESPACE }} deployment/dify-${{ matrix.service_name }} ${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+          kubectl -n ${{ env.NAMESPACE }} set image deployment/dify-${{ matrix.service_name }} ${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
           
