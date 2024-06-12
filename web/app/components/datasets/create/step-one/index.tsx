@@ -167,7 +167,11 @@ const StepOne = ({
                   {t('datasetCreation.stepOne.dataSourceType.notion')}
                 </div>
                 <div
-                  className={cn(s.dataSourceItem, dataSourceType === DataSourceType.WEB ? s.active : s.disabled)}
+                  className={cn(
+                    s.dataSourceItem,
+                    dataSourceType === DataSourceType.WEB && s.active,
+                    dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
+                  )}
                   onClick={() => changeType(DataSourceType.WEB)}
                 >
                   <span className={cn(s.datasetIcon, s.web)} />
