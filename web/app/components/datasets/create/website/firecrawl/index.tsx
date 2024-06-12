@@ -92,7 +92,7 @@ const FireCrawl: FC<Props> = ({
     current: number
     total: number
     data: CrawlResultItem[]
-    time_consuming: number
+    time_consuming: number | string
   } | undefined>(undefined)
   const [crawlHasError, setCrawlHasError] = useState(false)
   const showError = isCrawlFinished && crawlHasError
@@ -200,7 +200,7 @@ const FireCrawl: FC<Props> = ({
                 checkedList={checkedCrawlResult}
                 onSelectedChange={onCheckedCrawlResultChange}
                 onPreview={onPreview}
-                usedTime={crawlResult?.time_consuming || 0}
+                usedTime={parseFloat(crawlResult?.time_consuming as string) || 0}
               />
             }
           </div>
