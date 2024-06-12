@@ -56,7 +56,7 @@ export const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
 
 const StepOne = ({
   datasetId,
-  dataSourceType,
+  dataSourceType: inCreatePageDataSourceType,
   dataSourceTypeDisable,
   changeType,
   hasConnection,
@@ -103,7 +103,8 @@ const StepOne = ({
   }
 
   const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
-
+  const isInCreatePage = shouldShowDataSourceTypeList
+  const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : dataset?.data_source_type
   const { plan, enableBilling } = useProviderContext()
   const allFileLoaded = (files.length > 0 && files.every(file => file.file.id))
   const hasNotin = notionPages.length > 0
@@ -223,7 +224,7 @@ const StepOne = ({
           )}
           {dataSourceType === DataSourceType.WEB && (
             <>
-              <div className='mb-8 w-[640px]'>
+              <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
                 <Website
                   onPreview={setCurrentWebsite}
                   checkedCrawlResult={websitePages}
