@@ -13,6 +13,7 @@ import {
   getUrl,
   stopChatMessageResponding,
 } from '@/service/share'
+import LogoAvatar from '@/app/components/base/logo/logo-embeded-chat-avatar'
 
 const ChatWrapper = () => {
   const {
@@ -107,8 +108,12 @@ const ChatWrapper = () => {
       )
     }
 
-    return <></>
+    return <div className='mb-6' />
   }, [currentConversationId, inputsForms, isMobile])
+
+  const isDify = () => {
+    return document.referrer.includes('dify.ai')
+  }
 
   return (
     <Chat
@@ -124,6 +129,7 @@ const ChatWrapper = () => {
       allToolIcons={appMeta?.tool_icons || {}}
       onFeedback={handleFeedback}
       suggestedQuestions={suggestedQuestions}
+      answerIcon={isDify() ? <LogoAvatar className='relative shrink-0' /> : null}
       hideProcessDetail
     />
   )

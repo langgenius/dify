@@ -13,6 +13,7 @@ import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Loading from '@/app/components/base/loading'
+import LogoHeader from '@/app/components/base/logo/logo-embeded-chat-header'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import ConfigPanel from '@/app/components/base/chat/embedded-chatbot/config-panel'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
@@ -32,6 +33,12 @@ const Chatbot = () => {
   const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatList.length)
   const customConfig = appData?.custom_config
   const site = appData?.site
+
+  const isDify = () => {
+    return document.referrer.includes('dify.ai')
+  }
+
+  const difyIcon = <LogoHeader />
 
   useEffect(() => {
     if (site) {
@@ -58,7 +65,7 @@ const Chatbot = () => {
       <Header
         isMobile={isMobile}
         title={site?.title || ''}
-        // customerIcon={difyIcon} // TODO # dify icon #
+        customerIcon={isDify() ? difyIcon : ''}
         onCreateNewChat={handleNewConversation}
       />
       <div className='flex bg-white overflow-hidden'>
