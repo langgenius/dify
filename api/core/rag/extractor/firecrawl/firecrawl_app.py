@@ -1,6 +1,9 @@
+import json
 import time
 
 import requests
+
+from extensions.ext_storage import storage
 
 
 class FirecrawlApp:
@@ -68,6 +71,9 @@ class FirecrawlApp:
                     'data': []
                 }
             else:
+                total = crawl_status_response.get('total', 0)
+                if total == 0:
+                    raise Exception(f'Failed to check crawl status. Error: No page found')
                 data = crawl_status_response.get('data', [])
                 url_data_list = []
                 for item in data:
@@ -78,6 +84,11 @@ class FirecrawlApp:
                         'markdown': item.get('markdown')
                     }
                     url_data_list.append(url_data)
+                # if url_data_list:
+                #     file_key = 'website_files/' + job_id + '.txt'
+                #     if storage.exists(file_key):
+                #         storage.delete(file_key)
+                #     storage.save(file_key, json.dumps(url_data_list).encode('utf-8'))
                 return {
                     'status': 'completed',
                     'total': crawl_status_response.get('total'),
@@ -112,8 +123,7 @@ class FirecrawlApp:
         return response
 
     def _handle_error(self, response, action):
-        if response.status_code in [402, 409, 500]:
-            error_message = response.json().get('error', 'Unknown error occurred')
-            raise Exception(f'Failed to {action}. Status code: {response.status_code}. Error: {error_message}')
-        else:
-            raise Exception(f'Unexpected error occurred while trying to {action}. Status code: {response.status_code}')
+        error_message = response.json().get('error', 'Unknown error occurred')
+        raise Exception(f'Failed to {action}. Status code: {response.status_code}. Error: {error_message}')
+
+
