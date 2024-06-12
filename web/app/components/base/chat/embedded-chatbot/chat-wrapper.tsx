@@ -8,6 +8,7 @@ import type {
 import { useChat } from '../chat/hooks'
 import { useEmbeddedChatbotContext } from './context'
 import ConfigPanel from './config-panel'
+import { isDify } from './utils'
 import {
   fetchSuggestedQuestions,
   getUrl,
@@ -110,10 +111,6 @@ const ChatWrapper = () => {
 
     return <div className='mb-6' />
   }, [currentConversationId, inputsForms, isMobile])
-
-  const isDify = () => {
-    return document.referrer.includes('dify.ai')
-  }
 
   return (
     <Chat

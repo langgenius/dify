@@ -205,11 +205,11 @@ const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
     }
   }, [])
 
-  if (appUnavailable)
-    return <AppUnavailable isUnknownReason={isUnknownReason} />
-
   if (!initialized)
     return null
+
+  if (appUnavailable)
+    return <AppUnavailable isUnknownReason={isUnknownReason} />
 
   return (
     <ChatWithHistoryWrap

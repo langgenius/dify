@@ -9,6 +9,7 @@ import {
   useEmbeddedChatbotContext,
 } from './context'
 import { useEmbeddedChatbot } from './hooks'
+import { isDify } from './utils'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -33,10 +34,6 @@ const Chatbot = () => {
   const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatList.length)
   const customConfig = appData?.custom_config
   const site = appData?.site
-
-  const isDify = () => {
-    return document.referrer.includes('dify.ai')
-  }
 
   const difyIcon = <LogoHeader />
 
@@ -172,11 +169,11 @@ const EmbeddedChatbot = () => {
     }
   }, [])
 
-  if (appUnavailable)
-    return <AppUnavailable isUnknownReason={isUnknownReason} />
-
   if (!initialized)
     return null
+
+  if (appUnavailable)
+    return <AppUnavailable isUnknownReason={isUnknownReason} />
 
   return <EmbeddedChatbotWrapper />
 }
