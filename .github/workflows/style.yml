@@ -99,7 +99,7 @@ jobs:
             **.sh
             **.yaml
             **.yml
-            Dockerfile
+            **Dockerfile
             dev/**
 
       - name: Super-linter
