@@ -84,6 +84,11 @@ const translation = {
     workflow: '工作流',
     completion: '文本生成',
   },
+  tracing: {
+    title: '追踪应用性能',
+    description: '配置第三方 LLMOps 提供商并跟踪应用程序性能。',
+    config: '配置',
+  },
 }
 
 export default translation

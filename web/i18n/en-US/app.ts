@@ -85,6 +85,11 @@ const translation = {
     workflow: 'Workflow',
     completion: 'Completion',
   },
+  tracing: {
+    title: 'Tracing app performance',
+    description: 'Configuring a Third-Party LLMOps provider and tracing app performance.',
+    config: 'Config',
+  },
 }
 
 export default translation
