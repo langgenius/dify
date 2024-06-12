@@ -1,15 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
 import cn from 'classnames'
 import type { TracingTool } from './type'
 import TracingIcon from './tracing-icon'
+import ToggleExpandBtn from './toggle-fold-btn'
 import Button from '@/app/components/base/button'
 import { LangfuseIcon, LangsmithIcon } from '@/app/components/base/icons/src/public/tracing'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
-
 const I18N_PREFIX = 'app.tracing'
 const ConfigBtn = ({
   className,
@@ -20,7 +19,7 @@ const ConfigBtn = ({
 
   return (
     <Button type='primary'
-      className={cn(className, '!h-[35px] !px-3')}
+      className={cn(className, '!h-8 !px-3')}
     >
       <Settings04 className='mr-1 w-4 h-4' />
       <span className='text-[13px]'>{t(`${I18N_PREFIX}.config`)}</span>
@@ -33,9 +32,7 @@ const Panel: FC = () => {
 
   const inUseTracingTool: TracingTool | undefined = undefined
   const hasConfiguredTracing = !!inUseTracingTool
-  const [isFold, {
-    toggle: toggleFold,
-  }] = useBoolean(false)
+  const [isFold, setFold] = useState(false)
 
   if (!isFold) {
     return (
@@ -54,9 +51,9 @@ const Panel: FC = () => {
           </div>
         </div>
 
-        <div>
+        <div className='flex items-center space-x-1'>
           <ConfigBtn />
-
+          <ToggleExpandBtn isFold={isFold} onFoldChange={setFold} />
         </div>
       </div>
     )
