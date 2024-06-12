@@ -178,6 +178,7 @@ tidb-vector = "0.0.9"
 google-cloud-aiplatform = "1.49.0"
 vanna = {version = "0.5.5", extras = ["postgres", "mysql", "clickhouse", "duckdb"]}
 kaleido = "0.2.1"
+tencentcloud-sdk-python-hunyuan = "~3.0.1158"
 
 [tool.poetry.group.dev]
 optional = true
