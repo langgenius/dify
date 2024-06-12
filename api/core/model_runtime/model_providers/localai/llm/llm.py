@@ -50,7 +50,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.model_runtime.utils import helper
 
 
-class LocalAILarguageModel(LargeLanguageModel):
+class LocalAILanguageModel(LargeLanguageModel):
     def _invoke(self, model: str, credentials: dict, 
                 prompt_messages: list[PromptMessage], model_parameters: dict, 
                 tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
