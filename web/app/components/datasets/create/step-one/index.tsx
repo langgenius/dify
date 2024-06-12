@@ -170,7 +170,8 @@ const StepOne = ({
                   className={cn(
                     s.dataSourceItem,
                     dataSourceType === DataSourceType.WEB && s.active,
-                    dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled)}
+                    dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
+                  )}
                   onClick={() => changeType(DataSourceType.WEB)}
                 >
                   <span className={cn(s.datasetIcon, s.web)} />
