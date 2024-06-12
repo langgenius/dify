@@ -29,6 +29,19 @@ parameters:
       pt_BR: Imagem prompt, você pode verificar a documentação oficial do DallE 3
     llm_description: Image prompt of DallE 3, you should describe the image you want to generate as a list of words as possible as detailed
     form: llm
+  - name: seed_id
+    type: string
+    required: false
+    label:
+      en_US: Seed ID
+      zh_Hans: 种子ID
+      pt_BR: ID da semente
+    human_description:
+      en_US: Image generation seed ID to ensure consistency of series generated images
+      zh_Hans: 图像生成种子ID，确保系列生成图像的一致性
+      pt_BR: ID de semente de geração de imagem para garantir a consistência das imagens geradas em série
+    llm_description: If the user requests image consistency, extract the seed ID from the user's question or context.The seed id consists of an 8-bit string containing uppercase and lowercase letters and numbers
+    form: llm
   - name: size
     type: select
     required: true
