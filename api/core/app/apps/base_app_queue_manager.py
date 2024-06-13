@@ -47,7 +47,7 @@ class AppQueueManager:
         Listen to queue
         :return:
         """
-        # wait for 10 minutes to stop listen
+        # wait for APP_MAX_EXECUTION_TIME seconds to stop listen
         listen_timeout = current_app.config.get("APP_MAX_EXECUTION_TIME")
         start_time = time.time()
         last_ping_time = 0
