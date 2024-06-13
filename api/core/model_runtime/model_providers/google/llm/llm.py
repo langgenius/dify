@@ -313,7 +313,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                         delta=LLMResultChunkDelta(
                             index=index,
                             message=assistant_prompt_message,
-                            finish_reason=chunk.candidates[0].finish_reason,
+                            finish_reason=str(chunk.candidates[0].finish_reason),
                             usage=usage
                         )
                     )
