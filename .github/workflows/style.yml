@@ -22,9 +22,7 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v44
         with:
-          files:  | 
-            api/**
-            dev/**
+          files: api/**
 
       - name: Install Poetry
         uses: abatilo/actions-poetry@v3
@@ -102,6 +100,7 @@ jobs:
             **.yaml
             **.yml
             Dockerfile
+            dev/**
 
       - name: Super-linter
         uses: super-linter/super-linter/slim@v6
