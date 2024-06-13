@@ -160,7 +160,9 @@ class HttpExecutor:
                 continue
 
             kv = kv.split(':', maxsplit=maxsplit)
-            if len(kv) == 2:
+            if len(kv) >= 3:
+                k, v = kv[0], ":".join(kv[1:])
+            elif len(kv) == 2:
                 k, v = kv
             elif len(kv) == 1:
                 k, v = kv[0], ''

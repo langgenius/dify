@@ -12,7 +12,7 @@ class NodeJsTemplateTransformer(TemplateTransformer):
             {cls._code_placeholder}
             
             // decode and prepare input object
-            var inputs_obj = JSON.parse(atob('{cls._inputs_placeholder}'))
+            var inputs_obj = JSON.parse(Buffer.from('{cls._inputs_placeholder}', 'base64').toString('utf-8'))
             
             // execute main function
             var output_obj = main(inputs_obj)

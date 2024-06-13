@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import VarReferenceVars from './var-reference-vars'
-import { type NodeOutPutVar, type ValueSelector } from '@/app/components/workflow/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 
 type Props = {
   vars: NodeOutPutVar[]
-  onChange: (value: ValueSelector) => void
+  onChange: (value: ValueSelector, varDetail: Var) => void
   itemWidth?: number
 }
 const VarReferencePopup: FC<Props> = ({

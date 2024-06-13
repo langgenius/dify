@@ -3,8 +3,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import Optional
 
-import yaml
-
+from core.helper.position_helper import get_position_map, sort_by_position_map
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from core.model_runtime.entities.model_entities import (
@@ -18,7 +17,7 @@ from core.model_runtime.entities.model_entities import (
 )
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
-from core.utils.position_helper import get_position_map, sort_by_position_map
+from core.tools.utils.yaml_utils import load_yaml_file
 
 
 class AIModel(ABC):
@@ -154,8 +153,7 @@ class AIModel(ABC):
         # traverse all model_schema_yaml_paths
         for model_schema_yaml_path in model_schema_yaml_paths:
             # read yaml data from yaml file
-            with open(model_schema_yaml_path, encoding='utf-8') as f:
-                yaml_data = yaml.safe_load(f)
+            yaml_data = load_yaml_file(model_schema_yaml_path, ignore_error=True)
 
             new_parameter_rules = []
             for parameter_rule in yaml_data.get('parameter_rules', []):

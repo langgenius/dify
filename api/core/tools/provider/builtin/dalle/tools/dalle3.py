@@ -1,3 +1,4 @@
+import random
 from base64 import b64decode
 from typing import Any, Union
 
@@ -9,10 +10,10 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class DallE3Tool(BuiltinTool):
-    def _invoke(self, 
-                user_id: str, 
-               tool_parameters: dict[str, Any], 
-        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(self,
+                user_id: str,
+                tool_parameters: dict[str, Any],
+                ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke tools
         """
@@ -68,8 +69,13 @@ class DallE3Tool(BuiltinTool):
         result = []
 
         for image in response.data:
-            result.append(self.create_blob_message(blob=b64decode(image.b64_json), 
-                                                   meta={ 'mime_type': 'image/png' },
-                                                    save_as=self.VARIABLE_KEY.IMAGE.value))
-
+            result.append(self.create_blob_message(blob=b64decode(image.b64_json),
+                                                   meta={'mime_type': 'image/png'},
+                                                   save_as=self.VARIABLE_KEY.IMAGE.value))
         return result
+
+    @staticmethod
+    def _generate_random_id(length=8):
+        characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+        random_id = ''.join(random.choices(characters, k=length))
+        return random_id
