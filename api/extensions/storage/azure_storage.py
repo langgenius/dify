@@ -39,7 +39,7 @@ class AzureStorage(BaseStorage):
         def generate(filename: str = filename) -> Generator:
             blob = client.get_blob_client(container=self.bucket_name, blob=filename)
             with closing(blob.download_blob()) as blob_stream:
-                while chunk := blob_stream.readall(4096):
+                while chunk := blob_stream.readall():
                     yield chunk
 
         return generate()

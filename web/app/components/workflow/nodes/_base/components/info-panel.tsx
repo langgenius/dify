@@ -17,7 +17,7 @@ const InfoPanel: FC<Props> = ({
         <div className='leading-4 text-[10px] font-medium text-gray-500 uppercase'>
           {title}
         </div>
-        <div className='leading-4 text-xs font-normal text-gray-700'>
+        <div className='leading-4 text-xs font-normal text-gray-700 break-words'>
           {content}
         </div>
       </div>

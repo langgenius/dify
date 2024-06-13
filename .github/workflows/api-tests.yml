@@ -14,7 +14,6 @@ concurrency:
 
 jobs:
   test:
-    name: API Tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -79,3 +78,76 @@ jobs:
 
       - name: Test Vector Stores
         run: dev/pytest/pytest_vdb.sh
+
+  test-in-poetry:
+    name: API Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'poetry'
+          cache-dependency-path: |
+            api/pyproject.toml
+            api/poetry.lock
+
+      - name: Poetry check
+        run: poetry check -C api
+
+      - name: Install dependencies
+        run: poetry install -C api --with dev
+
+      - name: Run Unit tests
+        run: poetry run -C api bash dev/pytest/pytest_unit_tests.sh
+
+      - name: Run ModelRuntime
+        run: poetry run -C api bash dev/pytest/pytest_model_runtime.sh
+
+      - name: Run Tool
+        run: poetry run -C api bash dev/pytest/pytest_tools.sh
+
+      - name: Set up Sandbox
+        uses: hoverkraft-tech/compose-action@v2.0.0
+        with:
+          compose-file: |
+            docker/docker-compose.middleware.yaml
+          services: |
+            sandbox
+            ssrf_proxy
+
+      - name: Run Workflow
+        run: poetry run -C api bash dev/pytest/pytest_workflow.sh
+
+      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS)
+        uses: hoverkraft-tech/compose-action@v2.0.0
+        with:
+          compose-file: |
+            docker/docker-compose.middleware.yaml
+            docker/docker-compose.qdrant.yaml
+            docker/docker-compose.milvus.yaml
+            docker/docker-compose.pgvecto-rs.yaml
+            docker/docker-compose.pgvector.yaml
+          services: |
+            weaviate
+            qdrant
+            etcd
+            minio
+            milvus-standalone
+            pgvecto-rs
+            pgvector
+
+      - name: Test Vector Stores
+        run: poetry run -C api bash dev/pytest/pytest_vdb.sh
