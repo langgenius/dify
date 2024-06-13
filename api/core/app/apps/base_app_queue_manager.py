@@ -5,6 +5,7 @@ from collections.abc import Generator
 from enum import Enum
 from typing import Any
 
+from flask import current_app
 from sqlalchemy.orm import DeclarativeMeta
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -47,7 +48,7 @@ class AppQueueManager:
         :return:
         """
         # wait for 10 minutes to stop listen
-        listen_timeout = 600
+        listen_timeout = current_app.config.get("APP_MAX_EXECUTION_TIME")
         start_time = time.time()
         last_ping_time = 0
 
