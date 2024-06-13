@@ -58,7 +58,7 @@ class LocalAILanguageModel(LargeLanguageModel):
                 stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         return self._generate(model=model, credentials=credentials, prompt_messages=prompt_messages,
-                                model_parameters=model_parameters, tools=tools, stop=stop, stream=stream, user=user)
+                              model_parameters=model_parameters, tools=tools, stop=stop, stream=stream, user=user)
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: list[PromptMessageTool] | None = None) -> int:
@@ -70,6 +70,7 @@ class LocalAILanguageModel(LargeLanguageModel):
             Calculate num tokens for baichuan model
             LocalAI does not supports
         """
+
         def tokens(text: str):
             """
                 We cloud not determine which tokenizer to use, cause the model is customized.
@@ -134,6 +135,7 @@ class LocalAILanguageModel(LargeLanguageModel):
         :param tools: tools for tool calling
         :return: number of tokens
         """
+
         def tokens(text: str):
             return self._get_num_tokens_by_gpt2(text)
 
@@ -248,8 +250,8 @@ class LocalAILanguageModel(LargeLanguageModel):
         return entity
 
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
-                 model_parameters: dict, tools: list[PromptMessageTool] | None = None,
-                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
+                  model_parameters: dict, tools: list[PromptMessageTool] | None = None,
+                  stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
 
         kwargs = self._to_client_kwargs(credentials)
@@ -389,10 +391,10 @@ class LocalAILanguageModel(LargeLanguageModel):
         return prompts
 
     def _handle_completion_generate_response(self, model: str,
-                                       prompt_messages: list[PromptMessage],
-                                       credentials: dict,
-                                       response: Completion,
-                                       ) -> LLMResult:
+                                             prompt_messages: list[PromptMessage],
+                                             credentials: dict,
+                                             response: Completion,
+                                             ) -> LLMResult:
         """
         Handle llm chat response
 
@@ -419,7 +421,8 @@ class LocalAILanguageModel(LargeLanguageModel):
         )
         completion_tokens = self._num_tokens_from_messages(messages=[assistant_prompt_message], tools=[])
 
-        usage = self._calc_response_usage(model=model, credentials=credentials, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
+        usage = self._calc_response_usage(model=model, credentials=credentials, prompt_tokens=prompt_tokens,
+                                          completion_tokens=completion_tokens)
 
         response = LLMResult(
             model=model,
@@ -464,7 +467,8 @@ class LocalAILanguageModel(LargeLanguageModel):
         prompt_tokens = self._num_tokens_from_messages(messages=prompt_messages, tools=tools)
         completion_tokens = self._num_tokens_from_messages(messages=[assistant_prompt_message], tools=tools)
 
-        usage = self._calc_response_usage(model=model, credentials=credentials, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
+        usage = self._calc_response_usage(model=model, credentials=credentials, prompt_tokens=prompt_tokens,
+                                          completion_tokens=completion_tokens)
 
         response = LLMResult(
             model=model,
@@ -477,10 +481,10 @@ class LocalAILanguageModel(LargeLanguageModel):
         return response
 
     def _handle_completion_generate_stream_response(self, model: str,
-                                              prompt_messages: list[PromptMessage],
-                                              credentials: dict,
-                                              response: Stream[Completion],
-                                              tools: list[PromptMessageTool]) -> Generator:
+                                                    prompt_messages: list[PromptMessage],
+                                                    credentials: dict,
+                                                    response: Stream[Completion],
+                                                    tools: list[PromptMessageTool]) -> Generator:
         full_response = ''
 
         for chunk in response:
