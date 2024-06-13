@@ -49,12 +49,12 @@ parameters:
       zh_Hans: 如果启用，爬虫将仅返回页面摘要内容。
     form: form
     options:
-      - value: true
+      - value: 'true'
         label:
-          en_US: Yes
+          en_US: 'Yes'
           zh_Hans: 是
-      - value: false
+      - value: 'false'
         label:
-          en_US: No
+          en_US: 'No'
           zh_Hans: 否
-    default: false
+    default: 'false'

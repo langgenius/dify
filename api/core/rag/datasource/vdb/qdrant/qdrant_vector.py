@@ -40,9 +40,9 @@ if TYPE_CHECKING:
 
 class QdrantConfig(BaseModel):
     endpoint: str
-    api_key: Optional[str]
+    api_key: Optional[str] = None
     timeout: float = 20
-    root_path: Optional[str]
+    root_path: Optional[str] = None
     grpc_port: int = 6334
     prefer_grpc: bool = False
 

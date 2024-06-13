@@ -85,6 +85,7 @@ DEFAULTS = {
     'WORKFLOW_MAX_EXECUTION_STEPS': 500,
     'WORKFLOW_MAX_EXECUTION_TIME': 1200,
     'WORKFLOW_CALL_MAX_DEPTH': 5,
+    'APP_MAX_EXECUTION_TIME': 1200,
 }
 
 
@@ -225,6 +226,7 @@ class Config:
         self.STORAGE_LOCAL_PATH = get_env('STORAGE_LOCAL_PATH')
 
         # S3 Storage settings
+        self.USE_AWS_MANAGED_IAM = get_env('USE_AWS_MANAGED_IAM')
         self.S3_ENDPOINT = get_env('S3_ENDPOINT')
         self.S3_BUCKET_NAME = get_env('S3_BUCKET_NAME')
         self.S3_ACCESS_KEY = get_env('S3_ACCESS_KEY')
@@ -372,6 +374,7 @@ class Config:
         self.WORKFLOW_MAX_EXECUTION_STEPS = int(get_env('WORKFLOW_MAX_EXECUTION_STEPS'))
         self.WORKFLOW_MAX_EXECUTION_TIME = int(get_env('WORKFLOW_MAX_EXECUTION_TIME'))
         self.WORKFLOW_CALL_MAX_DEPTH = int(get_env('WORKFLOW_CALL_MAX_DEPTH'))
+        self.APP_MAX_EXECUTION_TIME = int(get_env('APP_MAX_EXECUTION_TIME'))
 
         # Moderation in app Configurations.
         self.OUTPUT_MODERATION_BUFFER_SIZE = int(get_env('OUTPUT_MODERATION_BUFFER_SIZE'))
