@@ -7,8 +7,8 @@ from core.model_runtime.entities.message_entities import (
     PromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
-    UserPromptMessage,
     ToolPromptMessage,
+    UserPromptMessage,
 )
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
