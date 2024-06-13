@@ -3,14 +3,19 @@ import logging
 from typing import Any
 
 import sqlalchemy
+from flask import current_app
 from pydantic import BaseModel, root_validator
 from sqlalchemy import JSON, TEXT, Column, DateTime, String, Table, create_engine, insert
 from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session, declarative_base
 
+from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
+from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +43,9 @@ class TiDBVectorConfig(BaseModel):
 
 
 class TiDBVector(BaseVector):
+
+    def get_type(self) -> str:
+        return VectorType.TIDB_VECTOR
 
     def _table(self, dim: int) -> Table:
         from tidb_vector.sqlalchemy import VectorType
@@ -214,3 +222,28 @@ class TiDBVector(BaseVector):
         with Session(self._engine) as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS {self._collection_name};"""))
             session.commit()
+
+
+class TiDBVectorFactory(AbstractVectorFactory):
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TiDBVector:
+
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
+            collection_name = class_prefix.lower()
+        else:
+            dataset_id = dataset.id
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
+            dataset.index_struct = json.dumps(
+                self.gen_index_struct_dict(VectorType.TIDB_VECTOR, collection_name))
+
+        config = current_app.config
+        return TiDBVector(
+            collection_name=collection_name,
+            config=TiDBVectorConfig(
+                host=config.get('TIDB_VECTOR_HOST'),
+                port=config.get('TIDB_VECTOR_PORT'),
+                user=config.get('TIDB_VECTOR_USER'),
+                password=config.get('TIDB_VECTOR_PASSWORD'),
+                database=config.get('TIDB_VECTOR_DATABASE'),
+            ),
+        )

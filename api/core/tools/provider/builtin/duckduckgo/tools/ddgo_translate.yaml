@@ -1,0 +1,51 @@
+identity:
+  name: ddgo_translate
+  author: hjlarry
+  label:
+    en_US: DuckDuckGo Translate
+    zh_Hans: DuckDuckGo 翻译
+description:
+  human:
+    en_US: Use DuckDuckGo's translation feature.
+    zh_Hans: 使用DuckDuckGo的翻译功能。
+  llm: Use DuckDuckGo's translation feature.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Translate Content
+      zh_Hans: 翻译内容
+    human_description:
+      en_US: The translate content.
+      zh_Hans: 要翻译的内容。
+    llm_description: Key words for translate
+    form: llm
+  - name: translate_to
+    type: select
+    required: true
+    options:
+      - value: en
+        label:
+          en_US: English
+          zh_Hans: 英语
+      - value: zh-Hans
+        label:
+          en_US: Simplified Chinese
+          zh_Hans: 简体中文
+      - value: zh-Hant
+        label:
+          en_US: Traditional Chinese
+          zh_Hans: 繁体中文
+      - value: ja
+        label:
+          en_US: Japanese
+          zh_Hans: 日语
+    default: en
+    label:
+      en_US: Choose Language
+      zh_Hans: 选择语言
+    human_description:
+      en_US: select the language to translate.
+      zh_Hans: 选择要翻译的语言
+    form: form

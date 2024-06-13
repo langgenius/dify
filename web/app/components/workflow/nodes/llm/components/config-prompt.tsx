@@ -210,7 +210,7 @@ const ConfigPrompt: FC<Props> = ({
             <Editor
               instanceId={`${nodeId}-chat-workflow-llm-prompt-editor`}
               title={<span className='capitalize'>{t(`${i18nPrefix}.prompt`)}</span>}
-              value={(payload as PromptItem).edition_type === EditionType.basic ? (payload as PromptItem).text : ((payload as PromptItem).jinja2_text || '')}
+              value={((payload as PromptItem).edition_type === EditionType.basic || !(payload as PromptItem).edition_type) ? (payload as PromptItem).text : ((payload as PromptItem).jinja2_text || '')}
               onChange={handleCompletionPromptChange}
               readOnly={readOnly}
               isChatModel={isChatModel}

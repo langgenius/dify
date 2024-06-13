@@ -24,6 +24,9 @@ jobs:
         with:
           files: api/**
 
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v3
+
       - name: Set up Python
         uses: actions/setup-python@v5
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -32,15 +35,15 @@ jobs:
 
       - name: Python dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: pip install ruff dotenv-linter
+        run: poetry install -C api --only lint
 
       - name: Ruff check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: ruff check --preview ./api
+        run: poetry run -C api ruff check --preview ./api
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: dotenv-linter ./api/.env.example ./web/.env.example
+        run: poetry run -C api dotenv-linter ./api/.env.example ./web/.env.example
 
       - name: Lint hints
         if: failure()
