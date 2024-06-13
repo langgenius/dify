@@ -279,7 +279,7 @@ class MilvusVectorFactory(AbstractVectorFactory):
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
             dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
+                self.gen_index_struct_dict(VectorType.MILVUS, collection_name))
 
         config = current_app.config
         return MilvusVector(
