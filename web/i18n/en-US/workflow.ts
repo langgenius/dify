@@ -412,6 +412,23 @@ const translation = {
       iteration_other: '{{count}} Iterations',
       currentIteration: 'Current Iteration',
     },
+    note: {
+      addNote: 'Add Note',
+      editor: {
+        placeholder: 'Write your note...',
+        small: 'Small',
+        medium: 'Medium',
+        large: 'Large',
+        bold: 'Bold',
+        strikethrough: 'Strikethrough',
+        link: 'Link',
+        openLink: 'Open',
+        unlink: 'Unlink',
+        enterUrl: 'Enter URL...',
+        bulletList: 'Bullet List',
+        showAuthor: 'Show Author',
+      },
+    },
   },
   tracing: {
     stopBy: 'Stop by {{user}}',
