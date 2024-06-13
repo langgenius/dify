@@ -107,7 +107,6 @@ pycryptodome = "3.19.1"
 python-dotenv = "1.0.0"
 authlib = "1.2.0"
 boto3 = "1.28.17"
-tenacity = "8.2.2"
 cachetools = "~5.3.0"
 weaviate-client = "~3.21.0"
 mailchimp-transactional = "~1.0.50"
@@ -179,6 +178,7 @@ google-cloud-aiplatform = "1.49.0"
 vanna = {version = "0.5.5", extras = ["postgres", "mysql", "clickhouse", "duckdb"]}
 kaleido = "0.2.1"
 tencentcloud-sdk-python-hunyuan = "~3.0.1158"
+chromadb = "~0.5.0"
 
 [tool.poetry.group.dev]
 optional = true

@@ -306,6 +306,14 @@ class Config:
         self.TIDB_VECTOR_PASSWORD = get_env('TIDB_VECTOR_PASSWORD')
         self.TIDB_VECTOR_DATABASE = get_env('TIDB_VECTOR_DATABASE')
 
+        # chroma settings
+        self.CHROMA_HOST = get_env('CHROMA_HOST')
+        self.CHROMA_PORT = get_env('CHROMA_PORT')
+        self.CHROMA_TENANT = get_env('CHROMA_TENANT')
+        self.CHROMA_DATABASE = get_env('CHROMA_DATABASE')
+        self.CHROMA_AUTH_PROVIDER = get_env('CHROMA_AUTH_PROVIDER')
+        self.CHROMA_AUTH_CREDENTIALS = get_env('CHROMA_AUTH_CREDENTIALS')
+
         # ------------------------
         # Mail Configurations.
         # ------------------------
