@@ -11,7 +11,10 @@ export const useNote = (id: string) => {
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
   const handleEditorChange = useCallback((editorState: EditorState) => {
-    handleNodeDataUpdateWithSyncDraft({ id, data: { text: JSON.stringify(editorState.toJSON()) } })
+    if (!editorState?.isEmpty())
+      handleNodeDataUpdateWithSyncDraft({ id, data: { text: JSON.stringify(editorState.toJSON()) } })
+    else
+      handleNodeDataUpdateWithSyncDraft({ id, data: { text: '' } })
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
   const handleShowAuthorChange = useCallback((showAuthor: boolean) => {
