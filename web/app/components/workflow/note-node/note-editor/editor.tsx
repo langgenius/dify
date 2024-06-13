@@ -3,7 +3,6 @@
 import {
   memo,
   useCallback,
-  useState,
 } from 'react'
 import type { EditorState } from 'lexical'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
@@ -22,17 +21,13 @@ import Placeholder from '@/app/components/base/prompt-editor/plugins/placeholder
 type EditorProps = {
   placeholder?: string
   onChange?: (editorState: EditorState) => void
+  containerElement: HTMLDivElement | null
 }
 const Editor = ({
   placeholder = 'write you note...',
   onChange,
+  containerElement,
 }: EditorProps) => {
-  const [containerElement, setContainerElement] = useState<HTMLDivElement | null>(null)
-  const onRef = (_containerElement: HTMLDivElement) => {
-    if (_containerElement !== null)
-      setContainerElement(_containerElement)
-  }
-
   const handleEditorChange = useCallback((editorState: EditorState) => {
     onChange?.(editorState)
   }, [onChange])
@@ -41,7 +36,7 @@ const Editor = ({
     <div className='relative'>
       <RichTextPlugin
         contentEditable={
-          <div ref={onRef} className=''>
+          <div>
             <ContentEditable
               className='w-full h-full outline-none caret-primary-600'
               placeholder={placeholder}

@@ -426,6 +426,7 @@ const translation = {
         unlink: 'Unlink',
         enterUrl: 'Enter URL...',
         bulletList: 'Bullet List',
+        showAuthor: 'Show Author',
       },
     },
   },

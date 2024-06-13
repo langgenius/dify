@@ -14,8 +14,13 @@ export const useNote = (id: string) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { text: JSON.stringify(editorState.toJSON()) } })
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
+  const handleShowAuthorChange = useCallback((showAuthor: boolean) => {
+    handleNodeDataUpdateWithSyncDraft({ id, data: { showAuthor } })
+  }, [handleNodeDataUpdateWithSyncDraft, id])
+
   return {
     handleThemeChange,
     handleEditorChange,
+    handleShowAuthorChange,
   }
 }

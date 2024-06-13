@@ -14,6 +14,8 @@ const Toolbar = ({
   onCopy,
   onDuplicate,
   onDelete,
+  showAuthor,
+  onShowAuthorChange,
 }: ToolbarProps) => {
   return (
     <div className='inline-flex items-center p-0.5 bg-white rounded-lg border-[0.5px] border-black/5 shadow-sm'>
@@ -35,6 +37,8 @@ const Toolbar = ({
         onCopy={onCopy}
         onDuplicate={onDuplicate}
         onDelete={onDelete}
+        showAuthor={showAuthor}
+        onShowAuthorChange={onShowAuthorChange}
       />
     </div>
   )

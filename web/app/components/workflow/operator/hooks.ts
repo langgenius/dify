@@ -4,9 +4,11 @@ import { useWorkflowStore } from '../store'
 import type { NoteNodeType } from '../note-node/types'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { NoteTheme } from '../note-node/types'
+import { useAppContext } from '@/context/app-context'
 
 export const useOperator = () => {
   const workflowStore = useWorkflowStore()
+  const { userProfile } = useAppContext()
 
   const handleAddNote = useCallback(() => {
     const newNode = generateNewNode({
@@ -17,6 +19,8 @@ export const useOperator = () => {
         type: '' as any,
         text: '',
         theme: NoteTheme.blue,
+        author: userProfile?.name || '',
+        showAuthor: true,
         width: 240,
         height: 88,
         _isCandidate: true,
@@ -29,7 +33,7 @@ export const useOperator = () => {
     workflowStore.setState({
       candidateNode: newNode,
     })
-  }, [workflowStore])
+  }, [workflowStore, userProfile])
 
   return {
     handleAddNote,

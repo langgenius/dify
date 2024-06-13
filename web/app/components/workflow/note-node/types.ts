@@ -12,4 +12,6 @@ export enum NoteTheme {
 export type NoteNodeType = CommonNodeType & {
   text: string
   theme: NoteTheme
+  author: string
+  showAuthor: boolean
 }

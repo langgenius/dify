@@ -1,4 +1,8 @@
-import { memo, useCallback } from 'react'
+import {
+  memo,
+  useCallback,
+  useRef,
+} from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type { NodeProps } from 'reactflow'
@@ -26,10 +30,12 @@ const NoteNode = ({
   data,
 }: NodeProps<NoteNodeType>) => {
   const { t } = useTranslation()
+  const ref = useRef<HTMLDivElement | null>(null)
   const theme = data.theme
   const {
     handleThemeChange,
     handleEditorChange,
+    handleShowAuthorChange,
   } = useNote(id)
   const {
     handleNodesCopy,
@@ -52,6 +58,7 @@ const NoteNode = ({
         width: data.width,
         height: data.height,
       }}
+      ref={ref}
     >
       <NoteEditorContextProvider value={data.text}>
         <>
@@ -73,20 +80,30 @@ const NoteNode = ({
                   onCopy={handleNodesCopy}
                   onDuplicate={handleNodesDuplicate}
                   onDelete={handleDeleteNode}
+                  showAuthor={data.showAuthor}
+                  onShowAuthorChange={handleShowAuthorChange}
                 />
               </div>
             )
           }
           <div className='grow px-3 py-2.5 overflow-y-auto'>
             <div className={cn(
-              data.selected && 'nodrag nowheel',
+              data.selected && 'nodrag nowheel cursor-text',
             )}>
               <NoteEditor
+                containerElement={ref.current}
                 placeholder={t('workflow.nodes.note.editor.placeholder') || ''}
                 onChange={handleEditorChange}
               />
             </div>
           </div>
+          {
+            data.showAuthor && (
+              <div className='p-3 pt-0 text-xs text-black/[0.32]'>
+                {data.author}
+              </div>
+            )
+          }
         </>
       </NoteEditorContextProvider>
     </div>

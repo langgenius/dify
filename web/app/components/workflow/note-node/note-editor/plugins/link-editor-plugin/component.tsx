@@ -51,9 +51,6 @@ const LinkEditorComponent = ({
       refs.setReference(linkAnchorElement)
   }, [linkAnchorElement, refs])
 
-  if (!linkAnchorElement)
-    return null
-
   return (
     <>
       {
@@ -61,7 +58,7 @@ const LinkEditorComponent = ({
           <FloatingPortal root={containerElement}>
             <div
               className={cn(
-                'inline-flex items-center rounded-md border-[0.5px] border-black/5 bg-white z-10',
+                'inline-flex items-center w-max rounded-md border-[0.5px] border-black/5 bg-white z-10',
                 !linkOperatorShow && 'p-1 shadow-md',
                 linkOperatorShow && 'p-0.5 shadow-sm text-xs text-gray-500 font-medium',
               )}
