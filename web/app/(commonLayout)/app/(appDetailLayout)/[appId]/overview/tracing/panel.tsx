@@ -8,21 +8,6 @@ import ToggleExpandBtn from './toggle-fold-btn'
 import ConfigButton from './config-button'
 import { LangfuseIcon, LangsmithIcon } from '@/app/components/base/icons/src/public/tracing'
 const I18N_PREFIX = 'app.tracing'
-// const ConfigBtn = ({
-//   className,
-// }: {
-//   className?: string
-// }) => {
-
-//   return (
-//     <Button type='primary'
-//       className={cn(className, '!h-8 !px-3')}
-//     >
-//       <Settings04 className='mr-1 w-4 h-4' />
-//       <span className='text-[13px]'>{t(`${I18N_PREFIX}.config`)}</span>
-//     </Button>
-//   )
-// }
 
 const Panel: FC = () => {
   const { t } = useTranslation()
@@ -60,9 +45,7 @@ const Panel: FC = () => {
     <div className='inline-flex items-center p-2 rounded-xl border-[0.5px] border-gray-200 shadow-xs hover:bg-gray-200'>
       <TracingIcon size='md' className='mr-2' />
       <div className='leading-5 text-sm font-semibold text-gray-700'>{t(`${I18N_PREFIX}.title`)}</div>
-      <div className='ml-2 p-1'>
-        <ConfigButton hasConfigured />
-      </div>
+      <ConfigButton hasConfigured className='ml-2' />
       <div className='mx-2 w-px h-3.5 bg-gray-200'></div>
       <ToggleExpandBtn isFold={isFold} onFoldChange={setFold} />
     </div>
