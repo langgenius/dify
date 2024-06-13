@@ -226,6 +226,7 @@ class Config:
         self.STORAGE_LOCAL_PATH = get_env('STORAGE_LOCAL_PATH')
 
         # S3 Storage settings
+        self.USE_AWS_MANAGED_IAM = get_env('USE_AWS_MANAGED_IAM')
         self.S3_ENDPOINT = get_env('S3_ENDPOINT')
         self.S3_BUCKET_NAME = get_env('S3_BUCKET_NAME')
         self.S3_ACCESS_KEY = get_env('S3_ACCESS_KEY')
