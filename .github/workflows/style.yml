@@ -22,7 +22,9 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v44
         with:
-          files: api/**
+          files:  | 
+            api/**
+            dev/**
 
       - name: Install Poetry
         uses: abatilo/actions-poetry@v3
