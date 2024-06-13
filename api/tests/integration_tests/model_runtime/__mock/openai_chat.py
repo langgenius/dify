@@ -1,7 +1,7 @@
 import re
 from collections.abc import Generator
 from json import dumps, loads
-from time import sleep, time
+from time import time
 
 # import monkeypatch
 from typing import Any, Literal, Optional, Union
@@ -112,7 +112,6 @@ class MockChatClass:
         if not function_call:
             tool_calls = MockChatClass.generate_tool_calls(tools=tools)
 
-        sleep(1)
         return _ChatCompletion(
             id='cmpl-3QJQa5jXJ5Z5X',
             choices=[
@@ -151,7 +150,6 @@ class MockChatClass:
 
         full_text = "Hello, world!\n\n```python\nprint('Hello, world!')\n```"
         for i in range(0, len(full_text) + 1):
-            sleep(0.1)
             if i == len(full_text):
                 yield ChatCompletionChunk(
                     id='cmpl-3QJQa5jXJ5Z5X',
