@@ -28,7 +28,6 @@ const RenameModal: FC<IRenameModalProps> = ({
       title={t('common.chat.renameConversation')}
       isShow={isShow}
       onClose={onClose}
-      wrapperClassName='!z-50'
     >
       <div className={'mt-6 font-medium text-sm leading-[21px] text-gray-900'}>{t('common.chat.conversationName')}</div>
       <input className={'mt-2 w-full rounded-lg h-10 box-border px-3 text-sm leading-10 bg-gray-100'}
