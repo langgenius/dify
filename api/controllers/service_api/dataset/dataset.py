@@ -4,7 +4,7 @@ from werkzeug.exceptions import NotFound
 
 import services.dataset_service
 from controllers.service_api import api
-from controllers.service_api.dataset.error import DatasetNameDuplicateError, DatasetInUseError
+from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError
 from controllers.service_api.wraps import DatasetApiResource
 from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
