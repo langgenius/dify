@@ -8,6 +8,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageTool,
     SystemPromptMessage,
     UserPromptMessage,
+    ToolPromptMessage,
 )
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
@@ -32,9 +33,9 @@ from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors impor
 
 
 class BaichuanLarguageModel(LargeLanguageModel):
-    def _invoke(self, model: str, credentials: dict, 
-                prompt_messages: list[PromptMessage], model_parameters: dict, 
-                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+    def _invoke(self, model: str, credentials: dict,
+                prompt_messages: list[PromptMessage], model_parameters: dict,
+                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
                 stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         return self._generate(model=model, credentials=credentials, prompt_messages=prompt_messages,
@@ -85,9 +86,20 @@ class BaichuanLarguageModel(LargeLanguageModel):
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
             message_dict = {"role": "user", "content": message.content}
+        elif isinstance(message, ToolPromptMessage):
+            # copy from core/model_runtime/model_providers/anthropic/llm/llm.py
+            message = cast(ToolPromptMessage, message)
+            message_dict = {
+                "role": "user",
+                "content": [{
+                    "type": "tool_result",
+                    "tool_use_id": message.tool_call_id,
+                    "content": message.content
+                }]
+            }
         else:
             raise ValueError(f"Unknown message type {type(message)}")
-        
+
         return message_dict
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
@@ -106,13 +118,13 @@ class BaichuanLarguageModel(LargeLanguageModel):
         except Exception as e:
             raise CredentialsValidateFailedError(f"Invalid API key: {e}")
 
-    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
-                 model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
+    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                 model_parameters: dict, tools: list[PromptMessageTool] | None = None,
                  stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         if tools is not None and len(tools) > 0:
             raise InvokeBadRequestError("Baichuan model doesn't support tools")
-        
+
         instance = BaichuanModel(
             api_key=credentials['api_key'],
             secret_key=credentials.get('secret_key', '')
@@ -133,7 +145,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
 
         if stream:
             return self._handle_chat_generate_stream_response(model, prompt_messages, credentials, response)
-        
+
         return self._handle_chat_generate_response(model, prompt_messages, credentials, response)
 
     def _handle_chat_generate_response(self, model: str,

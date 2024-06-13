@@ -28,6 +28,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageTool,
     SystemPromptMessage,
     UserPromptMessage,
+    ToolPromptMessage,
 )
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -51,9 +52,9 @@ from core.model_runtime.utils import helper
 
 
 class LocalAILanguageModel(LargeLanguageModel):
-    def _invoke(self, model: str, credentials: dict, 
-                prompt_messages: list[PromptMessage], model_parameters: dict, 
-                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None, 
+    def _invoke(self, model: str, credentials: dict,
+                prompt_messages: list[PromptMessage], model_parameters: dict,
+                tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
                 stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         return self._generate(model=model, credentials=credentials, prompt_messages=prompt_messages,
@@ -67,7 +68,7 @@ class LocalAILanguageModel(LargeLanguageModel):
     def _num_tokens_from_messages(self, messages: list[PromptMessage], tools: list[PromptMessageTool]) -> int:
         """
             Calculate num tokens for baichuan model
-            LocalAI does not supports 
+            LocalAI does not supports
         """
         def tokens(text: str):
             """
@@ -124,7 +125,7 @@ class LocalAILanguageModel(LargeLanguageModel):
             num_tokens += self._num_tokens_for_tools(tools)
 
         return num_tokens
-    
+
     def _num_tokens_for_tools(self, tools: list[PromptMessageTool]) -> int:
         """
         Calculate num tokens for tool calling
@@ -193,7 +194,7 @@ class LocalAILanguageModel(LargeLanguageModel):
             completion_model = LLMMode.COMPLETION.value
         else:
             raise ValueError(f"Unknown completion type {credentials['completion_type']}")
-            
+
         rules = [
             ParameterRule(
                 name='temperature',
@@ -227,7 +228,7 @@ class LocalAILanguageModel(LargeLanguageModel):
             )
         ]
 
-        model_properties = { 
+        model_properties = {
             ModelPropertyKey.MODE: completion_model,
         } if completion_model else {}
 
@@ -246,11 +247,11 @@ class LocalAILanguageModel(LargeLanguageModel):
 
         return entity
 
-    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
-                 model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
+    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                 model_parameters: dict, tools: list[PromptMessageTool] | None = None,
                  stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
-        
+
         kwargs = self._to_client_kwargs(credentials)
         # init model client
         client = OpenAI(**kwargs)
@@ -271,7 +272,7 @@ class LocalAILanguageModel(LargeLanguageModel):
             extra_model_kwargs['functions'] = [
                 helper.dump_model(tool) for tool in tools
             ]
-        
+
         if completion_type == 'chat_completion':
             result = client.chat.completions.create(
                 messages=[self._convert_prompt_message_to_dict(m) for m in prompt_messages],
@@ -294,24 +295,24 @@ class LocalAILanguageModel(LargeLanguageModel):
         if stream:
             if completion_type == 'completion':
                 return self._handle_completion_generate_stream_response(
-                    model=model, credentials=credentials, response=result, tools=tools, 
+                    model=model, credentials=credentials, response=result, tools=tools,
                     prompt_messages=prompt_messages
                 )
             return self._handle_chat_generate_stream_response(
-                model=model, credentials=credentials, response=result, tools=tools, 
+                model=model, credentials=credentials, response=result, tools=tools,
                 prompt_messages=prompt_messages
             )
-        
+
         if completion_type == 'completion':
             return self._handle_completion_generate_response(
-                model=model, credentials=credentials, response=result, 
+                model=model, credentials=credentials, response=result,
                 prompt_messages=prompt_messages
             )
         return self._handle_chat_generate_response(
-            model=model, credentials=credentials, response=result, tools=tools, 
+            model=model, credentials=credentials, response=result, tools=tools,
             prompt_messages=prompt_messages
         )
-    
+
     def _to_client_kwargs(self, credentials: dict) -> dict:
         """
         Convert invoke kwargs to client kwargs
@@ -321,7 +322,7 @@ class LocalAILanguageModel(LargeLanguageModel):
         """
         if not credentials['server_url'].endswith('/'):
             credentials['server_url'] += '/'
-            
+
         client_kwargs = {
             "timeout": Timeout(315.0, read=300.0, write=10.0, connect=5.0),
             "api_key": "1",
@@ -351,9 +352,20 @@ class LocalAILanguageModel(LargeLanguageModel):
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
             message_dict = {"role": "system", "content": message.content}
+        elif isinstance(message, ToolPromptMessage):
+            # copy from core/model_runtime/model_providers/anthropic/llm/llm.py
+            message = cast(ToolPromptMessage, message)
+            message_dict = {
+                "role": "user",
+                "content": [{
+                    "type": "tool_result",
+                    "tool_use_id": message.tool_call_id,
+                    "content": message.content
+                }]
+            }
         else:
             raise ValueError(f"Unknown message type {type(message)}")
-        
+
         return message_dict
 
     def _convert_prompt_message_to_completion_prompts(self, messages: list[PromptMessage]) -> str:
@@ -373,7 +385,7 @@ class LocalAILanguageModel(LargeLanguageModel):
                 prompts += f'{message.content}\n'
             else:
                 raise ValueError(f"Unknown message type {type(message)}")
-        
+
         return prompts
 
     def _handle_completion_generate_response(self, model: str,
@@ -393,7 +405,7 @@ class LocalAILanguageModel(LargeLanguageModel):
         """
         if len(response.choices) == 0:
             raise InvokeServerUnavailableError("Empty response")
-        
+
         assistant_message = response.choices[0].text
 
         # transform assistant message to prompt message
@@ -436,7 +448,7 @@ class LocalAILanguageModel(LargeLanguageModel):
         """
         if len(response.choices) == 0:
             raise InvokeServerUnavailableError("Empty response")
-        
+
         assistant_message = response.choices[0].message
 
         # convert function call to tool call
@@ -496,9 +508,9 @@ class LocalAILanguageModel(LargeLanguageModel):
 
                 completion_tokens = self._num_tokens_from_messages(messages=[temp_assistant_prompt_message], tools=[])
 
-                usage = self._calc_response_usage(model=model, credentials=credentials, 
+                usage = self._calc_response_usage(model=model, credentials=credentials,
                                                   prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
-                
+
                 yield LLMResultChunk(
                     model=model,
                     prompt_messages=prompt_messages,
@@ -538,7 +550,7 @@ class LocalAILanguageModel(LargeLanguageModel):
 
             if delta.finish_reason is None and (delta.delta.content is None or delta.delta.content == ''):
                 continue
-            
+
             # check if there is a tool call in the response
             function_calls = None
             if delta.delta.function_call:
@@ -562,9 +574,9 @@ class LocalAILanguageModel(LargeLanguageModel):
                 prompt_tokens = self._num_tokens_from_messages(messages=prompt_messages, tools=tools)
                 completion_tokens = self._num_tokens_from_messages(messages=[temp_assistant_prompt_message], tools=[])
 
-                usage = self._calc_response_usage(model=model, credentials=credentials, 
+                usage = self._calc_response_usage(model=model, credentials=credentials,
                                                   prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
-                
+
                 yield LLMResultChunk(
                     model=model,
                     prompt_messages=prompt_messages,
@@ -613,7 +625,7 @@ class LocalAILanguageModel(LargeLanguageModel):
                 )
                 tool_calls.append(tool_call)
 
-        return tool_calls 
+        return tool_calls
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
