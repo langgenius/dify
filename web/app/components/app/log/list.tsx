@@ -185,7 +185,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         return
       const params: ChatMessagesRequest = {
         conversation_id: detail.id,
-        limit: 4,
+        limit: 10,
       }
       if (items?.[0]?.id)
         params.first_id = items?.[0]?.id.replace('question-', '')

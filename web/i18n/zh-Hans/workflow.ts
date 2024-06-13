@@ -67,6 +67,7 @@ const translation = {
     manageInTools: '访问工具页',
     workflowAsToolTip: '工作流更新后需要重新配置工具参数',
     viewDetailInTracingPanel: '查看详细信息',
+    syncingData: '同步数据中，只需几秒钟。',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',

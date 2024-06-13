@@ -1,15 +1,20 @@
 import json
 from typing import Any, Optional
 
-import tcvectordb
+from flask import current_app
 from pydantic import BaseModel
+from tcvectordb import VectorDBClient
 from tcvectordb.model import document, enum
 from tcvectordb.model import index as vdb_index
 from tcvectordb.model.document import Filter
 
+from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
+from models.dataset import Dataset
 
 
 class TencentConfig(BaseModel):
@@ -41,7 +46,7 @@ class TencentVector(BaseVector):
     def __init__(self, collection_name: str, config: TencentConfig):
         super().__init__(collection_name)
         self._client_config = config
-        self._client = tcvectordb.VectorDBClient(**self._client_config.to_tencent_params())
+        self._client = VectorDBClient(**self._client_config.to_tencent_params())
         self._db = self._init_database()
 
     def _init_database(self):
@@ -191,3 +196,32 @@ class TencentVector(BaseVector):
 
     def delete(self) -> None:
         self._db.drop_collection(name=self._collection_name)
+
+
+
+
+class TencentVectorFactory(AbstractVectorFactory):
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TencentVector:
+
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
+            collection_name = class_prefix.lower()
+        else:
+            dataset_id = dataset.id
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
+            dataset.index_struct = json.dumps(
+                self.gen_index_struct_dict(VectorType.TIDB_VECTOR, collection_name))
+
+        config = current_app.config
+        return TencentVector(
+            collection_name=collection_name,
+            config=TencentConfig(
+                url=config.get('TENCENT_VECTOR_DB_URL'),
+                api_key=config.get('TENCENT_VECTOR_DB_API_KEY'),
+                timeout=config.get('TENCENT_VECTOR_DB_TIMEOUT'),
+                username=config.get('TENCENT_VECTOR_DB_USERNAME'),
+                database=config.get('TENCENT_VECTOR_DB_DATABASE'),
+                shard=config.get('TENCENT_VECTOR_DB_SHARD'),
+                replicas=config.get('TENCENT_VECTOR_DB_REPLICAS'),
+            )
+        )

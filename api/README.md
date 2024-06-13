@@ -17,14 +17,29 @@
    ```bash
    sed -i "/^SECRET_KEY=/c\SECRET_KEY=$(openssl rand -base64 42)" .env
    ```
-4. If you use Anaconda, create a new environment and activate it
+4. Create environment.
+   - Anaconda  
+   If you use Anaconda, create a new environment and activate it
    ```bash
    conda create --name dify python=3.10
    conda activate dify
    ```
+   - Poetry  
+   If you use Poetry, you don't need to manually create the environment. You can execute `poetry shell` to activate the environment.
 5. Install dependencies
+   - Anaconda  
    ```bash
    pip install -r requirements.txt
+   ```
+   - Poetry  
+   ```bash
+   poetry install
+   ```
+   In case of contributors missing to update dependencies for `pyproject.toml`, you can perform the following shell instead.
+   ```base
+   poetry shell                                               # activate current environment
+   poetry add $(cat requirements.txt)           # install dependencies of production and update pyproject.toml
+   poetry add $(cat requirements-dev.txt) --group dev    # install dependencies of development and update pyproject.toml
    ```
 6. Run migrate
 

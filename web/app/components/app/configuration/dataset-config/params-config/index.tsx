@@ -84,7 +84,6 @@ const ParamsConfig: FC = () => {
               setOpen(false)
             }}
             className='sm:min-w-[528px]'
-            wrapperClassName='z-50'
             title={t('appDebug.datasetConfig.settingTitle')}
           >
             <ConfigContent
