@@ -94,8 +94,8 @@ const FireCrawl: FC<Props> = ({
     data: CrawlResultItem[]
     time_consuming: number | string
   } | undefined>(undefined)
-  const [crawlHasError, setCrawlHasError] = useState(false)
-  const showError = isCrawlFinished && crawlHasError
+  const [crawlErrorMessage, setCrawlErrorMessage] = useState('')
+  const showError = isCrawlFinished && crawlErrorMessage
 
   const waitForCrawlFinished = useCallback(async (jobId: string) => {
     try {
@@ -113,6 +113,7 @@ const FireCrawl: FC<Props> = ({
         // can't get the error message from the firecrawl api
         return {
           isError: true,
+          errorMessage: res.message,
           data: {
             data: [],
           },
@@ -126,9 +127,11 @@ const FireCrawl: FC<Props> = ({
       await sleep(2500)
       return await waitForCrawlFinished(jobId)
     }
-    catch (e) {
+    catch (e: any) {
+      const errorBody = await e.json()
       return {
         isError: true,
+        errorMessage: errorBody.message,
         data: {
           data: [],
         },
@@ -145,7 +148,6 @@ const FireCrawl: FC<Props> = ({
       })
       return
     }
-    setCrawlHasError(false)
     setStep(Step.running)
     try {
       const res = await createFirecrawlTask({
@@ -154,22 +156,23 @@ const FireCrawl: FC<Props> = ({
       }) as any
       const jobId = res.job_id
       onJobIdChange(jobId)
-      const { isError, data } = await waitForCrawlFinished(jobId)
+      const { isError, data, errorMessage } = await waitForCrawlFinished(jobId)
       if (isError) {
-        setCrawlHasError(true)
+        setCrawlErrorMessage(errorMessage || t(`${I18N_PREFIX}.unknownError`))
       }
       else {
         setCrawlResult(data)
-        setCrawlHasError(false)
+        setCrawlErrorMessage('')
       }
     }
     catch (e) {
-      setCrawlHasError(true)
+      setCrawlErrorMessage(t(`${I18N_PREFIX}.unknownError`)!)
+      console.log(e)
     }
     finally {
       setStep(Step.finished)
     }
-  }, [checkValid, crawlOptions, onJobIdChange, waitForCrawlFinished])
+  }, [checkValid, crawlOptions, onJobIdChange, t, waitForCrawlFinished])
 
   return (
     <div>
@@ -182,6 +185,7 @@ const FireCrawl: FC<Props> = ({
         >
           <Options className='mt-2' payload={crawlOptions} onChange={onCrawlOptionsChange} />
         </OptionsWrap>
+
         {!isInit && (
           <div className='mt-3 relative left-[-16px] w-[calc(100%_+_32px)] rounded-b-xl'>
             {isRunning
@@ -191,7 +195,7 @@ const FireCrawl: FC<Props> = ({
                 totalNum={crawlResult?.total || parseFloat(crawlOptions.limit as string) || 0}
               />}
             {showError && (
-              <ErrorMessage className='rounded-b-xl' title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} />
+              <ErrorMessage className='rounded-b-xl' title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={crawlErrorMessage} />
             )}
             {isCrawlFinished && !showError
               && <CrawledResult

@@ -83,7 +83,7 @@ const StepTwo = ({
   onSetting,
   datasetId,
   indexingType,
-  dataSourceType,
+  dataSourceType: inCreatePageDataSourceType,
   files,
   notionPages = [],
   websitePages = [],
@@ -101,6 +101,8 @@ const StepTwo = ({
   const isMobile = media === MediaType.mobile
 
   const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
+  const isInCreatePage = !datasetId || (datasetId && !currentDataset?.data_source_type)
+  const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : currentDataset?.data_source_type
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
   const previewScrollRef = useRef<HTMLDivElement>(null)
