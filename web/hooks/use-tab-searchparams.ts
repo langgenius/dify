@@ -1,4 +1,4 @@
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 
 type UseTabSearchParamsOptions = {
@@ -24,7 +24,6 @@ export const useTabSearchParams = ({
   searchParamName = 'category',
   disableSearchParams = false,
 }: UseTabSearchParamsOptions) => {
-  const router = useRouter()
   const pathName = usePathname()
   const searchParams = useSearchParams()
   const [activeTab, setTab] = useState<string>(
