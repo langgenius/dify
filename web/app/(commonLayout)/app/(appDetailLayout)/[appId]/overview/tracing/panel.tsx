@@ -10,6 +10,7 @@ import Button from '@/app/components/base/button'
 import { LangfuseIcon, LangsmithIcon } from '@/app/components/base/icons/src/public/tracing'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 const I18N_PREFIX = 'app.tracing'
+
 const ConfigBtn = ({
   className,
 }: {
@@ -32,7 +33,7 @@ const Panel: FC = () => {
 
   const inUseTracingTool: TracingTool | undefined = undefined
   const hasConfiguredTracing = !!inUseTracingTool
-  const [isFold, setFold] = useState(false)
+  const [isFold, setFold] = useState(true)
 
   if (!isFold) {
     return (
@@ -60,7 +61,14 @@ const Panel: FC = () => {
   }
 
   return (
-    <div>
+    <div className='inline-flex items-center p-2 rounded-xl border-[0.5px] border-gray-200 shadow-xs hover:bg-gray-200'>
+      <TracingIcon size='md' className='mr-2' />
+      <div className='leading-5 text-sm font-semibold text-gray-700'>{t(`${I18N_PREFIX}.title`)}</div>
+      <div className='ml-2 p-1'>
+        <Settings04 className='w-4 h-4 text-gray-500' />
+      </div>
+      <div className='mx-2 w-px h-3.5 bg-gray-200'></div>
+      <ToggleExpandBtn isFold={isFold} onFoldChange={setFold} />
     </div>
   )
 }
