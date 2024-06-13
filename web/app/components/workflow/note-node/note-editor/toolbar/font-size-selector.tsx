@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import cn from 'classnames'
+import { useTranslation } from 'react-i18next'
 import { useFontSize } from './hooks'
 import {
   PortalToFollowElem,
@@ -10,21 +11,22 @@ import { TitleCase } from '@/app/components/base/icons/src/vender/line/editor'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 
-const FONT_SIZE_LIST = [
-  {
-    key: 'Small',
-    value: '12px',
-  },
-  {
-    key: 'Medium',
-    value: '14px',
-  },
-  {
-    key: 'Large',
-    value: '16px',
-  },
-]
 const FontSizeSelector = () => {
+  const { t } = useTranslation()
+  const FONT_SIZE_LIST = [
+    {
+      key: '12px',
+      value: t('workflow.nodes.note.editor.small'),
+    },
+    {
+      key: '14px',
+      value: t('workflow.nodes.note.editor.medium'),
+    },
+    {
+      key: '16px',
+      value: t('workflow.nodes.note.editor.large'),
+    },
+  ]
   const {
     fontSizeSelectorShow,
     handleOpenFontSizeSelector,
@@ -45,7 +47,7 @@ const FontSizeSelector = () => {
           fontSizeSelectorShow && 'bg-gray-50',
         )}>
           <TitleCase className='mr-1 w-4 h-4' />
-          {FONT_SIZE_LIST.find(font => font.value === fontSize)?.key || 'Small'}
+          {FONT_SIZE_LIST.find(font => font.value === fontSize)?.value || t('workflow.nodes.note.editor.small')}
           <ChevronDown className='ml-0.5 w-3 h-3' />
         </div>
       </PortalToFollowElemTrigger>
@@ -57,17 +59,17 @@ const FontSizeSelector = () => {
                 key={font.key}
                 className='flex items-center justify-between pl-3 pr-2 h-8 rounded-md cursor-pointer hover:bg-gray-50'
                 onClick={() => {
-                  handleFontSize(font.value)
+                  handleFontSize(font.key)
                   handleOpenFontSizeSelector(false)
                 }}
               >
                 <div
-                  style={{ fontSize: font.value }}
+                  style={{ fontSize: font.key }}
                 >
-                  {font.key}
+                  {font.value}
                 </div>
                 {
-                  fontSize === font.value && (
+                  fontSize === font.key && (
                     <Check className='w-4 h-4 text-primary-500' />
                   )
                 }

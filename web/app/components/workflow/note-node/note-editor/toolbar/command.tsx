@@ -2,6 +2,7 @@ import {
   memo,
   useMemo,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useStore } from '../store'
 import { useCommand } from './hooks'
@@ -11,6 +12,7 @@ import {
   Dotpoints01,
   Strikethrough01,
 } from '@/app/components/base/icons/src/vender/line/editor'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type CommandProps = {
   type: 'bold' | 'strikethrough' | 'link' | 'bullet'
@@ -18,6 +20,7 @@ type CommandProps = {
 const Command = ({
   type,
 }: CommandProps) => {
+  const { t } = useTranslation()
   const selectedIsBold = useStore(s => s.selectedIsBold)
   const selectedIsStrikeThrough = useStore(s => s.selectedIsStrikeThrough)
   const selectedLinkUrl = useStore(s => s.selectedLinkUrl)
@@ -37,19 +40,34 @@ const Command = ({
     }
   }, [type, selectedIsBold, selectedIsStrikeThrough, selectedLinkUrl, selectedIsBullet])
 
+  const tip = useMemo(() => {
+    switch (type) {
+      case 'bold':
+        return t('workflow.nodes.note.editor.bold')
+      case 'strikethrough':
+        return t('workflow.nodes.note.editor.strikethrough')
+      case 'link':
+        return t('workflow.nodes.note.editor.link')
+      case 'bullet':
+        return t('workflow.nodes.note.editor.bulletList')
+    }
+  }, [type, t])
+
   return (
-    <div
-      className={cn(
-        'flex items-center justify-center w-8 h-8 cursor-pointer rounded-md text-gray-500 hover:text-gray-800 hover:bg-black/5',
-        type === 'bold' && selectedIsBold && 'bg-primary-50',
-        type === 'strikethrough' && selectedIsStrikeThrough && 'bg-primary-50',
-        type === 'link' && selectedLinkUrl && 'bg-primary-50',
-        type === 'bullet' && selectedIsBullet && 'bg-primary-50',
-      )}
-      onClick={() => handleCommand(type)}
-    >
-      {icon}
-    </div>
+    <TooltipPlus popupContent={tip}>
+      <div
+        className={cn(
+          'flex items-center justify-center w-8 h-8 cursor-pointer rounded-md text-gray-500 hover:text-gray-800 hover:bg-black/5',
+          type === 'bold' && selectedIsBold && 'bg-primary-50',
+          type === 'strikethrough' && selectedIsStrikeThrough && 'bg-primary-50',
+          type === 'link' && selectedLinkUrl && 'bg-primary-50',
+          type === 'bullet' && selectedIsBullet && 'bg-primary-50',
+        )}
+        onClick={() => handleCommand(type)}
+      >
+        {icon}
+      </div>
+    </TooltipPlus>
   )
 }
 

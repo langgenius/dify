@@ -988,6 +988,9 @@ export const useNodesInteractions = () => {
   }, [store])
 
   const handleNodeContextMenu = useCallback((e: MouseEvent, node: Node) => {
+    if (node.type === CUSTOM_NOTE_NODE)
+      return
+
     e.preventDefault()
     const container = document.querySelector('#workflow-container')
     const { x, y } = container!.getBoundingClientRect()
@@ -1064,6 +1067,7 @@ export const useNodesInteractions = () => {
         const nodeType = nodeToPaste.data.type
 
         const newNode = generateNewNode({
+          type: nodeToPaste.type,
           data: {
             ...NODES_INITIAL_DATA[nodeType],
             ...nodeToPaste.data,

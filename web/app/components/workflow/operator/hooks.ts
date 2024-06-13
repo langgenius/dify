@@ -17,6 +17,8 @@ export const useOperator = () => {
         type: '' as any,
         text: '',
         theme: NoteTheme.blue,
+        width: 240,
+        height: 88,
         _isCandidate: true,
       } as NoteNodeType,
       position: {

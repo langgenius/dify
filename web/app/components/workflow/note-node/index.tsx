@@ -1,6 +1,9 @@
-import { memo } from 'react'
+import { memo, useCallback } from 'react'
 import cn from 'classnames'
+import { useTranslation } from 'react-i18next'
 import type { NodeProps } from 'reactflow'
+import NodeResizer from '../nodes/_base/components/node-resizer'
+import { useNodesInteractions } from '../hooks'
 import {
   NoteEditor,
   NoteEditorContextProvider,
@@ -10,45 +13,78 @@ import { THEME_MAP } from './constants'
 import { useNote } from './hooks'
 import type { NoteNodeType } from './types'
 
+const Icon = () => {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path fill-rule="evenodd" clip-rule="evenodd" d="M12 9.75V6H13.5V9.75C13.5 11.8211 11.8211 13.5 9.75 13.5H6V12H9.75C10.9926 12 12 10.9926 12 9.75Z" fill="black" fill-opacity="0.16"/>
+    </svg>
+  )
+}
+
 const NoteNode = ({
   id,
   data,
 }: NodeProps<NoteNodeType>) => {
+  const { t } = useTranslation()
   const theme = data.theme
   const {
     handleThemeChange,
     handleEditorChange,
   } = useNote(id)
+  const {
+    handleNodesCopy,
+    handleNodesDuplicate,
+    handleNodeDelete,
+  } = useNodesInteractions()
+
+  const handleDeleteNode = useCallback(() => {
+    handleNodeDelete(id)
+  }, [id, handleNodeDelete])
 
   return (
     <div
       className={cn(
-        'relative rounded-md shadow-xs border hover:shadow-md',
+        'flex flex-col relative rounded-md shadow-xs border hover:shadow-md',
       )}
       style={{
         background: THEME_MAP[theme].bg,
         borderColor: data.selected ? THEME_MAP[theme].border : 'rgba(0, 0, 0, 0.05)',
+        width: data.width,
+        height: data.height,
       }}
     >
       <NoteEditorContextProvider value={data.text}>
         <>
-          <div className='h-2 opacity-50 rounded-t-md' style={{ background: THEME_MAP[theme].title }}></div>
+          <NodeResizer
+            nodeId={id}
+            nodeData={data}
+            icon={<Icon />}
+            minWidth={240}
+            maxWidth={640}
+            minHeight={88}
+          />
+          <div className='shrink-0 h-2 opacity-50 rounded-t-md' style={{ background: THEME_MAP[theme].title }}></div>
           {
             data.selected && (
               <div className='absolute -top-10 left-1/2 -translate-x-1/2'>
                 <NoteEditorToolbar
                   theme={theme}
                   onThemeChange={handleThemeChange}
+                  onCopy={handleNodesCopy}
+                  onDuplicate={handleNodesDuplicate}
+                  onDelete={handleDeleteNode}
                 />
               </div>
             )
           }
-          <div className='px-3 py-2.5 min-w-[240px] max-w-[640px] min-h-[52px]'>
+          <div className='grow px-3 py-2.5 overflow-y-auto'>
             <div className={cn(
-              'w-full h-full',
-              data.selected && 'nodrag',
+              data.selected && 'nodrag nowheel',
             )}>
-              <NoteEditor onChange={handleEditorChange} />
+              <NoteEditor
+                placeholder={t('workflow.nodes.note.editor.placeholder') || ''}
+                onChange={handleEditorChange}
+              />
             </div>
           </div>
         </>

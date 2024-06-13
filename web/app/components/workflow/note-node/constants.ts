@@ -11,7 +11,7 @@ export const THEME_MAP: Record<string, { outer: string; title: string; bg: strin
   },
   [NoteTheme.cyan]: {
     outer: '#06AED4',
-    title: 'CFF9FE',
+    title: '#CFF9FE',
     bg: '#ECFDFF',
     border: '#67E3F9',
   },

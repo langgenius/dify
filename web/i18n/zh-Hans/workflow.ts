@@ -412,6 +412,22 @@ const translation = {
       iteration_other: '{{count}}个迭代',
       currentIteration: '当前迭代',
     },
+    note: {
+      addNote: '添加注释',
+      editor: {
+        placeholder: '输入注释...',
+        small: '小',
+        medium: '中',
+        large: '大',
+        bold: '加粗',
+        strikethrough: '删除线',
+        link: '链接',
+        openLink: '打开',
+        unlink: '取消链接',
+        enterUrl: '输入链接...',
+        bulletList: '列表',
+      },
+    },
   },
   tracing: {
     stopBy: '由{{user}}终止',

@@ -38,17 +38,17 @@ const Editor = ({
   }, [onChange])
 
   return (
-    <div className='relative h-full'>
+    <div className='relative'>
       <RichTextPlugin
         contentEditable={
           <div ref={onRef} className=''>
             <ContentEditable
-              className='w-full h-full outline-none'
+              className='w-full h-full outline-none caret-primary-600'
               placeholder={placeholder}
             />
           </div>
         }
-        placeholder={<Placeholder value={placeholder} />}
+        placeholder={<Placeholder value={placeholder} compact />}
         ErrorBoundary={LexicalErrorBoundary}
       />
       <ClickableLinkPlugin disabled />

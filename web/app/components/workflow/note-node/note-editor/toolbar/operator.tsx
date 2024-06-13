@@ -2,7 +2,9 @@ import {
   memo,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -11,7 +13,17 @@ import {
 import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import Switch from '@/app/components/base/switch'
 
-const Operator = () => {
+export type OperatorProps = {
+  onCopy: () => void
+  onDuplicate: () => void
+  onDelete: () => void
+}
+const Operator = ({
+  onCopy,
+  onDelete,
+  onDuplicate,
+}: OperatorProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   return (
@@ -34,13 +46,25 @@ const Operator = () => {
       <PortalToFollowElemContent>
         <div className='min-w-[192px] bg-white rounded-md border-[0.5px] border-gray-200 shadow-xl'>
           <div className='p-1'>
-            <div className='flex items-center justify-between px-3 h-8 cursor-pointer rounded-md text-sm text-gray-700 hover:bg-black/5'>
-              <div>Copy</div>
-              <div>C</div>
+            <div
+              className='flex items-center justify-between px-3 h-8 cursor-pointer rounded-md text-sm text-gray-700 hover:bg-black/5'
+              onClick={() => {
+                onCopy()
+                setOpen(false)
+              }}
+            >
+              {t('workflow.common.copy')}
+              <ShortcutsName keys={['ctrl', 'c']} />
             </div>
-            <div className='flex items-center justify-between px-3 h-8 cursor-pointer rounded-md text-sm text-gray-700 hover:bg-black/5'>
-              <div>Duplicate</div>
-              <div>D</div>
+            <div
+              className='flex items-center justify-between px-3 h-8 cursor-pointer rounded-md text-sm text-gray-700 hover:bg-black/5'
+              onClick={() => {
+                onDuplicate()
+                setOpen(false)
+              }}
+            >
+              {t('workflow.common.duplicate')}
+              <ShortcutsName keys={['ctrl', 'd']} />
             </div>
           </div>
           <div className='h-[1px] bg-gray-100'></div>
@@ -52,9 +76,15 @@ const Operator = () => {
           </div>
           <div className='h-[1px] bg-gray-100'></div>
           <div className='p-1'>
-            <div className='flex items-center justify-between px-3 h-8 cursor-pointer rounded-md text-sm text-gray-700 hover:text-[#D92D20] hover:bg-[#FEF3F2]'>
-              <div>Delete</div>
-              <div>Backspace</div>
+            <div
+              className='flex items-center justify-between px-3 h-8 cursor-pointer rounded-md text-sm text-gray-700 hover:text-[#D92D20] hover:bg-[#FEF3F2]'
+              onClick={() => {
+                onDelete()
+                setOpen(false)
+              }}
+            >
+              {t('common.operation.delete')}
+              <ShortcutsName keys={['del']} />
             </div>
           </div>
         </div>
