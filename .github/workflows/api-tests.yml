@@ -107,7 +107,9 @@ jobs:
             api/poetry.lock
 
       - name: Poetry check
-        run: poetry check -C api
+        run: |
+          poetry check -C api
+          poetry show -C api
 
       - name: Install dependencies
         run: poetry install -C api --with dev
