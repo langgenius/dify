@@ -1,9 +1,6 @@
-import json
 import time
 
 import requests
-
-from extensions.ext_storage import storage
 
 
 class FirecrawlApp:
@@ -66,7 +63,7 @@ class FirecrawlApp:
             if crawl_status_response.get('status') == 'completed':
                 total = crawl_status_response.get('total', 0)
                 if total == 0:
-                    raise Exception(f'Failed to check crawl status. Error: No page found')
+                    raise Exception('Failed to check crawl status. Error: No page found')
                 data = crawl_status_response.get('data', [])
                 url_data_list = []
                 for item in data:

@@ -42,9 +42,8 @@ class FireCrawlDataSource(BearerDataSource):
 
         return response.json().get("status") == "success"
 
-
     def save_credentials(self):
-         # save data source binding
+        # save data source binding
         data_source_binding = DataSourceBearerBinding.query.filter(
             db.and_(
                 DataSourceBearerBinding.tenant_id == current_user.current_tenant_id,
