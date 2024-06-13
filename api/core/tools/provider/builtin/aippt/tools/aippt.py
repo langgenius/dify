@@ -507,9 +507,9 @@ class AIPPTGenerateTool(BuiltinTool):
             colors, styles = self.get_styles(user_id='__dify_system__')
         except Exception as e:
             colors, styles = [
-                {'id': -1, 'name': '__default__', 'en_name': '__default__'}
+                {'id': '-1', 'name': '__default__', 'en_name': '__default__'}
             ], [
-                {'id': -1, 'name': '__default__', 'en_name': '__default__'}
+                {'id': '-1', 'name': '__default__', 'en_name': '__default__'}
             ]
 
         return [

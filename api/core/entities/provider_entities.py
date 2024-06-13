@@ -97,3 +97,6 @@ class ModelSettings(BaseModel):
     model_type: ModelType
     enabled: bool = True
     load_balancing_configs: list[ModelLoadBalancingConfiguration] = []
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())

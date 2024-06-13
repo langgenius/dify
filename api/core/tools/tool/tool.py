@@ -24,9 +24,9 @@ from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 
 
 class Tool(BaseModel, ABC):
-    identity: ToolIdentity = None
+    identity: Optional[ToolIdentity] = None
     parameters: Optional[list[ToolParameter]] = None
-    description: ToolDescription = None
+    description: Optional[ToolDescription] = None
     is_team_authorization: bool = False
 
     # pydantic configs
@@ -46,15 +46,15 @@ class Tool(BaseModel, ABC):
             if not self.runtime_parameters:
                 self.runtime_parameters = {}
 
-        tenant_id: str = None
-        tool_id: str = None
-        invoke_from: InvokeFrom = None
-        tool_invoke_from: ToolInvokeFrom = None
-        credentials: dict[str, Any] = None
-        runtime_parameters: dict[str, Any] = None
+        tenant_id: Optional[str] = None
+        tool_id: Optional[str] = None
+        invoke_from: Optional[InvokeFrom] = None
+        tool_invoke_from: Optional[ToolInvokeFrom] = None
+        credentials: Optional[dict[str, Any]] = None
+        runtime_parameters: Optional[dict[str, Any]] = None
 
-    runtime: Runtime = None
-    variables: ToolRuntimeVariablePool = None
+    runtime: Optional[Runtime] = None
+    variables: Optional[ToolRuntimeVariablePool] = None
 
     def __init__(self, **data: Any):
         super().__init__(**data)
