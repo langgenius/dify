@@ -63,14 +63,7 @@ class FirecrawlApp:
         response = self._get_request(f'{self.base_url}/v0/crawl/status/{job_id}', headers)
         if response.status_code == 200:
             crawl_status_response = response.json()
-            if crawl_status_response.get('status') != 'completed':
-                return {
-                    'status': crawl_status_response.get('status'),
-                    'total': crawl_status_response.get('total'),
-                    'current': crawl_status_response.get('current'),
-                    'data': []
-                }
-            else:
+            if crawl_status_response.get('status') == 'completed':
                 total = crawl_status_response.get('total', 0)
                 if total == 0:
                     raise Exception(f'Failed to check crawl status. Error: No page found')
@@ -95,6 +88,15 @@ class FirecrawlApp:
                     'current': crawl_status_response.get('current'),
                     'data': url_data_list
                 }
+
+            else:
+                return {
+                    'status': crawl_status_response.get('status'),
+                    'total': crawl_status_response.get('total'),
+                    'current': crawl_status_response.get('current'),
+                    'data': []
+                }
+
         else:
             self._handle_error(response, 'check crawl status')
 
