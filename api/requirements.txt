@@ -75,7 +75,9 @@ qrcode~=7.4.2
 azure-storage-blob==12.13.0
 azure-identity==1.15.0
 lxml==5.1.0
-pydantic~=1.10.0
+pydantic~=2.7.3
+pydantic_extra_types~=2.8.0
+bump-pydantic~=0.8.0
 pgvecto-rs==0.1.4
 firecrawl-py==0.0.5
 oss2==2.18.5

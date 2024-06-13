@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.model_runtime.entities.model_entities import ModelType
 from models.provider import ProviderQuotaType
@@ -26,6 +26,9 @@ class RestrictModel(BaseModel):
     model: str
     base_model_name: Optional[str] = None
     model_type: ModelType
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class QuotaConfiguration(BaseModel):
@@ -64,6 +67,9 @@ class CustomModelConfiguration(BaseModel):
     model: str
     model_type: ModelType
     credentials: dict
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class CustomConfiguration(BaseModel):

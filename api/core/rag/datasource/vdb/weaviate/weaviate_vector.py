@@ -5,7 +5,7 @@ from typing import Any, Optional
 import requests
 import weaviate
 from flask import current_app
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, model_validator
 
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
@@ -19,10 +19,10 @@ from models.dataset import Dataset
 
 class WeaviateConfig(BaseModel):
     endpoint: str
-    api_key: Optional[str]
+    api_key: Optional[str] = None
     batch_size: int = 100
 
-    @root_validator()
+    @model_validator(mode='before')
     def validate_config(cls, values: dict) -> dict:
         if not values['endpoint']:
             raise ValueError("config WEAVIATE_ENDPOINT is required")

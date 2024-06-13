@@ -64,14 +64,14 @@ parameters:
     options:
       - value: true
         label:
-          en_US: Yes
+          en_US: 'Yes'
           zh_Hans: 是
-          pt_BR: Yes
+          pt_BR: 'Yes'
       - value: false
         label:
-          en_US: No
+          en_US: 'No'
           zh_Hans: 否
-          pt_BR: No
+          pt_BR: 'No'
     default: false
   - name: include_answer
     type: boolean
@@ -88,14 +88,14 @@ parameters:
     options:
       - value: true
         label:
-          en_US: Yes
+          en_US: 'Yes'
           zh_Hans: 是
-          pt_BR: Yes
+          pt_BR: 'Yes'
       - value: false
         label:
-          en_US: No
+          en_US: 'No'
           zh_Hans: 否
-          pt_BR: No
+          pt_BR: 'No'
     default: false
   - name: include_raw_content
     type: boolean
@@ -112,14 +112,14 @@ parameters:
     options:
       - value: true
         label:
-          en_US: Yes
+          en_US: 'Yes'
           zh_Hans: 是
-          pt_BR: Yes
+          pt_BR: 'Yes'
       - value: false
         label:
-          en_US: No
+          en_US: 'No'
           zh_Hans: 否
-          pt_BR: No
+          pt_BR: 'No'
     default: false
   - name: max_results
     type: number

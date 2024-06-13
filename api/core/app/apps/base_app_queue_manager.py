@@ -100,7 +100,7 @@ class AppQueueManager:
         :param pub_from:
         :return:
         """
-        self._check_for_sqlalchemy_models(event.dict())
+        self._check_for_sqlalchemy_models(event.model_dump())
         self._publish(event, pub_from)
 
     @abstractmethod

@@ -3,7 +3,8 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic_core.core_schema import ValidationInfo
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.file_obj import FileVar
@@ -28,8 +29,12 @@ class Tool(BaseModel, ABC):
     description: ToolDescription = None
     is_team_authorization: bool = False
 
-    @validator('parameters', pre=True, always=True)
-    def set_parameters(cls, v, values):
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
+    @classmethod
+    @field_validator('parameters', mode='before')
+    def set_parameters(cls, v, validation_info: ValidationInfo) -> list[ToolParameter]:
         return v or []
 
     class Runtime(BaseModel):
@@ -65,9 +70,9 @@ class Tool(BaseModel, ABC):
             :return: the new tool
         """
         return self.__class__(
-            identity=self.identity.copy() if self.identity else None,
+            identity=self.identity.model_copy() if self.identity else None,
             parameters=self.parameters.copy() if self.parameters else None,
-            description=self.description.copy() if self.description else None,
+            description=self.description.model_copy() if self.description else None,
             runtime=Tool.Runtime(**runtime),
         )
     
