@@ -47,7 +47,7 @@ const FontSizeSelector = () => {
           fontSizeSelectorShow && 'bg-gray-50',
         )}>
           <TitleCase className='mr-1 w-4 h-4' />
-          {FONT_SIZE_LIST.find(font => font.value === fontSize)?.value || t('workflow.nodes.note.editor.small')}
+          {FONT_SIZE_LIST.find(font => font.key === fontSize)?.value || t('workflow.nodes.note.editor.small')}
           <ChevronDown className='ml-0.5 w-3 h-3' />
         </div>
       </PortalToFollowElemTrigger>

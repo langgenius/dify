@@ -29,38 +29,38 @@ export const useOpenLink = () => {
       editor.registerCommand(
         CLICK_COMMAND,
         (payload) => {
-          const selection = $getSelection()
+          editor.getEditorState().read(() => {
+            const selection = $getSelection()
 
-          if ($isRangeSelection(selection) && selection.isCollapsed()) {
-            const node = getSelectedNode(selection)
-            const parent = node.getParent()
+            if ($isRangeSelection(selection) && selection.isCollapsed()) {
+              const node = getSelectedNode(selection)
+              const parent = node.getParent()
 
-            if ($isLinkNode(parent) || $isLinkNode(node)) {
-              const linkUrl = ((parent || node) as LinkNode).getURL()
-              if (payload.metaKey || payload.ctrlKey) {
-                window.open(linkUrl, '_blank')
-                return true
+              if ($isLinkNode(parent) || $isLinkNode(node)) {
+                const linkUrl = ((parent || node) as LinkNode).getURL()
+                if (payload.metaKey || payload.ctrlKey) {
+                  window.open(linkUrl, '_blank')
+                  return true
+                }
+                else {
+                  const {
+                    setLinkAnchorElement,
+                    setLinkOperatorShow,
+                  } = noteEditorStore.getState()
+                  setLinkAnchorElement(true)
+                  setLinkOperatorShow(true)
+                }
               }
               else {
                 const {
                   setLinkAnchorElement,
                   setLinkOperatorShow,
-                  setSelectedLinkUrl,
                 } = noteEditorStore.getState()
-                setLinkAnchorElement(true)
-                setSelectedLinkUrl(linkUrl)
-                setLinkOperatorShow(true)
+                setLinkAnchorElement()
+                setLinkOperatorShow(false)
               }
             }
-            else {
-              const {
-                setLinkAnchorElement,
-                setLinkOperatorShow,
-              } = noteEditorStore.getState()
-              setLinkAnchorElement()
-              setLinkOperatorShow(false)
-            }
-          }
+          })
           return false
         },
         COMMAND_PRIORITY_LOW,

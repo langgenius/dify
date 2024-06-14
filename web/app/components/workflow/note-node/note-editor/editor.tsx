@@ -38,6 +38,7 @@ const Editor = ({
         contentEditable={
           <div>
             <ContentEditable
+              spellCheck={false}
               className='w-full h-full outline-none caret-primary-600'
               placeholder={placeholder}
             />

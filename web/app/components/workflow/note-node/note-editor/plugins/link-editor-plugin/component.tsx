@@ -73,6 +73,7 @@ const LinkEditorComponent = ({
                       value={url}
                       onChange={e => setUrl(e.target.value)}
                       placeholder={t('workflow.nodes.note.editor.enterUrl') || ''}
+                      // autoFocus
                     />
                     <Button
                       type='primary'
