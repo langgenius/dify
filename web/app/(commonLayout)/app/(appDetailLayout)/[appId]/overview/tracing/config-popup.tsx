@@ -1,10 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useBoolean } from 'ahooks'
 import TracingIcon from './tracing-icon'
 import ProviderPanel from './provider-panel'
 import { TracingProvider } from './type'
+import ProviderConfigModal from './provider-config-modal'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
 
@@ -20,6 +22,24 @@ const ConfigPopup: FC<PopupProps> = ({
   onStatusChange,
 }) => {
   const { t } = useTranslation()
+
+  const [currentProvider, setCurrentProvider] = useState<TracingProvider | null>(TracingProvider.langSmith)
+  const [isShowConfigModal, {
+    setTrue: showConfigModal,
+    setFalse: hideConfigModal,
+  }] = useBoolean(true)
+  const handleOnConfig = useCallback((provider: TracingProvider) => {
+    return () => {
+      setCurrentProvider(provider)
+      showConfigModal()
+    }
+  }, [showConfigModal])
+
+  const handleOnChoose = useCallback((provider: TracingProvider) => {
+    return () => {
+      console.log(provider)
+    }
+  }, [])
 
   return (
     <div className='w-[420px] p-4 rounded-2xl bg-white border-[0.5px] border-black/5 shadow-lg'>
@@ -49,11 +69,24 @@ const ConfigPopup: FC<PopupProps> = ({
       <div className='mt-3'>
         <div className='leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle`)}</div>
         <div className='mt-2 space-y-2'>
-          <ProviderPanel type={TracingProvider.langSmith} />
-          <ProviderPanel type={TracingProvider.langfuse} />
+          <ProviderPanel
+            type={TracingProvider.langSmith}
+            onConfig={handleOnConfig(TracingProvider.langSmith)}
+            onChoose={handleOnChoose(TracingProvider.langSmith)}
+          />
+          <ProviderPanel type={TracingProvider.langfuse}
+            onConfig={handleOnConfig(TracingProvider.langfuse)}
+            onChoose={handleOnChoose(TracingProvider.langfuse)}
+          />
         </div>
       </div>
-
+      {isShowConfigModal && (
+        <ProviderConfigModal
+          type={currentProvider!}
+          onCancel={hideConfigModal}
+          onSaved={hideConfigModal}
+        />
+      )}
     </div>
   )
 }
