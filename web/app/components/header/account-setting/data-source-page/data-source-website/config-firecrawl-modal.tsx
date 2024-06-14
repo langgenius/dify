@@ -101,19 +101,19 @@ const ConfigFirecrawlModal: FC<Props> = ({
 
               <div className='space-y-4'>
                 <Field
-                  label='Base URL'
-                  labelClassName='!text-sm'
-                  value={config.base_url}
-                  onChange={handleConfigChange('base_url')}
-                  placeholder={DEFAULT_BASE_URL}
-                />
-                <Field
                   label='API Key'
                   labelClassName='!text-sm'
                   isRequired
                   value={config.api_key}
                   onChange={handleConfigChange('api_key')}
                   placeholder={t(`${I18N_PREFIX}.apiKeyPlaceholder`)!}
+                />
+                <Field
+                  label='Base URL'
+                  labelClassName='!text-sm'
+                  value={config.base_url}
+                  onChange={handleConfigChange('base_url')}
+                  placeholder={DEFAULT_BASE_URL}
                 />
               </div>
               <div className='my-8 flex justify-between items-center h-8'>
