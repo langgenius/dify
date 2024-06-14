@@ -37,4 +37,3 @@ parameters:
       zh_Hans: app_secret 是应用的秘钥
     llm_description: app_secret is the secret key of the application
     form: llm
-
