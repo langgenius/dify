@@ -24,6 +24,7 @@ DEFAULTS = {
     'APP_WEB_URL': 'https://udify.app',
     'FILES_URL': '',
     'FILES_ACCESS_TIMEOUT': 300,
+    'S3_USE_AWS_MANAGED_IAM': 'False',
     'S3_ADDRESS_STYLE': 'auto',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
@@ -226,6 +227,7 @@ class Config:
         self.STORAGE_LOCAL_PATH = get_env('STORAGE_LOCAL_PATH')
 
         # S3 Storage settings
+        self.S3_USE_AWS_MANAGED_IAM = get_bool_env('S3_USE_AWS_MANAGED_IAM')
         self.S3_ENDPOINT = get_env('S3_ENDPOINT')
         self.S3_BUCKET_NAME = get_env('S3_BUCKET_NAME')
         self.S3_ACCESS_KEY = get_env('S3_ACCESS_KEY')
