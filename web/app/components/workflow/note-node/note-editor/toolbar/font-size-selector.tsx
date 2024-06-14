@@ -58,7 +58,8 @@ const FontSizeSelector = () => {
               <div
                 key={font.key}
                 className='flex items-center justify-between pl-3 pr-2 h-8 rounded-md cursor-pointer hover:bg-gray-50'
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation()
                   handleFontSize(font.key)
                   handleOpenFontSizeSelector(false)
                 }}

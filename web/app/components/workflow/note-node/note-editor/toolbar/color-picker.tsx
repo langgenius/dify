@@ -79,7 +79,8 @@ const ColorPicker = ({
               <div
                 key={color.key}
                 className='group relative flex items-center justify-center w-8 h-8 rounded-md cursor-pointer'
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation()
                   onThemeChange(color.key)
                   setOpen(false)
                 }}
