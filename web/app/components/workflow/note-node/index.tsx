@@ -20,7 +20,7 @@ import type { NoteNodeType } from './types'
 const Icon = () => {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <path fill-rule="evenodd" clip-rule="evenodd" d="M12 9.75V6H13.5V9.75C13.5 11.8211 11.8211 13.5 9.75 13.5H6V12H9.75C10.9926 12 12 10.9926 12 9.75Z" fill="black" fill-opacity="0.16"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 9.75V6H13.5V9.75C13.5 11.8211 11.8211 13.5 9.75 13.5H6V12H9.75C10.9926 12 12 10.9926 12 9.75Z" fill="black" fillOpacity="0.16"/>
     </svg>
   )
 }
@@ -73,7 +73,7 @@ const NoteNode = ({
           <div className='shrink-0 h-2 opacity-50 rounded-t-md' style={{ background: THEME_MAP[theme].title }}></div>
           {
             data.selected && (
-              <div className='absolute -top-10 left-1/2 -translate-x-1/2'>
+              <div className='absolute -top-[41px] left-1/2 -translate-x-1/2'>
                 <NoteEditorToolbar
                   theme={theme}
                   onThemeChange={handleThemeChange}

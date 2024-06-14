@@ -23,7 +23,7 @@ const Command = ({
   const { t } = useTranslation()
   const selectedIsBold = useStore(s => s.selectedIsBold)
   const selectedIsStrikeThrough = useStore(s => s.selectedIsStrikeThrough)
-  const selectedLinkUrl = useStore(s => s.selectedLinkUrl)
+  const selectedIsLink = useStore(s => s.selectedIsLink)
   const selectedIsBullet = useStore(s => s.selectedIsBullet)
   const { handleCommand } = useCommand()
 
@@ -34,11 +34,11 @@ const Command = ({
       case 'strikethrough':
         return <Strikethrough01 className={cn('w-4 h-4', selectedIsStrikeThrough && 'text-primary-600')} />
       case 'link':
-        return <Link01 className={cn('w-4 h-4', selectedLinkUrl && 'text-primary-600')} />
+        return <Link01 className={cn('w-4 h-4', selectedIsLink && 'text-primary-600')} />
       case 'bullet':
         return <Dotpoints01 className={cn('w-4 h-4', selectedIsBullet && 'text-primary-600')} />
     }
-  }, [type, selectedIsBold, selectedIsStrikeThrough, selectedLinkUrl, selectedIsBullet])
+  }, [type, selectedIsBold, selectedIsStrikeThrough, selectedIsLink, selectedIsBullet])
 
   const tip = useMemo(() => {
     switch (type) {
@@ -60,7 +60,7 @@ const Command = ({
           'flex items-center justify-center w-8 h-8 cursor-pointer rounded-md text-gray-500 hover:text-gray-800 hover:bg-black/5',
           type === 'bold' && selectedIsBold && 'bg-primary-50',
           type === 'strikethrough' && selectedIsStrikeThrough && 'bg-primary-50',
-          type === 'link' && selectedLinkUrl && 'bg-primary-50',
+          type === 'link' && selectedIsLink && 'bg-primary-50',
           type === 'bullet' && selectedIsBullet && 'bg-primary-50',
         )}
         onClick={() => handleCommand(type)}

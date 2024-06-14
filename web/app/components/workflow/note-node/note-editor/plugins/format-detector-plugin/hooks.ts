@@ -31,6 +31,7 @@ export const useFormatDetector = () => {
           setSelectedIsBold,
           setSelectedIsStrikeThrough,
           setSelectedLinkUrl,
+          setSelectedIsLink,
           setSelectedIsBullet,
         } = noteEditorStore.getState()
         setSelectedIsBold(selection.hasFormat('bold'))
@@ -39,9 +40,11 @@ export const useFormatDetector = () => {
         if ($isLinkNode(parent) || $isLinkNode(node)) {
           const linkUrl = ($isLinkNode(parent) ? parent : node as LinkNode).getURL()
           setSelectedLinkUrl(linkUrl)
+          setSelectedIsLink(true)
         }
         else {
           setSelectedLinkUrl('')
+          setSelectedIsLink(false)
         }
 
         if ($isListItemNode(parent) || $isListItemNode(node))
