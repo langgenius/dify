@@ -16,7 +16,7 @@ class S3Storage(BaseStorage):
         super().__init__(app)
         app_config = self.app.config
         self.bucket_name = app_config.get('S3_BUCKET_NAME')
-        if app_config.get('USE_AWS_MANAGED_IAM'):
+        if app_config.get('S3_USE_AWS_MANAGED_IAM'):
             session = boto3.Session()
             self.client = session.client('s3')
         else:
