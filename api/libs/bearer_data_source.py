@@ -1,4 +1,3 @@
-
 # [REVIEW] Implement if Needed? Do we need a new type of data source
 from abc import abstractmethod
 
@@ -19,14 +18,13 @@ class BearerDataSource:
         """
         Validate the data source
         """
-    
 
 
 class FireCrawlDataSource(BearerDataSource):
     def validate_bearer_data_source(self):
         TEST_CRAWL_SITE_URL = "https://www.google.com"
         FIRECRAWL_API_VERSION = "v0"
-        
+
         test_api_endpoint = self.api_base_url.rstrip('/') + f"/{FIRECRAWL_API_VERSION}/scrape"
 
         headers = {
@@ -42,9 +40,8 @@ class FireCrawlDataSource(BearerDataSource):
 
         return response.json().get("status") == "success"
 
-
     def save_credentials(self):
-         # save data source binding
+        # save data source binding
         data_source_binding = DataSourceBearerBinding.query.filter(
             db.and_(
                 DataSourceBearerBinding.tenant_id == current_user.current_tenant_id,
