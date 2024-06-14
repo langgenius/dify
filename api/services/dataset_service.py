@@ -33,7 +33,7 @@ from models.dataset import (
 from models.model import UploadFile
 from models.source import DataSourceBinding
 from services.errors.account import NoPermissionError
-from services.errors.dataset import DatasetNameDuplicateError
+from services.errors.dataset import DatasetInUseError, DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 from services.feature_service import FeatureModel, FeatureService
@@ -232,7 +232,9 @@ class DatasetService:
 
     @staticmethod
     def delete_dataset(dataset_id, user):
-        # todo: cannot delete dataset if it is being processed
+        count = AppDatasetJoin.query.filter_by(dataset_id=dataset_id).count()
+        if count > 0:
+            raise DatasetInUseError()
 
         dataset = DatasetService.get_dataset(dataset_id)
 

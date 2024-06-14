@@ -8,7 +8,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class BingSearchTool(BuiltinTool):
-    url = 'https://api.bing.microsoft.com/v7.0/search'
+    url: str = 'https://api.bing.microsoft.com/v7.0/search'
 
     def _invoke_bing(self, 
                      user_id: str,
