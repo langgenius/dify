@@ -24,6 +24,7 @@ DEFAULTS = {
     'APP_WEB_URL': 'https://udify.app',
     'FILES_URL': '',
     'FILES_ACCESS_TIMEOUT': 300,
+    'S3_USE_AWS_MANAGED_IAM': 'False',
     'S3_ADDRESS_STYLE': 'auto',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
@@ -85,6 +86,7 @@ DEFAULTS = {
     'WORKFLOW_MAX_EXECUTION_STEPS': 500,
     'WORKFLOW_MAX_EXECUTION_TIME': 1200,
     'WORKFLOW_CALL_MAX_DEPTH': 5,
+    'APP_MAX_EXECUTION_TIME': 1200,
 }
 
 
@@ -225,6 +227,7 @@ class Config:
         self.STORAGE_LOCAL_PATH = get_env('STORAGE_LOCAL_PATH')
 
         # S3 Storage settings
+        self.S3_USE_AWS_MANAGED_IAM = get_bool_env('S3_USE_AWS_MANAGED_IAM')
         self.S3_ENDPOINT = get_env('S3_ENDPOINT')
         self.S3_BUCKET_NAME = get_env('S3_BUCKET_NAME')
         self.S3_ACCESS_KEY = get_env('S3_ACCESS_KEY')
@@ -306,6 +309,14 @@ class Config:
         self.TIDB_VECTOR_PASSWORD = get_env('TIDB_VECTOR_PASSWORD')
         self.TIDB_VECTOR_DATABASE = get_env('TIDB_VECTOR_DATABASE')
 
+        # chroma settings
+        self.CHROMA_HOST = get_env('CHROMA_HOST')
+        self.CHROMA_PORT = get_env('CHROMA_PORT')
+        self.CHROMA_TENANT = get_env('CHROMA_TENANT')
+        self.CHROMA_DATABASE = get_env('CHROMA_DATABASE')
+        self.CHROMA_AUTH_PROVIDER = get_env('CHROMA_AUTH_PROVIDER')
+        self.CHROMA_AUTH_CREDENTIALS = get_env('CHROMA_AUTH_CREDENTIALS')
+
         # ------------------------
         # Mail Configurations.
         # ------------------------
@@ -364,6 +375,7 @@ class Config:
         self.WORKFLOW_MAX_EXECUTION_STEPS = int(get_env('WORKFLOW_MAX_EXECUTION_STEPS'))
         self.WORKFLOW_MAX_EXECUTION_TIME = int(get_env('WORKFLOW_MAX_EXECUTION_TIME'))
         self.WORKFLOW_CALL_MAX_DEPTH = int(get_env('WORKFLOW_CALL_MAX_DEPTH'))
+        self.APP_MAX_EXECUTION_TIME = int(get_env('APP_MAX_EXECUTION_TIME'))
 
         # Moderation in app Configurations.
         self.OUTPUT_MODERATION_BUFFER_SIZE = int(get_env('OUTPUT_MODERATION_BUFFER_SIZE'))

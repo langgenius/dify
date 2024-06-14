@@ -98,7 +98,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         application_generate_entity = CompletionAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
-            model_config=ModelConfigConverter.convert(app_config),
+            model_conf=ModelConfigConverter.convert(app_config),
             inputs=self._get_cleaned_inputs(inputs, app_config),
             query=query,
             files=file_objs,
@@ -257,7 +257,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         application_generate_entity = CompletionAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
-            model_config=ModelConfigConverter.convert(app_config),
+            model_conf=ModelConfigConverter.convert(app_config),
             inputs=message.inputs,
             query=message.query,
             files=file_objs,

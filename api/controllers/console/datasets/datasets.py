@@ -8,7 +8,7 @@ import services
 from controllers.console import api
 from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
-from controllers.console.datasets.error import DatasetNameDuplicateError
+from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -217,10 +217,13 @@ class DatasetApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        if DatasetService.delete_dataset(dataset_id_str, current_user):
-            return {'result': 'success'}, 204
-        else:
-            raise NotFound("Dataset not found.")
+        try:
+            if DatasetService.delete_dataset(dataset_id_str, current_user):
+                return {'result': 'success'}, 204
+            else:
+                raise NotFound("Dataset not found.")
+        except services.errors.dataset.DatasetInUseError:
+            raise DatasetInUseError()
 
 
 class DatasetQueryApi(Resource):
@@ -479,7 +482,7 @@ class DatasetRetrievalSettingApi(Resource):
         vector_type = current_app.config['VECTOR_STORE']
 
         match vector_type:
-            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR:
+            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA:
                 return {
                     'retrieval_method': [
                         'semantic_search'
@@ -501,7 +504,7 @@ class DatasetRetrievalSettingMockApi(Resource):
     @account_initialization_required
     def get(self, vector_type):
         match vector_type:
-            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR:
+            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA:
                 return {
                     'retrieval_method': [
                         'semantic_search'
