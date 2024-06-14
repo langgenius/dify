@@ -24,6 +24,7 @@ DEFAULTS = {
     'APP_WEB_URL': 'https://udify.app',
     'FILES_URL': '',
     'FILES_ACCESS_TIMEOUT': 300,
+    'S3_USE_AWS_MANAGED_IAM': 'False',
     'S3_ADDRESS_STYLE': 'auto',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
@@ -226,6 +227,7 @@ class Config:
         self.STORAGE_LOCAL_PATH = get_env('STORAGE_LOCAL_PATH')
 
         # S3 Storage settings
+        self.S3_USE_AWS_MANAGED_IAM = get_bool_env('S3_USE_AWS_MANAGED_IAM')
         self.S3_ENDPOINT = get_env('S3_ENDPOINT')
         self.S3_BUCKET_NAME = get_env('S3_BUCKET_NAME')
         self.S3_ACCESS_KEY = get_env('S3_ACCESS_KEY')
@@ -285,6 +287,16 @@ class Config:
         self.RELYT_USER = get_env('RELYT_USER')
         self.RELYT_PASSWORD = get_env('RELYT_PASSWORD')
         self.RELYT_DATABASE = get_env('RELYT_DATABASE')
+
+
+        # tencent settings
+        self.TENCENT_VECTOR_DB_URL = get_env('TENCENT_VECTOR_DB_URL')
+        self.TENCENT_VECTOR_DB_API_KEY = get_env('TENCENT_VECTOR_DB_API_KEY')
+        self.TENCENT_VECTOR_DB_TIMEOUT = get_env('TENCENT_VECTOR_DB_TIMEOUT')
+        self.TENCENT_VECTOR_DB_USERNAME = get_env('TENCENT_VECTOR_DB_USERNAME')
+        self.TENCENT_VECTOR_DB_DATABASE = get_env('TENCENT_VECTOR_DB_DATABASE')
+        self.TENCENT_VECTOR_DB_SHARD = get_env('TENCENT_VECTOR_DB_SHARD')
+        self.TENCENT_VECTOR_DB_REPLICAS = get_env('TENCENT_VECTOR_DB_REPLICAS')
 
         # pgvecto rs settings
         self.PGVECTO_RS_HOST = get_env('PGVECTO_RS_HOST')
