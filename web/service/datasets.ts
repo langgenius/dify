@@ -257,6 +257,8 @@ export const checkFirecrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId:
     params: {
       provider: 'firecrawl',
     },
+  }, {
+    silent: true,
   })
 }
 
