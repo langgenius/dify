@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.qdrant.yaml
+    kompose.version: 1.34.0 (cbf2835db)
+  labels:
+    io.kompose.service: qdrant
+  name: qdrant
+spec:
+  ports:
+    - name: "6333"
+      port: 6333
+      targetPort: 6333
+    - name: "6334"
+      port: 6334
+      targetPort: 6334
+  selector:
+    io.kompose.service: qdrant

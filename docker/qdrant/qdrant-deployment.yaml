@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.qdrant.yaml
+    kompose.version: 1.34.0 (cbf2835db)
+  labels:
+    io.kompose.service: qdrant
+  name: qdrant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: qdrant
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.qdrant.yaml
+        kompose.version: 1.34.0 (cbf2835db)
+      labels:
+        io.kompose.service: qdrant
+    spec:
+      containers:
+        - env:
+            - name: QDRANT_API_KEY
+              value: difyai123456
+          image: langgenius/qdrant:v1.7.3
+          name: qdrant
+          ports:
+            - containerPort: 6333
+              protocol: TCP
+            - containerPort: 6334
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /qdrant/storage
+              name: qdrant-claim0
+      restartPolicy: Always
+      volumes:
+        - name: qdrant-claim0
+          persistentVolumeClaim:
+            claimName: qdrant-claim0

@@ -27,7 +27,7 @@ DEFAULTS = {
     'S3_ADDRESS_STYLE': 'auto',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
-    'CHECK_UPDATE_URL': 'https://updates.dify.ai',
+    'CHECK_UPDATE_URL': '',
     'DEPLOY_ENV': 'PRODUCTION',
     'SQLALCHEMY_DATABASE_URI_SCHEME': 'postgresql',
     'SQLALCHEMY_POOL_SIZE': 30,

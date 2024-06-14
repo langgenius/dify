@@ -10,10 +10,10 @@ from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.openai._common import _CommonOpenAI
+from core.model_runtime.model_providers.magico._common import _CommonOAI_API_Compat
 
 
-class OpenAITextEmbeddingModel(_CommonOpenAI, TextEmbeddingModel):
+class OpenAITextEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
     """
     Model class for OpenAI text embedding model.
     """
@@ -160,13 +160,24 @@ class OpenAITextEmbeddingModel(_CommonOpenAI, TextEmbeddingModel):
         :return: embeddings and used tokens
         """
         # call embedding model
-        response = client.embeddings.create(
-            input=texts,
-            model=model,
-            **extra_model_kwargs,
-        )
 
-        if 'encoding_format' in extra_model_kwargs and extra_model_kwargs['encoding_format'] == 'base64':
+        try:
+            response = client.embeddings.create(
+                input=texts,
+                model=model,
+                **extra_model_kwargs,
+            )
+        except Exception as e:
+            print(e)
+            raise e
+        
+
+        if (
+                'encoding_format' in extra_model_kwargs 
+                and extra_model_kwargs['encoding_format'] == 'base64'
+                and response.data
+                and isinstance(response.data[0].embedding, str)
+        ):
             # decode base64 embedding
             return ([list(np.frombuffer(base64.b64decode(data.embedding), dtype="float32")) for data in response.data],
                     response.usage.total_tokens)
