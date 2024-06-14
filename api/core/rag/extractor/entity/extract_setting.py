@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
 
 from models.dataset import Document
@@ -42,10 +44,10 @@ class ExtractSetting(BaseModel):
     Model class for provider response.
     """
     datasource_type: str
-    upload_file: UploadFile = None
-    notion_info: NotionInfo = None
-    website_info: WebsiteInfo = None
-    document_model: str = None
+    upload_file: Optional[UploadFile]
+    notion_info: Optional[NotionInfo]
+    website_info: Optional[WebsiteInfo]
+    document_model: Optional[str]
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, **data) -> None:
