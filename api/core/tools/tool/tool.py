@@ -237,10 +237,10 @@ class Tool(BaseModel, ABC):
         """
         # Temp fix for the issue that the tool parameters will be converted to empty while validating the credentials
         result = deepcopy(tool_parameters)
-        for parameter in self.parameters:
+        for parameter in self.parameters or []:
             if parameter.name in tool_parameters:
                 result[parameter.name] = ToolParameterConverter.cast_parameter_by_type(tool_parameters[parameter.name], parameter.type)
-        
+
         return result
 
     @abstractmethod
