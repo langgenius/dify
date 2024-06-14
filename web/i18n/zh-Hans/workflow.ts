@@ -425,6 +425,7 @@ const translation = {
         openLink: '打开',
         unlink: '取消链接',
         enterUrl: '输入链接...',
+        invalidUrl: '无效的链接',
         bulletList: '列表',
         showAuthor: '显示作者',
       },

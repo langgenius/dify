@@ -12,7 +12,7 @@ export const useNote = (id: string) => {
 
   const handleEditorChange = useCallback((editorState: EditorState) => {
     if (!editorState?.isEmpty())
-      handleNodeDataUpdateWithSyncDraft({ id, data: { text: JSON.stringify(editorState.toJSON()) } })
+      handleNodeDataUpdateWithSyncDraft({ id, data: { text: JSON.stringify(editorState) } })
     else
       handleNodeDataUpdateWithSyncDraft({ id, data: { text: '' } })
   }, [handleNodeDataUpdateWithSyncDraft, id])

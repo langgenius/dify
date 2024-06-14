@@ -425,6 +425,7 @@ const translation = {
         openLink: 'Open',
         unlink: 'Unlink',
         enterUrl: 'Enter URL...',
+        invalidUrl: 'Invalid URL',
         bulletList: 'Bullet List',
         showAuthor: 'Show Author',
       },

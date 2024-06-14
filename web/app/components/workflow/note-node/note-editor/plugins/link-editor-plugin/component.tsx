@@ -11,6 +11,7 @@ import {
   useFloating,
 } from '@floating-ui/react'
 import { useTranslation } from 'react-i18next'
+import { useClickAway } from 'ahooks'
 import cn from 'classnames'
 import { useStore } from '../../store'
 import { useLink } from './hooks'
@@ -35,6 +36,7 @@ const LinkEditorComponent = ({
   const selectedLinkUrl = useStore(s => s.selectedLinkUrl)
   const linkAnchorElement = useStore(s => s.linkAnchorElement)
   const linkOperatorShow = useStore(s => s.linkOperatorShow)
+  const setLinkAnchorElement = useStore(s => s.setLinkAnchorElement)
   const setLinkOperatorShow = useStore(s => s.setLinkOperatorShow)
   const [url, setUrl] = useState(selectedLinkUrl)
   const { refs, floatingStyles, elements } = useFloating({
@@ -45,6 +47,10 @@ const LinkEditorComponent = ({
       flip(),
     ],
   })
+
+  useClickAway(() => {
+    setLinkAnchorElement()
+  }, linkAnchorElement)
 
   useEffect(() => {
     setUrl(selectedLinkUrl)
@@ -62,7 +68,7 @@ const LinkEditorComponent = ({
           <FloatingPortal root={containerElement}>
             <div
               className={cn(
-                'inline-flex items-center w-max rounded-md border-[0.5px] border-black/5 bg-white z-10',
+                'nodrag nopan inline-flex items-center w-max rounded-md border-[0.5px] border-black/5 bg-white z-10',
                 !linkOperatorShow && 'p-1 shadow-md',
                 linkOperatorShow && 'p-0.5 shadow-sm text-xs text-gray-500 font-medium',
               )}
@@ -77,7 +83,7 @@ const LinkEditorComponent = ({
                       value={url}
                       onChange={e => setUrl(e.target.value)}
                       placeholder={t('workflow.nodes.note.editor.enterUrl') || ''}
-                      // autoFocus
+                      autoFocus
                     />
                     <Button
                       type='primary'
