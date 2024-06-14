@@ -3,6 +3,8 @@ import type { FC } from 'react'
 import React from 'react'
 import cn from 'classnames'
 import Input from './input'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 
 type Props = {
   className?: string
@@ -13,6 +15,7 @@ type Props = {
   isRequired?: boolean
   placeholder?: string
   isNumber?: boolean
+  tooltip?: string
 }
 
 const Field: FC<Props> = ({
@@ -24,12 +27,20 @@ const Field: FC<Props> = ({
   isRequired = false,
   placeholder = '',
   isNumber = false,
+  tooltip,
 }) => {
   return (
     <div className={cn(className)}>
       <div className='flex py-[7px]'>
         <div className={cn(labelClassName, 'flex items-center h-[18px] text-[13px] font-medium text-gray-900')}>{label} </div>
         {isRequired && <span className='ml-0.5 text-xs font-semibold text-[#D92D20]'>*</span>}
+        {tooltip && (
+          <TooltipPlus popupContent={
+            <div className='w-[200px]'>{tooltip}</div>
+          }>
+            <HelpCircle className='relative top-[3px] w-3 h-3 ml-1 text-gray-500' />
+          </TooltipPlus>
+        )}
       </div>
       <Input
         value={value}

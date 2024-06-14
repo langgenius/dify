@@ -73,12 +73,6 @@ const FireCrawl: FC<Props> = ({
       })
     }
 
-    if (!errorMsg && (crawlOptions.max_depth === null || crawlOptions.max_depth === undefined || crawlOptions.max_depth === '')) {
-      errorMsg = t(`${ERROR_I18N_PREFIX}.fieldRequired`, {
-        field: t(`${I18N_PREFIX}.maxDepth`),
-      })
-    }
-
     return {
       isValid: !errorMsg,
       errorMsg,
@@ -150,9 +144,15 @@ const FireCrawl: FC<Props> = ({
     }
     setStep(Step.running)
     try {
+      const passToServerCrawlOptions: any = {
+        ...crawlOptions,
+      }
+      if (crawlOptions.max_depth === '')
+        delete passToServerCrawlOptions.max_depth
+
       const res = await createFirecrawlTask({
         url,
-        options: crawlOptions,
+        options: passToServerCrawlOptions,
       }) as any
       const jobId = res.job_id
       onJobIdChange(jobId)
