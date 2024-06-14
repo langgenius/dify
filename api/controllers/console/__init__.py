@@ -54,4 +54,4 @@ from .explore import (
 from .tag import tags
 
 # Import workspace controllers
-from .workspace import account, members, model_providers, models, tool_providers, workspace
+from .workspace import account, load_balancing_config, members, model_providers, models, tool_providers, workspace

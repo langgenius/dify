@@ -236,7 +236,7 @@ const Form: FC<FormProps> = ({
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className='flex items-center justify-between py-2 text-sm text-gray-900'>
             <div className='flex items-center space-x-2'>
-              <span>{label[language] || label.en_US}</span>
+              <span className={cn(fieldLabelClassName, 'py-2 text-sm text-gray-900')}>{label[language] || label.en_US}</span>
               {tooltipContent}
             </div>
             <Radio.Group

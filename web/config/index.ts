@@ -33,6 +33,8 @@ export const PUBLIC_API_PREFIX: string = publicApiPrefix
 const EDITION = process.env.NEXT_PUBLIC_EDITION || globalThis.document?.body?.getAttribute('data-public-edition') || 'SELF_HOSTED'
 export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
 
+export const SUPPORT_MAIL_LOGIN = !!(process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN || globalThis.document?.body?.getAttribute('data-public-support-mail-login'))
+
 export const TONE_LIST = [
   {
     id: 1,
