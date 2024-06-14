@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import type { PopupProps } from './config-popup'
 import ConfigPopup from './config-popup'
 import Button from '@/app/components/base/button'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
@@ -11,19 +12,20 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+
 const I18N_PREFIX = 'app.tracing'
 
 type Props = {
   className?: string
-
   hasConfigured: boolean
   onConfigured?: () => void
-}
+} & PopupProps
 
 const ConfigBtn: FC<Props> = ({
   className,
   hasConfigured,
   onConfigured,
+  ...popupProps
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(true)
@@ -51,12 +53,15 @@ const ConfigBtn: FC<Props> = ({
       open={open}
       onOpenChange={setOpen}
       placement='bottom-end'
+      offset={{
+        mainAxis: 12,
+      }}
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         {triggerContent}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
-        <ConfigPopup />
+        <ConfigPopup {...popupProps} />
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )

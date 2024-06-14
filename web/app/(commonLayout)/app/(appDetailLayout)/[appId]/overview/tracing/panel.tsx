@@ -16,6 +16,8 @@ const Panel: FC = () => {
   const hasConfiguredTracing = !!inUseTracingTool
   const [isFold, setFold] = useState(true)
 
+  const [enabled, setEnabled] = useState(false)
+
   if (!isFold && !hasConfiguredTracing) {
     return (
       <div className='flex justify-between p-3 pr-4 items-center bg-white border-[0.5px] border-black/8 rounded-xl shadow-md'>
@@ -34,7 +36,11 @@ const Panel: FC = () => {
         </div>
 
         <div className='flex items-center space-x-1'>
-          <ConfigButton hasConfigured={false} />
+          <ConfigButton
+            hasConfigured={false}
+            enabled={enabled}
+            onStatusChange={setEnabled}
+          />
           <ToggleExpandBtn isFold={isFold} onFoldChange={setFold} />
         </div>
       </div>
@@ -45,7 +51,12 @@ const Panel: FC = () => {
     <div className='inline-flex items-center p-2 rounded-xl border-[0.5px] border-gray-200 shadow-xs hover:bg-gray-200'>
       <TracingIcon size='md' className='mr-2' />
       <div className='leading-5 text-sm font-semibold text-gray-700'>{t(`${I18N_PREFIX}.title`)}</div>
-      <ConfigButton hasConfigured className='ml-2' />
+      <ConfigButton
+        hasConfigured
+        className='ml-2'
+        enabled={enabled}
+        onStatusChange={setEnabled}
+      />
       <div className='mx-2 w-px h-3.5 bg-gray-200'></div>
       <ToggleExpandBtn isFold={isFold} onFoldChange={setFold} />
     </div>
