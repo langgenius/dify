@@ -51,7 +51,6 @@ from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
 
 
-
 class DatasetService:
 
     @staticmethod
