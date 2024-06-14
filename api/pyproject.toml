@@ -78,6 +78,9 @@ CODE_MAX_STRING_LENGTH = "80000"
 CODE_EXECUTION_ENDPOINT="http://127.0.0.1:8194"
 CODE_EXECUTION_API_KEY="dify-sandbox"
 
+FIRECRAWL_API_KEY = "fc-"
+
+
 
 [tool.poetry]
 name = "dify-api"

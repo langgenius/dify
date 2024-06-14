@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
 
 from models.dataset import Document
@@ -19,14 +21,33 @@ class NotionInfo(BaseModel):
         super().__init__(**data)
 
 
+class WebsiteInfo(BaseModel):
+    """
+    website import info.
+    """
+    provider: str
+    job_id: str
+    url: str
+    mode: str
+    tenant_id: str
+    only_main_content: bool = False
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, **data) -> None:
+        super().__init__(**data)
+
+
 class ExtractSetting(BaseModel):
     """
     Model class for provider response.
     """
     datasource_type: str
-    upload_file: UploadFile = None
-    notion_info: NotionInfo = None
-    document_model: str = None
+    upload_file: Optional[UploadFile]
+    notion_info: Optional[NotionInfo]
+    website_info: Optional[WebsiteInfo]
+    document_model: Optional[str]
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, **data) -> None:
