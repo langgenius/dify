@@ -1,14 +1,14 @@
 identity:
-  author: Dify
   name: websearch
+  author: Dify
   label:
-    en_US: SearchApi
-    zh_Hans: SearchApi
-    pt_BR: SearchApi
+    en_US: Serply.io
+    zh_Hans: Serply.io
+    pt_BR: Serply.io
   description:
-    en_US: SearchApi is a robust real-time SERP API delivering structured data from a collection of search engines including Google Search, Google Jobs, YouTube, Google News, and many more.
-    zh_Hans: SearchApi 是一个强大的实时 SERP API，可提供来自 Google 搜索、Google 招聘、YouTube、Google 新闻等搜索引擎集合的结构化数据。
-    pt_BR: SearchApi is a robust real-time SERP API delivering structured data from a collection of search engines including Google Search, Google Jobs, YouTube, Google News, and many more.
+    en_US: Serply.io is a robust real-time SERP API delivering structured data from a collection of search engines including Web Search, Jobs, News, and many more.
+    zh_Hans: Serply.io 是一个强大的实时 SERP API，可提供来自 搜索 招聘 新闻等搜索引擎集合的结构化数据。
+    pt_BR: Serply.io is a robust real-time SERP API delivering structured data from a collection of search engines including Web Search, Jobs, News, and many more.
   icon: icon.svg
   tags:
     - search

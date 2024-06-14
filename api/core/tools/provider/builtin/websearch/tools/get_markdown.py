@@ -1,6 +1,6 @@
 from typing import Any, Union
-from urllib.parse import urlencode
 import requests
+import logging
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -28,9 +28,10 @@ class SerplyApi:
             "X-Proxy-Location": location,
             "User-Agent": "Dify",
         }
-
-        data = {"url": url, "method": "get", "response_type": "markdown"}
+        logging.warning(url)
+        data = {"url": url, "method": "GET", "response_type": "markdown"}
         res = requests.post(url, headers=headers, json=data)
+        logging.warning(res.content)
         return res.text
 
 

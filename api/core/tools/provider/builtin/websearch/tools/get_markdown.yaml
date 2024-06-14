@@ -6,9 +6,9 @@ identity:
     zh_Hans: Get Markdown API
 description:
   human:
-    en_US: A tool to retrieve content from a URL without getting blocked.
-    zh_Hans: 一种从链接检索内容而不被阻止的工具。
-  llm: A tool to retrieve content from a URL without getting blocked.
+    en_US: A tool to perform convert a webpage to markdown to make it easier for LLMs to understand.
+    zh_Hans: 一个将网页转换为 Markdown 的工具，以便法学硕士更容易理解
+  llm: A tool to perform convert a webpage to markdown to make it easier for LLMs to understand.
 parameters:
   - name: url
     type: string

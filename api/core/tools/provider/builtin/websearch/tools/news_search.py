@@ -61,7 +61,7 @@ class SerplyApi:
                     ])
                 )
             except KeyError:
-                next
+                continue
 
         content = "\n".join(string)
         return f"\nNews:\n {content}\n"
