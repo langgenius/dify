@@ -42,15 +42,19 @@ export const useCommand = () => {
       editor.update(() => {
         const selection = $getSelection()
 
-        if ($isRangeSelection(selection) && !selection.isCollapsed()) {
+        if ($isRangeSelection(selection)) {
           const node = getSelectedNode(selection)
           const parent = node.getParent()
-
-          if (!($isLinkNode(parent) && $isLinkNode(node)))
-            editor.dispatchCommand(TOGGLE_LINK_COMMAND, '')
-
           const { setLinkAnchorElement } = noteEditorStore.getState()
-          setLinkAnchorElement(true)
+
+          if ($isLinkNode(parent) || $isLinkNode(node)) {
+            editor.dispatchCommand(TOGGLE_LINK_COMMAND, null)
+            setLinkAnchorElement()
+          }
+          else {
+            editor.dispatchCommand(TOGGLE_LINK_COMMAND, '')
+            setLinkAnchorElement(true)
+          }
         }
       })
     }
