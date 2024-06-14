@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from models.dataset import Document
 from models.model import UploadFile
@@ -13,9 +13,7 @@ class NotionInfo(BaseModel):
     notion_page_type: str
     document: Document = None
     tenant_id: str
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, **data) -> None:
         super().__init__(**data)
@@ -48,9 +46,7 @@ class ExtractSetting(BaseModel):
     notion_info: NotionInfo = None
     website_info: WebsiteInfo = None
     document_model: str = None
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, **data) -> None:
         super().__init__(**data)

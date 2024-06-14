@@ -52,6 +52,9 @@ class Vector:
     @staticmethod
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
         match vector_type:
+            case VectorType.CHROMA:
+                from core.rag.datasource.vdb.chroma.chroma_vector import ChromaVectorFactory
+                return ChromaVectorFactory
             case VectorType.MILVUS:
                 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
                 return MilvusVectorFactory

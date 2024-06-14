@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import get_position_map, sort_to_dict_by_position_map
@@ -19,11 +19,7 @@ class ModelProviderExtension(BaseModel):
     provider_instance: ModelProvider
     name: str
     position: Optional[int] = None
-
-    class Config:
-        """Configuration for this pydantic object."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ModelProviderFactory:

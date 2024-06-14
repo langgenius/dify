@@ -1,5 +1,5 @@
 from flask import current_app
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -30,6 +30,9 @@ class FeatureModel(BaseModel):
     docs_processing: str = 'standard'
     can_replace_logo: bool = False
     model_load_balancing_enabled: bool = False
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class SystemFeatureModel(BaseModel):

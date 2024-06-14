@@ -85,6 +85,7 @@ DEFAULTS = {
     'WORKFLOW_MAX_EXECUTION_STEPS': 500,
     'WORKFLOW_MAX_EXECUTION_TIME': 1200,
     'WORKFLOW_CALL_MAX_DEPTH': 5,
+    'APP_MAX_EXECUTION_TIME': 1200,
 }
 
 
@@ -306,6 +307,14 @@ class Config:
         self.TIDB_VECTOR_PASSWORD = get_env('TIDB_VECTOR_PASSWORD')
         self.TIDB_VECTOR_DATABASE = get_env('TIDB_VECTOR_DATABASE')
 
+        # chroma settings
+        self.CHROMA_HOST = get_env('CHROMA_HOST')
+        self.CHROMA_PORT = get_env('CHROMA_PORT')
+        self.CHROMA_TENANT = get_env('CHROMA_TENANT')
+        self.CHROMA_DATABASE = get_env('CHROMA_DATABASE')
+        self.CHROMA_AUTH_PROVIDER = get_env('CHROMA_AUTH_PROVIDER')
+        self.CHROMA_AUTH_CREDENTIALS = get_env('CHROMA_AUTH_CREDENTIALS')
+
         # ------------------------
         # Mail Configurations.
         # ------------------------
@@ -364,6 +373,7 @@ class Config:
         self.WORKFLOW_MAX_EXECUTION_STEPS = int(get_env('WORKFLOW_MAX_EXECUTION_STEPS'))
         self.WORKFLOW_MAX_EXECUTION_TIME = int(get_env('WORKFLOW_MAX_EXECUTION_TIME'))
         self.WORKFLOW_CALL_MAX_DEPTH = int(get_env('WORKFLOW_CALL_MAX_DEPTH'))
+        self.APP_MAX_EXECUTION_TIME = int(get_env('APP_MAX_EXECUTION_TIME'))
 
         # Moderation in app Configurations.
         self.OUTPUT_MODERATION_BUFFER_SIZE = int(get_env('OUTPUT_MODERATION_BUFFER_SIZE'))
