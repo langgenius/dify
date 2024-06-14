@@ -39,7 +39,6 @@ class Vector:
     def _init_vector(self) -> BaseVector:
         config = current_app.config
         vector_type = config.get('VECTOR_STORE')
-
         if self._dataset.index_struct_dict:
             vector_type = self._dataset.index_struct_dict['type']
 
@@ -76,6 +75,9 @@ class Vector:
             case VectorType.WEAVIATE:
                 from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
                 return WeaviateVectorFactory
+            case VectorType.TENCENT:
+                from core.rag.datasource.vdb.tencent.tencent_vector import TencentVectorFactory
+                return TencentVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 

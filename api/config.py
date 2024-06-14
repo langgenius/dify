@@ -288,6 +288,16 @@ class Config:
         self.RELYT_PASSWORD = get_env('RELYT_PASSWORD')
         self.RELYT_DATABASE = get_env('RELYT_DATABASE')
 
+
+        # tencent settings
+        self.TENCENT_VECTOR_DB_URL = get_env('TENCENT_VECTOR_DB_URL')
+        self.TENCENT_VECTOR_DB_API_KEY = get_env('TENCENT_VECTOR_DB_API_KEY')
+        self.TENCENT_VECTOR_DB_TIMEOUT = get_env('TENCENT_VECTOR_DB_TIMEOUT')
+        self.TENCENT_VECTOR_DB_USERNAME = get_env('TENCENT_VECTOR_DB_USERNAME')
+        self.TENCENT_VECTOR_DB_DATABASE = get_env('TENCENT_VECTOR_DB_DATABASE')
+        self.TENCENT_VECTOR_DB_SHARD = get_env('TENCENT_VECTOR_DB_SHARD')
+        self.TENCENT_VECTOR_DB_REPLICAS = get_env('TENCENT_VECTOR_DB_REPLICAS')
+
         # pgvecto rs settings
         self.PGVECTO_RS_HOST = get_env('PGVECTO_RS_HOST')
         self.PGVECTO_RS_PORT = get_env('PGVECTO_RS_PORT')
