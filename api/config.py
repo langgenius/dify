@@ -397,10 +397,6 @@ class Config:
         self.NOTION_INTERNAL_SECRET = get_env('NOTION_INTERNAL_SECRET')
         self.NOTION_INTEGRATION_TOKEN = get_env('NOTION_INTEGRATION_TOKEN')
 
-        # Firecrawl integration setting
-        self.FIRECRAWL_API_KEY = get_env('FIRECRAWL_API_KEY')
-        self.FIRECRAWL_BASE_URL = get_env('FIRECRAWL_BASE_URL')
-
         # ------------------------
         # Platform Configurations.
         # ------------------------
