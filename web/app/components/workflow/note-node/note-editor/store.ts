@@ -27,20 +27,14 @@ export const createNoteEditorStore = () => {
     linkAnchorElement: null,
     setLinkAnchorElement: (open) => {
       if (open) {
-        const nativeSelection = window.getSelection()
+        setTimeout(() => {
+          const nativeSelection = window.getSelection()
 
-        if (nativeSelection?.focusNode) {
-          const parent = nativeSelection.focusNode.parentElement
-          set(() => ({ linkAnchorElement: parent }))
-        }
-        // setTimeout(() => {
-        //   const nativeSelection = window.getSelection()
-
-        //   if (nativeSelection?.focusNode) {
-        //     const parent = nativeSelection.focusNode.parentElement
-        //     set(() => ({ linkAnchorElement: parent }))
-        //   }
-        // })
+          if (nativeSelection?.focusNode) {
+            const parent = nativeSelection.focusNode.parentElement
+            set(() => ({ linkAnchorElement: parent }))
+          }
+        })
       }
       else {
         set(() => ({ linkAnchorElement: null }))
