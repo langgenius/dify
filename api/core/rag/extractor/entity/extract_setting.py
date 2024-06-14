@@ -44,10 +44,10 @@ class ExtractSetting(BaseModel):
     Model class for provider response.
     """
     datasource_type: str
-    upload_file: Optional[UploadFile]
-    notion_info: Optional[NotionInfo]
-    website_info: Optional[WebsiteInfo]
-    document_model: Optional[str]
+    upload_file: Optional[UploadFile] = None
+    notion_info: Optional[NotionInfo] = None
+    website_info: Optional[WebsiteInfo] = None
+    document_model: Optional[str] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, **data) -> None:
