@@ -205,7 +205,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const encodeSecretValues = useCallback((v: FormValue) => {
     const result = { ...v }
     extendedSecretFormSchemas.forEach(({ variable }) => {
-      if (result[variable] === formSchemasValue?.[variable])
+      if (result[variable] === formSchemasValue?.[variable] && result[variable] !== undefined)
         result[variable] = '[__HIDDEN__]'
     })
     return result
