@@ -1,6 +1,9 @@
+import json
 import time
 
 import requests
+
+from extensions.ext_storage import storage
 
 
 class FirecrawlApp:
