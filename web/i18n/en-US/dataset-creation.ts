@@ -78,7 +78,7 @@ const translation = {
       resetAll: 'Reset All',
       scrapTimeInfo: 'Scraped {{total}} pages in total within {{time}}s',
       preview: 'Preview',
-      maxDepthTooltip: 'Maximum depth to crawl. Depth 1 is the base URL, depth 2 includes the base URL and its direct children, and so on.',
+      maxDepthTooltip: 'Maximum depth to crawl relative to the entered URL. Depth 0 just scrapes the page of the entered url, depth 1 scrapes the url and everything after enteredURL + one /, and so on.',
     },
   },
   stepTwo: {
