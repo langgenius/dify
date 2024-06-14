@@ -11,6 +11,8 @@ def handle(sender, **kwargs):
     site = Site(
         app_id=app.id,
         title=app.name,
+        icon = app.icon,
+        icon_background = app.icon_background,
         default_language=account.interface_language,
         customize_token_strategy='not_allow',
         code=Site.generate_code(16)
