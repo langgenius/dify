@@ -49,7 +49,6 @@ class WebsiteService:
                         "includes": [],
                         "excludes": [],
                         "generateImgAltText": True,
-                        "maxDepth": 1,
                         "limit": 1,
                         'returnOnlyUrls': False,
                         'pageOptions': {
@@ -66,7 +65,6 @@ class WebsiteService:
                         "includes": includes if includes else [],
                         "excludes": excludes if excludes else [],
                         "generateImgAltText": True,
-                        "maxDepth": options.get('max_depth', 1),
                         "limit": options.get('limit', 1),
                         'returnOnlyUrls': False,
                         'pageOptions': {
@@ -75,6 +73,8 @@ class WebsiteService:
                         }
                     }
                 }
+                if options.get('max_depth'):
+                    params['crawlerOptions']['maxDepth'] = options.get('max_depth')
             job_id = firecrawl_app.crawl_url(url, params)
             website_crawl_time_cache_key = f'website_crawl_{job_id}'
             time = str(datetime.datetime.now().timestamp())
