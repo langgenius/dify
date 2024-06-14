@@ -84,7 +84,7 @@ parameters:
         排序条件，格式为：[{"field_name":"多行文本","desc":true}]。
         field_name: 字段名称；
         desc: 是否倒序排序;
-    llm_description: | 
+    llm_description: |
       Sorting conditions, the format is: [{"field_name":"multi-line text","desc":true}].
     form: llm
 

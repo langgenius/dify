@@ -44,9 +44,9 @@ parameters:
     human_description:
       en_US: Pagination mark. If it is not filled in the first request, it means to traverse from the beginning.
       zh_Hans: 分页标记，第一次请求不填，表示从头开始遍历。
-    llm_description: | 
-      Pagination token. If it is not filled in the first request, it means to start traversal from the beginning. 
-      If there are more items in the pagination query result, a new page_token will be returned at the same time. 
+    llm_description: |
+      Pagination token. If it is not filled in the first request, it means to start traversal from the beginning.
+      If there are more items in the pagination query result, a new page_token will be returned at the same time.
       The page_token can be used to obtain the query result in the next traversal.
       分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
     form: llm
