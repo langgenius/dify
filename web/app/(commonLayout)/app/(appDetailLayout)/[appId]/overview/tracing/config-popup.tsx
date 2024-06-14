@@ -3,8 +3,11 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import TracingIcon from './tracing-icon'
+import ProviderPanel from './provider-panel'
+import { TracingProvider } from './type'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
+
 const I18N_PREFIX = 'app.tracing'
 
 export type PopupProps = {
@@ -42,7 +45,14 @@ const ConfigPopup: FC<PopupProps> = ({
       <div className='mt-2 leading-4 text-xs font-normal text-gray-500'>
         {t(`${I18N_PREFIX}.tracingDescription`)}
       </div>
-      <div className='mt-3 mb-1 h-px bg-gray-100'></div>
+      <div className='mt-3 h-px bg-gray-100'></div>
+      <div className='mt-3'>
+        <div className='leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle`)}</div>
+        <div className='mt-2 space-y-2'>
+          <ProviderPanel type={TracingProvider.langSmith} />
+          <ProviderPanel type={TracingProvider.langfuse} />
+        </div>
+      </div>
 
     </div>
   )

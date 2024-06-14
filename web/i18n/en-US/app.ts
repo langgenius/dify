@@ -93,6 +93,13 @@ const translation = {
     disabled: 'Disabled',
     enabled: 'Enabled',
     tracingDescription: 'Capture the full context of app execution, including LLM calls, context, prompts, HTTP requests, and more, to a third-party tracing platform.',
+    configProviderTitle: 'Config provider to enable tracing',
+    langSmith: {
+      description: 'An all-in-one developer platform for every step of the LLM-powered application lifecycle.',
+    },
+    langfuse: {
+      description: 'Traces, evals, prompt management and metrics to debug and improve your LLM application.',
+    },
   },
 }
 

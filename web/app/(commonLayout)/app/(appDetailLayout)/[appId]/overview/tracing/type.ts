@@ -1,4 +1,4 @@
-export enum TracingTool {
+export enum TracingProvider {
   langSmith = 'langSmith',
   langfuse = 'langfuse',
 }

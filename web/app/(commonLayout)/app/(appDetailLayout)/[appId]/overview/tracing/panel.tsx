@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { TracingTool } from './type'
+import type { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ToggleExpandBtn from './toggle-fold-btn'
 import ConfigButton from './config-button'
@@ -12,7 +12,7 @@ const I18N_PREFIX = 'app.tracing'
 const Panel: FC = () => {
   const { t } = useTranslation()
 
-  const inUseTracingTool: TracingTool | undefined = undefined
+  const inUseTracingTool: TracingProvider | undefined = undefined
   const hasConfiguredTracing = !!inUseTracingTool
   const [isFold, setFold] = useState(true)
 
