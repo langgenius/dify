@@ -3,6 +3,7 @@ import {
   useEffect,
   useState,
 } from 'react'
+import { escape } from 'lodash-es'
 import {
   FloatingPortal,
   flip,
@@ -104,7 +105,7 @@ const LinkEditorComponent = ({
                   <>
                     <a
                       className='flex items-center px-2 h-6 rounded-md hover:bg-gray-50'
-                      href={url}
+                      href={escape(url)}
                       target='_blank'
                       rel='noreferrer'
                     >
@@ -113,16 +114,19 @@ const LinkEditorComponent = ({
                         {t('workflow.nodes.note.editor.openLink')}
                       </div>
                       <div
-                        title={url}
+                        title={escape(url)}
                         className='text-primary-600 max-w-[140px] truncate'
                       >
-                        {url}
+                        {escape(url)}
                       </div>
                     </a>
                     <div className='mx-1 w-[1px] h-3.5 bg-gray-100'></div>
                     <div
                       className='flex items-center mr-0.5 px-2 h-6 rounded-md cursor-pointer hover:bg-gray-50'
-                      onClick={() => setLinkOperatorShow(false)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setLinkOperatorShow(false)
+                      }}
                     >
                       <Edit03 className='mr-1 w-3 h-3' />
                       {t('common.operation.edit')}
