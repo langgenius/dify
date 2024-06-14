@@ -95,8 +95,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         # - https://docs.anthropic.com/claude/reference/claude-on-amazon-bedrock
         # - https://github.com/anthropics/anthropic-sdk-python
         client = AnthropicBedrock(
-            aws_access_key=credentials["aws_access_key_id"],
-            aws_secret_key=credentials["aws_secret_access_key"],
+            aws_access_key=credentials.get("aws_access_key_id", None),
+            aws_secret_key=credentials.get("aws_secret_access_key", None),
             aws_region=credentials["aws_region"],
         )
 
@@ -568,8 +568,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         runtime_client = boto3.client(
             service_name='bedrock-runtime',
             config=client_config,
-            aws_access_key_id=credentials["aws_access_key_id"],
-            aws_secret_access_key=credentials["aws_secret_access_key"]
+            aws_access_key_id=credentials.get("aws_access_key_id", None),
+            aws_secret_access_key=credentials.get("aws_secret_access_key", None)
         )
 
         model_prefix = model.split('.')[0]

@@ -420,6 +420,7 @@ const translation = {
         medium: 'Medium',
         large: 'Large',
         bold: 'Bold',
+        italic: 'Italic',
         strikethrough: 'Strikethrough',
         link: 'Link',
         openLink: 'Open',

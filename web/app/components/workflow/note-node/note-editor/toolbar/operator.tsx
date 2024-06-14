@@ -73,7 +73,10 @@ const Operator = ({
           </div>
           <div className='h-[1px] bg-gray-100'></div>
           <div className='p-1'>
-            <div className='flex items-center justify-between px-3 h-8 cursor-pointer rounded-md text-sm text-gray-700 hover:bg-black/5'>
+            <div
+              className='flex items-center justify-between px-3 h-8 cursor-pointer rounded-md text-sm text-gray-700 hover:bg-black/5'
+              onClick={e => e.stopPropagation()}
+            >
               <div>{t('workflow.nodes.note.editor.showAuthor')}</div>
               <Switch
                 size='l'

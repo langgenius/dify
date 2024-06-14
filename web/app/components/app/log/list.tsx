@@ -44,6 +44,8 @@ import MessageLogModal from '@/app/components/base/message-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { CopyIcon } from '@/app/components/base/copy-icon'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -281,7 +283,19 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
         <div>
           <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
-          <div className='text-gray-700 text-[13px] leading-[18px]'>{isChatMode ? detail.id?.split('-').slice(-1)[0] : formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
+          {isChatMode && (
+            <div className='flex items-center text-gray-700 text-[13px] leading-[18px]'>
+              <TooltipPlus
+                hideArrow
+                popupContent={detail.id}>
+                <div className='max-w-[105px] truncate'>{detail.id}</div>
+              </TooltipPlus>
+              <CopyIcon content={detail.id} />
+            </div>
+          )}
+          {!isChatMode && (
+            <div className='text-gray-700 text-[13px] leading-[18px]'>{formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
+          )}
         </div>
         <div className='flex items-center flex-wrap gap-y-1 justify-end'>
           {!isAdvanced && (
