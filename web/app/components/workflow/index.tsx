@@ -46,6 +46,8 @@ import {
 } from './hooks'
 import Header from './header'
 import CustomNode from './nodes'
+import CustomNoteNode from './note-node'
+import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import Operator from './operator'
 import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
@@ -66,6 +68,7 @@ import {
   initialNodes,
 } from './utils'
 import {
+  CUSTOM_NODE,
   ITERATION_CHILDREN_Z_INDEX,
   WORKFLOW_DATA_UPDATE,
 } from './constants'
@@ -76,10 +79,11 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Confirm from '@/app/components/base/confirm/common'
 
 const nodeTypes = {
-  custom: CustomNode,
+  [CUSTOM_NODE]: CustomNode,
+  [CUSTOM_NOTE_NODE]: CustomNoteNode,
 }
 const edgeTypes = {
-  custom: CustomEdge,
+  [CUSTOM_NODE]: CustomEdge,
 }
 
 type WorkflowProps = {
