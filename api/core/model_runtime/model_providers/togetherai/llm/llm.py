@@ -125,7 +125,6 @@ class TogetherAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
                     min=-2,
                     max=2
                 ),
-                ParameterRule
             ],
             pricing=PriceConfig(
                 input=Decimal(cred_with_endpoint.get('input_price', 0)),
