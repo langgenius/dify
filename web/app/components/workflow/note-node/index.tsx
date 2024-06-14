@@ -97,7 +97,7 @@ const NoteNode = ({
           }
           <div className='grow px-3 py-2.5 overflow-y-auto'>
             <div className={cn(
-              data.selected && 'nodrag nowheel cursor-text',
+              data.selected && 'nodrag nopan nowheel cursor-text',
             )}>
               <NoteEditor
                 containerElement={ref.current}

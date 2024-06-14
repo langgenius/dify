@@ -12,6 +12,8 @@ type Shape = {
   setLinkOperatorShow: (linkOperatorShow: boolean) => void
   selectedIsBold: boolean
   setSelectedIsBold: (selectedIsBold: boolean) => void
+  selectedIsItalic: boolean
+  setSelectedIsItalic: (selectedIsItalic: boolean) => void
   selectedIsStrikeThrough: boolean
   setSelectedIsStrikeThrough: (selectedIsStrikeThrough: boolean) => void
   selectedLinkUrl: string
@@ -44,6 +46,8 @@ export const createNoteEditorStore = () => {
     setLinkOperatorShow: linkOperatorShow => set(() => ({ linkOperatorShow })),
     selectedIsBold: false,
     setSelectedIsBold: selectedIsBold => set(() => ({ selectedIsBold })),
+    selectedIsItalic: false,
+    setSelectedIsItalic: selectedIsItalic => set(() => ({ selectedIsItalic })),
     selectedIsStrikeThrough: false,
     setSelectedIsStrikeThrough: selectedIsStrikeThrough => set(() => ({ selectedIsStrikeThrough })),
     selectedLinkUrl: '',

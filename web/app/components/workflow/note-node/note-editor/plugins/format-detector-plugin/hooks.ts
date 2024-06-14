@@ -29,12 +29,14 @@ export const useFormatDetector = () => {
         const node = getSelectedNode(selection)
         const {
           setSelectedIsBold,
+          setSelectedIsItalic,
           setSelectedIsStrikeThrough,
           setSelectedLinkUrl,
           setSelectedIsLink,
           setSelectedIsBullet,
         } = noteEditorStore.getState()
         setSelectedIsBold(selection.hasFormat('bold'))
+        setSelectedIsItalic(selection.hasFormat('italic'))
         setSelectedIsStrikeThrough(selection.hasFormat('strikethrough'))
         const parent = node.getParent()
         if ($isLinkNode(parent) || $isLinkNode(node)) {

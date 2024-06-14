@@ -35,6 +35,9 @@ export const useCommand = () => {
     if (type === 'bold')
       editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')
 
+    if (type === 'italic')
+      editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')
+
     if (type === 'strikethrough')
       editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')
 

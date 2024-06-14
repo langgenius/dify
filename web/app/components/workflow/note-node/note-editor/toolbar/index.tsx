@@ -28,6 +28,7 @@ const Toolbar = ({
       <Divider />
       <div className='flex items-center space-x-0.5'>
         <Command type='bold' />
+        <Command type='italic' />
         <Command type='strikethrough' />
         <Command type='link' />
         <Command type='bullet' />
