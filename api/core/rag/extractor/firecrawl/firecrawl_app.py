@@ -77,11 +77,11 @@ class FirecrawlApp:
                         'markdown': item.get('markdown')
                     }
                     url_data_list.append(url_data)
-                # if url_data_list:
-                #     file_key = 'website_files/' + job_id + '.txt'
-                #     if storage.exists(file_key):
-                #         storage.delete(file_key)
-                #     storage.save(file_key, json.dumps(url_data_list).encode('utf-8'))
+                if url_data_list:
+                    file_key = 'website_files/' + job_id + '.txt'
+                    if storage.exists(file_key):
+                        storage.delete(file_key)
+                    storage.save(file_key, json.dumps(url_data_list).encode('utf-8'))
                 return {
                     'status': 'completed',
                     'total': crawl_status_response.get('total'),

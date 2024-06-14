@@ -9,6 +9,7 @@ from core.helper import encrypter
 from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.ext_storage import storage
 from models.source import DataSourceApiKeyAuthBinding
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
@@ -124,17 +125,23 @@ class WebsiteService:
                                                              'website',
                                                              provider)
         if provider == 'firecrawl':
-            # decrypt api_key
-            api_key = encrypter.decrypt_token(
-                tenant_id=tenant_id,
-                token=credentials.get('config').get('api_key')
-            )
-            firecrawl_app = FirecrawlApp(api_key=api_key,
-                                         base_url=credentials.get('config').get('base_url', None))
-            result = firecrawl_app.check_crawl_status(job_id)
-            if result.get('status') != 'completed':
-                raise ValueError('Crawl job is not completed')
-            data = result.get('data')
+            file_key = 'website_files/' + job_id + '.txt'
+            if storage.exists(file_key):
+                data = storage.load_once(file_key)
+                if data:
+                    data = json.loads(data.decode('utf-8'))
+            else:
+                # decrypt api_key
+                api_key = encrypter.decrypt_token(
+                    tenant_id=tenant_id,
+                    token=credentials.get('config').get('api_key')
+                )
+                firecrawl_app = FirecrawlApp(api_key=api_key,
+                                             base_url=credentials.get('config').get('base_url', None))
+                result = firecrawl_app.check_crawl_status(job_id)
+                if result.get('status') != 'completed':
+                    raise ValueError('Crawl job is not completed')
+                data = result.get('data')
             if data:
                 for item in data:
                     if item.get('source_url') == url:
