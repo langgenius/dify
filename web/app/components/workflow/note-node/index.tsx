@@ -5,9 +5,13 @@ import {
 } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import { useClickAway } from 'ahooks'
 import type { NodeProps } from 'reactflow'
 import NodeResizer from '../nodes/_base/components/node-resizer'
-import { useNodesInteractions } from '../hooks'
+import {
+  useNodeDataUpdate,
+  useNodesInteractions,
+} from '../hooks'
 import {
   NoteEditor,
   NoteEditorContextProvider,
@@ -42,10 +46,15 @@ const NoteNode = ({
     handleNodesDuplicate,
     handleNodeDelete,
   } = useNodesInteractions()
+  const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
 
   const handleDeleteNode = useCallback(() => {
     handleNodeDelete(id)
   }, [id, handleNodeDelete])
+
+  useClickAway(() => {
+    handleNodeDataUpdateWithSyncDraft({ id, data: { selected: false } })
+  }, ref)
 
   return (
     <div

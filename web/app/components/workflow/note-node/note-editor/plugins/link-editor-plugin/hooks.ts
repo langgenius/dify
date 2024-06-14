@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   CLICK_COMMAND,
   COMMAND_PRIORITY_LOW,
@@ -14,6 +15,8 @@ import {
 } from '@lexical/link'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useNoteEditorStore } from '../../store'
+import { urlRegExp } from '../../utils'
+import { useToastContext } from '@/app/components/base/toast'
 
 export const useOpenLink = () => {
   const [editor] = useLexicalComposerContext()
@@ -58,15 +61,21 @@ export const useOpenLink = () => {
 }
 
 export const useLink = () => {
+  const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
   const noteEditorStore = useNoteEditorStore()
+  const { notify } = useToastContext()
 
   const handleSaveLink = useCallback((url: string) => {
+    if (url && !urlRegExp.test(url)) {
+      notify({ type: 'error', message: t('workflow.nodes.note.editor.invalidUrl') })
+      return
+    }
     editor.dispatchCommand(TOGGLE_LINK_COMMAND, url)
 
     const { setLinkAnchorElement } = noteEditorStore.getState()
     setLinkAnchorElement()
-  }, [editor, noteEditorStore])
+  }, [editor, noteEditorStore, notify, t])
 
   const handleUnlink = useCallback(() => {
     editor.dispatchCommand(TOGGLE_LINK_COMMAND, null)
