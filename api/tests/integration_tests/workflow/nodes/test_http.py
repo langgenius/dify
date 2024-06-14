@@ -302,6 +302,7 @@ def test_mock_404(setup_http_mock):
                 'type': 'no-auth',
                 'config': None,
             },
+            'body': None,
             'params': '',
             'headers': 'X-Header:123',
             'mask_authorization_header': False,
