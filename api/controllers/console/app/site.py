@@ -40,8 +40,8 @@ class AppSite(Resource):
     def post(self, app_model):
         args = parse_app_site_args()
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be editor, admin, or owner
+        if not current_user.is_editor:
             raise Forbidden()
 
         site = db.session.query(Site). \

@@ -28,6 +28,7 @@ const MembersPage = () => {
   const RoleMap = {
     owner: t('common.members.owner'),
     admin: t('common.members.admin'),
+    editor: t('common.members.editor'),
     normal: t('common.members.normal'),
   }
   const { locale } = useContext(I18n)
