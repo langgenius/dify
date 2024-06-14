@@ -15,7 +15,7 @@ class WebSearchAPIProvider(BuiltinToolProviderController):
                 }
             ).invoke(
                 user_id="",
-                tool_parameters={"query": "what is llm?", "result_type": "link"},
+                tool_parameters={"query": "what is llm"},
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
