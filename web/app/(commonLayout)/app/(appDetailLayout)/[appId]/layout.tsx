@@ -109,6 +109,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         setAppDetail(res)
         setNavigation(getNavigations(appId, isCurrentWorkspaceManager, isCurrentWorkspaceEditor, res.mode))
       }
+    }).catch((e: any) => {
+      if (e.status === 404)
+        router.replace('/apps')
     })
   }, [appId, isCurrentWorkspaceManager, isCurrentWorkspaceEditor])
 

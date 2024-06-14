@@ -37,6 +37,10 @@ const translation = {
     duplicate: 'Duplicate',
     rename: 'Rename',
   },
+  errorMsg: {
+    fieldRequired: '{{field}} is required',
+    urlError: 'url should start with http:// or https://',
+  },
   placeholder: {
     input: 'Please enter',
     select: 'Please select',
@@ -360,6 +364,7 @@ const translation = {
   dataSource: {
     add: 'Add a data source',
     connect: 'Connect',
+    configure: 'Configure',
     notion: {
       title: 'Notion',
       description: 'Using Notion as a data source for the Knowledge.',
@@ -378,6 +383,14 @@ const translation = {
         addPages: 'Add pages',
         preview: 'PREVIEW',
       },
+    },
+    website: {
+      title: 'Website',
+      description: 'Import content from websites using web crawler.',
+      with: 'With',
+      configuredCrawlers: 'Configured crawlers',
+      active: 'Active',
+      inactive: 'Inactive',
     },
   },
   plugin: {
