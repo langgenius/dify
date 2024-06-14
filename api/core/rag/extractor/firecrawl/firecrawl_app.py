@@ -70,13 +70,14 @@ class FirecrawlApp:
                 data = crawl_status_response.get('data', [])
                 url_data_list = []
                 for item in data:
-                    url_data = {
-                        'title': item.get('metadata').get('title'),
-                        'description': item.get('metadata').get('description'),
-                        'source_url': item.get('metadata').get('sourceURL'),
-                        'markdown': item.get('markdown')
-                    }
-                    url_data_list.append(url_data)
+                    if isinstance(item, dict) and 'metadata' in item and 'markdown' in item:
+                        url_data = {
+                            'title': item.get('metadata').get('title'),
+                            'description': item.get('metadata').get('description'),
+                            'source_url': item.get('metadata').get('sourceURL'),
+                            'markdown': item.get('markdown')
+                        }
+                        url_data_list.append(url_data)
                 if url_data_list:
                     file_key = 'website_files/' + job_id + '.txt'
                     if storage.exists(file_key):
