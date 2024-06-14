@@ -12,6 +12,7 @@ import {
   useNodeDataUpdate,
   useNodesInteractions,
 } from '../hooks'
+import { useStore } from '../store'
 import {
   NoteEditor,
   NoteEditorContextProvider,
@@ -34,6 +35,7 @@ const NoteNode = ({
   data,
 }: NodeProps<NoteNodeType>) => {
   const { t } = useTranslation()
+  const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
   const ref = useRef<HTMLDivElement | null>(null)
   const theme = data.theme
   const {
@@ -69,7 +71,10 @@ const NoteNode = ({
       }}
       ref={ref}
     >
-      <NoteEditorContextProvider value={data.text}>
+      <NoteEditorContextProvider
+        key={controlPromptEditorRerenderKey}
+        value={data.text}
+      >
         <>
           <NodeResizer
             nodeId={id}
