@@ -2,18 +2,21 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { TracingProvider } from './type'
+import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ToggleExpandBtn from './toggle-fold-btn'
 import ConfigButton from './config-button'
 import { LangfuseIcon, LangsmithIcon } from '@/app/components/base/icons/src/public/tracing'
+import Indicator from '@/app/components/header/indicator'
+
 const I18N_PREFIX = 'app.tracing'
 
 const Panel: FC = () => {
   const { t } = useTranslation()
 
-  const inUseTracingTool: TracingProvider | undefined = undefined
-  const hasConfiguredTracing = !!inUseTracingTool
+  const inUseTracingProvider: TracingProvider | undefined = undefined
+  const InUseProviderIcon = inUseTracingProvider === TracingProvider.langSmith ? LangsmithIcon : LangfuseIcon
+  const hasConfiguredTracing = !!inUseTracingProvider
   const [isFold, setFold] = useState(true)
 
   const [enabled, setEnabled] = useState(false)
@@ -48,17 +51,40 @@ const Panel: FC = () => {
   }
 
   return (
-    <div className='inline-flex items-center p-2 rounded-xl border-[0.5px] border-gray-200 shadow-xs hover:bg-gray-200'>
-      <TracingIcon size='md' className='mr-2' />
-      <div className='leading-5 text-sm font-semibold text-gray-700'>{t(`${I18N_PREFIX}.title`)}</div>
+    <div className='inline-flex items-center p-2 rounded-xl border-[0.5px] border-gray-200 shadow-xs hover:bg-gray-100'>
+      {!hasConfiguredTracing
+        ? <>
+          <TracingIcon size='md' className='mr-2' />
+          <div className='leading-5 text-sm font-semibold text-gray-700'>{t(`${I18N_PREFIX}.title`)}</div>
+        </>
+        : <InUseProviderIcon className='ml-1 h-4' />}
+
+      {hasConfiguredTracing && (
+        <div className='ml-4 mr-1 flex items-center'>
+          <Indicator color={enabled ? 'green' : 'gray'} />
+          <div className='ml-1.5 text-xs font-semibold text-gray-500 uppercase'>
+            {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
+          </div>
+        </div>
+      )}
+
+      {hasConfiguredTracing && (
+        <div className='ml-2 w-px h-3.5 bg-gray-200'></div>
+      )}
+
       <ConfigButton
         hasConfigured
         className='ml-2'
         enabled={enabled}
         onStatusChange={setEnabled}
       />
-      <div className='mx-2 w-px h-3.5 bg-gray-200'></div>
-      <ToggleExpandBtn isFold={isFold} onFoldChange={setFold} />
+      {!hasConfiguredTracing && (
+        <>
+          <div className='mx-2 w-px h-3.5 bg-gray-200'></div>
+          <ToggleExpandBtn isFold={isFold} onFoldChange={setFold} />
+        </>
+      )}
+
     </div>
   )
 }
