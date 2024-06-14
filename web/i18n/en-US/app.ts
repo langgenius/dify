@@ -89,6 +89,10 @@ const translation = {
     title: 'Tracing app performance',
     description: 'Configuring a Third-Party LLMOps provider and tracing app performance.',
     config: 'Config',
+    tracing: 'Tracing',
+    disabled: 'Disabled',
+    enabled: 'Enabled',
+    tracingDescription: 'Capture the full context of app execution, including LLM calls, context, prompts, HTTP requests, and more, to a third-party tracing platform.',
   },
 }
 

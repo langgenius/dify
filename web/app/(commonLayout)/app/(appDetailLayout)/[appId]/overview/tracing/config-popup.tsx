@@ -1,9 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import TracingIcon from './tracing-icon'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
+const I18N_PREFIX = 'app.tracing'
+
 export type PopupProps = {
   enabled: boolean
   onStatusChange?: (enabled: boolean) => void
@@ -13,17 +16,19 @@ const ConfigPopup: FC<PopupProps> = ({
   enabled,
   onStatusChange,
 }) => {
+  const { t } = useTranslation()
+
   return (
     <div className='w-[420px] p-4 rounded-2xl bg-white border-[0.5px] border-black/5 shadow-lg'>
       <div className='flex justify-between items-center'>
         <div className='flex items-center'>
           <TracingIcon size='md' className='mr-2' />
-          <div className='leading-[120%] text-[18px] font-semibold text-gray-900'>Tracing</div>
+          <div className='leading-[120%] text-[18px] font-semibold text-gray-900'>{t(`${I18N_PREFIX}.tracing`)}</div>
         </div>
         <div className='flex items-center'>
           <Indicator color={enabled ? 'green' : 'gray'} />
           <div className='ml-1.5 text-xs font-semibold text-gray-500 uppercase'>
-            {enabled ? 'enabled' : 'disabled'}
+            {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
           </div>
           <Switch
             className='ml-3'
@@ -33,6 +38,12 @@ const ConfigPopup: FC<PopupProps> = ({
           />
         </div>
       </div>
+
+      <div className='mt-2 leading-4 text-xs font-normal text-gray-500'>
+        {t(`${I18N_PREFIX}.tracingDescription`)}
+      </div>
+      <div className='mt-3 mb-1 h-px bg-gray-100'></div>
+
     </div>
   )
 }
