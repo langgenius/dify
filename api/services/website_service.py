@@ -54,8 +54,8 @@ class WebsiteService:
                     }
                 }
             else:
-                includes = ','.join(options.get('includes')) if options.get('includes') else []
-                excludes = ','.join(options.get('excludes')) if options.get('excludes') else []
+                includes = options.get('includes').split(',') if options.get('includes') else []
+                excludes = options.get('excludes').split(',') if options.get('excludes') else []
                 params = {
                     'crawlerOptions': {
                         "includes": includes if includes else [],
