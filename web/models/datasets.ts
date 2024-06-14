@@ -165,6 +165,8 @@ export type DataSourceInfo = {
     extension: string
   }
   notion_page_icon?: string
+  job_id: string
+  url: string
 }
 
 export type InitialDocumentDetail = {
