@@ -102,6 +102,16 @@ const translation = {
     langfuse: {
       description: 'Traces, evals, prompt management and metrics to debug and improve your LLM application.',
     },
+    configProvider: {
+      title: 'Config',
+      placeholder: 'Enter your {key}',
+      project: 'Project',
+      endpoint: 'Endpoint',
+      publicKey: 'Public Key',
+      secretKey: 'Secret Key',
+      viewDocsLink: 'View LangSmith docs',
+      saveAndEnable: 'Save and Enable',
+    },
   },
 }
 
