@@ -186,7 +186,6 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     <Modal
       isShow
       onClose={() => { }}
-      wrapperClassName='z-[101]'
       className='!p-8 !pb-6 !max-w-none !w-[640px]'
     >
       <div className='mb-2 text-xl font-semibold text-gray-900'>

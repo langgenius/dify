@@ -168,7 +168,6 @@ export default function AccountPage() {
           isShow
           onClose={() => setEditNameModalVisible(false)}
           className={s.modal}
-          wrapperClassName='z-20'
         >
           <div className='mb-6 text-lg font-medium text-gray-900'>{t('common.account.editName')}</div>
           <div className={titleClassName}>{t('common.account.name')}</div>
@@ -198,7 +197,6 @@ export default function AccountPage() {
             resetPasswordForm()
           }}
           className={s.modal}
-          wrapperClassName='z-20'
         >
           <div className='mb-6 text-lg font-medium text-gray-900'>{userProfile.is_password_set ? t('common.account.resetPassword') : t('common.account.setPassword')}</div>
           {userProfile.is_password_set && (
