@@ -2,11 +2,11 @@ import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
-  CustomConfigrationModelFixedFields,
+  CustomConfigurationModelFixedFields,
   ModelItem,
   ModelProvider,
 } from '../declarations'
-import { ConfigurateMethodEnum } from '../declarations'
+import { ConfigurationMethodEnum } from '../declarations'
 import {
   DEFAULT_BACKGROUND_COLOR,
   MODEL_PROVIDER_QUOTA_GET_PAID,
@@ -27,7 +27,7 @@ import { IS_CE_EDITION } from '@/config'
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
   provider: ModelProvider
-  onOpenModal: (configurateMethod: ConfigurateMethodEnum, currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields) => void
+  onOpenModal: (configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => void
 }
 const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   provider,
@@ -39,7 +39,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const [loading, setLoading] = useState(false)
   const [collapsed, setCollapsed] = useState(true)
   const [modelList, setModelList] = useState<ModelItem[]>([])
-  const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
+  const configurationMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
   const systemConfig = provider.system_configuration
   const hasModelList = fetched && !!modelList.length
   const showQuota = systemConfig.enabled && [...MODEL_PROVIDER_QUOTA_GET_PAID].includes(provider.provider) && !IS_CE_EDITION
@@ -101,9 +101,9 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           )
         }
         {
-          configurateMethods.includes(ConfigurateMethodEnum.predefinedModel) && (
+          configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && (
             <CredentialPanel
-              onSetup={() => onOpenModal(ConfigurateMethodEnum.predefinedModel)}
+              onSetup={() => onOpenModal(ConfigurationMethodEnum.predefinedModel)}
               provider={provider}
             />
           )
@@ -136,9 +136,9 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               }
             </div>
             {
-              configurateMethods.includes(ConfigurateMethodEnum.customizableModel) && (
+              configurationMethods.includes(ConfigurationMethodEnum.customizableModel) && (
                 <AddModelButton
-                  onClick={() => onOpenModal(ConfigurateMethodEnum.customizableModel)}
+                  onClick={() => onOpenModal(ConfigurationMethodEnum.customizableModel)}
                   className='hidden group-hover:flex group-hover:text-primary-600'
                 />
               )
@@ -152,7 +152,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             provider={provider}
             models={modelList}
             onCollapse={() => setCollapsed(true)}
-            onConfig={currentCustomConfigrationModelFixedFields => onOpenModal(ConfigurateMethodEnum.customizableModel, currentCustomConfigrationModelFixedFields)}
+            onConfig={currentCustomConfigurationModelFixedFields => onOpenModal(ConfigurationMethodEnum.customizableModel, currentCustomConfigurationModelFixedFields)}
+            onChange={(provider: string) => getModelList(provider)}
           />
         )
       }

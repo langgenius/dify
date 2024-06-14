@@ -5,7 +5,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.data_post_processor.reorder import ReorderRunner
 from core.rag.models.document import Document
-from core.rerank.rerank import RerankRunner
+from core.rag.rerank.rerank import RerankRunner
 
 
 class DataPostProcessor:

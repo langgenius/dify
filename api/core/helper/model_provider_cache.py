@@ -9,6 +9,7 @@ from extensions.ext_redis import redis_client
 class ProviderCredentialsCacheType(Enum):
     PROVIDER = "provider"
     MODEL = "provider_model"
+    LOAD_BALANCING_MODEL = "load_balancing_provider_model"
 
 
 class ProviderCredentialsCache:

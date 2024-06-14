@@ -76,13 +76,25 @@ class WordExtractor(BaseExtractor):
         for rel in doc.part.rels.values():
             if "image" in rel.target_ref:
                 image_count += 1
-                image_ext = rel.target_ref.split('.')[-1]
-                # user uuid as file name
-                file_uuid = str(uuid.uuid4())
-                file_key = 'image_files/' + self.tenant_id + '/' + file_uuid + '.' + image_ext
-                mime_type, _ = mimetypes.guess_type(file_key)
+                if rel.is_external:
+                    url = rel.reltype
+                    response = requests.get(url, stream=True)
+                    if response.status_code == 200:
+                        image_ext = mimetypes.guess_extension(response.headers['Content-Type'])
+                        file_uuid = str(uuid.uuid4())
+                        file_key = 'image_files/' + self.tenant_id + '/' + file_uuid + '.' + image_ext
+                        mime_type, _ = mimetypes.guess_type(file_key)
+                        storage.save(file_key, response.content)
+                    else:
+                        continue
+                else:
+                    image_ext = rel.target_ref.split('.')[-1]
+                    # user uuid as file name
+                    file_uuid = str(uuid.uuid4())
+                    file_key = 'image_files/' + self.tenant_id + '/' + file_uuid + '.' + image_ext
+                    mime_type, _ = mimetypes.guess_type(file_key)
 
-                storage.save(file_key, rel.target_part.blob)
+                    storage.save(file_key, rel.target_part.blob)
                 # save file to db
                 config = current_app.config
                 upload_file = UploadFile(

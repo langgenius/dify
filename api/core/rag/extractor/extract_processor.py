@@ -29,7 +29,7 @@ from core.rag.models.document import Document
 from extensions.ext_storage import storage
 from models.model import UploadFile
 
-SUPPORT_URL_CONTENT_TYPES = ['application/pdf', 'text/plain']
+SUPPORT_URL_CONTENT_TYPES = ['application/pdf', 'text/plain', 'application/json']
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
 
