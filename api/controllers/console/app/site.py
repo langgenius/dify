@@ -65,13 +65,6 @@ class AppSite(Resource):
             if value is not None:
                 setattr(site, attr_name, value)
 
-                if attr_name == 'title':
-                    app_model.name = value
-                elif attr_name == 'icon':
-                    app_model.icon = value
-                elif attr_name == 'icon_background':
-                    app_model.icon_background = value
-
         db.session.commit()
 
         return site
