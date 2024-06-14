@@ -67,9 +67,11 @@
    flask run --host 0.0.0.0 --port=5001 --debug
    ```
 8. Setup your application by visiting http://localhost:5001/console/api/setup or other apis...
-9. If you need to debug local async processing, please start the worker service by running 
-`celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail`.
-The started celery app handles the async tasks, e.g. dataset importing and documents indexing.
+9. If you need to debug local async processing, please start the worker service.
+   ```bash
+   celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail
+   ```
+   The started celery app handles the async tasks, e.g. dataset importing and documents indexing.
 
 
 ## Testing
