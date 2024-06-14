@@ -52,7 +52,7 @@ const Options: FC<Props> = ({
           value={payload.max_depth}
           onChange={handleChange('max_depth')}
           isNumber
-          isRequired
+          tooltip={t(`${I18N_PREFIX}.maxDepthTooltip`)!}
         />
       </div>
 

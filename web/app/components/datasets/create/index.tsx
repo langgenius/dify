@@ -25,7 +25,7 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
   includes: '',
   excludes: '',
   limit: 10,
-  max_depth: 2,
+  max_depth: '',
 }
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
