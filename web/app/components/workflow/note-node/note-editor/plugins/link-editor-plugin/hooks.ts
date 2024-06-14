@@ -13,6 +13,7 @@ import {
 import {
   TOGGLE_LINK_COMMAND,
 } from '@lexical/link'
+import { escape } from 'lodash-es'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useNoteEditorStore } from '../../store'
 import { urlRegExp } from '../../utils'
@@ -71,7 +72,7 @@ export const useLink = () => {
       notify({ type: 'error', message: t('workflow.nodes.note.editor.invalidUrl') })
       return
     }
-    editor.dispatchCommand(TOGGLE_LINK_COMMAND, url)
+    editor.dispatchCommand(TOGGLE_LINK_COMMAND, escape(url))
 
     const { setLinkAnchorElement } = noteEditorStore.getState()
     setLinkAnchorElement()
