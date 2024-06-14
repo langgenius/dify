@@ -81,7 +81,7 @@ CODE_EXECUTION_API_KEY="dify-sandbox"
 
 [tool.poetry]
 name = "dify-api"
-version = "0.6.10"
+version = "0.6.11"
 description = ""
 authors = ["Dify <hello@dify.ai>"]
 readme = "README.md"
