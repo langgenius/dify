@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react'
 import {
+  $createParagraphNode,
   $getSelection,
   $isRangeSelection,
   $setSelection,
@@ -14,6 +15,7 @@ import {
 import {
   $getSelectionStyleValueForProperty,
   $patchStyleText,
+  $setBlocksType,
 } from '@lexical/selection'
 import { INSERT_UNORDERED_LIST_COMMAND } from '@lexical/list'
 import { mergeRegister } from '@lexical/utils'
@@ -53,8 +55,20 @@ export const useCommand = () => {
       })
     }
 
-    if (type === 'bullet')
-      editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)
+    if (type === 'bullet') {
+      const { selectedIsBullet } = noteEditorStore.getState()
+
+      if (selectedIsBullet) {
+        editor.update(() => {
+          const selection = $getSelection()
+          if ($isRangeSelection(selection))
+            $setBlocksType(selection, () => $createParagraphNode())
+        })
+      }
+      else {
+        editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)
+      }
+    }
   }, [editor, noteEditorStore])
 
   return {
