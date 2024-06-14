@@ -47,6 +47,10 @@ const LinkEditorComponent = ({
   })
 
   useEffect(() => {
+    setUrl(selectedLinkUrl)
+  }, [selectedLinkUrl])
+
+  useEffect(() => {
     if (linkAnchorElement)
       refs.setReference(linkAnchorElement)
   }, [linkAnchorElement, refs])
@@ -92,34 +96,36 @@ const LinkEditorComponent = ({
               {
                 linkOperatorShow && (
                   <>
-                    <div className='flex items-center pl-[5px] mr-4'>
-                      <LinkExternal01 className='shrink-0 mr-1 w-3 h-3' />
-                      <div className='shrink-0 mr-1'>
+                    <a
+                      className='flex items-center px-2 h-6 rounded-md hover:bg-gray-50'
+                      href={url}
+                      target='_blank'
+                      rel='noreferrer'
+                    >
+                      <LinkExternal01 className='mr-1 w-3 h-3' />
+                      <div className='mr-1'>
                         {t('workflow.nodes.note.editor.openLink')}
                       </div>
-                      <a
-                        href={url}
-                        target='_blank'
-                        rel='noreferrer'
+                      <div
                         title={url}
-                        className='shrink-0 block text-primary-600 max-w-[140px] truncate'
+                        className='text-primary-600 max-w-[140px] truncate'
                       >
                         {url}
-                      </a>
-                    </div>
-                    <div className='shrink-0 mr-1 w-[1px] h-3.5 bg-gray-100'></div>
+                      </div>
+                    </a>
+                    <div className='mx-1 w-[1px] h-3.5 bg-gray-100'></div>
                     <div
-                      className='shrink-0 flex items-center mr-0.5 px-2 h-6 rounded-md cursor-pointer hover:bg-gray-50'
+                      className='flex items-center mr-0.5 px-2 h-6 rounded-md cursor-pointer hover:bg-gray-50'
                       onClick={() => setLinkOperatorShow(false)}
                     >
-                      <Edit03 className='shrink-0 mr-1 w-3 h-3' />
+                      <Edit03 className='mr-1 w-3 h-3' />
                       {t('common.operation.edit')}
                     </div>
                     <div
-                      className='shrink-0 flex items-center px-2 h-6 rounded-md cursor-pointer hover:bg-gray-50'
+                      className='flex items-center px-2 h-6 rounded-md cursor-pointer hover:bg-gray-50'
                       onClick={handleUnlink}
                     >
-                      <LinkBroken01 className='shrink-0 mr-1 w-3 h-3' />
+                      <LinkBroken01 className='mr-1 w-3 h-3' />
                       {t('workflow.nodes.note.editor.unlink')}
                     </div>
                   </>

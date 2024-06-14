@@ -3,8 +3,6 @@ import {
   useEffect,
 } from 'react'
 import {
-  $getSelection,
-  $isRangeSelection,
   CLICK_COMMAND,
   COMMAND_PRIORITY_LOW,
 } from 'lexical'
@@ -12,13 +10,10 @@ import {
   mergeRegister,
 } from '@lexical/utils'
 import {
-  $isLinkNode,
   TOGGLE_LINK_COMMAND,
 } from '@lexical/link'
-import type { LinkNode } from '@lexical/link'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useNoteEditorStore } from '../../store'
-import { getSelectedNode } from '../../utils'
 
 export const useOpenLink = () => {
   const [editor] = useLexicalComposerContext()
@@ -29,36 +24,29 @@ export const useOpenLink = () => {
       editor.registerCommand(
         CLICK_COMMAND,
         (payload) => {
-          editor.getEditorState().read(() => {
-            const selection = $getSelection()
+          setTimeout(() => {
+            const {
+              selectedLinkUrl,
+              selectedIsLink,
+              setLinkAnchorElement,
+              setLinkOperatorShow,
+            } = noteEditorStore.getState()
 
-            if ($isRangeSelection(selection) && selection.isCollapsed()) {
-              const node = getSelectedNode(selection)
-              const parent = node.getParent()
-
-              if ($isLinkNode(parent) || $isLinkNode(node)) {
-                const linkUrl = ((parent || node) as LinkNode).getURL()
-                if (payload.metaKey || payload.ctrlKey) {
-                  window.open(linkUrl, '_blank')
-                  return true
-                }
-                else {
-                  const {
-                    setLinkAnchorElement,
-                    setLinkOperatorShow,
-                  } = noteEditorStore.getState()
-                  setLinkAnchorElement(true)
-                  setLinkOperatorShow(true)
-                }
+            if (selectedIsLink) {
+              if ((payload.metaKey || payload.ctrlKey) && selectedLinkUrl) {
+                window.open(selectedLinkUrl, '_blank')
+                return true
               }
-              else {
-                const {
-                  setLinkAnchorElement,
-                  setLinkOperatorShow,
-                } = noteEditorStore.getState()
-                setLinkAnchorElement()
+              setLinkAnchorElement(true)
+
+              if (selectedLinkUrl)
+                setLinkOperatorShow(true)
+              else
                 setLinkOperatorShow(false)
-              }
+            }
+            else {
+              setLinkAnchorElement()
+              setLinkOperatorShow(false)
             }
           })
           return false
