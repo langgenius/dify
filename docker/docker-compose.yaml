@@ -81,6 +81,7 @@ services:
       # only available when STORAGE_TYPE is `local`.
       STORAGE_LOCAL_PATH: storage
       # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
+      S3_USE_AWS_MANAGED_IAM: 'false'
       S3_ENDPOINT: 'https://xxx.r2.cloudflarestorage.com'
       S3_BUCKET_NAME: 'difyai'
       S3_ACCESS_KEY: 'ak-difyai'
@@ -236,6 +237,7 @@ services:
       STORAGE_TYPE: local
       STORAGE_LOCAL_PATH: storage
       # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
+      S3_USE_AWS_MANAGED_IAM: 'false'
       S3_ENDPOINT: 'https://xxx.r2.cloudflarestorage.com'
       S3_BUCKET_NAME: 'difyai'
       S3_ACCESS_KEY: 'ak-difyai'
