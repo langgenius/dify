@@ -8,6 +8,7 @@ identity:
 description:
   human:
     en_US: Search on the web and get the top 5 results. Useful for grounding using information from the web.
+    zh_Hans: 在网络上搜索返回前 5 个结果。
   llm: A tool for searching results on the web for grounding. Input should be a simple question.
 parameters:
   - name: query
@@ -15,7 +16,36 @@ parameters:
     required: true
     label:
       en_US: Question (Query)
+      zh_Hans: 信息查询
     human_description:
       en_US: used to find information on the web
+      zh_Hans: 在网络上搜索信息
     llm_description: simple question to ask on the web
     form: llm
+  - name: proxy_server
+    type: string
+    required: false
+    label:
+      en_US: Proxy server
+      zh_Hans: 代理服务器
+      pt_BR: Servidor de proxy
+    human_description:
+      en_US: Use proxy to access URLs
+      zh_Hans: 利用代理访问 URL
+      pt_BR: Use proxy to access URLs
+    llm_description: Use proxy to access URLs
+    form: form
+  - name: no_cache
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Bypass the Cache
+      zh_Hans: 绕过缓存
+      pt_BR: Ignorar o cache
+    human_description:
+      en_US: Bypass the Cache
+      zh_Hans: 是否绕过缓存
+      pt_BR: Ignorar o cache
+    llm_description: bypass the cache
+    form: form
