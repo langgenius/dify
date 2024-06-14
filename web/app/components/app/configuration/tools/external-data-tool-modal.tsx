@@ -286,7 +286,6 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       {
         showEmojiPicker && (
           <EmojiPicker
-            className='!z-[200]'
             onSelect={(icon, icon_background) => {
               handleValueChange({ icon, icon_background })
               setShowEmojiPicker(false)
