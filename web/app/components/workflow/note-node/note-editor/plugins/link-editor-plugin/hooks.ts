@@ -25,6 +25,29 @@ export const useOpenLink = () => {
 
   useEffect(() => {
     return mergeRegister(
+      editor.registerUpdateListener(() => {
+        setTimeout(() => {
+          const {
+            selectedLinkUrl,
+            selectedIsLink,
+            setLinkAnchorElement,
+            setLinkOperatorShow,
+          } = noteEditorStore.getState()
+
+          if (selectedIsLink) {
+            setLinkAnchorElement(true)
+
+            if (selectedLinkUrl)
+              setLinkOperatorShow(true)
+            else
+              setLinkOperatorShow(false)
+          }
+          else {
+            setLinkAnchorElement()
+            setLinkOperatorShow(false)
+          }
+        })
+      }),
       editor.registerCommand(
         CLICK_COMMAND,
         (payload) => {
