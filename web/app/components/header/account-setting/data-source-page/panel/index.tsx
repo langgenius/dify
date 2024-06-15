@@ -125,7 +125,7 @@ const Panel: FC<Props> = ({
                     onRemove={onRemove}
                     notionActions={notionActions}
                     readOnly={readOnly}
-                    />
+                  />
                 ))
               }
             </div>

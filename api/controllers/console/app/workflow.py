@@ -3,7 +3,7 @@ import logging
 
 from flask import abort, request
 from flask_restful import Resource, marshal_with, reqparse
-from werkzeug.exceptions import InternalServerError, NotFound, Forbidden
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.console import api

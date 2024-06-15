@@ -157,13 +157,12 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
       <div className='relative'>
         <PortalToFollowElemTrigger
           onClick={() => {
-            if (isCurrentWorkspaceEditor) {
-              setOpen(v => !v);
-            }
+            if (isCurrentWorkspaceEditor)
+              setOpen(v => !v)
           }}
           className='block'
         >
-          <div className={cn(`flex p-1 rounded-lg`, open && 'bg-gray-100', isCurrentWorkspaceEditor && 'hover:bg-gray-100 cursor-pointer')}>
+          <div className={cn('flex p-1 rounded-lg', open && 'bg-gray-100', isCurrentWorkspaceEditor && 'hover:bg-gray-100 cursor-pointer')}>
             <div className='relative shrink-0 mr-2'>
               <AppIcon size={expand ? 'large' : 'small'} icon={appDetail.icon} background={appDetail.icon_background} />
               <span className={cn(

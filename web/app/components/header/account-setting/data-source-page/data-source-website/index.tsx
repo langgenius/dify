@@ -53,17 +53,17 @@ const DataSourceWebsite: FC<Props> = () => {
 
   const handleRemove = useCallback((provider: string) => {
     return async () => {
-      const dataSourceId = getIdByProvider(provider);
+      const dataSourceId = getIdByProvider(provider)
       if (dataSourceId) {
-        await removeDataSourceApiKeyBinding(dataSourceId);
-        setSources(sources.filter(item => item.provider !== provider));
+        await removeDataSourceApiKeyBinding(dataSourceId)
+        setSources(sources.filter(item => item.provider !== provider))
         Toast.notify({
           type: 'success',
           message: t('common.api.remove'),
-        });
+        })
       }
-    };
-  }, [sources, t]);
+    }
+  }, [sources, t])
 
   return (
     <>
