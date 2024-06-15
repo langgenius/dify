@@ -37,6 +37,10 @@ const translation = {
     duplicate: 'Duplicate',
     rename: 'Rename',
   },
+  errorMsg: {
+    fieldRequired: '{{field}} is required',
+    urlError: 'url should start with http:// or https://',
+  },
   placeholder: {
     input: 'Please enter',
     select: 'Please select',
@@ -169,6 +173,10 @@ const translation = {
     adminTip: 'Can build apps & manage team settings',
     normal: 'Normal',
     normalTip: 'Only can use apps, can not build apps',
+    builder: 'Builder',
+    builderTip: 'Can build & edit own apps',
+    editor: 'Editor',
+    editorTip: 'Can build & edit apps',
     inviteTeamMember: 'Add team member',
     inviteTeamMemberTip: 'They can access your team data directly after signing in.',
     email: 'Email',
@@ -185,6 +193,8 @@ const translation = {
     removeFromTeamTip: 'Will remove team access',
     setAdmin: 'Set as administrator',
     setMember: 'Set to ordinary member',
+    setBuilder: 'Set as builder',
+    setEditor: 'Set as editor',
     disinvite: 'Cancel the invitation',
     deleteMember: 'Delete Member',
     you: '(You)',
@@ -354,6 +364,7 @@ const translation = {
   dataSource: {
     add: 'Add a data source',
     connect: 'Connect',
+    configure: 'Configure',
     notion: {
       title: 'Notion',
       description: 'Using Notion as a data source for the Knowledge.',
@@ -372,6 +383,14 @@ const translation = {
         addPages: 'Add pages',
         preview: 'PREVIEW',
       },
+    },
+    website: {
+      title: 'Website',
+      description: 'Import content from websites using web crawler.',
+      with: 'With',
+      configuredCrawlers: 'Configured crawlers',
+      active: 'Active',
+      inactive: 'Inactive',
     },
   },
   plugin: {

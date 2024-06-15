@@ -40,6 +40,7 @@ class HttpExecutorResponse:
     def get_content_type(self) -> str:
         return self.headers.get('content-type', '')
 
+
     def extract_file(self) -> tuple[str, bytes]:
         """
         extract file from response if content type is file related
