@@ -156,6 +156,9 @@ const translation = {
     langGeniusAccountTip: '您的 Dify 賬號和相關的使用者資料。',
     editName: '編輯名字',
     showAppLength: '顯示 {{length}} 個應用',
+    delete: '刪除帳戶',
+    deleteTip: '刪除您的帳戶將永久刪除您的所有資料並且無法恢復。',
+    deleteConfirmTip: '請將以下內容從您的註冊電子郵件發送至 ',
   },
   members: {
     team: '團隊',

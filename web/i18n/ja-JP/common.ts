@@ -156,6 +156,9 @@ const translation = {
     langGeniusAccountTip: 'Difyアカウントと関連するユーザーデータ。',
     editName: '名前を編集',
     showAppLength: '{{length}}アプリを表示',
+    delete: 'アカウントを削除',
+    deleteTip: 'アカウントを削除すると、すべてのデータが完全に消去され、復元できなくなります。',
+    deleteConfirmTip: '確認のため、登録したメールから次の内容をに送信してください ',
   },
   members: {
     team: 'チーム',

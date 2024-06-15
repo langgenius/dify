@@ -269,7 +269,7 @@ export default function AccountPage() {
           </div>
           <div className='my-2 px-3 py-2 rounded-lg bg-gray-100 text-sm font-medium leading-5 text-gray-800'>{`Delete Account: ${userProfile.email}`}</div>
           <div className='pt-6 flex justify-end items-center'>
-            <Button className='w-[96px] text-gray-700 text-sm font-medium' onClick={() => setShowDeleteAccountModal(false)}>{t('common.operation.ok')}</Button>
+            <Button className='w-24 text-gray-700 text-sm font-medium' onClick={() => setShowDeleteAccountModal(false)}>{t('common.operation.ok')}</Button>
           </div>
         </Modal>
       )}
