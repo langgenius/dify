@@ -7,7 +7,7 @@ identity:
 description:
   human:
     en_US: A tool to perform convert a webpage to markdown to make it easier for LLMs to understand.
-    zh_Hans: 一个将网页转换为 Markdown 的工具，以便法学硕士更容易理解
+    zh_Hans: 一个将网页转换为 Markdown 的工具，以便模型更容易理解
   llm: A tool to perform convert a webpage to markdown to make it easier for LLMs to understand.
 parameters:
   - name: url
