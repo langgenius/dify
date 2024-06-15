@@ -3,7 +3,7 @@ import uuid
 from typing import Any, Optional
 
 from flask import current_app
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, Sequence, String, Table, create_engine, insert
 from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import JSON, TEXT
@@ -33,7 +33,7 @@ class RelytConfig(BaseModel):
     password: str
     database: str
 
-    @root_validator()
+    @model_validator(mode='before')
     def validate_config(cls, values: dict) -> dict:
         if not values['host']:
             raise ValueError("config RELYT_HOST is required")

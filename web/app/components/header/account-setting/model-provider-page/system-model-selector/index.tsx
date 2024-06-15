@@ -23,6 +23,7 @@ import Button from '@/app/components/base/button'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
+import { useAppContext } from '@/context/app-context'
 
 type SystemModelSelectorProps = {
   textGenerationDefaultModel: DefaultModelResponse | undefined
@@ -40,6 +41,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const { textGenerationModelList } = useProviderContext()
   const updateModelList = useUpdateModelList()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -248,6 +250,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               type='primary'
               className='!h-8 !text-[13px]'
               onClick={handleSave}
+              disabled={!isCurrentWorkspaceManager}
             >
               {t('common.operation.save')}
             </Button>
