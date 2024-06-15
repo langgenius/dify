@@ -87,7 +87,6 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   return (
     <>
       <Modal
-        wrapperClassName='z-20'
         className={cn('p-8 max-w-[600px] w-[600px]', s.bg)}
         isShow={show}
         onClose={() => {}}
