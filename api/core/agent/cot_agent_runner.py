@@ -15,6 +15,7 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool.tool import Tool
 from core.tools.tool_engine import ToolEngine
@@ -42,9 +43,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self._init_react_state(query)
 
         # check model mode
-        if 'Observation' not in app_generate_entity.model_config.stop:
-            if app_generate_entity.model_config.provider not in self._ignore_observation_providers:
-                app_generate_entity.model_config.stop.append('Observation')
+        if 'Observation' not in app_generate_entity.model_conf.stop:
+            if app_generate_entity.model_conf.provider not in self._ignore_observation_providers:
+                app_generate_entity.model_conf.stop.append('Observation')
 
         app_config = self.app_config
 
@@ -108,9 +109,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             # invoke model
             chunks: Generator[LLMResultChunk, None, None] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
-                model_parameters=app_generate_entity.model_config.parameters,
+                model_parameters=app_generate_entity.model_conf.parameters,
                 tools=[],
-                stop=app_generate_entity.model_config.stop,
+                stop=app_generate_entity.model_conf.stop,
                 stream=True,
                 user=self.user_id,
                 callbacks=[],
@@ -140,8 +141,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 if isinstance(chunk, AgentScratchpadUnit.Action):
                     action = chunk
                     # detect action
-                    scratchpad.agent_response += json.dumps(chunk.dict())
-                    scratchpad.action_str = json.dumps(chunk.dict())
+                    scratchpad.agent_response += json.dumps(chunk.model_dump())
+                    scratchpad.action_str = json.dumps(chunk.model_dump())
                     scratchpad.action = action
                 else:
                     scratchpad.agent_response += chunk
@@ -373,23 +374,32 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         return message
 
-    def _organize_historic_prompt_messages(self) -> list[PromptMessage]:
+    def _organize_historic_prompt_messages(self, current_session_messages: list[PromptMessage] = None) -> list[PromptMessage]:
         """
             organize historic prompt messages
         """
         result: list[PromptMessage] = []
-        scratchpad: list[AgentScratchpadUnit] = []
+        scratchpads: list[AgentScratchpadUnit] = []
         current_scratchpad: AgentScratchpadUnit = None
+
+        self.history_prompt_messages = AgentHistoryPromptTransform(
+            model_config=self.model_config,
+            prompt_messages=current_session_messages or [],
+            history_messages=self.history_prompt_messages,
+            memory=self.memory
+        ).get_prompt()
 
         for message in self.history_prompt_messages:
             if isinstance(message, AssistantPromptMessage):
-                current_scratchpad = AgentScratchpadUnit(
-                    agent_response=message.content,
-                    thought=message.content or 'I am thinking about how to help you',
-                    action_str='',
-                    action=None,
-                    observation=None,
-                )
+                if not current_scratchpad:
+                    current_scratchpad = AgentScratchpadUnit(
+                        agent_response=message.content,
+                        thought=message.content or 'I am thinking about how to help you',
+                        action_str='',
+                        action=None,
+                        observation=None,
+                    )
+                    scratchpads.append(current_scratchpad)
                 if message.tool_calls:
                     try:
                         current_scratchpad.action = AgentScratchpadUnit.Action(
@@ -401,24 +411,23 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         )
                     except:
                         pass
-                
-                scratchpad.append(current_scratchpad)
             elif isinstance(message, ToolPromptMessage):
                 if current_scratchpad:
                     current_scratchpad.observation = message.content
             elif isinstance(message, UserPromptMessage):
+                if scratchpads:
+                    result.append(AssistantPromptMessage(
+                        content=self._format_assistant_message(scratchpads)
+                    ))
+                    scratchpads = []
+                    current_scratchpad = None
+
                 result.append(message)
 
-                if scratchpad:
-                    result.append(AssistantPromptMessage(
-                        content=self._format_assistant_message(scratchpad)
-                    ))
 
-                scratchpad = []
-
-        if scratchpad:
+        if scratchpads:
             result.append(AssistantPromptMessage(
-                content=self._format_assistant_message(scratchpad)
+                content=self._format_assistant_message(scratchpads)
             ))
         
         return result

@@ -24,6 +24,10 @@ import ToolNode from './tool/node'
 import ToolPanel from './tool/panel'
 import VariableAssignerNode from './variable-assigner/node'
 import VariableAssignerPanel from './variable-assigner/panel'
+import ParameterExtractorNode from './parameter-extractor/node'
+import ParameterExtractorPanel from './parameter-extractor/panel'
+import IterationNode from './iteration/node'
+import IterationPanel from './iteration/panel'
 
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartNode,
@@ -38,6 +42,9 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.HttpRequest]: HttpNode,
   [BlockEnum.Tool]: ToolNode,
   [BlockEnum.VariableAssigner]: VariableAssignerNode,
+  [BlockEnum.VariableAggregator]: VariableAssignerNode,
+  [BlockEnum.ParameterExtractor]: ParameterExtractorNode,
+  [BlockEnum.Iteration]: IterationNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -53,4 +60,9 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.HttpRequest]: HttpPanel,
   [BlockEnum.Tool]: ToolPanel,
   [BlockEnum.VariableAssigner]: VariableAssignerPanel,
+  [BlockEnum.VariableAggregator]: VariableAssignerPanel,
+  [BlockEnum.ParameterExtractor]: ParameterExtractorPanel,
+  [BlockEnum.Iteration]: IterationPanel,
 }
+
+export const CUSTOM_NODE_TYPE = 'custom'

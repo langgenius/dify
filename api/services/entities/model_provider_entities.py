@@ -2,12 +2,12 @@ from enum import Enum
 from typing import Optional
 
 from flask import current_app
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
-from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
+from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.entities.provider_entities import QuotaConfiguration
 from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import ModelType, ProviderModel
+from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import (
     ConfigurateMethod,
     ModelCredentialSchema,
@@ -61,6 +61,9 @@ class ProviderResponse(BaseModel):
     custom_configuration: CustomConfigurationResponse
     system_configuration: SystemConfigurationResponse
 
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
     def __init__(self, **data) -> None:
         super().__init__(**data)
 
@@ -79,13 +82,6 @@ class ProviderResponse(BaseModel):
             )
 
 
-class ModelResponse(ProviderModel):
-    """
-    Model class for model response.
-    """
-    status: ModelStatus
-
-
 class ProviderWithModelsResponse(BaseModel):
     """
     Model class for provider with models response.
@@ -95,7 +91,7 @@ class ProviderWithModelsResponse(BaseModel):
     icon_small: Optional[I18nObject] = None
     icon_large: Optional[I18nObject] = None
     status: CustomConfigurationStatus
-    models: list[ModelResponse]
+    models: list[ProviderModelWithStatusEntity]
 
     def __init__(self, **data) -> None:
         super().__init__(**data)
@@ -146,6 +142,9 @@ class DefaultModelResponse(BaseModel):
     model_type: ModelType
     provider: SimpleProviderEntityResponse
 
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class ModelWithProviderEntityResponse(ModelWithProviderEntity):
     """
@@ -154,4 +153,4 @@ class ModelWithProviderEntityResponse(ModelWithProviderEntity):
     provider: SimpleProviderEntityResponse
 
     def __init__(self, model: ModelWithProviderEntity) -> None:
-        super().__init__(**model.dict())
+        super().__init__(**model.model_dump())

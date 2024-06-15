@@ -8,7 +8,7 @@ import type { Collection, CustomCollectionBackend, Tool } from '../types'
 import Loading from '../../base/loading'
 import { ArrowNarrowRight } from '../../base/icons/src/vender/line/arrows'
 import Toast from '../../base/toast'
-import { ConfigurateMethodEnum } from '../../header/account-setting/model-provider-page/declarations'
+import { ConfigurationMethodEnum } from '../../header/account-setting/model-provider-page/declarations'
 import Header from './header'
 import Item from './item'
 import AppIcon from '@/app/components/base/app-icon'
@@ -58,8 +58,8 @@ const ToolList: FC<Props> = ({
         setShowModelModal({
           payload: {
             currentProvider: provider,
-            currentConfigurateMethod: ConfigurateMethodEnum.predefinedModel,
-            currentCustomConfigrationModelFixedFields: undefined,
+            currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
+            currentCustomConfigurationModelFixedFields: undefined,
           },
           onSaveCallback: () => {
             onRefreshData()

@@ -46,6 +46,8 @@ import {
 } from './hooks'
 import Header from './header'
 import CustomNode from './nodes'
+import CustomNoteNode from './note-node'
+import { CUSTOM_NOTE_NODE } from './note-node/constants'
 import Operator from './operator'
 import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
@@ -55,6 +57,7 @@ import HelpLine from './help-line'
 import CandidateNode from './candidate-node'
 import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
+import SyncingDataModal from './syncing-data-modal'
 import {
   useStore,
   useWorkflowStore,
@@ -64,17 +67,23 @@ import {
   initialEdges,
   initialNodes,
 } from './utils'
-import { WORKFLOW_DATA_UPDATE } from './constants'
+import {
+  CUSTOM_NODE,
+  ITERATION_CHILDREN_Z_INDEX,
+  WORKFLOW_DATA_UPDATE,
+} from './constants'
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import Confirm from '@/app/components/base/confirm/common'
 
 const nodeTypes = {
-  custom: CustomNode,
+  [CUSTOM_NODE]: CustomNode,
+  [CUSTOM_NOTE_NODE]: CustomNoteNode,
 }
 const edgeTypes = {
-  custom: CustomEdge,
+  [CUSTOM_NODE]: CustomEdge,
 }
 
 type WorkflowProps = {
@@ -94,6 +103,11 @@ const Workflow: FC<WorkflowProps> = memo(({
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
+  const showConfirm = useStore(s => s.showConfirm)
+  const {
+    setShowConfirm,
+    setControlPromptEditorRerenderKey,
+  } = workflowStore.getState()
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -107,6 +121,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     if (v.type === WORKFLOW_DATA_UPDATE) {
       setNodes(v.payload.nodes)
       setEdges(v.payload.edges)
+      setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     }
   })
 
@@ -129,7 +144,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     if (document.visibilityState === 'hidden')
       syncWorkflowDraftWhenPageClose()
     else if (document.visibilityState === 'visible')
-      handleRefreshWorkflowDraft()
+      setTimeout(() => handleRefreshWorkflowDraft(), 500)
   }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft])
 
   useEffect(() => {
@@ -201,7 +216,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   })
 
   useKeyPress('delete', handleNodesDelete)
-  useKeyPress('delete', handleEdgeDelete)
+  useKeyPress(['delete', 'backspace'], handleEdgeDelete)
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, handleNodesCopy, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.v`, handleNodesPaste, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, handleNodesDuplicate, { exactMatch: true, useCapture: true })
@@ -217,6 +232,7 @@ const Workflow: FC<WorkflowProps> = memo(({
       `}
       ref={workflowContainerRef}
     >
+      <SyncingDataModal />
       <CandidateNode />
       <Header />
       <Panel />
@@ -227,6 +243,18 @@ const Workflow: FC<WorkflowProps> = memo(({
       <PanelContextmenu />
       <NodeContextmenu />
       <HelpLine />
+      {
+        !!showConfirm && (
+          <Confirm
+            isShow
+            onCancel={() => setShowConfirm(undefined)}
+            onConfirm={showConfirm.onConfirm}
+            title={showConfirm.title}
+            desc={showConfirm.desc}
+            confirmWrapperClassName='!z-[11]'
+          />
+        )
+      }
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -250,6 +278,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         onSelectionDrag={handleSelectionDrag}
         onPaneContextMenu={handlePaneContextMenu}
         connectionLineComponent={CustomConnectionLine}
+        connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
         deleteKeyCode={null}

@@ -1,12 +1,15 @@
 import base64
 import json
 import secrets
+from typing import Optional
 
 import click
 from flask import current_app
 from werkzeug.exceptions import NotFound
 
+from constants.languages import languages
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from libs.helper import email as email_validate
@@ -17,6 +20,7 @@ from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
+from services.account_service import RegisterService, TenantService
 
 
 @click.command('reset-password', help='Reset the account password.')
@@ -57,7 +61,7 @@ def reset_password(email, new_password, password_confirm):
     account.password = base64_password_hashed
     account.password_salt = base64_salt
     db.session.commit()
-    click.echo(click.style('Congratulations!, password has been reset.', fg='green'))
+    click.echo(click.style('Congratulations! Password has been reset.', fg='green'))
 
 
 @click.command('reset-email', help='Reset the account email.')
@@ -263,15 +267,15 @@ def migrate_knowledge_vector_database():
                         skipped_count = skipped_count + 1
                         continue
                 collection_name = ''
-                if vector_type == "weaviate":
+                if vector_type == VectorType.WEAVIATE:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
-                        "type": 'weaviate',
+                        "type": VectorType.WEAVIATE,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == "qdrant":
+                elif vector_type == VectorType.QDRANT:
                     if dataset.collection_binding_id:
                         dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
                             filter(DatasetCollectionBinding.id == dataset.collection_binding_id). \
@@ -284,20 +288,20 @@ def migrate_knowledge_vector_database():
                         dataset_id = dataset.id
                         collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
-                        "type": 'qdrant',
+                        "type": VectorType.QDRANT,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
 
-                elif vector_type == "milvus":
+                elif vector_type == VectorType.MILVUS:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
-                        "type": 'milvus',
+                        "type": VectorType.MILVUS,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == "relyt":
+                elif vector_type == VectorType.RELYT:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
@@ -305,16 +309,24 @@ def migrate_knowledge_vector_database():
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == "pgvector":
+                elif vector_type == VectorType.TENCENT:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
-                        "type": 'pgvector',
+                        "type": VectorType.TENCENT,
+                        "vector_store": {"class_prefix": collection_name}
+                    }
+                    dataset.index_struct = json.dumps(index_struct_dict)
+                elif vector_type == VectorType.PGVECTOR:
+                    dataset_id = dataset.id
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+                    index_struct_dict = {
+                        "type": VectorType.PGVECTOR,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
                 else:
-                    raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
+                    raise ValueError(f"Vector store {vector_type} is not supported.")
 
                 vector = Vector(dataset)
                 click.echo(f"Start to migrate dataset {dataset.id}.")
@@ -448,9 +460,105 @@ def convert_to_agent_apps():
     click.echo(click.style('Congratulations! Converted {} agent apps.'.format(len(proceeded_app_ids)), fg='green'))
 
 
+@click.command('add-qdrant-doc-id-index', help='add qdrant doc_id index.')
+@click.option('--field', default='metadata.doc_id', prompt=False, help='index field , default is metadata.doc_id.')
+def add_qdrant_doc_id_index(field: str):
+    click.echo(click.style('Start add qdrant doc_id index.', fg='green'))
+    config = current_app.config
+    vector_type = config.get('VECTOR_STORE')
+    if vector_type != "qdrant":
+        click.echo(click.style('Sorry, only support qdrant vector store.', fg='red'))
+        return
+    create_count = 0
+
+    try:
+        bindings = db.session.query(DatasetCollectionBinding).all()
+        if not bindings:
+            click.echo(click.style('Sorry, no dataset collection bindings found.', fg='red'))
+            return
+        import qdrant_client
+        from qdrant_client.http.exceptions import UnexpectedResponse
+        from qdrant_client.http.models import PayloadSchemaType
+
+        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
+        for binding in bindings:
+            qdrant_config = QdrantConfig(
+                endpoint=config.get('QDRANT_URL'),
+                api_key=config.get('QDRANT_API_KEY'),
+                root_path=current_app.root_path,
+                timeout=config.get('QDRANT_CLIENT_TIMEOUT'),
+                grpc_port=config.get('QDRANT_GRPC_PORT'),
+                prefer_grpc=config.get('QDRANT_GRPC_ENABLED')
+            )
+            try:
+                client = qdrant_client.QdrantClient(**qdrant_config.to_qdrant_params())
+                # create payload index
+                client.create_payload_index(binding.collection_name, field,
+                                            field_schema=PayloadSchemaType.KEYWORD)
+                create_count += 1
+            except UnexpectedResponse as e:
+                # Collection does not exist, so return
+                if e.status_code == 404:
+                    click.echo(click.style(f'Collection not found, collection_name:{binding.collection_name}.', fg='red'))
+                    continue
+                # Some other error occurred, so re-raise the exception
+                else:
+                    click.echo(click.style(f'Failed to create qdrant index, collection_name:{binding.collection_name}.', fg='red'))
+
+    except Exception as e:
+        click.echo(click.style('Failed to create qdrant client.', fg='red'))
+
+    click.echo(
+        click.style(f'Congratulations! Create {create_count} collection indexes.',
+                    fg='green'))
+
+
+@click.command('create-tenant', help='Create account and tenant.')
+@click.option('--email', prompt=True, help='The email address of the tenant account.')
+@click.option('--language', prompt=True, help='Account language, default: en-US.')
+def create_tenant(email: str, language: Optional[str] = None):
+    """
+    Create tenant account
+    """
+    if not email:
+        click.echo(click.style('Sorry, email is required.', fg='red'))
+        return
+
+    # Create account
+    email = email.strip()
+
+    if '@' not in email:
+        click.echo(click.style('Sorry, invalid email address.', fg='red'))
+        return
+
+    account_name = email.split('@')[0]
+
+    if language not in languages:
+        language = 'en-US'
+
+    # generate random password
+    new_password = secrets.token_urlsafe(16)
+
+    # register account
+    account = RegisterService.register(
+        email=email,
+        name=account_name,
+        password=new_password,
+        language=language
+    )
+
+    TenantService.create_owner_tenant_if_not_exist(account)
+
+    click.echo(click.style('Congratulations! Account and tenant created.\n'
+                           'Account: {}\nPassword: {}'.format(email, new_password), fg='green'))
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
     app.cli.add_command(reset_encrypt_key_pair)
     app.cli.add_command(vdb_migrate)
     app.cli.add_command(convert_to_agent_apps)
+    app.cli.add_command(add_qdrant_doc_id_index)
+    app.cli.add_command(create_tenant)
+

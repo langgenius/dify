@@ -6,7 +6,7 @@ from tests.integration_tests.vdb.test_vector_store import (
 )
 
 
-class TestPgvectoRSVector(AbstractVectorTest):
+class PGVectoRSVectorTest(AbstractVectorTest):
     def __init__(self):
         super().__init__()
         self.vector = PGVectoRS(
@@ -34,4 +34,4 @@ class TestPgvectoRSVector(AbstractVectorTest):
         assert len(ids) == 1
 
 def test_pgvecot_rs(setup_mock_redis):
-    TestPgvectoRSVector().run_all_tests()
+    PGVectoRSVectorTest().run_all_tests()

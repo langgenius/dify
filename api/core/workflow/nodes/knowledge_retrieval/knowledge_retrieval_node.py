@@ -1,5 +1,7 @@
 from typing import Any, cast
 
+from sqlalchemy import func
+
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
@@ -73,30 +75,33 @@ class KnowledgeRetrievalNode(BaseNode):
 
     def _fetch_dataset_retriever(self, node_data: KnowledgeRetrievalNodeData, query: str) -> list[
         dict[str, Any]]:
-        """
-        A dataset tool is a tool that can be used to retrieve information from a dataset
-        :param node_data: node data
-        :param query: query
-        """
-        tools = []
         available_datasets = []
         dataset_ids = node_data.dataset_ids
-        for dataset_id in dataset_ids:
-            # get dataset from dataset id
-            dataset = db.session.query(Dataset).filter(
-                Dataset.tenant_id == self.tenant_id,
-                Dataset.id == dataset_id
-            ).first()
 
+        # Subquery: Count the number of available documents for each dataset
+        subquery = db.session.query(
+            Document.dataset_id,
+            func.count(Document.id).label('available_document_count')
+        ).filter(
+            Document.indexing_status == 'completed',
+            Document.enabled == True,
+            Document.archived == False,
+            Document.dataset_id.in_(dataset_ids)
+        ).group_by(Document.dataset_id).having(
+            func.count(Document.id) > 0
+        ).subquery()
+
+        results = db.session.query(Dataset).join(
+            subquery, Dataset.id == subquery.c.dataset_id
+        ).filter(
+            Dataset.tenant_id == self.tenant_id,
+            Dataset.id.in_(dataset_ids)
+        ).all()
+
+        for dataset in results:
             # pass if dataset is not available
             if not dataset:
                 continue
-
-            # pass if dataset is not available
-            if (dataset and dataset.available_document_count == 0
-                    and dataset.available_document_count == 0):
-                continue
-
             available_datasets.append(dataset)
         all_documents = []
         dataset_retrieval = DatasetRetrieval()
@@ -143,7 +148,7 @@ class KnowledgeRetrievalNode(BaseNode):
         if all_documents:
             document_score_list = {}
             for item in all_documents:
-                if 'score' in item.metadata and item.metadata['score']:
+                if item.metadata.get('score'):
                     document_score_list[item.metadata['doc_id']] = item.metadata['score']
 
             index_node_ids = [document.metadata['doc_id'] for document in all_documents]
@@ -191,9 +196,9 @@ class KnowledgeRetrievalNode(BaseNode):
                             'title': document.name
                         }
                         if segment.answer:
-                            source['content'] = f'question:{segment.content} \nanswer:{segment.answer}'
+                            source['content'] = f'question:{segment.get_sign_content()} \nanswer:{segment.answer}'
                         else:
-                            source['content'] = segment.content
+                            source['content'] = segment.get_sign_content()
                         context_list.append(source)
                         resource_number += 1
         return context_list

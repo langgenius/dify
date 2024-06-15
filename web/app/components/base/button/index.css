@@ -3,10 +3,10 @@
 @layer components {
   .btn {
     @apply inline-flex justify-center items-center content-center h-9 leading-5 rounded-lg px-4 py-2 text-base cursor-pointer whitespace-nowrap;
-  }
+  };
 
   .btn-default {
-    @apply border-solid border border-gray-200 cursor-pointer text-gray-500 hover:bg-white hover:shadow-sm hover:border-gray-300;
+    @apply border-solid border border-gray-200 cursor-pointer text-gray-700 hover:bg-white hover:shadow-sm hover:border-gray-300;
   }
 
   .btn-default-disabled {

@@ -75,7 +75,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             )
 
         # parse files
-        files = args['files'] if 'files' in args and args['files'] else []
+        files = args['files'] if args.get('files') else []
         message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
         file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
         if file_extra_config:
@@ -98,7 +98,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         application_generate_entity = CompletionAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
-            model_config=ModelConfigConverter.convert(app_config),
+            model_conf=ModelConfigConverter.convert(app_config),
             inputs=self._get_cleaned_inputs(inputs, app_config),
             query=query,
             files=file_objs,
@@ -257,7 +257,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         application_generate_entity = CompletionAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
-            model_config=ModelConfigConverter.convert(app_config),
+            model_conf=ModelConfigConverter.convert(app_config),
             inputs=message.inputs,
             query=message.query,
             files=file_objs,

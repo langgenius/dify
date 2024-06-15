@@ -14,7 +14,10 @@ import {
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
-import { MAX_TREE_DEEPTH } from '../constants'
+import {
+  CUSTOM_NODE,
+  MAX_TREE_DEEPTH,
+} from '../constants'
 import type { ToolNodeType } from '../nodes/tool/types'
 import { useIsChatMode } from './use-workflow'
 import { useNodesExtraData } from './use-nodes-data'
@@ -29,10 +32,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
   const isChatMode = useIsChatMode()
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
 
   const needWarningNodes = useMemo(() => {
     const list = []
-    const { validNodes } = getValidTreeNodes(nodes, edges)
+    const { validNodes } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges)
 
     for (let i = 0; i < nodes.length; i++) {
       const node = nodes[i]
@@ -41,26 +45,31 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
 
       if (node.data.type === BlockEnum.Tool) {
         const { provider_type } = node.data
-        const isBuiltIn = provider_type === CollectionType.builtIn
 
-        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, language)
-        if (isBuiltIn)
+        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
+        if (provider_type === CollectionType.builtIn)
           toolIcon = buildInTools.find(tool => tool.id === node.data.provider_id)?.icon
 
-        if (!isBuiltIn)
+        if (provider_type === CollectionType.custom)
           toolIcon = customTools.find(tool => tool.id === node.data.provider_id)?.icon
-      }
-      const { errorMessage } = nodesExtraData[node.data.type].checkValid(node.data, t, moreDataForCheckValid)
 
-      if (errorMessage || !validNodes.find(n => n.id === node.id)) {
-        list.push({
-          id: node.id,
-          type: node.data.type,
-          title: node.data.title,
-          toolIcon,
-          unConnected: !validNodes.find(n => n.id === node.id),
-          errorMessage,
-        })
+        if (provider_type === CollectionType.workflow)
+          toolIcon = workflowTools.find(tool => tool.id === node.data.provider_id)?.icon
+      }
+
+      if (node.type === CUSTOM_NODE) {
+        const { errorMessage } = nodesExtraData[node.data.type].checkValid(node.data, t, moreDataForCheckValid)
+
+        if (errorMessage || !validNodes.find(n => n.id === node.id)) {
+          list.push({
+            id: node.id,
+            type: node.data.type,
+            title: node.data.title,
+            toolIcon,
+            unConnected: !validNodes.find(n => n.id === node.id),
+            errorMessage,
+          })
+        }
       }
     }
 
@@ -83,7 +92,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
     }
 
     return list
-  }, [t, nodes, edges, nodesExtraData, buildInTools, customTools, language, isChatMode])
+  }, [t, nodes, edges, nodesExtraData, buildInTools, customTools, workflowTools, language, isChatMode])
 
   return needWarningNodes
 }
@@ -93,6 +102,7 @@ export const useChecklistBeforePublish = () => {
   const language = useGetLanguage()
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
+  const workflowTools = useStore(s => s.workflowTools)
   const { notify } = useToastContext()
   const isChatMode = useIsChatMode()
   const store = useStoreApi()
@@ -103,11 +113,11 @@ export const useChecklistBeforePublish = () => {
       getNodes,
       edges,
     } = store.getState()
-    const nodes = getNodes()
+    const nodes = getNodes().filter(node => node.type === CUSTOM_NODE)
     const {
       validNodes,
       maxDepth,
-    } = getValidTreeNodes(nodes, edges)
+    } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges)
 
     if (maxDepth > MAX_TREE_DEEPTH) {
       notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEEPTH }) })
@@ -118,7 +128,7 @@ export const useChecklistBeforePublish = () => {
       const node = nodes[i]
       let moreDataForCheckValid
       if (node.data.type === BlockEnum.Tool)
-        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, language)
+        moreDataForCheckValid = getToolCheckParams(node.data as ToolNodeType, buildInTools, customTools, workflowTools, language)
 
       const { errorMessage } = nodesExtraData[node.data.type as BlockEnum].checkValid(node.data, t, moreDataForCheckValid)
 
@@ -144,7 +154,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [nodesExtraData, notify, t, store, isChatMode, buildInTools, customTools, language])
+  }, [nodesExtraData, notify, t, store, isChatMode, buildInTools, customTools, workflowTools, language])
 
   return {
     handleCheckBeforePublish,
