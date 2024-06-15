@@ -3,9 +3,8 @@ label:
   en_US: Gemini 1.0 Pro Vision
 model_type: llm
 features:
+  - agent-thought
   - vision
-  - tool-call
-  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 16384
