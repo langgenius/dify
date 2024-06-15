@@ -10,6 +10,7 @@ const theme: EditorThemeClasses = {
   },
   link: 'note-editor-theme_link',
   text: {
+    italic: 'note-editor-theme_text-italic',
     strikethrough: 'note-editor-theme_text-strikethrough',
   },
 }

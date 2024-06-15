@@ -23,7 +23,7 @@ provider_credential_schema:
     - variable: aws_access_key_id
       required: false
       label:
-        en_US: Access Key (If not provided, credentials are obtained from your running environment. e.g. IAM role)
+        en_US: Access Key (If not provided, credentials are obtained from the running environment.)
         zh_Hans: Access Key
       type: secret-input
       placeholder:

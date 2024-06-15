@@ -37,6 +37,10 @@ const translation = {
     duplicate: '复制',
     rename: '重命名',
   },
+  errorMsg: {
+    fieldRequired: '{{field}} 为必填项',
+    urlError: 'url 应该以 http:// 或 https:// 开头',
+  },
   placeholder: {
     input: '请输入',
     select: '请选择',
@@ -356,6 +360,7 @@ const translation = {
   dataSource: {
     add: '添加数据源',
     connect: '绑定',
+    configure: '配置',
     notion: {
       title: 'Notion',
       description: '使用 Notion 作为知识库的数据源。',
@@ -374,6 +379,14 @@ const translation = {
         addPages: '添加页面',
         preview: '预览',
       },
+    },
+    website: {
+      title: '网站',
+      description: '使用网络爬虫从网站导入内容。',
+      with: '使用',
+      configuredCrawlers: '已配置的爬虫',
+      active: '可用',
+      inactive: '不可用',
     },
   },
   plugin: {

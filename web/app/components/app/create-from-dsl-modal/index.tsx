@@ -78,7 +78,6 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose }: CreateFromDSLModalProp
 
   return (
     <Modal
-      wrapperClassName='z-20'
       className='px-8 py-6 max-w-[520px] w-[520px] rounded-xl'
       isShow={show}
       onClose={() => {}}
