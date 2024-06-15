@@ -122,7 +122,7 @@ parameters:
     required: false
     human_description:
       en_US: Defines the country of the search. Default is "US".
-      zh_Hans: 定义搜索的国家/地区/地区。默认为“美国”。
+      zh_Hans: 定义搜索的国家/地区。默认为“美国”。
     llm_description: Defines the gl parameter of the Google search.
     form: form
     default: US
