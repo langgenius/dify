@@ -1,6 +1,10 @@
-import { memo } from 'react'
+import {
+  memo,
+  useMemo,
+} from 'react'
 import type { NodeProps } from 'reactflow'
 import type { Node } from '../types'
+import { CUSTOM_NODE } from '../constants'
 import {
   NodeComponentMap,
   PanelComponentMap,
@@ -23,14 +27,24 @@ const CustomNode = (props: NodeProps) => {
 CustomNode.displayName = 'CustomNode'
 
 export const Panel = memo((props: Node) => {
+  const nodeClass = props.type
   const nodeData = props.data
-  const PanelComponent = PanelComponentMap[nodeData.type]
+  const PanelComponent = useMemo(() => {
+    if (nodeClass === CUSTOM_NODE)
+      return PanelComponentMap[nodeData.type]
 
-  return (
-    <BasePanel key={props.id} {...props}>
-      <PanelComponent />
-    </BasePanel>
-  )
+    return () => null
+  }, [nodeClass, nodeData.type])
+
+  if (nodeClass === CUSTOM_NODE) {
+    return (
+      <BasePanel key={props.id} {...props}>
+        <PanelComponent />
+      </BasePanel>
+    )
+  }
+
+  return null
 })
 
 Panel.displayName = 'Panel'

@@ -12,7 +12,11 @@ import {
   useStore,
   useWorkflowStore,
 } from './store'
+import { useNodesInteractions } from './hooks'
+import { CUSTOM_NODE } from './constants'
 import CustomNode from './nodes'
+import CustomNoteNode from './note-node'
+import { CUSTOM_NOTE_NODE } from './note-node/constants'
 
 const CandidateNode = () => {
   const store = useStoreApi()
@@ -21,6 +25,7 @@ const CandidateNode = () => {
   const candidateNode = useStore(s => s.candidateNode)
   const mousePosition = useStore(s => s.mousePosition)
   const { zoom } = useViewport()
+  const { handleNodeSelect } = useNodesInteractions()
 
   useEventListener('click', (e) => {
     const { candidateNode, mousePosition } = workflowStore.getState()
@@ -49,6 +54,9 @@ const CandidateNode = () => {
       })
       setNodes(newNodes)
       workflowStore.setState({ candidateNode: undefined })
+
+      if (candidateNode.type === CUSTOM_NOTE_NODE)
+        handleNodeSelect(candidateNode.id)
     }
   })
 
@@ -73,7 +81,16 @@ const CandidateNode = () => {
         transformOrigin: '0 0',
       }}
     >
-      <CustomNode {...candidateNode as any} />
+      {
+        candidateNode.type === CUSTOM_NODE && (
+          <CustomNode {...candidateNode as any} />
+        )
+      }
+      {
+        candidateNode.type === CUSTOM_NOTE_NODE && (
+          <CustomNoteNode {...candidateNode as any} />
+        )
+      }
     </div>
   )
 }

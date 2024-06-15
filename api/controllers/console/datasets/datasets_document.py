@@ -226,8 +226,8 @@ class DatasetDocumentListApi(Resource):
         if not dataset:
             raise NotFound('Dataset not found.')
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         try:
@@ -278,8 +278,8 @@ class DatasetInitApi(Resource):
     @marshal_with(dataset_and_document_fields)
     @cloud_edition_billing_resource_check('vector_space')
     def post(self):
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -465,6 +465,20 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     document_model=document.doc_form
                 )
                 extract_settings.append(extract_setting)
+            elif document.data_source_type == 'website_crawl':
+                extract_setting = ExtractSetting(
+                    datasource_type="website_crawl",
+                    website_info={
+                        "provider": data_source_info['provider'],
+                        "job_id": data_source_info['job_id'],
+                        "url": data_source_info['url'],
+                        "tenant_id": current_user.current_tenant_id,
+                        "mode": data_source_info['mode'],
+                        "only_main_content": data_source_info['only_main_content']
+                    },
+                    document_model=document.doc_form
+                )
+                extract_settings.append(extract_setting)
 
             else:
                 raise ValueError('Data source type not support')
@@ -632,8 +646,8 @@ class DocumentProcessingApi(DocumentResource):
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         if action == "pause":
@@ -696,8 +710,8 @@ class DocumentMetadataApi(DocumentResource):
         doc_type = req_data.get('doc_type')
         doc_metadata = req_data.get('doc_metadata')
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         if doc_type is None or doc_metadata is None:
@@ -743,8 +757,8 @@ class DocumentStatusApi(DocumentResource):
 
         document = self.get_document(dataset_id, document_id)
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         indexing_cache_key = 'document_{}_indexing'.format(document.id)
@@ -952,6 +966,33 @@ class DocumentRenameApi(DocumentResource):
         return document
 
 
+class WebsiteDocumentSyncApi(DocumentResource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id, document_id):
+        """sync website document."""
+        dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound('Dataset not found.')
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset.id, document_id)
+        if not document:
+            raise NotFound('Document not found.')
+        if document.tenant_id != current_user.current_tenant_id:
+            raise Forbidden('No permission.')
+        if document.data_source_type != 'website_crawl':
+            raise ValueError('Document is not a website document.')
+        # 403 if document is archived
+        if DocumentService.check_archived(document):
+            raise ArchivedDocumentImmutableError()
+        # sync document
+        DocumentService.sync_website_document(dataset_id, document)
+
+        return {'result': 'success'}, 200
+
+
 api.add_resource(GetProcessRuleApi, '/datasets/process-rule')
 api.add_resource(DatasetDocumentListApi,
                  '/datasets/<uuid:dataset_id>/documents')
@@ -980,3 +1021,5 @@ api.add_resource(DocumentRecoverApi, '/datasets/<uuid:dataset_id>/documents/<uui
 api.add_resource(DocumentRetryApi, '/datasets/<uuid:dataset_id>/retry')
 api.add_resource(DocumentRenameApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/rename')
+
+api.add_resource(WebsiteDocumentSyncApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/website-sync')

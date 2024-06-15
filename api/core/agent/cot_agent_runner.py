@@ -379,7 +379,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             organize historic prompt messages
         """
         result: list[PromptMessage] = []
-        scratchpad: list[AgentScratchpadUnit] = []
+        scratchpads: list[AgentScratchpadUnit] = []
         current_scratchpad: AgentScratchpadUnit = None
 
         self.history_prompt_messages = AgentHistoryPromptTransform(
@@ -391,13 +391,15 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         for message in self.history_prompt_messages:
             if isinstance(message, AssistantPromptMessage):
-                current_scratchpad = AgentScratchpadUnit(
-                    agent_response=message.content,
-                    thought=message.content or 'I am thinking about how to help you',
-                    action_str='',
-                    action=None,
-                    observation=None,
-                )
+                if not current_scratchpad:
+                    current_scratchpad = AgentScratchpadUnit(
+                        agent_response=message.content,
+                        thought=message.content or 'I am thinking about how to help you',
+                        action_str='',
+                        action=None,
+                        observation=None,
+                    )
+                    scratchpads.append(current_scratchpad)
                 if message.tool_calls:
                     try:
                         current_scratchpad.action = AgentScratchpadUnit.Action(
@@ -409,24 +411,23 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         )
                     except:
                         pass
-                
-                scratchpad.append(current_scratchpad)
             elif isinstance(message, ToolPromptMessage):
                 if current_scratchpad:
                     current_scratchpad.observation = message.content
             elif isinstance(message, UserPromptMessage):
+                if scratchpads:
+                    result.append(AssistantPromptMessage(
+                        content=self._format_assistant_message(scratchpads)
+                    ))
+                    scratchpads = []
+                    current_scratchpad = None
+
                 result.append(message)
 
-                if scratchpad:
-                    result.append(AssistantPromptMessage(
-                        content=self._format_assistant_message(scratchpad)
-                    ))
 
-                scratchpad = []
-
-        if scratchpad:
+        if scratchpads:
             result.append(AssistantPromptMessage(
-                content=self._format_assistant_message(scratchpad)
+                content=self._format_assistant_message(scratchpads)
             ))
         
         return result

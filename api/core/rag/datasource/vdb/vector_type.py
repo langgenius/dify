@@ -10,3 +10,4 @@ class VectorType(str, Enum):
     RELYT = 'relyt'
     TIDB_VECTOR = 'tidb_vector'
     WEAVIATE = 'weaviate'
+    TENCENT = 'tencent'

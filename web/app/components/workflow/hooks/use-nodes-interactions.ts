@@ -38,6 +38,7 @@ import {
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getTopLeftNodePosition,
 } from '../utils'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
@@ -71,7 +72,7 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly())
       return
 
-    if (node.data.isIterationStart)
+    if (node.data.isIterationStart || node.type === CUSTOM_NOTE_NODE)
       return
 
     dragNodeStartPosition.current = { x: node.position.x, y: node.position.y }
@@ -143,6 +144,9 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly())
       return
 
+    if (node.type === CUSTOM_NOTE_NODE)
+      return
+
     const {
       getNodes,
       setNodes,
@@ -193,8 +197,11 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
   }, [store, workflowStore, getNodesReadOnly])
 
-  const handleNodeLeave = useCallback<NodeMouseHandler>(() => {
+  const handleNodeLeave = useCallback<NodeMouseHandler>((_, node) => {
     if (getNodesReadOnly())
+      return
+
+    if (node.type === CUSTOM_NOTE_NODE)
       return
 
     const {
@@ -298,6 +305,9 @@ export const useNodesInteractions = () => {
     if (targetNode?.data.isIterationStart)
       return
 
+    if (sourceNode?.type === CUSTOM_NOTE_NODE || targetNode?.type === CUSTOM_NOTE_NODE)
+      return
+
     const needDeleteEdges = edges.filter((edge) => {
       if (
         (edge.source === source && edge.sourceHandle === sourceHandle)
@@ -360,6 +370,9 @@ export const useNodesInteractions = () => {
       const { setConnectingNodePayload } = workflowStore.getState()
       const { getNodes } = store.getState()
       const node = getNodes().find(n => n.id === nodeId)!
+
+      if (node.type === CUSTOM_NOTE_NODE)
+        return
 
       if (node.data.type === BlockEnum.VariableAggregator || node.data.type === BlockEnum.VariableAssigner) {
         if (handleType === 'target')
@@ -975,6 +988,9 @@ export const useNodesInteractions = () => {
   }, [store])
 
   const handleNodeContextMenu = useCallback((e: MouseEvent, node: Node) => {
+    if (node.type === CUSTOM_NOTE_NODE)
+      return
+
     e.preventDefault()
     const container = document.querySelector('#workflow-container')
     const { x, y } = container!.getBoundingClientRect()
@@ -1051,6 +1067,7 @@ export const useNodesInteractions = () => {
         const nodeType = nodeToPaste.data.type
 
         const newNode = generateNewNode({
+          type: nodeToPaste.type,
           data: {
             ...NODES_INITIAL_DATA[nodeType],
             ...nodeToPaste.data,
