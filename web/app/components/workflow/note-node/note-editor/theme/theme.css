@@ -22,3 +22,7 @@
 .note-editor-theme_text-strikethrough {
   text-decoration: line-through;
 }
+
+.note-editor-theme_text-italic {
+  font-style: italic;
+}

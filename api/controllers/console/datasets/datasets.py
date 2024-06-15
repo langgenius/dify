@@ -107,8 +107,8 @@ class DatasetListApi(Resource):
                             help='Invalid indexing technique.')
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         try:
@@ -195,8 +195,8 @@ class DatasetApi(Resource):
         parser.add_argument('retrieval_model', type=dict, location='json', help='Invalid retrieval model.')
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         dataset = DatasetService.update_dataset(
@@ -213,8 +213,8 @@ class DatasetApi(Resource):
     def delete(self, dataset_id):
         dataset_id_str = str(dataset_id)
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         try:
@@ -315,6 +315,22 @@ class DatasetIndexingEstimateApi(Resource):
                         document_model=args['doc_form']
                     )
                     extract_settings.append(extract_setting)
+        elif args['info_list']['data_source_type'] == 'website_crawl':
+            website_info_list = args['info_list']['website_info_list']
+            for url in website_info_list['urls']:
+                extract_setting = ExtractSetting(
+                    datasource_type="website_crawl",
+                    website_info={
+                        "provider": website_info_list['provider'],
+                        "job_id": website_info_list['job_id'],
+                        "url": url,
+                        "tenant_id": current_user.current_tenant_id,
+                        "mode": 'crawl',
+                        "only_main_content": website_info_list['only_main_content']
+                    },
+                    document_model=args['doc_form']
+                )
+                extract_settings.append(extract_setting)
         else:
             raise ValueError('Data source type not support')
         indexing_runner = IndexingRunner()
@@ -480,9 +496,8 @@ class DatasetRetrievalSettingApi(Resource):
     @account_initialization_required
     def get(self):
         vector_type = current_app.config['VECTOR_STORE']
-
         match vector_type:
-            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA:
+            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA | VectorType.TENCENT:
                 return {
                     'retrieval_method': [
                         'semantic_search'
@@ -504,7 +519,7 @@ class DatasetRetrievalSettingMockApi(Resource):
     @account_initialization_required
     def get(self, vector_type):
         match vector_type:
-            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA:
+            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA | VectorType.TENCEN:
                 return {
                     'retrieval_method': [
                         'semantic_search'
@@ -518,6 +533,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 }
             case _:
                 raise ValueError(f"Unsupported vector db type {vector_type}.")
+
 
 
 class DatasetErrorDocs(Resource):

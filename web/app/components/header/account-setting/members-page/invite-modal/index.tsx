@@ -38,6 +38,10 @@ const InviteModal = ({
       description: t('common.members.normalTip'),
     },
     {
+      name: 'editor',
+      description: t('common.members.editorTip'),
+    },
+    {
       name: 'admin',
       description: t('common.members.adminTip'),
     },
@@ -120,7 +124,7 @@ const InviteModal = ({
                         <div className='flex flex-row'>
                           <span
                             className={cn(
-                              'text-indigo-600 w-8',
+                              'text-indigo-600 mr-2',
                               'flex items-center',
                             )}
                           >
@@ -130,7 +134,7 @@ const InviteModal = ({
                             <span className={`${selected ? 'font-medium' : 'font-normal'} capitalize block truncate`}>
                               {t(`common.members.${role.name}`)}
                             </span>
-                            <span className={`${selected ? 'font-medium' : 'font-normal'} capitalize block truncate`}>
+                            <span className={`${selected ? 'font-medium' : 'font-normal'} capitalize block text-gray-500`}>
                               {role.description}
                             </span>
                           </div>

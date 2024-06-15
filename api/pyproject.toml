@@ -78,10 +78,13 @@ CODE_MAX_STRING_LENGTH = "80000"
 CODE_EXECUTION_ENDPOINT="http://127.0.0.1:8194"
 CODE_EXECUTION_API_KEY="dify-sandbox"
 
+FIRECRAWL_API_KEY = "fc-"
+
+
 
 [tool.poetry]
 name = "dify-api"
-version = "0.6.10"
+version = "0.6.11"
 description = ""
 authors = ["Dify <hello@dify.ai>"]
 readme = "README.md"
@@ -179,6 +182,7 @@ google-cloud-aiplatform = "1.49.0"
 vanna = {version = "0.5.5", extras = ["postgres", "mysql", "clickhouse", "duckdb"]}
 kaleido = "0.2.1"
 tencentcloud-sdk-python-hunyuan = "~3.0.1158"
+tcvectordb = "1.3.2"
 chromadb = "~0.5.0"
 
 [tool.poetry.group.dev]

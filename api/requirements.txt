@@ -78,6 +78,7 @@ lxml==5.1.0
 pydantic~=2.7.4
 pydantic_extra_types~=2.8.1
 pgvecto-rs==0.1.4
+tcvectordb==1.3.2
 firecrawl-py==0.0.5
 oss2==2.18.5
 pgvector==0.2.5
