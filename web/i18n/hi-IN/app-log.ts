@@ -90,6 +90,6 @@ const translation = {
     promptInput: 'प्रॉम्प्ट इनपुट',
     response: 'प्रतिक्रिया',
   },
-};
+}
 
 export default translation
