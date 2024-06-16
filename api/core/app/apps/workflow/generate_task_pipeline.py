@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Generator
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import (
@@ -48,6 +48,7 @@ from models.workflow import (
     WorkflowNodeExecution,
     WorkflowRun,
 )
+from services.ops_trace.ops_trace_service import OpsTraceService
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,11 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         self._stream_generate_nodes = self._get_stream_generate_nodes()
         self._iteration_nested_relations = self._get_iteration_nested_relations(self._workflow.graph_dict)
 
-    def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
+    def process(
+        self,
+        app_id: Optional[str] = None,
+        workflow: Optional[Workflow] = None,
+    ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
         """
         Process generate task pipeline.
         :return:
@@ -104,7 +109,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         db.session.refresh(self._user)
         db.session.close()
 
-        generator = self._process_stream_response()
+        generator = self._process_stream_response(app_id, workflow)
         if self._stream:
             return self._to_stream_response(generator)
         else:
@@ -158,11 +163,16 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 stream_response=stream_response
             )
 
-    def _process_stream_response(self) -> Generator[StreamResponse, None, None]:
+    def _process_stream_response(
+        self,
+        app_id: Optional[str] = None,
+        workflow: Optional[Workflow] = None,
+    ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
         :return:
         """
+        tracing_instance = OpsTraceService.get_ops_trace_instance(app_id=app_id, workflow=workflow)
         for message in self._queue_manager.listen():
             event = message.event
 
@@ -215,7 +225,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 yield self._handle_iteration_to_stream_response(self._application_generate_entity.task_id, event)
                 self._handle_iteration_operation(event)
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
-                workflow_run = self._handle_workflow_finished(event)
+                workflow_run = self._handle_workflow_finished(event, tracing_instance)
 
                 # save workflow app log
                 self._save_workflow_app_log(workflow_run)

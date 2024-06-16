@@ -1,7 +1,7 @@
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from typing import Union
+from typing import Union, Optional
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
@@ -20,6 +20,7 @@ from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool.tool import Tool
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
+from services.ops_trace.base_trace_instance import BaseTraceInstance
 
 
 class CotAgentRunner(BaseAgentRunner, ABC):
@@ -32,9 +33,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
     _prompt_messages_tools: list[PromptMessage] = None
 
     def run(self, message: Message,
-            query: str,
-            inputs: dict[str, str],
-            ) -> Union[Generator, LLMResult]:
+        query: str,
+        inputs: dict[str, str],
+    ) -> Union[Generator, LLMResult]:
         """
         Run Cot agent application
         """
@@ -185,7 +186,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 messages_ids=[],
                 llm_usage=usage_dict['usage']
             )
-
+            
             if not scratchpad.is_final():
                 self.queue_manager.publish(QueueAgentThoughtEvent(
                     agent_thought_id=agent_thought.id
@@ -211,7 +212,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     function_call_state = True
                     # action is tool call, invoke tool
                     tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
-                        action=scratchpad.action,
+                        action=scratchpad.action, 
                         tool_instances=tool_instances,
                         message_file_ids=message_file_ids
                     )
@@ -259,12 +260,12 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         # save agent thought
         self.save_agent_thought(
-            agent_thought=agent_thought,
+            agent_thought=agent_thought, 
             tool_name='',
             tool_input={},
             tool_invoke_meta={},
             thought=final_answer,
-            observation={},
+            observation={}, 
             answer=final_answer,
             messages_ids=[]
         )
@@ -284,7 +285,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
     def _handle_invoke_action(self, action: AgentScratchpadUnit.Action,
                               tool_instances: dict[str, Tool],
-                              message_file_ids: list[str]) -> tuple[str, ToolInvokeMeta]:
+                              message_file_ids: list[str],
+                              tracing_instance: Optional[BaseTraceInstance] = None
+                              ) -> tuple[str, ToolInvokeMeta]:
         """
         handle invoke action
         :param action: action
@@ -314,7 +317,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             tenant_id=self.tenant_id,
             message=self.message,
             invoke_from=self.application_generate_entity.invoke_from,
-            agent_tool_callback=self.agent_callback
+            agent_tool_callback=self.agent_callback,
+            tracing_instance=tracing_instance,
         )
 
         # publish files
