@@ -84,6 +84,7 @@ CODE_EXECUTION_API_KEY="dify-sandbox"
 FIRECRAWL_API_KEY = "fc-"
 
 [tool.poetry]
+name = "dify-api"
 package-mode = false
 
 [tool.poetry.dependencies]
