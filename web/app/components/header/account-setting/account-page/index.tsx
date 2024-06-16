@@ -246,7 +246,6 @@ export default function AccountPage() {
       )}
       {showDeleteAccountModal && (
         <Modal
-          wrapperClassName='z-20'
           className={classNames('p-8 max-w-[480px] w-[480px]', s.bg)}
           isShow={showDeleteAccountModal}
           onClose={() => {}}
