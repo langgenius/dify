@@ -34,7 +34,7 @@ const CustomWebAppBrand = () => {
   const isSandbox = enableBilling && plan.type === Plan.sandbox
   const uploading = uploadProgress > 0 && uploadProgress < 100
   const webappLogo = currentWorkspace.custom_config?.replace_webapp_logo || ''
-  const webappBrandRemoved = true //currentWorkspace.custom_config?.remove_webapp_brand
+  const webappBrandRemoved = currentWorkspace.custom_config?.remove_webapp_brand
   const uploadDisabled = isSandbox || webappBrandRemoved || !isCurrentWorkspaceManager
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -119,7 +119,7 @@ const CustomWebAppBrand = () => {
           {
             !webappBrandRemoved && (
               <div className='flex items-center text-[10px] font-medium text-gray-400'>
-                POWERED PAR
+                POWERED BY
                 {
                   webappLogo
                     ? <img src={`${webappLogo}?hash=${imgKey}`} alt='logo' className='ml-2 block w-auto h-5' />

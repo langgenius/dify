@@ -42,7 +42,7 @@ const Chatbot = () => {
       if (customConfig)
         document.title = `${site.title}`
       else
-        document.title = `${site.title} - Powered by Vigie AI`
+        document.title = `${site.title} - Powered by Dify`
     }
   }, [site, customConfig])
 
