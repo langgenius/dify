@@ -3,7 +3,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Union
+from typing import Any, Optional, Union
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -29,13 +29,15 @@ logger = logging.getLogger(__name__)
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
-    def generate(self, app_model: App,
-                 workflow: Workflow,
-                 user: Union[Account, EndUser],
-                 args: dict,
-                 invoke_from: InvokeFrom,
-                 stream: bool = True) \
-            -> Union[dict, Generator[dict, None, None]]:
+    def generate(
+        self, app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: dict,
+        invoke_from: InvokeFrom,
+        stream: bool = True,
+        tracing_instance: Optional[Any] = None
+    ) -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
 
@@ -45,6 +47,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param args: request args
         :param invoke_from: invoke from source
         :param stream: is stream
+        :param tracing_instance: tracing instance
         """
         if not args.get('query'):
             raise ValueError('query is required')
@@ -105,7 +108,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=invoke_from,
             application_generate_entity=application_generate_entity,
             conversation=conversation,
-            stream=stream
+            stream=stream,
+            tracing_instance=tracing_instance,
         )
     
     def single_iteration_generate(self, app_model: App,
@@ -227,7 +231,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream
+            stream=stream,
         )
 
         return AdvancedChatAppGenerateResponseConverter.convert(
@@ -326,7 +330,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         )
 
         try:
-            return generate_task_pipeline.process()
+            return generate_task_pipeline.process(workflow)
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedException()

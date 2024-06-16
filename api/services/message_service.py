@@ -19,6 +19,9 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
+from services.ops_trace.ops_trace_service import OpsTraceService
+from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
+from services.ops_trace.utils import measure_time
 from services.workflow_service import WorkflowService
 
 
@@ -262,9 +265,27 @@ class MessageService:
             message_limit=3,
         )
 
-        questions = LLMGenerator.generate_suggested_questions_after_answer(
-            tenant_id=app_model.tenant_id,
-            histories=histories
+        with measure_time() as timer:
+            questions = LLMGenerator.generate_suggested_questions_after_answer(
+                tenant_id=app_model.tenant_id,
+                histories=histories
+            )
+
+        # get tracing instance
+        app_model_config = OpsTraceService.get_app_config_through_message_id(message_id)
+        tracing_instance = OpsTraceService.get_ops_trace_instance(
+            app_id=app_model_config.app_id, app_model_config=app_model_config
         )
+        if tracing_instance:
+            trace_manager = TraceQueueManager()
+            trace_manager.add_trace_task(
+                TraceTask(
+                    tracing_instance,
+                    TraceTaskName.SUGGESTED_QUESTION_TRACE,
+                    message_id=message_id,
+                    suggested_question=questions,
+                    timer=timer
+                )
+            )
 
         return questions
