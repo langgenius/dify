@@ -22,17 +22,19 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeErr
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser
+from services.ops_trace.ops_trace_service import OpsTraceService
 
 logger = logging.getLogger(__name__)
 
 
 class ChatAppGenerator(MessageBasedAppGenerator):
-    def generate(self, app_model: App,
-                 user: Union[Account, EndUser],
-                 args: Any,
-                 invoke_from: InvokeFrom,
-                 stream: bool = True) \
-            -> Union[dict, Generator[dict, None, None]]:
+    def generate(
+        self, app_model: App,
+        user: Union[Account, EndUser],
+        args: Any,
+        invoke_from: InvokeFrom,
+        stream: bool = True,
+    ) -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
 
@@ -41,6 +43,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         :param args: request args
         :param invoke_from: invoke from source
         :param stream: is stream
+        :param tracing_instance: tracing instance
         """
         if not args.get('query'):
             raise ValueError('query is required')
@@ -121,6 +124,12 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             message
         ) = self._init_generate_records(application_generate_entity, conversation)
 
+        # get tracing instance
+        tracing_instance = OpsTraceService.get_ops_trace_instance(
+            app_id=app_model.id,
+            app_model_config=app_model_config,
+        )
+
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
             task_id=application_generate_entity.task_id,
@@ -149,7 +158,8 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream
+            stream=stream,
+            tracing_instance=tracing_instance,
         )
 
         return ChatAppGenerateResponseConverter.convert(
