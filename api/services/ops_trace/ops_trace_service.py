@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from core.app.app_config.entities import AppAdditionalFeatures
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from extensions.ext_database import db
-from models.model import App, AppModelConfig, Conversation, Message, TracingAppConfig
+from models.model import App, AppModelConfig, Conversation, Message, TraceAppConfig
 from models.workflow import Workflow
 from services.ops_trace.langfuse_trace import LangFuseDataTrace
 from services.ops_trace.langsmith_trace import LangSmithDataTrace
@@ -15,7 +15,7 @@ from services.ops_trace.langsmith_trace import LangSmithDataTrace
 
 class TracingProviderEnum(Enum):
     LANGFUSE = 'langfuse'
-    LANGSMITH = 'langSmith'
+    LANGSMITH = 'langsmith'
 
 
 class LangfuseConfig(BaseModel):
@@ -45,8 +45,8 @@ class OpsTraceService:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: TracingAppConfig = db.session.query(TracingAppConfig).filter(
-            TracingAppConfig.app_id == app_id, TracingAppConfig.tracing_provider == tracing_provider
+        trace_config_data: TraceAppConfig = db.session.query(TraceAppConfig).filter(
+            TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
         ).first()
 
         if not trace_config_data:
@@ -71,8 +71,8 @@ class OpsTraceService:
         :return:
         """
         # check if trace config already exists
-        trace_config_data: TracingAppConfig = db.session.query(TracingAppConfig).filter(
-            TracingAppConfig.app_id == app_id, TracingAppConfig.tracing_provider == tracing_provider
+        trace_config_data: TraceAppConfig = db.session.query(TraceAppConfig).filter(
+            TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
         ).first()
 
         if trace_config_data:
@@ -81,7 +81,7 @@ class OpsTraceService:
         # get tenant id
         tenant_id = db.session.query(App).filter(App.id == app_id).first().tenant_id
         tracing_config = cls.encrypt_tracing_config(tenant_id, tracing_provider, tracing_config)
-        trace_config_data = TracingAppConfig(
+        trace_config_data = TraceAppConfig(
             app_id=app_id,
             tracing_provider=tracing_provider,
             tracing_config=tracing_config,
@@ -101,8 +101,8 @@ class OpsTraceService:
         :return:
         """
         # check if trace config already exists
-        trace_config = db.session.query(TracingAppConfig).filter(
-            TracingAppConfig.app_id == app_id, TracingAppConfig.tracing_provider == tracing_provider
+        trace_config = db.session.query(TraceAppConfig).filter(
+            TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
         ).first()
 
         if not trace_config:
@@ -125,8 +125,8 @@ class OpsTraceService:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config = db.session.query(TracingAppConfig).filter(
-            TracingAppConfig.app_id == app_id, TracingAppConfig.tracing_provider == tracing_provider
+        trace_config = db.session.query(TraceAppConfig).filter(
+            TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
         ).first()
 
         if not trace_config:
@@ -136,7 +136,7 @@ class OpsTraceService:
         db.session.commit()
 
         return True
-    
+
     @classmethod
     def encrypt_tracing_config(cls, tenant_id: str, tracing_provider: str, tracing_config: dict):
         """
@@ -238,8 +238,8 @@ class OpsTraceService:
         :param tracing_provider: tracing provider
         :return:
         """
-        trace_config_data: TracingAppConfig = db.session.query(TracingAppConfig).filter(
-            TracingAppConfig.app_id == app_id, TracingAppConfig.tracing_provider == tracing_provider
+        trace_config_data: TraceAppConfig = db.session.query(TraceAppConfig).filter(
+            TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
         ).first()
 
         if not trace_config_data:
