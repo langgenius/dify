@@ -55,4 +55,4 @@ jobs:
       - name: Run DB Migration
         run: |
           cd api
-          poetry run python -m flask db-migrate
+          poetry run python -m flask upgrade-db
