@@ -163,7 +163,7 @@ export default function AccountPage() {
             wrapperClassName='mt-2'
           />
         )}
-        <Button className='mt-2 font-medium text-[#D92D20] !px-3 !py-[7px] !text-[13px]' onClick={() => setShowDeleteAccountModal(true)}>{t('common.account.delete')}</Button>
+        {!IS_CE_EDITION && <Button className='mt-2 font-medium text-[#D92D20] !px-3 !py-[7px] !text-[13px]' onClick={() => setShowDeleteAccountModal(true)}>{t('common.account.delete')}</Button>}
       </div>
       {editNameModalVisible && (
         <Modal
@@ -248,7 +248,7 @@ export default function AccountPage() {
         <Modal
           className={classNames('p-8 max-w-[480px] w-[480px]', s.bg)}
           isShow={showDeleteAccountModal}
-          onClose={() => {}}
+          onClose={() => { }}
         >
           <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={() => setShowDeleteAccountModal(false)}>
             <XClose className='w-4 h-4 text-gray-500' />
