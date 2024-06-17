@@ -28,7 +28,7 @@ parameters:
       zh_Hans: 提示
     human_description:
       en_US: Text input required to guide the image generation, divided by `,`, Range [1, 1024]. Only English input is allowed.
-      zh_Hans: 需要指导图像生成的文本输入，用 `,` 分隔，范围 [1, 1024]。仅允许输入英文。
+      zh_Hans: 生成图像的正向提示，用 `,` 分隔，范围 [1, 1024]。仅允许输入英文。
     llm_description: Image prompt of Novita AI, you should describe the image you want to generate as a list of words as possible as detailed, divided by `,`, Range [1, 1024]. Only English input is allowed.
     form: llm
   - name: negative_prompt
@@ -39,7 +39,7 @@ parameters:
       zh_Hans: 负向提示
     human_description:
       en_US: Text input that will not guide the image generation, divided by `,`, Range [1, 1024]. Only English input is allowed.
-      zh_Hans: 用于排除不希望在图像中出现的元素的文本输入，用 `,` 分隔，范围 [1, 1024]。仅允许输入英文。
+      zh_Hans: 生成图像的负向提示，用 `,` 分隔，范围 [1, 1024]。仅允许输入英文。
     llm_description: Image negative prompt of Novita AI, divided by `,`, Range [1, 1024]. Only English input is allowed.
     form: llm
   - name: width
