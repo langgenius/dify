@@ -12,7 +12,10 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.model_providers.tongyi._common import _CommonTongyi
 from extensions.ext_storage import storage
-
+from queue import Queue
+from dashscope.api_entities.dashscope_response import SpeechSynthesisResponse
+from dashscope.audio.tts import ResultCallback
+from dashscope.audio.tts import SpeechSynthesisResult,SpeechSynthesizer
 
 class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
     """
@@ -122,18 +125,58 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         audio_type = self._get_model_audio_type(model, credentials)
         tts_file_id = self._get_file_name(content_text)
         file_path = f'generate_files/audio/{tenant_id}/{tts_file_id}.{audio_type}'
+        max_workers = self._get_model_workers_limit(model, credentials)
+
+        # The queue of audio binary data
+        queue = Queue()
+        job_done = CallbackStatus()
+        job_error = CallbackStatus()
+        # A callback that returns speech synthesis results.
+        callback = Callback(queue,job_done,job_error)
+
         try:
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
-            for sentence in sentences:
-                response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice, sample_rate=48000,
-                                                                      api_key=credentials.get('dashscope_api_key'),
-                                                                      text=sentence.strip(),
-                                                                      format=audio_type, word_timestamp_enabled=True,
-                                                                      phoneme_timestamp_enabled=True)
-                if isinstance(response.get_audio_data(), bytes):
-                    storage.save(file_path, response.get_audio_data())
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                [executor.submit(self._tts_invoke_streaming_call,
+                                sentence=sentence,
+                                voice=voice,
+                                audio_type=audio_type,
+                                callback=callback,
+                                credentials=credentials,
+                                file_path=file_path
+                                ) for sentence in sentences]
+
+            while True:
+                item = queue.get(True,15)
+                if item is job_done:
+                    break
+                elif item is job_error:
+                    raise InvokeBadRequestError(str(item.messages))
+                else:
+                    yield item
+
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
+        
+    
+    def _tts_invoke_streaming_call(self, sentence:str, 
+                                   voice:str, 
+                                   audio_type: str, 
+                                   callback: any,
+                                   credentials: dict,
+                                   file_path: str
+                                   ): 
+        
+        response = SpeechSynthesizer.call(model=voice, sample_rate=48000,
+                                api_key=credentials.get('dashscope_api_key'),
+                                text=sentence.strip(),
+                                callback=callback,
+                                format=audio_type, word_timestamp_enabled=True,
+                                phoneme_timestamp_enabled=True)
+        if isinstance(response.get_audio_data(), bytes):
+            storage.save(file_path,response.get_audio_data())
+        
+
 
     @staticmethod
     def _process_sentence(sentence: str, credentials: dict, voice: str, audio_type: str):
@@ -152,3 +195,37 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
                                                               format=audio_type)
         if isinstance(response.get_audio_data(), bytes):
             return response.get_audio_data()
+
+class CallbackStatus():
+    def __init__(self, messages=None) -> None:
+        if messages is not None:
+            self._messages = messages
+        else:
+            self._messages=''
+
+    @property
+    def messages(self) -> str:
+        return self._messages
+
+    @messages.setter
+    def messages(self, value: str):
+        self._messages = value
+    
+class Callback(ResultCallback):
+
+    def __init__(self,queue: Queue,job_done: CallbackStatus, job_error: CallbackStatus) -> None:
+        super().__init__()
+        self._queue = queue
+        self._job_done= job_done
+        self._job_error= job_error
+
+    def on_complete(self):
+        self._queue.put(self._job_done)
+
+    def on_error(self, response: SpeechSynthesisResponse):
+        self._job_error.messages = (str(response))
+        self._queue.put(self._job_error)
+
+    def on_event(self, result: SpeechSynthesisResult):
+        if result.get_audio_frame() is not None:
+            self._queue.put(result.get_audio_frame())
