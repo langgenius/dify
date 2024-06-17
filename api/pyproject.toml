@@ -187,6 +187,7 @@ tcvectordb = "1.3.2"
 chromadb = "~0.5.0"
 tenacity = "~8.3.0"
 cos-python-sdk-v5 = "1.9.30"
+opensearch-py = "2.4.0"
 
 [tool.poetry.group.dev]
 optional = true
