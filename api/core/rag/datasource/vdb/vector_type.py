@@ -11,3 +11,4 @@ class VectorType(str, Enum):
     TIDB_VECTOR = 'tidb_vector'
     WEAVIATE = 'weaviate'
     TENCENT = 'tencent'
+    ORACLE = 'oracle'
