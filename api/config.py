@@ -282,7 +282,7 @@ class Config:
         self.MILVUS_SECURE = get_env('MILVUS_SECURE')
         self.MILVUS_DATABASE = get_env('MILVUS_DATABASE')
 
-        # OpenSearch 配置项
+        # OpenSearch settings
         self.OPENSEARCH_HOST = get_env('OPENSEARCH_HOST')
         self.OPENSEARCH_PORT = get_env('OPENSEARCH_PORT')
         self.OPENSEARCH_USER = get_env('OPENSEARCH_USER')
