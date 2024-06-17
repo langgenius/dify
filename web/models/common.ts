@@ -175,16 +175,8 @@ export type DataSourceNotion = {
 export enum DataSourceCategory {
   website = 'website',
 }
-export enum WebsiteProvider {
+export enum DataSourceProvider {
   fireCrawl = 'firecrawl',
-}
-
-export type WebsiteCredentials = {
-  auth_type: 'bearer'
-  config: {
-    base_url: string
-    api_key: string
-  }
 }
 
 export type FirecrawlConfig = {
@@ -192,17 +184,17 @@ export type FirecrawlConfig = {
   base_url: string
 }
 
-export type DataSourceWebsiteItem = {
+export type DataSourceItem = {
   id: string
-  category: DataSourceCategory.website
-  provider: WebsiteProvider
-  credentials: WebsiteCredentials
+  category: DataSourceCategory
+  provider: DataSourceProvider
   disabled: boolean
   created_at: number
   updated_at: number
 }
-export type DataSourceWebsite = {
-  settings: DataSourceWebsiteItem[]
+
+export type DataSources = {
+  sources: DataSourceItem[]
 }
 
 export type GithubRepo = {
