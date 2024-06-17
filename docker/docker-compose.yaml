@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.10
+    image: langgenius/dify-api:0.6.11
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -81,6 +81,7 @@ services:
       # only available when STORAGE_TYPE is `local`.
       STORAGE_LOCAL_PATH: storage
       # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
+      S3_USE_AWS_MANAGED_IAM: 'false'
       S3_ENDPOINT: 'https://xxx.r2.cloudflarestorage.com'
       S3_BUCKET_NAME: 'difyai'
       S3_ACCESS_KEY: 'ak-difyai'
@@ -140,6 +141,13 @@ services:
       TIDB_VECTOR_USER: xxx.root
       TIDB_VECTOR_PASSWORD: xxxxxx
       TIDB_VECTOR_DATABASE: dify
+      # Chroma configuration
+      CHROMA_HOST: 127.0.0.1
+      CHROMA_PORT: 8000
+      CHROMA_TENANT: default_tenant
+      CHROMA_DATABASE: default_database
+      CHROMA_AUTH_PROVIDER: chromadb.auth.token_authn.TokenAuthClientProvider
+      CHROMA_AUTH_CREDENTIALS: xxxxxx
       # Mail configuration, support: resend, smtp
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -195,7 +203,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.10
+    image: langgenius/dify-api:0.6.11
     restart: always
     environment:
       CONSOLE_WEB_URL: ''
@@ -229,6 +237,7 @@ services:
       STORAGE_TYPE: local
       STORAGE_LOCAL_PATH: storage
       # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
+      S3_USE_AWS_MANAGED_IAM: 'false'
       S3_ENDPOINT: 'https://xxx.r2.cloudflarestorage.com'
       S3_BUCKET_NAME: 'difyai'
       S3_ACCESS_KEY: 'ak-difyai'
@@ -289,6 +298,14 @@ services:
       RELYT_USER: postgres
       RELYT_PASSWORD: difyai123456
       RELYT_DATABASE: postgres
+      # tencent configurations
+      TENCENT_VECTOR_DB_URL: http://127.0.0.1
+      TENCENT_VECTOR_DB_API_KEY: dify
+      TENCENT_VECTOR_DB_TIMEOUT: 30
+      TENCENT_VECTOR_DB_USERNAME: dify
+      TENCENT_VECTOR_DB_DATABASE: dify
+      TENCENT_VECTOR_DB_SHARD: 1
+      TENCENT_VECTOR_DB_REPLICAS: 2
       # pgvector configurations
       PGVECTOR_HOST: pgvector
       PGVECTOR_PORT: 5432
@@ -301,6 +318,13 @@ services:
       TIDB_VECTOR_USER: xxx.root
       TIDB_VECTOR_PASSWORD: xxxxxx
       TIDB_VECTOR_DATABASE: dify
+      # Chroma configuration
+      CHROMA_HOST: 127.0.0.1
+      CHROMA_PORT: 8000
+      CHROMA_TENANT: default_tenant
+      CHROMA_DATABASE: default_database
+      CHROMA_AUTH_PROVIDER: chromadb.auth.token_authn.TokenAuthClientProvider
+      CHROMA_AUTH_CREDENTIALS: xxxxxx
       # Notion import configuration, support public and internal
       NOTION_INTEGRATION_TYPE: public
       NOTION_CLIENT_SECRET: you-client-secret
@@ -320,7 +344,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.6.10
+    image: langgenius/dify-web:0.6.11
     restart: always
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is

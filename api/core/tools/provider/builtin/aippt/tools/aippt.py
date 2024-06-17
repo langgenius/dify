@@ -4,7 +4,7 @@ from hmac import new as hmac_new
 from json import loads as json_loads
 from threading import Lock
 from time import sleep, time
-from typing import Any
+from typing import Any, Optional
 
 from httpx import get, post
 from requests import get as requests_get
@@ -22,15 +22,20 @@ class AIPPTGenerateTool(BuiltinTool):
 
     _api_base_url = URL('https://co.aippt.cn/api')
     _api_token_cache = {}
-    _api_token_cache_lock = Lock()
+    _api_token_cache_lock:Optional[Lock] = None
     _style_cache = {}
-    _style_cache_lock = Lock()
+    _style_cache_lock:Optional[Lock] = None
 
     _task = {}
     _task_type_map = {
         'auto': 1,
         'markdown': 7,
     }
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(**kwargs)
+        self._api_token_cache_lock = Lock()
+        self._style_cache_lock = Lock()
 
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         """
@@ -502,9 +507,9 @@ class AIPPTGenerateTool(BuiltinTool):
             colors, styles = self.get_styles(user_id='__dify_system__')
         except Exception as e:
             colors, styles = [
-                {'id': -1, 'name': '__default__', 'en_name': '__default__'}
+                {'id': '-1', 'name': '__default__', 'en_name': '__default__'}
             ], [
-                {'id': -1, 'name': '__default__', 'en_name': '__default__'}
+                {'id': '-1', 'name': '__default__', 'en_name': '__default__'}
             ]
 
         return [

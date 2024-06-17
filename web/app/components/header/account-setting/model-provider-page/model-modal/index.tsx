@@ -47,6 +47,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { useToastContext } from '@/app/components/base/toast'
 import ConfirmCommon from '@/app/components/base/confirm/common'
+import { useAppContext } from '@/context/app-context'
 
 type ModelModalProps = {
   provider: ModelProvider
@@ -74,7 +75,8 @@ const ModelModal: FC<ModelModalProps> = ({
     providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
     currentCustomConfigurationModelFixedFields,
   )
-  const isEditMode = !!formSchemasValue
+  const { isCurrentWorkspaceManager } = useAppContext()
+  const isEditMode = !!formSchemasValue && isCurrentWorkspaceManager
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const language = useLanguage()
@@ -205,7 +207,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const encodeSecretValues = useCallback((v: FormValue) => {
     const result = { ...v }
     extendedSecretFormSchemas.forEach(({ variable }) => {
-      if (result[variable] === formSchemasValue?.[variable])
+      if (result[variable] === formSchemasValue?.[variable] && result[variable] !== undefined)
         result[variable] = '[__HIDDEN__]'
     })
     return result
@@ -344,6 +346,7 @@ const ModelModal: FC<ModelModalProps> = ({
                       || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)
                       || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
                     }
+
                   >
                     {t('common.operation.save')}
                   </Button>
