@@ -267,9 +267,5 @@ def pool_stat():
     }
 
 
-def db_migrate():
-    with app.app_context():
-        ext_migrate.db_upgrade()
-
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5001)
