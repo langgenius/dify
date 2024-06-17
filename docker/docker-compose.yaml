@@ -141,6 +141,12 @@ services:
       TIDB_VECTOR_USER: xxx.root
       TIDB_VECTOR_PASSWORD: xxxxxx
       TIDB_VECTOR_DATABASE: dify
+      # oracle configurations
+      ORACLE_HOST: oracle
+      ORACLE_PORT: 1521
+      ORACLE_USER: dify
+      ORACLE_PASSWORD: dify
+      ORACLE_DATABASE: FREEPDB1
       # Chroma configuration
       CHROMA_HOST: 127.0.0.1
       CHROMA_PORT: 8000
@@ -318,6 +324,12 @@ services:
       TIDB_VECTOR_USER: xxx.root
       TIDB_VECTOR_PASSWORD: xxxxxx
       TIDB_VECTOR_DATABASE: dify
+      # oracle configurations
+      ORACLE_HOST: oracle
+      ORACLE_PORT: 1521
+      ORACLE_USER: dify
+      ORACLE_PASSWORD: dify
+      ORACLE_DATABASE: FREEPDB1
       # Chroma configuration
       CHROMA_HOST: 127.0.0.1
       CHROMA_PORT: 8000

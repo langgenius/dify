@@ -320,9 +320,9 @@ class Config:
         self.TIDB_VECTOR_DATABASE = get_env('TIDB_VECTOR_DATABASE')
 
         # oraclevector settings
-        self.ORACLE_HOST     = get_env('ORACLE_HOST')
-        self.ORACLE_PORT     = get_env('ORACLE_PORT')
-        self.ORACLE_USER     = get_env('ORACLE_USER')
+        self.ORACLE_HOST = get_env('ORACLE_HOST')
+        self.ORACLE_PORT = get_env('ORACLE_PORT')
+        self.ORACLE_USER = get_env('ORACLE_USER')
         self.ORACLE_PASSWORD = get_env('ORACLE_PASSWORD')
         self.ORACLE_DATABASE = get_env('ORACLE_DATABASE')
 
