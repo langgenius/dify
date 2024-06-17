@@ -155,7 +155,7 @@ numpy = "~1.26.4"
 unstructured = {version = "~0.10.27", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"]}
 bs4 = "~0.0.1"
 markdown = "~3.5.1"
-httpx = {version = "~0.24.1", extras = ["socks"]}
+httpx = {version = "~0.27.0", extras = ["socks"]}
 matplotlib = "~3.8.2"
 yfinance = "~0.2.40"
 pydub = "~0.25.1"
