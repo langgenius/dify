@@ -8,7 +8,7 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
 from libs.login import login_required
-from libs.oauth_data_source import NotionOAuth, LarkOAuth
+from libs.oauth_data_source import LarkOAuth, NotionOAuth
 
 from ..setup import setup_required
 from ..wraps import account_initialization_required
