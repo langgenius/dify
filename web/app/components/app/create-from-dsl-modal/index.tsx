@@ -47,7 +47,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose }: CreateFromDSLModalProp
       setFileContent('')
   }
 
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
@@ -68,7 +68,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose }: CreateFromDSLModalProp
         onClose()
       notify({ type: 'success', message: t('app.newApp.appCreated') })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      getRedirection(isCurrentWorkspaceManager, app, push)
+      getRedirection(isCurrentWorkspaceEditor, app, push)
     }
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
@@ -78,7 +78,6 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose }: CreateFromDSLModalProp
 
   return (
     <Modal
-      wrapperClassName='z-20'
       className='px-8 py-6 max-w-[520px] w-[520px] rounded-xl'
       isShow={show}
       onClose={() => {}}

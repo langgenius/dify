@@ -37,6 +37,10 @@ const translation = {
     duplicate: '复制',
     rename: '重命名',
   },
+  errorMsg: {
+    fieldRequired: '{{field}} 为必填项',
+    urlError: 'url 应该以 http:// 或 https:// 开头',
+  },
   placeholder: {
     input: '请输入',
     select: '请选择',
@@ -156,6 +160,9 @@ const translation = {
     langGeniusAccountTip: '您的 Dify 账号和相关的用户数据。',
     editName: '编辑名字',
     showAppLength: '显示 {{length}} 个应用',
+    delete: '删除账户',
+    deleteTip: '删除账户后，所有数据将被永久删除且不可恢复。',
+    deleteConfirmTip: '请将以下内容通过您的账户邮箱发送到 ',
   },
   members: {
     team: '团队',
@@ -169,6 +176,8 @@ const translation = {
     adminTip: '能够建立应用程序和管理团队设置',
     normal: '成员',
     normalTip: '只能使用应用程序，不能建立应用程序',
+    editor: '编辑',
+    editorTip: '能够建立并编辑应用程序，不能管理团队设置',
     inviteTeamMember: '添加团队成员',
     inviteTeamMemberTip: '对方在登录后可以访问你的团队数据。',
     email: '邮箱',
@@ -185,6 +194,7 @@ const translation = {
     removeFromTeamTip: '将取消团队访问',
     setAdmin: '设为管理员',
     setMember: '设为普通成员',
+    setEditor: '设为编辑',
     disinvite: '取消邀请',
     deleteMember: '删除成员',
     you: '（你）',
@@ -353,6 +363,7 @@ const translation = {
   dataSource: {
     add: '添加数据源',
     connect: '绑定',
+    configure: '配置',
     notion: {
       title: 'Notion',
       description: '使用 Notion 作为知识库的数据源。',
@@ -371,6 +382,14 @@ const translation = {
         addPages: '添加页面',
         preview: '预览',
       },
+    },
+    website: {
+      title: '网站',
+      description: '使用网络爬虫从网站导入内容。',
+      with: '使用',
+      configuredCrawlers: '已配置的爬虫',
+      active: '可用',
+      inactive: '不可用',
     },
   },
   plugin: {

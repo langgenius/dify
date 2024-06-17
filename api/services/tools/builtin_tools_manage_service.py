@@ -201,26 +201,29 @@ class BuiltinToolManageService:
         result: list[UserToolProvider] = []
 
         for provider_controller in provider_controllers:
-            # convert provider controller to user provider
-            user_builtin_provider = ToolTransformService.builtin_provider_to_user_provider(
-                provider_controller=provider_controller,
-                db_provider=find_provider(provider_controller.identity.name),
-                decrypt_credentials=True
-            )
+            try:
+                # convert provider controller to user provider
+                user_builtin_provider = ToolTransformService.builtin_provider_to_user_provider(
+                    provider_controller=provider_controller,
+                    db_provider=find_provider(provider_controller.identity.name),
+                    decrypt_credentials=True
+                )
 
-            # add icon
-            ToolTransformService.repack_provider(user_builtin_provider)
+                # add icon
+                ToolTransformService.repack_provider(user_builtin_provider)
 
-            tools = provider_controller.get_tools()
-            for tool in tools:
-                user_builtin_provider.tools.append(ToolTransformService.tool_to_user_tool(
-                    tenant_id=tenant_id,
-                    tool=tool, 
-                    credentials=user_builtin_provider.original_credentials, 
-                    labels=ToolLabelManager.get_tool_labels(provider_controller)
-                ))
+                tools = provider_controller.get_tools()
+                for tool in tools:
+                    user_builtin_provider.tools.append(ToolTransformService.tool_to_user_tool(
+                        tenant_id=tenant_id,
+                        tool=tool,
+                        credentials=user_builtin_provider.original_credentials,
+                        labels=ToolLabelManager.get_tool_labels(provider_controller)
+                    ))
 
-            result.append(user_builtin_provider)
+                result.append(user_builtin_provider)
+            except Exception as e:
+                raise e
 
         return BuiltinToolProviderSort.sort(result)
     
