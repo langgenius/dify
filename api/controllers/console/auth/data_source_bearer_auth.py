@@ -16,15 +16,21 @@ class ApiKeyAuthDataSource(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        # The role of the current user in the table must be admin or owner
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
         data_source_api_key_bindings = ApiKeyAuthService.get_provider_auth_list(current_user.current_tenant_id)
         if data_source_api_key_bindings:
             return {
-                'settings': [data_source_api_key_binding.to_dict() for data_source_api_key_binding in
-                             data_source_api_key_bindings]}
-        return {'settings': []}
+                'sources': [{
+                                'id': data_source_api_key_binding.id,
+                                'category': data_source_api_key_binding.category,
+                                'provider': data_source_api_key_binding.provider,
+                                'disabled': data_source_api_key_binding.disabled,
+                                'created_at': int(data_source_api_key_binding.created_at.timestamp()),
+                                'updated_at': int(data_source_api_key_binding.updated_at.timestamp()),
+                            }
+                            for data_source_api_key_binding in
+                             data_source_api_key_bindings]
+            }
+        return {'sources': []}
 
 
 class ApiKeyAuthDataSourceBinding(Resource):
