@@ -118,6 +118,26 @@ class OpsTraceService:
         return trace_config.to_dict()
 
     @classmethod
+    def delete_tracing_app_config(cls, app_id: str, tracing_provider: str):
+        """
+        Delete tracing app config
+        :param app_id: app id
+        :param tracing_provider: tracing provider
+        :return:
+        """
+        trace_config = db.session.query(TracingAppConfig).filter(
+            TracingAppConfig.app_id == app_id, TracingAppConfig.tracing_provider == tracing_provider
+        ).first()
+
+        if not trace_config:
+            return None
+
+        db.session.delete(trace_config)
+        db.session.commit()
+
+        return True
+    
+    @classmethod
     def encrypt_tracing_config(cls, tenant_id: str, tracing_provider: str, tracing_config: dict):
         """
         Encrypt tracing config
@@ -279,7 +299,6 @@ class OpsTraceService:
         # decrypt_token
         decrypt_trace_config = cls.get_decrypted_tracing_config(app_id, tracing_provider)
         if app_ops_trace_config.get('enabled'):
-            tracing_provider = tracing_provider
             if tracing_provider == TracingProviderEnum.LANGFUSE.value:
                 langfuse_client_public_key = decrypt_trace_config.get('public_key')
                 langfuse_client_secret_key = decrypt_trace_config.get('secret_key')

@@ -75,5 +75,25 @@ class TraceAppConfigApi(Resource):
         except Exception as e:
             raise e
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, app_id):
+        """Delete an existing trace app configuration"""
+        parser = reqparse.RequestParser()
+        parser.add_argument('tracing_provider', type=str, required=True, location='args')
+        args = parser.parse_args()
+
+        try:
+            result = OpsTraceService.delete_tracing_app_config(
+                app_id=app_id,
+                tracing_provider=args['tracing_provider']
+            )
+            if not result:
+                raise TracingConfigNotExist()
+            return {"result": "success"}
+        except Exception as e:
+            raise e
+
 
 api.add_resource(TraceAppConfigApi, '/apps/<uuid:app_id>/trace-config')
