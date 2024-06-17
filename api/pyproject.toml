@@ -91,9 +91,6 @@ authors = ["Dify <hello@dify.ai>"]
 readme = "README.md"
 package-mode = false
 
-[tool.poetry.scripts]
-db_migration = 'app:db_migration'
-
 [tool.poetry.dependencies]
 python = "^3.10"
 beautifulsoup4 = "4.12.2"
