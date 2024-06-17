@@ -556,7 +556,7 @@ def create_tenant(email: str, language: Optional[str] = None):
 
 
 @click.command('upgrade-db', help='upgrade the database')
-def db_migrate():
+def upgrade_db():
     click.echo('Preparing database migration...')
     lock = redis_client.lock(name='db_upgrade_lock', timeout=60)
     if lock.acquire(blocking=False):
@@ -585,4 +585,4 @@ def register_commands(app):
     app.cli.add_command(convert_to_agent_apps)
     app.cli.add_command(add_qdrant_doc_id_index)
     app.cli.add_command(create_tenant)
-    app.cli.add_command(db_migrate)
+    app.cli.add_command(upgrade_db)
