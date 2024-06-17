@@ -5,8 +5,8 @@ import NoData from './no-data'
 import Firecrawl from './firecrawl'
 import { useModalContext } from '@/context/modal-context'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { fetchFirecrawlApiKey } from '@/service/datasets'
-import { type DataSourceWebsiteItem, WebsiteProvider } from '@/models/common'
+import { fetchDataSources } from '@/service/datasets'
+import { type DataSourceItem, DataSourceProvider } from '@/models/common'
 
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
@@ -29,9 +29,9 @@ const Website: FC<Props> = ({
   const [isLoaded, setIsLoaded] = useState(false)
   const [isSetFirecrawlApiKey, setIsSetFirecrawlApiKey] = useState(false)
   const checkSetApiKey = useCallback(async () => {
-    const res = await fetchFirecrawlApiKey() as any
-    const list = res.settings.filter((item: DataSourceWebsiteItem) => item.provider === WebsiteProvider.fireCrawl && !item.disabled)
-    setIsSetFirecrawlApiKey(list.length > 0)
+    const res = await fetchDataSources() as any
+    const isFirecrawlSet = res.sources.some((item: DataSourceItem) => item.provider === DataSourceProvider.fireCrawl)
+    setIsSetFirecrawlApiKey(isFirecrawlSet)
   }, [])
 
   useEffect(() => {

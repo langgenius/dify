@@ -58,7 +58,7 @@ const DataSourceNotion: FC<Props> = ({
       type={DataSourceType.notion}
       isConfigured={connected}
       onConfigure={handleConnectNotion}
-      readonly={!isCurrentWorkspaceManager}
+      readOnly={!isCurrentWorkspaceManager}
       isSupportList
       configuredList={workspaces.map(workspace => ({
         id: workspace.id,
