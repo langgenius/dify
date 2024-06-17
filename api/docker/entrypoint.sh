@@ -4,7 +4,7 @@ set -e
 
 if [[ "${MIGRATION_ENABLED}" == "true" ]]; then
   echo "Running migrations"
-  flask db upgrade
+  flask db-migrate
 fi
 
 if [[ "${MODE}" == "worker" ]]; then
