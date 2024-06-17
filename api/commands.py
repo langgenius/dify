@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import secrets
 from typing import Optional
 
@@ -560,15 +561,20 @@ def db_migrate():
     lock = redis_client.lock(name='db_upgrade_lock', timeout=60)
     if lock.acquire(blocking=False):
         try:
-            import flask_migrate
             click.echo(click.style('Start database migration.', fg='green'))
+
+            # run db migration
+            import flask_migrate
             flask_migrate.upgrade()
+
             click.echo(click.style('Database migration successful!', fg='green'))
+
+        except Exception as e:
+            logging.exception(f'Database migration failed, error: {e}')
         finally:
             lock.release()
     else:
         click.echo('Database migration skipped')
-
 
 def register_commands(app):
     app.cli.add_command(reset_password)
