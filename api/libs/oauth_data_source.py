@@ -310,10 +310,6 @@ class NotionOAuth(OAuthDataSource):
 
 
 class LarkOAuth(LarkOAuthDataSource):
-    # _LARK_TENANT_ACCESS_TOKEN_URL = 'https://open.larkoffice.com/open-apis/auth/v3/tenant_access_token/internal'
-    # _LARK_WIKI_SPACES_SEARCH = 'https://open.larkoffice.com/open-apis/wiki/v2/spaces'
-    # _LARK_WIKI_NODES_SEARCH = 'https://open.larkoffice.com/open-apis/wiki/v2/spaces/{space_id}/nodes'
-
     _LARK_TENANT_ACCESS_TOKEN_URL = 'https://open.feishu-boe.cn/open-apis/auth/v3/tenant_access_token/internal'
     _LARK_WIKI_SPACES_SEARCH = 'https://open.feishu-boe.cn/open-apis/wiki/v2/spaces'
     _LARK_WIKI_NODES_SEARCH = 'https://open.feishu-boe.cn/open-apis/wiki/v2/spaces/{space_id}/nodes'
@@ -385,11 +381,11 @@ class LarkOAuth(LarkOAuthDataSource):
             'total': len(pages)
         }
 
-        data_source_binding = DataSourceBinding.query.filter(
+        data_source_binding = DataSourceOauthBinding.query.filter(
             db.and_(
-                DataSourceBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceBinding.provider == 'lark',
-                DataSourceBinding.access_token == self.app_secret
+                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.provider == 'lark',
+                DataSourceOauthBinding.access_token == self.app_secret
             )
         ).first()
         if data_source_binding:
@@ -397,7 +393,7 @@ class LarkOAuth(LarkOAuthDataSource):
             data_source_binding.disabled = False
             db.session.commit()
         else:
-            new_data_source_binding = DataSourceBinding(
+            new_data_source_binding = DataSourceOauthBinding(
                 tenant_id=current_user.current_tenant_id,
                 access_token=self.app_secret,
                 source_info=source_info,
@@ -407,12 +403,12 @@ class LarkOAuth(LarkOAuthDataSource):
             db.session.commit()
 
     def sync_data_source(self, binding_id: str):
-        data_source_binding = DataSourceBinding.query.filter(
+        data_source_binding = DataSourceOauthBinding.query.filter(
             db.and_(
-                DataSourceBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceBinding.provider == 'lark',
-                DataSourceBinding.id == binding_id,
-                DataSourceBinding.disabled == False
+                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.provider == 'lark',
+                DataSourceOauthBinding.id == binding_id,
+                DataSourceOauthBinding.disabled == False
             )
         ).first()
         if data_source_binding:
