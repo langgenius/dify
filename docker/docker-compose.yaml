@@ -96,6 +96,12 @@ services:
       GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
       # if you want to use Application Default Credentials, you can leave GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 empty.
       GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
+      # The Tencent COS storage configurations, only available when STORAGE_TYPE is `tencent-cos`.
+      TENCENT_COS_BUCKET_NAME: 'your-bucket-name'
+      TENCENT_COS_SECRET_KEY: 'your-secret-key'
+      TENCENT_COS_SECRET_ID: 'your-secret-id'
+      TENCENT_COS_REGION: 'your-region'
+      TENCENT_COS_SCHEME: 'your-scheme'
       # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
@@ -252,6 +258,12 @@ services:
       GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
       # if you want to use Application Default Credentials, you can leave GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 empty.
       GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
+      # The Tencent COS storage configurations, only available when STORAGE_TYPE is `tencent-cos`.
+      TENCENT_COS_BUCKET_NAME: 'your-bucket-name'
+      TENCENT_COS_SECRET_KEY: 'your-secret-key'
+      TENCENT_COS_SECRET_ID: 'your-secret-id'
+      TENCENT_COS_REGION: 'your-region'
+      TENCENT_COS_SCHEME: 'your-scheme'
       # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`, `pgvector`.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.

@@ -70,7 +70,7 @@ const InviteModal = ({
 
   return (
     <div className={cn(s.wrap)}>
-      <Modal overflowVisible isShow onClose={() => {}} className={cn(s.modal)} wrapperClassName='z-20'>
+      <Modal overflowVisible isShow onClose={() => {}} className={cn(s.modal)}>
         <div className='flex justify-between mb-2'>
           <div className='text-xl font-semibold text-gray-900'>{t('common.members.inviteTeamMember')}</div>
           <XMarkIcon className='w-4 h-4 cursor-pointer' onClick={onCancel} />
