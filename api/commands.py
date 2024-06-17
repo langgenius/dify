@@ -555,7 +555,7 @@ def create_tenant(email: str, language: Optional[str] = None):
                            'Account: {}\nPassword: {}'.format(email, new_password), fg='green'))
 
 
-@click.command('db-migrate', help='migrate the database')
+@click.command('upgrade-db', help='upgrade the database')
 def db_migrate():
     click.echo('Preparing database migration...')
     lock = redis_client.lock(name='db_upgrade_lock', timeout=60)
@@ -575,6 +575,7 @@ def db_migrate():
             lock.release()
     else:
         click.echo('Database migration skipped')
+
 
 def register_commands(app):
     app.cli.add_command(reset_password)
