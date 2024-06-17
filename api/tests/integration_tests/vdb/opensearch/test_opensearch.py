@@ -83,7 +83,6 @@ class TestOpenSearchVector:
 
         hits_by_vector = self.vector.search_by_vector(query_vector=vector)
 
-        # 打印调试信息
         print("Hits by vector:", hits_by_vector)
         print("Expected document ID:", self.example_doc_id)
         print("Actual document ID:", hits_by_vector[0].metadata['document_id'] if hits_by_vector else "No hits")
