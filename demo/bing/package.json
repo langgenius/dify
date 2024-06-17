@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@azure/cognitiveservices-entitysearch": "^3.0.1",
+    "ms-rest-azure": "^3.0.2"
+  }
+}

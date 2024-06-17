@@ -1,0 +1,2462 @@
+{
+    "_type": "News",
+    "readLink": "https:\/\/api.bing.microsoft.com\/api\/v7\/news\/search?q=+",
+    "queryContext": {
+        "originalQuery": " "
+    },
+    "value": [
+        {
+            "name": "港大生涉非禮組媽 被告聞事主與宿友發展關係 認為其接受程度高",
+            "url": "https:\/\/www.hk01.com\/%E7%A4%BE%E6%9C%83%E6%96%B0%E8%81%9E\/1028510\/%E6%B8%AF%E5%A4%A7%E7%94%9F%E6%B6%89%E9%9D%9E%E7%A6%AE%E7%B5%84%E5%AA%BD-%E8%A2%AB%E5%91%8A%E8%81%9E%E4%BA%8B%E4%B8%BB%E8%88%87%E5%AE%BF%E5%8F%8B%E7%99%BC%E5%B1%95%E9%97%9C%E4%BF%82-%E8%AA%8D%E7%82%BA%E5%85%B6%E6%8E%A5%E5%8F%97%E7%A8%8B%E5%BA%A6%E9%AB%98",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.fsmWqB_FWR40lLbVDToD3S&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "港大生涉在學生宿舍內非禮「組媽」案今（13日）續審，被告自辯時稱，自覺與女事主X關係親切，見X收拾提出幫忙，認為是「窩心」及「暖男」行為，期間兩人曾有身體接觸，他覺X並無抗拒。之後他一度回房，但想到這是X在宿舍的最後一天，便折返看二人會否有機會發展。被告認曾說：「如果我好大抽」及「可唔可以幫我解決咗先」等話，強調無拿出下體，又稱有傳言指X與宿友發展關係，認為X接受身體接觸的程度較高。 被告憶述，X",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "香港01",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.WYJfCWqoIya-254uP6NIkA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:54:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "利用南半球獨特優勢 紐西蘭打造新航太中心",
+            "url": "https:\/\/www.ntdtv.com.tw\/b5\/20240613\/video\/392272.html?%E5%88%A9%E7%94%A8%E5%8D%97%E5%8D%8A%E7%90%83%E7%8D%A8%E7%89%B9%E5%84%AA%E5%8B%A2%20%E7%B4%90%E8%A5%BF%E8%98%AD%E6%89%93%E9%80%A0%E6%96%B0%E8%88%AA%E5%A4%AA%E4%B8%AD%E5%BF%83",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.vZOV4IKkmZdsDrfpnabdPy&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "【新唐人亞太台 2024 年 06 月 13 日訊】農業大國紐西蘭正在計畫發展航太產業，在幾乎沒有航線經過的南島海灣打造航太基地，最大限度地降低火箭碎片墜落的風險。此外，紐西蘭位處南半球 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "ntdtv",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.isPCoi3uCTRit3wjnqOpnA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:50:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "全城關注 認識#ESG 攜手迎未來",
+            "url": "http:\/\/www.hkcna.hk\/docDetail.jsp?id=100701711&channel=5773",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.RUOoNe_BLsck49nk0wLtbS&pid=News",
+                    "width": 700,
+                    "height": 600
+                }
+            },
+            "description": "香港新聞網6月13日電 “碳中和”及“可持續發展”是全球共同目標，實行ESG理念對於每一個國家，每一個機構，每一個企業，都是義不容辭的責任。 一場關注環境保護、管治、社會責任的 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "香港新聞網"
+                }
+            ],
+            "datePublished": "2024-06-13T07:53:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "美民權團體提告 轟拜登庇護禁令與川普版相差無幾",
+            "url": "https:\/\/udn.com\/news\/story\/6813\/8028762",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.Qemtx76PkxrpEsl0XtMY8S&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "美國總統拜登日前發布行政命令，暫停受理南部邊境非法移民的庇護申請。移民倡議團體組成的聯盟今天為此控告政府，稱此舉幾乎無異於前朝川普政府遭法院擋下的類似舉措。 美聯社報導 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "聯合新聞網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.0uXVX9aMlsduznJORMO9Fg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "出席電視台答問活動 辛偉誠支持率輸施紀賢",
+            "url": "https:\/\/www.stheadline.com\/realtime-world\/3353639\/%E5%87%BA%E5%B8%AD%E9%9B%BB%E8%A6%96%E5%8F%B0%E7%AD%94%E5%95%8F%E6%B4%BB%E5%8B%95-%E8%BE%9B%E5%81%89%E8%AA%A0%E6%94%AF%E6%8C%81%E7%8E%87%E8%BC%B8%E6%96%BD%E7%B4%80%E8%B3%A2",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.jQV0PoDP2O9Ar5B_hcQyKC&pid=News",
+                    "width": 700,
+                    "height": 467
+                }
+            },
+            "description": "英國大選即將於7月4日舉行，在距離大選只有3星期之際，首相辛偉誠和工黨黨魁施紀賢周三出席天空電視台答問活動，就多項議題接受質詢。民調顯示，施紀賢表現較佳，令辛偉誠的競選活動再 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "頭條日報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.U0ELxDaWdQSXkfQ-tTkazw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:11:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "簡約公屋｜即睇計分機制 居劏房兩年加30分 選非市區直接加30分",
+            "url": "https:\/\/www.hk01.com\/%E7%A4%BE%E6%9C%83%E6%96%B0%E8%81%9E\/1028483\/%E7%B0%A1%E7%B4%84%E5%85%AC%E5%B1%8B-%E5%8D%B3%E7%9D%87%E8%A8%88%E5%88%86%E6%A9%9F%E5%88%B6-%E5%B1%85%E5%8A%8F%E6%88%BF%E5%85%A9%E5%B9%B4%E5%8A%A030%E5%88%86-%E9%81%B8%E9%9D%9E%E5%B8%82%E5%8D%80%E7%9B%B4%E6%8E%A5%E5%8A%A030%E5%88%86",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.eHqaLpMGBghieyercTy8SC&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "政府推出簡約公屋解決輪候公屋時間過長問題，第一期元朗及牛頭角簡約公屋單位共有4400伙，租金介乎720元至2,650元，合資格人士於6月24日至7月15日交回申請表可獲優先處理。 簡約公屋採用編配優次計分方式，當中有四個加分位，分別是居住不適切居所時數，家有長者或子女，因健康嚴重影響工作能力，以及選擇市區或新界盤有不同加分，值得注意，如果只選非市區盤可獲加30分，但如果同時選擇新界及市區盤，則只加",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "香港01",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.WYJfCWqoIya-254uP6NIkA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:44:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "西班牙頂呱呱劇團《迷“網”家族》七月香港舉行亞洲首演",
+            "url": "http:\/\/www.hkcna.hk\/docDetail.jsp?id=100701696&channel=4372",
+            "description": "香港新聞網6月13日電香港特區政府康樂及文化事務署主辦的“國際綜藝合家歡”邀得西班牙的頂呱呱劇團七月來港演出跨媒體劇場《迷“網”家族》，為亞洲首演。此作品糅合默劇、面具劇場 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "香港新聞網"
+                }
+            ],
+            "datePublished": "2024-06-13T07:38:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "紅磡邨命案│死者任會計師 與兩男疑犯為性伴侶關係 愛玩毒品性愛派對",
+            "url": "https:\/\/www.stheadline.com\/breaking-news\/3353644\/%E7%B4%85%E7%A3%A1%E9%82%A8%E5%91%BD%E6%A1%88%E6%AD%BB%E8%80%85%E4%BB%BB%E6%9C%83%E8%A8%88%E5%B8%AB-%E8%88%87%E5%85%A9%E7%94%B7%E7%96%91%E7%8A%AF%E7%82%BA%E6%80%A7%E4%BC%B4%E4%BE%B6%E9%97%9C%E4%BF%82-%E6%84%9B%E7%8E%A9%E6%AF%92%E5%93%81%E6%80%A7%E6%84%9B%E6%B4%BE%E5%B0%8D",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.Bz03hCwURibRyPN8zSpaNC&pid=News",
+                    "width": 700,
+                    "height": 394
+                }
+            },
+            "description": "紅磡邨男子暴斃案駭人內情曝光，姓余（49歲）男死者本身是會計師，與兩名被捕男子為性伴侶關係，本周一（10日），余到紅磡邨紅昇樓玩「毒品性愛派對（Chem Fun）」，其後瞌睡躺在床上休息 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "頭條日報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.U0ELxDaWdQSXkfQ-tTkazw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:37:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "【科科科上市失利】科科科技子公司2度出海受挫 KKBOX出招對決Spotify穩江山",
+            "url": "https:\/\/www.msn.com\/zh-tw\/news\/other\/%E7%A7%91%E7%A7%91%E7%A7%91%E4%B8%8A%E5%B8%82%E5%A4%B1%E5%88%A9-%E7%A7%91%E7%A7%91%E7%A7%91%E6%8A%80%E5%AD%90%E5%85%AC%E5%8F%B82%E5%BA%A6%E5%87%BA%E6%B5%B7%E5%8F%97%E6%8C%AB-kkbox%E5%87%BA%E6%8B%9B%E5%B0%8D%E6%B1%BAspotify%E7%A9%A9%E6%B1%9F%E5%B1%B1\/ar-BB1o8Cs9",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.fb3KI_ZhmHPZwOieH6-LIS&pid=News",
+                    "width": 700,
+                    "height": 406
+                }
+            },
+            "description": "科科科技崛起，其實與2005年成立的KKBOX有關，創始股東大有來頭，正是宏達電董事長王雪紅的外甥簡民一，吸引中華電信和台灣大2電信投資，是國內規模最大的本土音樂串流平台，隨著揮軍中國受挫、退出泰國市場，加上年輕人紛紛靠攏國際音樂串流平台，KKBOX的未來布局備受關注。",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "鏡週刊 on MSN.com",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.TQ0HG5eBfL-nQAAhYc-ESg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:27:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "LV售後歐洲免費國內收2400，一年不但沒修好並且拒絕協商",
+            "url": "http:\/\/www.aastocks.com\/tc\/usq\/news\/comment.aspx?source=GLH&id=GLH1558549L",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.z6IOc6USgjp-zuZr89CqGi&pid=News",
+                    "width": 565,
+                    "height": 318
+                }
+            },
+            "description": "6月13日｜據界面，2019年，杜先生花1萬人民幣在意大利買了一款LV包，僅用了幾個月，肩帶邊緣就開始脱落。杜先生稱因為疫情擱置了售後，他23年將包送到深圳的門店，被告知需要支付2400元維修 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "阿思達克財經網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.MQ8OytLcHu8SZAJW6-S4kQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:05:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "拜登兒子吸毒購槍遭定罪 民調：未動搖美選民意向",
+            "url": "https:\/\/udn.com\/news\/story\/6813\/8028660",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.GqZxA1aT_yaLWGpGVQhaLS&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "根據昨天結束的路透社\/易普索民調，大多數美國選民都關注總統拜登兒子韓特．拜登的刑事審判，絕大多數選民說，他遭定罪 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "聯合新聞網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.0uXVX9aMlsduznJORMO9Fg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:11:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "58%受訪者認屬幸福家庭 高收入及有物業成加分原因",
+            "url": "https:\/\/hk.on.cc\/hk\/bkn\/cnt\/news\/20240613\/bkn-20240613153955832-0613_00822_001.html",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.UTTLXmz4VORr0TprQJiP8i&pid=News",
+                    "width": 700,
+                    "height": 499
+                }
+            },
+            "description": "經歷疫情，不少人與家人相處時間增加，家庭相處模式亦有改變。香港賽馬會聯同香港大學李嘉誠醫學院護理學院團隊於去年7初至8月底進行了一項有關疫後家庭幸福感指數的研究，訪問超過4,500名18歲或以上香港居民，發現近6成受訪者認為自己的家庭幸福感指數為高，於10分中佔7分或以上。其中，家庭月入6萬或以上、有自置物業等條件的受訪者，反映出較高家庭幸福感。另外，大部分有良好家庭關係及互動的受訪者，亦有較高家",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "on.cc東網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.1nRUlk1roKOeiCGzY1gZtA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:39:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "盧寵茂：連日下雨血液收集量偏低 血庫存量緊張",
+            "url": "https:\/\/www.am730.com.hk\/%E6%9C%AC%E5%9C%B0\/%E7%9B%A7%E5%AF%B5%E8%8C%82-%E9%80%A3%E6%97%A5%E4%B8%8B%E9%9B%A8%E8%A1%80%E6%B6%B2%E6%94%B6%E9%9B%86%E9%87%8F%E5%81%8F%E4%BD%8E-%E8%A1%80%E5%BA%AB%E5%AD%98%E9%87%8F%E7%B7%8A%E5%BC%B5\/460920",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.3ek2F7UaUMaxX4nS1KtqlS&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "醫務衞生局局長盧寵茂聯同副局長李夏茵今(13日)支持紅十字會在政總舉行的捐血活動，到場捐血，並呼籲市民踴躍捐血，幫助有需要接受輸血的病人。 籲市民踴躍捐血 盧寵茂說，近日因連日下雨，中心血液收集量持續偏低，血庫存量越趨緊張。他指每一包全血足以救治三位病人。血液沒有代替品，儲存期亦有限，因此市民定期自願無私捐血，對確保有需要的病人接受救治期間及時獲得安全及具質量保證的血液供應尤為重要。 至於紅十字會",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "AM 730",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.cJd_TFTzdvMKgSy5fihGEw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:59:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "獲聘中學拍攝期間4度摸女生臀部 有前科攝影師罪成還押候判",
+            "url": "https:\/\/hk.on.cc\/hk\/bkn\/cnt\/news\/20240613\/bkn-20240613153722862-0613_00822_001.html",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.U7Qadkf1sPN8ds7fh17kMS&pid=News",
+                    "width": 700,
+                    "height": 499
+                }
+            },
+            "description": "有風化案底的攝影師，去年獲聘到華富邨某中學，拍攝飛機模型製作活動，期間被指4度摸一名女學生的臀部，因而被控一項非禮罪。他不認罪受審，今（13日）在東區裁判法院被裁定罪成。辯方求情說，事件不涉摸胸部，亦是隔着衣服，無證據顯示被告有預謀。裁判官下令被告還押至6月27日判刑，期間為被告索取背景報告。 34歲男被告謝浩楠，報稱兼職攝影師，被控於2023年3月25日，在華富邨某中學學校的禮堂內非禮X。被告過",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "on.cc東網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.1nRUlk1roKOeiCGzY1gZtA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:37:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "荃灣川龍街紙紮舖傳煙味 疑擺放冥鏹閣樓首先起火",
+            "url": "https:\/\/www.am730.com.hk\/%E6%9C%AC%E5%9C%B0\/%E8%8D%83%E7%81%A3%E5%B7%9D%E9%BE%8D%E8%A1%97%E7%B4%99%E7%B4%AE%E8%88%96%E5%82%B3%E7%85%99%E5%91%B3-%E7%96%91%E6%93%BA%E6%94%BE%E5%86%A5%E9%8F%B9%E9%96%A3%E6%A8%93%E9%A6%96%E5%85%88%E8%B5%B7%E7%81%AB\/460923",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.YpDJ5nqwLhD4kmSyjJdJNy&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "今日（13日）中午12時許，荃灣川龍街55號地下一間紙紮舖冒煙起火，紙紮舖老闆陳先生，在店舖地下工作時聞到煙味，懷疑發生火警，於是報警。 疑擺放冥鏹的閣樓起火 警方和消防接報到場，出動一條喉及一隊煙帽隊灌救，火勢已受控，事件中無人受傷，亦毋須疏散。經初步調查後，消防相信擺放冥鏹等貨物的閣樓首先起火，正在調查起火原因。",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "AM 730",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.cJd_TFTzdvMKgSy5fihGEw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:58:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "政經CHAT｜連日下雨血液收集量偏低 盧寵茂李夏茵身體力行齊捐血",
+            "url": "https:\/\/www.i-cable.com\/%E6%96%B0%E8%81%9E%E8%B3%87%E8%A8%8A\/238031\/%E6%94%BF%E7%B6%93chat-%E9%80%A3%E6%97%A5%E4%B8%8B%E9%9B%A8%E8%A1%80%E6%B6%B2%E6%94%B6%E9%9B%86%E9%87%8F%E5%81%8F%E4%BD%8E-%E7%9B%A7%E5%AF%B5%E8%8C%82%E6%9D%8E%E5%A4%8F%E8%8C%B5",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.CJCPtCYSvlQn1quN9GtoRC&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "【有線新聞】本港近期連日下雨，紅十字會輸血服務中心血液收集量持續偏低，血庫存量越趨緊張。醫務衞生局局長盧寵茂聯同副局長李夏茵今日（13日）身體力行，支持香港紅十字會在政府 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "有線寬頻i-CABLE",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.o14J0ZKgWd15gIRok_shsA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "廣州廣汕公路大貨車撞16輛私家車 (15:50)",
+            "url": "https:\/\/news.mingpao.com\/ins\/%E5%85%A9%E5%B2%B8\/article\/20240613\/s00004\/1718265039716\/%E5%BB%A3%E5%B7%9E%E5%BB%A3%E6%B1%95%E5%85%AC%E8%B7%AF%E5%A4%A7%E8%B2%A8%E8%BB%8A%E6%92%9E16%E8%BC%9B%E7%A7%81%E5%AE%B6%E8%BB%8A",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.D5IEc01zPUuNp94uzcXuwy&pid=News",
+                    "width": 700,
+                    "height": 368
+                }
+            },
+            "description": "廣州廣汕公路今早（13日）有一輛大型貨車連環撞擊私家車，廣州市應急管理局表示，有16輛私家車被撞，一人身體不適。警方通報，肇事司機陳某已被警方控制，現場交通已恢復，事故正在 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "明報網站",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.qIC7jNNrRD5Baizjr1B-Ow&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:54:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "俄艦隊停靠古巴哈瓦那港 核潛艇距佛州僅160km！美：不構成威脅",
+            "url": "https:\/\/www.ettoday.net\/news\/20240613\/2757161.htm",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.Qc00nm-niiYGCOx8nmjfmy&pid=News",
+                    "width": 700,
+                    "height": 467
+                }
+            },
+            "description": "俄羅斯核動力潛艇「喀山號」（Kazan）2024年6月12日停靠古巴哈瓦那港。（圖／路透） 記者張寧倢／綜合外電報導 一支由核動力潛艇和巡防艦組成的俄羅斯軍艦艦隊於12日抵達古巴首都哈瓦那 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "ETtoday新聞雲",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.mUklEBRfUqhKVCh9aqReJg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:41:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/www.ettoday.net\/amp\/amp_news.php7?news_id=2757161"
+        },
+        {
+            "name": "新城市戲院現蟒蛇 一度暫停開放 (15:10)",
+            "url": "https:\/\/news.mingpao.com\/ins\/%E6%B8%AF%E8%81%9E\/article\/20240613\/s00001\/1718263297988\/%E6%96%B0%E5%9F%8E%E5%B8%82%E6%88%B2%E9%99%A2%E7%8F%BE%E8%9F%92%E8%9B%87-%E4%B8%80%E5%BA%A6%E6%9A%AB%E5%81%9C%E9%96%8B%E6%94%BE",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.31IzSBG8UuX3rGrFhPUVMy&pid=News",
+                    "width": 700,
+                    "height": 367
+                }
+            },
+            "description": "今日（13日）上午10時許，MCL Cinemas Facebook專頁，發出特別通知，由於發生特別事故，Movie Town-新城市廣場的MX4D影院由即日起暫停開放，直至另行通知。 警方於今早11時39分接獲沙田新城市廣場3樓 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "明報網站",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.qIC7jNNrRD5Baizjr1B-Ow&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:53:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "簡約公屋四千多單位本月24日接受申請",
+            "url": "http:\/\/www.metroradio.com.hk\/MetroFinance\/News\/NewsLive.aspx?SearchText=&NewsId=20240613153908",
+            "description": "政府推出簡約公屋第一期單位, 兩個項目分別位於元朗攸壆路和牛頭角彩興路, 合共提供約4400個單位, 本月24日起接受申請, 預計明年第一季起入伙. 房屋局指, 未來一星 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "新城廣播"
+                }
+            ],
+            "datePublished": "2024-06-13T07:49:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "公寓惡火3死 疑割草機電池爆、父女爬窗逃",
+            "url": "https:\/\/www.msn.com\/zh-tw\/news\/national\/%E5%85%AC%E5%AF%93%E6%83%A1%E7%81%AB3%E6%AD%BB-%E7%96%91%E5%89%B2%E8%8D%89%E6%A9%9F%E9%9B%BB%E6%B1%A0%E7%88%86-%E7%88%B6%E5%A5%B3%E7%88%AC%E7%AA%97%E9%80%83\/ar-BB1o8wU4",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.msJ69yzf5HEw_kT7lMuMcC&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "新北市土城發生火警，奪走三條性命！現場是一棟七層樓的公寓，起火點在四樓，疑似是在客廳充電的鋰電池爆炸，由於4、5、6樓內部相通，火勢迅速延燒，一家四口和女兒的男友受困火場，父親和女兒爬窗逃命，其餘三人沒逃出，母子被發現倒在六樓，女兒的男友則是倒塌的鐵皮壓住，當場死亡。",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "TVBS新聞網 on MSN.com",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.6z9sf8zRdUqV8bXdpYBlow&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:11:42.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "哈馬斯稱沒有對停火提議提出新的修改意見",
+            "url": "https:\/\/news.rthk.hk\/rthk\/ch\/component\/k2\/1757277-20240613.htm",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.JWT_k6QyqInU2JpXcUtZgi&pid=News",
+                    "width": 700,
+                    "height": 525
+                }
+            },
+            "description": "加沙戰事持續，巴勒斯坦武裝組織哈馬斯一名官員說，哈馬斯並未對美國提出的加沙停火提議提出新的修改意見，只是重申上月停火談判中的承諾。 這名官員對新華社記者說，以色列可能在未來 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "香港電台網站",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.5KmFcvWd51Gw8fMtKouTVg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:31:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "建築創新與卓越：香港BCI Asia Awards展現行業領導與綠色承諾",
+            "url": "https:\/\/www.etnet.com.hk\/www\/tc\/news\/mediaoutreach_news_detail.php?newsid=305202",
+            "description": "香港 - Media OutReach Newswire - 2024年6月13日 - 可持續發展正成為主流趨勢，在建築行業尤其重要，單是建築物的用電量已佔了全港 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "經濟通ET Net",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.3OeobIVs36Myvxiwb8ueow&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:08:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "全球串流平台獲逾6億次觀看 鋼琴名家歐拉夫森首登台演奏",
+            "url": "https:\/\/news.cts.com.tw\/cts\/life\/202406\/202406132336721.html",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.hF1kVPBNkif486-lwTupji&pid=News",
+                    "width": 573,
+                    "height": 700
+                }
+            },
+            "description": "冰島鋼琴名家維京格•歐拉夫森(Víkingur Ólafsson)，由於兼具原創性與堅實的音樂理念，完美結合最高境界的音樂鑒賞和深富遠見的音樂策劃，對古典樂壇產生深遠的影響，因此成為樂迷喜愛的 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "華視",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.oDWxQOKE6iODHsP9J6jURg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:57:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "與館長合辦活動劍指新北市長？黃國昌：新北是我的責任區",
+            "url": "https:\/\/news.ltn.com.tw\/news\/NewTaipei\/breakingnews\/4704270",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.fI8Rl2rd5_o39S8SDOjL5i&pid=News",
+                    "width": 700,
+                    "height": 524
+                }
+            },
+            "description": "〔記者陳奕劭／新北報導〕立法委員黃國昌今天（13日）與「館長」陳之漢在新北市板橋區中正市民活動中心舉辦銀髮族女性有氧運動班活動，被認為是替2026年新北市長選舉暖身。黃國昌會前受 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "自由時報電子報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.QC3GG29ccb1iW8awszLjwA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:44:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/news.ltn.com.tw\/amp\/news\/NewTaipei\/breakingnews\/4704270"
+        },
+        {
+            "name": "三上悠亞親揭「色淫師」惡行！拿藝術為藉口情勒：超越藝術邊界了",
+            "url": "https:\/\/www.nownews.com\/news\/6448388",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.QM7EB9Z2F5V9j7mveqM7Hy&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "日本知名前AV女優三上悠��去年引退後，積極發展演藝事業，她在近日參加日本綜藝活動時，分享自己過去曾受一名知名攝影師性騷擾的經驗，提到當時攝影師要求2人進行單獨裸拍，坦言：「他越過藝術界線了！」 ▲三上悠亞坦言自己過去從事性相關產業，因此對於性騷擾認定會相對寬鬆，但還是遇到讓她感到十分不舒服的性騷擾事件。（圖／翻攝自三上悠亞X） 三上悠亞在日本綜藝《岩倉與吉住》中提到，由於自己過去在性有關的產業工作",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "今日新聞",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.HEVDpFKE6Cs8phejmklqVg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:15:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/www.nownews.com\/amp\/news\/6448388"
+        },
+        {
+            "name": "G7同意「動用俄國凍結資產」援助烏克蘭！ 高達500億美元",
+            "url": "https:\/\/www.ettoday.net\/news\/20240613\/2757512.htm",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.wvXIKeefDtZyD_OxdqLFCi&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "法國總統府今天表示，七大工業國集團（G7）領袖已同意在今年年底前動用被凍結的俄羅斯資產，向烏克蘭提供500億美元。 總統府官員在G7峰會明天於義大利舉行前表示，「我們達成了協議 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "ETtoday新聞雲",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.mUklEBRfUqhKVCh9aqReJg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:25:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/www.ettoday.net\/amp\/amp_news.php7?news_id=2757512"
+        },
+        {
+            "name": "商務部：中國貨物貿易總體保持穩中有進態勢",
+            "url": "https:\/\/news.rthk.hk\/rthk\/ch\/component\/k2\/1757280-20240613.htm",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.cInu7lXGk02aVawrUY6ONy&pid=News",
+                    "width": 700,
+                    "height": 525
+                }
+            },
+            "description": "在北京，商務部表示，中國貨物貿易在一些積極因素的支撐下，總體保持穩中有進的態勢，表現符合預期。 發言人何亞東表示，從行業角度來看，三類產品市場需求穩定。第一類是消費電子類 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "香港電台網站",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.5KmFcvWd51Gw8fMtKouTVg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:54:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "【通悉大市】歐盟電動車關稅出台 比亞迪曾彈近9%創今年新高",
+            "url": "https:\/\/finance.now.com\/news\/post.php?id=864809",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.jyZcO67ugUEdmRSydprTsi&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "【now.com財經】電動車股近日走勢波動，歐盟宣布將於7月4日起對從中國進口的電動汽車徵收額外關稅。據彭博引述分析師指，料內地車企或需提高售價，以將部分關稅負擔轉嫁予客戶。市場評估 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "Finance Now",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.ARHKzxggmD8bTBzSN7ysHQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "美媒爆料 馬斯克與多名女員工上床",
+            "url": "https:\/\/guangming.com.my\/%E7%BE%8E%E5%AA%92%E7%88%86%E6%96%99-%E9%A6%AC%E6%96%AF%E5%85%8B%E8%88%87%E5%A4%9A%E5%90%8D%E5%A5%B3%E5%93%A1%E5%B7%A5%E4%B8%8A%E5%BA%8A",
+            "description": "馬斯克被爆以性為目的追求公司女性員工。 （三藩市13日訊）美國億萬富豪馬斯克捲入性醜聞，《華爾街日報》報導，這名科技界鉅子曾與旗下SpaceX公司多名女性員工發生性關係，其中包括一名 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "guangming",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.FnnYKC1DIfSNKRga70o6Jw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:12:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "深圳：支持鼓勵虛擬電廠關鍵技術研發及設備規模化量產",
+            "url": "http:\/\/www.aastocks.com\/tc\/stocks\/news\/aafn-con\/NOW.1356222\/industry-news\/HK6",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.zwScLn-MRKbvLvwAN11J6i&pid=News",
+                    "width": 565,
+                    "height": 318
+                }
+            },
+            "description": "深圳市發展和改革委員會發布關於《深圳市支持虛擬電廠加快發展的若干措施》通知提出，鼓勵資源聚合商建設資源聚合平台，提高資源聚合響應速度和精度，並接入市虛擬電廠管理中心參與 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "阿思達克財經網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.MQ8OytLcHu8SZAJW6-S4kQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:03:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "歐盟發布關於對華電動汽車反補貼初裁結果 中國貿促會：典型雙重標准",
+            "url": "https:\/\/www.wenweipo.com\/a\/202406\/13\/AP666aa640e4b05df3a51f4b09.html",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.UQRhtiWxsL2QSaYQtvBGpC&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "北京車展上首次亮相的奇瑞集團純電SUV車型icar 03。記者 任芳頡 攝 （香港文匯網記者 任芳頡 北京報道）6月12日，歐盟委員會發布關於對華電動汽車反補貼調查初裁結果，擬對進口自中國電動 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "香港文匯網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.lYstOqt31If6QEgJJfZihg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:56:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "王星元：通過各部門尋根源 擬方案解決安世花園水患",
+            "url": "https:\/\/guangming.com.my\/%E7%8E%8B%E6%98%9F%E5%85%83%E9%80%9A%E9%81%8E%E5%90%84%E9%83%A8%E9%96%80%E5%B0%8B%E6%A0%B9%E6%BA%90-%E6%93%AC%E6%96%B9%E6%A1%88%E8%A7%A3%E6%B1%BA%E5%AE%89%E4%B8%96%E8%8A%B1%E5%9C%92%E6%B0%B4%E6%82%A3",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.hqdQqMIx3DpK0R-a1_grNi&pid=News",
+                    "width": 700,
+                    "height": 421
+                }
+            },
+            "description": "居民陳月珠（右）向王星元（左起）及關國富講述水患情況。左起是鍾汶軒及林清益。 （太平13日訊）保閣亞三區州議員王星元說，他將通過各部門找出太平安世花園一帶日前發生嚴重水患的 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "guangming",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.FnnYKC1DIfSNKRga70o6Jw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:03:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "輕鬆走1小時 賞峭壁峽谷及滑瀑",
+            "url": "https:\/\/health.businessweekly.com.tw\/article\/ARTL003013999",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.PZAVLzGH6PJyQzIcuOjWTi&pid=News",
+                    "width": 700,
+                    "height": 525
+                }
+            },
+            "description": "滑瀑是這裡的特色，下切的峽谷有種置身於花蓮太魯閣的錯覺。(林雅惠\/攝) 天氣變暖，想要走步道卻不想暴汗嗎？推薦位於基隆的暖東峽谷，這裡有林蔭夾道、小溪伴遊，冬暖夏涼。而且步道 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "商業周刊",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.dfRsingBbz_YlTYK3NvSPg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:47:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "加薩停火決議通過、全球海運股暴跌 但運價真的會降嗎？",
+            "url": "https:\/\/money.udn.com\/money\/story\/120769\/8028608",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.Gy0vBcCWg_UoD2OohDPM5i&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "全球海運股正大幅下跌。丹麥的A.P.穆勒-馬士基（A.P. Moller - Maersk）等大盤股6月11日聯袂暴跌。日本的海運股截至12日也持續下跌。遭拋售的契機是有關巴勒斯坦自治區加薩戰事的新停火方案的出爐。有觀測認為，運輸供應鏈緊張的消除將導致運費下降。不過，中東局勢前景仍不明朗，很難預測拋售是否持續。 馬士基股價11日下跌7%，德國海運巨頭赫伯羅特 (Hapag-Lloyd)下跌9%。以",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "經濟日報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.tKcdIz7kcbOXCyEqFozALg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:50:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "【環球金融快線】羅家聰:美幾時減息料8月中有聲氣",
+            "url": "https:\/\/finance.now.com\/news\/post.php?id=864810",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.PPSqP6eVSIlbWLgFCpD8dS&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "【Now財經台】有「聯儲局傳聲筒」之稱，《華爾街日報》記者Nick Timiraos放風，暗示聯儲局會喺議息會議上「講明」今年減息次數會減少，睇返經濟及就業數據，9月減息似乎機會唔大，最快就係11 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "Finance Now",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.ARHKzxggmD8bTBzSN7ysHQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:05:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "中國力邀退役軍官參加黃埔百年校慶 嚴德發回應「正統說」：校長在哪正統在哪",
+            "url": "https:\/\/tw.news.yahoo.com\/%E4%B8%AD%E5%9C%8B%E5%8A%9B%E9%82%80%E9%80%80%E5%BD%B9%E8%BB%8D%E5%AE%98%E5%8F%83%E5%8A%A0%E9%BB%83%E5%9F%94%E7%99%BE%E5%B9%B4%E6%A0%A1%E6%85%B6-%E5%9A%B4%E5%BE%B7%E7%99%BC%E5%9B%9E%E6%87%89-%E6%AD%A3%E7%B5%B1%E8%AA%AA-%E6%A0%A1%E9%95%B7%E5%9C%A8%E5%93%AA%E6%AD%A3%E7%B5%B1%E5%9C%A8%E5%93%AA-075410889.html",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.wDU6E0AOgpSQw9QJoIpR2C&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "陸軍官校百年校慶週末登場，卻傳出有退役軍官將赴中參與紀念活動，退輔會主委嚴德發強調「校長在哪裡，正統在哪裡」。（圖片來源／信傳媒編輯部） 陸軍官校百年校慶將在6月16日登場，分 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "Yahoo奇摩新聞",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.5iWVE3cSxDnCMdtvF1amRA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:54:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "日外儲減 穩匯添難",
+            "url": "https:\/\/orientaldaily.on.cc\/content\/%E7%94%A2%E7%B6%93\/odn-20240608-0608_00202_030\/%E6%97%A5%E5%A4%96%E5%84%B2%E6%B8%9B-%E7%A9%A9%E5%8C%AF%E6%B7%BB%E9%9B%A3",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.ANeJGUbSTxMgO-Q_2vxk7y&pid=News",
+                    "width": 609,
+                    "height": 435
+                }
+            },
+            "description": "日本當局多次入市干預日圓匯價，令外匯儲備大為縮水！日本財務省昨日公布，截至5月底止國家外匯儲備餘額為1.23萬億美元（逾9.5萬億港元），按月減少474億美元或3.7%。其中，以證券形式存放 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "東方日報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.w80V3S53ZEmmeP_VBZGC4w&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:33:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "遭藍委批「騷包孔雀型教授」！教部政次葉丙成：我滿規矩的",
+            "url": "https:\/\/www.nownews.com\/news\/6448510",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.raBYz6zsOYn0bgiQUYxxIC&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "教育部政務次長葉丙成今（13）日首次獨挑大樑，至立法院教育及委員會進行專案報告並備詢，面對藍委質疑他是「孔雀型網紅教授」、「就是騷包型、花枝招展的教授」，葉丙成表示，外界對他有誤解，「我滿規矩的，我7年沒談翻轉。」 我是廣告 請繼續往下閱讀 葉丙成至立院「少子化趨勢下高教應如何經營、創新及提升競爭力」進行專題報告並備詢，以創新、翻轉教育聞名的他，遭國民黨立委賴士葆質疑是「孔雀型網紅教授」、「就是騷",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "今日新聞",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.HEVDpFKE6Cs8phejmklqVg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/www.nownews.com\/amp\/news\/6448510"
+        },
+        {
+            "name": "新地白石角商場Silicon Lane試業 料第三季正式開業",
+            "url": "https:\/\/metroradio.com.hk\/MetroFinance\/News\/NewsStock.aspx?NewsId=20240613152919",
+            "description": "新地(00016)大埔白石角商場Silicon Lane展開首階段試業, 預計第三季正式開業. 商場連接新地住宅項目Silicon Hill, 設有23間商舖, 可出租總面積達23000呎, 提供逾50個車位及4台 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "新城廣播"
+                }
+            ],
+            "datePublished": "2024-06-13T07:40:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "雙胞胎兄弟自稱「慈濟大學生」 多次吃霸王餐",
+            "url": "https:\/\/news.ebc.net.tw\/news\/society\/425850",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.uzEMW0mtbRMrdEbWJcb1Iy&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "柯建銘立院內抽菸 直播畫面流出！她怒投訴 26分鐘前 台中辣妹「代駕」變「酒駕」 害友人母600萬保時捷被扣牌 28分鐘前 花蓮一對雙胞胎兄弟，自稱是慈濟大學學生，以各種理由吃霸王餐，其中 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "東森新聞",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.qqKqmzGmR-N4odkxsMlwpA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:00:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "台積電、鴻海買不下手了？法人曝可「改買」這四類股",
+            "url": "https:\/\/money.udn.com\/money\/story\/5607\/8028760",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT._titlj-su4e88yuUVBSkHi&pid=News",
+                    "width": 470,
+                    "height": 246
+                }
+            },
+            "description": "台股13日以22,312.04點收盤，上漲263.08點，創下收盤新高，權王台積電 （2330） 也飆上919元的收盤新高，鴻海也朝200元前進，投資人看著台積電一路飆高，想買卻有點貴，不買又看著股價一路漲，真的很難；法人直言，如果台積電、鴻海買不下手了，不妨回頭看看低位階的PCB、跌深的散熱股、儲能相關的電力供應股、金融股等，現在都是可以的買點。 台股13日以22,217.64點開高，盤中最高一",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "經濟日報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.tKcdIz7kcbOXCyEqFozALg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:45:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/money.udn.com\/money\/amp\/story\/5607\/8028760"
+        },
+        {
+            "name": "擁有最多比特幣的十家上市公司",
+            "url": "https:\/\/news.cnyes.com\/news\/id\/5598542",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.TVydqEMokRh1wSQFibwSTS&pid=News",
+                    "width": 380,
+                    "height": 214
+                }
+            },
+            "description": "近期以來，上市公司購買比特幣作為儲備逐漸由小眾變為流行，MicroStrategy 更是因此在今年市值急速上升。據 BitcoinTreasuries 數據，持有比特幣的上市公司現在占總共 2100 萬枚比特幣的近 1.5%。",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "鉅亨網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.QzVzcazVmw-CYdTZikbcAQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:05:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "我喝比較少我來開車！保時捷正妹酒駕",
+            "url": "https:\/\/tw.news.yahoo.com\/%E6%88%91%E5%96%9D%E6%AF%94%E8%BC%83%E5%B0%91%E6%88%91%E4%BE%86%E9%96%8B%E8%BB%8A-%E4%BF%9D%E6%99%82%E6%8D%B7%E6%AD%A3%E5%A6%B9%E9%85%92%E9%A7%95-075925471.html",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.1k8aMN8IhrdBOCQ6YxNYgS&pid=News",
+                    "width": 677,
+                    "height": 466
+                }
+            },
+            "description": "[NOWnews今日新聞] 24歲張姓正妹在朋友家中飲酒聚會，散會時張女表示自己喝得比��少，自告奮勇駕駛保時捷跑車載朋友回家，結果在進化北路被第二分局警方攔查，酒精測試仍然超標，被依 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "Yahoo奇摩新聞",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.5iWVE3cSxDnCMdtvF1amRA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:59:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "發布時間： 1 分鐘前",
+            "url": "https:\/\/inews.hket.com\/article\/3774956\/TSLA%EF%BD%9C%E9%A6%AC%E6%96%AF%E5%85%8B%E5%A4%A9%E5%83%B9%E8%96%AA%E9%85%AC%E6%96%B9%E6%A1%88%E5%88%9D%E6%AD%A5%E7%8D%B2Tesla%E8%82%A1%E6%9D%B1%E6%94%AF%E6%8C%81%E3%80%80%E8%BF%91%E6%97%A5%E5%8F%A6%E8%A2%AB%E6%8F%AD%E8%88%87SpaceX%E5%A4%9A%E5%90%8D%E5%A5%B3%E5%93%A1%E5%B7%A5%E7%99%BC%E7%94%9F%E8%B6%8A%E7%95%8C%E9%97%9C%E4%BF%82",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.dNKcARg5aiJc6od1K7hd4S&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "據初步投票結果顯示，大比數股東支持Tesla特斯拉（美：TSLA）馬斯克Elon Musk的560億美元薪酬方案 《華爾街日報》最新報道指，馬斯克曾與SpaceX多名女員工發生越界關係 Tesla特斯拉（美：TSLA ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "香港經濟日報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.iZC5DN0D8o-vhT7boV_gEg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:59:00.0000000Z",
+            "video": {
+                "name": "TSLA｜馬斯克天價薪酬方案初步獲Tesla股東支持　近日另被揭與SpaceX多名女員工發生越界關係 - 香港經濟日報 - 即時新聞頻道 - 即市財經 - 股市",
+                "thumbnailUrl": "https:\/\/www.bing.com\/th?id=OVF.0PqAn2%2FRzAU4UAZA3e5sBw&pid=News",
+                "thumbnail": {
+                    "width": 520,
+                    "height": 292
+                }
+            },
+            "headline": true
+        },
+        {
+            "name": "TPRO交易平台正式上市Polytrade（TRADE）",
+            "url": "https:\/\/news.cnyes.com\/news\/id\/5598759",
+            "description": "BlockBeats 消息，6 月 13 日，據官方消息，Polytrade 首席執行官 Piyush Gupta 和 TruBit Pro 交易平台近日聯合宣布，TRADE 代幣於墨西哥當地時間 6 月 13 日上午 9 點正式在 TPRO 交易平台上市，標誌其在拉丁美洲的重要進展。專家認為，RWA 具有巨大的潛力，可能會廣泛應用於各個領域，改變傳統資產市場的動態。區塊鏈技術和虛擬資產正在迅速改",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "鉅亨網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.QzVzcazVmw-CYdTZikbcAQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:31:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "新手爸媽︱孕32周突中風術後右半身無力吞嚥困難 港媽堅持收集母乳給早產B感動醫護",
+            "url": "https:\/\/topick.hket.com\/article\/3774163\/%E6%96%B0%E6%89%8B%E7%88%B8%E5%AA%BD%EF%B8%B1%E5%AD%9532%E5%91%A8%E7%AA%81%E4%B8%AD%E9%A2%A8%E8%A1%93%E5%BE%8C%E5%8F%B3%E5%8D%8A%E8%BA%AB%E7%84%A1%E5%8A%9B%E5%90%9E%E5%9A%A5%E5%9B%B0%E9%9B%A3%20%20%20%20%E6%B8%AF%E5%AA%BD%E5%A0%85%E6%8C%81%E6%94%B6%E9%9B%86%E6%AF%8D%E4%B9%B3%E7%B5%A6%E6%97%A9%E7%94%A2B%E6%84%9F%E5%8B%95%E9%86%AB%E8%AD%B7",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.3PwBeuib9bElnFHhxGdN0i&pid=News",
+                    "width": 700,
+                    "height": 371
+                }
+            },
+            "description": "母乳是媽媽送給孩子的珍貴禮物，為初生嬰兒提供生長所需的營養、獨一無二的天然抗體，以及活性免疫細胞的保護。然而，受到身體狀況、家庭及社會文化等多項因素影響，並不是每一位媽媽 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "香港經濟日報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.5b9rYC_FaECFzaQB5jJz3w&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:53:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "諷綠營下鄉宣講只為保護巨嬰官員 國民黨：應該正名「媽寶行動」",
+            "url": "https:\/\/www.storm.mg\/article\/5156266",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.RmGlUUmXSQiTt15-RMm8sS&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "行政院針對國會改革修法提出覆議，民進黨也啟動「反濫權、護民主」下鄉宣講，對此，國民黨今（13）日召開記者會，國民黨智庫副執行長、桃園市議員凌濤嘲諷，民進黨不願意讓總統賴清德到立院國情報告，也不願意讓官員對人民交代，保護得好好的，「反濫權、護民主」行動，應該正名為「媽寶行動」，因為",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "風傳媒",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.w8qXOEfz5CdMuv_4lhs1jA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:53:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "人妻外遇吃2男 露骨簡訊「超愛吃香蕉」遭抓包",
+            "url": "https:\/\/cnews.com.tw\/244240613a04\/",
+            "description": "高雄一名鄭姓人妻與老公郭男2016年結婚，但5年後，郭男發現妻子和2名男子互傳露骨鹹濕簡訊，例如「有一根香蕉，我看到了之後超愛，舔了一下吃幾口，再喝個水，謝謝招待」；對此，郭男 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "匯流新聞網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.zc9zZ79Lp__l0YScnH0VCQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:31:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "高雄二仁溪防汛道路離奇車禍 6旬男騎機車頭部重創不治",
+            "url": "https:\/\/news.ltn.com.tw\/news\/Kaohsiung\/breakingnews\/4704257",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.p3fvHxK0eI61w9uaIF-vKC&pid=News",
+                    "width": 700,
+                    "height": 344
+                }
+            },
+            "description": "〔記者蘇福男／高雄報導〕高雄湖內區二仁溪河堤防汛道路，今天上午發生1起離奇死亡車禍，65歲李姓男子騎機車不明原因發生意外事故，頭部重創，被發現時已無呼吸心跳，經送醫急救仍不治。",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "自由時報電子報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.QC3GG29ccb1iW8awszLjwA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:49:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/news.ltn.com.tw\/amp\/news\/Kaohsiung\/breakingnews\/4704257"
+        },
+        {
+            "name": "香港息口｜滙豐恒生中銀渣打均維持最優惠利率P不變",
+            "url": "https:\/\/inews.hket.com\/article\/3774786\/%E9%A6%99%E6%B8%AF%E6%81%AF%E5%8F%A3%EF%BD%9C%E6%BB%99%E8%B1%90%E6%81%92%E7%94%9F%E4%B8%AD%E9%8A%80%E6%B8%A3%E6%89%93%E5%9D%87%E7%B6%AD%E6%8C%81%E6%9C%80%E5%84%AA%E6%83%A0%E5%88%A9%E7%8E%87P%E4%B8%8D%E8%AE%8A",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.Bw7Ji4XW5Z6h4UugOcg5by&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "美國一如預期未有減息，聯邦基金利率維持5.25至5.5厘區間不變 滙豐銀行維持最優惠利率（P，Prime）在5.875厘 美國息口繼續按兵不動，聯儲局維持利率於5.25至5.5厘不變符預期，本港金管局亦同樣 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "香港經濟日報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.iZC5DN0D8o-vhT7boV_gEg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "video": {
+                "name": "香港息口｜滙豐恒生中銀渣打均維持最優惠利率P不變 - 香港經濟日報 - 即時新聞頻道 - 即市財經 - 股市",
+                "thumbnailUrl": "https:\/\/www.bing.com\/th?id=OVF.9Y3XNVmP%2BM5CorRke5ttPg&pid=News",
+                "thumbnail": {
+                    "width": 520,
+                    "height": 292
+                }
+            },
+            "headline": true
+        },
+        {
+            "name": "獨生女「有房等繼承」…0存款還要硬買？網吵翻：有能力再說",
+            "url": "https:\/\/house.ettoday.net\/news\/2741345",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.eDvqeI6eVnxuXeuq_1uzcS&pid=News",
+                    "width": 700,
+                    "height": 525
+                }
+            },
+            "description": "如果家裡已經有房子，還需要買房嗎？一名34歲女網友透露，家裡未來會留一間3房1廳的大樓給她，目前在其他縣市租屋生活，但因為身上沒什麼存款，如果要買房就要靠家人資助，因此��奇如果 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "ETtoday房產雲",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.GGMDY82A0c2Pv4wPonrjHg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:30:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/house.ettoday.net\/amp\/amp_news.php7?news_id=2741345"
+        },
+        {
+            "name": "售價百萬有找！MG4旗艦版99.9萬、MG4 XPOWER 118.9萬放電登場",
+            "url": "https:\/\/autos.udn.com\/autos\/story\/7825\/8028669",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.ujtLd-VY7Hd6ARwkDIvZky&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "自2022年6月全球首演以來，MG4陸續於歐洲及紐澳等主要汽車市場締造銷售佳績，同時2023年全球累積銷量一舉突破13萬輛大關，並獲各國專業汽車媒體評鑑的殊榮肯定。而備受國內消費者高度關注 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "發燒車訊",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.qJ_vRmG0wpwo7vaXaVtmtQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:30:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/autos.udn.com\/autos\/amp\/story\/7825\/8028669"
+        },
+        {
+            "name": "南大社會實踐課程「百工百業-人生百態」成果發表",
+            "url": "https:\/\/www.cna.com.tw\/postwrite\/chi\/373774",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.Fw6KfFNnFg-w1tFj4tiPay&pid=News",
+                    "width": 700,
+                    "height": 542
+                }
+            },
+            "description": "國立臺南大學積極推動社會實踐，透過課程教學讓學生更深入理解大學社會責任及SDGs議題。在高教深耕計畫的支援下，112學年度第2學期的攝影設計(二)課程，提出了名為「百工百業」的計畫，成功獲得課程補助，讓修課學生透過攝影與設計，走出校門，自主拍攝各種工作項目與行業，並應用所學技術。該課程在學生實際執行後，於6月12日下午於南大活力轉角舉辦了成果發表會。",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "中央社CNA",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.IH7qojcLPPR7qEir2m6gIA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:59:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "出招聯名搶商機！ 3C搭配HELLO KITTY一秒變可愛 大甲媽聯名麻辣鍋有呷有保庇",
+            "url": "https:\/\/www.cna.com.tw\/postwrite\/chi\/373778",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.PUzkF1WTsd_UOYNosn1-XC&pid=News",
+                    "width": 700,
+                    "height": 465
+                }
+            },
+            "description": "1加1大於2的跨界聯名風潮越來越盛行，服飾品牌、手搖飲、生活用品甚至是3C產品等，不少跨界聯名跨出新商機，成功在社群上創造話題之外，同時也刺激消費者買氣。許多品牌紛紛推出創意聯名，例如三麗鷗家族讓3C產品變可愛，麻辣鍋品牌受大甲媽祖欽點推出聯名精裝版，甚至連寵物清潔專用品牌都看準聯名商機，讓我們繼續來看看還有哪些充滿魅力的跨界聯名吧！",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "中央社CNA",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.IH7qojcLPPR7qEir2m6gIA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:58:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "綠電只躉售不自用「有漂綠嫌疑」 綠色和平點名友達、群創、聯電",
+            "url": "https:\/\/e-info.org.tw\/node\/239266",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.WdOT8XS9_o4VwxdKhjtznS&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "綠色和平東亞分部與香港城市大學發布報告，揭露東亞地區13家重要電子供應鏈消極再生能源目標與使用比例。圖片來源：綠色和平 提供。 友達、群創、聯電碳密集度最高 財務損失風險也最大 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "環境資訊中心",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.dG4fafe6K49zLYKiHBFVjw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:49:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "要賣房「親戚來打聽」恐怖對話曝！一票嚇搖頭：中親友煞",
+            "url": "https:\/\/house.ettoday.net\/news\/2720880",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.Mix5l_2PI8Y2S3JWkTIrXy&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "示意圖，與本文無關。（示意圖／記者鄺郁庭攝） 記者鄺郁庭／綜合報導 「整個一個莫名其妙！」一名網友表示，他計劃出售自己的房子，然而，當他的親戚得知這個消息後，竟然要求他以 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "ETtoday房產雲",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.GGMDY82A0c2Pv4wPonrjHg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:46:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/house.ettoday.net\/amp\/amp_news.php7?news_id=2720880"
+        },
+        {
+            "name": "彰化縣第一棟青宅員林動土 預計114年底完工",
+            "url": "https:\/\/www.storm.mg\/localarticle\/5156469",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.iwiK6Hvh235Foga51cV7Hi&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "彰化縣員林市面臨都市化過程，隨之而來的高房價壓力，使當地青年實在難以尋得適合的立足之地，彰化縣政府為打造青年友善城市提供青年居住，並協助減輕青年購屋負擔，規劃於南彰化「員林市三條段992、993地號」推動員林市青年住宅，13日上午辦理動土典禮，彰化縣長王惠美、員林市長游振雄、議員",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "風傳媒",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.w8qXOEfz5CdMuv_4lhs1jA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:34:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "海星高中C.E.I代表隊將赴瑞典參加2024國際環境年會",
+            "url": "https:\/\/www.ksnews.com.tw\/a20240613-7\/",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.Di7mUvivEPedwHiV-WNMQi&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "花蓮縣私立海星高中C.E.I代表隊，將赴瑞典參加二 二四國際環境守護組織年會，六月十二日在校長陳海鵬的帶領下拜會花蓮縣長徐榛蔚，分享海星學子們在環境教育與永續發展方面的創新行動 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "更生日報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.aAu7yzRwOZh3y7aJ_aCFZA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:30:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "江子翠精華區53戶老舊建築將剷平 華麗轉身24層住商大樓",
+            "url": "https:\/\/estate.ltn.com.tw\/article\/20911",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.pt5dHg-EMyUCKTesMMQpuC&pid=News",
+                    "width": 700,
+                    "height": 525
+                }
+            },
+            "description": "板橋江子翠段都更案於13日審議通過，海砂屋將轉為地上24層145戶的住商複合大樓，後續核定後將進入拆除重建階段。 該案位於板橋區松江街、銘傳街94巷所圍街廓中，步行至江子翠捷運站約5 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "自由時報電子報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.rA-bcdybg2CY2qUvb8dyHQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:42:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "交屋潮湧現 坤悅：對未來5年的營運展望有信心",
+            "url": "https:\/\/www.ctee.com.tw\/news\/20240613701280-430606",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.SNl--bujO3rD05HJG0YwBS&pid=News",
+                    "width": 525,
+                    "height": 700
+                }
+            },
+            "description": "坤悅開發（5206）董事長陳丕岳今（13）日在股東會上表示，坤悅去年營收與獲利雙創歷史新高，加上新成屋陸續認列營收，未來5年將是坤悅「收穫成長期」，營收與獲利逐年攀升可期。 坤悅 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "工商時報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.WmG2zmX_ctxR2MBeKKKzUQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:54:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "想保值買 iPhone！台灣二手機回收跌價榜過半都是安卓旗艦",
+            "url": "https:\/\/3c.ltn.com.tw\/news\/58527",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.BvbMsiJtMOGNjm8Fw0GffC&pid=News",
+                    "width": 700,
+                    "height": 367
+                }
+            },
+            "description": "已經按讚了，謝謝。 為了減輕更換手機的負擔，許多民眾均很在意手機的保值性，希望使用一定年份後，能爭取到一定的回收價格。近年來又以 iPhone 最為保值，根據通路釋出今年 5 月二手機 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "自由時報電子報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.9UQLLizRS-QSLL3PvGUCiA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:00:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/3c.ltn.com.tw\/amp\/news\/58527"
+        },
+        {
+            "name": "為推動屏東永續 物流主管贊助千萬助永續團體登國際舞台",
+            "url": "https:\/\/www.ctee.com.tw\/news\/20240613701292-431202",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.ABaxDNJcX908S3rMmhaXfy&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "聯合國《氣候變化框架公約》（UNFCCC）召開德國波恩氣候變化會議畫下句點，今年由ASIA SDG Action Campaign林英杰與黃吉祥老師帶隊的一群專家、學者、NGO組織和企業們，組成20人民間發表團到大會 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "工商時報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.WmG2zmX_ctxR2MBeKKKzUQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:45:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "[Newtalk新聞] 高雄鳳山掀本土登革熱群聚！疾管署：擴大疫調、防治作為進行中",
+            "url": "https:\/\/newtalk.tw\/news\/view\/2024-06-13\/923701",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.hc1wd9gcRTyFVXUiNM8aPS&pid=News",
+                    "width": 700,
+                    "height": 436
+                }
+            },
+            "description": "高雄市出現本土登革熱群聚疫情！疾管署今(13)日表示已展開疫情調查與防治措施。此一新增1例本土登革熱病例為居住鳳山區40多歲女性，本月4日時出現頭痛、肌肉痠痛等症狀，11日就醫並通報採檢後確診。疾管署表示，這個個案與鳳山區7日確診個案(指標個案)於潛伏期有共同活動史，指標個案病毒定序結果顯示與去年流",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "Newtalk新聞",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.T-FJgLfJibmX_14dkbJ5Uw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:05:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "《英雄傳說 界之軌跡-告別塞姆利亞-》日、中文版9／26同步上市",
+            "url": "https:\/\/game.ettoday.net\/article\/2757527.htm",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.pFEUJpZRZTv1u3eIQTFq0S&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "雲豹娛樂 13 日宣布，由NIHON FALCOM CORPORATION開發的超人氣劇情RPG「軌跡」系列最新作，同時也是系列二十週年紀念作品的『英雄傳說 界之軌跡 -告別塞姆利亞-』之亞洲在地化版本將和日文版同步 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "ETtoday遊戲雲",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.Nk7BX8mNVe-EwZ8ZnBk1sQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:38:00.0000000Z",
+            "video": {
+                "name": "《英雄傳說 界之軌跡-告別塞姆利亞-》日、中文版9／26同步上市 | ETtoday遊戲雲 | ETtoday新聞雲",
+                "thumbnailUrl": "https:\/\/www.bing.com\/th?id=OVF.qJlGid9HTQ9SnR2iMOp04w&pid=News",
+                "thumbnail": {
+                    "width": 520,
+                    "height": 292
+                }
+            },
+            "headline": true,
+            "ampUrl": "https:\/\/game.ettoday.net\/amp\/amp_news.php7?news_id=2757527"
+        },
+        {
+            "name": "梅雨鋒面北抬金門悶熱感持續 易起霧時間點曝光",
+            "url": "https:\/\/www.chinatimes.com\/realtimenews\/20240613003288-260405",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.5DALYIW8TdmEjMHFsO69CS&pid=News",
+                    "width": 656,
+                    "height": 492
+                }
+            },
+            "description": "金門地區本週雖因梅雨鋒面北抬未直接受影響，但鋒面南邊的西南風與華南的雲雨系統都很旺盛，所以17日前依然是水氣很重、易反潮的悶熱環境，除濕機還要好好的運作一段時間。 金門氣象站 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "中時新聞網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.8rL-MH_otj9MPy6YxUHSdA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/www.chinatimes.com\/amp\/realtimenews\/20240613003288-260405"
+        },
+        {
+            "name": "國際 真主黨的報復! 高級指揮官遭以空襲死亡 射170多枚火箭彈狂轟以北部",
+            "url": "https:\/\/newtalk.tw\/news\/view\/2024-06-13\/923695",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.qNN4HWivx_wIDEThg9-6pS&pid=News",
+                    "width": 510,
+                    "height": 318
+                }
+            },
+            "description": "中國女星黃一鳴去年坦承未婚生女，還表示孩子父親「基因好、帥、有錢」。近期黃一鳴更是拋出重磅炸彈說，孩子父親是萬達集團董事長王健林的獨生子王思聰，引起強烈關注與熱議。X（前推特）帳號「亞洲金融」今（13）日發文表示，黃一鳴在社交平台分享影片。影片中她聲稱，王思聰絕對是孩子父親，並強調有證據可以證明。黃",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "Newtalk新聞",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.T-FJgLfJibmX_14dkbJ5Uw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:03:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "產學醫專家共議 AI 醫療未來 「台灣國際醫療暨健康照護展」記者會搶先亮相智慧醫療產品",
+            "url": "https:\/\/www.ctwant.com\/article\/343097",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.fEBpWQGLL5A5iWPUjp2Ufi&pid=News",
+                    "width": 700,
+                    "height": 368
+                }
+            },
+            "description": "「2024 年台灣國際醫療暨健康照護展 (Medical Taiwan) 」將於今年 6 月 20日至 22 日於台北南港展覽 2 館登場。12日舉行展前記者會，主辦單位外貿協會邀請台灣醫療暨生技器材工業同業公會、中華民國醫療器材商業同業公會全國聯合會、台中榮民總醫院、新竹台大分院新竹醫院以及輔仁大學等產、學、醫界代表，共同探討智慧醫療發展趨勢，並搶先曝光本次參展企業的最新精準醫療與智慧醫療產品。",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "ctwant",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.y1GITL9UyPCJJFUkivqIOQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:57:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/www.ctwant.com\/amp\/article\/343097"
+        },
+        {
+            "name": "墨爾本學校50女生照片遭用AI合成不雅圖像 家長回應",
+            "url": "https:\/\/www.sbs.com.au\/language\/chinese\/zh-hant\/article\/parent-reacts-after-50-girls-targeted-in-ai-explicit-photo-scandal-at-melbourne-school\/mf07hqquw",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.TA57cseS5D5gu4puFQOukS&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "墨爾本一間學校約有50名女生的照片遭到惡意篡改，被人使用人工智能製成不雅猥褻圖像。 目前有關方面繼續調查。 墨爾本一間學校喲50名女生，被盜取照片並製成不雅猥褻圖像在網上流傳。",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "SBS",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.mLnx2JC51LqMh5KJXeX9ZA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:03:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "昆明官渡區2024年端午節假日文化和旅遊市場數據穩中有進",
+            "url": "http:\/\/big5.china.com.cn\/gate\/big5\/union.china.com.cn\/txt\/2024-06\/13\/content_42826679.html",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.iO7b8_zNObaT5n-5XUY2Ui&pid=News",
+                    "width": 600,
+                    "height": 367
+                }
+            },
+            "description": "2024年端午假期，昆明市官渡區節日氛圍濃厚，文旅市場熱鬧非凡。假日期間，依託自身豐富的文化和旅遊資源，官渡區文化和旅遊局精心規劃、週密部署，開展了一系列精彩紛呈的特色活動 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "中国网",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.-AQtgxL5pm_hNBECOtJ1nQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:54:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "香港投資移民吸引力降 八成申請來自西非幾比和島國瓦努阿圖",
+            "url": "https:\/\/www.rfi.fr\/tw\/%E4%B8%AD%E5%9C%8B\/20240613-%E9%A6%99%E6%B8%AF%E6%8A%95%E8%B3%87%E7%A7%BB%E6%B0%91%E5%90%B8%E5%BC%95%E5%8A%9B%E9%99%8D-%E5%85%AB%E6%88%90%E7%94%B3%E8%AB%8B%E4%BE%86%E8%87%AA%E8%A5%BF%E9%9D%9E%E5%B9%BE%E6%AF%94%E5%92%8C%E5%B3%B6%E5%9C%8B%E7%93%A6%E5%8A%AA%E9%98%BF%E5%9C%96",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.OlW8GdRXf92nf-St3x7mGi&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "港府重推吸引投資者的移民計畫，叄個月內接獲251宗申請，吸引力遠遜十年前同類計畫，申請人只及當年獲批人數的四成；而且近八成的申請來自西非國家幾內亞比紹(Guinea-Bissau)和太平洋島國 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "Radio France Internationale",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.wnzvoUVxzStnDanAlQKSmw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "不爽派翠克維護啦啦隊女神 小S氣炸放話「不錄了」",
+            "url": "https:\/\/stars.udn.com\/star\/story\/10091\/8028789",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.gVRT7dEvRKutPWWfPRj1SS&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "由小s（徐熙娣）、派翠克主持的東森綜合「小姐不熙娣」日前邀請到南韓啦啦隊女神安芝儇、南珉貞、朴旻曙、趙娟週以及台方女神代表巫苡萱、倪暄、朱琦郁要來大PK「台、韓系穿搭你更愛 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "聯合新聞網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.4CXvFeLwnbufFaJ6BSw9og&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/stars.udn.com\/star\/amp\/story\/10091\/8028789"
+        },
+        {
+            "name": "納德拉為微軟打造人工智慧帝國、OpenAI只是第一步",
+            "url": "https:\/\/www.moneydj.com\/funddj\/ya\/yp050000.djhtm?a=%7BA7D8DB35-FB6D-4370-98AA-B1EC848DD623%7D",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.vN2Pg83mQLu5qw6NiATMTi&pid=News",
+                    "width": 640,
+                    "height": 487
+                }
+            },
+            "description": "MoneyDJ新聞 2024-06-13 15:10:23 記者 賴宏昌 報導 華爾街日報週三(6月12日)報導，微軟(Microsoft Corp.)執行長納德拉(Satya Nadella, 見圖)正在打造人工智慧(AI)帝國、OpenAI只是第一步。一名知情人士透露 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "MoneyDJ理財網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.omxL6DSJdrFsjzk0Fn_W2w&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:38:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "高雄鳳山又爆1例登革熱！疾管署：跟去年流行病毒株不一樣",
+            "url": "https:\/\/health.ettoday.net\/news\/2757533",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.ynPrHEnl18pRSr5LWq2Bgy&pid=News",
+                    "width": 700,
+                    "height": 525
+                }
+            },
+            "description": "疾管署今公布國內新增1例本土登革熱病例，為居住高雄市鳳山區40多歲女性，6\/4出現頭痛、肌肉痠痛等症狀，於6\/11就醫並通報 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "ETtoday健康雲",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.THqKQ_Sf3u9Me6qBKYWXhA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:35:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/health.ettoday.net\/amp\/amp_news.php7?news_id=2757533"
+        },
+        {
+            "name": "五月十三人看人！台北迎城隍「霞海城隍祭」再現大稻埕風華",
+            "url": "https:\/\/www.setn.com\/News.aspx?NewsID=1483574",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.EB9T5XqPexXeouQXa0nsVS&pid=News",
+                    "width": 700,
+                    "height": 394
+                }
+            },
+            "description": "霞海城隍祭為大稻埕地區最重要的宗教盛事之一，在每年的農曆五月十三作為聖誕遶境日，至今已有一百多年的歷史，在早期更有「北港迎媽祖，臺北迎城隍」之稱，並列為臺灣的兩大宗教活動 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "三立新聞網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.F1DOh7kxK895Nqi4N7VG8Q&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:00:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "嚴泰九出道17年首演浪漫喜劇 與「初戀」韓善伙再續情緣",
+            "url": "https:\/\/www.ctwant.com\/article\/343092",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.TDTUuUSZY5lUZQsCgw0bQC&pid=News",
+                    "width": 700,
+                    "height": 368
+                }
+            },
+            "description": "硬派性格男星嚴泰九出道17年首度主演浪漫喜劇《陪玩的女人》，相隔5年與「初戀」韓善伙再續情緣。嚴泰九表示：「其實我一直都想演這類的作品，收到劇本後覺得非常有趣也很可愛，所以想挑戰一下。雖然在拍攝期間經常感到害怕，但還是盡力以真誠的態度去演繹這個角色，這並不容易。我在這部劇中展現了很多新的表情和台詞，應該會和之前的作品有所不同」。導演金榮煥則透露嚴泰九私下很害羞，這次找他來當男主角正是想呈現出他的真",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "ctwant",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.y1GITL9UyPCJJFUkivqIOQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:53:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/www.ctwant.com\/amp\/article\/343092"
+        },
+        {
+            "name": "爆乳DJ酒駕撞死人惹眾怒：要重刑 最新進度「檢方求刑15年」",
+            "url": "https:\/\/stars.udn.com\/star\/story\/120661\/8028790",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.Rdwl6AxmiqWVbrK296UYDi&pid=News",
+                    "width": 560,
+                    "height": 373
+                }
+            },
+            "description": "南韓演藝圈驚爆酒駕事故，爆乳DJ Yesong（예송）於今年2月酒後開著賓士車撞死了一名外送騎士，網友怒喊要求重判，案件於近日傳來新進度。 綜合韓媒報導，擔任DJ的Yesong今年2月3日凌晨自行 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "聯合新聞網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.4CXvFeLwnbufFaJ6BSw9og&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:00:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/stars.udn.com\/star\/amp\/story\/120661\/8028790"
+        },
+        {
+            "name": "落葉資訊智慧化管理 中市環保局推「行道樹落葉資訊地圖」守護行車安全",
+            "url": "https:\/\/www.ksnews.com.tw\/%E8%90%BD%E8%91%89%E8%B3%87%E8%A8%8A%E6%99%BA%E6%85%A7%E5%8C%96%E7%AE%A1%E7%90%86-%E4%B8%AD%E5%B8%82%E7%92%B0%E4%BF%9D%E5%B1%80%E6%8E%A8%E3%80%8C%E8%A1%8C%E9%81%93%E6%A8%B9%E8%90%BD%E8%91%89%E8%B3%87\/",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.Qml6jDKVTwUyLJtaAY8WsC&pid=News",
+                    "width": 525,
+                    "height": 700
+                }
+            },
+            "description": "每年5、6月為阿勃勒盛開時期，因而路面花瓣也容易造成機車行駛打滑的風險；為提升民眾行車安全，台中市政府環保局將路樹落葉資訊暨進行智慧化管理，並建置「台中市行道樹【易落葉(落花 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "更生日報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.aAu7yzRwOZh3y7aJ_aCFZA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:57:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "iPhone 16 Pro 改用電容按鍵？iOS 18 功能證實告別實體按鍵",
+            "url": "https:\/\/mrmad.com.tw\/ios-18-design-iphone-16-pro-capacitive-button-animation",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.DLlHYOZQxB2F8uUCoCtQyS&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "今年初供應鏈就曾傳出 iPhone 16 將會移除實體按鍵，蘋果會讓 iPhone 16 Pro 系列全面改用電容式按鍵取代，如今 iOS 18 開發者測試版系統推出後，也引入全新動畫按鈕反饋，這將暗示新一代 iPhone 16 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "瘋先生",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.Vb9LIInVpxE2cSSNGucl1Q&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:31:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "大金連續8年入選《全球品牌價值500強》",
+            "url": "https:\/\/news.ebc.net.tw\/news\/living\/425879",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.5dv5Dtw-v2Uavg6NFT_0_C&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "立委憂若發生戰爭「電力能撐多久」？台電6字回應了 21分鐘前 柯建銘立院內抽菸 直播畫面流出！她怒投訴 29分鐘前 台中辣妹「代駕」變「酒駕」 害友人母600萬保時捷被扣牌 31分鐘前 國際知名 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "東森新聞",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.qqKqmzGmR-N4odkxsMlwpA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:02:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "格蘭花格105系列推16年高年份威士忌！結合古老釀造工藝更添風味",
+            "url": "https:\/\/istyle.ltn.com.tw\/article\/31454",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.H-jwhoApqJnYO3TRdKTfKy&pid=News",
+                    "width": 700,
+                    "height": 383
+                }
+            },
+            "description": "時尚首頁 流行時尚 美妝話題 影音專區 品味生活 兩性情愛 名家專欄 Instagram 時尚頻道粉絲團 格蘭花格（Glenfarclas）近年推出的105系列，8年、10年等限量版本都備受酩家喜愛，2024年則打造 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "自由時報電子報",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.p0B9uQ1IyMV6qeP578WLfw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:00:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/istyle.ltn.com.tw\/amp\/article\/31454"
+        },
+        {
+            "name": "寶寶六個月大就要做準備！美國兒科專家提供五點建議，讓「挑食」不再是一場混戰",
+            "url": "https:\/\/www.thenewslens.com\/article\/203535",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.92Dlsa2C2h6WZa4CGUcAii&pid=News",
+                    "width": 700,
+                    "height": 420
+                }
+            },
+            "description": "華人最大親子社群網站BabyHome，長期以來提供友善交流平台和多元服務，擁有百萬媽媽網友齊聚貢獻社群力量，成為父母眼中最具指標性的親子社群網站。 http:\/\/www.babyhome.com.tw\/ 幼兒出現「挑食」是相當普遍的正常現象，而父母為了讓孩子飲食更均衡，常見會在孩子飢餓時添加新食物，或是有些會抱持著「不肯吃？沒關係，等你餓了就會吃！」的想法。",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "The News Lens 關鍵評論網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.MLHDN5NqniaDND2oyZfMLQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:00:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "雲南沾益區：以銀發之“智”助力基層之“治”",
+            "url": "http:\/\/big5.china.com.cn\/gate\/big5\/union.china.com.cn\/txt\/2024-06\/13\/content_42826340.html",
+            "description": "廣大離退休幹部黨性強、經驗足、威信高，是基層治理中一支不可替代的重要力量。近年來，雲南省曲靖市沾益區深挖“銀發資源”富礦，加強“銀發人才庫”建設，打造“霞映珠源”志願服務 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "中国网",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.-AQtgxL5pm_hNBECOtJ1nQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:54:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "桃園中央統籌款6都後段班 國民黨議員盼《財劃法》早日修法",
+            "url": "https:\/\/www.cdns.com.tw\/articles\/1029035",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.f3Zjg3PVc7tQ1bOqUCyyUC&pid=News",
+                    "width": 696,
+                    "height": 391
+                }
+            },
+            "description": "桃園市議會國民黨團今日召開「找回公平正義—擴大統籌分配稅款、落實地方自治」記者會。(圖\/黨團提供) 桃園市議會國民 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "中華新聞雲",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.APbscZvrcuiEY8T1TG3Jvw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:59:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "iOS 18 更新功能彩蛋：沒電關機仍能看時間（支援機型看這裡）",
+            "url": "https:\/\/www.kocpc.com.tw\/archives\/551090",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.XU_xIqrKxMYKi2mofiruLS&pid=News",
+                    "width": 700,
+                    "height": 368
+                }
+            },
+            "description": "隨著這次 iOS 18 的發表，也有人透過開發者測試版發現，Apple 針對新世代 iPhone 15 系列不僅默默新增了對應慢速充電提醒與更完整的充電限制設定的新功能。更有一個沒有用到手機沒電就不會發現 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "電腦王阿達",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.nTcu1jzsJe4Ky_0n0IjgKA&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:54:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "健身房被貨車衝撞！館長還原「案發始末」嗆嫌犯：撞人後還下車喝飲料？",
+            "url": "https:\/\/www.setn.com\/News.aspx?NewsID=1483644",
+            "description": "黃國昌、館長 樂活有氧銀髮課程開跑。（圖／記者許皓婷攝影） 一名31歲林姓男子昨（12日）晚間開小貨車衝撞館長（陳之漢）在台中開設的成吉思汗健身房大門，所幸並未造成人員傷亡，林 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "三立新聞網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.F1DOh7kxK895Nqi4N7VG8Q&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/www.setn.com\/m\/ampnews.aspx?NewsID=1483644"
+        },
+        {
+            "name": "習近平国家主席がUNCTAD設立60周年記念式典の開幕式にビデオメッセージ",
+            "url": "http:\/\/japanese.china.org.cn\/politics\/txt\/2024-06\/13\/content_117252041.htm",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.8xNXRZrSeVWUSncueN-9Ly&pid=News",
+                    "width": 300,
+                    "height": 300
+                }
+            },
+            "description": "習近平国家主席は12日、国連貿易開発会議（UNCTAD）設立60周年記念式典の開幕式にビデオメッセージを送った。新華社が伝えた。 習主席は、「UNCTADは設立からの60年間、共同繁栄の主旨を堅持 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "China Internet Information Center",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.es_L1mDkyK0uWFeMzXikow&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:53:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "益生菌飯後吃根本沒用？營養師揭真相：踩到三地雷恐怕「整包都白吃」",
+            "url": "https:\/\/www.thenewslens.com\/article\/203474",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.jEf3PqCCEapv7ohH7KBv0S&pid=News",
+                    "width": 700,
+                    "height": 418
+                }
+            },
+            "description": "潮流是種態度，維持健康的觀念永遠不會過時。潮健康新媒體創立於2021年，擁有年輕、專業採編製作團隊，致力為華人都會男女打造一個擁抱潮流、享受健康的新媒體視野。隨時追蹤《潮健康》，開啟健康生活的時尚旅程。 腸道保健對身體整體的健康維持是重要關鍵，而益生菌在此扮演一大要角。透過飲食與生活習慣的搭配，可以將益生菌效益最大化。 現代人常受便秘、脹氣等腸胃道問題所困擾��不少上班族大魚大肉後總會來一包「益生菌",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "The News Lens 關鍵評論網",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.MLHDN5NqniaDND2oyZfMLQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:02:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "日式千階步道＋石燈籠暖光超有fu！台北指南宮竹柏參道感受全新氛圍",
+            "url": "https:\/\/playing.ltn.com.tw\/article\/29641",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.A7nGp95qk_o4tIjOgHOt9S&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "「指南宮竹柏參道」入口牌坊。（圖／台北市工務局提供） 天氣漸熱，趁夜漫步感受暑氣漸消的靜謐時光，是夏夜最Chill的運動！位於臺北大縱走第七段、木柵地區最富景觀與歷史文化意涵的 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "playing.ltn",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.PWYFI2Bpg5E5Xu88OIrTxQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:58:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/playing.ltn.com.tw\/amp\/article\/29641"
+        },
+        {
+            "name": "正妹大胃王花12分吃完「4kg牛肉麵」！ 超狂挑戰過程曝光",
+            "url": "https:\/\/star.ettoday.net\/news\/2757522",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.FJu7p4fq6oAMf_PXvjKWBC&pid=News",
+                    "width": 700,
+                    "height": 415
+                }
+            },
+            "description": "正妹YouTuber「泡芙餓了麼」以拍攝美食大胃王走紅，日前她前往一家位於高雄的牛肉麵店，挑戰在13分14秒內吃完4公斤的牛肉麵，最終她以12分鐘成功完食。為此，泡芙開心表示：「我戰勝了自己！",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "ETtoday星光雲",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.dqAvbRi-s-VCCbM6XKJZ7w&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:00:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/star.ettoday.net\/amp\/amp_news.php7?news_id=2757522"
+        },
+        {
+            "name": "三峽警墜谷亡！曾值班遇「持刀男」闖派出所 他機警大喊制伏嫌犯",
+            "url": "https:\/\/www.mirrormedia.mg\/external\/tvbs_2516539",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.eyrQaKSlevFy7_8k7PHaoi&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "新北市三峽派出所28歲林姓警員今（13）日被發現疑似登山失足墜落5米山坡不幸身亡。而林員平時工作認真，上個月才有醉漢持刀闖派出所，因為他機警大喊與所內同仁一起制伏嫌犯。 上月5日一 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "鏡週刊Mirror Media",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.TQ0HG5eBfL-nQAAhYc-ESg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:00:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/www.mirrormedia.mg\/external\/amp\/tvbs_2516539"
+        },
+        {
+            "name": "【41J肉聲】中國女到曼谷狂歡酒醉 慘遭假老司機撿屍性侵！凶嫌故意不戴套",
+            "url": "https:\/\/www.mirrormedia.mg\/story\/20240613edi031",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.l1V5JM9f1niVL5WMrJ4_Iy&pid=News",
+                    "width": 700,
+                    "height": 525
+                }
+            },
+            "description": "一名中國女生在本月12日在泰國曼谷的夜店狂歡，酒醉後叫了網約車來接她，不料來的人卻是「假老司機」。32歲凶嫌塔納帕（音譯）假扮網約車司機載走中國女，之後更對她撿屍性侵，女生清醒 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "鏡週刊Mirror Media",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.TQ0HG5eBfL-nQAAhYc-ESg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "video": {
+                "name": "【41J肉聲】中國女到曼谷狂歡酒醉　慘遭假老司機撿屍性侵！凶嫌故意不戴套 - 鏡週刊 Mirror Media",
+                "thumbnailUrl": "https:\/\/www.bing.com\/th?id=OVF.gLsarIl7VDx008q0QnD0nQ&pid=News",
+                "thumbnail": {
+                    "width": 520,
+                    "height": 390
+                }
+            },
+            "headline": true,
+            "ampUrl": "https:\/\/www.mirrormedia.mg\/story\/amp\/20240613edi031"
+        },
+        {
+            "name": "上海市台辦主任鍾曉敏拜會蔣萬安",
+            "url": "https:\/\/hk.crntt.com\/doc\/7_0_160019243_1_0613160320.html",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.gu8PDAgg4_hhoLlwCkqrRC&pid=News",
+                    "width": 640,
+                    "height": 427
+                }
+            },
+            "description": "台北市長蔣萬安與上海台辦主任鍾曉敏會面，雙方並互贈禮物。（照:台北市政府提供） 中評社台北6月13日電／台北上海雙城論壇預計在7月底或8月底於台北舉辦，上海市台辦主任鍾曉敏今日上午 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "香港中评网",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.HeOWsSCkJeZG9eY-F0h2zQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:03:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "OpenAI採用甲骨文雲端為運行基礎架構，強調和微軟合作不變",
+            "url": "https:\/\/www.ithome.com.tw\/news\/163439",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.3rQHTn5kBg7Umci9tujErC&pid=News",
+                    "width": 700,
+                    "height": 306
+                }
+            },
+            "description": "OpenAI計畫將模型推論等作業遷移到OCI基礎架構上的Azure AI平臺進行，同時強調該公司先進模型仍然執行在與微軟合作的超級電腦上，與微軟合作關係不變 熱門新聞",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "iThome Online",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.UFObAWBcWHEU4fhh1NuNCg&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:03:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "「寵物溝通師」引發網友爭論 農業部：沒科學根據不認同",
+            "url": "https:\/\/www.taiwannews.com.tw\/zh\/news\/5889449",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.ENq1sIzFTQuBo87YWokTBi&pid=News",
+                    "width": 700,
+                    "height": 466
+                }
+            },
+            "description": "隨著越來越多人飼養寵物，「寵物溝通師」也成了新興行業，農業部長陳駿季今（13）日對此表示，寵物溝通師沒有科學根據，基本上不會認同，往後會做相關指引。 寵物溝通師為透過意識傳遞 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "Taiwan News",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.vkDCJYloS7GKf-8BRt1TFQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:54:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "帛琉指控中方網攻 中國發旅遊警示籲謹慎前往",
+            "url": "https:\/\/www.fountmedia.io\/article\/228707",
+            "description": "（中央社台北13日電）台灣邦交國帛琉總統惠恕仁近日表示，帛琉曾經遭遇重大網路攻擊，並將矛頭指向中國；中國外交部今天則發出旅遊警示，聲稱帛琉近年治安類案件增多，「謹慎前往旅遊」。",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "fountmedia",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.81QI1eNw7Uvs_MKJX8X21g&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "古巴總統：因無能為力 每天都為巴勒斯坦痛苦",
+            "url": "https:\/\/hk.crntt.com\/doc\/2_4_106944106_1_0613155512.html",
+            "description": "中評社香港6月13日電／古巴總統米格爾-迪亞斯-卡內爾在談及以色列侵略下的巴勒斯坦時說：“我們每天都在受苦，因為我們無能為力”。 TRT消息，卡內爾訪問了首都哈瓦那，並會見了手持 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "香港中评网",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.HeOWsSCkJeZG9eY-F0h2zQ&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "徐巧芯指闖紅燈違規 王義川：遭跟蹤威脅、將報案",
+            "url": "https:\/\/www.fountmedia.io\/article\/228710",
+            "description": "（中央社記者葉素萍台北13日電）國民黨立委徐巧芯今天在臉書發文指出，接獲民眾檢舉，民進黨政策會執行長王義川闖紅燈違規左轉。王義川回應指出���遭連續性跟拍已影響人身安全，會報案 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "fountmedia",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.81QI1eNw7Uvs_MKJX8X21g&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:54:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "《魔物獵人NOW》夏季更新登場，製作人談改版細節",
+            "url": "https:\/\/www.4gamers.com.tw\/news\/detail\/65253\/monster-hunter-rnow-summer-interview",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.vpD7a9sGg8BvkIYc_dILnC&pid=News",
+                    "width": 700,
+                    "height": 393
+                }
+            },
+            "description": "《魔物獵人NOW》於今（13）日進行了第二季的更新，在昨日，我們訪問到了《魔物獵人NOW》的資深遊戲製作人菅野千尋，由他來介紹了本次的夏季改版「引來風暴的泡沫盛宴」的內容。 古龍迎擊 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "4gamers",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.hh7fwkp-FZiSleImoVAETw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T08:00:00.0000000Z",
+            "headline": true
+        },
+        {
+            "name": "宛如置身日本！夜訪指南宮竹柏參道 絕美燈光成打卡景點",
+            "url": "https:\/\/news.housefun.com.tw\/news\/article\/160534426359.html",
+            "image": {
+                "thumbnail": {
+                    "contentUrl": "https:\/\/www.bing.com\/th?id=OVFT.kRaYjo26kVzDmnvPAdLO7S&pid=News",
+                    "width": 600,
+                    "height": 400
+                }
+            },
+            "description": "台北優質的夜遊景點來囉！「指南宮竹柏參道」位於台北大縱走第七段，是木柵地區最富景觀與歷史文化意涵的登山步道，在109年由大地處進行改善，將石燈籠修復，改善石階步道階梯、重造竹 ...",
+            "provider": [
+                {
+                    "_type": "Organization",
+                    "name": "好房網News",
+                    "image": {
+                        "thumbnail": {
+                            "contentUrl": "https:\/\/www.bing.com\/th?id=ODF.G6Hd6n_zl1g3OiffNwGcIw&pid=news"
+                        }
+                    }
+                }
+            ],
+            "datePublished": "2024-06-13T07:55:00.0000000Z",
+            "headline": true,
+            "ampUrl": "https:\/\/news.housefun.com.tw\/news\/article\/amp\/160534426359.html"
+        }
+    ]
+}
