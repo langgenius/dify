@@ -12,6 +12,10 @@ class BaseVector(ABC):
         self._collection_name = collection_name
 
     @abstractmethod
+    def get_type(self) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         raise NotImplementedError
 

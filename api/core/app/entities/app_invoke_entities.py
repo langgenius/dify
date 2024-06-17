@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.app.app_config.entities import AppConfig, EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
@@ -62,6 +62,9 @@ class ModelConfigWithCredentialsEntity(BaseModel):
     parameters: dict[str, Any] = {}
     stop: list[str] = []
 
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class AppGenerateEntity(BaseModel):
     """
@@ -93,9 +96,12 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     """
     # app config
     app_config: EasyUIBasedAppConfig
-    model_config: ModelConfigWithCredentialsEntity
+    model_conf: ModelConfigWithCredentialsEntity
 
     query: Optional[str] = None
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
 
 
 class ChatAppGenerateEntity(EasyUIBasedAppGenerateEntity):

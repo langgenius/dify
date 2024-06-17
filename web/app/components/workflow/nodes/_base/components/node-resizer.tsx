@@ -19,10 +19,18 @@ const Icon = () => {
 type NodeResizerProps = {
   nodeId: string
   nodeData: CommonNodeType
+  icon?: JSX.Element
+  minWidth?: number
+  minHeight?: number
+  maxWidth?: number
 }
 const NodeResizer = ({
   nodeId,
   nodeData,
+  icon = <Icon />,
+  minWidth = 272,
+  minHeight = 176,
+  maxWidth,
 }: NodeResizerProps) => {
   const { handleNodeResize } = useNodesInteractions()
 
@@ -39,10 +47,11 @@ const NodeResizer = ({
         position='bottom-right'
         className='!border-none !bg-transparent'
         onResize={handleResize}
-        minWidth={272}
-        minHeight={176}
+        minWidth={minWidth}
+        minHeight={minHeight}
+        maxWidth={maxWidth}
       >
-        <div className='absolute bottom-[1px] right-[1px]'><Icon /></div>
+        <div className='absolute bottom-[1px] right-[1px]'>{icon}</div>
       </NodeResizeControl>
     </div>
   )

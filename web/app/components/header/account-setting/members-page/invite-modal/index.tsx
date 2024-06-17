@@ -38,6 +38,10 @@ const InviteModal = ({
       description: t('common.members.normalTip'),
     },
     {
+      name: 'editor',
+      description: t('common.members.editorTip'),
+    },
+    {
       name: 'admin',
       description: t('common.members.adminTip'),
     },
@@ -66,7 +70,7 @@ const InviteModal = ({
 
   return (
     <div className={cn(s.wrap)}>
-      <Modal overflowVisible isShow onClose={() => {}} className={cn(s.modal)} wrapperClassName='z-20'>
+      <Modal overflowVisible isShow onClose={() => {}} className={cn(s.modal)}>
         <div className='flex justify-between mb-2'>
           <div className='text-xl font-semibold text-gray-900'>{t('common.members.inviteTeamMember')}</div>
           <XMarkIcon className='w-4 h-4 cursor-pointer' onClick={onCancel} />
@@ -120,7 +124,7 @@ const InviteModal = ({
                         <div className='flex flex-row'>
                           <span
                             className={cn(
-                              'text-indigo-600 w-8',
+                              'text-indigo-600 mr-2',
                               'flex items-center',
                             )}
                           >
@@ -130,7 +134,7 @@ const InviteModal = ({
                             <span className={`${selected ? 'font-medium' : 'font-normal'} capitalize block truncate`}>
                               {t(`common.members.${role.name}`)}
                             </span>
-                            <span className={`${selected ? 'font-medium' : 'font-normal'} capitalize block truncate`}>
+                            <span className={`${selected ? 'font-medium' : 'font-normal'} capitalize block text-gray-500`}>
                               {role.description}
                             </span>
                           </div>

@@ -29,7 +29,7 @@ def print_text(
 class DifyAgentCallbackHandler(BaseModel):
     """Callback Handler that prints to std out."""
     color: Optional[str] = ''
-    current_loop = 1
+    current_loop: int = 1
 
     def __init__(self, color: Optional[str] = None) -> None:
         super().__init__()

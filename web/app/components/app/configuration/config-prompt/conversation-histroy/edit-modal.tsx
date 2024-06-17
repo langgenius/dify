@@ -27,7 +27,6 @@ const EditModal: FC<Props> = ({
       title={t('appDebug.feature.conversationHistory.editModal.title')}
       isShow={isShow}
       onClose={onClose}
-      wrapperClassName='!z-[101]'
     >
       <div className={'mt-6 font-medium text-sm leading-[21px] text-gray-900'}>{t('appDebug.feature.conversationHistory.editModal.userPrefix')}</div>
       <input className={'mt-2 w-full rounded-lg h-10 box-border px-3 text-sm leading-10 bg-gray-100'}

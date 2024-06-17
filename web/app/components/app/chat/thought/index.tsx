@@ -47,7 +47,7 @@ const Thought: FC<IThoughtProps> = ({
   const toolThoughtList = toolNames.map((toolName, index) => {
     return {
       name: toolName,
-      label: thought.tool_labels?.[toolName][language] ?? toolName,
+      label: thought.tool_labels?.toolName?.language ?? toolName,
       input: getValue(thought.tool_input, isValueArray, index),
       output: getValue(thought.observation, isValueArray, index),
       isFinished,

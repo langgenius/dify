@@ -61,6 +61,8 @@ const translation = {
       bulkUpload: '批量上传文档',
       agentMode: '代理模式',
       workflow: '工作流',
+      llmLoadingBalancing: 'LLM 负载均衡',
+      llmLoadingBalancingTooltip: '向模型添加多个 API 密钥，有效绕过 API 速率限制。',
     },
     comingSoon: '即将推出',
     member: '成员',
