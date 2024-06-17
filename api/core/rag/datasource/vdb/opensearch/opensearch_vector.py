@@ -39,7 +39,7 @@ class OpenSearchConfig(BaseModel):
     def create_ssl_context(self) -> ssl.SSLContext:
         ssl_context = ssl.create_default_context()
         ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE  # 禁用证书验证
+        ssl_context.verify_mode = ssl.CERT_NONE  # Disable Certificate Validation
         return ssl_context
 
     def to_opensearch_params(self) -> dict[str, Any]:
@@ -79,7 +79,7 @@ class OpenSearchVector(BaseVector):
                 "_id": uuid4().hex,
                 "_source": {
                     Field.CONTENT_KEY.value: documents[i].page_content,
-                    Field.VECTOR.value: embeddings[i],  # 确保这里传递的是数组
+                    Field.VECTOR.value: embeddings[i],  # Make sure you pass an array here
                     Field.METADATA_KEY.value: documents[i].metadata,
                 }
             }
@@ -111,7 +111,7 @@ class OpenSearchVector(BaseVector):
             logger.warning(f"Index {index_name} does not exist")
             return
 
-        # 获取所有实际的文档 _id
+        # Obtaining All Actual Documents_ID
         actual_ids = []
 
         for doc_id in ids:
@@ -147,11 +147,11 @@ class OpenSearchVector(BaseVector):
             return False
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        # 确保 query_vector 是一个列表
+        # Make sure query_vector is a list
         if not isinstance(query_vector, list):
             raise ValueError("query_vector should be a list of floats")
 
-        # 检查 query_vector 是否为浮点数列表
+        # Check whether query_vector is a floating-point number list
         if not all(isinstance(x, float) for x in query_vector):
             raise ValueError("All elements in query_vector should be floats")
 
@@ -177,7 +177,7 @@ class OpenSearchVector(BaseVector):
         for hit in response['hits']['hits']:
             metadata = hit['_source'].get(Field.METADATA_KEY.value, {})
 
-            # 确保 metadata 是字典
+            # Make sure metadata is a dictionary
             if metadata is None:
                 metadata = {}
 
@@ -224,7 +224,7 @@ class OpenSearchVector(BaseVector):
                             Field.CONTENT_KEY.value: {"type": "text"},
                             Field.VECTOR.value: {
                                 "type": "knn_vector",
-                                "dimension": len(embeddings[0]),  # 确保这里的 dimension 是正确的
+                                "dimension": len(embeddings[0]),  # Make sure the dimension is correct here
                                 "method": {
                                     "name": "hnsw",
                                     "space_type": "l2",
@@ -238,7 +238,7 @@ class OpenSearchVector(BaseVector):
                             Field.METADATA_KEY.value: {
                                 "type": "object",
                                 "properties": {
-                                    "doc_id": {"type": "keyword"}  # 将 doc_id 映射为 keyword 类型
+                                    "doc_id": {"type": "keyword"}  # Map doc_id to keyword type
                                 }
                             }
                         }
@@ -255,10 +255,10 @@ class OpenSearchVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> OpenSearchVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
-            collection_name = class_prefix.lower()  # 确保索引名称为小写
+            collection_name = class_prefix.lower()
         else:
             dataset_id = dataset.id
-            collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()  # 确保索引名称为小写
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
             dataset.index_struct = json.dumps(
                 self.gen_index_struct_dict(VectorType.OPENSEARCH, collection_name))
 
