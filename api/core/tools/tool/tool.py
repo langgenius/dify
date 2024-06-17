@@ -3,7 +3,8 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic_core.core_schema import ValidationInfo
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.file_obj import FileVar
@@ -23,13 +24,17 @@ from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 
 
 class Tool(BaseModel, ABC):
-    identity: ToolIdentity = None
+    identity: Optional[ToolIdentity] = None
     parameters: Optional[list[ToolParameter]] = None
-    description: ToolDescription = None
+    description: Optional[ToolDescription] = None
     is_team_authorization: bool = False
 
-    @validator('parameters', pre=True, always=True)
-    def set_parameters(cls, v, values):
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
+    @field_validator('parameters', mode='before')
+    @classmethod
+    def set_parameters(cls, v, validation_info: ValidationInfo) -> list[ToolParameter]:
         return v or []
 
     class Runtime(BaseModel):
@@ -41,15 +46,15 @@ class Tool(BaseModel, ABC):
             if not self.runtime_parameters:
                 self.runtime_parameters = {}
 
-        tenant_id: str = None
-        tool_id: str = None
-        invoke_from: InvokeFrom = None
-        tool_invoke_from: ToolInvokeFrom = None
-        credentials: dict[str, Any] = None
-        runtime_parameters: dict[str, Any] = None
+        tenant_id: Optional[str] = None
+        tool_id: Optional[str] = None
+        invoke_from: Optional[InvokeFrom] = None
+        tool_invoke_from: Optional[ToolInvokeFrom] = None
+        credentials: Optional[dict[str, Any]] = None
+        runtime_parameters: Optional[dict[str, Any]] = None
 
-    runtime: Runtime = None
-    variables: ToolRuntimeVariablePool = None
+    runtime: Optional[Runtime] = None
+    variables: Optional[ToolRuntimeVariablePool] = None
 
     def __init__(self, **data: Any):
         super().__init__(**data)
@@ -65,9 +70,9 @@ class Tool(BaseModel, ABC):
             :return: the new tool
         """
         return self.__class__(
-            identity=self.identity.copy() if self.identity else None,
+            identity=self.identity.model_copy() if self.identity else None,
             parameters=self.parameters.copy() if self.parameters else None,
-            description=self.description.copy() if self.description else None,
+            description=self.description.model_copy() if self.description else None,
             runtime=Tool.Runtime(**runtime),
         )
     
@@ -232,10 +237,10 @@ class Tool(BaseModel, ABC):
         """
         # Temp fix for the issue that the tool parameters will be converted to empty while validating the credentials
         result = deepcopy(tool_parameters)
-        for parameter in self.parameters:
+        for parameter in self.parameters or []:
             if parameter.name in tool_parameters:
                 result[parameter.name] = ToolParameterConverter.cast_parameter_by_type(tool_parameters[parameter.name], parameter.type)
-        
+
         return result
 
     @abstractmethod

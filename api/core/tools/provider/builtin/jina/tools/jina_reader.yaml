@@ -51,6 +51,33 @@ parameters:
       pt_BR: css selector for waiting for specific elements
     llm_description: css selector of the target element to wait for
     form: form
+  - name: proxy_server
+    type: string
+    required: false
+    label:
+      en_US: Proxy server
+      zh_Hans: 代理服务器
+      pt_BR: Servidor de proxy
+    human_description:
+      en_US: Use proxy to access URLs
+      zh_Hans: 利用代理访问 URL
+      pt_BR: Use proxy to access URLs
+    llm_description: Use proxy to access URLs
+    form: form
+  - name: no_cache
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Bypass the Cache
+      zh_Hans: 绕过缓存
+      pt_BR: Ignorar o cache
+    human_description:
+      en_US: Bypass the Cache
+      zh_Hans: 是否绕过缓存
+      pt_BR: Ignorar o cache
+    llm_description: bypass the cache
+    form: form
   - name: summary
     type: boolean
     required: false

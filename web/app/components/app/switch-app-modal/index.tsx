@@ -37,7 +37,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const { notify } = useContext(ToastContext)
   const setAppDetail = useAppStore(s => s.setAppDetail)
 
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
@@ -66,7 +66,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         await deleteApp(appDetail.id)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(
-        isCurrentWorkspaceManager,
+        isCurrentWorkspaceEditor,
         {
           id: newAppID,
           mode: appDetail.mode === 'completion' ? 'workflow' : 'advanced-chat',
@@ -87,7 +87,6 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   return (
     <>
       <Modal
-        wrapperClassName='z-20'
         className={cn('p-8 max-w-[600px] w-[600px]', s.bg)}
         isShow={show}
         onClose={() => {}}

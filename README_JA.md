@@ -2,9 +2,9 @@
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
-  <a href="https://docs.dify.ai/getting-started/install-self-hosted">セルフホスト</a> ·
+  <a href="https://docs.dify.ai/getting-started/install-self-hosted">セルフホスティング</a> ·
   <a href="https://docs.dify.ai">ドキュメント</a> ·
-  <a href="https://cal.com/guchenhe/dify-demo">デモのスケジュール</a>
+  <a href="https://cal.com/guchenhe/dify-demo">デモの予約</a>
 </p>
 
 <p align="center">
@@ -44,37 +44,37 @@
   <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </p>
 
-DifyはオープンソースのLLMアプリケーション開発プラットフォームです。直感的なインターフェースには、AIワークフロー、RAGパイプライン、エージェント機能、モデル管理、観測機能などが組み合わさっており、プロトタイプから本番までの移行を迅速に行うことができます。以下は、主要機能のリストです：
+DifyはオープンソースのLLMアプリケーション開発プラットフォームです。直感的なインターフェイスには、AIワークフロー、RAGパイプライン、エージェント機能、モデル管理、観測機能などが組み合わさっており、プロトタイプから生産まで迅速に進めることができます。以下の機能が含まれます：
 </br> </br>
 
 **1. ワークフロー**: 
-  ビジュアルキャンバス上で強力なAIワークフローを構築してテストし、以下の機能を活用してプロトタイプを超えることができます。
+  強力なAIワークフローをビジュアルキャンバス上で構築し、テストできます。すべての機能、および以下の機能を使用できます。
 
 
   https://github.com/langgenius/dify/assets/13230914/356df23e-1604-483d-80a6-9517ece318aa
 
 
 
-**2. 包括的なモデルサポート**: 
-  数百のプロプライエタリ/オープンソースのLLMと、数十の推論プロバイダーおよびセルフホスティングソリューションとのシームレスな統合を提供します。GPT、Mistral、Llama3、およびOpenAI API互換のモデルをカバーします。サポートされているモデルプロバイダーの完全なリストは[こちら](https://docs.dify.ai/getting-started/readme/model-providers)をご覧ください。
+**2. 総合的なモデルサポート**: 
+  数百ものプロプライエタリ/オープンソースのLLMと、数十もの推論プロバイダーおよびセルフホスティングソリューションとのシームレスな統合を提供します。GPT、Mistral、Llama3、OpenAI APIと互換性のあるすべてのモデルを統合されています。サポートされているモデルプロバイダーの完全なリストは[こちら](https://docs.dify.ai/getting-started/readme/model-providers)をご覧ください。
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
 
 **3. プロンプトIDE**: 
-  チャットベースのアプリにテキスト読み上げなどの追加機能を追加するプロンプトを作成し、モデルのパフォーマンスを比較する直感的なインターフェース。
+  プロンプトの作成、モデルパフォーマンスの比較が行え、チャットベースのアプリに音声合成などの機能も追加できます。
 
 **4. RAGパイプライン**: 
-  文書の取り込みから取得までをカバーする幅広いRAG機能で、PDF、PPTなどの一般的なドキュメント形式からのテキスト抽出に対するアウトオブボックスのサポートを提供します。
+  ドキュメントの取り込みから検索までをカバーする広範なRAG機能ができます。ほかにもPDF、PPT、その他の一般的なドキュメントフォーマットからのテキスト抽出のサーポイントも提供します。
 
 **5. エージェント機能**: 
-  LLM関数呼び出しまたはReActに基づいてエージェントを定義し、エージェント向けの事前構築済みまたはカスタムのツールを追加できます。Difyには、Google検索、DELL·E、Stable Diffusion、WolframAlphaなどのAIエージェント用の50以上の組み込みツールが用意されています。
+  LLM Function CallingやReActに基づくエージェントの定義が可能で、AIエージェント用のプリビルトまたはカスタムツールを追加できます。Difyには、Google検索、DELL·E、Stable Diffusion、WolframAlphaなどのAIエージェント用の50以上の組み込みツールが提供します。
 
 **6. LLMOps**: 
-  アプリケーションログとパフォーマンスを時間の経過とともにモニタリングおよび分析します。本番データと注釈に基づいて、プロンプト、データセット、およびモデルを継続的に改善できます。
+  アプリケーションのログやパフォーマンスを監視と分析し、生産のデータと注釈に基づいて、プロンプト、データセット、モデルを継続的に改善できます。
 
 **7. Backend-as-a-Service**: 
-  Difyのすべての提供には、それに対応するAPIが付属しており、独自のビジネスロジックにDifyをシームレスに統合できます。
+  すべての機能はAPIを提供されており、Difyを自分のビジネスロジックに簡単に統合できます。
 
 
 ## 機能比較
@@ -95,9 +95,9 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
   </tr>
   <tr>
     <td align="center">サポートされているLLM</td>
-    <td align="center">バリエーション豊富</td>
-    <td align="center">バリエーション豊富</td>
-    <td align="center">バリエーション豊富</td>
+    <td align="center">バラエティ豊か</td>
+    <td align="center">バラエティ豊か</td>
+    <td align="center">バラエティ豊か</td>
     <td align="center">OpenAIのみ</td>
   </tr>
   <tr>
@@ -147,15 +147,15 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
 ## Difyの使用方法
 
 - **クラウド </br>**
-[こちら](https://dify.ai)のDify Cloudサービスを利用して、セットアップ不要で試すことができます。サンドボックスプランには、200回の無料のGPT-4呼び出しが含まれています。
+[こちら](https://dify.ai)のDify Cloudサービスを利用して、セットアップ不要で試すことができます。サンドボックスプランには、200回のGPT-4呼び出しが無料で含まれています。
 
 - **Dify Community Editionのセルフホスティング</br>**
-この[スターターガイド](#quick-start)を使用して、ローカル環境でDifyを簡単に実行できます。
-さらなる参考資料や詳細な手順については、[ドキュメント](https://docs.dify.ai)をご覧ください。
+この[スタートガイド](#quick-start)を使用して、ローカル環境でDifyを簡単に実行できます。
+詳しくは[ドキュメント](https://docs.dify.ai)をご覧ください。
 
-- **エンタープライズ/組織向けのDify</br>**
-追加のエンタープライズ向け機能を提供しています。[こちらからミーティングを予約](https://cal.com/guchenhe/30min)したり、[メールを送信](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)してエンタープライズのニーズについて相談してください。 </br>
-  > AWSを使用しているスタートアップや中小企業の場合は、[AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)のDify Premiumをチェックして、ワンクリックで独自のAWS VPCにデプロイできます。カスタムロゴとブランディングでアプリを作成するオプションを備えた手頃な価格のAMIオファリングです。
+- **企業/組織向けのDify</br>**
+企業中心の機能を提供しています。[こちらからミーティングを予約](https://cal.com/guchenhe/30min)したり、[メールを送信](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)して企業のニーズについて相談してください。 </br>
+  > AWSを使用しているスタートアップ企業や中小企業の場合は、[AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)のDify Premiumをチェックして、ワンクリックで自分のAWS VPCにデプロイできます。さらに、手頃な価格のAMIオファリングどして、ロゴやブランディングをカスタマイズしてアプリケーションを作成するオプションがあります。
 
 
 ## 最新の情報を入手
@@ -189,10 +189,11 @@ docker compose up -d
 
 環境設定をカスタマイズする場合は、[docker-compose.yml](docker/docker-compose.yaml)ファイル内のコメントを参照して、環境設定を手動で設定してください。変更を加えた後は、再び `docker-compose up -d` を実行してください。環境変数の完全なリストは[こちら](https://docs.dify.ai/getting-started/install-self-hosted/environments)をご覧ください。
 
-高可用性のセットアップを構成する場合は、コミュニティによって提供されている[Helm Charts](https://helm.sh/)があり、これによりKubernetes上にDifyを展開できます。
+高可用性設定を設定する必要がある場合、コミュニティは[Helm Charts](https://helm.sh/)とYAMLファイルにより、DifyをKubernetesにデプロイすることができます。
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
+- [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
 
 ## 貢献
@@ -212,7 +213,7 @@ docker compose up -d
 ## コミュニティ & お問い合わせ
 
 * [Github Discussion](https://github.com/langgenius/dify/discussions). 主に: フィードバックの共有や質問。
-* [GitHub Issues](https://github.com/langgenius/dify/issues). 主に: Dify.AIの使用中に遭遇したバグや機能提案。
+* [GitHub Issues](https://github.com/langgenius/dify/issues). 主に: Dify.AIを使用する際に発生するエラーや問題については、[貢献ガイド](CONTRIBUTING_JA.md)を参照してください
 * [Email](mailto:support@dify.ai?subject=[GitHub]Questions%20About%20Dify). 主に: Dify.AIの使用に関する質問。
 * [Discord](https://discord.gg/FngNHpbcY7). 主に: アプリケーションの共有やコミュニティとの交流。
 * [Twitter](https://twitter.com/dify_ai). 主に: アプリケーションの共有やコミュニティとの交流。

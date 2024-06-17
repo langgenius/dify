@@ -21,7 +21,6 @@ const TagRemoveModal = ({ show, tag, onConfirm, onClose }: TagRemoveModalProps) 
 
   return (
     <Modal
-      wrapperClassName='!z-[1020]'
       className={cn('p-8 max-w-[480px] w-[480px]', s.bg)}
       isShow={show}
       onClose={() => {}}

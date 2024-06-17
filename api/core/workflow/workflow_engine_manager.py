@@ -592,7 +592,7 @@ class WorkflowEngineManager:
                         node_data=current_iteration_node.node_data,
                         inputs=workflow_run_state.current_iteration_state.inputs,
                         predecessor_node_id=predecessor_node_id,
-                        metadata=workflow_run_state.current_iteration_state.metadata.dict()
+                        metadata=workflow_run_state.current_iteration_state.metadata.model_dump()
                     )
 
         # add steps

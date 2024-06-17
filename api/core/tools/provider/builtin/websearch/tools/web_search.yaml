@@ -1,0 +1,376 @@
+identity:
+  name: web_search
+  author: Dify
+  label:
+    en_US: Web Search API
+    zh_Hans: Web Search API
+description:
+  human:
+    en_US: A tool to retrieve answer boxes, knowledge graphs, snippets, and webpages from Google Search engine.
+    zh_Hans: 一种从 Google 搜索引擎检索答案框、知识图、片段和网页的工具。
+  llm: A tool to retrieve answer boxes, knowledge graphs, snippets, and webpages from Google Search engine.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 询问
+    human_description:
+      en_US: Defines the query you want to search.
+      zh_Hans: 定义您要搜索的查询。
+    llm_description: Defines the search query you want to search.
+    form: llm
+  - name: location
+    type: string
+    required: false
+    default: US
+    label:
+      en_US: Location
+      zh_Hans: 询问
+    human_description:
+      en_US: Defines from where you want the search to originate. (For example - New York)
+      zh_Hans: 定义您想要搜索的起始位置。 （例如 - 纽约）
+    llm_description: Defines from where you want the search to originate. (For example - New York)
+    form: form
+    options:
+      - value: AU
+        label:
+          en_US: Australia
+          zh_Hans: 澳大利亚
+          pt_BR: Australia
+      - value: BR
+        label:
+          en_US: Brazil
+          zh_Hans: 巴西
+          pt_BR: Brazil
+      - value: CA
+        label:
+          en_US: Canada
+          zh_Hans: 加拿大
+          pt_BR: Canada
+      - value: DE
+        label:
+          en_US: Germany
+          zh_Hans: 德国
+          pt_BR: Germany
+      - value: FR
+        label:
+          en_US: France
+          zh_Hans: 法国
+          pt_BR: France
+      - value: GB
+        label:
+          en_US: United Kingdom
+          zh_Hans: 英国
+          pt_BR: United Kingdom
+      - value: US
+        label:
+          en_US: United States
+          zh_Hans: 美国
+          pt_BR: United States
+      - value: JP
+        label:
+          en_US: Japan
+          zh_Hans: 日本
+          pt_BR: Japan
+      - value: IN
+        label:
+          en_US: India
+          zh_Hans: 印度
+          pt_BR: India
+      - value: KR
+        label:
+          en_US: Korea
+          zh_Hans: 韩国
+          pt_BR: Korea
+      - value: SG
+        label:
+          en_US: Singapore
+          zh_Hans: 新加坡
+          pt_BR: Singapore
+      - value: SE
+        label:
+          en_US: Sweden
+          zh_Hans: 瑞典
+          pt_BR: Sweden
+  - name: device
+    type: select
+    label:
+      en_US: Device Type
+      zh_Hans: 汉斯先生
+    human_description:
+      en_US: Defines the device to make interface search. Default is "desktop".
+      zh_Hans: 定义进行接口搜索的设备。默认为“桌面”
+    required: false
+    default: desktop
+    form: form
+    options:
+      - value: desktop
+        label:
+          en_US: Desktop
+          zh_Hans: 桌面
+      - value: mobile
+        label:
+          en_US: Mobile
+          zh_Hans: 移动的
+  - name: gl
+    type: select
+    label:
+      en_US: Country
+      zh_Hans: 国家/地区
+    required: false
+    human_description:
+      en_US: Defines the country of the search. Default is "US".
+      zh_Hans: 定义搜索的国家/地区。默认为“美国”。
+    llm_description: Defines the gl parameter of the Google search.
+    form: form
+    default: US
+    options:
+      - value: AU
+        label:
+          en_US: Australia
+          zh_Hans: 澳大利亚
+          pt_BR: Australia
+      - value: BR
+        label:
+          en_US: Brazil
+          zh_Hans: 巴西
+          pt_BR: Brazil
+      - value: CA
+        label:
+          en_US: Canada
+          zh_Hans: 加拿大
+          pt_BR: Canada
+      - value: DE
+        label:
+          en_US: Germany
+          zh_Hans: 德国
+          pt_BR: Germany
+      - value: FR
+        label:
+          en_US: France
+          zh_Hans: 法国
+          pt_BR: France
+      - value: GB
+        label:
+          en_US: United Kingdom
+          zh_Hans: 英国
+          pt_BR: United Kingdom
+      - value: IN
+        label:
+          en_US: India
+          zh_Hans: 印度
+          pt_BR: India
+      - value: KR
+        label:
+          en_US: Korea
+          zh_Hans: 韩国
+          pt_BR: Korea
+      - value: SE
+        label:
+          en_US: Sweden
+          zh_Hans: 瑞典
+          pt_BR: Sweden
+      - value: SG
+        label:
+          en_US: Singapore
+          zh_Hans: 新加坡
+          pt_BR: Singapore
+      - value: US
+        label:
+          en_US: United States
+          zh_Hans: 美国
+          pt_BR: United States
+  - name: hl
+    type: select
+    label:
+      en_US: Language
+      zh_Hans: 语言
+    human_description:
+      en_US: Defines the interface language of the search. Default is "en".
+      zh_Hans: 定义搜索的界面语言。默认为“en”。
+    required: false
+    default: en
+    form: form
+    options:
+      - value: ar
+        label:
+          en_US: Arabic
+          zh_Hans: 阿拉伯语
+      - value: bg
+        label:
+          en_US: Bulgarian
+          zh_Hans: 保加利亚语
+      - value: ca
+        label:
+          en_US: Catalan
+          zh_Hans: 加泰罗尼亚语
+      - value: zh-cn
+        label:
+          en_US: Chinese (Simplified)
+          zh_Hans: 中文（简体）
+      - value: zh-tw
+        label:
+          en_US: Chinese (Traditional)
+          zh_Hans: 中文（繁体）
+      - value: cs
+        label:
+          en_US: Czech
+          zh_Hans: 捷克语
+      - value: da
+        label:
+          en_US: Danish
+          zh_Hans: 丹麦语
+      - value: nl
+        label:
+          en_US: Dutch
+          zh_Hans: 荷兰语
+      - value: en
+        label:
+          en_US: English
+          zh_Hans: 英语
+      - value: et
+        label:
+          en_US: Estonian
+          zh_Hans: 爱沙尼亚语
+      - value: fi
+        label:
+          en_US: Finnish
+          zh_Hans: 芬兰语
+      - value: fr
+        label:
+          en_US: French
+          zh_Hans: 法语
+      - value: de
+        label:
+          en_US: German
+          zh_Hans: 德语
+      - value: el
+        label:
+          en_US: Greek
+          zh_Hans: 希腊语
+      - value: iw
+        label:
+          en_US: Hebrew
+          zh_Hans: 希伯来语
+      - value: hi
+        label:
+          en_US: Hindi
+          zh_Hans: 印地语
+      - value: hu
+        label:
+          en_US: Hungarian
+          zh_Hans: 匈牙利语
+      - value: id
+        label:
+          en_US: Indonesian
+          zh_Hans: 印尼语
+      - value: it
+        label:
+          en_US: Italian
+          zh_Hans: 意大利语
+      - value: ja
+        label:
+          en_US: Japanese
+          zh_Hans: 日语
+      - value: kn
+        label:
+          en_US: Kannada
+          zh_Hans: 卡纳达语
+      - value: ko
+        label:
+          en_US: Korean
+          zh_Hans: 韩语
+      - value: lv
+        label:
+          en_US: Latvian
+          zh_Hans: 拉脱维亚语
+      - value: lt
+        label:
+          en_US: Lithuanian
+          zh_Hans: 立陶宛语
+      - value: my
+        label:
+          en_US: Malay
+          zh_Hans: 马来语
+      - value: ml
+        label:
+          en_US: Malayalam
+          zh_Hans: 马拉雅拉姆语
+      - value: mr
+        label:
+          en_US: Marathi
+          zh_Hans: 马拉地语
+      - value: "no"
+        label:
+          en_US: Norwegian
+          zh_Hans: 挪威语
+      - value: pl
+        label:
+          en_US: Polish
+          zh_Hans: 波兰语
+      - value: pt-br
+        label:
+          en_US: Portuguese (Brazil)
+          zh_Hans: 葡萄牙语（巴西）
+      - value: pt-pt
+        label:
+          en_US: Portuguese (Portugal)
+          zh_Hans: 葡萄牙语（葡萄牙）
+      - value: pa
+        label:
+          en_US: Punjabi
+          zh_Hans: 旁遮普语
+      - value: ro
+        label:
+          en_US: Romanian
+          zh_Hans: 罗马尼亚语
+      - value: ru
+        label:
+          en_US: Russian
+          zh_Hans: 俄语
+      - value: sr
+        label:
+          en_US: Serbian
+          zh_Hans: 塞尔维亚语
+      - value: sk
+        label:
+          en_US: Slovak
+          zh_Hans: 斯洛伐克语
+      - value: sl
+        label:
+          en_US: Slovenian
+          zh_Hans: 斯洛文尼亚语
+      - value: es
+        label:
+          en_US: Spanish
+          zh_Hans: 西班牙语
+      - value: sv
+        label:
+          en_US: Swedish
+          zh_Hans: 瑞典语
+      - value: ta
+        label:
+          en_US: Tamil
+          zh_Hans: 泰米尔语
+      - value: te
+        label:
+          en_US: Telugu
+          zh_Hans: 泰卢固语
+      - value: th
+        label:
+          en_US: Thai
+          zh_Hans: 泰语
+      - value: tr
+        label:
+          en_US: Turkish
+          zh_Hans: 土耳其语
+      - value: uk
+        label:
+          en_US: Ukrainian
+          zh_Hans: 乌克兰语
+      - value: vi
+        label:
+          en_US: Vietnamese
+          zh_Hans: 越南语
