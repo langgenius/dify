@@ -275,6 +275,13 @@ class Config:
         self.MILVUS_SECURE = get_env('MILVUS_SECURE')
         self.MILVUS_DATABASE = get_env('MILVUS_DATABASE')
 
+        # OpenSearch 配置项
+        self.OPENSEARCH_HOST = get_env('OPENSEARCH_HOST')
+        self.OPENSEARCH_PORT = get_env('OPENSEARCH_PORT')
+        self.OPENSEARCH_USER = get_env('OPENSEARCH_USER')
+        self.OPENSEARCH_PASSWORD = get_env('OPENSEARCH_PASSWORD')
+        self.OPENSEARCH_SECURE = get_bool_env('OPENSEARCH_SECURE')
+
         # weaviate settings
         self.WEAVIATE_ENDPOINT = get_env('WEAVIATE_ENDPOINT')
         self.WEAVIATE_API_KEY = get_env('WEAVIATE_API_KEY')

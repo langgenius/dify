@@ -88,3 +88,4 @@ google-cloud-aiplatform==1.49.0
 vanna[postgres,mysql,clickhouse,duckdb]==0.5.5
 tencentcloud-sdk-python-hunyuan~=3.0.1158
 chromadb~=0.5.0
+opensearch-py==2.4.0

@@ -306,6 +306,12 @@ services:
       TENCENT_VECTOR_DB_DATABASE: dify
       TENCENT_VECTOR_DB_SHARD: 1
       TENCENT_VECTOR_DB_REPLICAS: 2
+      # OpenSearch configuration
+      OPENSEARCH_HOST: 127.0.0.1
+      OPENSEARCH_PORT: 9200
+      OPENSEARCH_USER: admin
+      OPENSEARCH_PASSWORD: admin
+      OPENSEARCH_SECURE: 'true'
       # pgvector configurations
       PGVECTOR_HOST: pgvector
       PGVECTOR_PORT: 5432
