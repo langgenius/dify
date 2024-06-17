@@ -18,7 +18,7 @@ type Props = {
   onSaved: () => void
 }
 
-const I18N_PREFIX = 'app.tracing.config'
+const I18N_PREFIX = 'app.tracing.configProvider'
 
 const ProviderConfigModal: FC<Props> = ({
   type,
@@ -49,7 +49,7 @@ const ProviderConfigModal: FC<Props> = ({
           <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
             <div className='px-8 pt-8'>
               <div className='flex justify-between items-center mb-4'>
-                <div className='text-xl font-semibold text-gray-900'>{t(`${I18N_PREFIX}.configFirecrawl`)}</div>
+                <div className='text-xl font-semibold text-gray-900'>{t(`${I18N_PREFIX}.title`)}{t(`app.tracing.${type}.title`)}</div>
               </div>
 
               <div className='space-y-4'>
@@ -61,15 +61,15 @@ const ProviderConfigModal: FC<Props> = ({
                       isRequired
                       value={config.api_key}
                       onChange={handleConfigChange('api_key')}
-                      placeholder={'Enter your API Key'}
+                      placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'API Key' })!}
                     />
                     <Field
-                      label='Project'
+                      label={t(`${I18N_PREFIX}.project`)!}
                       labelClassName='!text-sm'
                       isRequired
                       value={config.base_url}
                       onChange={handleConfigChange('project')}
-                      placeholder={'Enter your Project'}
+                      placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.project`) })!}
                     />
                     <Field
                       label='Endpoint'
@@ -83,20 +83,20 @@ const ProviderConfigModal: FC<Props> = ({
                 {type === TracingProvider.langfuse && (
                   <>
                     <Field
-                      label='Public Key'
+                      label={t(`${I18N_PREFIX}.publicKey`)!}
                       labelClassName='!text-sm'
                       isRequired
                       value={config.api_key}
                       onChange={handleConfigChange('public_key')}
-                      placeholder={'Enter your Public Key'}
+                      placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.publicKey`) })!}
                     />
                     <Field
-                      label='Private Key'
+                      label={t(`${I18N_PREFIX}.secretKey`)!}
                       labelClassName='!text-sm'
                       value={config.base_url}
                       isRequired
                       onChange={handleConfigChange('base_url')}
-                      placeholder={'Enter your Private Key'}
+                      placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.secretKey`) })!}
                     />
                     <Field
                       label='Host'
@@ -111,7 +111,7 @@ const ProviderConfigModal: FC<Props> = ({
               </div>
               <div className='my-8 flex justify-between items-center h-8'>
                 <a className='flex items-center space-x-1 leading-[18px] text-xs font-normal text-[#155EEF]' target='_blank' href='https://www.firecrawl.dev/account'>
-                  <span>{t(`${I18N_PREFIX}.getApiKeyLinkText`)}</span>
+                  <span>{t(`${I18N_PREFIX}.viewDocsLink`, { key: t(`app.tracing.${type}.title`) })}</span>
                   <LinkExternal02 className='w-3 h-3' />
                 </a>
                 <div className='flex'>
