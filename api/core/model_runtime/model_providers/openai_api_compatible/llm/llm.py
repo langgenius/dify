@@ -74,7 +74,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             tools=tools,
             stop=stop,
             stream=stream,
-            user=user
+            user=user,
         )
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
@@ -280,6 +280,12 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             'Content-Type': 'application/json',
             'Accept-Charset': 'utf-8',
         }
+        extra_headers = credentials.get('extra_headers')
+        if extra_headers is not None:
+            headers = {
+              **headers,
+              **extra_headers,
+            }
 
         api_key = credentials.get('api_key')
         if api_key:

@@ -78,7 +78,7 @@ const translation = {
       resetAll: '重置全部',
       scrapTimeInfo: '总共在 {{time}}秒 内抓取了 {{total}} 个页面',
       preview: '预览',
-      maxDepthTooltip: '最大抓取深度。深度 1 表示 Base URL，深度 2 表示 Base URL及其直接子页面，依此类推。',
+      maxDepthTooltip: '相对于输入 URL 的最大抓取深度。深度0仅抓取输入 URL 本身的页面，深度1抓取输入 URL 及其后的一层目录（一个 /），依此类推。',
     },
   },
   stepTwo: {

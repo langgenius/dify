@@ -39,7 +39,7 @@ jobs:
 
       - name: Ruff check
         if: steps.changed-files.outputs.any_changed == 'true'
-        run: poetry run -C api ruff check --preview ./api
+        run: poetry run -C api ruff check ./api
 
       - name: Dotenv check
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -100,6 +100,7 @@ jobs:
             **.yaml
             **.yml
             Dockerfile
+            dev/**
 
       - name: Super-linter
         uses: super-linter/super-linter/slim@v6
