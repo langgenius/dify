@@ -265,18 +265,29 @@ const Result: FC<IResultProps> = ({
               return
             if (data.error) {
               notify({ type: 'error', message: data.error })
+              setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+                draft.status = WorkflowRunningStatus.Failed
+              }))
               setRespondingFalse()
               onCompleted(getCompletionRes(), taskId, false)
               isEnd = true
               return
             }
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
-              draft.status = data.error ? WorkflowRunningStatus.Failed : WorkflowRunningStatus.Succeeded
+              draft.status = WorkflowRunningStatus.Succeeded
             }))
-            if (!data.outputs)
+            if (!data.outputs) {
               setCompletionRes('')
-            else
+            }
+            else {
               setCompletionRes(data.outputs)
+              const isStringOutput = Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
+              if (isStringOutput) {
+                setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+                  draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+                }))
+              }
+            }
             setRespondingFalse()
             setMessageId(tempMessageId)
             onCompleted(getCompletionRes(), taskId, true)
