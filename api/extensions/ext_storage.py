@@ -8,6 +8,7 @@ from extensions.storage.azure_storage import AzureStorage
 from extensions.storage.google_storage import GoogleStorage
 from extensions.storage.local_storage import LocalStorage
 from extensions.storage.s3_storage import S3Storage
+from extensions.storage.tencent_storage import TencentStorage
 
 
 class Storage:
@@ -30,6 +31,10 @@ class Storage:
             )
         elif storage_type == 'google-storage':
             self.storage_runner = GoogleStorage(
+                app=app
+            )
+        elif storage_type == 'tencent-cos':
+            self.storage_runner = TencentStorage(
                 app=app
             )
         else:

@@ -253,6 +253,13 @@ class Config:
         self.GOOGLE_STORAGE_BUCKET_NAME = get_env('GOOGLE_STORAGE_BUCKET_NAME')
         self.GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 = get_env('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')
 
+        # Tencent Cos Storage settings
+        self.TENCENT_COS_BUCKET_NAME = get_env('TENCENT_COS_BUCKET_NAME')
+        self.TENCENT_COS_REGION = get_env('TENCENT_COS_REGION')
+        self.TENCENT_COS_SECRET_ID = get_env('TENCENT_COS_SECRET_ID')
+        self.TENCENT_COS_SECRET_KEY = get_env('TENCENT_COS_SECRET_KEY')
+        self.TENCENT_COS_SCHEME = get_env('TENCENT_COS_SCHEME')
+
         # ------------------------
         # Vector Store Configurations.
         # Currently, only support: qdrant, milvus, zilliz, weaviate, relyt, pgvector

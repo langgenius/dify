@@ -1441,12 +1441,12 @@ test-no-images = ["pytest", "pytest-cov", "pytest-xdist", "wurlitzer"]
 
 [[package]]
 name = "cos-python-sdk-v5"
-version = "1.9.29"
+version = "1.9.30"
 description = "cos-python-sdk-v5"
 optional = false
 python-versions = "*"
 files = [
-    {file = "cos-python-sdk-v5-1.9.29.tar.gz", hash = "sha256:1bb07022368d178e7a50a3cc42e0d6cbf4b0bef2af12a3bb8436904339cdec8e"},
+    {file = "cos-python-sdk-v5-1.9.30.tar.gz", hash = "sha256:a23fd090211bf90883066d90cd74317860aa67c6d3aa80fe5e44b18c7e9b2a81"},
 ]
 
 [package.dependencies]
@@ -8921,4 +8921,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "05dd46b65d1cfeb9d295934777d70de8dbbbd20b62e6d3c976550f3134ff7a1e"
+content-hash = "7f9fada276f5050d1418e973f830c690807fc7f37e05c5f2e31319522daf0323"
