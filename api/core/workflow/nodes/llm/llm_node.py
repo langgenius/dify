@@ -12,7 +12,11 @@ from core.file.file_obj import FileVar
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageContentType
+from core.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentType,
+)
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -548,6 +552,7 @@ class LLMNode(BaseNode):
         stop = model_config.stop
 
         vision_enabled = node_data.vision.enabled
+        vision_detail = node_data.vision.configs.detail if node_data.vision.configs else None
         filtered_prompt_messages = []
         for prompt_message in prompt_messages:
             if prompt_message.is_empty():
@@ -556,7 +561,10 @@ class LLMNode(BaseNode):
             if not isinstance(prompt_message.content, str):
                 prompt_message_content = []
                 for content_item in prompt_message.content:
-                    if vision_enabled and content_item.type == PromptMessageContentType.IMAGE:
+                    if vision_enabled and content_item.type == PromptMessageContentType.IMAGE and isinstance(content_item, ImagePromptMessageContent):
+                        # Override vision config if LLM node has vision config
+                        if vision_detail:
+                            content_item.detail = ImagePromptMessageContent.DETAIL(vision_detail)
                         prompt_message_content.append(content_item)
                     elif content_item.type == PromptMessageContentType.TEXT:
                         prompt_message_content.append(content_item)

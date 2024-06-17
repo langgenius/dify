@@ -189,10 +189,11 @@ docker compose up -d
 
 環境設定をカスタマイズする場合は、[docker-compose.yml](docker/docker-compose.yaml)ファイル内のコメントを参照して、環境設定を手動で設定してください。変更を加えた後は、再び `docker-compose up -d` を実行してください。環境変数の完全なリストは[こちら](https://docs.dify.ai/getting-started/install-self-hosted/environments)をご覧ください。
 
-高可用性のセットアップを構成する場合は、コミュニティによって提供されている[Helm Charts](https://helm.sh/)があり、これによりKubernetes上にDifyを展開できます。
+高可用性設定を設定する必要がある場合、コミュニティは[Helm Charts](https://helm.sh/)とYAMLファイルにより、DifyをKubernetesにデプロイすることができます。
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
+- [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
 
 ## 貢献

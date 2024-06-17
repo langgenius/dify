@@ -1,0 +1,39 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "17",
+			"height": "16",
+			"viewBox": "0 0 17 16",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Icon"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Icon_2",
+							"d": "M8.97167 12.2427L8.02886 13.1855C6.72711 14.4872 4.61656 14.4872 3.31481 13.1855C2.01306 11.8837 2.01306 9.77317 3.31481 8.47142L4.25762 7.52861M12.7429 8.47142L13.6857 7.52861C14.9875 6.22687 14.9875 4.11632 13.6857 2.81457C12.384 1.51282 10.2734 1.51282 8.97167 2.81457L8.02886 3.75738M6.16693 10.3333L10.8336 5.66667",
+							"stroke": "currentColor",
+							"stroke-width": "1.5",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					}
+				]
+			}
+		]
+	},
+	"name": "Link01"
+}

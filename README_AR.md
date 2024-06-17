@@ -167,10 +167,11 @@ docker compose up -d
 
 إذا كنت بحاجة إلى تخصيص التكوين، يرجى الرجوع إلى التعليقات في ملف [docker-compose.yml](docker/docker-compose.yaml) لدينا وتعيين التكوينات البيئية يدويًا. بعد إجراء التغييرات، يرجى تشغيل `docker-compose up -d` مرة أخرى. يمكنك رؤية قائمة كاملة بالمتغيرات البيئية [هنا](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
-إذا كنت ترغب في تكوين إعداد متوفر بشكل عالي، فهناك [رسوم بيانية Helm](https://helm.sh/) المساهمة من المجتمع تسمح بنشر Dify على Kubernetes.
+يوجد مجتمع خاص بـ [Helm Charts](https://helm.sh/) وملفات YAML التي تسمح بتنفيذ Dify على Kubernetes للنظام من الإيجابيات العلوية.
 
 - [رسم بياني Helm من قبل @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [رسم بياني Helm من قبل @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
+- [ملف YAML من قبل @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
 
 ## المساهمة
