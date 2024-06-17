@@ -156,7 +156,7 @@ parameters:
       en_US: is sdxl
       zh_Hans: 是否是 SDXL
     human_description:
-      en_US: Whether sdxl model or not. Setting this parameter to `true` includes only sdxl models in the query results, which are typically large-scale, high-performance models designed for extensive data processing tasks. Conversely, setting it to `false` excludes these models from the results. If left unspecified, the filter will not discriminate based on the sdxl classification, including all model types in the search results. 
+      en_US: Whether sdxl model or not. Setting this parameter to `true` includes only sdxl models in the query results, which are typically large-scale, high-performance models designed for extensive data processing tasks. Conversely, setting it to `false` excludes these models from the results. If left unspecified, the filter will not discriminate based on the sdxl classification, including all model types in the search results.
       zh_Hans: 是否是 SDXL 模型。设置此参数为 `是`，只查询 SDXL 模型，并包含大规模，高性能的模型。相反，设置为 `否`，将排除这些模型。如果未指定，将不会根据 SDXL 分类进行区分，包括查询结果中的所有模型类型。
     form: form
     options:
