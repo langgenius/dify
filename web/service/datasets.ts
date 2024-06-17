@@ -231,15 +231,15 @@ export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> =
   return get<{ api_base_url: string }>(url)
 }
 
-export const fetchFirecrawlApiKey = () => {
+export const fetchDataSources = () => {
   return get<CommonResponse>('api-key-auth/data-source')
 }
 
-export const createFirecrawlApiKey: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+export const createDataSourceApiKeyBinding: Fetcher<CommonResponse, Record<string, any>> = (body) => {
   return post<CommonResponse>('api-key-auth/data-source/binding', { body })
 }
 
-export const removeFirecrawlApiKey: Fetcher<CommonResponse, string> = (id: string) => {
+export const removeDataSourceApiKeyBinding: Fetcher<CommonResponse, string> = (id: string) => {
   return del<CommonResponse>(`api-key-auth/data-source/${id}`)
 }
 
