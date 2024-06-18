@@ -26,7 +26,7 @@ class TraceAppConfigApi(Resource):
                 app_id=app_id, tracing_provider=args['tracing_provider']
                 )
             if not trace_config:
-                raise TracingConfigNotExist()
+                return {"has_not_configured": True}
             return trace_config
         except Exception as e:
             raise e
