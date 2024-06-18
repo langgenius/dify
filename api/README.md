@@ -21,7 +21,11 @@
 
    Dify API service uses [Poetry](https://python-poetry.org/docs/) to manage dependencies. You can execute `poetry shell` to activate the environment.
 
-   > Using pip can be found [below](#usage-with-pip). 
+   > Using pip can be found [below](#usage-with-pip).
+
+   ```bash
+   poetry env use 3.10
+   ```
    
 6. Install dependencies
    
