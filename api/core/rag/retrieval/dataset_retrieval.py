@@ -23,6 +23,7 @@ from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetr
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from models.model import Message
 from services.ops_trace.ops_trace_service import OpsTraceService
 from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 from services.ops_trace.utils import measure_time
@@ -354,9 +355,9 @@ class DatasetRetrieval:
             db.session.commit()
 
         # get tracing instance
-        app_model_config = OpsTraceService.get_app_config_through_message_id(message_id)
+        app_id = db.session.query(Message.app_id).filter(Message.id == message_id).first()
         tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_model_config.app_id, app_model_config=app_model_config
+            app_id=app_id
         )
         if tracing_instance:
             trace_manager = TraceQueueManager()

@@ -20,8 +20,7 @@ from core.model_runtime.entities.message_entities import (
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
-from extensions.ext_database import db
-from models.model import AppModelConfig, Message
+from models.model import Message
 from services.ops_trace.ops_trace_service import OpsTraceService
 
 logger = logging.getLogger(__name__)
@@ -54,10 +53,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         # get tracing instance
         app_id = app_config.app_id
-        app_model_config_id = app_config.app_model_config_id
-        app_model_config = db.session.query(AppModelConfig).filter_by(id=app_model_config_id).first()
         tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_id, app_model_config=app_model_config
+            app_id=app_id
         )
         
         def increase_usage(final_llm_usage_dict: dict[str, LLMUsage], usage: LLMUsage):

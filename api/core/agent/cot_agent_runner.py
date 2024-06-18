@@ -1,7 +1,7 @@
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from typing import Union, Optional
+from typing import Optional, Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
@@ -21,6 +21,7 @@ from core.tools.tool.tool import Tool
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
 from services.ops_trace.base_trace_instance import BaseTraceInstance
+from services.ops_trace.ops_trace_service import OpsTraceService
 
 
 class CotAgentRunner(BaseAgentRunner, ABC):
@@ -32,7 +33,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
     _query: str = None
     _prompt_messages_tools: list[PromptMessage] = None
 
-    def run(self, message: Message,
+    def run(
+        self, message: Message,
         query: str,
         inputs: dict[str, str],
     ) -> Union[Generator, LLMResult]:
@@ -42,6 +44,12 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         app_generate_entity = self.application_generate_entity
         self._repack_app_generate_entity(app_generate_entity)
         self._init_react_state(query)
+
+        # get tracing instance
+        app_id = self.app_config.app_id
+        tracing_instance = OpsTraceService.get_ops_trace_instance(
+            app_id=app_id
+        )
 
         # check model mode
         if 'Observation' not in app_generate_entity.model_conf.stop:
@@ -212,7 +220,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
                         action=scratchpad.action, 
                         tool_instances=tool_instances,
-                        message_file_ids=message_file_ids
+                        message_file_ids=message_file_ids,
+                        tracing_instance=tracing_instance,
                     )
                     scratchpad.observation = tool_invoke_response
                     scratchpad.agent_response = tool_invoke_response
@@ -238,8 +247,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
                 # update prompt tool message
                 for prompt_tool in self._prompt_messages_tools:
-                    self.update_prompt_message_tool(
-                        tool_instances[prompt_tool.name], prompt_tool)
+                    self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
 
             iteration_step += 1
 
@@ -276,12 +284,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             message=AssistantPromptMessage(
                 content=final_answer
             ),
-            usage=llm_usage['usage'] if llm_usage['usage'] else LLMUsage.empty_usage(
-            ),
+            usage=llm_usage['usage'] if llm_usage['usage'] else LLMUsage.empty_usage(),
             system_fingerprint=''
         )), PublishFrom.APPLICATION_MANAGER)
 
-    def _handle_invoke_action(self, action: AgentScratchpadUnit.Action,
+    def _handle_invoke_action(self, action: AgentScratchpadUnit.Action, 
                               tool_instances: dict[str, Tool],
                               message_file_ids: list[str],
                               tracing_instance: Optional[BaseTraceInstance] = None
@@ -300,7 +307,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         if not tool_instance:
             answer = f"there is not a tool named {tool_call_name}"
             return answer, ToolInvokeMeta.error_instance(answer)
-
+        
         if isinstance(tool_call_args, str):
             try:
                 tool_call_args = json.loads(tool_call_args)
@@ -322,8 +329,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         # publish files
         for message_file, save_as in message_files:
             if save_as:
-                self.variables_pool.set_file(
-                    tool_name=tool_call_name, value=message_file.id, name=save_as)
+                self.variables_pool.set_file(tool_name=tool_call_name, value=message_file.id, name=save_as)
 
             # publish message file
             self.queue_manager.publish(QueueMessageFileEvent(
@@ -354,7 +360,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 continue
 
         return instruction
-
+    
     def _init_react_state(self, query) -> None:
         """
         init agent scratchpad
@@ -362,7 +368,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self._query = query
         self._agent_scratchpad = []
         self._historic_prompt_messages = self._organize_historic_prompt_messages()
-
+    
     @abstractmethod
     def _organize_prompt_messages(self) -> list[PromptMessage]:
         """
@@ -393,6 +399,13 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         result: list[PromptMessage] = []
         scratchpads: list[AgentScratchpadUnit] = []
         current_scratchpad: AgentScratchpadUnit = None
+
+        self.history_prompt_messages = AgentHistoryPromptTransform(
+            model_config=self.model_config,
+            prompt_messages=current_session_messages or [],
+            history_messages=self.history_prompt_messages,
+            memory=self.memory
+        ).get_prompt()
 
         for message in self.history_prompt_messages:
             if isinstance(message, AssistantPromptMessage):

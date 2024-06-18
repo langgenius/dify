@@ -74,7 +74,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         # get tracing instance
         tracing_instance = OpsTraceService.get_ops_trace_instance(
             app_id=app_model.id,
-            app_model_config=app_model_config,
         )
 
         # validate override model config
