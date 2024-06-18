@@ -95,7 +95,7 @@ class ParameterExtractorNode(LLMNode):
         # fetch memory
         memory = self._fetch_memory(node_data.memory, variable_pool, model_instance)
         
-        if set(model_schema.features or []) & set([ModelFeature.MULTI_TOOL_CALL, ModelFeature.MULTI_TOOL_CALL]) \
+        if set(model_schema.features or []) & set([ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL]) \
             and node_data.reasoning_mode == 'function_call':
             # use function call 
             prompt_messages, prompt_message_tools = self._generate_function_call_prompt(
