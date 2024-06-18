@@ -2,15 +2,19 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import { TracingProvider } from './type'
 import { LangfuseIconBig, LangsmithIconBig } from '@/app/components/base/icons/src/public/tracing'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
+
 const I18N_PREFIX = 'app.tracing'
 
 type Props = {
   type: TracingProvider
-  onConfig: () => void
+  isChosen: boolean
   onChoose: () => void
+  hasConfigured: boolean
+  onConfig: () => void
 }
 
 const getIcon = (type: TracingProvider) => {
@@ -22,8 +26,10 @@ const getIcon = (type: TracingProvider) => {
 
 const ProviderPanel: FC<Props> = ({
   type,
-  onConfig,
+  isChosen,
   onChoose,
+  hasConfigured,
+  onConfig,
 }) => {
   const { t } = useTranslation()
   const Icon = getIcon(type)
@@ -32,13 +38,23 @@ const ProviderPanel: FC<Props> = ({
     e.stopPropagation()
     onConfig()
   }, [onConfig])
+
+  const handleChosen = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isChosen || !hasConfigured)
+      return
+    onChoose()
+  }, [hasConfigured, isChosen, onChoose])
   return (
     <div
-      className='px-4 py-3 rounded-xl bg-gray-100'
-      onClick={onChoose}
+      className={cn(isChosen ? 'border-primary-400' : 'border-transparent', !isChosen && hasConfigured && 'cursor-pointer', 'px-4 py-3 rounded-xl border-[1.5px]  bg-gray-100')}
+      onClick={handleChosen}
     >
-      <div className='flex justify-between items-center space-x-1'>
-        <Icon className='h-6' />
+      <div className={'flex justify-between items-center space-x-1'}>
+        <div className='flex'>
+          <Icon className='h-6' />
+
+        </div>
         <div
           className='flex px-2 items-center h-6 bg-white rounded-md border-[0.5px] border-gray-200 shadow-xs cursor-pointer text-gray-700 space-x-1'
           onClick={handleConfigBtnClick}
