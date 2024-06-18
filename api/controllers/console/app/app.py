@@ -291,8 +291,6 @@ class AppTraceApi(Resource):
         app_trace_config = OpsTraceService.get_app_tracing_config(
             app_id=app_id
         )
-        if not app_trace_config:
-            raise BadRequest("Tracing config not found")
 
         return app_trace_config
 

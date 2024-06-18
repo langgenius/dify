@@ -346,5 +346,10 @@ class OpsTraceService:
         :return:
         """
         app: App = db.session.query(App).filter(App.id == app_id).first()
+        if not app.tracing:
+            return {
+                "enabled": False,
+                "tracing_provider": None
+            }
         app_trace_config = json.loads(app.tracing)
         return app_trace_config
