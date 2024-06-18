@@ -61,7 +61,7 @@ numpy~=1.26.4
 unstructured[docx,pptx,msg,md,ppt,epub]~=0.10.27
 bs4~=0.0.1
 markdown~=3.5.1
-httpx[socks]~=0.24.1
+httpx[socks]~=0.27.0
 matplotlib~=3.8.2
 yfinance~=0.2.40
 pydub~=0.25.1
@@ -87,7 +87,7 @@ tidb-vector==0.0.9
 google-cloud-aiplatform==1.49.0
 vanna[postgres,mysql,clickhouse,duckdb]==0.5.5
 tencentcloud-sdk-python-hunyuan~=3.0.1158
-chromadb~=0.5.0
+chromadb~=0.5.1
 novita_client~=0.5.6
 tenacity~=8.3.0
 cos-python-sdk-v5==1.9.30
