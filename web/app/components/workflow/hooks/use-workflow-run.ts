@@ -179,7 +179,7 @@ export const useWorkflowRun = () => {
             setWorkflowRunningData,
           } = workflowStore.getState()
 
-          const isStringOutput = Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
+          const isStringOutput = data.outputs && Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
 
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             draft.result = {
