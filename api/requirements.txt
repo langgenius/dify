@@ -81,7 +81,7 @@ pgvecto-rs==0.1.4
 tcvectordb==1.3.2
 firecrawl-py==0.0.5
 oss2==2.18.5
-elasticsearch==7.17.9
+elasticsearch==8.12.1
 pgvector==0.2.5
 pymysql==1.1.1
 tidb-vector==0.0.9
