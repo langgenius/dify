@@ -72,12 +72,11 @@ const Panel: FC = () => {
   const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig)
 
   const fetchTracingConfig = async () => {
-    // TODO: not configured will return what
-    const { tracing_config: langSmithConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
-    if (langSmithConfig)
+    const { tracing_config: langSmithConfig, has_not_configured: langSmithHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
+    if (!langSmithHasNotConfig)
       setLangSmithConfig(langSmithConfig as LangSmithConfig)
-    const { tracing_config: langFuseConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langfuse })
-    if (langFuseConfig)
+    const { tracing_config: langFuseConfig, has_not_configured: langFuseHasNotConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langfuse })
+    if (!langFuseHasNotConfig)
       setLangFuseConfig(langFuseConfig as LangFuseConfig)
   }
 

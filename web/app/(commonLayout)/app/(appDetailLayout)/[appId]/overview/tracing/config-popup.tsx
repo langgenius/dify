@@ -68,6 +68,28 @@ const ConfigPopup: FC<PopupProps> = ({
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigRemoved])
 
+  const providerAllConfigured = langSmithConfig && langFuseConfig
+  const providerAllNotConfigured = !langSmithConfig && !langFuseConfig
+  const langSmithPanel = (
+    <ProviderPanel
+      type={TracingProvider.langSmith}
+      hasConfigured={!!langSmithConfig}
+      onConfig={handleOnConfig(TracingProvider.langSmith)}
+      isChosen={chosenProvider === TracingProvider.langSmith}
+      onChoose={handleOnChoose(TracingProvider.langSmith)}
+    />
+  )
+
+  const langfusePanel = (
+    <ProviderPanel
+      type={TracingProvider.langfuse}
+      hasConfigured={!!langFuseConfig}
+      onConfig={handleOnConfig(TracingProvider.langfuse)}
+      isChosen={chosenProvider === TracingProvider.langfuse}
+      onChoose={handleOnChoose(TracingProvider.langfuse)}
+    />
+  )
+
   return (
     <div className='w-[420px] p-4 rounded-2xl bg-white border-[0.5px] border-black/5 shadow-lg'>
       <div className='flex justify-between items-center'>
@@ -94,21 +116,29 @@ const ConfigPopup: FC<PopupProps> = ({
       </div>
       <div className='mt-3 h-px bg-gray-100'></div>
       <div className='mt-3'>
-        <div className='leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle`)}</div>
-        <div className='mt-2 space-y-2'>
-          <ProviderPanel
-            type={TracingProvider.langSmith}
-            onConfig={handleOnConfig(TracingProvider.langSmith)}
-            isChosen={chosenProvider === TracingProvider.langSmith}
-            onChoose={handleOnChoose(TracingProvider.langSmith)}
-          />
-          <ProviderPanel
-            type={TracingProvider.langfuse}
-            onConfig={handleOnConfig(TracingProvider.langfuse)}
-            isChosen={chosenProvider === TracingProvider.langfuse}
-            onChoose={handleOnChoose(TracingProvider.langfuse)}
-          />
-        </div>
+        {(providerAllConfigured || providerAllNotConfigured)
+          ? (
+            <>
+              <div className='leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle.${providerAllConfigured ? 'configured' : 'notConfigured'}`)}</div>
+              <div className='mt-2 space-y-2'>
+                {langSmithPanel}
+                {langfusePanel}
+              </div>
+            </>
+          )
+          : (
+            <>
+              <div className='leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle.configured`)}</div>
+              <div className='mt-2'>
+                {langSmithConfig ? langSmithPanel : langfusePanel}
+              </div>
+              <div className='mt-3 leading-4 text-xs font-medium text-gray-500 uppercase'>{t(`${I18N_PREFIX}.configProviderTitle.moreProvider`)}</div>
+              <div className='mt-2'>
+                {!langSmithConfig ? langSmithPanel : langfusePanel}
+              </div>
+            </>
+          )}
+
       </div>
       {isShowConfigModal && (
         <ProviderConfigModal
