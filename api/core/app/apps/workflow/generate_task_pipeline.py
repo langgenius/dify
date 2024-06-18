@@ -172,7 +172,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         Process stream response.
         :return:
         """
-        tracing_instance = OpsTraceService.get_ops_trace_instance(app_id=app_id, workflow=workflow)
+        tracing_instance = OpsTraceService.get_ops_trace_instance(app_id=app_id)
         for message in self._queue_manager.listen():
             event = message.event
 

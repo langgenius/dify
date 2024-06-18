@@ -27,7 +27,7 @@ class LangfuseConfig(BaseModel):
     host: str
 
 
-class LangsmithConfig(BaseModel):
+class LangSmithConfig(BaseModel):
     """
     Model class for Langsmith tracing config.
     """
@@ -156,9 +156,9 @@ class OpsTraceService:
                 host=tracing_config.host
             )
         elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
-            tracing_config = LangsmithConfig(**tracing_config)
+            tracing_config = LangSmithConfig(**tracing_config)
             encrypt_api_key = encrypt_token(tenant_id, tracing_config.api_key)
-            tracing_config = LangsmithConfig(
+            tracing_config = LangSmithConfig(
                 api_key=encrypt_api_key,
                 project=tracing_config.project,
                 endpoint=tracing_config.endpoint
@@ -187,9 +187,9 @@ class OpsTraceService:
                 host=tracing_config.host
             )
         elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
-            tracing_config = LangsmithConfig(**tracing_config)
+            tracing_config = LangSmithConfig(**tracing_config)
             decrypt_api_key = decrypt_token(tenant_id, tracing_config.api_key)
-            tracing_config = LangsmithConfig(
+            tracing_config = LangSmithConfig(
                 api_key=decrypt_api_key,
                 project=tracing_config.project,
                 endpoint=tracing_config.endpoint
@@ -219,10 +219,10 @@ class OpsTraceService:
                 host=decrypt_tracing_config.host
             )
         elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
-            decrypt_tracing_config = LangsmithConfig(**decrypt_tracing_config)
+            decrypt_tracing_config = LangSmithConfig(**decrypt_tracing_config)
             decrypt_api_key = decrypt_tracing_config.api_key
             obfuscated_api_key = obfuscated_token(decrypt_api_key)
-            decrypt_tracing_config = LangsmithConfig(
+            decrypt_tracing_config = LangSmithConfig(
                 api_key=obfuscated_api_key,
                 project=decrypt_tracing_config.project,
                 endpoint=decrypt_tracing_config.endpoint
@@ -256,9 +256,9 @@ class OpsTraceService:
     @classmethod
     def get_ops_trace_instance(
         cls,
-        app_id: str,
+        app_id,
         workflow: Optional[Workflow] = None,
-        app_model_config: Optional[AppModelConfig | AppAdditionalFeatures] = None
+        app_model_config: Optional[AppModelConfig | AppAdditionalFeatures] = None,
     ):
         """
         Get ops trace through model config
@@ -268,29 +268,10 @@ class OpsTraceService:
         :return:
         """
         tracing_instance = None
-        app_ops_trace_config = None
-
-        # get trace configuration from available sources
-        if app_model_config is not None:
-            if isinstance(app_model_config, AppAdditionalFeatures):
-                app_ops_trace_config = app_model_config.trace_config
-            elif isinstance(app_model_config, AppModelConfig):
-                app_ops_trace_config = json.loads(
-                    app_model_config.trace_config
-                ) if app_model_config.trace_config else None
-        elif workflow:
-            features_data = json.loads(workflow.features)
-            app_ops_trace_config = features_data.get('trace_config') if features_data else None
-        else:
-            # As a last resort, fetch from the database
-            trace_config_data = db.session.query(AppModelConfig.trace_config).filter(
-                AppModelConfig.app_id == app_id
-            ).order_by(AppModelConfig.updated_at.desc()).first()
-            if trace_config_data:
-                app_ops_trace_config = json.loads(trace_config_data.trace_config)
-            else:
-                raise ValueError('Trace config not found')
-
+        app: App = db.session.query(App).filter(
+            App.id == app_id
+        ).first()
+        app_ops_trace_config = json.loads(app.tracing) if app.tracing else None
         if app_ops_trace_config is not None:
             tracing_provider = app_ops_trace_config.get('tracing_provider')
         else:
@@ -338,3 +319,32 @@ class OpsTraceService:
             app_model_config = conversation_data.override_model_configs
 
         return app_model_config
+
+    @classmethod
+    def update_app_tracing_config(cls, app_id: str, enabled: bool, tracing_provider: str):
+        """
+        Update app tracing config
+        :param app_id: app id
+        :param enabled: enabled
+        :param tracing_provider: tracing provider
+        :return:
+        """
+        app_config: App = db.session.query(App).filter(App.id == app_id).first()
+        app_config.tracing = json.dumps(
+            {
+                "enabled": enabled,
+                "tracing_provider": tracing_provider,
+            }
+        )
+        db.session.commit()
+
+    @classmethod
+    def get_app_tracing_config(cls, app_id: str):
+        """
+        Get app tracing config
+        :param app_id: app id
+        :return:
+        """
+        app: App = db.session.query(App).filter(App.id == app_id).first()
+        app_trace_config = json.loads(app.tracing)
+        return app_trace_config

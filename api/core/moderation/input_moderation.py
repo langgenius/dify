@@ -47,9 +47,8 @@ class InputModeration:
         from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 
         # get tracing instance
-        app_model_config = OpsTraceService.get_app_config_through_message_id(message_id)
         tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_id, app_model_config=app_model_config
+            app_id=app_id
         )
 
         if tracing_instance:
