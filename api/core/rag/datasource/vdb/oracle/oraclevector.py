@@ -56,7 +56,7 @@ class OracleVector(BaseVector):
         self.table_name = f"embedding_{collection_name}"
 
     def get_type(self) -> str:
-        return "oraclevector"
+        return VectorType.ORACLE
 
     def numpy_converter_in(self, value):
         if value.dtype == numpy.float64:
@@ -132,13 +132,12 @@ class OracleVector(BaseVector):
                     numpy.array(embeddings[i]),
                 )
             )
-        print(f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)")
+        #print(f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)")
         with self._get_cursor() as cur:
             cur.executemany(f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)", values)
         return pks
 
     def text_exists(self, id: str) -> bool:
-        sss = (f"SELECT id FROM {self.table_name} WHERE id = '%s'" % (id,))
         with self._get_cursor() as cur:
             cur.execute(f"SELECT id FROM {self.table_name} WHERE id = '%s'" % (id,))
             return cur.fetchone() is not None
@@ -162,13 +161,11 @@ class OracleVector(BaseVector):
         ids = self.get_ids_by_metadata_field('doc_id', document_id)
         if len(ids)>0:
             with self._get_cursor() as cur:
-                sss = f"delete FROM {self.table_name} d WHERE d.meta.doc_id in '%s'" % ("','".join(ids),)
                 cur.execute(f"delete FROM {self.table_name} d WHERE d.meta.doc_id in '%s'" % ("','".join(ids),))
 
 
     def delete_by_ids(self, ids: list[str]) -> None:
         with self._get_cursor() as cur:
-            sss = f"DELETE FROM {self.table_name} WHERE id IN '%s'" % (tuple(ids),)
             cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s" % (tuple(ids),))
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
@@ -184,8 +181,6 @@ class OracleVector(BaseVector):
         :return: List of Documents that are nearest to the query vector.
         """
         top_k = kwargs.get("top_k", 5)
-        sss = (f"SELECT meta, text, vector_distance(embedding,vector('%s')) AS distance FROM {self.table_name} ORDER BY distance fetch first {top_k} rows only" % (str(query_vector),) )
-        print(sss)
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, vector_distance(embedding,:1) AS distance FROM {self.table_name} ORDER BY distance fetch first {top_k} rows only" ,[numpy.array(query_vector)]
@@ -217,10 +212,7 @@ class OracleVector(BaseVector):
                 return
 
             with self._get_cursor() as cur:
-                #cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
-                print(SQL_CREATE_TABLE.format(table_name=self.table_name))
                 cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name))
-                # TODO: create index https://github.com/pgvector/pgvector?tab=readme-ov-file#indexing
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
 
