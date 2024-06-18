@@ -508,7 +508,7 @@ services:
   #     retries: 30
 
   # The oracle vector database.
-  # Uncomment to use oracle23ai as vector store.
+  # Uncomment to use oracle23ai as vector store. Also need to Uncomment volumes block
   # oracle:
   #   image: container-registry.oracle.com/database/free:latest
   #   restart: always
@@ -524,8 +524,6 @@ services:
   #     - ORACLE_PWD=Dify123456
   #     - ORACLE_CHARACTERSET=AL32UTF8
 
-volumes:
-  oradata:
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
@@ -548,3 +546,6 @@ networks:
   ssrf_proxy_network:
     driver: bridge
     internal: true
+
+#volumes:
+#  oradata:
