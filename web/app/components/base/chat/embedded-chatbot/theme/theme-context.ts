@@ -1,19 +1,18 @@
-import type { Context } from 'use-context-selector'
 import { createContext, useContext } from 'use-context-selector'
+import { hexToRGBA } from './utils'
 
 export class Theme {
   private chatColorTheme: string | null
   private chatColorThemeInverted: boolean
 
   public primaryColor = '#1C64F2'
-  public backgroundHeaderColorClass = 'bg-gradient-to-r from-blue-600 to-sky-500'
-  public headerBorderBottomClass = ''
-  public colorFontOnHeaderClass = 'text-white'
+  public backgroundHeaderColorStyle = 'background-image: linear-gradient(to right, #2563eb, #0ea5e9)'
+  public headerBorderBottomStyle = ''
+  public colorFontOnHeaderStyle = 'color: white'
   public colorPathOnHeader = 'white'
-  public backgroundButtonDefaultColorClass = 'btn-primary'
-  public roundedBackgroundColorClass = 'bg-indigo-25'
-  public chatBubbleColorClass = 'bg-blue-500'
-  public themeContext?: Context<this>
+  public backgroundButtonDefaultColorStyle = 'background-color: #1C64F2'
+  public roundedBackgroundColorStyle = 'background-color: rgb(245 248 255)'
+  public chatBubbleColorStyle = 'background-color: rgb(225 239 254)'
 
   constructor(chatColorTheme: string | null = null, chatColorThemeInverted = false) {
     this.chatColorTheme = chatColorTheme
@@ -25,18 +24,18 @@ export class Theme {
   private configCustomColor() {
     if (this.chatColorTheme !== null) {
       this.primaryColor = this.chatColorTheme
-      this.backgroundHeaderColorClass = `bg-[${this.primaryColor}]`
-      this.backgroundButtonDefaultColorClass = `bg-[${this.primaryColor}]`
-      this.roundedBackgroundColorClass = `bg-[${this.primaryColor}]/5`
-      this.chatBubbleColorClass = `bg-[${this.primaryColor}]/10`
+      this.backgroundHeaderColorStyle = `background-color: ${this.primaryColor}`
+      this.backgroundButtonDefaultColorStyle = `background-color: ${this.primaryColor}`
+      this.roundedBackgroundColorStyle = `background-color: ${hexToRGBA(this.primaryColor, 0.05)}`
+      this.chatBubbleColorStyle = `background-color: ${hexToRGBA(this.primaryColor, 0.15)}`
     }
   }
 
   private configInvertedColor() {
     if (this.chatColorThemeInverted) {
-      this.backgroundHeaderColorClass = 'bg-white'
-      this.colorFontOnHeaderClass = `text-[${this.primaryColor}]`
-      this.headerBorderBottomClass = 'border-b border-gray-200'
+      this.backgroundHeaderColorStyle = 'background-color: #ffffff'
+      this.colorFontOnHeaderStyle = `color: ${this.primaryColor}`
+      this.headerBorderBottomStyle = 'border: 1px solid #ccc'
       this.colorPathOnHeader = this.primaryColor
     }
   }
@@ -50,9 +49,6 @@ export class ThemeBuilder {
     if (!this.buildChecker) {
       this.theme = new Theme(chatColorTheme, chatColorThemeInverted)
       this.buildChecker = true
-    }
-    else {
-      throw new Error('Theme already built')
     }
   }
 }

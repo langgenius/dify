@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { CSSProperties } from 'react'
 import { type VariantProps, cva } from 'class-variance-authority'
 import classNames from 'classnames'
 import Spinner from '../spinner'
+
 
 const buttonVariants = cva(
   'btn disabled:btn-disabled',
@@ -28,16 +29,18 @@ const buttonVariants = cva(
 )
 
 export type ButtonProps = {
-  loading?: boolean
+  loading?: boolean,
+  styleCss? : CSSProperties
 } & React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, loading, children, ...props }, ref) => {
+  ({ className, variant, size, loading, styleCss, children, ...props }, ref) => {
     return (
       <button
         type='button'
         className={classNames(buttonVariants({ variant, size, className }))}
         ref={ref}
+        style={styleCss}
         {...props}
       >
         {children}
