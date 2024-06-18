@@ -38,5 +38,4 @@ services:
 
 networks:
   opensearch-net:
-      driver: bridge
-      
+    driver: bridge
