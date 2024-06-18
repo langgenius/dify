@@ -19,16 +19,16 @@ LARK_WIKI_NODE_URL = "https://open.feishu-boe.cn/open-apis/wiki/v2/spaces/get_no
 
 class LarkWikiExtractor(BaseExtractor):
 
-    def __init__(self, workspace_id: str,
-                 lark_obj_token: str,
-                 lark_obj_type: str,
+    def __init__(self, lark_workspace_id: str,
+                 obj_token: str,
+                 obj_type: str,
                  tenant_id: str,
                  document_model: Optional[DocumentModel] = None):
         self._document_model = document_model
-        self._notion_workspace_id = workspace_id
-        self._lark_obj_token = lark_obj_token
-        self._lark_obj_type = lark_obj_type
-        self._tenant_access_token = self._get_tenant_access_token(tenant_id, workspace_id)
+        self._notion_workspace_id = lark_workspace_id
+        self._lark_obj_token = obj_token
+        self._lark_obj_type = obj_type
+        self._tenant_access_token = self._get_tenant_access_token(tenant_id, lark_workspace_id)
 
     def extract(self) -> list[Document]:
         self.update_last_edited_time(
@@ -88,19 +88,19 @@ class LarkWikiExtractor(BaseExtractor):
         return node["obj_edit_time"]
 
     @classmethod
-    def _get_tenant_access_token(cls, tenant_id: str, workspace_id: str) -> str:
+    def _get_tenant_access_token(cls, tenant_id: str, lark_workspace_id: str) -> str:
         data_source_binding = DataSourceOauthBinding.query.filter(
             db.and_(
                 DataSourceOauthBinding.tenant_id == tenant_id,
                 DataSourceOauthBinding.provider == 'larkwiki',
                 DataSourceOauthBinding.disabled == False,
-                DataSourceOauthBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                DataSourceOauthBinding.source_info['workspace_id'] == f'"{lark_workspace_id}"'
             )
         ).first()
 
         if not data_source_binding:
             raise Exception(f'No larkwiki data source binding found for tenant {tenant_id} '
-                            f'and larkwiki workspace {workspace_id}')
+                            f'and larkwiki workspace {lark_workspace_id}')
 
         app_id = data_source_binding.source_info['workspace_name']
         app_secret = data_source_binding.access_token
