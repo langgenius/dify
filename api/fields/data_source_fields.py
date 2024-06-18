@@ -14,7 +14,12 @@ integrate_page_fields = {
     'page_icon': fields.Nested(integrate_icon_fields, allow_null=True),
     'is_bound': fields.Boolean,
     'parent_id': fields.String,
-    'type': fields.String
+    'type': fields.String,
+
+    # lark wiki
+    'obj_token': fields.String,
+    'obj_type': fields.String,
+    'space_id': fields.String,
 }
 
 integrate_workspace_fields = {
@@ -26,6 +31,10 @@ integrate_workspace_fields = {
 
 integrate_notion_info_list_fields = {
     'notion_info': fields.List(fields.Nested(integrate_workspace_fields)),
+}
+
+integrate_larkwiki_info_list_fields = {
+    'larkwiki_info': fields.List(fields.Nested(integrate_workspace_fields)),
 }
 
 integrate_icon_fields = {
@@ -40,6 +49,7 @@ integrate_page_fields = {
     'page_icon': fields.Nested(integrate_icon_fields, allow_null=True),
     'parent_id': fields.String,
     'type': fields.String,
+
     # lark wiki
     'obj_token': fields.String,
     'obj_type': fields.String,
