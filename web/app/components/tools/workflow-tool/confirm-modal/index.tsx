@@ -19,7 +19,6 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
 
   return (
     <Modal
-      wrapperClassName='!z-[1020]'
       className={cn('p-8 max-w-[600px] w-[600px]', s.bg)}
       isShow={show}
       onClose={() => {}}

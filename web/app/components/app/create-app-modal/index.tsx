@@ -83,7 +83,6 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
   return (
     <Modal
       overflowVisible
-      wrapperClassName='z-20'
       className='!p-0 !max-w-[720px] !w-[720px] rounded-xl'
       isShow={show}
       onClose={() => {}}

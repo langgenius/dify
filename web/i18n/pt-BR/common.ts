@@ -156,6 +156,9 @@ const translation = {
     langGeniusAccountTip: 'Sua conta Dify e dados de usuário associados.',
     editName: 'Editar Nome',
     showAppLength: 'Mostrar {{length}} apps',
+    delete: 'Excluir conta',
+    deleteTip: 'Excluir sua conta apagará permanentemente todos os seus dados e eles não poderão ser recuperados.',
+    deleteConfirmTip: 'Para confirmar, envie o seguinte do seu e-mail registrado para ',
   },
   members: {
     team: 'Equipe',
