@@ -367,7 +367,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
 
 class IterationNodeCompletedStreamResponse(StreamResponse):
     """
-    NodeStartStreamResponse entity
+    NodeCompletedStreamResponse entity
     """
     class Data(BaseModel):
         """
@@ -385,6 +385,7 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         error: Optional[str] = None
         elapsed_time: float
         total_tokens: int
+        execution_metadata: Optional[dict] = None
         finished_at: int
         steps: int
 
