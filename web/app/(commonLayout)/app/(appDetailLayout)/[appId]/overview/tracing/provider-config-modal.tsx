@@ -53,6 +53,7 @@ const ProviderConfigModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const isEdit = !!payload
+  const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
   const [config, setConfig] = useState<LangSmithConfig | LangFuseConfig>((() => {
     if (isEdit)
@@ -135,13 +136,13 @@ const ProviderConfigModal: FC<Props> = ({
         message: t('common.api.success'),
       })
       onSaved(config)
-      if (!isEdit)
+      if (!isAdd)
         onChosen(type)
     }
     finally {
       setIsSaving(false)
     }
-  }, [appId, checkValid, config, isEdit, isSaving, onChosen, onSaved, t, type])
+  }, [appId, checkValid, config, isAdd, isEdit, isSaving, onChosen, onSaved, t, type])
 
   return (
     <>
@@ -246,7 +247,7 @@ const ProviderConfigModal: FC<Props> = ({
                           onClick={handleSave}
                           loading={isSaving}
                         >
-                          {t('common.operation.save')}
+                          {t(`common.operation.${isAdd ? 'saveAndEnable' : 'save'}`)}
                         </Button>
                       </div>
 
