@@ -28,10 +28,10 @@ def upgrade():
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
     sa.Column('is_active', sa.Boolean(), server_default=sa.text('true'), nullable=False),
-    sa.PrimaryKeyConstraint('id', name='tracing_app_config_pkey')
+                    sa.PrimaryKeyConstraint('id', name='trace_app_config_pkey')  # 修改了主键约束名称以避免冲突
     )
     with op.batch_alter_table('trace_app_config', schema=None) as batch_op:
-        batch_op.create_index('tracing_app_config_app_id_idx', ['app_id'], unique=False)
+        batch_op.create_index('trace_app_config_app_id_idx', ['app_id'], unique=False)
 
     with op.batch_alter_table('tracing_app_configs', schema=None) as batch_op:
         batch_op.drop_index('tracing_app_config_app_id_idx')
@@ -54,13 +54,13 @@ def downgrade():
     sa.Column('tracing_config', postgresql.JSON(astext_type=sa.Text()), autoincrement=False, nullable=True),
     sa.Column('created_at', postgresql.TIMESTAMP(), server_default=sa.text('now()'), autoincrement=False, nullable=False),
     sa.Column('updated_at', postgresql.TIMESTAMP(), server_default=sa.text('now()'), autoincrement=False, nullable=False),
-    sa.PrimaryKeyConstraint('id', name='tracing_app_config_pkey')
+                    sa.PrimaryKeyConstraint('id', name='trace_app_config_pkey')
     )
     with op.batch_alter_table('tracing_app_configs', schema=None) as batch_op:
-        batch_op.create_index('tracing_app_config_app_id_idx', ['app_id'], unique=False)
+        batch_op.create_index('trace_app_config_app_id_idx', ['app_id'], unique=False)
 
     with op.batch_alter_table('trace_app_config', schema=None) as batch_op:
-        batch_op.drop_index('tracing_app_config_app_id_idx')
+        batch_op.drop_index('trace_app_config_app_id_idx')
 
     op.drop_table('trace_app_config')
     # ### end Alembic commands ###
