@@ -1,6 +1,10 @@
 [project]
 requires-python = ">=3.10"
 
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.ruff]
 exclude = [
 ]
@@ -78,17 +82,10 @@ MOCK_SWITCH = "true"
 CODE_MAX_STRING_LENGTH = "80000"
 CODE_EXECUTION_ENDPOINT="http://127.0.0.1:8194"
 CODE_EXECUTION_API_KEY="dify-sandbox"
-
 FIRECRAWL_API_KEY = "fc-"
-
-
 
 [tool.poetry]
 name = "dify-api"
-version = "0.6.11"
-description = ""
-authors = ["Dify <hello@dify.ai>"]
-readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
