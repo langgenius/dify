@@ -1,7 +1,7 @@
 from copy import deepcopy
 from datetime import datetime, timezone
 from mimetypes import guess_type
-from typing import Union
+from typing import Optional, Union
 
 from yarl import URL
 
@@ -24,6 +24,7 @@ from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from extensions.ext_database import db
 from models.model import Message, MessageFile
+from services.ops_trace.base_trace_instance import BaseTraceInstance
 
 
 class ToolEngine:
@@ -31,10 +32,12 @@ class ToolEngine:
     Tool runtime engine take care of the tool executions.
     """
     @staticmethod
-    def agent_invoke(tool: Tool, tool_parameters: Union[str, dict],
-                     user_id: str, tenant_id: str, message: Message, invoke_from: InvokeFrom,
-                     agent_tool_callback: DifyAgentCallbackHandler) \
-                        -> tuple[str, list[tuple[MessageFile, bool]], ToolInvokeMeta]:
+    def agent_invoke(
+        tool: Tool, tool_parameters: Union[str, dict],
+        user_id: str, tenant_id: str, message: Message, invoke_from: InvokeFrom,
+        agent_tool_callback: DifyAgentCallbackHandler,
+        tracing_instance: Optional[BaseTraceInstance] = None
+    ) -> tuple[str, list[tuple[MessageFile, bool]], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
         """
@@ -82,9 +85,11 @@ class ToolEngine:
 
             # hit the callback handler
             agent_tool_callback.on_tool_end(
-                tool_name=tool.identity.name, 
-                tool_inputs=tool_parameters, 
-                tool_outputs=plain_text
+                tool_name=tool.identity.name,
+                tool_inputs=tool_parameters,
+                tool_outputs=plain_text,
+                message_id=message.id,
+                tracing_instance=tracing_instance,
             )
 
             # transform tool invoke message to get LLM friendly message
@@ -120,8 +125,9 @@ class ToolEngine:
     def workflow_invoke(tool: Tool, tool_parameters: dict,
                         user_id: str, workflow_id: str, 
                         workflow_tool_callback: DifyWorkflowCallbackHandler,
-                        workflow_call_depth: int) \
-                              -> list[ToolInvokeMessage]:
+                        workflow_call_depth: int,
+                        tracing_instance: Optional[BaseTraceInstance] = None
+                        ) -> list[ToolInvokeMessage]:
         """
         Workflow invokes the tool with the given arguments.
         """
@@ -139,9 +145,10 @@ class ToolEngine:
 
             # hit the callback handler
             workflow_tool_callback.on_tool_end(
-                tool_name=tool.identity.name, 
-                tool_inputs=tool_parameters, 
-                tool_outputs=response
+                tool_name=tool.identity.name,
+                tool_inputs=tool_parameters,
+                tool_outputs=response,
+                tracing_instance=tracing_instance,
             )
 
             return response

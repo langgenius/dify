@@ -21,6 +21,7 @@ from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransfo
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
+from services.ops_trace.ops_trace_service import OpsTraceService
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         }
         final_answer = ''
 
+        # get tracing instance
+        app_id = app_config.app_id
+        tracing_instance = OpsTraceService.get_ops_trace_instance(
+            app_id=app_id
+        )
+        
         def increase_usage(final_llm_usage_dict: dict[str, LLMUsage], usage: LLMUsage):
             if not final_llm_usage_dict['usage']:
                 final_llm_usage_dict['usage'] = usage
@@ -243,6 +250,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         message=self.message,
                         invoke_from=self.application_generate_entity.invoke_from,
                         agent_tool_callback=self.agent_callback,
+                        tracing_instance=tracing_instance
                     )
                     # publish files
                     for message_file, save_as in message_files:

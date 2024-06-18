@@ -1,0 +1,32 @@
+identity:
+  author: Xiao Ley
+  name: novitaai
+  label:
+    en_US: Novita AI
+    zh_Hans: Novita AI
+    pt_BR: Novita AI
+  description:
+    en_US: Innovative AI for Image Generation
+    zh_Hans: 用于图像生成的创新人工智能。
+    pt_BR: Innovative AI for Image Generation
+  icon: icon.ico
+  tags:
+    - image
+    - productivity
+credentials_for_provider:
+  api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: API Key
+      zh_Hans: API 密钥
+      pt_BR: Chave API
+    placeholder:
+      en_US: Please enter your Novita AI API key
+      zh_Hans: 请输入你的 Novita AI API 密钥
+      pt_BR: Por favor, insira sua chave de API do Novita AI
+    help:
+      en_US: Get your Novita AI API key from Novita AI
+      zh_Hans: 从 Novita AI 获取您的 Novita AI API 密钥
+      pt_BR: Obtenha sua chave de API do Novita AI na Novita AI
+    url: https://novita.ai

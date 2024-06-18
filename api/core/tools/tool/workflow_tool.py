@@ -1,7 +1,7 @@
 import json
 import logging
 from copy import deepcopy
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from core.file.file_obj import FileTransferMethod, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderType
@@ -31,9 +31,10 @@ class WorkflowTool(Tool):
             :return: the tool provider type
         """
         return ToolProviderType.WORKFLOW
-    
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) \
-        -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+
+    def _invoke(
+        self, user_id: str, tool_parameters: dict[str, Any], tracing_instance: Optional[Any] = None
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
             invoke the tool
         """
@@ -56,6 +57,7 @@ class WorkflowTool(Tool):
             invoke_from=self.runtime.invoke_from,
             stream=False,
             call_depth=self.workflow_call_depth + 1,
+            tracing_instance=tracing_instance,
         )
 
         data = result.get('data', {})

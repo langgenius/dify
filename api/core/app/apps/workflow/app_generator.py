@@ -3,7 +3,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Union
+from typing import Any, Optional, Union
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -29,14 +29,16 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
-    def generate(self, app_model: App,
-                 workflow: Workflow,
-                 user: Union[Account, EndUser],
-                 args: dict,
-                 invoke_from: InvokeFrom,
-                 stream: bool = True,
-                 call_depth: int = 0) \
-            -> Union[dict, Generator[dict, None, None]]:
+    def generate(
+        self, app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: dict,
+        invoke_from: InvokeFrom,
+        stream: bool = True,
+        call_depth: int = 0,
+        tracing_instance: Optional[Any] = None
+    ) -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
 
@@ -46,6 +48,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param args: request args
         :param invoke_from: invoke from source
         :param stream: is stream
+        :param call_depth: call depth
+        :param tracing_instance: ops tracing instance
         """
         inputs = args['inputs']
 
@@ -87,17 +91,18 @@ class WorkflowAppGenerator(BaseAppGenerator):
             application_generate_entity=application_generate_entity,
             invoke_from=invoke_from,
             stream=stream,
-            call_depth=call_depth
+            call_depth=call_depth,
         )
 
-    def _generate(self, app_model: App,
-                 workflow: Workflow,
-                 user: Union[Account, EndUser],
-                 application_generate_entity: WorkflowAppGenerateEntity,
-                 invoke_from: InvokeFrom,
-                 stream: bool = True,
-                 call_depth: int = 0) \
-            -> Union[dict, Generator[dict, None, None]]:
+    def _generate(
+        self, app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        application_generate_entity: WorkflowAppGenerateEntity,
+        invoke_from: InvokeFrom,
+        stream: bool = True,
+        call_depth: int = 0
+    ) -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
 
@@ -131,7 +136,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow=workflow,
             queue_manager=queue_manager,
             user=user,
-            stream=stream
+            stream=stream,
         )
 
         return WorkflowAppGenerateResponseConverter.convert(
@@ -271,9 +276,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             stream=stream
         )
+        app_id = application_generate_entity.app_config.app_id
 
         try:
-            return generate_task_pipeline.process()
+            return generate_task_pipeline.process(app_id, workflow)
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedException()

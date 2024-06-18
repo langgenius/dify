@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Optional
 
 from core.llm_generator.output_parser.errors import OutputParserException
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
@@ -10,11 +11,16 @@ from core.model_runtime.entities.message_entities import SystemPromptMessage, Us
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from extensions.ext_database import db
+from models.model import Conversation
+from services.ops_trace.ops_trace_service import OpsTraceService
+from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
+from services.ops_trace.utils import measure_time
 
 
 class LLMGenerator:
     @classmethod
-    def generate_conversation_name(cls, tenant_id: str, query):
+    def generate_conversation_name(cls, tenant_id: str, query, conversation_id: Optional[str] = None):
         prompt = CONVERSATION_TITLE_PROMPT
 
         if len(query) > 2000:
@@ -29,24 +35,47 @@ class LLMGenerator:
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
         )
-
         prompts = [UserPromptMessage(content=prompt)]
-        response = model_instance.invoke_llm(
-            prompt_messages=prompts,
-            model_parameters={
-                "max_tokens": 100,
-                "temperature": 1
-            },
-            stream=False
-        )
-        answer = response.message.content
 
+        with measure_time() as timer:
+            response = model_instance.invoke_llm(
+                prompt_messages=prompts,
+                model_parameters={
+                    "max_tokens": 100,
+                    "temperature": 1
+                },
+                stream=False
+            )
+
+        answer = response.message.content
         result_dict = json.loads(answer)
         answer = result_dict['Your Output']
         name = answer.strip()
 
         if len(name) > 75:
             name = name[:75] + '...'
+
+        # get tracing instance
+        conversation_data: Conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
+        app_id = conversation_data.app_id
+
+        tracing_instance = OpsTraceService.get_ops_trace_instance(
+            app_id=app_id
+        )
+
+        if tracing_instance:
+            trace_manager = TraceQueueManager()
+            trace_manager.add_trace_task(
+                TraceTask(
+                    tracing_instance,
+                    TraceTaskName.CONVERSATION_TRACE,
+                    conversation_id=conversation_id,
+                    generate_conversation_name=name,
+                    inputs=prompt,
+                    timer=timer,
+                    tenant_id=tenant_id,
+                )
+            )
 
         return name
 

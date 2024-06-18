@@ -3,7 +3,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -22,6 +22,7 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeErr
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser
+from services.ops_trace.ops_trace_service import OpsTraceService
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         app_model_config = self._get_app_model_config(
             app_model=app_model,
             conversation=conversation
+        )
+
+        # get tracing instance
+        tracing_instance = OpsTraceService.get_ops_trace_instance(
+            app_id=app_model.id,
         )
 
         # validate override model config
@@ -142,6 +148,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             'queue_manager': queue_manager,
             'conversation_id': conversation.id,
             'message_id': message.id,
+            'tracing_instance': tracing_instance,
         })
 
         worker_thread.start()
@@ -153,7 +160,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream
+            stream=stream,
+            tracing_instance=tracing_instance,
         )
 
         return AgentChatAppGenerateResponseConverter.convert(
@@ -165,7 +173,9 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                          application_generate_entity: AgentChatAppGenerateEntity,
                          queue_manager: AppQueueManager,
                          conversation_id: str,
-                         message_id: str) -> None:
+                         message_id: str,
+                         tracing_instance: Optional[Any] = None
+                         ) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -173,6 +183,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         :param queue_manager: queue manager
         :param conversation_id: conversation ID
         :param message_id: message ID
+        :param tracing_instance: tracing instance
         :return:
         """
         with flask_app.app_context():
@@ -187,7 +198,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     conversation=conversation,
-                    message=message
+                    message=message,
+                    tracing_instance=tracing_instance
                 )
             except GenerateTaskStoppedException:
                 pass

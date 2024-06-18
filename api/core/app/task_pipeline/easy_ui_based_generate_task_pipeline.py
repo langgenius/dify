@@ -2,7 +2,7 @@ import json
 import logging
 import time
 from collections.abc import Generator
-from typing import Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
@@ -50,6 +50,7 @@ from events.message_event import message_was_created
 from extensions.ext_database import db
 from models.account import Account
 from models.model import AppMode, Conversation, EndUser, Message, MessageAgentThought
+from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +101,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
 
         self._conversation_name_generate_thread = None
 
-    def process(self) -> Union[
+    def process(
+        self,
+        tracing_instance: Optional[Any] = None
+    ) -> Union[
         ChatbotAppBlockingResponse,
         CompletionAppBlockingResponse,
         Generator[Union[ChatbotAppStreamResponse, CompletionAppStreamResponse], None, None]
@@ -120,7 +124,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                 self._application_generate_entity.query
             )
 
-        generator = self._process_stream_response()
+        generator = self._process_stream_response(tracing_instance)
         if self._stream:
             return self._to_stream_response(generator)
         else:
@@ -197,7 +201,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                     stream_response=stream_response
                 )
 
-    def _process_stream_response(self) -> Generator[StreamResponse, None, None]:
+    def _process_stream_response(
+        self, tracing_instance: Optional[Any] = None
+    ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
         :return:
@@ -224,7 +230,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                     yield self._message_replace_to_stream_response(answer=output_moderation_answer)
 
                 # Save message
-                self._save_message()
+                self._save_message(tracing_instance)
 
                 yield self._message_end_to_stream_response()
             elif isinstance(event, QueueRetrieverResourcesEvent):
@@ -269,7 +275,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 
-    def _save_message(self) -> None:
+    def _save_message(
+        self, tracing_instance: Optional[Any] = None,
+    ) -> None:
         """
         Save message.
         :return:
@@ -299,6 +307,17 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             if self._task_state.metadata else None
 
         db.session.commit()
+
+        if tracing_instance:
+            trace_manager = TraceQueueManager()
+            trace_manager.add_trace_task(
+                TraceTask(
+                    tracing_instance,
+                    TraceTaskName.MESSAGE_TRACE,
+                    conversation_id=self._conversation.id,
+                    message_id=self._message.id
+                )
+            )
 
         message_was_created.send(
             self._message,

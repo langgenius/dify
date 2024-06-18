@@ -1,5 +1,5 @@
 import logging
-from typing import cast
+from typing import Any, Optional, cast
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
 from core.agent.cot_completion_agent_runner import CotCompletionAgentRunner
@@ -28,16 +28,21 @@ class AgentChatAppRunner(AppRunner):
     """
     Agent Application Runner
     """
-    def run(self, application_generate_entity: AgentChatAppGenerateEntity,
-            queue_manager: AppQueueManager,
-            conversation: Conversation,
-            message: Message) -> None:
+
+    def run(
+        self, application_generate_entity: AgentChatAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        conversation: Conversation,
+        message: Message,
+        tracing_instance: Optional[Any] = None
+    ) -> None:
         """
         Run assistant application
         :param application_generate_entity: application generate entity
         :param queue_manager: application queue manager
         :param conversation: conversation
         :param message: message
+        :param tracing_instance: tracing instance
         :return:
         """
         app_config = application_generate_entity.app_config
@@ -100,6 +105,7 @@ class AgentChatAppRunner(AppRunner):
                 app_generate_entity=application_generate_entity,
                 inputs=inputs,
                 query=query,
+                message_id=message.id
             )
         except ModerationException as e:
             self.direct_output(
@@ -241,6 +247,7 @@ class AgentChatAppRunner(AppRunner):
             message=message,
             query=query,
             inputs=inputs,
+            tracing_instance=tracing_instance,
         )
 
         # handle invoke result

@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from sqlalchemy import and_
 
@@ -35,22 +35,24 @@ logger = logging.getLogger(__name__)
 
 class MessageBasedAppGenerator(BaseAppGenerator):
 
-    def _handle_response(self, application_generate_entity: Union[
-        ChatAppGenerateEntity,
-        CompletionAppGenerateEntity,
-        AgentChatAppGenerateEntity,
-        AdvancedChatAppGenerateEntity
-    ],
-                         queue_manager: AppQueueManager,
-                         conversation: Conversation,
-                         message: Message,
-                         user: Union[Account, EndUser],
-                         stream: bool = False) \
-            -> Union[
-                ChatbotAppBlockingResponse,
-                CompletionAppBlockingResponse,
-                Generator[Union[ChatbotAppStreamResponse, CompletionAppStreamResponse], None, None]
-            ]:
+    def _handle_response(
+        self, application_generate_entity: Union[
+            ChatAppGenerateEntity,
+            CompletionAppGenerateEntity,
+            AgentChatAppGenerateEntity,
+            AdvancedChatAppGenerateEntity
+        ],
+        queue_manager: AppQueueManager,
+        conversation: Conversation,
+        message: Message,
+        user: Union[Account, EndUser],
+        stream: bool = False,
+        tracing_instance: Optional[Any] = None
+    ) -> Union[
+        ChatbotAppBlockingResponse,
+        CompletionAppBlockingResponse,
+        Generator[Union[ChatbotAppStreamResponse, CompletionAppStreamResponse], None, None]
+    ]:
         """
         Handle response.
         :param application_generate_entity: application generate entity
@@ -72,7 +74,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         )
 
         try:
-            return generate_task_pipeline.process()
+            return generate_task_pipeline.process(tracing_instance)
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedException()

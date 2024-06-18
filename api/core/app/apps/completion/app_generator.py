@@ -24,6 +24,7 @@ from models.account import Account
 from models.model import App, EndUser, Message
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
+from services.ops_trace.ops_trace_service import OpsTraceService
 
 logger = logging.getLogger(__name__)
 
@@ -114,6 +115,11 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             message
         ) = self._init_generate_records(application_generate_entity)
 
+        # get tracing instance
+        tracing_instance = OpsTraceService.get_ops_trace_instance(
+            app_id=app_model.id
+        )
+
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
             task_id=application_generate_entity.task_id,
@@ -141,7 +147,8 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream
+            stream=stream,
+            tracing_instance=tracing_instance,
         )
 
         return CompletionAppGenerateResponseConverter.convert(
@@ -273,6 +280,11 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             message
         ) = self._init_generate_records(application_generate_entity)
 
+        # get tracing instance
+        tracing_instance = OpsTraceService.get_ops_trace_instance(
+            app_id=app_model.id
+        )
+
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
             task_id=application_generate_entity.task_id,
@@ -300,7 +312,8 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream
+            stream=stream,
+            tracing_instance=tracing_instance,
         )
 
         return CompletionAppGenerateResponseConverter.convert(

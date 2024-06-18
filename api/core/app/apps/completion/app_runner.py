@@ -77,6 +77,7 @@ class CompletionAppRunner(AppRunner):
                 app_generate_entity=application_generate_entity,
                 inputs=inputs,
                 query=query,
+                message_id=message.id
             )
         except ModerationException as e:
             self.direct_output(
@@ -124,7 +125,8 @@ class CompletionAppRunner(AppRunner):
                 query=query,
                 invoke_from=application_generate_entity.invoke_from,
                 show_retrieve_source=app_config.additional_features.show_retrieve_source,
-                hit_callback=hit_callback
+                hit_callback=hit_callback,
+                message_id=message.id
             )
 
         # reorganize all inputs and template to prompt messages
