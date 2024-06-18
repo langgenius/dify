@@ -18,13 +18,11 @@ const I18N_PREFIX = 'app.tracing'
 type Props = {
   className?: string
   hasConfigured: boolean
-  onConfigured?: () => void
 } & PopupProps
 
 const ConfigBtn: FC<Props> = ({
   className,
   hasConfigured,
-  onConfigured,
   ...popupProps
 }) => {
   const { t } = useTranslation()
