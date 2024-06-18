@@ -386,7 +386,7 @@ services:
       # postgres data directory
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
-      - ./volumes/db/data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     # uncomment to expose db(postgresql) port to host
     # ports:
     #   - "5432:5432"
@@ -402,7 +402,7 @@ services:
     restart: always
     volumes:
       # Mount the redis data directory to the container.
-      - ./volumes/redis/data:/data
+      - redis_data:/data
     # Set the redis password when startup redis server.
     command: redis-server --requirepass difyai123456
     healthcheck:
@@ -524,6 +524,9 @@ services:
     ports:
       - "80:80"
       #- "443:443"
+volumes:
+  postgres_data:
+  redis_data:
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
