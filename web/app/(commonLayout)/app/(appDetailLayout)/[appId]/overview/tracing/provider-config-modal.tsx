@@ -38,7 +38,7 @@ const ProviderConfigModal: FC<Props> = ({
   const [isShowRemoveConfirm, {
     setTrue: showRemoveConfirm,
     setFalse: hideRemoveConfirm,
-  }] = useBoolean(true)
+  }] = useBoolean(false)
 
   const handleRemove = useCallback(async () => {
     hideRemoveConfirm()
