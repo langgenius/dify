@@ -387,6 +387,9 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
+      # notice!: if you use windows-wsl2, postgres may not work properly due to the ntfs issue.you can use volumes to mount the data directory to the host.
+      # if you use the following config, you need to uncomment the volumes configuration below at the end of the file.
+      # - postgres:/var/lib/postgresql/data
     # uncomment to expose db(postgresql) port to host
     # ports:
     #   - "5432:5432"
@@ -524,6 +527,9 @@ services:
     ports:
       - "80:80"
       #- "443:443"
+# notice: if you use windows-wsl2, postgres may not work properly due to the ntfs issue.you can use volumes to mount the data directory to the host.
+# volumes:
+#   postgres:
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
