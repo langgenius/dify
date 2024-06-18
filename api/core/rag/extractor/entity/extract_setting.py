@@ -26,8 +26,8 @@ class LarkWikiInfo(BaseModel):
     LarkWiki import info.
     """
     lark_workspace_id: str
-    lark_obj_token: str
-    lark_obj_type: str
+    obj_token: str
+    obj_type: str
     document: Document = None
     tenant_id: str
     model_config = ConfigDict(arbitrary_types_allowed=True)

@@ -159,6 +159,7 @@ class DataSourceNotionListApi(Resource):
             'notion_info': pre_import_info_list
         }, 200
 
+
 class DataSourceNotionApi(Resource):
 
     @setup_required
@@ -226,6 +227,7 @@ class DataSourceNotionApi(Resource):
                                                      args['doc_language'])
         return response, 200
 
+
 class DataSourceLarkWikiListApi(Resource):
 
     @setup_required
@@ -286,7 +288,7 @@ class DataSourceLarkWikiApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, workspace_id, obj_token:str, obj_type:str):
+    def get(self, workspace_id, obj_token: str, obj_type: str):
         workspace_id = str(workspace_id)
         data_source_binding = DataSourceOauthBinding.query.filter(
             db.and_(
@@ -300,9 +302,9 @@ class DataSourceLarkWikiApi(Resource):
             raise NotFound('Data source binding not found.')
 
         extractor = LarkWikiExtractor(
-            workspace_id=workspace_id,
-            lark_obj_token=obj_token,
-            lark_obj_type=obj_type,
+            lark_workspace_id=workspace_id,
+            obj_token=obj_token,
+            obj_type=obj_type,
             tenant_id=current_user.current_tenant_id
         )
 
@@ -324,17 +326,17 @@ class DataSourceLarkWikiApi(Resource):
         args = parser.parse_args()
         # validate args
         DocumentService.estimate_args_validate(args)
-        notion_info_list = args['larkwiki_info_list']
+        larkwiki_info_list = args['larkwiki_info_list']
         extract_settings = []
-        for notion_info in notion_info_list:
-            workspace_id = notion_info['workspace_id']
-            for page in notion_info['pages']:
+        for larkwiki_info in larkwiki_info_list:
+            workspace_id = larkwiki_info['workspace_id']
+            for page in larkwiki_info['pages']:
                 extract_setting = ExtractSetting(
                     datasource_type="larkwiki_import",
                     larkwiki_info={
-                        "notion_workspace_id": workspace_id,
-                        "notion_obj_id": page['page_id'],
-                        "notion_page_type": page['type'],
+                        "lark_workspace_id": workspace_id,
+                        "obj_token": page['page_id'],
+                        "obj_type": page['type'],
                         "tenant_id": current_user.current_tenant_id
                     },
                     document_model=args['doc_form']
