@@ -56,7 +56,7 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def put(self, app_id):
+    def patch(self, app_id):
         """Update an existing trace app configuration"""
         parser = reqparse.RequestParser()
         parser.add_argument('tracing_provider', type=str, required=True, location='json')
