@@ -23,7 +23,7 @@ class OAuthDataSource:
         raise NotImplementedError()
 
 
-class LarkOAuthDataSource:
+class LarkWikiOAuthDataSource:
     def __init__(self, app_id: str, app_secret: str):
         self.app_id = app_id
         self.app_secret = app_secret
@@ -309,7 +309,7 @@ class NotionOAuth(OAuthDataSource):
         return results
 
 
-class LarkOAuth(LarkOAuthDataSource):
+class LarkWikiOAuth(LarkWikiOAuthDataSource):
     _LARK_TENANT_ACCESS_TOKEN_URL = 'https://open.feishu-boe.cn/open-apis/auth/v3/tenant_access_token/internal'
     _LARK_WIKI_SPACES_SEARCH = 'https://open.feishu-boe.cn/open-apis/wiki/v2/spaces'
     _LARK_WIKI_NODES_SEARCH = 'https://open.feishu-boe.cn/open-apis/wiki/v2/spaces/{space_id}/nodes'
@@ -384,7 +384,7 @@ class LarkOAuth(LarkOAuthDataSource):
         data_source_binding = DataSourceOauthBinding.query.filter(
             db.and_(
                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceOauthBinding.provider == 'lark',
+                DataSourceOauthBinding.provider == 'larkwiki',
                 DataSourceOauthBinding.access_token == self.app_secret
             )
         ).first()
@@ -397,7 +397,7 @@ class LarkOAuth(LarkOAuthDataSource):
                 tenant_id=current_user.current_tenant_id,
                 access_token=self.app_secret,
                 source_info=source_info,
-                provider='lark'
+                provider='larkwiki'
             )
             db.session.add(new_data_source_binding)
             db.session.commit()
@@ -406,7 +406,7 @@ class LarkOAuth(LarkOAuthDataSource):
         data_source_binding = DataSourceOauthBinding.query.filter(
             db.and_(
                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceOauthBinding.provider == 'lark',
+                DataSourceOauthBinding.provider == 'larkwiki',
                 DataSourceOauthBinding.id == binding_id,
                 DataSourceOauthBinding.disabled == False
             )
