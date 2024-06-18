@@ -339,7 +339,7 @@ class IndexingRunner:
     def _extract(self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict) \
             -> list[Document]:
         # load file
-        if dataset_document.data_source_type not in ["upload_file", "notion_import", "website_crawl"]:
+        if dataset_document.data_source_type not in ["upload_file", "notion_import","larkwiki_import", "website_crawl"]:
             return []
 
         data_source_info = dataset_document.data_source_info_dict
@@ -369,6 +369,22 @@ class IndexingRunner:
                     "notion_workspace_id": data_source_info['notion_workspace_id'],
                     "notion_obj_id": data_source_info['notion_page_id'],
                     "notion_page_type": data_source_info['type'],
+                    "document": dataset_document,
+                    "tenant_id": dataset_document.tenant_id
+                },
+                document_model=dataset_document.doc_form
+            )
+            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule['mode'])
+        elif dataset_document.data_source_type == 'larkwiki_import':
+            if (not data_source_info or 'lark_workspace_id' not in data_source_info
+                    or 'obj_token' not in data_source_info):
+                raise ValueError("no larkwiki import info found")
+            extract_setting = ExtractSetting(
+                datasource_type="larkwiki_import",
+                larkwiki_info={
+                    "lark_workspace_id": data_source_info['lark_workspace_id'],
+                    "obj_token": data_source_info['obj_token'],
+                    "obj_type": data_source_info['obj_type'],
                     "document": dataset_document,
                     "tenant_id": dataset_document.tenant_id
                 },
@@ -730,7 +746,7 @@ class IndexingRunner:
             self._check_document_paused_status(dataset_document.id)
 
             tokens = 0
-            if dataset.indexing_technique == 'high_quality' or embedding_model_type_instance:
+            if dataset.indexing_technique == 'high_quality' or embedding_model_instance:
                 tokens += sum(
                     embedding_model_instance.get_text_embedding_num_tokens(
                         [document.page_content]

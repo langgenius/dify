@@ -13,6 +13,7 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.excel_extractor import ExcelExtractor
 from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
 from core.rag.extractor.html_extractor import HtmlExtractor
+from core.rag.extractor.larkwiki_extractor import LarkWikiExtractor
 from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
@@ -153,6 +154,15 @@ class ExtractProcessor:
                 notion_page_type=extract_setting.notion_info.notion_page_type,
                 document_model=extract_setting.notion_info.document,
                 tenant_id=extract_setting.notion_info.tenant_id,
+            )
+            return extractor.extract()
+        elif extract_setting.datasource_type == DatasourceType.LarkWike.value:
+            extractor = LarkWikiExtractor(
+                lark_workspace_id=extract_setting.larkwiki_info.lark_workspace_id,
+                obj_token=extract_setting.larkwiki_info.obj_token,
+                obj_type=extract_setting.larkwiki_info.obj_type,
+                document_model=extract_setting.larkwiki_info.document,
+                tenant_id=extract_setting.larkwiki_info.tenant_id,
             )
             return extractor.extract()
         elif extract_setting.datasource_type == DatasourceType.WEBSITE.value:

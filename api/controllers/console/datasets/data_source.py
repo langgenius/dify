@@ -335,8 +335,8 @@ class DataSourceLarkWikiApi(Resource):
                     datasource_type="larkwiki_import",
                     larkwiki_info={
                         "lark_workspace_id": workspace_id,
-                        "obj_token": page['page_id'],
-                        "obj_type": page['type'],
+                        "obj_token": page['obj_token'],
+                        "obj_type": page['obj_type'],
                         "tenant_id": current_user.current_tenant_id
                     },
                     document_model=args['doc_form']
@@ -395,7 +395,7 @@ api.add_resource(DataSourceNotionApi,
 api.add_resource(DataSourceLarkWikiListApi, '/larkwiki/pre-import/pages')
 api.add_resource(DataSourceLarkWikiApi,
                  '/larkwiki/workspaces/<uuid:workspace_id>/pages/<string:obj_token>/<string:obj_type>/preview',
-                 '/datasets/notion-indexing-estimate')
+                 '/datasets/larkwiki-indexing-estimate')
 
 api.add_resource(DataSourceDatasetSyncApi, '/datasets/<uuid:dataset_id>/notion/sync',
                  '/datasets/<uuid:dataset_id>/larkwiki/sync')
