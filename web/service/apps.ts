@@ -1,5 +1,5 @@
 import type { Fetcher } from 'swr'
-import { del, get, post, put } from './base'
+import { del, get, patch, post, put } from './base'
 import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, GenerationIntroductionResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WorkflowDailyConversationsResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppMode, ModelConfig } from '@/types/app'
@@ -159,6 +159,22 @@ export const fetchTracingConfig: Fetcher<TracingConfig, { appId: string; provide
       public_key: '123132*********************21',
       secret_key: '888877*********55',
       host: 'https://api.langfuse.ai',
+    },
+  })
+}
+
+export const addTracingConfig: Fetcher<CommonResponse, { appId: string; body: TracingConfig }> = ({ appId, body }) => {
+  return post(`/apps/${appId}/tracing-config`, { body })
+}
+
+export const updateTracingConfig: Fetcher<CommonResponse, { appId: string; body: TracingConfig }> = ({ appId, body }) => {
+  return patch(`/apps/${appId}/tracing-config`, { body })
+}
+
+export const removeTracingConfig: Fetcher<CommonResponse, { appId: string; provider: TracingProvider }> = ({ appId, provider }) => {
+  return del(`/apps/${appId}/tracing-config`, {
+    body: {
+      tracing_provider: provider,
     },
   })
 }

@@ -3,7 +3,7 @@ export enum TracingProvider {
   langfuse = 'langfuse',
 }
 
-export type LangSmitConfig = {
+export type LangSmithConfig = {
   api_key: string
   project: string
   endpoint: string
