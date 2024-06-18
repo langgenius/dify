@@ -63,7 +63,7 @@ const Panel: FC = () => {
   const handleChooseProvider = (provider: TracingProvider) => {
     handleTracingStatusChange({
       tracing_provider: provider,
-      enabled,
+      enabled: true,
     })
   }
   const inUseTracingProvider: TracingProvider | null = tracingStatus?.tracing_provider || null
