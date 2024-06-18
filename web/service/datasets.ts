@@ -152,6 +152,10 @@ export const syncDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId,
   return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/notion/sync`)
 }
 
+export const syncWebsite: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+  return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/website-sync`)
+}
+
 export const preImportNotionPages: Fetcher<{ notion_info: DataSourceNotionWorkspace[] }, { url: string; datasetId?: string }> = ({ url, datasetId }) => {
   return get<{ notion_info: DataSourceNotionWorkspace[] }>(url, { params: { dataset_id: datasetId } })
 }
@@ -225,6 +229,37 @@ export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Re
 
 export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> = (url) => {
   return get<{ api_base_url: string }>(url)
+}
+
+export const fetchDataSources = () => {
+  return get<CommonResponse>('api-key-auth/data-source')
+}
+
+export const createDataSourceApiKeyBinding: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('api-key-auth/data-source/binding', { body })
+}
+
+export const removeDataSourceApiKeyBinding: Fetcher<CommonResponse, string> = (id: string) => {
+  return del<CommonResponse>(`api-key-auth/data-source/${id}`)
+}
+
+export const createFirecrawlTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('website/crawl', {
+    body: {
+      ...body,
+      provider: 'firecrawl',
+    },
+  })
+}
+
+export const checkFirecrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
+  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
+    params: {
+      provider: 'firecrawl',
+    },
+  }, {
+    silent: true,
+  })
 }
 
 type FileTypesRes = {

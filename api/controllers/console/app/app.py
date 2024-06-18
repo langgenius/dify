@@ -68,8 +68,8 @@ class AppListApi(Resource):
         parser.add_argument('icon_background', type=str, location='json')
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         if 'mode' not in args or args['mode'] is None:
@@ -89,8 +89,8 @@ class AppImportApi(Resource):
     @cloud_edition_billing_resource_check('apps')
     def post(self):
         """Import app"""
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -129,6 +129,10 @@ class AppApi(Resource):
     @marshal_with(app_detail_fields_with_site)
     def put(self, app_model):
         """Update app"""
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+        
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, nullable=False, location='json')
         parser.add_argument('description', type=str, location='json')
@@ -147,7 +151,8 @@ class AppApi(Resource):
     @get_app_model
     def delete(self, app_model):
         """Delete app"""
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         app_service = AppService()
@@ -164,8 +169,8 @@ class AppCopyApi(Resource):
     @marshal_with(app_detail_fields_with_site)
     def post(self, app_model):
         """Copy app"""
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -203,6 +208,10 @@ class AppNameApi(Resource):
     @get_app_model
     @marshal_with(app_detail_fields)
     def post(self, app_model):
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+        
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, location='json')
         args = parser.parse_args()
@@ -220,6 +229,10 @@ class AppIconApi(Resource):
     @get_app_model
     @marshal_with(app_detail_fields)
     def post(self, app_model):
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+        
         parser = reqparse.RequestParser()
         parser.add_argument('icon', type=str, location='json')
         parser.add_argument('icon_background', type=str, location='json')
@@ -238,6 +251,10 @@ class AppSiteStatus(Resource):
     @get_app_model
     @marshal_with(app_detail_fields)
     def post(self, app_model):
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+        
         parser = reqparse.RequestParser()
         parser.add_argument('enable_site', type=bool, required=True, location='json')
         args = parser.parse_args()
@@ -255,6 +272,10 @@ class AppApiStatus(Resource):
     @get_app_model
     @marshal_with(app_detail_fields)
     def post(self, app_model):
+        # The role of the current user in the ta table must be admin or owner
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+        
         parser = reqparse.RequestParser()
         parser.add_argument('enable_api', type=bool, required=True, location='json')
         args = parser.parse_args()

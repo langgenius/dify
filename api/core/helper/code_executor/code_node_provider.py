@@ -25,7 +25,7 @@ class CodeNodeProvider(BaseModel):
 
     @classmethod
     def get_default_available_packages(cls) -> list[dict]:
-        return [p.dict() for p in CodeExecutor.list_dependencies(cls.get_language())]
+        return [p.model_dump() for p in CodeExecutor.list_dependencies(cls.get_language())]
 
     @classmethod
     def get_default_config(cls) -> dict:

@@ -1,11 +1,17 @@
+import json
 from typing import Any
 
 import requests
 from elasticsearch import Elasticsearch
-from pydantic import BaseModel, root_validator
+from flask import current_app
+from pydantic import BaseModel, model_validator
 
+from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
+from models.dataset import Dataset
 
 
 class ElasticSearchConfig(BaseModel):
@@ -14,7 +20,7 @@ class ElasticSearchConfig(BaseModel):
     api_key_id: str
     api_key: str
 
-    @root_validator()
+    @model_validator(mode='before')
     def validate_config(cls, values: dict) -> dict:
         if not values['host']:
             raise ValueError("config HOST is required")
@@ -156,3 +162,27 @@ class ElasticSearchVector(BaseVector):
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         return self.add_texts(texts, embeddings, **kwargs)
+
+
+class ElasticSearchVectorFactory(AbstractVectorFactory):
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> ElasticSearchVector:
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
+            collection_name = class_prefix
+        else:
+            dataset_id = dataset.id
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+            dataset.index_struct = json.dumps(
+                self.gen_index_struct_dict(VectorType.ELASTICSEARCH, collection_name))
+
+        config = current_app.config
+        return ElasticSearchVector(
+            index_name=collection_name,
+            config=ElasticSearchConfig(
+                host=config.get('ELASTICSEARCH_HOST'),
+                port=config.get('ELASTICSEARCH_PORT'),
+                api_key_id=config.get('ELASTICSEARCH_API_KEY_ID'),
+                api_key=config.get('ELASTICSEARCH_API_KEY'),
+            ),
+            attributes=[]
+        )

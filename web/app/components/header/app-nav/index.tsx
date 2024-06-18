@@ -39,7 +39,7 @@ const getKey = (
 const AppNav = () => {
   const { t } = useTranslation()
   const { appId } = useParams()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const appDetail = useAppStore(state => state.appDetail)
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
@@ -71,8 +71,8 @@ const AppNav = () => {
     if (appsData) {
       const appItems = flatten(appsData?.map(appData => appData.data))
       const navItems = appItems.map((app) => {
-        const link = ((isCurrentWorkspaceManager, app) => {
-          if (!isCurrentWorkspaceManager) {
+        const link = ((isCurrentWorkspaceEditor, app) => {
+          if (!isCurrentWorkspaceEditor) {
             return `/app/${app.id}/overview`
           }
           else {
@@ -81,7 +81,7 @@ const AppNav = () => {
             else
               return `/app/${app.id}/configuration`
           }
-        })(isCurrentWorkspaceManager, app)
+        })(isCurrentWorkspaceEditor, app)
         return {
           id: app.id,
           icon: app.icon,
@@ -93,7 +93,7 @@ const AppNav = () => {
       })
       setNavItems(navItems)
     }
-  }, [appsData, isCurrentWorkspaceManager, setNavItems])
+  }, [appsData, isCurrentWorkspaceEditor, setNavItems])
 
   // update current app name
   useEffect(() => {

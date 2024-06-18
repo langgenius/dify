@@ -192,10 +192,11 @@ Si vous devez personnaliser la configuration, veuillez
 
  vous référer aux commentaires dans notre fichier [docker-compose.yml](docker/docker-compose.yaml) et définir manuellement la configuration de l'environnement. Après avoir apporté les modifications, veuillez exécuter à nouveau `docker-compose up -d`. Vous pouvez voir la liste complète des variables d'environnement [ici](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
-Si vous souhaitez configurer une installation hautement disponible, il existe des [Helm Charts](https://helm.sh/) contribués par la communauté qui permettent de déployer Dify sur Kubernetes.
+Si vous souhaitez configurer une configuration haute disponibilité, la communauté fournit des [Helm Charts](https://helm.sh/) et des fichiers YAML, à travers lesquels vous pouvez déployer Dify sur Kubernetes.
 
 - [Helm Chart par @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart par @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
+- [Fichier YAML par @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
 
 ## Contribuer

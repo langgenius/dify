@@ -60,7 +60,6 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
 
   return (
     <Modal
-      wrapperClassName='!z-[1020]'
       className='px-8 py-6 !max-w-[600px] !w-[600px] rounded-xl'
       isShow={show}
       onClose={() => setShowTagManagementModal(false)}

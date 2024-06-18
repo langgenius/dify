@@ -21,6 +21,16 @@ class JinaSearchTool(BuiltinTool):
             'Accept': 'application/json'
         }
 
+        if 'api_key' in self.runtime.credentials and self.runtime.credentials.get('api_key'):
+            headers['Authorization'] = "Bearer " + self.runtime.credentials.get('api_key')
+
+        proxy_server = tool_parameters.get('proxy_server', None)
+        if proxy_server is not None and proxy_server != '':
+            headers['X-Proxy-Url'] = proxy_server
+
+        if tool_parameters.get('no_cache', False):
+            headers['X-No-Cache'] = 'true'
+
         response = ssrf_proxy.get(
             str(URL(self._jina_search_endpoint + query)),
             headers=headers,

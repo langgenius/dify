@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Optional, Union, cast
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from core.tools.entities.common_entities import I18nObject
 
@@ -115,6 +115,14 @@ class ToolInvokeMessageBinary(BaseModel):
 class ToolParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
+
+    @field_validator('value', mode='before')
+    @classmethod
+    def transform_id_to_str(cls, value) -> str:
+        if not isinstance(value, str):
+            return str(value)
+        else:
+            return value
 
 
 class ToolParameter(BaseModel):
@@ -278,7 +286,7 @@ class ToolRuntimeVariablePool(BaseModel):
             'conversation_id': self.conversation_id,
             'user_id': self.user_id,
             'tenant_id': self.tenant_id,
-            'pool': [variable.dict() for variable in self.pool],
+            'pool': [variable.model_dump() for variable in self.pool],
         }
     
     def set_text(self, tool_name: str, name: str, value: str) -> None:

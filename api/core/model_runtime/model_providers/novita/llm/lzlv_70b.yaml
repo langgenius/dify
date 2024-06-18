@@ -1,0 +1,36 @@
+model: lzlv_70b
+label:
+  zh_Hans: lzlv_70b
+  en_US: lzlv_70b
+model_type: llm
+features:
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 4096
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+    min: 0
+    max: 2
+    default: 1
+  - name: top_p
+    use_template: top_p
+    min: 0
+    max: 1
+    default: 1
+  - name: max_tokens
+    use_template: max_tokens
+    min: 1
+    max: 2048
+    default: 512
+  - name: frequency_penalty
+    use_template: frequency_penalty
+    min: -2
+    max: 2
+    default: 0
+  - name: presence_penalty
+    use_template: presence_penalty
+    min: -2
+    max: 2
+    default: 0
