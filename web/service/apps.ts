@@ -1,8 +1,9 @@
 import type { Fetcher } from 'swr'
 import { del, get, post, put } from './base'
-import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, GenerationIntroductionResponse, TracingConfig, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WorkflowDailyConversationsResponse } from '@/models/app'
+import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, GenerationIntroductionResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WorkflowDailyConversationsResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppMode, ModelConfig } from '@/types/app'
+import { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 
 export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Record<string, any> }> = ({ url, params }) => {
   return get<AppListResponse>(url, { params })
@@ -123,14 +124,41 @@ export const fetchAppVoices: Fetcher<AppVoicesListResponse, { appId: string; lan
 }
 
 // Tracing
-export const fetchTracingConfig: Fetcher<TracingConfig, { appId: string }> = ({ appId }) => {
+export const fetchTracingStatus: Fetcher<TracingStatus, { appId: string }> = ({ appId }) => {
   // return get(`/apps/${appId}/tracing-config`)
   return Promise.resolve({
-    tracing_provider: 'langSmith',
+    enabled: true,
+    tracing_provider: 'langsmith',
+  })
+}
+
+export const updateTracingStatus: Fetcher<CommonResponse, { appId: string; body: Record<string, any> }> = ({ appId, body }) => {
+  return post(`/apps/${appId}/tracing-config`, { body })
+  // return Promise.resolve({ result: 'success' })
+}
+
+export const fetchTracingConfig: Fetcher<TracingConfig, { appId: string; provider: TracingProvider }> = ({ appId, provider }) => {
+  // return get(`/apps/${appId}/tracing-config`, {
+  //   params: {
+  //     tracing_provider: provider,
+  //   }
+  // })
+  if (provider === TracingProvider.langSmith) {
+    return Promise.resolve({
+      tracing_provider: 'langsmith',
+      tracing_config: {
+        api_key: '123132*********************21',
+        endpoint: 'https://api.langsmith.ai',
+        project: 'test',
+      },
+    })
+  }
+  return Promise.resolve({
+    tracing_provider: 'langfuse',
     tracing_config: {
-      api_key: '123132*********************21',
-      endpoint: 'https://api.langsmith.ai',
-      project: 'test',
+      public_key: '123132*********************21',
+      secret_key: '888877*********55',
+      host: 'https://api.langfuse.ai',
     },
   })
 }
