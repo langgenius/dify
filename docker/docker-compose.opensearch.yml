@@ -36,7 +36,5 @@ services:
     networks:
       - opensearch-net
 
-volumes:
-  opensearch:
 networks:
   opensearch-net:
