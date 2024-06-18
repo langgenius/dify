@@ -59,7 +59,7 @@ class ToolNode(BaseNode):
         # get tracing instance
         workflow: Workflow = db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
         app_id = workflow.app_id
-        tracing_instance = OpsTraceService.get_ops_trace_instance(app_id=app_id, workflow=workflow)
+        tracing_instance = OpsTraceService.get_ops_trace_instance(app_id=app_id)
 
         try:
             messages = ToolEngine.workflow_invoke(

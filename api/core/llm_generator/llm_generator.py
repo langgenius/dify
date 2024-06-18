@@ -58,10 +58,9 @@ class LLMGenerator:
         # get tracing instance
         conversation_data: Conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
         app_id = conversation_data.app_id
-        app_model_config = OpsTraceService.get_app_config_through_message_id(message_id=conversation_data.message_id)
 
         tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_id, app_model_config=app_model_config
+            app_id=app_id
         )
 
         if tracing_instance:
