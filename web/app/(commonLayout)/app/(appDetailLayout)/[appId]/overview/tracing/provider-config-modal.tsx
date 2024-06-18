@@ -136,7 +136,7 @@ const ProviderConfigModal: FC<Props> = ({
         message: t('common.api.success'),
       })
       onSaved(config)
-      if (!isAdd)
+      if (isAdd)
         onChosen(type)
     }
     finally {
