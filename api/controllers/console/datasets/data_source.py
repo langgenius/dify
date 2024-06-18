@@ -155,6 +155,64 @@ class DataSourceNotionListApi(Resource):
         }, 200
 
 
+class DataSourceLarkWikiListApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(integrate_notion_info_list_fields)
+    def get(self):
+        dataset_id = request.args.get('dataset_id', default=None, type=str)
+        exist_page_ids = []
+        # import notion in the exist dataset
+        if dataset_id:
+            dataset = DatasetService.get_dataset(dataset_id)
+            if not dataset:
+                raise NotFound('Dataset not found.')
+            if dataset.data_source_type != 'notion_import':
+                raise ValueError('Dataset is not notion type.')
+            documents = Document.query.filter_by(
+                dataset_id=dataset_id,
+                tenant_id=current_user.current_tenant_id,
+                data_source_type='notion_import',
+                enabled=True
+            ).all()
+            if documents:
+                for document in documents:
+                    data_source_info = json.loads(document.data_source_info)
+                    exist_page_ids.append(data_source_info['notion_page_id'])
+        # get all authorized pages
+        data_source_bindings = DataSourceOauthBinding.query.filter_by(
+            tenant_id=current_user.current_tenant_id,
+            provider='notion',
+            disabled=False
+        ).all()
+        if not data_source_bindings:
+            return {
+                'notion_info': []
+            }, 200
+        pre_import_info_list = []
+        for data_source_binding in data_source_bindings:
+            source_info = data_source_binding.source_info
+            pages = source_info['pages']
+            # Filter out already bound pages
+            for page in pages:
+                if page['page_id'] in exist_page_ids:
+                    page['is_bound'] = True
+                else:
+                    page['is_bound'] = False
+            pre_import_info = {
+                'workspace_name': source_info['workspace_name'],
+                'workspace_icon': source_info['workspace_icon'],
+                'workspace_id': source_info['workspace_id'],
+                'pages': pages,
+            }
+            pre_import_info_list.append(pre_import_info)
+        return {
+            'notion_info': pre_import_info_list
+        }, 200
+
+
 class DataSourceNotionApi(Resource):
 
     @setup_required
@@ -222,7 +280,7 @@ class DataSourceNotionApi(Resource):
         return response, 200
 
 
-class DataSourceNotionDatasetSyncApi(Resource):
+class DataSourceDatasetSyncApi(Resource):
 
     @setup_required
     @login_required
@@ -239,7 +297,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
         return 200
 
 
-class DataSourceNotionDocumentSyncApi(Resource):
+class DataSourceDocumentSyncApi(Resource):
 
     @setup_required
     @login_required
@@ -260,8 +318,9 @@ class DataSourceNotionDocumentSyncApi(Resource):
 
 api.add_resource(DataSourceApi, '/data-source/integrates', '/data-source/integrates/<uuid:binding_id>/<string:action>')
 api.add_resource(DataSourceNotionListApi, '/notion/pre-import/pages')
+api.add_resource(DataSourceLarkWikiListApi, '/larkwiki/pre-import/pages')
 api.add_resource(DataSourceNotionApi,
                  '/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/<string:page_type>/preview',
                  '/datasets/notion-indexing-estimate')
-api.add_resource(DataSourceNotionDatasetSyncApi, '/datasets/<uuid:dataset_id>/notion/sync')
-api.add_resource(DataSourceNotionDocumentSyncApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync')
+api.add_resource(DataSourceDatasetSyncApi, '/datasets/<uuid:dataset_id>/notion/sync', '/datasets/<uuid:dataset_id>/larkwiki/sync')
+api.add_resource(DataSourceDocumentSyncApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync', '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/larkwiki/sync')

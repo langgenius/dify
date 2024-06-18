@@ -102,3 +102,5 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                 logging.info(click.style(str(ex), fg='yellow'))
             except Exception:
                 pass
+    elif document.data_source_type == 'larkwiki_import':
+        pass
