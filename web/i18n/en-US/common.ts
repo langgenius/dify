@@ -12,6 +12,7 @@ const translation = {
     cancel: 'Cancel',
     clear: 'Clear',
     save: 'Save',
+    saveAndEnable: 'Save & Enable',
     edit: 'Edit',
     add: 'Add',
     added: 'Added',
