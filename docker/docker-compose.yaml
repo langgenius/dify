@@ -507,6 +507,25 @@ services:
   #     timeout: 3s
   #     retries: 30
 
+  # The oracle vector database.
+  # Uncomment to use oracle23ai as vector store.
+  # oracle:
+  #   image: container-registry.oracle.com/database/free:latest
+  #   restart: always
+  #   container_name: free23c
+  #   ports:
+  #     - 1521:1521
+  #   volumes:
+  #     - type: volume
+  #       source: oradata
+  #       target: /opt/oracle/oradata
+  #     - ./startupscripts:/opt/oracle/scripts/startup
+  #   environment:
+  #     - ORACLE_PWD=Dify123456
+  #     - ORACLE_CHARACTERSET=AL32UTF8
+
+volumes:
+  oradata:
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.

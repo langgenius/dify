@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS {table_name} (
     ,text CLOB NOT NULL
     ,meta JSON
     ,embedding vector NOT NULL
-) tablespace tbs1
+) 
 """
 
 
@@ -96,7 +96,7 @@ class OracleVector(BaseVector):
         return oracledb.create_pool(user=config.user,
                              password=config.password,
                              dsn="%s:%s/%s" % (config.host, config.port, config.database),
-                             min=1, max=5, increment=1)
+                             min=1, max=50, increment=1)
 
 
     @contextmanager
