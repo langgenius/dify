@@ -139,7 +139,7 @@ const ProviderConfigModal: FC<Props> = ({
         onChosen(type)
     }
     finally {
-      setIsSaving(true)
+      setIsSaving(false)
     }
   }, [appId, checkValid, config, isEdit, isSaving, onChosen, onSaved, t, type])
 
