@@ -16,6 +16,7 @@ import {
 const I18N_PREFIX = 'app.tracing'
 
 type Props = {
+  readOnly: boolean
   className?: string
   hasConfigured: boolean
 } & PopupProps
@@ -30,6 +31,9 @@ const ConfigBtn: FC<Props> = ({
   const handleTrigger = useCallback(() => {
     setOpen(v => !v)
   }, [setOpen])
+
+  if (popupProps.readOnly && !hasConfigured)
+    return null
 
   const triggerContent = hasConfigured
     ? (

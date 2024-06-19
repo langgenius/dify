@@ -16,6 +16,7 @@ const I18N_PREFIX = 'app.tracing'
 
 export type PopupProps = {
   appId: string
+  readOnly: boolean
   enabled: boolean
   onStatusChange: (enabled: boolean) => void
   chosenProvider: TracingProvider | null
@@ -28,6 +29,7 @@ export type PopupProps = {
 
 const ConfigPopup: FC<PopupProps> = ({
   appId,
+  readOnly,
   enabled,
   onStatusChange,
   chosenProvider,
@@ -82,6 +84,7 @@ const ConfigPopup: FC<PopupProps> = ({
   const langSmithPanel = (
     <ProviderPanel
       type={TracingProvider.langSmith}
+      readOnly={readOnly}
       hasConfigured={!!langSmithConfig}
       onConfig={handleOnConfig(TracingProvider.langSmith)}
       isChosen={chosenProvider === TracingProvider.langSmith}
@@ -92,6 +95,7 @@ const ConfigPopup: FC<PopupProps> = ({
   const langfusePanel = (
     <ProviderPanel
       type={TracingProvider.langfuse}
+      readOnly={readOnly}
       hasConfigured={!!langFuseConfig}
       onConfig={handleOnConfig(TracingProvider.langfuse)}
       isChosen={chosenProvider === TracingProvider.langfuse}
@@ -111,16 +115,20 @@ const ConfigPopup: FC<PopupProps> = ({
           <div className='ml-1.5 text-xs font-semibold text-gray-500 uppercase'>
             {t(`${I18N_PREFIX}.${enabled ? 'enabled' : 'disabled'}`)}
           </div>
-          {providerAllNotConfigured
-            ? (
-              <TooltipPlus
-                popupContent={t(`${I18N_PREFIX}.disabledTip`)}
-              >
-                {switchContent}
+          {!readOnly && (
+            <>
+              {providerAllNotConfigured
+                ? (
+                  <TooltipPlus
+                    popupContent={t(`${I18N_PREFIX}.disabledTip`)}
+                  >
+                    {switchContent}
 
-              </TooltipPlus>
-            )
-            : switchContent}
+                  </TooltipPlus>
+                )
+                : switchContent}
+            </>
+          )}
 
         </div>
       </div>

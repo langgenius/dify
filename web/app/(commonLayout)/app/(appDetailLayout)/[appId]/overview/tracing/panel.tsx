@@ -15,6 +15,7 @@ import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
 import type { TracingStatus } from '@/models/app'
 import Toast from '@/app/components/base/toast'
+import { useAppContext } from '@/context/app-context'
 
 const I18N_PREFIX = 'app.tracing'
 
@@ -36,6 +37,8 @@ const Panel: FC = () => {
   const pathname = usePathname()
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
+  const { isCurrentWorkspaceEditor } = useAppContext()
+  const readOnly = !isCurrentWorkspaceEditor
 
   const [isLoaded, {
     setTrue: setLoaded,
@@ -142,6 +145,7 @@ const Panel: FC = () => {
           <div className='flex items-center space-x-1'>
             <ConfigButton
               appId={appId}
+              readOnly={readOnly}
               hasConfigured={false}
               enabled={enabled}
               onStatusChange={handleTracingEnabledChange}
@@ -185,6 +189,7 @@ const Panel: FC = () => {
 
         <ConfigButton
           appId={appId}
+          readOnly={readOnly}
           hasConfigured
           className='ml-2'
           enabled={enabled}
