@@ -14,7 +14,7 @@ from models.dataset import Document
 from models.model import Message, MessageAgentThought, MessageFile
 from models.workflow import WorkflowNodeExecution, WorkflowRun
 from services.ops_trace.base_trace_instance import BaseTraceInstance
-from services.ops_trace.utils import filter_none_values
+from services.ops_trace.utils import filter_none_values, replace_text_with_content
 
 
 class LangSmithRunType(str, Enum):
@@ -97,6 +97,8 @@ class LangSmithRunModel(LangSmithTokenUsage, LangSmithMultiModel):
             }
         elif isinstance(v, list):
             if len(v) > 0 and isinstance(v[0], dict):
+                # rename text to content
+                replace_text_with_content(data=v)
                 data = {
                     "message": v,
                     "usage_metadata": usage_metadata,
@@ -543,3 +545,13 @@ class LangSmithDataTrace(BaseTraceInstance):
             print("LangSmith Run updated successfully.")
         except Exception as e:
             raise f"LangSmith Failed to update run: {str(e)}"
+
+    def api_check(self):
+        try:
+            random_project_name = f"test_project_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            self.langsmith_client.create_project(project_name=random_project_name)
+            self.langsmith_client.delete_project(project_name=random_project_name)
+            return True
+        except Exception as e:
+            print(f"LangSmith API check failed: {str(e)}")
+            return False
