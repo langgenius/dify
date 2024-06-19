@@ -85,11 +85,13 @@ const Panel: FC = () => {
       setLangFuseConfig(langFuseConfig as LangFuseConfig)
   }
 
-  const handleTracingConfigUpdated = (provider: TracingProvider, payload: LangSmithConfig | LangFuseConfig) => {
+  const handleTracingConfigUpdated = async (provider: TracingProvider) => {
+    // call api to hide secret key value
+    const { tracing_config } = await doFetchTracingConfig({ appId, provider })
     if (provider === TracingProvider.langSmith)
-      setLangSmithConfig(payload as LangSmithConfig)
+      setLangSmithConfig(tracing_config as LangSmithConfig)
     else
-      setLangFuseConfig(payload as LangFuseConfig)
+      setLangFuseConfig(tracing_config as LangFuseConfig)
   }
 
   const handleTracingConfigRemoved = (provider: TracingProvider) => {
