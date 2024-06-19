@@ -86,7 +86,7 @@ export const useWorkflowHistory = () => {
       case WorkflowHistoryEvent.NodeResize:
       case WorkflowHistoryEvent.NoteAdd:
       case WorkflowHistoryEvent.NoteChange:
-        // Hint: Note change does not change when note text changes
+        // Hint: Note change does not trigger when note text changes,
         // because the note editors have their own history states.
         saveStateToHistoryRef.current(event)
         break
