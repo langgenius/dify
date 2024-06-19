@@ -90,4 +90,5 @@ tencentcloud-sdk-python-hunyuan~=3.0.1158
 chromadb~=0.5.1
 novita_client~=0.5.6
 tenacity~=8.3.0
+opensearch-py==2.4.0
 cos-python-sdk-v5==1.9.30
