@@ -372,7 +372,7 @@ export const useNodesInteractions = () => {
 
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.NodeConnect)
-  }, [store, handleSyncWorkflowDraft, getNodesReadOnly])
+  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType, handleId }) => {
     if (getNodesReadOnly())
@@ -562,7 +562,7 @@ export const useNodesInteractions = () => {
 
     else
       saveStateToHistory(WorkflowHistoryEvent.NodeDelete)
-  }, [store, handleSyncWorkflowDraft, getNodesReadOnly, workflowStore, t])
+  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, t])
 
   const handleNodeAdd = useCallback<OnNodeAdd>((
     {
@@ -899,7 +899,7 @@ export const useNodesInteractions = () => {
     console.log('saveStateToHistory')
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
-  }, [store, workflowStore, handleSyncWorkflowDraft, getAfterNodesInSameBranch, getNodesReadOnly, t])
+  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch])
 
   const handleNodeChange = useCallback((
     currentNodeId: string,
@@ -1233,7 +1233,7 @@ export const useNodesInteractions = () => {
     setNodes(newNodes)
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.NodeResize)
-  }, [store, getNodesReadOnly, handleSyncWorkflowDraft])
+  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleHistoryBack = useCallback(() => {
     const {
