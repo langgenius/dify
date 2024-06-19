@@ -7,6 +7,7 @@ from celery import shared_task
 from werkzeug.exceptions import NotFound
 
 from core.indexing_runner import DocumentIsPausedException, IndexingRunner
+from core.rag.extractor.larkwiki_extractor import LarkWikiExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
@@ -89,7 +90,9 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
 
                 end_at = time.perf_counter()
                 logging.info(
-                    click.style('Cleaned document when document update data source or process rule: {} latency: {}'.format(document_id, end_at - start_at), fg='green'))
+                    click.style(
+                        'Cleaned document when document update data source or process rule: {} latency: {}'.format(
+                            document_id, end_at - start_at), fg='green'))
             except Exception:
                 logging.exception("Cleaned document when document update data source or process rule failed")
 
@@ -97,10 +100,78 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                 indexing_runner = IndexingRunner()
                 indexing_runner.run([document])
                 end_at = time.perf_counter()
-                logging.info(click.style('update document: {} latency: {}'.format(document.id, end_at - start_at), fg='green'))
+                logging.info(
+                    click.style('update document: {} latency: {}'.format(document.id, end_at - start_at), fg='green'))
             except DocumentIsPausedException as ex:
                 logging.info(click.style(str(ex), fg='yellow'))
             except Exception:
                 pass
     elif document.data_source_type == 'larkwiki_import':
-        pass
+        if not data_source_info or 'obj_token' not in data_source_info \
+                or 'lark_workspace_id' not in data_source_info:
+            raise ValueError("no larkwiki page found")
+        workspace_id = data_source_info['lark_workspace_id']
+        obj_token = data_source_info['obj_token']
+        obj_type = data_source_info['obj_type']
+        page_edited_time = data_source_info['last_edited_time']
+        data_source_binding = DataSourceOauthBinding.query.filter(
+            db.and_(
+                DataSourceOauthBinding.tenant_id == document.tenant_id,
+                DataSourceOauthBinding.provider == 'larkwiki',
+                DataSourceOauthBinding.disabled == False,
+                DataSourceOauthBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+            )
+        ).first()
+        if not data_source_binding:
+            raise ValueError('Data source binding not found.')
+
+        loader = LarkWikiExtractor(
+            lark_workspace_id=workspace_id,
+            obj_token=obj_token,
+            obj_type=obj_type,
+            tenant_id=document.tenant_id
+        )
+
+        last_edited_time = loader.get_lark_wiki_node_last_edited_time()
+
+        # check the page is updated
+        if last_edited_time != page_edited_time:
+            document.indexing_status = 'parsing'
+            document.processing_started_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            db.session.commit()
+
+            # delete all document segment and index
+            try:
+                dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+                if not dataset:
+                    raise Exception('Dataset not found')
+                index_type = document.doc_form
+                index_processor = IndexProcessorFactory(index_type).init_index_processor()
+
+                segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
+                index_node_ids = [segment.index_node_id for segment in segments]
+
+                # delete from vector index
+                index_processor.clean(dataset, index_node_ids)
+
+                for segment in segments:
+                    db.session.delete(segment)
+
+                end_at = time.perf_counter()
+                logging.info(
+                    click.style(
+                        'Cleaned document when document update data source or process rule: {} latency: {}'.format(
+                            document_id, end_at - start_at), fg='green'))
+            except Exception:
+                logging.exception("Cleaned document when document update data source or process rule failed")
+
+            try:
+                indexing_runner = IndexingRunner()
+                indexing_runner.run([document])
+                end_at = time.perf_counter()
+                logging.info(
+                    click.style('update document: {} latency: {}'.format(document.id, end_at - start_at), fg='green'))
+            except DocumentIsPausedException as ex:
+                logging.info(click.style(str(ex), fg='yellow'))
+            except Exception:
+                pass

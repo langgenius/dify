@@ -156,7 +156,7 @@ class ExtractProcessor:
                 tenant_id=extract_setting.notion_info.tenant_id,
             )
             return extractor.extract()
-        elif extract_setting.datasource_type == DatasourceType.LarkWike.value:
+        elif extract_setting.datasource_type == DatasourceType.LarkWiki.value:
             extractor = LarkWikiExtractor(
                 lark_workspace_id=extract_setting.larkwiki_info.lark_workspace_id,
                 obj_token=extract_setting.larkwiki_info.obj_token,

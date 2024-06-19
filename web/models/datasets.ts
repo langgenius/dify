@@ -5,6 +5,7 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 export enum DataSourceType {
   FILE = 'upload_file',
   NOTION = 'notion_import',
+  LarkWiki = 'larkwiki_import',
   WEB = 'website_crawl',
 }
 

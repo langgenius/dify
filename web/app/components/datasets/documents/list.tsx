@@ -147,7 +147,7 @@ export const OperationAction: FC<{
         opApi = disableDocument
         break
       case 'sync':
-        if (data_source_type === 'notion_import')
+        if (data_source_type === 'notion_import' || data_source_type === DataSourceType.LarkWiki)
           opApi = syncDocument
 
         else
@@ -255,7 +255,7 @@ export const OperationAction: FC<{
                   <SettingsIcon />
                   <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
                 </div>
-                {['notion_import', DataSourceType.WEB].includes(data_source_type) && (
+                {['notion_import', DataSourceType.WEB, DataSourceType.LarkWiki].includes(data_source_type) && (
                   <div className={s.actionItem} onClick={() => onOperate('sync')}>
                     <SyncIcon />
                     <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>

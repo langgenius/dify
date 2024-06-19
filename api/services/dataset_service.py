@@ -953,7 +953,7 @@ class DocumentService:
                         raise ValueError('Data source binding not found.')
                     for page in larkwiki_info['pages']:
                         data_source_info = {
-                            "notion_workspace_id": workspace_id,
+                            "lark_workspace_id": workspace_id,
                             "obj_token": page['obj_token'],
                             "obj_type": page['obj_type']
                         }
