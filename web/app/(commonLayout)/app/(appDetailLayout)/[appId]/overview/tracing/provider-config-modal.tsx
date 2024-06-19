@@ -70,7 +70,6 @@ const ProviderConfigModal: FC<Props> = ({
   }] = useBoolean(false)
 
   const handleRemove = useCallback(async () => {
-    hideRemoveConfirm()
     await removeTracingConfig({
       appId,
       provider: type,
@@ -80,6 +79,7 @@ const ProviderConfigModal: FC<Props> = ({
       message: t('common.api.remove'),
     })
     onRemoved()
+    hideRemoveConfirm()
   }, [hideRemoveConfirm, appId, type, t, onRemoved])
 
   const handleConfigChange = useCallback((key: string) => {
