@@ -13,10 +13,10 @@ class OracleVectorTest(AbstractVectorTest):
         self.vector = OracleVector(
             collection_name=self.collection_name,
             config=OracleVectorConfig(
-                host="xxx",
+                host="localhost",
                 port=1521,
-                user="vector",
-                password="vector",
+                user="dify",
+                password="dify",
                 database="FREEPDB1",
             ),
         )

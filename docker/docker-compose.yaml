@@ -524,7 +524,6 @@ services:
   # oracle:
   #   image: container-registry.oracle.com/database/free:latest
   #   restart: always
-  #   container_name: free23c
   #   ports:
   #     - 1521:1521
   #   volumes:

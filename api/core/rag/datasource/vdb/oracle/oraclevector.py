@@ -148,19 +148,19 @@ class OracleVector(BaseVector):
             for record in cur:
                 docs.append(Document(page_content=record[1], metadata=record[0]))
         return docs
-    def get_ids_by_metadata_field(self, key: str, value: str):
-        with self._get_cursor() as cur:
-            cur.execute(f"SELECT id FROM {self.table_name} d WHERE d.meta.{key}='{value}'" )
-            idss = []
-            for record in cur:
-                idss.append(record[0])
-        return idss
+    #def get_ids_by_metadata_field(self, key: str, value: str):
+    #    with self._get_cursor() as cur:
+    #        cur.execute(f"SELECT id FROM {self.table_name} d WHERE d.meta.{key}='{value}'" )
+    #        idss = []
+    #        for record in cur:
+    #            idss.append(record[0])
+    #    return idss
 
-    def delete_by_document_id(self, document_id: str):
-        ids = self.get_ids_by_metadata_field('doc_id', document_id)
-        if len(ids)>0:
-            with self._get_cursor() as cur:
-                cur.execute(f"delete FROM {self.table_name} d WHERE d.meta.doc_id in '%s'" % ("','".join(ids),))
+    #def delete_by_document_id(self, document_id: str):
+    #    ids = self.get_ids_by_metadata_field('doc_id', document_id)
+    #    if len(ids)>0:
+    #        with self._get_cursor() as cur:
+    #            cur.execute(f"delete FROM {self.table_name} d WHERE d.meta.doc_id in '%s'" % ("','".join(ids),))
 
 
     def delete_by_ids(self, ids: list[str]) -> None:
