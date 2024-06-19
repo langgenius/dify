@@ -16,7 +16,6 @@ DEFAULTS = {
     'QDRANT_CLIENT_TIMEOUT': 20,
     'QDRANT_GRPC_ENABLED': 'False',
     'QDRANT_GRPC_PORT': '6334',
-    'CELERY_BACKEND': 'database',
     'HOSTED_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_OPENAI_TRIAL_ENABLED': 'False',
     'HOSTED_OPENAI_TRIAL_MODELS': 'gpt-3.5-turbo,gpt-3.5-turbo-1106,gpt-3.5-turbo-instruct,gpt-3.5-turbo-16k,gpt-3.5-turbo-16k-0613,gpt-3.5-turbo-0613,gpt-3.5-turbo-0125,text-davinci-003',
@@ -68,15 +67,6 @@ class Config:
             'CONSOLE_CORS_ALLOW_ORIGINS', get_env('CONSOLE_WEB_URL'))
         self.WEB_API_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
             'WEB_API_CORS_ALLOW_ORIGINS', '*')
-
-        # ------------------------
-        # Celery worker Configurations.
-        # ------------------------
-        self.CELERY_BROKER_URL = get_env('CELERY_BROKER_URL')
-        self.CELERY_BACKEND = get_env('CELERY_BACKEND')
-        self.CELERY_RESULT_BACKEND = 'db+{}'.format(self.SQLALCHEMY_DATABASE_URI) \
-            if self.CELERY_BACKEND == 'database' else self.CELERY_BROKER_URL
-        self.BROKER_USE_SSL = self.CELERY_BROKER_URL.startswith('rediss://') if self.CELERY_BROKER_URL else False
 
         # S3 Storage settings
         self.S3_USE_AWS_MANAGED_IAM = get_bool_env('S3_USE_AWS_MANAGED_IAM')
