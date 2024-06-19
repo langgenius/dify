@@ -17,4 +17,7 @@ class BuiltinToolProviderSort:
 
         sorted_providers = sort_by_position_map(cls._position, providers, name_func)
 
-        return sorted_providers
+        blacklist = ['duckduckgo', 'brave', 'dalle', 'github', 'google', 'jina', 'slack', 'stablediffusion', 'youtube']
+        filtered_providers = [provider for provider in sorted_providers if provider.name not in blacklist]
+        return filtered_providers
+
