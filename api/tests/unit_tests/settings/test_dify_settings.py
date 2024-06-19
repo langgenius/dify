@@ -80,3 +80,9 @@ def test_database_configs(example_env_file):
         'pool_size': 0,
     }
     assert settings.SQLALCHEMY_ECHO is False
+
+
+def test_celery_configs(example_env_file):
+    settings = DifyConfigs(_env_file=example_env_file)
+
+    assert settings.CELERY_BACKEND == 'database'

@@ -2,6 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from configs.middleware.celery_configs import CeleryConfigs
 from configs.middleware.database_configs import DatabaseConfigs
 from configs.middleware.redis_configs import RedisConfigs
 
@@ -36,6 +37,7 @@ class KeywordStoreConfigs(BaseModel):
 
 class MiddlewareConfigs(
     # place the configs in alphabet order
+    CeleryConfigs,
     DatabaseConfigs,
     KeywordStoreConfigs,
     RedisConfigs,
