@@ -69,6 +69,7 @@ class TraceAppConfigApi(Resource):
                 tracing_provider=args['tracing_provider'],
                 tracing_config=args['tracing_config']
             )
+            print("==============", result)
             if not result:
                 raise TracingConfigNotExist()
             return {"result": "success"}

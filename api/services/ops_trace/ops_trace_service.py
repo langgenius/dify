@@ -1,14 +1,11 @@
 import json
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel
 
-from core.app.app_config.entities import AppAdditionalFeatures
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from extensions.ext_database import db
 from models.model import App, AppModelConfig, Conversation, Message, TraceAppConfig
-from models.workflow import Workflow
 from services.ops_trace.langfuse_trace import LangFuseDataTrace
 from services.ops_trace.langsmith_trace import LangSmithDataTrace
 
@@ -70,6 +67,13 @@ class OpsTraceService:
         :param tracing_config: tracing config
         :return:
         """
+        if tracing_provider not in [TracingProviderEnum.LANGFUSE.value, TracingProviderEnum.LANGSMITH.value]:
+            raise {"error": f"Invalid tracing provider: {tracing_provider}"}
+
+        # api check
+        if not cls.check_trace_config_is_effective(tracing_config, tracing_provider):
+            return {"error": "Tracing config is not effective"}
+
         # check if trace config already exists
         trace_config_data: TraceAppConfig = db.session.query(TraceAppConfig).filter(
             TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
@@ -100,6 +104,13 @@ class OpsTraceService:
         :param tracing_config: tracing config
         :return:
         """
+        if tracing_provider not in [TracingProviderEnum.LANGFUSE.value, TracingProviderEnum.LANGSMITH.value]:
+            raise ValueError(f"Invalid tracing provider: {tracing_provider}")
+
+        # api check
+        if not cls.check_trace_config_is_effective(tracing_config, tracing_provider):
+            raise ValueError("Invalid Credentials")
+
         # check if trace config already exists
         trace_config = db.session.query(TraceAppConfig).filter(
             TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
@@ -257,14 +268,10 @@ class OpsTraceService:
     def get_ops_trace_instance(
         cls,
         app_id,
-        workflow: Optional[Workflow] = None,
-        app_model_config: Optional[AppModelConfig | AppAdditionalFeatures] = None,
     ):
         """
         Get ops trace through model config
         :param app_id: app_id
-        :param workflow: workflow
-        :param app_model_config: app_model_config
         :return:
         """
         tracing_instance = None
@@ -329,7 +336,11 @@ class OpsTraceService:
         :param tracing_provider: tracing provider
         :return:
         """
+        # auth check
+        if tracing_provider not in [TracingProviderEnum.LANGFUSE.value, TracingProviderEnum.LANGSMITH.value]:
+            raise ValueError(f"Invalid tracing provider: {tracing_provider}")
         app_config: App = db.session.query(App).filter(App.id == app_id).first()
+
         app_config.tracing = json.dumps(
             {
                 "enabled": enabled,
@@ -353,3 +364,30 @@ class OpsTraceService:
             }
         app_trace_config = json.loads(app.tracing)
         return app_trace_config
+
+    @staticmethod
+    def check_trace_config_is_effective(tracing_config: dict, tracing_provider: str):
+        """
+        Check trace config is effective
+        :param tracing_config: tracing config
+        :param tracing_provider: tracing provider
+        :return:
+        """
+        if tracing_provider == TracingProviderEnum.LANGFUSE.value:
+            tracing_config = LangfuseConfig(**tracing_config)
+            langfuse_trace_instance = LangFuseDataTrace(
+                tracing_config.public_key,
+                tracing_config.secret_key,
+                tracing_config.host,
+            )
+            return langfuse_trace_instance.api_check()
+        elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
+            tracing_config = LangSmithConfig(**tracing_config)
+            langsmith_trace_instance = LangSmithDataTrace(
+                tracing_config.api_key,
+                tracing_config.project,
+                tracing_config.endpoint,
+            )
+            return langsmith_trace_instance.api_check()
+        else:
+            raise ValueError(f"Unsupported tracing provider: {tracing_provider}")

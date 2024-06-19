@@ -710,3 +710,10 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
 
         generation.end(**format_generation_data)
+
+    def api_check(self):
+        try:
+            return self.langfuse_client.auth_check()
+        except Exception as e:
+            print(f"LangFuse API check failed: {str(e)}")
+            return False
