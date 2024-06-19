@@ -12,6 +12,7 @@ const translation = {
     cancel: '取消',
     clear: '清空',
     save: '保存',
+    saveAndEnable: '保存并启用',
     edit: '编辑',
     add: '添加',
     added: '已添加',
