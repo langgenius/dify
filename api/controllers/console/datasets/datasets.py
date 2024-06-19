@@ -17,6 +17,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.retrieval.retrival_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
@@ -500,13 +501,15 @@ class DatasetRetrievalSettingApi(Resource):
             case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA | VectorType.TENCENT:
                 return {
                     'retrieval_method': [
-                        'semantic_search'
+                        RetrievalMethod.SEMANTIC_SEARCH
                     ]
                 }
             case VectorType.QDRANT | VectorType.WEAVIATE | VectorType.OPENSEARCH:
                 return {
                     'retrieval_method': [
-                        'semantic_search', 'full_text_search', 'hybrid_search'
+                        RetrievalMethod.SEMANTIC_SEARCH,
+                        RetrievalMethod.FULL_TEXT_SEARCH,
+                        RetrievalMethod.HYBRID_SEARCH,
                     ]
                 }
             case _:
@@ -522,13 +525,15 @@ class DatasetRetrievalSettingMockApi(Resource):
             case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA | VectorType.TENCEN:
                 return {
                     'retrieval_method': [
-                        'semantic_search'
+                        RetrievalMethod.SEMANTIC_SEARCH
                     ]
                 }
             case VectorType.QDRANT | VectorType.WEAVIATE | VectorType.OPENSEARCH:
                 return {
                     'retrieval_method': [
-                        'semantic_search', 'full_text_search', 'hybrid_search'
+                        RetrievalMethod.SEMANTIC_SEARCH,
+                        RetrievalMethod.FULL_TEXT_SEARCH,
+                        RetrievalMethod.HYBRID_SEARCH,
                     ]
                 }
             case _:
