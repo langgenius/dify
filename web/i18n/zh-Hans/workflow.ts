@@ -91,6 +91,10 @@ const translation = {
     nodePaste: '块已粘贴',
     nodeDelete: '块已删除',
     nodeAdd: '块已添加',
+    nodeResize: '块已调整大小',
+    noteAdd: '注释已添加',
+    noteChange: '注释已更改',
+    noteDelete: '注释已删除',
     edgeDelete: '块已断开连接',
   },
   errorMsg: {

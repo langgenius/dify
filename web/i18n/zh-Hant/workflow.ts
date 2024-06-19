@@ -90,6 +90,9 @@ const translation = {
     nodePaste: '區塊已粘貼',
     nodeDelete: '區塊已刪除',
     nodeAdd: '區塊已添加',
+    nodeResize: '區塊已調整大小',
+    noteAdd: '註釋已添加',
+    noteChange: '註釋已更改',
     edgeDelete: '區塊已斷開連接',
   },
   errorMsg: {

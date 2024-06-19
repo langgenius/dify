@@ -90,6 +90,10 @@ const translation = {
     nodePaste: 'ブロックが貼り付けられました',
     nodeDelete: 'ブロックが削除されました',
     nodeAdd: 'ブロックが追加されました',
+    nodeResize: 'ブロックがリサイズされました',
+    noteAdd: 'ノートが追加されました',
+    noteChange: 'ノートが変更されました',
+    noteDelete: 'ノートが削除されました',
     edgeDelete: 'ブロックが切断されました',
   },
   errorMsg: {

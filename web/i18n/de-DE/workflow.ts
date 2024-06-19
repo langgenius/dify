@@ -90,6 +90,10 @@ const translation = {
     nodePaste: 'Block eingefügt',
     nodeDelete: 'Block gelöscht',
     nodeAdd: 'Block hinzugefügt',
+    nodeResize: 'Blockgröße geändert',
+    noteAdd: 'Notiz hinzugefügt',
+    noteChange: 'Notiz geändert',
+    noteDelete: 'Notiz gelöscht',
     edgeDelete: 'Block getrennt',
   },
   errorMsg: {

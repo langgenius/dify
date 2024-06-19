@@ -90,6 +90,10 @@ const translation = {
     nodePaste: 'Bloco colado',
     nodeDelete: 'Bloco excluído',
     nodeAdd: 'Bloco adicionado',
+    nodeResize: 'Nota redimensionada',
+    noteAdd: 'Nota adicionada',
+    noteChange: 'Nota alterada',
+    noteDelete: 'Conexão excluída',
     edgeDelete: 'Bloco desconectado',
   },
   errorMsg: {

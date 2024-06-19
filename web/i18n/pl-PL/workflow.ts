@@ -90,6 +90,10 @@ const translation = {
     nodePaste: 'Blok wklejony',
     nodeDelete: 'Blok usunięty',
     nodeAdd: 'Blok dodany',
+    nodeResize: 'Notatka zmieniona',
+    noteAdd: 'Notatka dodana',
+    noteChange: 'Notatka zmieniona',
+    noteDelete: 'Notatka usunięta',
     edgeDelete: 'Blok rozłączony',
   },
   errorMsg: {

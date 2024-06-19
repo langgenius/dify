@@ -91,6 +91,10 @@ const translation = {
     nodePaste: 'Block pasted',
     nodeDelete: 'Block deleted',
     nodeAdd: 'Block added',
+    nodeResize: 'Block resized',
+    noteAdd: 'Note added',
+    noteChange: 'Note changed',
+    noteDelete: 'Note deleted',
     edgeDelete: 'Block disconnected',
   },
   errorMsg: {
