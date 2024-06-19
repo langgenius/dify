@@ -17,7 +17,7 @@ type IAppSelectorProps = {
 
 export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
   const router = useRouter()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const { t } = useTranslation()
 
@@ -65,7 +65,7 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
                 appItems.map((app: AppDetailResponse) => (
                   <Menu.Item key={app.id}>
                     <div className={itemClassName} onClick={() =>
-                      router.push(`/app/${app.id}/${isCurrentWorkspaceManager ? 'configuration' : 'overview'}`)
+                      router.push(`/app/${app.id}/${isCurrentWorkspaceEditor ? 'configuration' : 'overview'}`)
                     }>
                       <div className='relative w-6 h-6 mr-2 bg-[#D5F5F6] rounded-[6px]'>
                         <AppIcon size='tiny' />
@@ -79,7 +79,7 @@ export default function AppSelector({ appItems, curApp }: IAppSelectorProps) {
                 ))
               }
             </div>)}
-            {isCurrentWorkspaceManager && <Menu.Item>
+            {isCurrentWorkspaceEditor && <Menu.Item>
               <div className='p-1' onClick={() => setShowNewAppDialog(true)}>
                 <div
                   className='flex items-center h-12 rounded-lg cursor-pointer hover:bg-gray-100'

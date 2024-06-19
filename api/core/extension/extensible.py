@@ -7,7 +7,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from core.utils.position_helper import sort_to_dict_by_position_map
+from core.helper.position_helper import sort_to_dict_by_position_map
 
 
 class ExtensionModule(enum.Enum):
@@ -16,7 +16,7 @@ class ExtensionModule(enum.Enum):
 
 
 class ModuleExtension(BaseModel):
-    extension_class: Any
+    extension_class: Any = None
     name: str
     label: Optional[dict] = None
     form_schema: Optional[list] = None

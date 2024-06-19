@@ -34,7 +34,7 @@ export type INavSelectorProps = {
 const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: INavSelectorProps) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
   const handleScroll = useCallback(debounce((e) => {
@@ -122,7 +122,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                   </div>
                 </Menu.Button>
               )}
-              {isApp && isCurrentWorkspaceManager && (
+              {isApp && isCurrentWorkspaceEditor && (
                 <Menu as="div" className="relative w-full h-full">
                   {({ open }) => (
                     <>

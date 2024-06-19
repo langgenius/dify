@@ -1,6 +1,6 @@
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -15,7 +15,7 @@ class TwilioAPIWrapper(BaseModel):
     named parameters to the constructor.
     """
 
-    client: Any  #: :meta private:
+    client: Any = None  #: :meta private:
     account_sid: Optional[str] = None
     """Twilio account string identifier."""
     auth_token: Optional[str] = None
@@ -30,9 +30,10 @@ class TwilioAPIWrapper(BaseModel):
         Twilio also work here. You cannot, for example, spoof messages from a private 
         cell phone number. If you are using `messaging_service_sid`, this parameter 
         must be empty.
-    """  # noqa: E501
+    """
 
-    @validator("client", pre=True, always=True)
+    @field_validator('client', mode='before')
+    @classmethod
     def set_validator(cls, values: dict) -> dict:
         """Validate that api key and python package exists in environment."""
         try:
@@ -60,7 +61,7 @@ class TwilioAPIWrapper(BaseModel):
                 SMS/MMS or
                 [Channel user address](https://www.twilio.com/docs/sms/channels#channel-addresses)
                 for other 3rd-party channels.
-        """  # noqa: E501
+        """
         message = self.client.messages.create(to, from_=self.from_number, body=body)
         return message.sid
 

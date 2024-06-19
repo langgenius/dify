@@ -6,12 +6,15 @@ from abc import abstractmethod
 from collections.abc import Generator
 from typing import Optional, Union
 
+from pydantic import ConfigDict
+
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.callbacks.logging_callback import LoggingCallback
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
+    PromptMessageContentType,
     PromptMessageTool,
     SystemPromptMessage,
     UserPromptMessage,
@@ -33,6 +36,9 @@ class LargeLanguageModel(AIModel):
     Model class for large language model.
     """
     model_type: ModelType = ModelType.LLM
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
 
     def invoke(self, model: str, credentials: dict,
                prompt_messages: list[PromptMessage], model_parameters: Optional[dict] = None,
@@ -200,8 +206,14 @@ if you are not sure about the structure.
             ))
 
         if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
-            # add ```JSON\n to the last message
-            prompt_messages[-1].content += f"\n```{code_block}\n"
+            # add ```JSON\n to the last text message
+            if isinstance(prompt_messages[-1].content, str):
+                prompt_messages[-1].content += f"\n```{code_block}\n"
+            elif isinstance(prompt_messages[-1].content, list):
+                for i in range(len(prompt_messages[-1].content) - 1, -1, -1):
+                    if prompt_messages[-1].content[i].type == PromptMessageContentType.TEXT:
+                        prompt_messages[-1].content[i].data += f"\n```{code_block}\n"
+                        break
         else:
             # append a user message
             prompt_messages.append(UserPromptMessage(

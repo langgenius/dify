@@ -132,7 +132,6 @@ const AddExtractParameter: FC<Props> = ({
           isShow
           onClose={hideModal}
           className='!w-[400px] !max-w-[400px] !p-4'
-          wrapperClassName='!z-[100]'
         >
           <div>
             <div className='space-y-2'>

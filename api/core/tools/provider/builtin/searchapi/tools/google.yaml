@@ -185,7 +185,7 @@ parameters:
           en_US: New Zealand
           zh_Hans: 新西兰
           pt_BR: New Zealand
-      - value: NO
+      - value: 'NO'
         label:
           en_US: Norway
           zh_Hans: 挪威
@@ -353,7 +353,7 @@ parameters:
         label:
           en_US: Italian
           zh_Hans: 意大利语
-      - value: jp
+      - value: ja
         label:
           en_US: Japanese
           zh_Hans: 日语

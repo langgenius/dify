@@ -100,6 +100,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
           permission,
           indexing_technique: indexMethod,
           retrieval_model: postRetrievalConfig,
+          embedding_model: localeCurrentDataset.embedding_model,
+          embedding_model_provider: localeCurrentDataset.embedding_model_provider,
         },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })

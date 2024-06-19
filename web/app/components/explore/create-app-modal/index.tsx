@@ -63,8 +63,7 @@ const CreateAppModal = ({
     <>
       <Modal
         isShow={show}
-        onClose={() => { }}
-        wrapperClassName='z-40'
+        onClose={() => {}}
         className='relative !max-w-[480px] px-8'
       >
         <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onHide}>
