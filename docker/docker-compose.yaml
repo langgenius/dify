@@ -96,6 +96,13 @@ services:
       GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
       # if you want to use Application Default Credentials, you can leave GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 empty.
       GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
+      # The Alibaba Cloud OSS configurations, only available when STORAGE_TYPE is `aliyun-oss`
+      ALIYUN_OSS_BUCKET_NAME: 'your-bucket-name'
+      ALIYUN_OSS_ACCESS_KEY: 'your-access-key'
+      ALIYUN_OSS_SECRET_KEY: 'your-secret-key'
+      ALIYUN_OSS_ENDPOINT: 'https://oss-ap-southeast-1-internal.aliyuncs.com'
+      ALIYUN_OSS_REGION: 'ap-southeast-1'
+      ALIYUN_OSS_AUTH_VERSION: 'v4'
       # The Tencent COS storage configurations, only available when STORAGE_TYPE is `tencent-cos`.
       TENCENT_COS_BUCKET_NAME: 'your-bucket-name'
       TENCENT_COS_SECRET_KEY: 'your-secret-key'
@@ -258,6 +265,13 @@ services:
       GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
       # if you want to use Application Default Credentials, you can leave GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 empty.
       GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
+      # The Alibaba Cloud OSS configurations, only available when STORAGE_TYPE is `aliyun-oss`
+      ALIYUN_OSS_BUCKET_NAME: 'your-bucket-name'
+      ALIYUN_OSS_ACCESS_KEY: 'your-access-key'
+      ALIYUN_OSS_SECRET_KEY: 'your-secret-key'
+      ALIYUN_OSS_ENDPOINT: 'https://oss-ap-southeast-1-internal.aliyuncs.com'
+      ALIYUN_OSS_REGION: 'ap-southeast-1'
+      ALIYUN_OSS_AUTH_VERSION: 'v4'
       # The Tencent COS storage configurations, only available when STORAGE_TYPE is `tencent-cos`.
       TENCENT_COS_BUCKET_NAME: 'your-bucket-name'
       TENCENT_COS_SECRET_KEY: 'your-secret-key'
