@@ -135,7 +135,7 @@ const HeaderOptions: FC<Props> = ({
 
   return (
     <div className='flex space-x-2'>
-      <Button type='primary' onClick={() => setShowAddModal(true)} className='flex items-center !h-8 !px-3 !text-[13px] space-x-2'>
+      <Button variant='primary' onClick={() => setShowAddModal(true)} className='flex items-center !h-8 !px-3 !text-[13px] space-x-2'>
         <Plus className='w-4 h-4' />
         <div>{t('appAnnotation.table.header.addAnnotation')}</div>
       </Button>

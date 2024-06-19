@@ -307,7 +307,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               }
               <div className='flex space-x-2 '>
                 <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700 bg-white' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
               </div>
             </div>
           </div>

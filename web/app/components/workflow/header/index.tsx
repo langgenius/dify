@@ -206,7 +206,7 @@ const Header: FC = () => {
             <ViewHistory withText />
             <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
             <Button
-              type='primary'
+              variant='primary'
               className={`
                 mr-2 px-3 py-0 h-8 text-[13px] font-medium
                 border-[0.5px] border-gray-200 shadow-xs
@@ -242,7 +242,7 @@ const Header: FC = () => {
             <Button
               className='px-3 py-0 h-8 text-[13px] font-medium shadow-xs'
               onClick={handleRestore}
-              type='primary'
+              variant='primary'
             >
               {t('workflow.common.restore')}
             </Button>

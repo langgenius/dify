@@ -61,7 +61,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
         <>
           <div className='px-4 pb-3'>
             <Button
-              type='primary'
+              variant='primary'
               className='w-full !h-8'
               onClick={showSetAuthModal}
             >

@@ -87,7 +87,7 @@ const UserSSOForm: FC<UserSSOFormProps> = ({
         <div className="w-full mx-auto mt-10">
           <Button
             tabIndex={0}
-            type='primary'
+            variant='primary'
             onClick={() => { handleSSOLogin() }}
             disabled={isLoading}
             className="w-full !fone-medium !text-sm"

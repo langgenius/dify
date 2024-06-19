@@ -117,7 +117,7 @@ const ConfigCredential: FC<Props> = ({
                         </div>
                       }
                     >
-                      <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                      <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
                     </Tooltip>
                   </div>
                   <input
@@ -142,7 +142,7 @@ const ConfigCredential: FC<Props> = ({
 
           <div className='mt-4 shrink-0 flex justify-end space-x-2 py-4'>
             <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
-            <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={() => {
+            <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' variant='primary' onClick={() => {
               onChange(tempCredential)
               onHide()
             }}>{t('common.operation.save')}</Button>

@@ -44,7 +44,7 @@ const APIKeyInfoPanel: FC = () => {
         <div className='mt-1 text-sm text-gray-600 font-normal'>{t(`appOverview.apiKeyInfo.cloud.${'trial'}.description`)}</div>
       )}
       <Button
-        type='primary'
+        variant='primary'
         className='space-x-2'
         onClick={() => setShowAccountSettingModal({ payload: 'provider' })}
       >

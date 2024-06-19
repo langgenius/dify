@@ -50,7 +50,7 @@ const DeleteConfirmModal: FC<Props> = ({
         <div className='flex gap-2 justify-end'>
           <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
           <Button
-            type='warning'
+            variant='warning'
             onClick={onRemove}
             className='border-red-700 border-[0.5px]'
           >

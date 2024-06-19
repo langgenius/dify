@@ -68,7 +68,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
     >
       <PortalToFollowElemTrigger className='w-full' onClick={handleToggle}>
         <Button
-          type='primary'
+          variant='primary'
           disabled={!validModelConfigs.length}
           className='mt-3 px-3 py-0 w-full h-8 border-[0.5px] border-primary-700 rounded-lg text-[13px] font-medium'
         >

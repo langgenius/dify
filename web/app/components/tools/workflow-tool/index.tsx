@@ -208,7 +208,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                               </div>
                             )}
                             {item.name !== '__image' && (
-                              <MethodSelector value={item.form} onChange={value => handleParameterChange('form', value, index)}/>
+                              <MethodSelector value={item.form} onChange={value => handleParameterChange('form', value, index)} />
                             )}
                           </td>
                           <td className="p-2 pl-3 text-gray-500 w-[236px]">
@@ -246,7 +246,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               )}
               <div className='flex space-x-2 '>
                 <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                <Button disabled={!label || !name || !isNameValid(name)} className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={() => {
+                <Button disabled={!label || !name || !isNameValid(name)} className='flex items-center h-8 !px-3 !text-[13px] font-medium' variant='primary' onClick={() => {
                   if (isAdd)
                     onConfirm()
                   else

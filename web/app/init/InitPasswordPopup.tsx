@@ -69,7 +69,7 @@ const InitPasswordPopup = () => {
               </div>
             </div>
             <div className="flex flex-row flex-wrap justify-stretch p-0">
-              <Button type="primary" onClick={handleValidation} className="basis-full min-w-28">
+              <Button variant="primary" onClick={handleValidation} className="basis-full min-w-28">
                 {t('login.validate')}
               </Button>
             </div>

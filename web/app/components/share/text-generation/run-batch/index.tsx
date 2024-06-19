@@ -42,7 +42,7 @@ const RunBatch: FC<IRunBatchProps> = ({
       <div className='mt-4 h-[1px] bg-gray-100'></div>
       <div className='flex justify-end'>
         <Button
-          type="primary"
+          variant="primary"
           className='mt-4 !h-8 !pl-3 !pr-4'
           onClick={handleSend}
           disabled={!isParsed || !isAllFinished}

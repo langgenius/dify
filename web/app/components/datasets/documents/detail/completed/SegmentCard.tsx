@@ -224,7 +224,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
           <div className='flex gap-2 justify-end'>
             <Button onClick={() => setShowModal(false)}>{t('common.operation.cancel')}</Button>
             <Button
-              type='warning'
+              variant='warning'
               onClick={async () => {
                 await onDelete?.(id)
               }}

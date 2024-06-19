@@ -279,7 +279,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
               {t('datasetCreation.stepThree.resume')}
             </Button>
           )}
-          <Button className='w-fit' type='primary' onClick={navToDocument}>
+          <Button className='w-fit' variant='primary' onClick={navToDocument}>
             <span>{t('datasetCreation.stepThree.navTo')}</span>
             <ArrowRightIcon className='h-4 w-4 ml-2 stroke-current stroke-1' />
           </Button>

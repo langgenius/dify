@@ -62,7 +62,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   const renderRunButton = () => {
     return (
       <Button
-        type="primary"
+        variant="primary"
         disabled={canNotRun}
         onClick={() => onSend && onSend()}
         className="w-[80px] !h-8">

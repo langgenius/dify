@@ -192,7 +192,7 @@ const CustomWebAppBrand = () => {
             fileId && (
               <>
                 <Button
-                  type='primary'
+                  variant='primary'
                   className='mr-2 !h-8 !px-3 !py-0 !text-[13px]'
                   onClick={handleApply}
                   disabled={webappBrandRemoved || !isCurrentWorkspaceManager}

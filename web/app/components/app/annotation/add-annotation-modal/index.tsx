@@ -105,7 +105,7 @@ const AddAnnotationModal: FC<Props> = ({
                 </div>
                 <div className='mt-2 flex space-x-2'>
                   <Button className='!h-7 !text-xs !font-medium' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                  <Button className='!h-7 !text-xs !font-medium' type='primary' onClick={handleSave} loading={isSaving} disabled={isAnnotationFull}>{t('common.operation.add')}</Button>
+                  <Button className='!h-7 !text-xs !font-medium' variant='primary' onClick={handleSave} loading={isSaving} disabled={isAnnotationFull}>{t('common.operation.add')}</Button>
                 </div>
               </div>
             </div>

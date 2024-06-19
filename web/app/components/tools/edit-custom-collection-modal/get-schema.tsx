@@ -74,7 +74,7 @@ const GetSchema: FC<Props> = ({
               />
               <Button
                 className='absolute top-1 right-1 !h-6 !px-2 text-xs font-medium'
-                type='primary'
+                variant='primary'
                 disabled={!importUrl}
                 onClick={handleImportFromUrl}
                 loading={isParsing}
