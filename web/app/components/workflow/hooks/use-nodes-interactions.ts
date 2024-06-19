@@ -42,18 +42,21 @@ import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useHelpline } from './use-helpline'
 import {
   useNodesReadOnly,
   useWorkflow,
 } from './use-workflow'
+import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
+  const workflowHistoryStore = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
     getAfterNodesInSameBranch,
@@ -65,6 +68,8 @@ export const useNodesInteractions = () => {
     handleNodeIterationChildrenCopy,
   } = useNodeIterationInteractions()
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as { x: number; y: number })
+
+  const { saveStateToHistory, undo, redo } = useWorkflowHistory()
 
   const handleNodeDragStart = useCallback<NodeDragHandler>((_, node) => {
     workflowStore.setState({ nodeAnimation: false })
@@ -137,8 +142,13 @@ export const useNodesInteractions = () => {
       setHelpLineHorizontal()
       setHelpLineVertical()
       handleSyncWorkflowDraft()
+
+      if (x !== 0 && y !== 0) {
+        // selecting a note will trigger a drag stop event with x and y as 0
+        saveStateToHistory(WorkflowHistoryEvent.NodeDragStop)
+      }
     }
-  }, [handleSyncWorkflowDraft, workflowStore, getNodesReadOnly])
+  }, [workflowStore, getNodesReadOnly, saveStateToHistory, handleSyncWorkflowDraft])
 
   const handleNodeEnter = useCallback<NodeMouseHandler>((_, node) => {
     if (getNodesReadOnly())
@@ -359,7 +369,9 @@ export const useNodesInteractions = () => {
       return filtered
     })
     setEdges(newEdges)
+
     handleSyncWorkflowDraft()
+    saveStateToHistory(WorkflowHistoryEvent.NodeConnect)
   }, [store, handleSyncWorkflowDraft, getNodesReadOnly])
 
   const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType, handleId }) => {
@@ -544,6 +556,12 @@ export const useNodesInteractions = () => {
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
+
+    if (currentNode.type === 'custom-note')
+      saveStateToHistory(WorkflowHistoryEvent.NoteDelete)
+
+    else
+      saveStateToHistory(WorkflowHistoryEvent.NodeDelete)
   }, [store, handleSyncWorkflowDraft, getNodesReadOnly, workflowStore, t])
 
   const handleNodeAdd = useCallback<OnNodeAdd>((
@@ -560,6 +578,7 @@ export const useNodesInteractions = () => {
       nextNodeTargetHandle,
     },
   ) => {
+    console.log('handleNodeAdd')
     if (getNodesReadOnly())
       return
 
@@ -585,6 +604,7 @@ export const useNodesInteractions = () => {
         y: 0,
       },
     })
+    console.log('new node', newNode.type)
     if (prevNodeId && !nextNodeId) {
       const prevNodeIndex = nodes.findIndex(node => node.id === prevNodeId)
       const prevNode = nodes[prevNodeIndex]
@@ -876,7 +896,9 @@ export const useNodesInteractions = () => {
       })
       setEdges(newEdges)
     }
+    console.log('saveStateToHistory')
     handleSyncWorkflowDraft()
+    saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
   }, [store, workflowStore, handleSyncWorkflowDraft, getAfterNodesInSameBranch, getNodesReadOnly, t])
 
   const handleNodeChange = useCallback((
@@ -955,7 +977,9 @@ export const useNodesInteractions = () => {
     })
     setEdges(newEdges)
     handleSyncWorkflowDraft()
-  }, [store, handleSyncWorkflowDraft, getNodesReadOnly, t])
+
+    saveStateToHistory(WorkflowHistoryEvent.NodeChange)
+  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleNodeCancelRunningStatus = useCallback(() => {
     const {
@@ -1208,7 +1232,46 @@ export const useNodesInteractions = () => {
     })
     setNodes(newNodes)
     handleSyncWorkflowDraft()
+    saveStateToHistory(WorkflowHistoryEvent.NodeResize)
   }, [store, getNodesReadOnly, handleSyncWorkflowDraft])
+
+  const handleHistoryBack = useCallback(() => {
+    const {
+      shortcutsDisabled,
+    } = workflowStore.getState()
+
+    if (shortcutsDisabled)
+      return
+
+    const { setEdges, setNodes } = store.getState()
+    undo()
+
+    const { edges, nodes } = workflowHistoryStore.getState()
+    if (edges.length === 0 && nodes.length === 0)
+      return
+
+    setEdges(edges)
+    setNodes(nodes)
+  }, [store, undo, workflowHistoryStore, workflowStore])
+
+  const handleHistoryForward = useCallback(() => {
+    const {
+      shortcutsDisabled,
+    } = workflowStore.getState()
+
+    if (shortcutsDisabled)
+      return
+
+    const { setEdges, setNodes } = store.getState()
+    redo()
+
+    const { edges, nodes } = workflowHistoryStore.getState()
+    if (edges.length === 0 && nodes.length === 0)
+      return
+
+    setEdges(edges)
+    setNodes(nodes)
+  }, [redo, store, workflowHistoryStore, workflowStore])
 
   return {
     handleNodeDragStart,
@@ -1232,5 +1295,7 @@ export const useNodesInteractions = () => {
     handleNodesDuplicate,
     handleNodesDelete,
     handleNodeResize,
+    handleHistoryBack,
+    handleHistoryForward,
   }
 }

@@ -72,6 +72,7 @@ import {
   ITERATION_CHILDREN_Z_INDEX,
   WORKFLOW_DATA_UPDATE,
 } from './constants'
+import { WorkflowHistoryProvider } from './workflow-history-store'
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
@@ -189,6 +190,8 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleNodesPaste,
     handleNodesDuplicate,
     handleNodesDelete,
+    handleHistoryBack,
+    handleHistoryForward,
   } = useNodesInteractions()
   const {
     handleEdgeEnter,
@@ -221,6 +224,9 @@ const Workflow: FC<WorkflowProps> = memo(({
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.v`, handleNodesPaste, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, handleNodesDuplicate, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, handleStartWorkflowRun, { exactMatch: true, useCapture: true })
+  useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, handleStartWorkflowRun, { exactMatch: true, useCapture: true })
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.z`, handleHistoryBack, { exactMatch: true, useCapture: true })
+  useKeyPress([`${getKeyboardKeyCodeBySystem('ctrl')}.y`, `${getKeyboardKeyCodeBySystem('ctrl')}.shift.z`], handleHistoryForward, { exactMatch: true, useCapture: true })
 
   return (
     <div
@@ -234,9 +240,9 @@ const Workflow: FC<WorkflowProps> = memo(({
     >
       <SyncingDataModal />
       <CandidateNode />
-      <Header />
+      <Header/>
       <Panel />
-      <Operator />
+      <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       {
         showFeaturesPanel && <Features />
       }
@@ -357,13 +363,17 @@ const WorkflowWrap = memo(() => {
 
   return (
     <ReactFlowProvider>
-      <FeaturesProvider features={initialFeatures}>
-        <Workflow
-          nodes={nodesData}
-          edges={edgesData}
-          viewport={data?.graph.viewport}
-        />
-      </FeaturesProvider>
+      <WorkflowHistoryProvider
+        nodes={nodesData}
+        edges={edgesData} >
+        <FeaturesProvider features={initialFeatures}>
+          <Workflow
+            nodes={nodesData}
+            edges={edgesData}
+            viewport={data?.graph.viewport}
+          />
+        </FeaturesProvider>
+      </WorkflowHistoryProvider>
     </ReactFlowProvider>
   )
 })

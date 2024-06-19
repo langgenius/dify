@@ -23,6 +23,7 @@ import {
 } from '@/app/components/base/icons/src/vender/line/general'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
+  WorkflowHistoryEvent,
   useAvailableBlocks,
   useNodeDataUpdate,
   useNodesInteractions,
@@ -30,6 +31,7 @@ import {
   useNodesSyncDraft,
   useToolIcon,
   useWorkflow,
+  useWorkflowHistory,
 } from '@/app/components/workflow/hooks'
 import { canRunBySingle } from '@/app/components/workflow/utils'
 import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
@@ -75,6 +77,8 @@ const BasePanel: FC<BasePanelProps> = ({
     onResize: handleResize,
   })
 
+  const { saveStateToHistory } = useWorkflowHistory()
+
   const {
     handleNodeDataUpdate,
     handleNodeDataUpdateWithSyncDraft,
@@ -82,10 +86,12 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const handleTitleBlur = useCallback((title: string) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { title } })
-  }, [handleNodeDataUpdateWithSyncDraft, id])
+    saveStateToHistory(WorkflowHistoryEvent.NodeTitleChange)
+  }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
   const handleDescriptionChange = useCallback((desc: string) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { desc } })
-  }, [handleNodeDataUpdateWithSyncDraft, id])
+    saveStateToHistory(WorkflowHistoryEvent.NodeDescriptionChange)
+  }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   return (
     <div className={cn(
