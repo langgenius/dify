@@ -54,7 +54,11 @@ const CandidateNode = () => {
         })
       })
       setNodes(newNodes)
-      saveStateToHistory(WorkflowHistoryEvent.NoteAdd)
+      if (candidateNode.type === CUSTOM_NOTE_NODE)
+        saveStateToHistory(WorkflowHistoryEvent.NoteAdd)
+      else
+        saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
+
       workflowStore.setState({ candidateNode: undefined })
 
       if (candidateNode.type === CUSTOM_NOTE_NODE)
