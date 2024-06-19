@@ -52,9 +52,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         final_answer = ''
 
         # get tracing instance
-        app_id = app_config.app_id
         tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_id
+            app_id=app_config.app_id
         )
         
         def increase_usage(final_llm_usage_dict: dict[str, LLMUsage], usage: LLMUsage):

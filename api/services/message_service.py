@@ -272,9 +272,8 @@ class MessageService:
             )
 
         # get tracing instance
-        app_id = db.session.query(Message.app_id).filter(Message.id == message_id).first()
         tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_id,
+            message_id=message_id
         )
         if tracing_instance:
             trace_manager = TraceQueueManager()
