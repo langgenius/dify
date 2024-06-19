@@ -532,14 +532,16 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
 
     def _handle_workflow_finished(
         self, event: QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent,
-        tracing_instance: Optional[BaseTraceInstance] = None
+        tracing_instance: Optional[BaseTraceInstance] = None,
+        conversation_id: Optional[str] = None
     ) -> Optional[WorkflowRun]:
         workflow_run = db.session.query(WorkflowRun).filter(
             WorkflowRun.id == self._task_state.workflow_run_id).first()
         if not workflow_run:
             return None
 
-        conversation_id = self._application_generate_entity.inputs.get('sys.conversation_id')
+        if conversation_id is None:
+            conversation_id = self._application_generate_entity.inputs.get('sys.conversation_id')
         if isinstance(event, QueueStopEvent):
             workflow_run = self._workflow_run_failed(
                 workflow_run=workflow_run,
