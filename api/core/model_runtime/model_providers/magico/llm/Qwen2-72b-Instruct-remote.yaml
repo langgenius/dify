@@ -1,16 +1,15 @@
-model: qwen1.5-32b-remote
+model: Qwen2-72b-Instruct-remote
 label:
-  zh_Hans: qwen1.5-32b-remote
-  en_US: qwen1.5-32b-remote
+  zh_Hans: Qwen2-72b-Instruct
+  en_US: Qwen2-72b-Instruct
 model_type: llm
 features:
-  - tool-call
   - multi-tool-call
   - agent-thought
   - stream-tool-call
 model_properties:
   mode: chat
-  context_size: 30000
+  context_size: 50000
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -22,9 +21,9 @@ parameter_rules:
     use_template: frequency_penalty
   - name: max_tokens
     use_template: max_tokens
-    default: 512
+    default: 4096
     min: 1
-    max: 2000
+    max: 50000
   - name: response_format
     use_template: response_format
 pricing:

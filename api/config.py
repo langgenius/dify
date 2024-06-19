@@ -342,6 +342,9 @@ class Config:
         self.GITHUB_CLIENT_SECRET = get_env('GITHUB_CLIENT_SECRET')
         self.GOOGLE_CLIENT_ID = get_env('GOOGLE_CLIENT_ID')
         self.GOOGLE_CLIENT_SECRET = get_env('GOOGLE_CLIENT_SECRET')
+        self.CUSTOM_CLIENT_ID = get_env('CUSTOM_CLIENT_ID')
+        self.CUSTOM_CLIENT_SECRET = get_env('CUSTOM_CLIENT_SECRET')
+        self.CUSTOM_HOST = get_env('CUSTOM_HOST')
         self.OAUTH_REDIRECT_PATH = get_env('OAUTH_REDIRECT_PATH')
 
         self.HOSTED_OPENAI_API_KEY = get_env('HOSTED_OPENAI_API_KEY')

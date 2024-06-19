@@ -1,7 +1,7 @@
 model: intfloat-e5-large-v2
 model_type: text-embedding
 model_properties:
-  context_size: 300
+  context_size: 512
   max_chunks: 32
 pricing:
   input: '0.000'

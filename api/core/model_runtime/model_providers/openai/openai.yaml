@@ -1,6 +1,6 @@
 provider: openai
 label:
-  en_US: OpenAI Base
+  en_US: OpenAI
 description:
   en_US: Models provided by OpenAI, such as GPT-3.5-Turbo and GPT-4.
   zh_Hans: OpenAI 提供的模型，例如 GPT-3.5-Turbo 和 GPT-4。

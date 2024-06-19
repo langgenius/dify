@@ -6,6 +6,10 @@
   background: center/contain url('./assets/google.svg');
 }
 
+.customIcon {
+  background: center/contain url('./assets/custom.svg');
+}
+
 .background {
   background-image: url('./assets/background.png');
   background-size: cover;

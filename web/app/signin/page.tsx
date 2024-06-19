@@ -29,7 +29,7 @@ const SignIn = () => {
     <>
       {!IS_CE_EDITION && (
         <>
-          <Script strategy="beforeInteractive" async src={'https://www.googletagmanager.com/gtag/js?id=AW-11217955271'}></Script>
+          {/* <Script strategy="beforeInteractive" async src={'https://www.googletagmanager.com/gtag/js?id=AW-11217955271'}></Script> */}
           <Script
             id="ga-monitor-register"
             dangerouslySetInnerHTML={{
@@ -75,7 +75,7 @@ gtag('config', 'AW-11217955271"');
             <>
               <Forms />
               <div className='px-8 py-6 text-sm font-normal text-gray-500'>
-                © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
+                © {new Date().getFullYear()} Magico, Inc. All rights reserved.
               </div>
             </>
           )}

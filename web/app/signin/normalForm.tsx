@@ -17,10 +17,11 @@ type IState = {
   formValid: boolean
   github: boolean
   google: boolean
+  custom: boolean
 }
 
 type IAction = {
-  type: 'login' | 'login_failed' | 'github_login' | 'github_login_failed' | 'google_login' | 'google_login_failed'
+  type: 'login' | 'login_failed' | 'github_login' | 'github_login_failed' | 'google_login' | 'google_login_failed' | 'custom_login' | 'custom_login_failed'
 }
 
 function reducer(state: IState, action: IAction) {
@@ -55,6 +56,16 @@ function reducer(state: IState, action: IAction) {
         ...state,
         google: false,
       }
+    case 'custom_login':
+        return {
+          ...state,
+          custom: true,
+        }
+      case 'custom_login_failed':
+        return {
+          ...state,
+          custom: false,
+        }
     default:
       throw new Error('Unknown action.')
   }
@@ -68,6 +79,7 @@ const NormalForm = () => {
     formValid: false,
     github: false,
     google: false,
+    custom: false,
   })
 
   const [showPassword, setShowPassword] = useState(false)
@@ -127,6 +139,15 @@ const NormalForm = () => {
     })
     : null, oauth)
 
+  const { data: custom, error: custom_error } = useSWR(state.custom
+    ? ({
+      url: '/oauth/login/custom',
+      // params: {
+      //   provider: 'google',
+      // },
+    })
+    : null, oauth)
+
   useEffect(() => {
     if (github_error !== undefined)
       dispatch({ type: 'github_login_failed' })
@@ -141,6 +162,13 @@ const NormalForm = () => {
       window.location.href = google.redirect_url
   }, [google, google_error])
 
+  useEffect(() => {
+    if (custom_error !== undefined)
+      dispatch({ type: 'custom_login_failed' })
+    if (custom)
+      window.location.href = custom.redirect_url
+  }, [custom, custom_error])
+
   return (
     <>
       <div className="w-full mx-auto">
@@ -152,7 +180,7 @@ const NormalForm = () => {
         <div className="bg-white ">
           {!IS_CE_EDITION && (
             <div className="flex flex-col gap-3 mt-6">
-              <div className='w-full'>
+              {/* <div className='w-full'>
                 <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
                   <Button
                     type='default'
@@ -186,6 +214,25 @@ const NormalForm = () => {
                         )
                       } />
                       <span className="truncate text-gray-800">{t('login.withGoogle')}</span>
+                    </>
+                  </Button>
+                </a>
+              </div> */}
+              <div className='w-full'>
+                <a href={getPurifyHref(`${apiPrefix}/oauth/login/custom`)}>
+                  <Button
+                    type='default'
+                    disabled={isLoading}
+                    className='w-full hover:!bg-gray-50 !text-sm !font-medium'
+                  >
+                    <>
+                      <span className={
+                        classNames(
+                          style.customIcon,
+                          'w-5 h-5 mr-2',
+                        )
+                      } />
+                      <span className="truncate text-gray-800">{t('login.withCustom')}</span>
                     </>
                   </Button>
                 </a>

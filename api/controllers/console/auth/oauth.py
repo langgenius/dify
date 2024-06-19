@@ -8,7 +8,7 @@ from flask_restful import Resource
 
 from constants.languages import languages
 from extensions.ext_database import db
-from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
+from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo, CustomOAuth
 from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 
@@ -17,6 +17,12 @@ from .. import api
 
 def get_oauth_providers():
     with current_app.app_context():
+        custom_oauth = CustomOAuth(client_id=current_app.config.get('CUSTOM_CLIENT_ID'),
+                                   client_secret=current_app.config.get(
+                                       'CUSTOM_CLIENT_SECRET'),
+                                   redirect_uri=current_app.config.get(
+                                       'CONSOLE_API_URL') + '/console/api/oauth/authorize/custom')
+
         github_oauth = GitHubOAuth(client_id=current_app.config.get('GITHUB_CLIENT_ID'),
                                    client_secret=current_app.config.get(
                                        'GITHUB_CLIENT_SECRET'),
@@ -31,7 +37,8 @@ def get_oauth_providers():
 
         OAUTH_PROVIDERS = {
             'github': github_oauth,
-            'google': google_oauth
+            'google': google_oauth,
+            'custom': custom_oauth
         }
         return OAUTH_PROVIDERS
 
@@ -59,8 +66,11 @@ class OAuthCallback(Resource):
 
         code = request.args.get('code')
         try:
-            token = oauth_provider.get_access_token(code)
-            user_info = oauth_provider.get_user_info(token)
+            if provider=='custom':
+                token, user_info = oauth_provider.get_access_token_and_info(code)
+            else:
+                token = oauth_provider.get_access_token(code)
+                user_info = oauth_provider.get_user_info(token)
         except requests.exceptions.HTTPError as e:
             logging.exception(
                 f"An error occurred during the OAuth process with {provider}: {e.response.text}")
