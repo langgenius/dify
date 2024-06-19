@@ -1,9 +1,14 @@
+import array
 import json
 import uuid
 from contextlib import contextmanager
 from typing import Any
+
+import numpy
+import oracledb
 from flask import current_app
 from pydantic import BaseModel, model_validator
+
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
@@ -12,10 +17,8 @@ from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
-import array
-import numpy
-import oracledb
 oracledb.defaults.fetch_lobs = False
+
 
 class OracleVectorConfig(BaseModel):
     host: str
@@ -91,12 +94,8 @@ class OracleVector(BaseVector):
                 arraysize=cursor.arraysize,
                 outconverter=self.numpy_converter_out,
             )
-    #dsn="%s:%s/%s" % (ip,port,name)
     def _create_connection_pool(self, config: OracleVectorConfig):
-        return oracledb.create_pool(user=config.user,
-                             password=config.password,
-                             dsn="%s:%s/%s" % (config.host, config.port, config.database),
-                             min=1, max=50, increment=1)
+        return oracledb.create_pool(user=config.user, password=config.password, dsn="{}:{}/{}".format(config.host, config.port, config.database), min=1, max=50, increment=1)
 
 
     @contextmanager
