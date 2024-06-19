@@ -1,4 +1,5 @@
 import {
+Fragment,
   memo,
   useCallback,
   useState,
@@ -142,7 +143,7 @@ const ComponentPicker = ({
               >
                 {
                   options.map((option, index) => (
-                    <>
+                    <Fragment key={option.key}>
                       {
                         // Divider
                         index !== 0 && options.at(index - 1)?.group !== option.group && (
@@ -159,7 +160,7 @@ const ComponentPicker = ({
                           setHighlightedIndex(index)
                         },
                       })}
-                    </>
+                    </Fragment>
                   ))
                 }
                 {
