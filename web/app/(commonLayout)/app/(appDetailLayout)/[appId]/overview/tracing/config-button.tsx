@@ -42,7 +42,7 @@ const ConfigBtn: FC<Props> = ({
       </div>
     )
     : (
-      <Button type='primary'
+      <Button variant='primary'
         className={cn(className, '!h-8 !px-3 select-none')}
       >
         <Settings04 className='mr-1 w-4 h-4' />

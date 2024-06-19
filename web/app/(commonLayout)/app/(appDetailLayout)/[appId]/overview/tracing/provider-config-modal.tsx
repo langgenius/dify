@@ -243,7 +243,7 @@ const ProviderConfigModal: FC<Props> = ({
                         </Button>
                         <Button
                           className='h-9 text-sm font-medium'
-                          type='primary'
+                          variant='primary'
                           onClick={handleSave}
                           loading={isSaving}
                         >
