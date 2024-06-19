@@ -5,20 +5,27 @@ from email.mime.text import MIMEText
 
 
 class SMTPClient:
-    def __init__(self, server: str, port: int, username: str, password: str, _from: str, use_tls=False):
+    def __init__(self, server: str, port: int, username: str, password: str, _from: str, use_tls=False, opportunistic_tls=False):
         self.server = server
         self.port = port
         self._from = _from
         self.username = username
         self.password = password
-        self._use_tls = use_tls
+        self.use_tls = use_tls
+        self.opportunistic_tls = opportunistic_tls
 
     def send(self, mail: dict):
         smtp = None
         try:
-            smtp = smtplib.SMTP(self.server, self.port, timeout=10)
-            if self._use_tls:
-                smtp.starttls()
+            if self.use_tls:
+                if self.opportunistic_tls:
+                    smtp = smtplib.SMTP(self.server, self.port, timeout=10)
+                    smtp.starttls()
+                else:
+                    smtp = smtplib.SMTP_SSL(self.server, self.port, timeout=10)
+            else:
+                smtp = smtplib.SMTP(self.server, self.port, timeout=10)
+                
             if self.username and self.password:
                 smtp.login(self.username, self.password)
 

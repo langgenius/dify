@@ -54,8 +54,6 @@ node_classes = {
     NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode
 }
 
-WORKFLOW_CALL_MAX_DEPTH = 5
-
 logger = logging.getLogger(__name__)
 
 
@@ -128,8 +126,9 @@ class WorkflowEngineManager:
                 user_inputs=user_inputs
             )
 
-        if call_depth > WORKFLOW_CALL_MAX_DEPTH:
-            raise ValueError('Max workflow call depth reached.')
+        workflow_call_max_depth = current_app.config.get("WORKFLOW_CALL_MAX_DEPTH")
+        if call_depth > workflow_call_max_depth:
+            raise ValueError('Max workflow call depth {} reached.'.format(workflow_call_max_depth))
 
         # init workflow run state
         workflow_run_state = WorkflowRunState(
@@ -593,7 +592,7 @@ class WorkflowEngineManager:
                         node_data=current_iteration_node.node_data,
                         inputs=workflow_run_state.current_iteration_state.inputs,
                         predecessor_node_id=predecessor_node_id,
-                        metadata=workflow_run_state.current_iteration_state.metadata.dict()
+                        metadata=workflow_run_state.current_iteration_state.metadata.model_dump()
                     )
 
         # add steps

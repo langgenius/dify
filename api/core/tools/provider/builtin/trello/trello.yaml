@@ -10,6 +10,8 @@ identity:
     zh_Hans: "Trello: 一个用于组织工作和生活的视觉工具。"
     pt_BR: "Trello: Uma ferramenta visual para organizar seu trabalho e vida."
   icon: icon.svg
+  tags:
+    - productivity
 credentials_for_provider:
   trello_api_key:
     type: secret-input

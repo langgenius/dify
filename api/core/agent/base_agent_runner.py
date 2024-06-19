@@ -39,6 +39,7 @@ from core.tools.entities.tool_entities import (
 from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.tools.tool.tool import Tool
 from core.tools.tool_manager import ToolManager
+from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 from extensions.ext_database import db
 from models.model import Conversation, Message, MessageAgentThought
 from models.tools import ToolConversationVariables
@@ -128,6 +129,8 @@ class BaseAgentRunner(AppRunner):
             self.files = application_generate_entity.files
         else:
             self.files = []
+        self.query = None
+        self._current_thoughts: list[PromptMessage] = []
 
     def _repack_app_generate_entity(self, app_generate_entity: AgentChatAppGenerateEntity) \
             -> AgentChatAppGenerateEntity:
@@ -184,21 +187,11 @@ class BaseAgentRunner(AppRunner):
             if parameter.form != ToolParameter.ToolParameterForm.LLM:
                 continue
 
-            parameter_type = 'string'
+            parameter_type = ToolParameterConverter.get_parameter_type(parameter.type)
             enum = []
-            if parameter.type == ToolParameter.ToolParameterType.STRING:
-                parameter_type = 'string'
-            elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
-                parameter_type = 'boolean'
-            elif parameter.type == ToolParameter.ToolParameterType.NUMBER:
-                parameter_type = 'number'
-            elif parameter.type == ToolParameter.ToolParameterType.SELECT:
-                for option in parameter.options:
-                    enum.append(option.value)
-                parameter_type = 'string'
-            else:
-                raise ValueError(f"parameter type {parameter.type} is not supported")
-            
+            if parameter.type == ToolParameter.ToolParameterType.SELECT:
+                enum = [option.value for option in parameter.options]
+
             message_tool.parameters['properties'][parameter.name] = {
                 "type": parameter_type,
                 "description": parameter.llm_description or '',
@@ -279,20 +272,10 @@ class BaseAgentRunner(AppRunner):
             if parameter.form != ToolParameter.ToolParameterForm.LLM:
                 continue
 
-            parameter_type = 'string'
+            parameter_type = ToolParameterConverter.get_parameter_type(parameter.type)
             enum = []
-            if parameter.type == ToolParameter.ToolParameterType.STRING:
-                parameter_type = 'string'
-            elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
-                parameter_type = 'boolean'
-            elif parameter.type == ToolParameter.ToolParameterType.NUMBER:
-                parameter_type = 'number'
-            elif parameter.type == ToolParameter.ToolParameterType.SELECT:
-                for option in parameter.options:
-                    enum.append(option.value)
-                parameter_type = 'string'
-            else:
-                raise ValueError(f"parameter type {parameter.type} is not supported")
+            if parameter.type == ToolParameter.ToolParameterType.SELECT:
+                enum = [option.value for option in parameter.options]
         
             prompt_tool.parameters['properties'][parameter.name] = {
                 "type": parameter_type,
@@ -464,7 +447,7 @@ class BaseAgentRunner(AppRunner):
         for message in messages:
             if message.id == self.message.id:
                 continue
-            
+
             result.append(self.organize_agent_user_prompt(message))
             agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
             if agent_thoughts:

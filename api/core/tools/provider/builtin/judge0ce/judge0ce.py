@@ -1,6 +1,5 @@
 from typing import Any
 
-from core.tools.entities.values import ToolLabelEnum
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.judge0ce.tools.executeCode import ExecuteCodeTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
@@ -23,7 +22,3 @@ class Judge0CEProvider(BuiltinToolProviderController):
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
         
-    def _get_tool_labels(self) -> list[ToolLabelEnum]:
-        return [
-            ToolLabelEnum.OTHER, ToolLabelEnum.UTILITIES
-        ]

@@ -139,7 +139,7 @@ const SegmentDetailComponent: FC<ISegmentDetailProps> = ({
               {t('common.operation.cancel')}
             </Button>
             <Button
-              type='primary'
+              variant='primary'
               className='!h-7 !px-3 !py-[5px] text-xs font-medium !rounded-md'
               onClick={handleSave}
               disabled={loading}
@@ -402,7 +402,7 @@ const Completed: FC<ICompletedProps> = ({
         onClick={onClickCard}
         archived={archived}
       />
-      <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px] !overflow-visible'>
+      <Modal isShow={currSegment.showModal} onClose={() => { }} className='!max-w-[640px] !overflow-visible'>
         <SegmentDetail
           embeddingAvailable={embeddingAvailable}
           segInfo={currSegment.segInfo ?? { id: '' }}

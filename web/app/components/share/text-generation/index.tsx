@@ -80,8 +80,10 @@ const TextGeneration: FC<IMainProps> = ({
   const pathname = usePathname()
   useEffect(() => {
     const params = new URLSearchParams(searchParams)
-    params.delete('mode')
-    router.replace(`${pathname}?${params.toString()}`)
+    if (params.has('mode')) {
+      params.delete('mode')
+      router.replace(`${pathname}?${params.toString()}`)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -476,7 +478,7 @@ const TextGeneration: FC<IMainProps> = ({
                 <AlertCircle className='w-4 h-4 text-[#D92D20]' />
                 <div className='ml-1 text-[#D92D20]'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
                 <Button
-                  type='primary'
+                  variant='primary'
                   className='ml-2 !h-8 !px-3'
                   onClick={handleRetryAllFailedTask}
                 >{t('share.generation.batchFailed.retry')}</Button>

@@ -37,7 +37,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const { notify } = useContext(ToastContext)
   const setAppDetail = useAppStore(s => s.setAppDetail)
 
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
@@ -66,7 +66,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         await deleteApp(appDetail.id)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(
-        isCurrentWorkspaceManager,
+        isCurrentWorkspaceEditor,
         {
           id: newAppID,
           mode: appDetail.mode === 'completion' ? 'workflow' : 'advanced-chat',
@@ -87,10 +87,9 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   return (
     <>
       <Modal
-        wrapperClassName='z-20'
         className={cn('p-8 max-w-[600px] w-[600px]', s.bg)}
         isShow={show}
-        onClose={() => {}}
+        onClose={() => { }}
       >
         <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
           <XClose className='w-4 h-4 text-gray-500' />
@@ -134,7 +133,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           </div>
           <div className='flex items-center'>
             <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-            <Button className='text-sm font-medium border-red-700 border-[0.5px]' disabled={isAppsFull || !name} type="warning" onClick={goStart}>{t('app.switchStart')}</Button>
+            <Button className='text-sm font-medium border-red-700 border-[0.5px]' disabled={isAppsFull || !name} variant="warning" onClick={goStart}>{t('app.switchStart')}</Button>
           </div>
         </div>
       </Modal>

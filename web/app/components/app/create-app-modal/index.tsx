@@ -44,7 +44,7 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
 
   const isCreatingRef = useRef(false)
   const onCreate: MouseEventHandler = useCallback(async () => {
@@ -72,21 +72,20 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
       onClose()
       mutateApps()
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      getRedirection(isCurrentWorkspaceManager, app, push)
+      getRedirection(isCurrentWorkspaceEditor, app, push)
     }
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
     isCreatingRef.current = false
-  }, [name, notify, t, appMode, emoji.icon, emoji.icon_background, description, onSuccess, onClose, mutateApps, push, isCurrentWorkspaceManager])
+  }, [name, notify, t, appMode, emoji.icon, emoji.icon_background, description, onSuccess, onClose, mutateApps, push, isCurrentWorkspaceEditor])
 
   return (
     <Modal
       overflowVisible
-      wrapperClassName='z-20'
       className='!p-0 !max-w-[720px] !w-[720px] rounded-xl'
       isShow={show}
-      onClose={() => {}}
+      onClose={() => { }}
     >
       {/* Heading */}
       <div className='shrink-0 flex flex-col h-full bg-white rounded-t-xl'>
@@ -209,7 +208,7 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
                       'hidden z-20 absolute left-[327px] top-[-158px] w-[376px] rounded-xl bg-white border-[0.5px] border-[rgba(0,0,0,0.05)] shadow-lg group-hover:block',
                     )}
                   >
-                    <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl', s.basicPic)}/>
+                    <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl', s.basicPic)} />
                     <div className='px-4 pb-2'>
                       <div className='flex items-center justify-between'>
                         <div className='text-gray-700 text-md leading-6 font-semibold'>{t('app.newApp.basic')}</div>
@@ -243,7 +242,7 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
                       'hidden z-20 absolute right-[26px] top-[-158px] w-[376px] rounded-xl bg-white border-[0.5px] border-[rgba(0,0,0,0.05)] shadow-lg group-hover:block',
                     )}
                   >
-                    <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl', s.advancedPic)}/>
+                    <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl', s.advancedPic)} />
                     <div className='px-4 pb-2'>
                       <div className='flex items-center justify-between'>
                         <div className='flex items-center'>
@@ -303,7 +302,7 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
       )}
       <div className='px-8 py-6 flex justify-end'>
         <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-        <Button className='text-sm font-medium' disabled={isAppsFull || !name} type="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
+        <Button className='text-sm font-medium' disabled={isAppsFull || !name} variant="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
       </div>
       <div className='absolute right-6 top-6 p-2 cursor-pointer z-20' onClick={onClose}>
         <XClose className='w-4 h-4 text-gray-500' />

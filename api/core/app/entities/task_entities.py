@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -118,9 +118,7 @@ class ErrorStreamResponse(StreamResponse):
     """
     event: StreamEvent = StreamEvent.ERROR
     err: Exception
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class MessageStreamResponse(StreamResponse):
@@ -360,7 +358,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
         title: str
         index: int
         created_at: int
-        pre_iteration_output: Optional[Any]
+        pre_iteration_output: Optional[Any] = None
         extras: dict = {}
 
     event: StreamEvent = StreamEvent.ITERATION_NEXT
@@ -369,7 +367,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
 
 class IterationNodeCompletedStreamResponse(StreamResponse):
     """
-    NodeStartStreamResponse entity
+    NodeCompletedStreamResponse entity
     """
     class Data(BaseModel):
         """
@@ -379,14 +377,15 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         node_id: str
         node_type: str
         title: str
-        outputs: Optional[dict]
+        outputs: Optional[dict] = None
         created_at: int
         extras: dict = None
         inputs: dict = None
         status: WorkflowNodeExecutionStatus
-        error: Optional[str]
+        error: Optional[str] = None
         elapsed_time: float
         total_tokens: int
+        execution_metadata: Optional[dict] = None
         finished_at: int
         steps: int
 

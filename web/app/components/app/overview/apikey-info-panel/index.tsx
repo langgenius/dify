@@ -12,14 +12,14 @@ import { useModalContext } from '@/context/modal-context'
 const APIKeyInfoPanel: FC = () => {
   const isCloud = !IS_CE_EDITION
 
-  const { hasSettedApiKey } = useProviderContext()
+  const { isAPIKeySet } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 
   const { t } = useTranslation()
 
   const [isShow, setIsShow] = useState(true)
 
-  if (hasSettedApiKey)
+  if (isAPIKeySet)
     return null
 
   if (!(isShow))
@@ -44,7 +44,7 @@ const APIKeyInfoPanel: FC = () => {
         <div className='mt-1 text-sm text-gray-600 font-normal'>{t(`appOverview.apiKeyInfo.cloud.${'trial'}.description`)}</div>
       )}
       <Button
-        type='primary'
+        variant='primary'
         className='space-x-2'
         onClick={() => setShowAccountSettingModal({ payload: 'provider' })}
       >

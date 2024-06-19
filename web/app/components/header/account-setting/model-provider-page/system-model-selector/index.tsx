@@ -23,6 +23,7 @@ import Button from '@/app/components/base/button'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
+import { useAppContext } from '@/context/app-context'
 
 type SystemModelSelectorProps = {
   textGenerationDefaultModel: DefaultModelResponse | undefined
@@ -40,6 +41,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const { textGenerationModelList } = useProviderContext()
   const updateModelList = useUpdateModelList()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -146,7 +148,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.systemReasoningModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -166,7 +168,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.embeddingModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -186,7 +188,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.rerankModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -206,7 +208,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.speechToTextModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -226,7 +228,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.ttsModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -245,9 +247,10 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               {t('common.operation.cancel')}
             </Button>
             <Button
-              type='primary'
+              variant='primary'
               className='!h-8 !text-[13px]'
               onClick={handleSave}
+              disabled={!isCurrentWorkspaceManager}
             >
               {t('common.operation.save')}
             </Button>

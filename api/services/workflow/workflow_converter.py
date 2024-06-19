@@ -305,7 +305,7 @@ class WorkflowConverter:
             }
 
             request_body_json = json.dumps(request_body)
-            request_body_json = request_body_json.replace('\{\{', '{{').replace('\}\}', '}}')
+            request_body_json = request_body_json.replace(r'\{\{', '{{').replace(r'\}\}', '}}')
 
             http_request_node = {
                 "id": f"http_request_{index}",

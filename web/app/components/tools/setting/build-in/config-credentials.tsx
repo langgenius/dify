@@ -11,6 +11,7 @@ import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/
 import Loading from '@/app/components/base/loading'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
+import { useAppContext } from '@/context/app-context'
 
 type Props = {
   collection: Collection
@@ -29,6 +30,7 @@ const ConfigCredential: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
+  const { isCurrentWorkspaceManager } = useAppContext()
   const { name: collectionName } = collection
   const [tempCredential, setTempCredential] = React.useState<any>({})
   useEffect(() => {
@@ -89,7 +91,7 @@ const ConfigCredential: FC<Props> = ({
                   }
                   < div className='flex space-x-2'>
                     <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700 bg-white' onClick={onCancel}>{t('common.operation.cancel')}</Button>
-                    <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={() => onSaved(tempCredential)}>{t('common.operation.save')}</Button>
+                    <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' variant='primary' onClick={() => onSaved(tempCredential)}>{t('common.operation.save')}</Button>
                   </div>
                 </div>
               </>

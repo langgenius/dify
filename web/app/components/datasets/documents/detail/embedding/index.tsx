@@ -126,17 +126,13 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     return status
   }
 
-  const [isStopQuery, setIsStopQuery] = useState(false)
-  const isStopQueryRef = useRef(isStopQuery)
-  useEffect(() => {
-    isStopQueryRef.current = isStopQuery
-  }, [isStopQuery])
-  const stopQueryStatus = () => {
-    setIsStopQuery(true)
-  }
+  const isStopQuery = useRef(false)
+  const stopQueryStatus = useCallback(() => {
+    isStopQuery.current = true
+  }, [])
 
-  const startQueryStatus = async () => {
-    if (isStopQueryRef.current)
+  const startQueryStatus = useCallback(async () => {
+    if (isStopQuery.current)
       return
 
     try {
@@ -146,6 +142,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
         detailUpdate()
         return
       }
+
       await sleep(2500)
       await startQueryStatus()
     }
@@ -153,16 +150,15 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
       await sleep(2500)
       await startQueryStatus()
     }
-  }
+  }, [stopQueryStatus])
 
   useEffect(() => {
-    setIsStopQuery(false)
+    isStopQuery.current = false
     startQueryStatus()
     return () => {
       stopQueryStatus()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [startQueryStatus, stopQueryStatus])
 
   const { data: indexingEstimateDetail, error: indexingEstimateErr } = useSWR({
     action: 'fetchIndexingEstimate',
@@ -283,7 +279,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
               {t('datasetCreation.stepThree.resume')}
             </Button>
           )}
-          <Button className='w-fit' type='primary' onClick={navToDocument}>
+          <Button className='w-fit' variant='primary' onClick={navToDocument}>
             <span>{t('datasetCreation.stepThree.navTo')}</span>
             <ArrowRightIcon className='h-4 w-4 ml-2 stroke-current stroke-1' />
           </Button>

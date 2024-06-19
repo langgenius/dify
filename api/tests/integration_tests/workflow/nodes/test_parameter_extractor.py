@@ -42,7 +42,8 @@ def get_mocked_fetch_model_config(
                 provider=CustomProviderConfiguration(
                     credentials=credentials
                 )
-            )
+            ),
+            model_settings=[]
         ),
         provider_instance=provider_instance,
         model_type_instance=model_type_instance

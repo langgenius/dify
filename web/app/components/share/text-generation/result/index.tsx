@@ -205,7 +205,6 @@ const Result: FC<IResultProps> = ({
               expand: false,
               resultText: '',
             })
-            setRespondingFalse()
           },
           onIterationStart: ({ data }) => {
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
@@ -266,18 +265,29 @@ const Result: FC<IResultProps> = ({
               return
             if (data.error) {
               notify({ type: 'error', message: data.error })
+              setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+                draft.status = WorkflowRunningStatus.Failed
+              }))
               setRespondingFalse()
               onCompleted(getCompletionRes(), taskId, false)
               isEnd = true
               return
             }
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
-              draft.status = data.error ? WorkflowRunningStatus.Failed : WorkflowRunningStatus.Succeeded
+              draft.status = WorkflowRunningStatus.Succeeded
             }))
-            if (!data.outputs)
+            if (!data.outputs) {
               setCompletionRes('')
-            else
+            }
+            else {
               setCompletionRes(data.outputs)
+              const isStringOutput = Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
+              if (isStringOutput) {
+                setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+                  draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+                }))
+              }
+            }
             setRespondingFalse()
             setMessageId(tempMessageId)
             onCompleted(getCompletionRes(), taskId, true)
@@ -370,7 +380,7 @@ const Result: FC<IResultProps> = ({
 
   return (
     <div className={cn(isNoData && !isCallBatchAPI && 'h-full')}>
-      {!isCallBatchAPI && (
+      {!isCallBatchAPI && !isWorkflow && (
         (isResponding && !completionRes)
           ? (
             <div className='flex h-full w-full justify-center items-center'>
@@ -378,13 +388,26 @@ const Result: FC<IResultProps> = ({
             </div>)
           : (
             <>
-              {(isNoData && !workflowProcessData)
+              {(isNoData)
                 ? <NoData />
                 : renderTextGenerationRes()
               }
             </>
           )
       )}
+      {
+        !isCallBatchAPI && isWorkflow && (
+          (isResponding && !workflowProcessData)
+            ? (
+              <div className='flex h-full w-full justify-center items-center'>
+                <Loading type='area' />
+              </div>
+            )
+            : !workflowProcessData
+              ? <NoData />
+              : renderTextGenerationRes()
+        )
+      }
       {isCallBatchAPI && (
         <div className='mt-2'>
           {renderTextGenerationRes()}

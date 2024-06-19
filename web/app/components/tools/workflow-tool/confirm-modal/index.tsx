@@ -19,10 +19,9 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
 
   return (
     <Modal
-      wrapperClassName='!z-[1020]'
       className={cn('p-8 max-w-[600px] w-[600px]', s.bg)}
       isShow={show}
-      onClose={() => {}}
+      onClose={() => { }}
     >
       <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
         <XClose className='w-4 h-4 text-gray-500' />
@@ -37,7 +36,7 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
       <div className='pt-6 flex justify-end items-center'>
         <div className='flex items-center'>
           <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onClose}>{t('common.operation.cancel')}</Button>
-          <Button className='text-sm font-medium border-red-700 border-[0.5px]' type="warning" onClick={onConfirm}>{t('common.operation.confirm')}</Button>
+          <Button className='text-sm font-medium border-red-700 border-[0.5px]' variant="warning" onClick={onConfirm}>{t('common.operation.confirm')}</Button>
         </div>
       </div>
     </Modal>

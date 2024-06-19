@@ -119,7 +119,7 @@ const EditItem: FC<Props> = ({
                 autoFocus
               />
               <div className='mt-2 flex space-x-2'>
-                <Button className='!h-7 !text-xs !font-medium' type='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+                <Button className='!h-7 !text-xs !font-medium' variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
                 <Button className='!h-7 !text-xs !font-medium' onClick={handleCancel}>{t('common.operation.cancel')}</Button>
               </div>
             </div>
