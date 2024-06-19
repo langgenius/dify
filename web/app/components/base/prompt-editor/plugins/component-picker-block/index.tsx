@@ -1,5 +1,5 @@
 import {
-Fragment,
+  Fragment,
   memo,
   useCallback,
   useState,
@@ -54,7 +54,7 @@ const ComponentPicker = ({
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',
     middleware: [
-      offset(16), // fix hide cursor
+      offset(3),
       shift({
         padding: 8,
       }),
@@ -131,7 +131,7 @@ const ComponentPicker = ({
             // The `LexicalMenu` will try to calculate the position of the floating menu based on the first child.
             // Since we use floating ui, we need to wrap it with a div to prevent the position calculation being affected.
             // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
-            <div className='w-full h-full'>
+            <div className='w-0 h-0'>
               <div
                 className='p-1 w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg overflow-y-auto overflow-x-hidden'
                 style={{
@@ -197,7 +197,12 @@ const ComponentPicker = ({
       options={allFlattenOptions}
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
-      anchorClassName='z-[999999]'
+      // The `translate` class is used to workaround the issue that the `typeahead-menu` menu is not positioned as expected.
+      // See also https://github.com/facebook/lexical/blob/772520509308e8ba7e4a82b6cd1996a78b3298d0/packages/lexical-react/src/shared/LexicalMenu.ts#L498
+      //
+      // We no need the position function of the `LexicalTypeaheadMenuPlugin`,
+      // so the reference anchor should be positioned based on the range of the trigger string, and the menu will be positioned by the floating ui.
+      anchorClassName='z-[999999] translate-y-[calc(-100%-3px)]'
       menuRenderFn={renderMenu}
       triggerFn={checkForTriggerMatch}
     />
