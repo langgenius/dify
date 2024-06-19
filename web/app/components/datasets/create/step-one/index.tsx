@@ -239,7 +239,7 @@ const StepOne = ({
                   <VectorSpaceFull />
                 </div>
               )}
-              <Button disabled={isShowVectorSpaceFull || !websitePages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+              <Button disabled={isShowVectorSpaceFull || !websitePages.length} className={s.submitButton} variant='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
             </>
           )}
           {!datasetId && (

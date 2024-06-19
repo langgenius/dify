@@ -33,6 +33,7 @@
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tailwindcss/typography": "^0.5.9",
     "ahooks": "^3.7.5",
+    "class-variance-authority": "^0.7.0",
     "classnames": "^2.3.2",
     "copy-to-clipboard": "^3.3.3",
     "crypto-js": "^4.2.0",
