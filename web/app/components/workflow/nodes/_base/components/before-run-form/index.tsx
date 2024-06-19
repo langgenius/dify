@@ -141,7 +141,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
                 <StopCircle className='w-4 h-4 text-gray-500' />
               </div>
             )}
-            <Button disabled={!isFileLoaded || isRunning} type='primary' className='w-0 grow !h-8 flex items-center space-x-2 text-[13px]' onClick={handleRun}>
+            <Button disabled={!isFileLoaded || isRunning} variant='primary' className='w-0 grow !h-8 flex items-center space-x-2 text-[13px]' onClick={handleRun}>
               {isRunning && <Loading02 className='animate-spin w-4 h-4 text-white' />}
               <div>{t(`${i18nPrefix}.${isRunning ? 'running' : 'startRun'}`)}</div>
             </Button>

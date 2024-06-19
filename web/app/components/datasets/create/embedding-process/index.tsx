@@ -282,7 +282,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
       </div>
       <RuleDetail sourceData={ruleDetail} />
       <div className='flex items-center gap-2 mt-10'>
-        <Button className='w-fit' type='primary' onClick={navToDocumentList}>
+        <Button className='w-fit' variant='primary' onClick={navToDocumentList}>
           <span>{t('datasetCreation.stepThree.navTo')}</span>
           <ArrowRightIcon className='h-4 w-4 ml-2 stroke-current stroke-1' />
         </Button>
