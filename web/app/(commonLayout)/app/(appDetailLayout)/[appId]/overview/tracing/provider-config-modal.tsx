@@ -103,10 +103,10 @@ const ProviderConfigModal: FC<Props> = ({
 
     if (type === TracingProvider.langfuse) {
       const postData = config as LangFuseConfig
-      if (!postData.public_key)
-        errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.publicKey`) })
       if (!errorMessage && !postData.secret_key)
         errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.secretKey`) })
+      if (!postData.public_key)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.publicKey`) })
     }
 
     return errorMessage
@@ -188,20 +188,20 @@ const ProviderConfigModal: FC<Props> = ({
                       {type === TracingProvider.langfuse && (
                         <>
                           <Field
-                            label={t(`${I18N_PREFIX}.publicKey`)!}
-                            labelClassName='!text-sm'
-                            isRequired
-                            value={(config as LangFuseConfig).public_key}
-                            onChange={handleConfigChange('public_key')}
-                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.publicKey`) })!}
-                          />
-                          <Field
                             label={t(`${I18N_PREFIX}.secretKey`)!}
                             labelClassName='!text-sm'
                             value={(config as LangFuseConfig).secret_key}
                             isRequired
                             onChange={handleConfigChange('secret_key')}
                             placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.secretKey`) })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.publicKey`)!}
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as LangFuseConfig).public_key}
+                            onChange={handleConfigChange('public_key')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.publicKey`) })!}
                           />
                           <Field
                             label='Host'
