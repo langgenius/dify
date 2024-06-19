@@ -282,7 +282,7 @@ export const useOptions = (
   return useMemo(() => {
     return {
       workflowVariableOptions,
-      allOptions: [...promptOptions, ...variableOptions, ...externalToolOptions],
+      allFlattenOptions: [...promptOptions, ...variableOptions, ...externalToolOptions],
     }
   }, [promptOptions, variableOptions, externalToolOptions, workflowVariableOptions])
 }

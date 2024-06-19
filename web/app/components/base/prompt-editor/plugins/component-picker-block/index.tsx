@@ -75,7 +75,7 @@ const ComponentPicker = ({
   })
 
   const {
-    allOptions,
+    allFlattenOptions,
     workflowVariableOptions,
   } = useOptions(
     contextBlock,
@@ -120,7 +120,7 @@ const ComponentPicker = ({
     anchorElementRef,
     { options, selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
   ) => {
-    if (!(anchorElementRef.current && (allOptions.length || workflowVariableBlock?.show)))
+    if (!(anchorElementRef.current && (allFlattenOptions.length || workflowVariableBlock?.show)))
       return null
     refs.setReference(anchorElementRef.current)
 
@@ -190,11 +190,11 @@ const ComponentPicker = ({
         }
       </>
     )
-  }, [allOptions.length, workflowVariableBlock?.show, refs, isPositioned, floatingStyles, queryString, workflowVariableOptions, handleSelectWorkflowVariable])
+  }, [allFlattenOptions.length, workflowVariableBlock?.show, refs, isPositioned, floatingStyles, queryString, workflowVariableOptions, handleSelectWorkflowVariable])
 
   return (
     <LexicalTypeaheadMenuPlugin
-      options={allOptions}
+      options={allFlattenOptions}
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       anchorClassName='z-[999999]'
