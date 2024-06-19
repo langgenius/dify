@@ -1,5 +1,7 @@
 import json
 from enum import Enum
+from typing import Union
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -267,18 +269,28 @@ class OpsTraceService:
     @classmethod
     def get_ops_trace_instance(
         cls,
-        app_id,
+        app_id: Union[UUID, str] = None,
+        message_id: str = None
     ):
         """
         Get ops trace through model config
         :param app_id: app_id
+        :param message_id: message_id
         :return:
         """
+        if message_id:
+            record: Message = db.session.query(Message).filter(Message.id == message_id).first()
+            app_id = record.app_id
+
+        if isinstance(app_id, UUID):
+            app_id = str(app_id)
+
         tracing_instance = None
         app: App = db.session.query(App).filter(
             App.id == app_id
         ).first()
         app_ops_trace_config = json.loads(app.tracing) if app.tracing else None
+
         if app_ops_trace_config is not None:
             tracing_provider = app_ops_trace_config.get('tracing_provider')
         else:
