@@ -68,4 +68,14 @@ def test_database_configs(example_env_file):
     assert settings.DB_DATABASE == 'dify'
     assert settings.DB_PORT == 5432
     assert settings.DB_USERNAME == 'postgres'
+    assert settings.DB_PASSWORD == ''
     assert settings.SQLALCHEMY_DATABASE_URI == 'postgresql://postgres:@:5432/dify'
+    assert settings.SQLALCHEMY_ENGINE_OPTIONS == {
+        'connect_args': {
+            'options': '-c timezone=UTC',
+        },
+        'max_overflow': 10,
+        'pool_pre_ping': False,
+        'pool_recycle': 3600,
+        'pool_size': 0,
+    }
