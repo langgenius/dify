@@ -78,7 +78,6 @@ class Config:
             if self.CELERY_BACKEND == 'database' else self.CELERY_BROKER_URL
         self.BROKER_USE_SSL = self.CELERY_BROKER_URL.startswith('rediss://') if self.CELERY_BROKER_URL else False
 
-
         # S3 Storage settings
         self.S3_USE_AWS_MANAGED_IAM = get_bool_env('S3_USE_AWS_MANAGED_IAM')
         self.S3_ENDPOINT = get_env('S3_ENDPOINT')
