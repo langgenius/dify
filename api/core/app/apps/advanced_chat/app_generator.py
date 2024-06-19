@@ -109,7 +109,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             application_generate_entity=application_generate_entity,
             conversation=conversation,
             stream=stream,
-            tracing_instance=tracing_instance,
         )
     
     def single_iteration_generate(self, app_model: App,
