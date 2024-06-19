@@ -93,6 +93,7 @@ const translation = {
     expand: 'Expand',
     tracing: 'Tracing',
     disabled: 'Disabled',
+    disabledTip: 'Please config provider first',
     enabled: 'In Service',
     tracingDescription: 'Capture the full context of app execution, including LLM calls, context, prompts, HTTP requests, and more, to a third-party tracing platform.',
     configProviderTitle: {

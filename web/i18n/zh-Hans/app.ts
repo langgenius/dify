@@ -92,6 +92,7 @@ const translation = {
     expand: '展开',
     tracing: '追踪',
     disabled: '已禁用',
+    disabledTip: '请先配置提供商',
     enabled: '已启用',
     tracingDescription: '捕获应用程序执行的完整上下文，包括 LLM 调用、上下文、提示、HTTP 请求等，发送到第三方跟踪平台。',
     configProviderTitle: {
