@@ -170,6 +170,7 @@ lxml = "5.1.0"
 xlrd = "~2.0.1"
 pydantic = "~2.7.4"
 pydantic_extra_types = "~2.8.1"
+pydantic-settings = "~2.3.3"
 pgvecto-rs = "0.1.4"
 firecrawl-py = "0.0.5"
 oss2 = "2.18.5"
@@ -203,4 +204,3 @@ optional = true
 [tool.poetry.group.lint.dependencies]
 ruff = "~0.4.8"
 dotenv-linter = "~0.5.0"
-

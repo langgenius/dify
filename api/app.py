@@ -1,5 +1,7 @@
 import os
 
+from configs.app_configs import DifyConfigs
+
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     from gevent import monkey
 
@@ -74,10 +76,19 @@ config_type = os.getenv('EDITION', default='SELF_HOSTED')  # ce edition first
 # Application Factory Function
 # ----------------------------
 
+def create_flask_app_with_configs() -> Flask:
+    """
+    create a raw flask app
+    with configs loaded from .env file
+    """
+    dify_app = DifyApp(__name__)
+    dify_app.config.from_object(Config())
+    dify_app.config.from_mapping(DifyConfigs().model_dump())
+    return dify_app
+
 
 def create_app() -> Flask:
-    app = DifyApp(__name__)
-    app.config.from_object(Config())
+    app = create_flask_app_with_configs()
 
     app.secret_key = app.config['SECRET_KEY']
 
