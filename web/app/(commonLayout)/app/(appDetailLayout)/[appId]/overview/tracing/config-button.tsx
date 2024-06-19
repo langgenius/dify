@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import type { PopupProps } from './config-popup'
@@ -19,18 +19,33 @@ type Props = {
   readOnly: boolean
   className?: string
   hasConfigured: boolean
+  controlShowPopup?: number
 } & PopupProps
 
 const ConfigBtn: FC<Props> = ({
   className,
   hasConfigured,
+  controlShowPopup,
   ...popupProps
 }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
+  const [open, doSetOpen] = useState(false)
+  const openRef = useRef(open)
+  const setOpen = useCallback((v: boolean) => {
+    doSetOpen(v)
+    openRef.current = v
+  }, [doSetOpen])
+
   const handleTrigger = useCallback(() => {
-    setOpen(v => !v)
+    setOpen(!openRef.current)
   }, [setOpen])
+
+  useEffect(() => {
+    if (controlShowPopup)
+      // setOpen(!openRef.current)
+      setOpen(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlShowPopup])
 
   if (popupProps.readOnly && !hasConfigured)
     return null
@@ -57,6 +72,7 @@ const ConfigBtn: FC<Props> = ({
       placement='bottom-end'
       offset={{
         mainAxis: 12,
+        crossAxis: hasConfigured ? 8 : 0,
       }}
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>

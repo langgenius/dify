@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { usePathname } from 'next/navigation'
@@ -116,7 +116,10 @@ const Panel: FC = () => {
   }, [])
 
   const [isFold, setFold] = useState(false)
-
+  const [controlShowPopup, setControlShowPopup] = useState<number>(0)
+  const showPopup = useCallback(() => {
+    setControlShowPopup(Date.now())
+  }, [setControlShowPopup])
   if (!isLoaded) {
     return <div className='mb-3'>
       <Title />
@@ -164,7 +167,7 @@ const Panel: FC = () => {
   }
 
   return (
-    <div className='mb-3 flex justify-between items-center'>
+    <div className='mb-3 flex justify-between items-center cursor-pointer' onClick={showPopup}>
       <Title />
       <div className='flex items-center p-2 rounded-xl border-[0.5px] border-gray-200 shadow-xs hover:bg-gray-100'>
         {!inUseTracingProvider
@@ -186,26 +189,28 @@ const Panel: FC = () => {
         {hasConfiguredTracing && (
           <div className='ml-2 w-px h-3.5 bg-gray-200'></div>
         )}
-
-        <ConfigButton
-          appId={appId}
-          readOnly={readOnly}
-          hasConfigured
-          className='ml-2'
-          enabled={enabled}
-          onStatusChange={handleTracingEnabledChange}
-          chosenProvider={inUseTracingProvider}
-          onChooseProvider={handleChooseProvider}
-          langSmithConfig={langSmithConfig}
-          langFuseConfig={langFuseConfig}
-          onConfigUpdated={handleTracingConfigUpdated}
-          onConfigRemoved={handleTracingConfigRemoved}
-        />
+        <div className='flex items-center' onClick={e => e.stopPropagation()}>
+          <ConfigButton
+            appId={appId}
+            readOnly={readOnly}
+            hasConfigured
+            className='ml-2'
+            enabled={enabled}
+            onStatusChange={handleTracingEnabledChange}
+            chosenProvider={inUseTracingProvider}
+            onChooseProvider={handleChooseProvider}
+            langSmithConfig={langSmithConfig}
+            langFuseConfig={langFuseConfig}
+            onConfigUpdated={handleTracingConfigUpdated}
+            onConfigRemoved={handleTracingConfigRemoved}
+            controlShowPopup={controlShowPopup}
+          />
+        </div>
         {!hasConfiguredTracing && (
-          <>
+          <div className='flex items-center' onClick={e => e.stopPropagation()}>
             <div className='mx-2 w-px h-3.5 bg-gray-200'></div>
             <ToggleExpandBtn isFold={isFold} onFoldChange={setFold} />
-          </>
+          </div>
         )}
       </div>
     </div>
