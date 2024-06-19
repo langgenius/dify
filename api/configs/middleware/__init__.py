@@ -2,6 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from configs.middleware.database_configs import DatabaseConfigs
 from configs.middleware.redis_configs import RedisConfigs
 
 

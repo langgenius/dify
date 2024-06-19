@@ -17,6 +17,7 @@ class DatabaseConfigs(BaseModel):
         description='Database',
         default='',
     )
+
     DB_HOST: str = Field(
         description='Database',
         default='',
@@ -24,7 +25,7 @@ class DatabaseConfigs(BaseModel):
 
     DB_PORT: PositiveInt = Field(
         description='Database',
-        default=None,
+        default=5432,
     )
 
     DB_DATABASE: str = Field(
@@ -44,6 +45,6 @@ class DatabaseConfigs(BaseModel):
 
     @computed_field
     @property
-    def SQLALCHEMY_DATABASE_URI(self):
+    def SQLALCHEMY_DATABASE_URI(self) -> str:
         db_extras = f"?client_encoding={self.DB_CHARSET}" if self.DB_CHARSET else ""
         return f"{self.SQLALCHEMY_DATABASE_URI_SCHEME}://{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}{db_extras}"

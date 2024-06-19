@@ -60,3 +60,12 @@ def test_flask_configs(example_env_file):
     assert config['CONSOLE_API_URL'] == 'https://example.com'
     # fallback to alias choices value as CONSOLE_API_URL
     assert config['FILES_URL'] == 'https://example.com'
+
+
+def test_database_configs(example_env_file):
+    settings = DifyConfigs(_env_file=example_env_file)
+
+    assert settings.DB_DATABASE == 'dify'
+    assert settings.DB_PORT == 5432
+    assert settings.DB_USERNAME == 'postgres'
+    assert settings.SQLALCHEMY_DATABASE_URI == 'postgresql://postgres:@:5432/dify'
