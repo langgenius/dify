@@ -3,7 +3,7 @@ import logging
 
 from flask import abort, request
 from flask_restful import Resource, marshal_with, reqparse
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
 from controllers.console import api
@@ -36,10 +36,6 @@ class DraftWorkflowApi(Resource):
         """
         Get draft workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model=app_model)
@@ -58,10 +54,6 @@ class DraftWorkflowApi(Resource):
         """
         Sync draft workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         content_type = request.headers.get('Content-Type')
 
         if 'application/json' in content_type:
@@ -118,10 +110,6 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         """
         Run draft workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, location='json')
         parser.add_argument('query', type=str, required=True, location='json', default='')
@@ -158,10 +146,6 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         """
         Run draft workflow iteration node
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, location='json')
         args = parser.parse_args()
@@ -195,10 +179,6 @@ class WorkflowDraftRunIterationNodeApi(Resource):
         """
         Run draft workflow iteration node
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, location='json')
         args = parser.parse_args()
@@ -232,10 +212,6 @@ class DraftWorkflowRunApi(Resource):
         """
         Run draft workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, nullable=False, location='json')
         parser.add_argument('files', type=list, required=False, location='json')
@@ -267,10 +243,6 @@ class WorkflowTaskStopApi(Resource):
         """
         Stop workflow task
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
 
         return {
@@ -288,10 +260,6 @@ class DraftWorkflowNodeRunApi(Resource):
         """
         Run draft workflow node
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, nullable=False, location='json')
         args = parser.parse_args()
@@ -318,10 +286,6 @@ class PublishedWorkflowApi(Resource):
         """
         Get published workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         # fetch published workflow by app_model
         workflow_service = WorkflowService()
         workflow = workflow_service.get_published_workflow(app_model=app_model)
@@ -337,10 +301,6 @@ class PublishedWorkflowApi(Resource):
         """
         Publish workflow
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         workflow_service = WorkflowService()
         workflow = workflow_service.publish_workflow(app_model=app_model, account=current_user)
 
@@ -359,10 +319,6 @@ class DefaultBlockConfigsApi(Resource):
         """
         Get default block config
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         # Get default block configs
         workflow_service = WorkflowService()
         return workflow_service.get_default_block_configs()
@@ -377,10 +333,6 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         parser = reqparse.RequestParser()
         parser.add_argument('q', type=str, location='args')
         args = parser.parse_args()
@@ -411,10 +363,6 @@ class ConvertToWorkflowApi(Resource):
         Convert expert mode of chatbot app to workflow mode
         Convert Completion App to Workflow App
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-        
         if request.data:
             parser = reqparse.RequestParser()
             parser.add_argument('name', type=str, required=False, nullable=True, location='json')

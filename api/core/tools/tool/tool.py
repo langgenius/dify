@@ -32,8 +32,8 @@ class Tool(BaseModel, ABC):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    @field_validator('parameters', mode='before')
     @classmethod
+    @field_validator('parameters', mode='before')
     def set_parameters(cls, v, validation_info: ValidationInfo) -> list[ToolParameter]:
         return v or []
 

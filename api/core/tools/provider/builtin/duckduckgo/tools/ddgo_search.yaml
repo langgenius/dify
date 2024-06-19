@@ -54,6 +54,7 @@ parameters:
     form: form
   - name: require_summary
     type: boolean
+    required: true
     default: false
     label:
       en_US: Require Summary

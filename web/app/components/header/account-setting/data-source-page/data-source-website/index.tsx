@@ -7,15 +7,15 @@ import cn from 'classnames'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
 import ConfigFirecrawlModal from './config-firecrawl-modal'
-import { fetchDataSources, removeDataSourceApiKeyBinding } from '@/service/datasets'
+import { fetchFirecrawlApiKey, removeFirecrawlApiKey } from '@/service/datasets'
 
 import type {
-  DataSourceItem,
+  DataSourceWebsiteItem,
 } from '@/models/common'
 import { useAppContext } from '@/context/app-context'
 
 import {
-  DataSourceProvider,
+  WebsiteProvider,
 } from '@/models/common'
 import Toast from '@/app/components/base/toast'
 
@@ -24,11 +24,11 @@ type Props = {}
 const DataSourceWebsite: FC<Props> = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const [sources, setSources] = useState<DataSourceItem[]>([])
+  const [list, setList] = useState<DataSourceWebsiteItem[]>([])
   const checkSetApiKey = useCallback(async () => {
-    const res = await fetchDataSources() as any
-    const list = res.sources
-    setSources(list)
+    const res = await fetchFirecrawlApiKey() as any
+    const list = res.settings.filter((item: DataSourceWebsiteItem) => item.provider === WebsiteProvider.fireCrawl && !item.disabled)
+    setList(list)
   }, [])
 
   useEffect(() => {
@@ -46,33 +46,23 @@ const DataSourceWebsite: FC<Props> = () => {
     hideConfig()
   }, [checkSetApiKey, hideConfig])
 
-  const getIdByProvider = (provider: string): string | undefined => {
-    const source = sources.find(item => item.provider === provider)
-    return source?.id
-  }
-
-  const handleRemove = useCallback((provider: string) => {
-    return async () => {
-      const dataSourceId = getIdByProvider(provider)
-      if (dataSourceId) {
-        await removeDataSourceApiKeyBinding(dataSourceId)
-        setSources(sources.filter(item => item.provider !== provider))
-        Toast.notify({
-          type: 'success',
-          message: t('common.api.remove'),
-        })
-      }
-    }
-  }, [sources, t])
+  const handleRemove = useCallback(async () => {
+    await removeFirecrawlApiKey(list[0].id)
+    setList([])
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.remove'),
+    })
+  }, [list, t])
 
   return (
     <>
       <Panel
         type={DataSourceType.website}
-        isConfigured={sources.length > 0}
+        isConfigured={list.length > 0}
         onConfigure={showConfig}
-        readOnly={!isCurrentWorkspaceManager}
-        configuredList={sources.map(item => ({
+        readonly={!isCurrentWorkspaceManager}
+        configuredList={list.map(item => ({
           id: item.id,
           logo: ({ className }: { className: string }) => (
             <div className={cn(className, 'flex items-center justify-center w-5 h-5 bg-white border border-gray-100 text-xs font-medium text-gray-500 rounded ml-3')}>🔥</div>
@@ -80,7 +70,7 @@ const DataSourceWebsite: FC<Props> = () => {
           name: 'FireCrawl',
           isActive: true,
         }))}
-        onRemove={handleRemove(DataSourceProvider.fireCrawl)}
+        onRemove={handleRemove}
       />
       {isShowConfig && (
         <ConfigFirecrawlModal onSaved={handleAdded} onCancel={hideConfig} />

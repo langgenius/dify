@@ -1,4 +1,3 @@
-import random
 from base64 import b64decode
 from typing import Any, Union
 
