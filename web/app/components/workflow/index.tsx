@@ -72,7 +72,7 @@ import {
   ITERATION_CHILDREN_Z_INDEX,
   WORKFLOW_DATA_UPDATE,
 } from './constants'
-import { WorkflowHistoryProvider } from './workflow-history-store'
+import { WorkflowHistoryProvider, useWorkflowHistoryStore } from './workflow-history-store'
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
@@ -218,6 +218,8 @@ const Workflow: FC<WorkflowProps> = memo(({
     },
   })
 
+  const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
+
   useKeyPress('delete', handleNodesDelete)
   useKeyPress(['delete', 'backspace'], handleEdgeDelete)
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, handleNodesCopy, { exactMatch: true, useCapture: true })
@@ -225,8 +227,17 @@ const Workflow: FC<WorkflowProps> = memo(({
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, handleNodesDuplicate, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, handleStartWorkflowRun, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, handleStartWorkflowRun, { exactMatch: true, useCapture: true })
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.z`, handleHistoryBack, { exactMatch: true, useCapture: true })
-  useKeyPress([`${getKeyboardKeyCodeBySystem('ctrl')}.y`, `${getKeyboardKeyCodeBySystem('ctrl')}.shift.z`], handleHistoryForward, { exactMatch: true, useCapture: true })
+  useKeyPress(
+    `${getKeyboardKeyCodeBySystem('ctrl')}.z`,
+    () => workflowHistoryShortcutsEnabled && handleHistoryBack(),
+    { exactMatch: true, useCapture: true },
+  )
+
+  useKeyPress(
+    [`${getKeyboardKeyCodeBySystem('ctrl')}.y`, `${getKeyboardKeyCodeBySystem('ctrl')}.shift.z`],
+    () => workflowHistoryShortcutsEnabled && handleHistoryForward(),
+    { exactMatch: true, useCapture: true },
+  )
 
   return (
     <div

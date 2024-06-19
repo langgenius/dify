@@ -5,7 +5,7 @@ import isDeepEqual from 'fast-deep-equal'
 import type { Edge, Node } from './types'
 import type { WorkflowHistoryEvent } from './hooks'
 
-export const WorkflowHistoryStoreContext = createContext<ReturnType<typeof createStore> | null>(null)
+export const WorkflowHistoryStoreContext = createContext<WorkflowHistoryStoreContextType>({ store: null, shortcutsEnabled: true, setShortcutsEnabled: () => {} })
 export const Provider = WorkflowHistoryStoreContext.Provider
 
 export function WorkflowHistoryProvider({
@@ -13,6 +13,7 @@ export function WorkflowHistoryProvider({
   edges,
   children,
 }: WorkflowWithHistoryProviderProps) {
+  const [shortcutsEnabled, setShortcutsEnabled] = useState(true)
   const [store] = useState(() =>
     createStore({
       nodes,
@@ -20,33 +21,47 @@ export function WorkflowHistoryProvider({
     }),
   )
 
+  const contextValue = {
+    store,
+    shortcutsEnabled,
+    setShortcutsEnabled,
+  }
+
   return (
-    <Provider value={store}>
+    <Provider value={contextValue}>
       {children}
     </Provider>
   )
 }
 
 export function useWorkflowHistoryStore() {
-  const store: WorkflowHistoryStoreApi | null = useContext(WorkflowHistoryStoreContext)
+  const {
+    store,
+    shortcutsEnabled,
+    setShortcutsEnabled,
+  } = useContext(WorkflowHistoryStoreContext)
   if (store === null)
     throw new Error('useWorkflowHistoryStoreApi must be used within a WorkflowHistoryProvider')
 
-  return useMemo(
-    () => ({
-      getState: store.getState,
-      setState: (state: WorkflowHistoryState) => {
-        store.setState({
-          workflowHistoryEvent: state.workflowHistoryEvent,
-          nodes: state.nodes.map((node: Node) => ({ ...node, data: { ...node.data, selected: false } })),
-          edges: state.edges.map((edge: Edge) => ({ ...edge, selected: false }) as Edge),
-        })
-      },
-      subscribe: store.subscribe,
-      temporal: store.temporal,
-    }),
-    [store],
-  )
+  return {
+    store: useMemo(
+      () => ({
+        getState: store.getState,
+        setState: (state: WorkflowHistoryState) => {
+          store.setState({
+            workflowHistoryEvent: state.workflowHistoryEvent,
+            nodes: state.nodes.map((node: Node) => ({ ...node, data: { ...node.data, selected: false } })),
+            edges: state.edges.map((edge: Edge) => ({ ...edge, selected: false }) as Edge),
+          })
+        },
+        subscribe: store.subscribe,
+        temporal: store.temporal,
+      }),
+      [store],
+    ),
+    shortcutsEnabled,
+    setShortcutsEnabled,
+  }
 }
 
 function createStore({
@@ -89,6 +104,12 @@ export type WorkflowHistoryActions = {
 }
 
 export type WorkflowHistoryState = WorkflowHistoryStore & WorkflowHistoryActions
+
+type WorkflowHistoryStoreContextType = {
+  store: ReturnType<typeof createStore> | null
+  shortcutsEnabled: boolean
+  setShortcutsEnabled: (enabled: boolean) => void
+}
 
 export type WorkflowHistoryStoreApi = StoreApi<WorkflowHistoryState> & { temporal: StoreApi<TemporalState<WorkflowHistoryState>> }
 

@@ -7,7 +7,7 @@ import {
   useStoreApi,
 } from 'reactflow'
 import { useTranslation } from 'react-i18next'
-import { type WorkflowHistoryStoreApi, useWorkflowHistoryStore } from '../workflow-history-store'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
 
 /**
  * All supported Events that create a new history state.
@@ -34,7 +34,7 @@ export enum WorkflowHistoryEvent {
 
 export const useWorkflowHistory = () => {
   const store = useStoreApi()
-  const workflowHistoryStore: WorkflowHistoryStoreApi = useWorkflowHistoryStore() as WorkflowHistoryStoreApi
+  const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { t } = useTranslation()
 
   const [undoCallbacks, setUndoCallbacks] = useState<any[]>([])
