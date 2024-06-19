@@ -165,6 +165,11 @@ class LoggingConfigs(BaseModel):
         default=None,
     )
 
+    LOG_TZ: Optional[str] = Field(
+        description='specify log timezone, eg: America/New_York',
+        default=None,
+    )
+
 
 class ModelLoadBalanceConfigs(BaseModel):
     """
