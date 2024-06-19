@@ -33,7 +33,6 @@
 
 5. Install dependencies
 
-=======
    ```bash
    poetry env use 3.10
    poetry install
