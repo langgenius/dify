@@ -35,6 +35,7 @@ class KeywordStoreConfigs(BaseModel):
 
 class MiddlewareConfigs(
     # place the configs in alphabet order
+    DatabaseConfigs,
     KeywordStoreConfigs,
     RedisConfigs,
     StorageConfigs,
