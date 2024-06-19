@@ -13,6 +13,7 @@ from flask import current_app
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 
+from core.rag.retrieval.retrival_methods import RetrievalMethod
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import StringUUID
@@ -116,7 +117,7 @@ class Dataset(db.Model):
     @property
     def retrieval_model_dict(self):
         default_retrieval_model = {
-            'search_method': 'semantic_search',
+            'search_method': RetrievalMethod.SEMANTIC_SEARCH,
             'reranking_enable': False,
             'reranking_model': {
                 'reranking_provider_name': '',
