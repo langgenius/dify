@@ -79,3 +79,4 @@ def test_database_configs(example_env_file):
         'pool_recycle': 3600,
         'pool_size': 0,
     }
+    assert settings.SQLALCHEMY_ECHO is False

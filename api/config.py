@@ -11,12 +11,6 @@ DEFAULTS = {
     'DB_CHARSET': '',
     'S3_USE_AWS_MANAGED_IAM': 'False',
     'S3_ADDRESS_STYLE': 'auto',
-    'SQLALCHEMY_DATABASE_URI_SCHEME': 'postgresql',
-    'SQLALCHEMY_POOL_SIZE': 30,
-    'SQLALCHEMY_MAX_OVERFLOW': 10,
-    'SQLALCHEMY_POOL_RECYCLE': 3600,
-    'SQLALCHEMY_POOL_PRE_PING': 'False',
-    'SQLALCHEMY_ECHO': 'False',
     'WEAVIATE_GRPC_ENABLED': 'True',
     'WEAVIATE_BATCH_SIZE': 100,
     'QDRANT_CLIENT_TIMEOUT': 20,
@@ -74,28 +68,6 @@ class Config:
             'CONSOLE_CORS_ALLOW_ORIGINS', get_env('CONSOLE_WEB_URL'))
         self.WEB_API_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
             'WEB_API_CORS_ALLOW_ORIGINS', '*')
-
-        # ------------------------
-        # Database Configurations.
-        # ------------------------
-        db_credentials = {
-            key: get_env(key) for key in
-            ['DB_USERNAME', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_CHARSET']
-        }
-        self.SQLALCHEMY_DATABASE_URI_SCHEME = get_env('SQLALCHEMY_DATABASE_URI_SCHEME')
-
-        db_extras = f"?client_encoding={db_credentials['DB_CHARSET']}" if db_credentials['DB_CHARSET'] else ""
-
-        self.SQLALCHEMY_DATABASE_URI = f"{self.SQLALCHEMY_DATABASE_URI_SCHEME}://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
-        self.SQLALCHEMY_ENGINE_OPTIONS = {
-            'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
-            'max_overflow': int(get_env('SQLALCHEMY_MAX_OVERFLOW')),
-            'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE')),
-            'pool_pre_ping': get_bool_env('SQLALCHEMY_POOL_PRE_PING'),
-            'connect_args': {'options': '-c timezone=UTC'},
-        }
-
-        self.SQLALCHEMY_ECHO = get_bool_env('SQLALCHEMY_ECHO')
 
         # ------------------------
         # Celery worker Configurations.

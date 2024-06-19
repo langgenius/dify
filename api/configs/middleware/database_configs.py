@@ -79,3 +79,8 @@ class DatabaseConfigs(BaseModel):
             'pool_pre_ping': self.SQLALCHEMY_POOL_PRE_PING,
             'connect_args': {'options': '-c timezone=UTC'},
         }
+
+    SQLALCHEMY_ECHO: bool = Field(
+        description='Database',
+        default=False,
+    )
