@@ -110,7 +110,7 @@ const BatchModal: FC<IBatchModalProps> = ({
         </Button>
         <Button
           className='text-sm font-medium'
-          type="primary"
+          variant="primary"
           onClick={handleSend}
           disabled={isAnnotationFull || !currentCSV}
           loading={importStatus === ProcessStatus.PROCESSING || importStatus === ProcessStatus.WAITING}

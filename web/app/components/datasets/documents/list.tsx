@@ -301,7 +301,7 @@ export const OperationAction: FC<{
         <div className='flex gap-2 justify-end'>
           <Button onClick={() => setShowModal(false)}>{t('common.operation.cancel')}</Button>
           <Button
-            type='warning'
+            variant='warning'
             onClick={() => onOperate('delete')}
             className='border-red-700 border-[0.5px]'
           >

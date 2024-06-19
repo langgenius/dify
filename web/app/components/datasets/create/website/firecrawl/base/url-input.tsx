@@ -35,7 +35,7 @@ const UrlInput: FC<Props> = ({
         placeholder='https://docs.dify.ai'
       />
       <Button
-        type='primary'
+        variant='primary'
         onClick={handleOnRun}
         className='ml-2 !h-8 text-[13px] font-medium'
         loading={isRunning}

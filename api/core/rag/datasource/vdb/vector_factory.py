@@ -78,6 +78,9 @@ class Vector:
             case VectorType.TENCENT:
                 from core.rag.datasource.vdb.tencent.tencent_vector import TencentVectorFactory
                 return TencentVectorFactory
+            case VectorType.OPENSEARCH:
+                from core.rag.datasource.vdb.opensearch.opensearch_vector import OpenSearchVectorFactory
+                return OpenSearchVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
