@@ -87,7 +87,7 @@ const LinkEditorComponent = ({
                       autoFocus
                     />
                     <Button
-                      type='primary'
+                      variant='primary'
                       className={cn(
                         'py-0 px-2 h-6 text-xs',
                         !url && 'cursor-not-allowed',

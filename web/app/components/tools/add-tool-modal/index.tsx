@@ -174,15 +174,15 @@ const AddToolModal: FC<Props> = ({
             <div className='sticky top-0 left-0 right-0'>
               <div className='sticky top-0 left-0 right-0 px-5 py-3 text-md font-semibold text-gray-900'>{t('tools.addTool')}</div>
               <div className='px-3 pt-2 pb-4'>
-                <Button type='primary' className='w-[176px] text-[13px] leading-[18px] font-medium' onClick={() => setIsShowEditCustomCollectionModal(true)}>
-                  <Plus className='w-4 h-4 mr-1'/>
+                <Button variant='primary' className='w-[176px] text-[13px] leading-[18px] font-medium' onClick={() => setIsShowEditCustomCollectionModal(true)}>
+                  <Plus className='w-4 h-4 mr-1' />
                   {t('tools.createCustomTool')}
                 </Button>
               </div>
             </div>
             <div className='px-2 py-1'>
-              <Type value={currentType} onSelect={setCurrentType}/>
-              <Category value={currentCategory} onSelect={setCurrentCategory}/>
+              <Type value={currentType} onSelect={setCurrentType} />
+              <Category value={currentCategory} onSelect={setCurrentCategory} />
             </div>
           </div>
           <div className='relative grow bg-white rounded-r-xl overflow-y-auto'>
