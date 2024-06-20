@@ -13,7 +13,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    if: github.repository == 'langgenius/dify'
+    if: github.repository == 'chivalry1314/dify'
     strategy:
       matrix:
         include:
