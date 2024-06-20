@@ -26,3 +26,18 @@ def measure_time():
     finally:
         timing_info['end'] = datetime.now()
         print(f"Execution time: {timing_info['end'] - timing_info['start']}")
+
+
+def replace_text_with_content(data):
+    if isinstance(data, dict):
+        new_data = {}
+        for key, value in data.items():
+            if key == 'text':
+                new_data['content'] = value
+            else:
+                new_data[key] = replace_text_with_content(value)
+        return new_data
+    elif isinstance(data, list):
+        return [replace_text_with_content(item) for item in data]
+    else:
+        return data

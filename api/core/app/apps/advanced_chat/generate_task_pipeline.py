@@ -256,7 +256,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 yield self._handle_iteration_to_stream_response(self._application_generate_entity.task_id, event)
                 self._handle_iteration_operation(event)
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
-                workflow_run = self._handle_workflow_finished(event, tracing_instance)
+                workflow_run = self._handle_workflow_finished(
+                    event, tracing_instance=tracing_instance, conversation_id=self._conversation.id
+                )
                 if workflow_run:
                     yield self._workflow_finish_to_stream_response(
                         task_id=self._application_generate_entity.task_id,
