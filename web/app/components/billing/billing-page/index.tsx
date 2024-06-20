@@ -3,9 +3,11 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
+import {
+  RiExternalLinkLine,
+} from '@remixicon/react'
 import PlanComp from '../plan'
 import { ReceiptList } from '../../base/icons/src/vender/line/financeAndECommerce'
-import { LinkExternal01 } from '../../base/icons/src/vender/line/general'
 import { fetchBillingUrl } from '@/service/billing'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -28,7 +30,7 @@ const Billing: FC = () => {
             <ReceiptList className='w-4 h-4 text-gray-700' />
             <div className='ml-2 text-sm font-normal text-gray-700'>{t('billing.viewBilling')}</div>
           </div>
-          <LinkExternal01 className='w-3 h-3' />
+          <RiExternalLinkLine className='w-3 h-3' />
         </a>
       )}
     </div>

@@ -3,12 +3,14 @@ import type { FC } from 'react'
 import React from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import RadioGroup from './radio-group'
 import ConfigContext from '@/context/debug-configuration'
 import { Resolution, TransferMethod } from '@/types/app'
 import ParamItem from '@/app/components/base/param-item'
 import Tooltip from '@/app/components/base/tooltip'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 
 const MIN = 1
 const MAX = 6
@@ -40,7 +42,7 @@ const ParamConfigContent: FC = () => {
                   <div key={item}>{item}</div>
                 ))}
               </div>} selector='config-resolution-tooltip'>
-                <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
+                <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <RadioGroup
