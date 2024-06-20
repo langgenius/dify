@@ -14,7 +14,7 @@ const translation = {
     permissionsAllMember: '모든 팀 멤버',
     indexMethod: '인덱스 방법',
     indexMethodHighQuality: '고품질',
-    indexMethodHighQualityTip: '사용자 쿼리 시 더 높은 정확도를 제공하기 위해 OpenAI의 임베딩 인터페이스를 호출하여 처리합니다.',
+    indexMethodHighQualityTip: '사용자 쿼리 시 더 높은 정확도를 제공하기 위해 Embedding 모델을 호출하여 처리합니다.',
     indexMethodEconomy: '경제적',
     indexMethodEconomyTip: '오프라인 벡터 엔진, 키워드 인덱스 등을 사용하여 토큰을 소비하지 않고도 정확도를 감소시킵니다.',
     embeddingModel: '임베딩 모델',
