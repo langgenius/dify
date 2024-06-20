@@ -183,6 +183,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               permission={localeCurrentDataset.permission}
               value={[]}
               onChange={v => handleValueChange('permission', v!)}
+              onMemberSelect={() => {}}
               // itemClassName='sm:!w-[280px]'
             />
           </div>

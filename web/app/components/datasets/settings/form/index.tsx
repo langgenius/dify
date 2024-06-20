@@ -58,6 +58,7 @@ const Form = () => {
   const [name, setName] = useState(currentDataset?.name ?? '')
   const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
+  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>([])
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
@@ -174,8 +175,9 @@ const Form = () => {
           <PermissionSelector
             disabled={!currentDataset?.embedding_available}
             permission={permission}
-            value={[]}
+            value={selectedMemberIDs}
             onChange={v => setPermission(v)}
+            onMemberSelect={setSelectedMemberIDs}
           />
         </div>
       </div>
