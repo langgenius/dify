@@ -143,9 +143,6 @@ const ViewWorkflowHistory = () => {
         <PortalToFollowElemContent className='z-[12]'>
           <div
             className='flex flex-col ml-2 min-w-[240px] max-w-[360px] bg-white border-[0.5px] border-gray-200 shadow-xl rounded-xl overflow-y-auto'
-            style={{
-              maxHeight: 'calc(2 / 3 * 100vh)',
-            }}
           >
             <div className='sticky top-0 bg-white flex items-center justify-between px-4 pt-3 text-base font-semibold text-gray-900'>
               <div className='grow'>{t('workflow.changeHistory.title')}</div>
@@ -162,7 +159,12 @@ const ViewWorkflowHistory = () => {
             </div>
             {
               (
-                <div className='p-2'>
+                <div
+                  className='p-2 overflow-y-auto'
+                  style={{
+                    maxHeight: 'calc(1 / 2 * 100vh)',
+                  }}
+                >
                   {
                     !calculateChangeList.statesCount && (
                       <div className='py-12'>
@@ -226,40 +228,41 @@ const ViewWorkflowHistory = () => {
                         </div>
                       ))
                     }
-                    {!!calculateChangeList.statesCount && (
-                      <>
-                        <div className="h-[1px] bg-gray-100" />
-                        <div
-                          className={cn(
-                            'flex mb-0.5 px-2 py-[7px] rounded-lg cursor-pointer',
-                            'hover:bg-red-50 hover:text-red-600',
-                          )}
-                          onClick={() => {
-                            handleClearHistory()
-                            setOpen(false)
-                          }}
-                        >
-                          <div>
-                            <div
-                              className={cn(
-                                'flex items-center text-[13px] font-medium leading-[18px]',
-                              )}
-                            >
-                              {t('workflow.changeHistory.clearHistory')}
-                            </div>
-                          </div>
-                        </div>
-                      </>
-
-                    )}
-                  </div>
-                  <div className="px-3 w-[240px] py-2 text-xs text-gray-500" >
-                    <div className="flex items-center mb-1 h-[22px] font-medium uppercase">{t('workflow.changeHistory.hint')}</div>
-                    <div className="mb-1 text-gray-700 leading-[18px]">{t('workflow.changeHistory.hintText')}</div>
                   </div>
                 </div>
               )
             }
+            {
+              !!calculateChangeList.statesCount && (
+                <>
+                  <div className="h-[1px] bg-gray-100" />
+                  <div
+                    className={cn(
+                      'flex my-0.5 px-2 py-[7px] rounded-lg cursor-pointer',
+                      'hover:bg-red-50 hover:text-red-600',
+                    )}
+                    onClick={() => {
+                      handleClearHistory()
+                      setOpen(false)
+                    }}
+                  >
+                    <div>
+                      <div
+                        className={cn(
+                          'flex items-center text-[13px] font-medium leading-[18px]',
+                        )}
+                      >
+                        {t('workflow.changeHistory.clearHistory')}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )
+            }
+            <div className="px-3 w-[240px] py-2 text-xs text-gray-500" >
+              <div className="flex items-center mb-1 h-[22px] font-medium uppercase">{t('workflow.changeHistory.hint')}</div>
+              <div className="mb-1 text-gray-700 leading-[18px]">{t('workflow.changeHistory.hintText')}</div>
+            </div>
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>
