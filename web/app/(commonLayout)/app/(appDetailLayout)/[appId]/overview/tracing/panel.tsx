@@ -16,6 +16,7 @@ import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateT
 import type { TracingStatus } from '@/models/app'
 import Toast from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
+import Loading from '@/app/components/base/loading'
 
 const I18N_PREFIX = 'app.tracing'
 
@@ -27,7 +28,7 @@ const Title = ({
   const { t } = useTranslation()
 
   return (
-    <div className={cn(className, 'text-lg font-semibold text-gray-900')}>
+    <div className={cn(className, 'flex items-center text-lg font-semibold text-gray-900')}>
       {t('appOverview.overview.title')}
     </div>
   )
@@ -123,14 +124,19 @@ const Panel: FC = () => {
     setControlShowPopup(Date.now())
   }, [setControlShowPopup])
   if (!isLoaded) {
-    return <div className='mb-3'>
-      <Title />
-    </div>
+    return (
+      <div className='flex items-center justify-between mb-3'>
+        <Title className='h-[41px]' />
+        <div className='w-[200px]'>
+          <Loading />
+        </div>
+      </div>
+    )
   }
 
   if (!isFold && !hasConfiguredTracing) {
     return (
-      <div className='mb-3'>
+      <div className={cn('mb-3')}>
         <Title />
         <div className='mt-2 flex justify-between p-3 pr-4 items-center bg-white border-[0.5px] border-black/8 rounded-xl shadow-md'>
           <div className='flex space-x-2'>
@@ -169,8 +175,8 @@ const Panel: FC = () => {
   }
 
   return (
-    <div className='mb-3 flex justify-between items-center cursor-pointer' onClick={showPopup}>
-      <Title />
+    <div className={cn('mb-3 flex justify-between items-center cursor-pointer')} onClick={showPopup}>
+      <Title className='h-[41px]' />
       <div className='flex items-center p-2 rounded-xl border-[0.5px] border-gray-200 shadow-xs hover:bg-gray-100'>
         {!inUseTracingProvider
           ? <>
