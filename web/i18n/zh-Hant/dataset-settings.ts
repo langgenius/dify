@@ -14,7 +14,7 @@ const translation = {
     permissionsAllMember: '所有團隊成員',
     indexMethod: '索引模式',
     indexMethodHighQuality: '高質量',
-    indexMethodHighQualityTip: '呼叫 OpenAI 的嵌入介面進行處理，以在使用者查詢時提供更高的準確度',
+    indexMethodHighQualityTip: '使用 Embedding 模型進行處理，以在使用者查詢時提供更高的準確度。',
     indexMethodEconomy: '經濟',
     indexMethodEconomyTip: '使用離線的向量引擎、關鍵詞索引等方式，降低了準確度但無需花費 Token',
     embeddingModel: 'Embedding 模型',
