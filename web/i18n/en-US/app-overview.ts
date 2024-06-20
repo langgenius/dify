@@ -45,7 +45,7 @@ const translation = {
         webDescPlaceholder: 'Enter the description of the WebApp',
         language: 'Language',
         workflow: {
-          title: 'Workflow Details',
+          title: 'Workflow Steps',
           show: 'Show',
           hide: 'Hide',
         },
