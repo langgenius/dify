@@ -1,0 +1,52 @@
+identity: # 工具的基本信息
+  name: tablestructutil # 工具名称，唯一，不允许和其他工具重名
+  author: Nut # 作者
+  label: # 标签，用于前端展示
+    en_US: tableStructUtil # 英文标签
+    zh_Hans: 表结构查询 # 中文标签
+description: # 描述，用于前端展示
+  human: # 用于前端展示的介绍，支持多语言
+    en_US: A tool for table struct search.
+    zh_Hans: 一个用于查询表结构的工具。输入应该是一个搜索查询。
+  llm: A tool for table struct search.Input should be a search query. # 传递给LLM的介绍，为了使得LLM更好理解这个工具，我们建议在这里写上关于这个工具尽可能详细的信息，让LLM能够理解并使用这个工具
+parameters: # 参数列表
+  - name: db_type
+    type: select # 参数类型
+    required: true
+    options: # 下拉框选项
+      - value: mysql
+        label:
+          en_US: mysql
+          zh_Hans: mysql
+    default: mysql
+    label:
+      en_US: Database type
+      zh_Hans: 数据库类型
+    human_description:
+      en_US: used for selecting the database type, mysql or other
+      zh_Hans: 用于选择数据库类型
+    form: form # 表单类型，form表示这个参数需要由用户在对话开始前在前端填写
+  - name: db_connection # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: DB connections # 英文标签
+      zh_Hans: 数据库连接 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: DB连接字符串,例如：mysql+pymysql://root:xxxxx@localhost:3306/test
+      zh_Hans: DB连接字符串,例如：mysql+pymysql://root:xxxxx@localhost:3306/test
+    llm_description: DB connections # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: form # form,llm   表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
+  - name: query_tbl # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: table name # 英文标签
+      zh_Hans: 表名 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: table name
+      zh_Hans: 表名
+    llm_description: sql for searching # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: llm # form,llm   表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
+
+
