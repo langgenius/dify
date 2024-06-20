@@ -116,10 +116,10 @@ class ToolParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
 
-    @classmethod
     @field_validator('value', mode='before')
+    @classmethod
     def transform_id_to_str(cls, value) -> str:
-        if isinstance(value, bool):
+        if not isinstance(value, str):
             return str(value)
         else:
             return value

@@ -155,6 +155,9 @@ const translation = {
     langGeniusAccountTip: 'Contul Dify și datele de utilizator asociate.',
     editName: 'Editează Nume',
     showAppLength: 'Afișează {{length}} aplicații',
+    delete: 'Șterge contul',
+    deleteTip: 'Ștergerea contului vă va șterge definitiv toate datele și nu pot fi recuperate.',
+    deleteConfirmTip: 'Pentru a confirma, trimiteți următoarele din e-mailul înregistrat la ',
   },
   members: {
     team: 'Echipă',
