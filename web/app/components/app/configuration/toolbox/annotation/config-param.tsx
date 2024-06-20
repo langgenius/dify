@@ -14,7 +14,8 @@ import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { LinkExternal02, Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfigContext from '@/context/debug-configuration'
 import type { EmbeddingModelConfig } from '@/app/components/app/annotation/type'
-import { updateAnnotationScore } from '@/service/annotation'
+import { fetchAnnotationConfig, updateAnnotationScore } from '@/service/annotation'
+import type { AnnotationReplyConfig as AnnotationReplyConfigType } from '@/models/debug'
 
 type Props = {
   onEmbeddingChange: (embeddingModel: EmbeddingModelConfig) => void
@@ -98,6 +99,7 @@ const AnnotationReplyConfig: FC<Props> = ({
             setIsShowEdit(false)
           }}
           onSave={async (embeddingModel, score) => {
+            const annotationConfig = await fetchAnnotationConfig(appId) as AnnotationReplyConfigType
             let isEmbeddingModelChanged = false
             if (
               embeddingModel.embedding_model_name !== annotationConfig.embedding_model.embedding_model_name
