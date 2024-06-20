@@ -5,6 +5,9 @@ import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { setAutoFreeze } from 'immer'
 import { useBoolean } from 'ahooks'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
@@ -34,7 +37,6 @@ import { fetchFileUploadConfig } from '@/service/common'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
@@ -404,7 +406,7 @@ const Debug: FC<IDebug> = ({
                       onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
                       disabled={multipleModelConfigs.length >= 4}
                     >
-                      <Plus className='mr-1 w-3.5 h-3.5' />
+                      <RiAddLine className='mr-1 w-3.5 h-3.5' />
                       {t('common.modelProvider.addModel')}({multipleModelConfigs.length}/4)
                     </Button>
                     <div className='mx-2 w-[1px] h-[14px] bg-gray-200' />

@@ -276,7 +276,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           {t('common.operation.cancel')}
         </Button>
         <Button
-          type='primary'
+          variant='primary'
           className='text-sm font-medium'
           onClick={handleSave}
         >

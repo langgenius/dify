@@ -2,12 +2,13 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiDeleteBinLine } from '@remixicon/react'
 import SettingsModal from '../settings-modal'
 import type { DataSet } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
 import { formatNumber } from '@/utils/format'
 import FileIcon from '@/app/components/base/file-icon'
-import { Settings01, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
+import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
 import Drawer from '@/app/components/base/drawer'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -77,7 +78,7 @@ const Item: FC<ItemProps> = ({
           className='group/action flex items-center justify-center w-6 h-6 hover:bg-[#FEE4E2] rounded-md cursor-pointer'
           onClick={() => onRemove(config.id)}
         >
-          <Trash03 className='w-4 h-4 text-gray-500 group-hover/action:text-[#D92D20]' />
+          <RiDeleteBinLine className='w-4 h-4 text-gray-500 group-hover/action:text-[#D92D20]' />
         </div>
       </div>
       <Drawer isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>

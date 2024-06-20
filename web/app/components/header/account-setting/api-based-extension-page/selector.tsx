@@ -3,15 +3,17 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import {
+  RiAddLine,
+  RiArrowDownSLine,
+} from '@remixicon/react'
+import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import {
   ArrowUpRight,
-  ChevronDown,
 } from '@/app/components/base/icons/src/vender/line/arrows'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { fetchApiBasedExtensionList } from '@/service/common'
 
@@ -58,14 +60,14 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
                   <div className='mr-1.5 w-[270px] text-xs text-gray-400 truncate text-right'>
                     {currentItem.api_endpoint}
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-gray-700 ${!open && 'opacity-60'}`} />
+                  <RiArrowDownSLine className={`w-4 h-4 text-gray-700 ${!open && 'opacity-60'}`} />
                 </div>
               </div>
             )
             : (
               <div className='flex items-center justify-between pl-3 pr-2.5 h-9 bg-gray-100 rounded-lg text-sm text-gray-400 cursor-pointer'>
                 {t('common.apiBasedExtension.selector.placeholder')}
-                <ChevronDown className={`w-4 h-4 text-gray-700 ${!open && 'opacity-60'}`} />
+                <RiArrowDownSLine className={`w-4 h-4 text-gray-700 ${!open && 'opacity-60'}`} />
               </div>
             )
         }
@@ -106,7 +108,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
               className='flex items-center px-3 h-8 text-sm text-primary-600 cursor-pointer'
               onClick={() => setShowApiBasedExtensionModal({ payload: {}, onSaveCallback: () => mutate() })}
             >
-              <Plus className='mr-2 w-4 h-4' />
+              <RiAddLine className='mr-2 w-4 h-4' />
               {t('common.operation.add')}
             </div>
           </div>

@@ -1,9 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import {
+  RiErrorWarningFill,
+} from '@remixicon/react'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 export const ValidatedErrorIcon = () => {
-  return <AlertCircle className='w-4 h-4 text-[#D92D20]' />
+  return <RiErrorWarningFill className='w-4 h-4 text-[#D92D20]' />
 }
 
 export const ValidatedSuccessIcon = () => {
