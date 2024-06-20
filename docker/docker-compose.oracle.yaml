@@ -16,3 +16,4 @@ services:
       - ORACLE_CHARACTERSET=AL32UTF8
 volumes:
   oradata_vector:
+
