@@ -2,9 +2,7 @@ name: Build and Push API & Web
 
 on:
   push:
-    branches:
-      - "main"
-      - "deploy/dev"
+    branches: [ main ]
   release:
     types: [published]
 
