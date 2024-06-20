@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
-import PermissionsRadio from '../permissions-radio'
+import PermissionSelector from '../permission-selector'
 import IndexMethodRadio from '../index-method-radio'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
@@ -24,6 +24,7 @@ import {
   useModelList,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const rowClass = `
@@ -170,9 +171,10 @@ const Form = () => {
           <div>{t('datasetSettings.form.permissions')}</div>
         </div>
         <div className='w-full sm:w-[480px]'>
-          <PermissionsRadio
-            disable={!currentDataset?.embedding_available}
-            value={permission}
+          <PermissionSelector
+            disabled={!currentDataset?.embedding_available}
+            permission={permission}
+            value={[]}
             onChange={v => setPermission(v)}
           />
         </div>

@@ -8,13 +8,15 @@ export enum DataSourceType {
   WEB = 'website_crawl',
 }
 
+export type DatasetPermission = 'only_me' | 'all_team_members' | 'selected_team_members'
+
 export type DataSet = {
   id: string
   name: string
   icon: string
   icon_background: string
   description: string
-  permission: 'only_me' | 'all_team_members'
+  permission: DatasetPermission
   data_source_type: DataSourceType
   indexing_technique: 'high_quality' | 'economy'
   created_by: string

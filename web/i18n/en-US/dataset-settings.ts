@@ -12,6 +12,7 @@ const translation = {
     permissions: 'Permissions',
     permissionsOnlyMe: 'Only me',
     permissionsAllMember: 'All team members',
+    permissionsInvitedMembers: 'Only invited members',
     indexMethod: 'Index Method',
     indexMethodHighQuality: 'High Quality',
     indexMethodHighQualityTip: 'Call OpenAI\'s embedding interface for processing to provide higher accuracy when users query.',

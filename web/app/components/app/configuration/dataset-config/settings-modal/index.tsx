@@ -16,7 +16,7 @@ import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-me
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import PermissionsRadio from '@/app/components/datasets/settings/permissions-radio'
+import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
   useModelList,
@@ -177,11 +177,13 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div>{t('datasetSettings.form.permissions')}</div>
           </div>
           <div className='w-full'>
-            <PermissionsRadio
-              disable={!localeCurrentDataset?.embedding_available}
-              value={localeCurrentDataset.permission}
+            {/* TODO */}
+            <PermissionSelector
+              disabled={!localeCurrentDataset?.embedding_available}
+              permission={localeCurrentDataset.permission}
+              value={[]}
               onChange={v => handleValueChange('permission', v!)}
-              itemClassName='sm:!w-[280px]'
+              // itemClassName='sm:!w-[280px]'
             />
           </div>
         </div>
