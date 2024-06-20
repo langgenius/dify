@@ -23,6 +23,7 @@ from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
 from fields.document_fields import document_status_fields
 from libs.login import login_required
+from models.account import TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.model import ApiToken, UploadFile
 from services.dataset_service import DatasetService, DocumentService
@@ -52,6 +53,9 @@ class DatasetListApi(Resource):
         provider = request.args.get('provider', default="vendor")
         search = request.args.get('keyword', default=None, type=str)
         tag_ids = request.args.getlist('tag_ids')
+
+        if current_user.current_tenant.current_role == TenantAccountRole.EDITOR:
+            raise Forbidden()
 
         if ids:
             datasets, total = DatasetService.get_datasets_by_ids(ids, current_user.current_tenant_id)
