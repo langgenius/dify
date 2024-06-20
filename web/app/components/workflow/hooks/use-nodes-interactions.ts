@@ -578,7 +578,6 @@ export const useNodesInteractions = () => {
       nextNodeTargetHandle,
     },
   ) => {
-    console.log('handleNodeAdd')
     if (getNodesReadOnly())
       return
 
@@ -604,7 +603,6 @@ export const useNodesInteractions = () => {
         y: 0,
       },
     })
-    console.log('new node', newNode.type)
     if (prevNodeId && !nextNodeId) {
       const prevNodeIndex = nodes.findIndex(node => node.id === prevNodeId)
       const prevNode = nodes[prevNodeIndex]
@@ -896,7 +894,6 @@ export const useNodesInteractions = () => {
       })
       setEdges(newEdges)
     }
-    console.log('saveStateToHistory')
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
   }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch])
