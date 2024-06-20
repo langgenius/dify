@@ -225,7 +225,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 yield self._handle_iteration_to_stream_response(self._application_generate_entity.task_id, event)
                 self._handle_iteration_operation(event)
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
-                workflow_run = self._handle_workflow_finished(event, tracing_instance)
+                workflow_run = self._handle_workflow_finished(event, tracing_instance=tracing_instance)
 
                 # save workflow app log
                 self._save_workflow_app_log(workflow_run)

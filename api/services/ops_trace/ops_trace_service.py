@@ -270,14 +270,22 @@ class OpsTraceService:
     def get_ops_trace_instance(
         cls,
         app_id: Union[UUID, str] = None,
-        message_id: str = None
+        message_id: str = None,
+        conversation_id: str = None
     ):
         """
         Get ops trace through model config
         :param app_id: app_id
         :param message_id: message_id
+        :param conversation_id: conversation_id
         :return:
         """
+        if conversation_id:
+            conversation_data: Conversation = db.session.query(Conversation).filter(
+                Conversation.id == conversation_id
+            ).first()
+            app_id = conversation_data.app_id
+
         if message_id:
             record: Message = db.session.query(Message).filter(Message.id == message_id).first()
             app_id = record.app_id

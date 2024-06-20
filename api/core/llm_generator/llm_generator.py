@@ -11,8 +11,6 @@ from core.model_runtime.entities.message_entities import SystemPromptMessage, Us
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from extensions.ext_database import db
-from models.model import Conversation
 from services.ops_trace.ops_trace_service import OpsTraceService
 from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 from services.ops_trace.utils import measure_time
@@ -56,19 +54,15 @@ class LLMGenerator:
             name = name[:75] + '...'
 
         # get tracing instance
-        conversation_data: Conversation = db.query(Conversation).filter(Conversation.id == conversation_id).first()
-        app_id = conversation_data.app_id
-
         tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_id
+            conversation_id=conversation_id
         )
-
         if tracing_instance:
             trace_manager = TraceQueueManager()
             trace_manager.add_trace_task(
                 TraceTask(
                     tracing_instance,
-                    TraceTaskName.CONVERSATION_TRACE,
+                    TraceTaskName.SUGGESTED_QUESTION_TRACE,
                     conversation_id=conversation_id,
                     generate_conversation_name=name,
                     inputs=prompt,

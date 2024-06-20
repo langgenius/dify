@@ -90,23 +90,52 @@ class LangSmithRunModel(LangSmithTokenUsage, LangSmithMultiModel):
         }
         file_list = values.get("file_list", [])
         if isinstance(v, str):
-            return {
-                field_name: v,
-                "file_list": file_list,
-                "usage_metadata": usage_metadata,
-            }
+            if field_name == "inputs":
+                return {
+                    "messages": {
+                        "role": "user",
+                        "content": v,
+                        "usage_metadata": usage_metadata,
+                        "file_list": file_list,
+                    },
+                }
+            elif field_name == "outputs":
+                return {
+                    "choices": {
+                        "role": "ai",
+                        "content": v,
+                        "usage_metadata": usage_metadata,
+                        "file_list": file_list,
+                    },
+                }
         elif isinstance(v, list):
+            data = {}
             if len(v) > 0 and isinstance(v[0], dict):
                 # rename text to content
-                replace_text_with_content(data=v)
-                data = {
-                    "message": v,
-                    "usage_metadata": usage_metadata,
-                    "file_list": file_list,
-                }
+                v = replace_text_with_content(data=v)
+                if field_name == "inputs":
+                    data = {
+                        "messages": v,
+                    }
+                elif field_name == "outputs":
+                    data = {
+                        "choices": {
+                            "role": "ai",
+                            "content": v,
+                            "usage_metadata": usage_metadata,
+                            "file_list": file_list,
+                        },
+                    }
                 return data
             else:
-                return {field_name: v}
+                return {
+                    "choices": {
+                        "role": "ai" if field_name == "outputs" else "user",
+                        "content": str(v),
+                        "usage_metadata": usage_metadata,
+                        "file_list": file_list,
+                    },
+                }
         if isinstance(v, dict):
             v["usage_metadata"] = usage_metadata
             v["file_list"] = file_list
@@ -318,7 +347,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             id=message_id,
             name=f"message_{message_id}",
             inputs=inputs,
-            run_type=LangSmithRunType.llm,
+            run_type=LangSmithRunType.chain,
             start_time=created_at,
             end_time=end_time,
             outputs=message_data.answer,
@@ -330,6 +359,27 @@ class LangSmithDataTrace(BaseTraceInstance):
             file_list=file_list,
         )
         self.add_run(message_run)
+
+        # create llm run parented to message run
+        llm_run = LangSmithRunModel(
+            input_tokens=message_tokens,
+            output_tokens=answer_tokens,
+            total_tokens=total_tokens,
+            name=f"llm_{message_id}",
+            inputs=inputs,
+            run_type=LangSmithRunType.llm,
+            start_time=created_at,
+            end_time=end_time,
+            outputs=message_data.answer,
+            extra={
+                "metadata": metadata,
+            },
+            parent_run_id=message_id,
+            tags=["llm", str(conversation_mode)],
+            error=error,
+            file_list=file_list,
+        )
+        self.add_run(llm_run)
 
     def moderation_trace(self, message_id: str, moderation_result: ModerationInputsResult, **kwargs):
         inputs = kwargs.get("inputs")
