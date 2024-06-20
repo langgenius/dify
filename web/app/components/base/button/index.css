@@ -1,17 +1,15 @@
 @tailwind components;
 
 @layer components {
-  .btn {
+  body .btn {
     @apply inline-flex justify-center items-center content-center h-9 leading-5 rounded-lg px-4 py-2 text-base cursor-pointer whitespace-nowrap;
   }
 
-  ;
-
-  .btn-default {
+  body .btn-default {
     @apply border-solid border border-gray-200 cursor-pointer text-gray-700 hover:bg-white hover:shadow-sm hover:border-gray-300;
   }
 
-  .btn-default-disabled {
+  body .btn-default-disabled {
     @apply border-solid border border-gray-200 bg-gray-200 cursor-not-allowed text-gray-800;
   }
 
@@ -23,11 +21,11 @@
     @apply bg-primary-200 cursor-not-allowed text-white;
   }
 
-  .btn-warning {
+  body .btn-warning {
     @apply bg-red-600 hover:bg-red-600/75 cursor-pointer text-white hover:shadow-sm;
   }
 
-  .btn-warning-disabled {
+  body .btn-warning-disabled {
     @apply bg-red-600/75 cursor-not-allowed text-white;
   }
 }
