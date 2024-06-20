@@ -173,6 +173,7 @@ class TenantAccountJoinRole(enum.Enum):
     OWNER = 'owner'
     ADMIN = 'admin'
     NORMAL = 'normal'
+    DATASET_OPERATOR = 'dataset_operator'
 
 
 class TenantAccountJoin(db.Model):

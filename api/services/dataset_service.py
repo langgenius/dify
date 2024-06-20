@@ -21,7 +21,7 @@ from events.document_event import document_was_deleted
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
-from models.account import Account, TenantAccountRole
+from models.account import Account
 from models.dataset import (
     AppDatasetJoin,
     Dataset,
@@ -263,13 +263,6 @@ class DatasetService:
                 f'User {user.id} does not have permission to access dataset {dataset.id}')
             raise NoPermissionError(
                 'You do not have permission to access this dataset.')
-        if user.current_tenant.current_role == TenantAccountRole.EDITOR and dataset.permission == 'all_team_members':
-            logging.debug(
-                f'User {user.id} does not have permission to access dataset {dataset.id}'
-            )
-            raise NoPermissionError(
-                'You do not have permission to access this dataset.'
-            )
 
     @staticmethod
     def get_dataset_queries(dataset_id: str, page: int, per_page: int):
