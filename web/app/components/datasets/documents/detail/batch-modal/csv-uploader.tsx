@@ -2,11 +2,13 @@
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import { ToastContext } from '@/app/components/base/toast'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import Button from '@/app/components/base/button'
 
 export type Props = {
@@ -113,7 +115,7 @@ const CSVUploader: FC<Props> = ({
               <Button className='!h-8 !px-3 !py-[6px] bg-white !text-[13px] !leading-[18px] text-gray-700' onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
               <div className='mx-2 w-px h-4 bg-gray-200' />
               <div className='p-2 cursor-pointer' onClick={removeFile}>
-                <Trash03 className='w-4 h-4 text-gray-500' />
+                <RiDeleteBinLine className='w-4 h-4 text-gray-500' />
               </div>
             </div>
           </div>
