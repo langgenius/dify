@@ -13,8 +13,8 @@ help:
   url:
     en_US: https://magico.duoyioa.com/key
 description:
-  en_US: Dedicated to providing a more efficient programming experience, providing models such as qwen1.5-32b and yi-34b.
-  zh_Hans: 致力于提供更高效的编程体验，提供qwen1.5-32b、yi-34b等模型。
+  en_US: Dedicated to providing a more efficient programming experience, providing models such as Qwen2-72b, Qwen1.5-32B and Yi-1.5-34B.
+  zh_Hans: 致力于提供更高效的编程体验，提供Qwen2-72b、Qwen1.5-32B、Yi-1.5-34B等模型。
 supported_model_types:
   - llm
   - text-embedding

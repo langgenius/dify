@@ -1,0 +1,33 @@
+model: Qwen2-7B-Instruct
+label:
+  zh_Hans: Qwen2-7B-Instruct
+  en_US: Qwen2-7B-Instruct
+model_type: llm
+features:
+  - multi-tool-call
+  - agent-thought
+  - stream-tool-call
+model_properties:
+  mode: chat
+  context_size: 32000
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: presence_penalty
+    use_template: presence_penalty
+  - name: frequency_penalty
+    use_template: frequency_penalty
+  - name: max_tokens
+    use_template: max_tokens
+    default: 10240
+    min: 1
+    max: 32000
+  - name: response_format
+    use_template: response_format
+pricing:
+  input: '0.000'
+  output: '0.000'
+  unit: '0.000'
+  currency: USD

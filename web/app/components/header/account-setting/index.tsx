@@ -207,11 +207,11 @@ export default function AccountSetting({
           <div className='px-4 sm:px-8 pt-2'>
             {activeMenu === 'account' && <AccountPage />}
             {activeMenu === 'members' && <MembersPage />}
-            {activeMenu === 'billing' && <BillingPage />}
+            {/* {activeMenu === 'billing' && <BillingPage />} */}
             {activeMenu === 'integrations' && <IntegrationsPage />}
             {activeMenu === 'language' && <LanguagePage />}
             {activeMenu === 'provider' && <ModelProviderPage />}
-            {activeMenu === 'data-source' && <DataSourcePage />}
+            {/* {activeMenu === 'data-source' && <DataSourcePage />} */}
             {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
             {activeMenu === 'custom' && <CustomPage />}
           </div>

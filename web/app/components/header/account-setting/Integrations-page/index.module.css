@@ -8,6 +8,11 @@
   background-size: 16px 16px;
 }
 
+.custom-icon {
+  background: url(../../assets/custom.svg) center center no-repeat;
+  background-size: 16px 16px;
+}
+
 .twitter-icon {
   background: url(../../assets/twitter.svg) center center no-repeat;
   background-size: 16px 16px;

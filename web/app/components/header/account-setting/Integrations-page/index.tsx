@@ -24,8 +24,8 @@ export default function IntegrationsPage() {
       description: t('common.integrations.githubAccount'),
     },
     custom: {
-      name: 'Custom',
-      description: '自定义登录',
+      name: '火星',
+      description: '火星 账号登录',
     },
   }
 

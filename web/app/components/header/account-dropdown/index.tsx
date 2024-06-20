@@ -104,30 +104,30 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                         <div>{t('common.userProfile.settings')}</div>
                       </div>
                     </Menu.Item>
-                    <Menu.Item>
+                    {/* <Menu.Item>
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
-                        href='https://github.com/langgenius/dify/discussions/categories/feedbacks'
+                        href='/dify'
                         target='_blank' rel='noopener noreferrer'>
                         <div>{t('common.userProfile.roadmapAndFeedback')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
                       </Link>
-                    </Menu.Item>
+                    </Menu.Item> */}
                     <Menu.Item>
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
-                        href='https://discord.gg/5AEfbxcd9k'
+                        // href='https://discord.gg/5AEfbxcd9k'
                         target='_blank' rel='noopener noreferrer'>
-                        <div>{t('common.userProfile.community')}</div>
+                        <div>{t('common.userProfile.community') + '(20033)'}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
                       </Link>
                     </Menu.Item>
                     <Menu.Item>
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
-                        href={
-                          locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
-                        }
+                        // href={
+                        //   locale !== LanguagesSupported[1] ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
+                        // }
                         target='_blank' rel='noopener noreferrer'>
                         <div>{t('common.userProfile.helpCenter')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
@@ -140,7 +140,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                             <div>{t('common.userProfile.about')}</div>
                             <div className='flex items-center'>
                               <div className='mr-2 text-xs font-normal text-gray-500'>{langeniusVersionInfo.current_version}</div>
-                              <Indicator color={langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version ? 'green' : 'orange'} />
+                              <Indicator color={'green'} />
                             </div>
                           </div>
                         </Menu.Item>
