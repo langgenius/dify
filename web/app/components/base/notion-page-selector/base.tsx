@@ -39,12 +39,15 @@ const NotionPageSelector = ({
   const firstWorkspaceId = notionWorkspaces[0]?.workspace_id
   const currentWorkspace = notionWorkspaces.find(workspace => workspace.workspace_id === currentWorkspaceId)
 
-  const getPagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>] = useMemo(() => {
+  const getPagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] = useMemo(() => {
     const selectedPagesId = new Set<string>()
+    const boundPagesId = new Set<string>()
     const pagesMap = notionWorkspaces.reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
       next.pages.forEach((page) => {
-        if (page.is_bound)
+        if (page.is_bound) {
           selectedPagesId.add(page.page_id)
+          boundPagesId.add(page.page_id)
+        }
         prev[page.page_id] = {
           ...page,
           workspace_id: next.workspace_id,
@@ -53,7 +56,7 @@ const NotionPageSelector = ({
 
       return prev
     }, {})
-    return [pagesMap, selectedPagesId]
+    return [pagesMap, selectedPagesId, boundPagesId]
   }, [notionWorkspaces])
   const defaultSelectedPagesId = [...Array.from(getPagesMapAndSelectedPagesId[1]), ...(value || [])]
   const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
@@ -110,6 +113,7 @@ const NotionPageSelector = ({
               <div className='rounded-b-xl overflow-hidden'>
                 <PageSelector
                   value={selectedPagesId}
+                  disabledValue={getPagesMapAndSelectedPagesId[2]}
                   searchValue={searchValue}
                   list={currentWorkspace?.pages || []}
                   pagesMap={getPagesMapAndSelectedPagesId[0]}

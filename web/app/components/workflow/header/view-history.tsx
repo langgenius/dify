@@ -7,6 +7,11 @@ import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import {
+  RiCheckboxCircleLine,
+  RiCloseLine,
+  RiErrorWarningLine,
+} from '@remixicon/react'
+import {
   useIsChatMode,
   useNodesInteractions,
   useWorkflow,
@@ -25,8 +30,7 @@ import {
   ClockPlay,
   ClockPlaySlim,
 } from '@/app/components/base/icons/src/vender/line/time'
-import { CheckCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
-import { AlertCircle, AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import {
   fetcChatRunHistory,
   fetchWorkflowRunHistory,
@@ -131,7 +135,7 @@ const ViewHistory = ({
                   setOpen(false)
                 }}
               >
-                <XClose className='w-4 h-4 text-gray-500' />
+                <RiCloseLine className='w-4 h-4 text-gray-500' />
               </div>
             </div>
             {
@@ -180,12 +184,12 @@ const ViewHistory = ({
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Failed && (
-                            <AlertCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F04438]' />
+                            <RiErrorWarningLine className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F04438]' />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
-                            <CheckCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#12B76A]' />
+                            <RiCheckboxCircleLine className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#12B76A]' />
                           )
                         }
                         <div>
