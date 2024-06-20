@@ -136,12 +136,14 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           defaultValue={language}
           onSelect={item => setLanguage(item.value as Language)}
         />
-        <div className={`mt-6 mb-2 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.workflow.title`)}</div>
-        <SimpleSelect
-          items={[{ name: t(`${prefixSettings}.workflow.show`), value: 'show' }, { name: t(`${prefixSettings}.workflow.hide`), value: 'hide' }]}
-          defaultValue={inputInfo.workflow}
-          onSelect={item => setInputInfo({ ...inputInfo, workflow: item.value as string })}
-        />
+        {(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat') && <>
+          <div className={`mt-6 mb-2 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.workflow.title`)}</div>
+          <SimpleSelect
+            items={[{ name: t(`${prefixSettings}.workflow.show`), value: 'show' }, { name: t(`${prefixSettings}.workflow.hide`), value: 'hide' }]}
+            defaultValue={inputInfo.workflow}
+            onSelect={item => setInputInfo({ ...inputInfo, workflow: item.value as string })}
+          />
+        </>}
         {!isShowMore && <div className='w-full cursor-pointer mt-8' onClick={() => setIsShowMore(true)}>
           <div className='flex justify-between'>
             <div className={`font-medium ${s.settingTitle} flex-grow text-gray-900`}>{t(`${prefixSettings}.more.entry`)}</div>
