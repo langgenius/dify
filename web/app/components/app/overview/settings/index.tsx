@@ -34,6 +34,7 @@ export type ConfigParams = {
   custom_disclaimer: string
   icon: string
   icon_background: string
+  workflow: string
 }
 
 const prefixSettings = 'appOverview.overview.appInfo.settings'
@@ -47,8 +48,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const { notify } = useToastContext()
   const [isShowMore, setIsShowMore] = useState(false)
   const { icon, icon_background } = appInfo
-  const { title, description, copyright, privacy_policy, custom_disclaimer, default_language } = appInfo.site
-  const [inputInfo, setInputInfo] = useState({ title, desc: description, copyright, privacyPolicy: privacy_policy, customDisclaimer: custom_disclaimer })
+  const { title, description, copyright, privacy_policy, custom_disclaimer, default_language, workflow } = appInfo.site
+  const [inputInfo, setInputInfo] = useState({ title, desc: description, copyright, privacyPolicy: privacy_policy, customDisclaimer: custom_disclaimer, workflow })
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
@@ -57,7 +58,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [emoji, setEmoji] = useState({ icon, icon_background })
 
   useEffect(() => {
-    setInputInfo({ title, desc: description, copyright, privacyPolicy: privacy_policy, customDisclaimer: custom_disclaimer })
+    setInputInfo({ title, desc: description, copyright, privacyPolicy: privacy_policy, customDisclaimer: custom_disclaimer, workflow })
     setLanguage(default_language)
     setEmoji({ icon, icon_background })
   }, [appInfo])
@@ -85,6 +86,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       custom_disclaimer: inputInfo.customDisclaimer,
       icon: emoji.icon,
       icon_background: emoji.icon_background,
+      workflow: inputInfo.workflow,
     }
     await onSave?.(params)
     setSaveLoading(false)
@@ -137,8 +139,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         <div className={`mt-6 mb-2 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.workflow.title`)}</div>
         <SimpleSelect
           items={[{ name: t(`${prefixSettings}.workflow.show`), value: 'show' }, { name: t(`${prefixSettings}.workflow.hide`), value: 'hide' }]}
-          defaultValue={'show'}
-          onSelect={() => { }}
+          defaultValue={inputInfo.workflow}
+          onSelect={item => setInputInfo({ ...inputInfo, workflow: item.value as string })}
         />
         {!isShowMore && <div className='w-full cursor-pointer mt-8' onClick={() => setIsShowMore(true)}>
           <div className='flex justify-between'>
