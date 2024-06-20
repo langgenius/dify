@@ -3,8 +3,8 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useBoolean, useClickAway } from 'ahooks'
+import { RiCloseLine } from '@remixicon/react'
 import IterationResultPanel from '../../workflow/run/iteration-result-panel'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import type { IChatItem } from '@/app/components/app/chat/type'
 import Run from '@/app/components/workflow/run'
 import type { NodeTracing } from '@/types/workflow'
@@ -80,7 +80,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
           <>
             <h1 className='shrink-0 px-4 py-1 text-md font-semibold text-gray-900'>{t('appLog.runDetail.title')}</h1>
             <span className='absolute right-3 top-4 p-1 cursor-pointer z-20' onClick={onCancel}>
-              <XClose className='w-4 h-4 text-gray-500' />
+              <RiCloseLine className='w-4 h-4 text-gray-500' />
             </span>
             <Run
               hideResult activeTab={defaultTab as any}

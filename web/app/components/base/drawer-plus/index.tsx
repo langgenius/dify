@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React, { useRef } from 'react'
 import cn from 'classnames'
+import { RiCloseLine } from '@remixicon/react'
 import Drawer from '@/app/components/base/drawer'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 type Props = {
@@ -74,7 +74,7 @@ const DrawerPlus: FC<Props> = ({
                 onClick={onHide}
                 className='flex justify-center items-center w-6 h-6 cursor-pointer'
               >
-                <XClose className='w-4 h-4 text-gray-500' />
+                <RiCloseLine className='w-4 h-4 text-gray-500' />
               </div>
             </div>
           </div>

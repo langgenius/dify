@@ -72,7 +72,7 @@ const translation = {
     syncingData: '同步数据中，只需几秒钟。',
   },
   changeHistory: {
-    title: '变更履历',
+    title: '变更历史',
     placeholder: '尚未更改任何内容',
     clearHistory: '清除历史记录',
     hint: '提示',

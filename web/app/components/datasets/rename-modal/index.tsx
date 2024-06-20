@@ -3,13 +3,13 @@
 import type { MouseEventHandler } from 'react'
 import cn from 'classnames'
 import { useState } from 'react'
+import { RiCloseLine } from '@remixicon/react'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import type { DataSet } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 
@@ -62,7 +62,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
     >
       <div className='relative pb-2 text-xl font-medium leading-[30px] text-gray-900'>{t('datasetSettings.title')}</div>
       <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
-        <XClose className='w-4 h-4 text-gray-500' />
+        <RiCloseLine className='w-4 h-4 text-gray-500' />
       </div>
       <div>
         <div className={cn('flex justify-between py-4 flex-wrap items-center')}>

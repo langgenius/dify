@@ -1,9 +1,11 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import Tooltip from '../../base/tooltip'
-import { FlipBackward, FlipForward } from '../../base/icons/src/vender/line/arrows'
+import {
+  RiArrowGoBackLine,
+  RiArrowGoForwardFill,
+} from '@remixicon/react'
+import TipPopup from '../operator/tip-popup'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
 
@@ -14,36 +16,33 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
   const { nodesReadOnly } = useNodesReadOnly()
 
   return (
-    <div className='flex items-center px-0.5 h-8 rounded-lg border-[0.5px] border-gray-200 bg-white text-gray-500 shadow-xs'>
-
-      <Tooltip selector={'workflow.common.undo'} content={t('workflow.common.undo')!} >
+    <div className='flex items-center p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-lg text-gray-500'>
+      <TipPopup title={t('workflow.common.undo')!} >
         <div
           data-tooltip-id='workflow.undo'
           className={`
-        flex items-center px-1.5 h-7 rounded-md text-[13px] font-medium 
+        flex items-center px-1.5 w-8 h-8 rounded-md text-[13px] font-medium 
         hover:bg-black/5 hover:text-gray-700 cursor-pointer select-none
         ${nodesReadOnly && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
       `}
           onClick={() => !nodesReadOnly && handleUndo()}
         >
-          <FlipBackward className='h-4 w-4' />
+          <RiArrowGoBackLine className='h-4 w-4' />
         </div>
-      </Tooltip>
-
-      <Tooltip selector={'workflow.redo'} content={t('workflow.common.redo')!} >
+      </TipPopup>
+      <TipPopup title={t('workflow.common.redo')!} >
         <div
           data-tooltip-id='workflow.redo'
           className={`
-        flex items-center px-1.5 h-7 rounded-md text-[13px] font-medium 
+        flex items-center px-1.5 w-8 h-8 rounded-md text-[13px] font-medium 
         hover:bg-black/5 hover:text-gray-700 cursor-pointer select-none
         ${nodesReadOnly && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
       `}
           onClick={() => !nodesReadOnly && handleRedo()}
         >
-          <FlipForward className='h-4 w-4' />
-
+          <RiArrowGoForwardFill className='h-4 w-4' />
         </div>
-      </Tooltip>
+      </TipPopup>
       <div className="mx-[3px] w-[1px] h-3.5 bg-gray-200"></div>
       <ViewWorkflowHistory />
     </div>

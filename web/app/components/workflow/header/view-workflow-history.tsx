@@ -5,6 +5,10 @@ import {
   useState,
 } from 'react'
 import cn from 'classnames'
+import {
+  RiCloseLine,
+  RiHistoryLine,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { useStoreApi } from 'reactflow'
@@ -12,16 +16,14 @@ import {
   useNodesReadOnly,
   useWorkflowHistory,
 } from '../hooks'
+import TipPopup from '../operator/tip-popup'
 import type { WorkflowHistoryState } from '../workflow-history-store'
-import { ChangeHistory } from '../../base/icons/src/vender/line/editor'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 type ChangeHistoryEntry = {
   label: string
@@ -119,13 +121,12 @@ const ViewWorkflowHistory = () => {
         onOpenChange={setOpen}
       >
         <PortalToFollowElemTrigger onClick={() => !nodesReadOnly && setOpen(v => !v)}>
-          <TooltipPlus
-            triggerMethod={nodesReadOnly ? 'click' : 'hover'}
-            popupContent={t('workflow.changeHistory.title')}
+          <TipPopup
+            title={t('workflow.changeHistory.title')}
           >
             <div
               className={`
-                flex items-center justify-center w-7 h-7 rounded-md hover:bg-black/5 cursor-pointer
+                flex items-center justify-center w-8 h-8 rounded-md hover:bg-black/5 cursor-pointer
                 ${open && 'bg-primary-50'} ${nodesReadOnly && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
               `}
               onClick={() => {
@@ -135,9 +136,9 @@ const ViewWorkflowHistory = () => {
                 setShowMessageLogModal(false)
               }}
             >
-              <ChangeHistory className={`w-4 h-4 hover:bg-black/5 hover:text-gray-700 ${open ? 'text-primary-600' : 'text-gray-500'}`} />
+              <RiHistoryLine className={`w-4 h-4 hover:bg-black/5 hover:text-gray-700 ${open ? 'text-primary-600' : 'text-gray-500'}`} />
             </div>
-          </TooltipPlus>
+          </TipPopup>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[12]'>
           <div
@@ -156,7 +157,7 @@ const ViewWorkflowHistory = () => {
                   setOpen(false)
                 }}
               >
-                <XClose className='w-4 h-4 text-gray-500' />
+                <RiCloseLine className='w-4 h-4 text-gray-500' />
               </div>
             </div>
             {
@@ -165,7 +166,7 @@ const ViewWorkflowHistory = () => {
                   {
                     !calculateChangeList.statesCount && (
                       <div className='py-12'>
-                        <ChangeHistory className='mx-auto mb-2 w-8 h-8 text-gray-300' />
+                        <RiHistoryLine className='mx-auto mb-2 w-8 h-8 text-gray-300' />
                         <div className='text-center text-[13px] text-gray-400'>
                           {t('workflow.changeHistory.placeholder')}
                         </div>

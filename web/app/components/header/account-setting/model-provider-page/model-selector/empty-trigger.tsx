@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 
 type ModelTriggerProps = {
@@ -30,7 +30,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
         </div>
       </div>
       <div className='shrink-0 flex items-center justify-center w-4 h-4'>
-        <ChevronDown className='w-3.5 h-3.5 text-gray-500' />
+        <RiArrowDownSLine className='w-3.5 h-3.5 text-gray-500' />
       </div>
     </div>
   )

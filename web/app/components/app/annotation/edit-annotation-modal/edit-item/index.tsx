@@ -4,8 +4,9 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'rc-textarea'
 import cn from 'classnames'
+import { RiDeleteBinLine } from '@remixicon/react'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
-import { Edit04, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
+import { Edit04 } from '@/app/components/base/icons/src/vender/line/general'
 import { Edit04 as EditSolid } from '@/app/components/base/icons/src/vender/solid/general'
 import Button from '@/app/components/base/button'
 
@@ -98,7 +99,7 @@ const EditItem: FC<Props> = ({
                       }}
                     >
                       <div className='w-3.5 h-3.5'>
-                        <Trash03 className='w-3.5 h-3.5' />
+                        <RiDeleteBinLine className='w-3.5 h-3.5' />
                       </div>
                       <div>{t('common.operation.delete')}</div>
                     </div>
