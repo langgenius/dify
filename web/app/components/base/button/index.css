@@ -3,7 +3,9 @@
 @layer components {
   .btn {
     @apply inline-flex justify-center items-center content-center h-9 leading-5 rounded-lg px-4 py-2 text-base cursor-pointer whitespace-nowrap;
-  };
+  }
+
+  ;
 
   .btn-default {
     @apply border-solid border border-gray-200 cursor-pointer text-gray-700 hover:bg-white hover:shadow-sm hover:border-gray-300;
@@ -13,11 +15,11 @@
     @apply border-solid border border-gray-200 bg-gray-200 cursor-not-allowed text-gray-800;
   }
 
-  .btn-primary {
+  body .btn-primary {
     @apply bg-primary-600 hover:bg-primary-600/75 cursor-pointer text-white hover:shadow-sm;
   }
 
-  .btn-primary-disabled {
+  body .btn-primary-disabled {
     @apply bg-primary-200 cursor-not-allowed text-white;
   }
 
