@@ -1,0 +1,102 @@
+identity:
+  name: databaseoperation_sqlexec
+  author: Xiao Ley
+  label:
+    en_US: SQL Execution
+    zh_Hans: SQL执行
+  icon: icon.svg
+description:
+  human:
+    en_US: |
+      Execute SQL and return JSON.
+      Return value format: [{"column1":"value1","column2":"value2"},{"column1":"value1","column2":"value2"}]
+    zh_Hans: |
+      执行SQL，返回值为JSON。
+      返回值格式：[{"column1":"value1","column2":"value2"},{"column1":"value1","column2":"value2"}]
+  llm: A tool for executing SQL
+parameters:
+  - name: sql
+    type: string
+    required: true
+    label:
+      en_US: SQL
+      zh_Hans: SQL
+    human_description:
+      en_US: SQL sentence
+      zh_Hans: SQL 语句
+    llm_description: SQL to be executed
+    form: llm
+  - name: dbtype
+    type: select
+    required: true
+    label:
+      en_US: Database Type
+      zh_Hans: 数据库类型
+    human_description:
+      en_US: Type of the database
+      zh_Hans: 数据库类型
+    form: form
+    options:
+      - value: "postgresql"
+        label:
+          en_US: PostgreSQL
+          zh_Hans: PostgreSQL
+      - value: "mysql"
+        label:
+          en_US: MySQL
+          zh_Hans: MySQL
+  - name: host
+    type: string
+    required: true
+    label:
+      en_US: Host
+      zh_Hans: 主机地址
+    human_description:
+      en_US: Host
+      zh_Hans: 主机地址
+    llm_description: Database server address
+    form: form
+  - name: port
+    type: string
+    required: true
+    label:
+      en_US: Port
+      zh_Hans: 端口
+    human_description:
+      en_US: Port
+      zh_Hans: 端口
+    llm_description: Database server port
+    form: form
+  - name: username
+    type: string
+    required: true
+    label:
+      en_US: Username
+      zh_Hans: 用户名
+    human_description:
+      en_US: Username
+      zh_Hans: 用户名
+    llm_description: Database username
+    form: form
+  - name: password
+    type: string
+    required: true
+    label:
+      en_US: Password
+      zh_Hans: 密码
+    human_description:
+      en_US: Password
+      zh_Hans: 密码
+    llm_description: Database password
+    form: form
+  - name: dbname
+    type: string
+    required: true
+    label:
+      en_US: database name
+      zh_Hans: 数据库名
+    human_description:
+      en_US: Database name
+      zh_Hans: 数据库名
+    llm_description: Database name
+    form: form

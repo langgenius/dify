@@ -1,0 +1,14 @@
+identity:
+  author: Xiao Ley
+  name: databaseoperation
+  label:
+    en_US: Database Operation
+    zh_Hans: 数据库操作
+  description:
+    en_US: Provide database operation capability
+    zh_Hans: 提供操作数据库的能力
+  icon: icon.svg
+  tags:
+    - utilities
+    - productivity
+credentials_for_provider:
