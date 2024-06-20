@@ -6,11 +6,12 @@ from flask import Flask, current_app
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.retrieval.retrival_methods import RetrievalMethod
 from extensions.ext_database import db
 from models.dataset import Dataset
 
 default_retrieval_model = {
-    'search_method': 'semantic_search',
+    'search_method': RetrievalMethod.SEMANTIC_SEARCH,
     'reranking_enable': False,
     'reranking_model': {
         'reranking_provider_name': '',
@@ -47,7 +48,7 @@ class RetrievalService:
             threads.append(keyword_thread)
             keyword_thread.start()
         # retrieval_model source with semantic
-        if retrival_method == 'semantic_search' or retrival_method == 'hybrid_search':
+        if RetrievalMethod.is_support_semantic_search(retrival_method):
             embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
                 'flask_app': current_app._get_current_object(),
                 'dataset_id': dataset_id,
@@ -63,7 +64,7 @@ class RetrievalService:
             embedding_thread.start()
 
         # retrieval source with full text
-        if retrival_method == 'full_text_search' or retrival_method == 'hybrid_search':
+        if RetrievalMethod.is_support_fulltext_search(retrival_method):
             full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search, kwargs={
                 'flask_app': current_app._get_current_object(),
                 'dataset_id': dataset_id,
@@ -85,7 +86,7 @@ class RetrievalService:
             exception_message = ';\n'.join(exceptions)
             raise Exception(exception_message)
 
-        if retrival_method == 'hybrid_search':
+        if retrival_method == RetrievalMethod.HYBRID_SEARCH:
             data_post_processor = DataPostProcessor(str(dataset.tenant_id), reranking_model, False)
             all_documents = data_post_processor.invoke(
                 query=query,
@@ -141,7 +142,7 @@ class RetrievalService:
                 )
 
                 if documents:
-                    if reranking_model and retrival_method == 'semantic_search':
+                    if reranking_model and retrival_method == RetrievalMethod.SEMANTIC_SEARCH:
                         data_post_processor = DataPostProcessor(str(dataset.tenant_id), reranking_model, False)
                         all_documents.extend(data_post_processor.invoke(
                             query=query,
@@ -173,7 +174,7 @@ class RetrievalService:
                     top_k=top_k
                 )
                 if documents:
-                    if reranking_model and retrival_method == 'full_text_search':
+                    if reranking_model and retrival_method == RetrievalMethod.FULL_TEXT_SEARCH:
                         data_post_processor = DataPostProcessor(str(dataset.tenant_id), reranking_model, False)
                         all_documents.extend(data_post_processor.invoke(
                             query=query,

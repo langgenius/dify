@@ -4,6 +4,9 @@ import type { ChangeEvent, FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import type { VarGroupItem as VarGroupItemType } from '../types'
 import VarReferencePicker from '../../_base/components/variable/var-reference-picker'
 import VarList from '../components/var-list'
@@ -11,7 +14,6 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { VarType } from '@/app/components/workflow/types'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { Folder } from '@/app/components/base/icons/src/vender/line/files'
 import { checkKeys } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
@@ -133,7 +135,7 @@ const VarGroupItem: FC<Props> = ({
               className='group-hover:block hidden ml-0.5 p-1 rounded-md text-gray-500 cursor-pointer hover:bg-[#FEE4E2] hover:text-[#D92D20]'
               onClick={onRemove}
             >
-              <Trash03
+              <RiDeleteBinLine
                 className='w-4 h-4'
               />
             </div>

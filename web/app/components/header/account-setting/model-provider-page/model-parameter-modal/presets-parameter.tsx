@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiArrowDownSLine } from '@remixicon/react'
 import Dropdown from '@/app/components/base/dropdown'
 import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Brush01 } from '@/app/components/base/icons/src/vender/solid/editor'
 import { Scales02 } from '@/app/components/base/icons/src/vender/solid/FinanceAndECommerce'
 import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
@@ -27,7 +27,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
       >
         <SlidersH className='mr-[5px] w-3.5 h-3.5 text-gray-500' />
         {t('common.modelProvider.loadPresets')}
-        <ChevronDown className='ml-0.5 w-3.5 h-3.5 text-gray-500' />
+        <RiArrowDownSLine className='ml-0.5 w-3.5 h-3.5 text-gray-500' />
       </div>
     )
   }, [])
