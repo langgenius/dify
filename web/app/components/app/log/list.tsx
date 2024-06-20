@@ -427,6 +427,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
                 onFeedback={onFeedback}
                 displayScene='console'
                 isShowPromptLog
+                onChatListChange={setItems}
               />
             </InfiniteScroll>
           </div>
