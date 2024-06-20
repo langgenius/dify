@@ -1,12 +1,15 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import cn from 'classnames'
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+} from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useStore as useTagStore } from './store'
 import TagRemoveModal from './tag-remove-modal'
-import { Edit03, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import { ToastContext } from '@/app/components/base/toast'
 import {
@@ -108,7 +111,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
             </div>
             <div className='shrink-0 px-1 text-sm leading-4.5 text-gray-500 font-medium'>{tag.binding_count}</div>
             <div className='group/edit shrink-0 p-1 rounded-md cursor-pointer hover:bg-black/5' onClick={() => setIsEditing(true)}>
-              <Edit03 className='w-3 h-3 text-gray-500 group-hover/edit:text-gray-800' />
+              <RiEditLine className='w-3 h-3 text-gray-500 group-hover/edit:text-gray-800' />
             </div>
             <div className='group/remove shrink-0 p-1 rounded-md cursor-pointer hover:bg-black/5' onClick={() => {
               if (tag.binding_count)
@@ -116,7 +119,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
               else
                 handleRemove()
             }}>
-              <Trash03 className='w-3 h-3 text-gray-500 group-hover/remove:text-gray-800' />
+              <RiDeleteBinLine className='w-3 h-3 text-gray-500 group-hover/remove:text-gray-800' />
             </div>
           </>
         )}

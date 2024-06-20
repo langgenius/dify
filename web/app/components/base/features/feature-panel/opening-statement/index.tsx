@@ -4,6 +4,10 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import produce from 'immer'
 import cn from 'classnames'
+import {
+  RiAddLine,
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { ReactSortable } from 'react-sortablejs'
@@ -19,7 +23,6 @@ import { getInputKeys } from '@/app/components/base/block-input'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import { getNewVar } from '@/utils/var'
 import { varHighlightHTML } from '@/app/components/app/configuration/base/var-highlight'
-import { Plus, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import type { PromptVariable } from '@/models/debug'
 
 const MAX_QUESTION_NUM = 5
@@ -229,7 +232,7 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
                     setTempSuggestedQuestions(tempSuggestedQuestions.filter((_, i) => index !== i))
                   }}
                 >
-                  <Trash03 className='w-3.5 h-3.5' />
+                  <RiDeleteBinLine className='w-3.5 h-3.5' />
                 </div>
               </div>
             )
@@ -238,7 +241,7 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
           <div
             onClick={() => { setTempSuggestedQuestions([...tempSuggestedQuestions, '']) }}
             className='mt-1 flex items-center h-9 px-3 gap-2 rounded-lg cursor-pointer text-gray-400  bg-gray-100 hover:bg-gray-200'>
-            <Plus className='w-4 h-4'></Plus>
+            <RiAddLine className='w-4 h-4' />
             <div className='text-gray-500 text-[13px]'>{t('appDebug.variableConig.addOption')}</div>
           </div>
         )}
