@@ -4,15 +4,15 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiBold,
+  RiItalic,
+  RiLink,
+  RiListUnordered,
+  RiStrikethrough,
+} from '@remixicon/react'
 import { useStore } from '../store'
 import { useCommand } from './hooks'
-import { Link01 } from '@/app/components/base/icons/src/vender/line/general'
-import {
-  Bold01,
-  Dotpoints01,
-  Italic01,
-  Strikethrough01,
-} from '@/app/components/base/icons/src/vender/line/editor'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type CommandProps = {
@@ -32,15 +32,15 @@ const Command = ({
   const icon = useMemo(() => {
     switch (type) {
       case 'bold':
-        return <Bold01 className={cn('w-4 h-4', selectedIsBold && 'text-primary-600')} />
+        return <RiBold className={cn('w-4 h-4', selectedIsBold && 'text-primary-600')} />
       case 'italic':
-        return <Italic01 className={cn('w-4 h-4', selectedIsItalic && 'text-primary-600')} />
+        return <RiItalic className={cn('w-4 h-4', selectedIsItalic && 'text-primary-600')} />
       case 'strikethrough':
-        return <Strikethrough01 className={cn('w-4 h-4', selectedIsStrikeThrough && 'text-primary-600')} />
+        return <RiStrikethrough className={cn('w-4 h-4', selectedIsStrikeThrough && 'text-primary-600')} />
       case 'link':
-        return <Link01 className={cn('w-4 h-4', selectedIsLink && 'text-primary-600')} />
+        return <RiLink className={cn('w-4 h-4', selectedIsLink && 'text-primary-600')} />
       case 'bullet':
-        return <Dotpoints01 className={cn('w-4 h-4', selectedIsBullet && 'text-primary-600')} />
+        return <RiListUnordered className={cn('w-4 h-4', selectedIsBullet && 'text-primary-600')} />
     }
   }, [type, selectedIsBold, selectedIsItalic, selectedIsStrikeThrough, selectedIsLink, selectedIsBullet])
 

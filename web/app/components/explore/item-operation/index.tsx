@@ -2,9 +2,13 @@
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import { Edit03, Pin02, Trash03 } from '../../base/icons/src/vender/line/general'
+import { Pin02 } from '../../base/icons/src/vender/line/general'
 
 import s from './style.module.css'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
@@ -68,13 +72,13 @@ const ItemOperation: FC<IItemOperationProps> = ({
           </div>
           {isShowRenameConversation && (
             <div className={cn(s.actionItem, 'hover:bg-gray-50 group')} onClick={onRenameConversation}>
-              <Edit03 className='shrink-0 w-4 h-4 text-gray-500'/>
+              <RiEditLine className='shrink-0 w-4 h-4 text-gray-500'/>
               <span className={s.actionName}>{t('explore.sidebar.action.rename')}</span>
             </div>
           )}
           {isShowDelete && (
             <div className={cn(s.actionItem, s.deleteActionItem, 'hover:bg-gray-50 group')} onClick={onDelete} >
-              <Trash03 className={cn(s.deleteActionItemChild, 'shrink-0 w-4 h-4 stroke-current text-gray-500 stroke-2')} />
+              <RiDeleteBinLine className={cn(s.deleteActionItemChild, 'shrink-0 w-4 h-4 stroke-current text-gray-500 stroke-2')} />
               <span className={cn(s.actionName, s.deleteActionItemChild)}>{t('explore.sidebar.action.delete')}</span>
             </div>
           )}

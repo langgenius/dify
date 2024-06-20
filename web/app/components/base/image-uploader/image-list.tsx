@@ -3,9 +3,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import {
-  Loading02,
-  XClose,
-} from '@/app/components/base/icons/src/vender/line/general'
+  RiCloseLine,
+  RiLoader2Line,
+} from '@remixicon/react'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
@@ -84,7 +84,7 @@ const ImageList: FC<ImageListProps> = ({
                 `}
             >
               {item.progress > -1 && (
-                <Loading02 className="animate-spin w-5 h-5 text-white" />
+                <RiLoader2Line className="animate-spin w-5 h-5 text-white" />
               )}
               {item.progress === -1 && (
                 <TooltipPlus
@@ -124,7 +124,7 @@ const ImageList: FC<ImageListProps> = ({
               )}
               onClick={() => onRemove && onRemove(item._id)}
             >
-              <XClose className="w-3 h-3 text-gray-500" />
+              <RiCloseLine className="w-3 h-3 text-gray-500" />
             </button>
           )}
         </div>
