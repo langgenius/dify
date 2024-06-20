@@ -125,7 +125,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 <span className='text-[13px]'>{t('common.operation.clear')}</span>
               </Button>
               <Button
-                type="primary"
+                variant="primary"
                 className='!h-8 !pl-3 !pr-4'
                 onClick={onSend}
                 disabled={false}

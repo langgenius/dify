@@ -1,0 +1,341 @@
+identity:
+  name: novitaai_txt2img
+  author: Xiao Ley
+  label:
+    en_US: Novita AI Text to Image
+    zh_Hans: Novita AI 文字转图像
+description:
+  human:
+    en_US: Generate images from text prompts using Stable Diffusion models
+    zh_Hans: 通过 Stable Diffusion 模型根据文字提示生成图像
+  llm: A tool for generate images from English text prompts.
+parameters:
+  - name: model_name
+    type: string
+    required: true
+    label:
+      en_US: model name
+      zh_Hans: 模块名字
+    human_description:
+      en_US: Specify the name of the model checkpoint. You can use the "Novita AI Model Query" tool to query the corresponding "sd_name" value (type select "Checkpoint").
+      zh_Hans: 指定 Model Checkpoint 名称。可通过“Novita AI 模型请求”工具查询对应的“sd_name”值（类型选择“Checkpoint”）。
+    form: form
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: prompt
+      zh_Hans: 提示
+    human_description:
+      en_US: Text input required to guide the image generation, divided by `,`, Range [1, 1024]. Only English input is allowed.
+      zh_Hans: 生成图像的正向提示，用 `,` 分隔，范围 [1, 1024]。仅允许输入英文。
+    llm_description: Image prompt of Novita AI, you should describe the image you want to generate as a list of words as possible as detailed, divided by `,`, Range [1, 1024]. Only English input is allowed.
+    form: llm
+  - name: negative_prompt
+    type: string
+    required: false
+    label:
+      en_US: negative prompt
+      zh_Hans: 负向提示
+    human_description:
+      en_US: Text input that will not guide the image generation, divided by `,`, Range [1, 1024]. Only English input is allowed.
+      zh_Hans: 生成图像的负向提示，用 `,` 分隔，范围 [1, 1024]。仅允许输入英文。
+    llm_description: Image negative prompt of Novita AI, divided by `,`, Range [1, 1024]. Only English input is allowed.
+    form: llm
+  - name: width
+    type: number
+    default: 512
+    min: 128
+    max: 2048
+    required: true
+    label:
+      en_US: width
+      zh_Hans: 宽
+    human_description:
+      en_US: Image width, Range [128, 2048].
+      zh_Hans: 图像宽度，范围 [128, 2048]
+    form: form
+  - name: height
+    type: number
+    default: 512
+    min: 128
+    max: 2048
+    required: true
+    label:
+      en_US: height
+      zh_Hans: 高
+    human_description:
+      en_US: Image height, Range [128, 2048].
+      zh_Hans: 图像高度，范围 [128, 2048]
+    form: form
+  - name: image_num
+    type: number
+    default: 1
+    min: 1
+    max: 8
+    required: true
+    label:
+      en_US: image num
+      zh_Hans: 图片数
+    human_description:
+      en_US: Image num, Range [1, 8].
+      zh_Hans: 图片数，范围 [1, 8]
+    form: form
+  - name: steps
+    type: number
+    default: 20
+    min: 1
+    max: 100
+    required: true
+    label:
+      en_US: steps
+      zh_Hans: 步数
+    human_description:
+      en_US: The number of denoising steps. More steps usually can produce higher quality images, but take more time to generate, Range [1, 100].
+      zh_Hans: 生成步数。更多步数可能会产生更好的图像，但生成时间更长，范围 [1, 100]
+    form: form
+  - name: seed
+    type: number
+    default: -1
+    required: true
+    label:
+      en_US: seed
+      zh_Hans: 种子
+    human_description:
+      en_US: A seed is a number from which Stable Diffusion generates noise, which, makes generation deterministic. Using the same seed and set of parameters will produce identical image each time, minimum -1.
+      zh_Hans: 种子是 Stable Diffusion 生成噪声的数字，它使生成具有确定性。使用相同的种子和参数设置将生成每次生成相同的图像，最小值 -1。
+    form: form
+  - name: clip_skip
+    type: number
+    min: 1
+    max: 12
+    required: false
+    label:
+      en_US: clip skip
+      zh_Hans: 层跳过数
+    human_description:
+      en_US: This parameter indicates the number of layers to stop from the bottom during optimization, so clip_skip on 2 would mean, that in SD1.x model where the CLIP has 12 layers, you would stop at 10th layer, Range [1, 12], get reference at https://novita.ai/get-started/Misc.html#what-s-clip-skip.
+      zh_Hans: 此参数表示优化过程中从底部停止的层数，因此 clip_skip 的值为 2，表示在 SD1.x 模型中，CLIP 有 12 层，你将停止在 10 层，范围 [1, 12]，参考 https://novita.ai/get-started/Misc.html#what-s-clip-skip。
+    form: form
+  - name: guidance_scale
+    type: number
+    default: "7.5"
+    min: 1.0
+    max: 30.0
+    required: true
+    label:
+      en_US: guidance scale
+      zh_Hans: 提示词遵守程度
+    human_description:
+      en_US: This setting says how close the Stable Diffusion will listen to your prompt, higer guidance forces the model to better follow the prompt, but result in lower quality output.Range [1, 30].
+      zh_Hans: 此设置表明 Stable Diffusion 如何听从您的提示，较高的 guidance_scale 会强制模型更好跟随提示，但结果会更低质量输出。范围 [1.0, 30.0]。
+    form: form
+  - name: sampler_name
+    type: select
+    required: true
+    label:
+      en_US: sampler name
+      zh_Hans: 采样器名称
+    human_description:
+      en_US: This parameter determines the denoising algorithm employed during the sampling phase of Stable Diffusion. Get reference at https://novita.ai/get-started/Misc.htmll#what-is-samplers.
+      zh_Hans: 此参数决定了在稳定扩散采样阶段使用的去噪算法。参考 https://novita.ai/get-started/Misc.htmll#what-is-samplers。
+    form: form
+    options:
+      - value: "Euler a"
+        label:
+          en_US: Euler a
+          zh_Hans: Euler a
+      - value: "Euler"
+        label:
+          en_US: Euler
+          zh_Hans: Euler
+      - value: "LMS"
+        label:
+          en_US: LMS
+          zh_Hans: LMS
+      - value: "Heun"
+        label:
+          en_US: Heun
+          zh_Hans: Heun
+      - value: "DPM2"
+        label:
+          en_US: DPM2
+          zh_Hans: DPM2
+      - value: "DPM2 a"
+        label:
+          en_US: DPM2 a
+          zh_Hans: DPM2 a
+      - value: "DPM++ 2S a"
+        label:
+          en_US: DPM++ 2S a
+          zh_Hans: DPM++ 2S a
+      - value: "DPM++ 2M"
+        label:
+          en_US: DPM++ 2M
+          zh_Hans: DPM++ 2M
+      - value: "DPM++ SDE"
+        label:
+          en_US: DPM++ SDE
+          zh_Hans: DPM++ SDE
+      - value: "DPM fast"
+        label:
+          en_US: DPM fast
+          zh_Hans: DPM fast
+      - value: "DPM adaptive"
+        label:
+          en_US: DPM adaptive
+          zh_Hans: DPM adaptive
+      - value: "LMS Karras"
+        label:
+          en_US: LMS Karras
+          zh_Hans: LMS Karras
+      - value: "DPM2 Karras"
+        label:
+          en_US: DPM2 Karras
+          zh_Hans: DPM2 Karras
+      - value: "DPM2 a Karras"
+        label:
+          en_US: DPM2 a Karras
+          zh_Hans: DPM2 a Karras
+      - value: "DPM++ 2S a Karras"
+        label:
+          en_US: DPM++ 2S a Karras
+          zh_Hans: DPM++ 2S a Karras
+      - value: "DPM++ 2M Karras"
+        label:
+          en_US: DPM++ 2M Karras
+          zh_Hans: DPM++ 2M Karras
+      - value: "DPM++ SDE Karras"
+        label:
+          en_US: DPM++ SDE Karras
+          zh_Hans: DPM++ SDE Karras
+      - value: "DDIM"
+        label:
+          en_US: DDIM
+          zh_Hans: DDIM
+      - value: "PLMS"
+        label:
+          en_US: PLMS
+          zh_Hans: PLMS
+      - value: "UniPC"
+        label:
+          en_US: UniPC
+          zh_Hans: UniPC
+  - name: sd_vae
+    type: string
+    required: false
+    label:
+      en_US: sd vae
+      zh_Hans: sd vae
+    human_description:
+      en_US: VAE(Variational Autoencoder), get reference at https://novita.ai/get-started/Misc.html#what-s-variational-autoencoders-vae. You can use the "Novita AI Model Query" tool to query the corresponding "sd_name" value (type select "VAE").
+      zh_Hans: VAE（变分自编码器），参考 https://novita.ai/get-started/Misc.html#what-s-variational-autoencoders-vae。可通过“Novita AI 模型请求”工具查询对应的“sd_name”值（类型选择“VAE”）。
+    form: form
+  - name: loras
+    type: string
+    required: false
+    label:
+      en_US: loRAs
+      zh_Hans: loRAs
+    human_description:
+      en_US: LoRA models. Currenlty supports up to 5 LoRAs. You can use the "Novita AI Model Query" tool to query the corresponding "sd_name" value (type select "LoRA"). Input template is "<sd_name>,<strength [0-1.0]>;<sd_name>,<strength [0-1.0]>;...". Such as"Film Grain style_331903,0.5;DoggystylePOV_9600,0.5"
+      zh_Hans: LoRA 模型。目前仅支持 5 个 LoRA。可通过“Novita AI 模型请求”工具查询对应的“sd_name”值（类型选择“LoRA”）。输入模板：“<sd_name>,<strength [0-1.0]>;<sd_name>,<strength [0-1.0]>;...”，例如：“Film Grain style_331903,0.5;DoggystylePOV_9600,0.5”
+    form: form
+  - name: embeddings
+    type: string
+    required: false
+    label:
+      en_US: text embeddings
+      zh_Hans: 文本嵌入
+    human_description:
+      en_US: Textual Inversion is a training method for personalizing models by learning new text embeddings from a few example images, currenlty supports up to 5 embeddings. You can use the "Novita AI Model Query" tool to query the corresponding "sd_name" value (type select "Text Inversion"). Input template is "<sd_name>;<sd_name>;...". Such as "EasyNegativeV2_75525;AS-YoungerV2"
+      zh_Hans: 文本反转是一种通过从一些示例图像中学习新的文本嵌入来个性化模型的训练方法，目前仅支持 5 个嵌入。可通过“Novita AI 模型请求”工具查询对应的“sd_name”值（类型选择“Text Inversion”）。输入模板：“<sd_name>;<sd_name>;...”，例如：“EasyNegativeV2_75525;AS-YoungerV2”
+    form: form
+  - name: hires_fix
+    type: string
+    required: false
+    label:
+      en_US: hires fix
+      zh_Hans: 高分辨率修复
+    human_description:
+      en_US: Use high resolution image fix. Input template is "<target_width [128, 4096]>,<target_height [128, 4096]>,<strength [0, 1.0]>,<upscaler (optional, selec type, `RealESRGAN_x4plus_anime_6B`, `RealESRNet_x4plus` or `Latent`)>". Such as "1024,1024,0.8", "1024,1024,0.8,RealESRGAN_x4plus_anime_6B"
+      zh_Hans: 使用高分辨率修复。输入模板 “<target_width [128, 4096]>,<target_height [128, 4096]>,<strength [0, 1.0]>,<upscaler (可选, 选项类型, `RealESRGAN_x4plus_anime_6B`, `RealESRNet_x4plus` 或 `Latent`)>”。例如 “1024,1024,0.8”、“1024,1024,0.8,RealESRGAN_x4plus_anime_6B”
+    form: form
+  - name: refiner_switch_at
+    type: number
+    min: 0.0
+    max: 1.0
+    required: false
+    label:
+      en_US: refiner switch at
+      zh_Hans: 重采样参与时刻
+    human_description:
+      en_US: This parameter in the context of a refiner allows you to set the extent to which the refiner alters the output of a model. When set to 0, the refiner has no effect; at 1, it's fully active. Intermediate values like 0.5 provide a balanced effect, where the refiner is moderately engaged, enhancing or adjusting the output without dominating the original model's characteristics. This setting is particularly useful for fine-tuning the output to achieve a desired balance between refinement and the original generative features, Range [0, 1.0]. Is not all models support refiners!
+      zh_Hans: 此参数允许您设置重采样更改模型输出的程度。当设置为0时，重采样不起作用；1时，它处于完全活动状态。像0.5这样的中间值提供了一种平衡效果，其中重采样适度参与，增强或调整输出，而不会主导原始模型的特性。此设置对于微调输出特别有用，范围 [0, 1.0]。不是所有模型都支持重采样！
+    form: form
+  - name: response_image_type
+    type: select
+    default: jpeg
+    required: false
+    label:
+      en_US: response image type
+      zh_Hans: 响应图像类型
+    human_description:
+      en_US: Response image type, png or jpeg
+      zh_Hans: 响应图像类型，png 或 jpeg
+    form: form
+    options:
+      - value: jpeg
+        label:
+          en_US: jpeg
+          zh_Hans: jpeg
+      - value: png
+        label:
+          en_US: png
+          zh_Hans: png
+  - name: enabled_enterprise_plan
+    type: boolean
+    default: false
+    required: false
+    label:
+      en_US: enterprise plan enabled
+      zh_Hans: 企业版计划启用
+    human_description:
+      en_US: Enable enterprise plan
+      zh_Hans: 启用企业版计划
+    form: form
+  - name: enable_nsfw_detection
+    type: boolean
+    default: false
+    required: false
+    label:
+      en_US: enable nsfw detection
+      zh_Hans: 启用 NSFW 检测
+    human_description:
+      en_US: Enable nsfw detection
+      zh_Hans: 启用 NSFW 检测
+    form: form
+  - name: nsfw_detection_level
+    type: select
+    default: "2"
+    required: false
+    label:
+      en_US: nsfw detection level
+      zh_Hans: NSFW 检测级别
+    human_description:
+      en_US: Nsfw detection level, from low to high
+      zh_Hans: NSFW 检测级别，越高越严格
+    form: form
+    options:
+      - value: "0"
+        label:
+          en_US: low
+          zh_Hans: 低
+      - value: "1"
+        label:
+          en_US: middle
+          zh_Hans: 中
+      - value: "2"
+        label:
+          en_US: high
+          zh_Hans: 高

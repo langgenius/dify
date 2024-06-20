@@ -3,13 +3,15 @@ import type { FC } from 'react'
 import React, { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import {
   useCSVDownloader,
 } from 'react-papaparse'
 import { Menu, Transition } from '@headlessui/react'
 import Button from '../../../base/button'
-import { Plus } from '../../../base/icons/src/vender/line/general'
 import AddAnnotationModal from '../add-annotation-modal'
 import type { AnnotationItemBasic } from '../type'
 import BatchAddModal from '../batch-add-annotation-modal'
@@ -135,8 +137,8 @@ const HeaderOptions: FC<Props> = ({
 
   return (
     <div className='flex space-x-2'>
-      <Button type='primary' onClick={() => setShowAddModal(true)} className='flex items-center !h-8 !px-3 !text-[13px] space-x-2'>
-        <Plus className='w-4 h-4' />
+      <Button variant='primary' onClick={() => setShowAddModal(true)} className='flex items-center !h-8 !px-3 !text-[13px] space-x-2'>
+        <RiAddLine className='w-4 h-4' />
         <div>{t('appAnnotation.table.header.addAnnotation')}</div>
       </Button>
       <CustomPopover

@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { RiArrowDownSLine } from '@remixicon/react'
 import type {
   Model,
   ModelItem,
@@ -14,7 +15,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type TriggerProps = {
   open?: boolean
@@ -106,7 +106,7 @@ const Trigger: FC<TriggerProps> = ({
             <SlidersH className={cn(!isInWorkflow ? 'text-indigo-600' : 'text-gray-500', 'shrink-0 w-4 h-4')} />
           )
       }
-      {isInWorkflow && (<ChevronDown className='absolute top-[9px] right-2 w-3.5 h-3.5 text-gray-500' />)}
+      {isInWorkflow && (<RiArrowDownSLine className='absolute top-[9px] right-2 w-3.5 h-3.5 text-gray-500' />)}
     </div>
   )
 }
