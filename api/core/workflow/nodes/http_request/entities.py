@@ -22,7 +22,7 @@ class HttpRequestNodeData(BaseNodeData):
             header: Union[None, str] = None
 
         type: Literal['no-auth', 'api-key']
-        config: Optional[Config]
+        config: Optional[Config] = None
 
         @field_validator('config', mode='before')
         @classmethod
@@ -52,6 +52,6 @@ class HttpRequestNodeData(BaseNodeData):
     authorization: Authorization
     headers: str
     params: str
-    body: Optional[Body]
+    body: Optional[Body] = None
     timeout: Optional[Timeout] = None
     mask_authorization_header: Optional[bool] = True

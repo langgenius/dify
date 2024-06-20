@@ -3,13 +3,15 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import { Plan } from '../type'
 import { ALL_PLANS, NUM_INFINITE, contactSalesUrl, contractSales, unAvailable } from '../config'
 import Toast from '../../base/toast'
 import TooltipPlus from '../../base/tooltip-plus'
 import { PlanRange } from './select-plan-range'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { LanguagesSupported } from '@/i18n/language'
@@ -33,7 +35,7 @@ const KeyValue = ({ label, value, tooltip }: { label: string; value: string | nu
               <div className='w-[200px]'>{tooltip}</div>
             }
           >
-            <HelpCircle className='w-3 h-3 text-gray-400' />
+            <RiQuestionLine className='w-3 h-3 text-gray-400' />
           </TooltipPlus>
         )}
       </div>
@@ -139,7 +141,7 @@ const PlanItem: FC<Props> = ({
                   <div className='w-[200px]'>{t('billing.plansCommon.supportItems.llmLoadingBalancingTooltip')}</div>
                 }
               >
-                <HelpCircle className='w-3 h-3 text-gray-400' />
+                <RiQuestionLine className='w-3 h-3 text-gray-400' />
               </TooltipPlus>
             </div>
             <div className='mt-3.5 flex items-center space-x-1'>
@@ -151,7 +153,7 @@ const PlanItem: FC<Props> = ({
                     <div className='w-[200px]'>{t('billing.plansCommon.ragAPIRequestTooltip')}</div>
                   }
                 >
-                  <HelpCircle className='w-3 h-3 text-gray-400' />
+                  <RiQuestionLine className='w-3 h-3 text-gray-400' />
                 </TooltipPlus>
               </div>
               <div>{comingSoon}</div>

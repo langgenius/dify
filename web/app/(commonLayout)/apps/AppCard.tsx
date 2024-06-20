@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { RiMoreFill } from '@remixicon/react'
 import s from './style.module.css'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
@@ -22,7 +23,6 @@ import { useProviderContext } from '@/context/provider-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
-import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import EditAppModal from '@/app/components/explore/create-app-modal'
 import SwitchAppModal from '@/app/components/app/switch-app-modal'
@@ -310,7 +310,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                     <div
                       className='flex items-center justify-center w-8 h-8 cursor-pointer rounded-md'
                     >
-                      <DotsHorizontal className='w-4 h-4 text-gray-700' />
+                      <RiMoreFill className='w-4 h-4 text-gray-700' />
                     </div>
                   }
                   btnClassName={open =>

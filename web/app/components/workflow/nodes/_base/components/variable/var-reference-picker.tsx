@@ -3,6 +3,10 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiArrowDownSLine,
+  RiCloseLine,
+} from '@remixicon/react'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
 import VarReferencePopup from './var-reference-popup'
@@ -23,8 +27,6 @@ import {
 } from '@/app/components/workflow/hooks'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import AddButton from '@/app/components/base/button/add-button'
 const TRIGGER_DEFAULT_WIDTH = 227
 
@@ -244,7 +246,7 @@ const VarReferencePicker: FC<Props> = ({
                     noLeft
                     triggerClassName='!text-xs'
                     readonly={readonly}
-                    DropDownIcon={ChevronDown}
+                    DropDownIcon={RiArrowDownSLine}
                     value={varKindType}
                     options={varKindTypes}
                     onChange={handleVarKindTypeChange}
@@ -303,7 +305,7 @@ const VarReferencePicker: FC<Props> = ({
                 className='invisible group-hover/wrap:visible absolute h-5 right-1 top-[50%] translate-y-[-50%] group p-1 rounded-md hover:bg-black/5 cursor-pointer'
                 onClick={handleClearVar}
               >
-                <XClose className='w-3.5 h-3.5 text-gray-500 group-hover:text-gray-800' />
+                <RiCloseLine className='w-3.5 h-3.5 text-gray-500 group-hover:text-gray-800' />
               </div>)}
             </div>)}
         </PortalToFollowElemTrigger>
