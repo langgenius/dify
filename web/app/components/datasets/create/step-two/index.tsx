@@ -6,6 +6,10 @@ import { useBoolean } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import { RocketLaunchIcon } from '@heroicons/react/24/outline'
 import cn from 'classnames'
+import {
+  RiCloseLine,
+  RiQuestionLine,
+} from '@remixicon/react'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
 import RetrievalMethodInfo from '../../common/retrieval-method-info'
@@ -33,7 +37,6 @@ import { DataSourceType, DocForm } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Switch from '@/app/components/base/switch'
 import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
-import { HelpCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
@@ -630,7 +633,7 @@ const StepTwo = ({
                             {t('datasetCreation.stepTwo.overlapTip')}
                           </div>
                         }>
-                          <HelpCircle className='ml-1 w-3.5 h-3.5 text-gray-400' />
+                          <RiQuestionLine className='ml-1 w-3.5 h-3.5 text-gray-400' />
                         </TooltipPlus>
                       </div>
                       <input
@@ -760,7 +763,7 @@ const StepTwo = ({
                 {docForm === DocForm.QA && !QATipHide && (
                   <div className='flex justify-between items-center px-5 py-2 bg-orange-50 border-t border-amber-100 rounded-b-xl text-[13px] leading-[18px] text-medium text-amber-500'>
                     {t('datasetCreation.stepTwo.QATip')}
-                    <XClose className='w-4 h-4 text-gray-500 cursor-pointer' onClick={() => setQATipHide(true)} />
+                    <RiCloseLine className='w-4 h-4 text-gray-500 cursor-pointer' onClick={() => setQATipHide(true)} />
                   </div>
                 )}
               </div>

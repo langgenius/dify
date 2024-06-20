@@ -2,10 +2,12 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import type { CustomCollectionBackend } from '../types'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
@@ -47,7 +49,7 @@ const Contribute = ({ onRefreshData }: Props) => {
           <div className='group grow rounded-t-xl hover:bg-white' onClick={() => setIsShowEditCustomCollectionModal(true)}>
             <div className='shrink-0 flex items-center p-4 pb-3'>
               <div className='w-10 h-10 flex items-center justify-center border border-gray-200 bg-gray-100 rounded-lg group-hover:border-primary-100 group-hover:bg-primary-50'>
-                <Plus className='w-4 h-4 text-gray-500 group-hover:text-primary-600'/>
+                <RiAddLine className='w-4 h-4 text-gray-500 group-hover:text-primary-600'/>
               </div>
               <div className='ml-3 text-sm font-semibold leading-5 text-gray-800 group-hover:text-primary-600'>{t('tools.createCustomTool')}</div>
             </div>

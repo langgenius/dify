@@ -3,6 +3,9 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import produce from 'immer'
 import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import Drawer from '@/app/components/base/drawer-plus'
@@ -13,7 +16,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
@@ -149,7 +151,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                     }
                     selector='workflow-tool-modal-tooltip'
                   >
-                    <HelpCircle className='ml-2 w-[14px] h-[14px] text-gray-400' />
+                    <RiQuestionLine className='ml-2 w-[14px] h-[14px] text-gray-400' />
                   </Tooltip>
                 </div>
                 <input

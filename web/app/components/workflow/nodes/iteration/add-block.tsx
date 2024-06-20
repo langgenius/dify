@@ -4,6 +4,9 @@ import {
 } from 'react'
 import produce from 'immer'
 import cn from 'classnames'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import { useStoreApi } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import {
@@ -17,7 +20,6 @@ import { NODES_INITIAL_DATA } from '../../constants'
 import InsertBlock from './insert-block'
 import type { IterationNodeType } from './types'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { IterationStart } from '@/app/components/base/icons/src/vender/workflow'
 import type {
   OnSelectBlock,
@@ -85,7 +87,7 @@ const AddBlock = ({
         `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
         open && '!bg-gray-50',
       )}>
-        <Plus className='mr-1 w-4 h-4' />
+        <RiAddLine className='mr-1 w-4 h-4' />
         {t('workflow.common.addBlock')}
       </div>
     )

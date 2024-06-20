@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiArrowDownSLine } from '@remixicon/react'
 import type { CitationItem } from '../type'
 import Popup from './popup'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type Resources = {
   documentId: string
@@ -112,7 +112,7 @@ const Citation: FC<CitationProps> = ({
               {
                 !showMore
                   ? `+ ${resourcesLength - limitNumberInOneLine}`
-                  : <ChevronDown className='w-4 h-4 text-gray-600 rotate-180' />
+                  : <RiArrowDownSLine className='w-4 h-4 text-gray-600 rotate-180' />
               }
             </div>
           )

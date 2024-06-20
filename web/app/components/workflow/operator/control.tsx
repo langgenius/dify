@@ -5,6 +5,12 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiCursorLine,
+  RiFunctionAddLine,
+  RiHand,
+  RiStickyNoteAddLine,
+} from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
 import {
   useNodesReadOnly,
@@ -16,16 +22,6 @@ import { useStore } from '../store'
 import AddBlock from './add-block'
 import TipPopup from './tip-popup'
 import { useOperator } from './hooks'
-import {
-  Cursor02C,
-  Hand02,
-} from '@/app/components/base/icons/src/vender/line/editor'
-import {
-  Cursor02C as Cursor02CSolid,
-  Hand02 as Hand02Solid,
-} from '@/app/components/base/icons/src/vender/solid/editor'
-import { OrganizeGrid } from '@/app/components/base/icons/src/vender/line/layout'
-import { StickerSquare } from '@/app/components/base/icons/src/vender/line/files'
 
 const Control = () => {
   const { t } = useTranslation()
@@ -101,7 +97,7 @@ const Control = () => {
           )}
           onClick={addNote}
         >
-          <StickerSquare />
+          <RiStickyNoteAddLine className='w-4 h-4' />
         </div>
       </TipPopup>
       <div className='mx-[3px] w-[1px] h-3.5 bg-gray-200'></div>
@@ -114,9 +110,7 @@ const Control = () => {
           )}
           onClick={handleModePointer}
         >
-          {
-            controlMode === 'pointer' ? <Cursor02CSolid className='w-4 h-4' /> : <Cursor02C className='w-4 h-4' />
-          }
+          <RiCursorLine className='w-4 h-4' />
         </div>
       </TipPopup>
       <TipPopup title={t('workflow.common.handMode')}>
@@ -128,9 +122,7 @@ const Control = () => {
           )}
           onClick={handleModeHand}
         >
-          {
-            controlMode === 'hand' ? <Hand02Solid className='w-4 h-4' /> : <Hand02 className='w-4 h-4' />
-          }
+          <RiHand className='w-4 h-4' />
         </div>
       </TipPopup>
       <div className='mx-[3px] w-[1px] h-3.5 bg-gray-200'></div>
@@ -142,7 +134,7 @@ const Control = () => {
           )}
           onClick={goLayout}
         >
-          <OrganizeGrid className='w-4 h-4' />
+          <RiFunctionAddLine className='w-4 h-4' />
         </div>
       </TipPopup>
     </div>

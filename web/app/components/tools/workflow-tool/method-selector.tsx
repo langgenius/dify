@@ -2,12 +2,12 @@ import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { RiArrowDownSLine } from '@remixicon/react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 
 type MethodSelectorProps = {
@@ -41,7 +41,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
               {value === 'llm' ? t('tools.createTool.toolInput.methodParameter') : t('tools.createTool.toolInput.methodSetting')}
             </div>
             <div className='shrink-0 ml-1 text-gray-700 opacity-60'>
-              <ChevronDown className='h-4 w-4'/>
+              <RiArrowDownSLine className='h-4 w-4'/>
             </div>
           </div>
         </PortalToFollowElemTrigger>

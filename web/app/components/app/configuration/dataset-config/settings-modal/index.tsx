@@ -3,6 +3,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isEqual } from 'lodash-es'
 import cn from 'classnames'
+import { RiCloseLine } from '@remixicon/react'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
 import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
 import Button from '@/app/components/base/button'
@@ -10,7 +11,6 @@ import type { DataSet } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useModalContext } from '@/context/modal-context'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import type { RetrievalConfig } from '@/types/app'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
@@ -136,7 +136,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             onClick={onCancel}
             className='flex justify-center items-center w-6 h-6 cursor-pointer'
           >
-            <XClose className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='w-4 h-4 text-gray-500' />
           </div>
         </div>
       </div>
@@ -262,7 +262,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             e.stopPropagation()
             e.nativeEvent.stopImmediatePropagation()
           }}>
-            <XClose className='w-4 h-4 text-gray-500 ' />
+            <RiCloseLine className='w-4 h-4 text-gray-500 ' />
           </div>
         </div>
       )}

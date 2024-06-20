@@ -3,13 +3,15 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import VarReferencePicker from '../../_base/components/variable/var-reference-picker'
 import { isComparisonOperatorNeedTranslate } from '../utils'
 import { VarType } from '../../../types'
 import type { Condition } from '@/app/components/workflow/nodes/if-else/types'
 import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/if-else/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { RefreshCw05 } from '@/app/components/base/icons/src/vender/line/arrows'
 import Selector from '@/app/components/workflow/nodes/_base/components/selector'
 import Toast from '@/app/components/base/toast'
@@ -237,7 +239,7 @@ const Item: FC<ItemProps> = ({
             className={cn(canRemove ? 'text-gray-500 bg-gray-100 hover:bg-gray-200  cursor-pointer' : 'bg-gray-25 text-gray-300', 'p-2 rounded-lg ')}
             onClick={canRemove ? onRemove : () => { }}
           >
-            <Trash03 className='w-4 h-4 ' />
+            <RiDeleteBinLine className='w-4 h-4 ' />
           </div>
         )}
       </div>

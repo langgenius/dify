@@ -2,10 +2,10 @@
 
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { RiCloseLine } from '@remixicon/react'
 import s from './style.module.css'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
 type ConfirmModalProps = {
@@ -24,7 +24,7 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
       onClose={() => { }}
     >
       <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
-        <XClose className='w-4 h-4 text-gray-500' />
+        <RiCloseLine className='w-4 h-4 text-gray-500' />
       </div>
       <div className='w-12 h-12 p-3 bg-white rounded-xl border-[0.5px] border-gray-100 shadow-xl'>
         <AlertTriangle className='w-6 h-6 text-[rgb(247,144,9)]' />

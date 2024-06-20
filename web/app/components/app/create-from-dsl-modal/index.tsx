@@ -5,6 +5,7 @@ import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import Uploader from './uploader'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
@@ -13,7 +14,6 @@ import { importApp } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 
@@ -84,7 +84,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose }: CreateFromDSLModalProp
     >
       <div className='relative pb-2 text-xl font-medium leading-[30px] text-gray-900'>{t('app.createFromConfigFile')}</div>
       <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
-        <XClose className='w-4 h-4 text-gray-500' />
+        <RiCloseLine className='w-4 h-4 text-gray-500' />
       </div>
       <Uploader
         file={currentFile}

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
 import cn from 'classnames'
+import { RiArrowDownSLine } from '@remixicon/react'
 import React, { useCallback, useState } from 'react'
 import AppIcon from '../base/app-icon'
 import SwitchAppModal from '../app/switch-app-modal'
@@ -11,7 +12,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import Divider from '@/app/components/base/divider'
 import Confirm from '@/app/components/base/confirm'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -190,7 +190,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               <div className="grow w-0">
                 <div className='flex justify-between items-center text-sm leading-5 font-medium text-gray-900'>
                   <div className='truncate' title={appDetail.name}>{appDetail.name}</div>
-                  {isCurrentWorkspaceEditor && <ChevronDown className='shrink-0 ml-[2px] w-3 h-3 text-gray-500' />}
+                  {isCurrentWorkspaceEditor && <RiArrowDownSLine className='shrink-0 ml-[2px] w-3 h-3 text-gray-500' />}
                 </div>
                 <div className='flex items-center text-[10px] leading-[18px] font-medium text-gray-500 gap-1'>
                   {appDetail.mode === 'advanced-chat' && (

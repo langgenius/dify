@@ -2,6 +2,10 @@ import type { FC } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiLoader2Line,
+  RiPlayLargeFill,
+} from '@remixicon/react'
 import { useStore } from '../store'
 import {
   useIsChatMode,
@@ -11,10 +15,8 @@ import {
 import { WorkflowRunningStatus } from '../types'
 import ViewHistory from './view-history'
 import {
-  Play,
   StopCircle,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { MessagePlay } from '@/app/components/base/icons/src/vender/line/communication'
 
 const RunMode = memo(() => {
@@ -38,13 +40,13 @@ const RunMode = memo(() => {
           isRunning
             ? (
               <>
-                <Loading02 className='mr-1 w-4 h-4 animate-spin' />
+                <RiLoader2Line className='mr-1 w-4 h-4 animate-spin' />
                 {t('workflow.common.running')}
               </>
             )
             : (
               <>
-                <Play className='mr-1 w-4 h-4' />
+                <RiPlayLargeFill className='mr-1 w-4 h-4' />
                 {t('workflow.common.run')}
               </>
             )

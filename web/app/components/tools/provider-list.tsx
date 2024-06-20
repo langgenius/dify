@@ -2,12 +2,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import type { Collection } from './types'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import SearchInput from '@/app/components/base/search-input'
-import { DotsGrid, XClose } from '@/app/components/base/icons/src/vender/line/general'
+import { DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
 import { Colors } from '@/app/components/base/icons/src/vender/line/others'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
@@ -109,7 +110,7 @@ const ProviderList = () => {
       )}>
         {currentProvider && <ProviderDetail collection={currentProvider} onRefreshData={getProviderList} />}
       </div>
-      <div className='absolute top-5 right-5 p-1 cursor-pointer' onClick={() => setCurrentProvider(undefined)}><XClose className='w-4 h-4'/></div>
+      <div className='absolute top-5 right-5 p-1 cursor-pointer' onClick={() => setCurrentProvider(undefined)}><RiCloseLine className='w-4 h-4'/></div>
     </div>
   )
 }

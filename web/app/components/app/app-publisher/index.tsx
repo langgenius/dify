@@ -6,6 +6,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import classNames from 'classnames'
+import { RiArrowDownSLine } from '@remixicon/react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import SuggestedAction from './suggested-action'
 import PublishWithMultipleModel from './publish-with-multiple-model'
@@ -18,7 +19,6 @@ import {
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useGetLanguage } from '@/context/i18n'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PlayCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import { LeftIndent02 } from '@/app/components/base/icons/src/vender/line/editor'
@@ -126,7 +126,7 @@ const AppPublisher = ({
           `}
         >
           {t('workflow.common.publish')}
-          <ChevronDown className='ml-0.5' />
+          <RiArrowDownSLine className='ml-0.5' />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>

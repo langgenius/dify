@@ -1,6 +1,7 @@
 'use client'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
@@ -8,7 +9,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 export type CreateAppModalProps = {
   show: boolean
@@ -67,7 +67,7 @@ const CreateAppModal = ({
         className='relative !max-w-[480px] px-8'
       >
         <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onHide}>
-          <XClose className='w-4 h-4 text-gray-500' />
+          <RiCloseLine className='w-4 h-4 text-gray-500' />
         </div>
         {isEditModal && (
           <div className='mb-9 font-semibold text-xl leading-[30px] text-gray-900'>{t('app.editAppTitle')}</div>

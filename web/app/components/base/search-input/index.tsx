@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { SearchLg } from '@/app/components/base/icons/src/vender/line/general'
+import { RiSearchLine } from '@remixicon/react'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type SearchInputProps = {
@@ -31,7 +31,7 @@ const SearchInput: FC<SearchInputProps> = ({
       className,
     )}>
       <div className="pointer-events-none shrink-0 flex items-center mr-1.5 justify-center w-4 h-4">
-        <SearchLg className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
+        <RiSearchLine className="h-3.5 w-3.5 text-gray-500" aria-hidden="true" />
       </div>
       <input
         type="text"

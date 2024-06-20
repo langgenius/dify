@@ -7,6 +7,9 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiErrorWarningFill,
+} from '@remixicon/react'
 import type {
   CredentialFormSchema,
   CredentialFormSchemaRadio,
@@ -40,7 +43,6 @@ import Form from './Form'
 import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -358,7 +360,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 (validatedStatusState.status === ValidatedStatus.Error && validatedStatusState.message)
                   ? (
                     <div className='flex px-[10px] py-3 bg-[#FEF3F2] text-xs text-[#D92D20]'>
-                      <AlertCircle className='mt-[1px] mr-2 w-[14px] h-[14px]' />
+                      <RiErrorWarningFill className='mt-[1px] mr-2 w-[14px] h-[14px]' />
                       {validatedStatusState.message}
                     </div>
                   )

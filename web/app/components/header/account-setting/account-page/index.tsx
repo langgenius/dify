@@ -2,6 +2,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import classNames from 'classnames'
+import {
+  RiCloseLine,
+  RiErrorWarningFill,
+} from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import Collapse from '../collapse'
 import type { IItem } from '../collapse'
@@ -14,8 +18,6 @@ import { ToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import Avatar from '@/app/components/base/avatar'
 import { IS_CE_EDITION } from '@/config'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
 const titleClassName = `
   text-sm font-medium text-gray-900
@@ -251,10 +253,10 @@ export default function AccountPage() {
           onClose={() => { }}
         >
           <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={() => setShowDeleteAccountModal(false)}>
-            <XClose className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='w-4 h-4 text-gray-500' />
           </div>
           <div className='w-12 h-12 p-3 bg-white rounded-xl border-[0.5px] border-gray-100 shadow-xl'>
-            <AlertCircle className='w-6 h-6 text-[#D92D20]' />
+            <RiErrorWarningFill className='w-6 h-6 text-[#D92D20]' />
           </div>
           <div className='relative mt-3 text-xl font-semibold leading-[30px] text-gray-900'>{t('common.account.delete')}</div>
           <div className='my-1 text-[#D92D20] text-sm leading-5'>

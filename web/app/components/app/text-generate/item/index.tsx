@@ -3,6 +3,9 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiClipboardLine,
+} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { useParams } from 'next/navigation'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
@@ -15,7 +18,7 @@ import Toast from '@/app/components/base/toast'
 import AudioBtn from '@/app/components/base/audio-btn'
 import type { Feedbacktype } from '@/app/components/app/chat/type'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
-import { Clipboard, File02 } from '@/app/components/base/icons/src/vender/line/files'
+import { File02 } from '@/app/components/base/icons/src/vender/line/files'
 import { Bookmark } from '@/app/components/base/icons/src/vender/line/general'
 import { Stars02 } from '@/app/components/base/icons/src/vender/line/weather'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -334,7 +337,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         copy(JSON.stringify(copyContent))
                       Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
                     }}>
-                    <Clipboard className='w-3.5 h-3.5' />
+                    <RiClipboardLine className='w-3.5 h-3.5' />
                     {!isMobile && <div>{t('common.operation.copy')}</div>}
                   </SimpleBtn>
                 )}

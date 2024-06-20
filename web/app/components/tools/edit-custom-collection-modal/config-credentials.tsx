@@ -3,8 +3,10 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import Tooltip from '../../base/tooltip'
-import { HelpCircle } from '../../base/icons/src/vender/line/general'
 import type { Credential } from '@/app/components/tools/types'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
@@ -117,7 +119,7 @@ const ConfigCredential: FC<Props> = ({
                         </div>
                       }
                     >
-                      <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
+                      <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
                     </Tooltip>
                   </div>
                   <input

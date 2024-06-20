@@ -3,13 +3,15 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiErrorWarningFill,
+} from '@remixicon/react'
 import { useBoolean, useClickAway } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
 import { checkOrSetAccessToken } from '../utils'
-import { AlertCircle } from '../../base/icons/src/vender/solid/alertsAndFeedback'
 import s from './style.module.css'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
@@ -475,7 +477,7 @@ const TextGeneration: FC<IMainProps> = ({
           <div className='flex items-center space-x-2'>
             {allFailedTaskList.length > 0 && (
               <div className='flex items-center'>
-                <AlertCircle className='w-4 h-4 text-[#D92D20]' />
+                <RiErrorWarningFill className='w-4 h-4 text-[#D92D20]' />
                 <div className='ml-1 text-[#D92D20]'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
                 <Button
                   variant='primary'
