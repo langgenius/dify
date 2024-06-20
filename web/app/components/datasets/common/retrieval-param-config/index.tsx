@@ -3,12 +3,14 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip-plus'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import type { RetrievalConfig } from '@/types/app'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -68,7 +70,7 @@ const RetrievalParamConfig: FC<Props> = ({
             <div className='flex items-center'>
               <span className='mr-0.5'>{t('common.modelProvider.rerankModel.key')}</span>
               <Tooltip popupContent={<div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>}>
-                <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
+                <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
           </div>

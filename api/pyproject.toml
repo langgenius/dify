@@ -170,6 +170,7 @@ lxml = "5.1.0"
 xlrd = "~2.0.1"
 pydantic = "~2.7.4"
 pydantic_extra_types = "~2.8.1"
+pydantic-settings = "~2.3.3"
 pgvecto-rs = "0.1.4"
 firecrawl-py = "0.0.5"
 oss2 = "2.18.5"
@@ -187,6 +188,7 @@ cos-python-sdk-v5 = "1.9.30"
 langfuse = "^2.36.1"
 langsmith = "^0.1.77"
 novita-client = "^0.5.6"
+opensearch-py = "2.4.0"
 
 [tool.poetry.group.dev]
 optional = true
@@ -204,4 +206,3 @@ optional = true
 [tool.poetry.group.lint.dependencies]
 ruff = "~0.4.8"
 dotenv-linter = "~0.5.0"
-

@@ -4,12 +4,14 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  RiAddLine,
+} from '@remixicon/react'
+import {
   useAvailableBlocks,
   useNodesInteractions,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import type {
   CommonNodeType,
   OnSelectBlock,
@@ -66,7 +68,7 @@ const Add = ({
           )
         }
         <div className='flex items-center justify-center mr-1.5 w-5 h-5 rounded-[5px] bg-gray-200'>
-          <Plus className='w-3 h-3' />
+          <RiAddLine className='w-3 h-3' />
         </div>
         {t('workflow.panel.selectNextStep')}
       </div>

@@ -3,6 +3,9 @@ import useSWR from 'swr'
 import produce from 'immer'
 import React, { Fragment } from 'react'
 import classNames from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Listbox, Transition } from '@headlessui/react'
@@ -15,7 +18,6 @@ import type { OnFeaturesChange } from '../../types'
 import type { Item } from '@/app/components/base/select'
 import { fetchAppVoices } from '@/service/apps'
 import Tooltip from '@/app/components/base/tooltip'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { languages } from '@/i18n/language'
 
 type VoiceParamConfigProps = {
@@ -70,7 +72,7 @@ const VoiceParamConfig = ({
                   <div key={item}>{item}</div>
                 ))}
               </div>} selector='config-resolution-tooltip'>
-                <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
+                <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <Listbox

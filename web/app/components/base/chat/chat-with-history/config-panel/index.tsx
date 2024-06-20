@@ -93,7 +93,7 @@ const ConfigPanel = () => {
               <Form />
               <div className={`pl-[136px] flex items-center ${isMobile && '!pl-0'}`}>
                 <Button
-                  type='primary'
+                  variant='primary'
                   className='mr-2 text-sm font-medium'
                   onClick={() => {
                     setCollapsed(true)
@@ -118,7 +118,7 @@ const ConfigPanel = () => {
               <Form />
               <Button
                 className={`px-4 py-0 h-9 ${inputsForms.length && !isMobile && 'ml-[136px]'}`}
-                type='primary'
+                variant='primary'
                 onClick={handleStartChat}
               >
                 <MessageDotsCircle className='mr-2 w-4 h-4 text-white' />
