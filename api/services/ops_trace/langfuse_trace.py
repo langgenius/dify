@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from datetime import datetime, timedelta
 from enum import Enum
@@ -8,14 +9,17 @@ from langfuse import Langfuse
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
+from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.moderation.base import ModerationInputsResult
 from extensions.ext_database import db
 from models.dataset import Document
 from models.model import Message, MessageAgentThought, MessageFile
 from models.workflow import WorkflowNodeExecution, WorkflowRun
 from services.ops_trace.base_trace_instance import BaseTraceInstance
+from services.ops_trace.model import LangfuseConfig
 from services.ops_trace.utils import filter_none_values, replace_text_with_content
 
+logger = logging.getLogger(__name__)
 
 def validate_input_output(v, field_name):
     """
@@ -696,7 +700,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
         try:
             self.langfuse_client.trace(**format_trace_data)
-            print("LangFuse Trace created successfully")
+            logger.debug("LangFuse Trace created successfully")
         except Exception as e:
             raise f"LangFuse Failed to create trace: {str(e)}"
 
@@ -706,7 +710,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
         try:
             self.langfuse_client.span(**format_span_data)
-            print("LangFuse Span created successfully")
+            logger.debug("LangFuse Span created successfully")
         except Exception as e:
             raise f"LangFuse Failed to create span: {str(e)}"
 
@@ -727,7 +731,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
         try:
             self.langfuse_client.generation(**format_generation_data)
-            print("LangFuse Generation created successfully")
+            logger.debug("LangFuse Generation created successfully")
         except Exception as e:
             raise f"LangFuse Failed to create generation: {str(e)}"
 
@@ -746,5 +750,23 @@ class LangFuseDataTrace(BaseTraceInstance):
         try:
             return self.langfuse_client.auth_check()
         except Exception as e:
-            print(f"LangFuse API check failed: {str(e)}")
+            logger.debug(f"LangFuse API check failed: {str(e)}")
             return False
+
+    @classmethod
+    def obfuscate_config(cls, config: LangfuseConfig):
+        public_key = obfuscated_token(config.public_key)
+        secret_key = obfuscated_token(config.secret_key)
+        return LangfuseConfig(public_key=public_key, secret_key=secret_key, host=config.host)
+
+    @classmethod
+    def encrypt_config(cls, tenant_id, config: LangfuseConfig):
+        decrypt_public_key = encrypt_token(tenant_id, config.public_key)
+        decrypt_secret_key = encrypt_token(tenant_id, config.secret_key)
+        return LangfuseConfig(public_key=decrypt_public_key, secret_key=decrypt_secret_key, host=config.host)
+
+    @classmethod
+    def decrypt_config(cls, tenant_id, config: LangfuseConfig):
+        decrypt_public_key = decrypt_token(tenant_id, config.public_key)
+        decrypt_secret_key = decrypt_token(tenant_id, config.secret_key)
+        return LangfuseConfig(public_key=decrypt_public_key, secret_key=decrypt_secret_key, host=config.host)
