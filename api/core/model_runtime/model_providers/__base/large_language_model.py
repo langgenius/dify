@@ -489,37 +489,6 @@ if you are not sure about the structure.
         """Cut off the text as soon as any stop words occur."""
         return re.split("|".join(stop), text, maxsplit=1)[0]
 
-    def _llm_result_to_stream(self, result: LLMResult) -> Generator:
-        """
-from typing_extensions import deprecated
-        Transform llm result to stream
-
-        :param result: llm result
-        :return: stream
-        """
-        index = 0
-
-        tool_calls = result.message.tool_calls
-
-        for word in result.message.content:
-            assistant_prompt_message = AssistantPromptMessage(
-                content=word,
-                tool_calls=tool_calls if index == (len(result.message.content) - 1) else []
-            )
-
-            yield LLMResultChunk(
-                model=result.model,
-                prompt_messages=result.prompt_messages,
-                system_fingerprint=result.system_fingerprint,
-                delta=LLMResultChunkDelta(
-                    index=index,
-                    message=assistant_prompt_message,
-                )
-            )
-
-            index += 1
-            time.sleep(0.01)
-
     def get_parameter_rules(self, model: str, credentials: dict) -> list[ParameterRule]:
         """
         Get parameter rules
