@@ -1,38 +1,12 @@
 import json
-from enum import Enum
 from typing import Union
 from uuid import UUID
 
-from pydantic import BaseModel
-
-from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from extensions.ext_database import db
 from models.model import App, AppModelConfig, Conversation, Message, TraceAppConfig
 from services.ops_trace.langfuse_trace import LangFuseDataTrace
 from services.ops_trace.langsmith_trace import LangSmithDataTrace
-
-
-class TracingProviderEnum(Enum):
-    LANGFUSE = 'langfuse'
-    LANGSMITH = 'langsmith'
-
-
-class LangfuseConfig(BaseModel):
-    """
-    Model class for Langfuse tracing config.
-    """
-    public_key: str
-    secret_key: str
-    host: str
-
-
-class LangSmithConfig(BaseModel):
-    """
-    Model class for Langsmith tracing config.
-    """
-    api_key: str
-    project: str
-    endpoint: str
+from services.ops_trace.model import LangfuseConfig, LangSmithConfig, TracingProviderEnum
 
 
 class OpsTraceService:
@@ -161,25 +135,12 @@ class OpsTraceService:
         """
         if tracing_provider == TracingProviderEnum.LANGFUSE.value:
             tracing_config = LangfuseConfig(**tracing_config)
-            encrypt_public_key = encrypt_token(tenant_id, tracing_config.public_key)
-            encrypt_secret_key = encrypt_token(tenant_id, tracing_config.secret_key)
-            tracing_config = LangfuseConfig(
-                public_key=encrypt_public_key,
-                secret_key=encrypt_secret_key,
-                host=tracing_config.host
-            )
+            tracing_config = LangFuseDataTrace.encrypt_config(tenant_id, tracing_config)
         elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
             tracing_config = LangSmithConfig(**tracing_config)
-            encrypt_api_key = encrypt_token(tenant_id, tracing_config.api_key)
-            tracing_config = LangSmithConfig(
-                api_key=encrypt_api_key,
-                project=tracing_config.project,
-                endpoint=tracing_config.endpoint
-            )
+            tracing_config = LangSmithDataTrace.encrypt_config(tenant_id, tracing_config)
 
-        if isinstance(tracing_config, BaseModel):
-            return tracing_config.dict()
-        return tracing_config
+        return tracing_config.model_dump()
 
     @classmethod
     def decrypt_tracing_config(cls, tenant_id: str, tracing_provider: str, tracing_config: dict):
@@ -192,25 +153,12 @@ class OpsTraceService:
         """
         if tracing_provider == TracingProviderEnum.LANGFUSE.value:
             tracing_config = LangfuseConfig(**tracing_config)
-            decrypt_public_key = decrypt_token(tenant_id, tracing_config.public_key)
-            decrypt_secret_key = decrypt_token(tenant_id, tracing_config.secret_key)
-            tracing_config = LangfuseConfig(
-                public_key=decrypt_public_key,
-                secret_key=decrypt_secret_key,
-                host=tracing_config.host
-            )
+            tracing_config = LangFuseDataTrace.decrypt_config(tenant_id, tracing_config)
         elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
             tracing_config = LangSmithConfig(**tracing_config)
-            decrypt_api_key = decrypt_token(tenant_id, tracing_config.api_key)
-            tracing_config = LangSmithConfig(
-                api_key=decrypt_api_key,
-                project=tracing_config.project,
-                endpoint=tracing_config.endpoint
-            )
+            tracing_config = LangSmithDataTrace.decrypt_config(tenant_id, tracing_config)
 
-        if isinstance(tracing_config, BaseModel):
-            return tracing_config.dict()
-        return tracing_config
+        return tracing_config.model_dump()
 
     @classmethod
     def obfuscated_decrypt_token(cls, tracing_provider: str, decrypt_tracing_config:dict):
@@ -220,28 +168,14 @@ class OpsTraceService:
         :param decrypt_tracing_config: tracing config
         :return:
         """
+        obfuscate_config = None
         if tracing_provider == TracingProviderEnum.LANGFUSE.value:
             decrypt_tracing_config = LangfuseConfig(**decrypt_tracing_config)
-            decrypt_public_key = decrypt_tracing_config.public_key
-            decrypt_secret_key = decrypt_tracing_config.secret_key
-            obfuscated_public_key = obfuscated_token(decrypt_public_key)
-            obfuscated_secret_key = obfuscated_token(decrypt_secret_key)
-            decrypt_tracing_config = LangfuseConfig(
-                public_key=obfuscated_public_key,
-                secret_key=obfuscated_secret_key,
-                host=decrypt_tracing_config.host
-            )
+            obfuscate_config = LangFuseDataTrace.obfuscate_config(decrypt_tracing_config)
         elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
             decrypt_tracing_config = LangSmithConfig(**decrypt_tracing_config)
-            decrypt_api_key = decrypt_tracing_config.api_key
-            obfuscated_api_key = obfuscated_token(decrypt_api_key)
-            decrypt_tracing_config = LangSmithConfig(
-                api_key=obfuscated_api_key,
-                project=decrypt_tracing_config.project,
-                endpoint=decrypt_tracing_config.endpoint
-            )
-
-        return decrypt_tracing_config.dict()
+            obfuscate_config = LangSmithDataTrace.obfuscate_config(decrypt_tracing_config)
+        return obfuscate_config.model_dump()
 
     @classmethod
     def get_decrypted_tracing_config(cls, app_id: str, tracing_provider: str):
@@ -320,7 +254,6 @@ class OpsTraceService:
                 langsmith_api_key = decrypt_trace_config.get('api_key')
                 langsmith_project = decrypt_trace_config.get('project')
                 langsmith_endpoint = decrypt_trace_config.get('endpoint')
-                print(langsmith_api_key, langsmith_project, langsmith_endpoint)
                 tracing_instance = LangSmithDataTrace(
                     langsmith_api_key,
                     langsmith_project,
