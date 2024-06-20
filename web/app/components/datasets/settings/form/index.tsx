@@ -244,7 +244,7 @@ const Form = () => {
           <div className='w-[480px]'>
             <Button
               className='min-w-24 text-sm'
-              type='primary'
+              variant='primary'
               onClick={handleSave}
             >
               {t('datasetSettings.form.save')}

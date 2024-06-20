@@ -280,7 +280,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           {t('common.operation.cancel')}
         </Button>
         <Button
-          type='primary'
+          variant='primary'
           className='text-sm font-medium'
           disabled={loading}
           onClick={handleSave}
