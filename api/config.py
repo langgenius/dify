@@ -17,11 +17,6 @@ DEFAULTS = {
     'SQLALCHEMY_POOL_RECYCLE': 3600,
     'SQLALCHEMY_POOL_PRE_PING': 'False',
     'SQLALCHEMY_ECHO': 'False',
-    'WEAVIATE_GRPC_ENABLED': 'True',
-    'WEAVIATE_BATCH_SIZE': 100,
-    'QDRANT_CLIENT_TIMEOUT': 20,
-    'QDRANT_GRPC_ENABLED': 'False',
-    'QDRANT_GRPC_PORT': '6334',
     'CELERY_BACKEND': 'database',
     'HOSTED_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_OPENAI_TRIAL_ENABLED': 'False',
@@ -37,7 +32,6 @@ DEFAULTS = {
     'HOSTED_MODERATION_PROVIDERS': '',
     'HOSTED_FETCH_APP_TEMPLATES_MODE': 'remote',
     'HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN': 'https://tmpl.dify.ai',
-    'MILVUS_DATABASE': 'default',
 }
 
 
@@ -140,84 +134,6 @@ class Config:
         self.TENCENT_COS_SECRET_ID = get_env('TENCENT_COS_SECRET_ID')
         self.TENCENT_COS_SECRET_KEY = get_env('TENCENT_COS_SECRET_KEY')
         self.TENCENT_COS_SCHEME = get_env('TENCENT_COS_SCHEME')
-
-        # ------------------------
-        # Vector Store Configurations.
-        # Currently, only support: qdrant, milvus, zilliz, weaviate, relyt, pgvector
-        # ------------------------
-
-        # qdrant settings
-        self.QDRANT_URL = get_env('QDRANT_URL')
-        self.QDRANT_API_KEY = get_env('QDRANT_API_KEY')
-        self.QDRANT_CLIENT_TIMEOUT = get_env('QDRANT_CLIENT_TIMEOUT')
-        self.QDRANT_GRPC_ENABLED = get_env('QDRANT_GRPC_ENABLED')
-        self.QDRANT_GRPC_PORT = get_env('QDRANT_GRPC_PORT')
-
-        # milvus / zilliz setting
-        self.MILVUS_HOST = get_env('MILVUS_HOST')
-        self.MILVUS_PORT = get_env('MILVUS_PORT')
-        self.MILVUS_USER = get_env('MILVUS_USER')
-        self.MILVUS_PASSWORD = get_env('MILVUS_PASSWORD')
-        self.MILVUS_SECURE = get_env('MILVUS_SECURE')
-        self.MILVUS_DATABASE = get_env('MILVUS_DATABASE')
-
-        # OpenSearch settings
-        self.OPENSEARCH_HOST = get_env('OPENSEARCH_HOST')
-        self.OPENSEARCH_PORT = get_env('OPENSEARCH_PORT')
-        self.OPENSEARCH_USER = get_env('OPENSEARCH_USER')
-        self.OPENSEARCH_PASSWORD = get_env('OPENSEARCH_PASSWORD')
-        self.OPENSEARCH_SECURE = get_bool_env('OPENSEARCH_SECURE')
-
-        # weaviate settings
-        self.WEAVIATE_ENDPOINT = get_env('WEAVIATE_ENDPOINT')
-        self.WEAVIATE_API_KEY = get_env('WEAVIATE_API_KEY')
-        self.WEAVIATE_GRPC_ENABLED = get_bool_env('WEAVIATE_GRPC_ENABLED')
-        self.WEAVIATE_BATCH_SIZE = int(get_env('WEAVIATE_BATCH_SIZE'))
-
-        # relyt settings
-        self.RELYT_HOST = get_env('RELYT_HOST')
-        self.RELYT_PORT = get_env('RELYT_PORT')
-        self.RELYT_USER = get_env('RELYT_USER')
-        self.RELYT_PASSWORD = get_env('RELYT_PASSWORD')
-        self.RELYT_DATABASE = get_env('RELYT_DATABASE')
-
-        # tencent settings
-        self.TENCENT_VECTOR_DB_URL = get_env('TENCENT_VECTOR_DB_URL')
-        self.TENCENT_VECTOR_DB_API_KEY = get_env('TENCENT_VECTOR_DB_API_KEY')
-        self.TENCENT_VECTOR_DB_TIMEOUT = get_env('TENCENT_VECTOR_DB_TIMEOUT')
-        self.TENCENT_VECTOR_DB_USERNAME = get_env('TENCENT_VECTOR_DB_USERNAME')
-        self.TENCENT_VECTOR_DB_DATABASE = get_env('TENCENT_VECTOR_DB_DATABASE')
-        self.TENCENT_VECTOR_DB_SHARD = get_env('TENCENT_VECTOR_DB_SHARD')
-        self.TENCENT_VECTOR_DB_REPLICAS = get_env('TENCENT_VECTOR_DB_REPLICAS')
-
-        # pgvecto rs settings
-        self.PGVECTO_RS_HOST = get_env('PGVECTO_RS_HOST')
-        self.PGVECTO_RS_PORT = get_env('PGVECTO_RS_PORT')
-        self.PGVECTO_RS_USER = get_env('PGVECTO_RS_USER')
-        self.PGVECTO_RS_PASSWORD = get_env('PGVECTO_RS_PASSWORD')
-        self.PGVECTO_RS_DATABASE = get_env('PGVECTO_RS_DATABASE')
-
-        # pgvector settings
-        self.PGVECTOR_HOST = get_env('PGVECTOR_HOST')
-        self.PGVECTOR_PORT = get_env('PGVECTOR_PORT')
-        self.PGVECTOR_USER = get_env('PGVECTOR_USER')
-        self.PGVECTOR_PASSWORD = get_env('PGVECTOR_PASSWORD')
-        self.PGVECTOR_DATABASE = get_env('PGVECTOR_DATABASE')
-
-        # tidb-vector settings
-        self.TIDB_VECTOR_HOST = get_env('TIDB_VECTOR_HOST')
-        self.TIDB_VECTOR_PORT = get_env('TIDB_VECTOR_PORT')
-        self.TIDB_VECTOR_USER = get_env('TIDB_VECTOR_USER')
-        self.TIDB_VECTOR_PASSWORD = get_env('TIDB_VECTOR_PASSWORD')
-        self.TIDB_VECTOR_DATABASE = get_env('TIDB_VECTOR_DATABASE')
-
-        # chroma settings
-        self.CHROMA_HOST = get_env('CHROMA_HOST')
-        self.CHROMA_PORT = get_env('CHROMA_PORT')
-        self.CHROMA_TENANT = get_env('CHROMA_TENANT')
-        self.CHROMA_DATABASE = get_env('CHROMA_DATABASE')
-        self.CHROMA_AUTH_PROVIDER = get_env('CHROMA_AUTH_PROVIDER')
-        self.CHROMA_AUTH_CREDENTIALS = get_env('CHROMA_AUTH_CREDENTIALS')
 
         # ------------------------
         # Platform Configurations.
