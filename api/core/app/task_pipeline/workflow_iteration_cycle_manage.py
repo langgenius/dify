@@ -17,6 +17,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.workflow_cycle_state_manager import WorkflowCycleStateManager
 from core.workflow.entities.node_entities import NodeType
+from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.workflow import (
     WorkflowNodeExecution,
@@ -94,6 +95,9 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                     error=None,
                     elapsed_time=time.perf_counter() - current_iteration.started_at,
                     total_tokens=current_iteration.total_tokens,
+                    execution_metadata={
+                        'total_tokens': current_iteration.total_tokens,
+                    },
                     finished_at=int(time.time()),
                     steps=current_iteration.current_index
                 )
@@ -205,7 +209,7 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
 
         db.session.close()
 
-    def _handle_iteration_completed(self, event: QueueIterationCompletedEvent) -> WorkflowNodeExecution:
+    def _handle_iteration_completed(self, event: QueueIterationCompletedEvent):
         if event.node_id not in self._iteration_state.current_iterations:
             return
         
@@ -215,9 +219,9 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
         ).first()
 
         workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
-        workflow_node_execution.outputs = json.dumps(event.outputs) if event.outputs else None
+        workflow_node_execution.outputs = json.dumps(WorkflowEngineManager.handle_special_values(event.outputs)) if event.outputs else None
         workflow_node_execution.elapsed_time = time.perf_counter() - current_iteration.started_at
-        
+
         original_node_execution_metadata = workflow_node_execution.execution_metadata_dict
         if original_node_execution_metadata:
             original_node_execution_metadata['steps_boundary'] = current_iteration.iteration_steps_boundary
@@ -275,6 +279,9 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                     error=error,
                     elapsed_time=time.perf_counter() - current_iteration.started_at,
                     total_tokens=current_iteration.total_tokens,
+                    execution_metadata={
+                        'total_tokens': current_iteration.total_tokens,
+                    },
                     finished_at=int(time.time()),
                     steps=current_iteration.current_index
                 )

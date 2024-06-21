@@ -4,7 +4,10 @@ import { useTranslation } from 'react-i18next'
 import { debounce } from 'lodash-es'
 import copy from 'copy-to-clipboard'
 import TooltipPlus from '../tooltip-plus'
-import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
+import {
+  Clipboard,
+  ClipboardCheck,
+} from '@/app/components/base/icons/src/vender/line/files'
 
 type Props = {
   content: string

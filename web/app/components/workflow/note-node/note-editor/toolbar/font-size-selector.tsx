@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import cn from 'classnames'
+import { RiFontSize } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useFontSize } from './hooks'
 import {
@@ -7,8 +8,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { TitleCase } from '@/app/components/base/icons/src/vender/line/editor'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 
 const FontSizeSelector = () => {
@@ -46,9 +45,8 @@ const FontSizeSelector = () => {
           'flex items-center pl-2 pr-1.5 h-8 rounded-md text-[13px] font-medium text-gray-700 cursor-pointer hover:bg-gray-50',
           fontSizeSelectorShow && 'bg-gray-50',
         )}>
-          <TitleCase className='mr-1 w-4 h-4' />
+          <RiFontSize className='mr-1 w-4 h-4' />
           {FONT_SIZE_LIST.find(font => font.key === fontSize)?.value || t('workflow.nodes.note.editor.small')}
-          <ChevronDown className='ml-0.5 w-3 h-3' />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>

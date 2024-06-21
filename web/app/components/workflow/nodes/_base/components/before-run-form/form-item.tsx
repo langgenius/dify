@@ -3,6 +3,9 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import type { InputVar } from '../../../../types'
 import { BlockEnum, InputVarType } from '../../../../types'
 import CodeEditor from '../editor/code-editor'
@@ -11,7 +14,6 @@ import TextEditor from '../editor/text-editor'
 import Select from '@/app/components/base/select'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import { Resolution } from '@/types/app'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -174,7 +176,7 @@ const FormItem: FC<Props> = ({
                   title={<span>JSON</span>}
                   headerRight={
                     (value as any).length > 1
-                      ? (<Trash03
+                      ? (<RiDeleteBinLine
                         onClick={handleArrayItemRemove(index)}
                         className='mr-1 w-3.5 h-3.5 text-gray-500 cursor-pointer'
                       />)
@@ -200,7 +202,7 @@ const FormItem: FC<Props> = ({
                   onChange={handleArrayItemChange(index)}
                   headerRight={
                     (value as any).length > 1
-                      ? (<Trash03
+                      ? (<RiDeleteBinLine
                         onClick={handleArrayItemRemove(index)}
                         className='mr-1 w-3.5 h-3.5 text-gray-500 cursor-pointer'
                       />)

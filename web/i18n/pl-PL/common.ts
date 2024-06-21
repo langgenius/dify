@@ -162,6 +162,9 @@ const translation = {
     langGeniusAccountTip: 'Twoje konto Dify i powiązane dane użytkownika.',
     editName: 'Edytuj nazwę',
     showAppLength: 'Pokaż {{length}} aplikacje',
+    delete: 'Usuń konto',
+    deleteTip: 'Usunięcie konta spowoduje trwałe usunięcie wszystkich danych i nie będzie można ich odzyskać.',
+    deleteConfirmTip: 'Aby potwierdzić, wyślij następujące informacje z zarejestrowanego adresu e-mail na adres ',
   },
   members: {
     team: 'Zespół',

@@ -61,7 +61,7 @@ export const VarOpBtnGroup: FC<{ className?: string; onConfirm: () => void; onCa
     <div className={cn(className, 'flex mt-3 space-x-2 mobile:ml-0 tablet:ml-[128px] text-sm')}>
       <Button
         className='text-sm'
-        type='primary'
+        variant='primary'
         onClick={onConfirm}
       >
         {t('common.operation.save')}

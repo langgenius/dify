@@ -3,7 +3,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
+import { RiArrowDownSLine } from '@remixicon/react'
 
 const UserInput = () => {
   const { t } = useTranslation()
@@ -27,7 +27,7 @@ const UserInput = () => {
         `}
         onClick={() => setExpanded(!expanded)}
       >
-        <ChevronDown
+        <RiArrowDownSLine
           className={`mr-1 w-3 h-3 ${!expanded ? '-rotate-90 text-indigo-600' : 'text-gray-300'}`}
         />
         {t('workflow.panel.userInputField').toLocaleUpperCase()}

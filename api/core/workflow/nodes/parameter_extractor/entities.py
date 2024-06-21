@@ -25,8 +25,8 @@ class ParameterConfig(BaseModel):
     description: str
     required: bool
 
-    @classmethod
     @field_validator('name', mode='before')
+    @classmethod
     def validate_name(cls, value) -> str:
         if not value:
             raise ValueError('Parameter name is required')
@@ -45,8 +45,8 @@ class ParameterExtractorNodeData(BaseNodeData):
     memory: Optional[MemoryConfig] = None
     reasoning_mode: Literal['function_call', 'prompt']
 
-    @classmethod
     @field_validator('reasoning_mode', mode='before')
+    @classmethod
     def set_reasoning_mode(cls, v) -> str:
         return v or 'function_call'
 
