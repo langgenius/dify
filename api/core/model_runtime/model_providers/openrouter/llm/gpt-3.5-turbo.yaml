@@ -1,7 +1,6 @@
 model: openai/gpt-3.5-turbo
 label:
-  zh_Hans: openai/gpt-3.5-turbo
-  en_US: openai/gpt-3.5-turbo
+  en_US: gpt-3.5-turbo
 model_type: llm
 features:
   - multi-tool-call

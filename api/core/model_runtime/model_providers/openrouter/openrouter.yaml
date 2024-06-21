@@ -1,6 +1,6 @@
 provider: openrouter
 label:
-  en_US: openrouter.ai
+  en_US: OpenRouter
 icon_small:
   en_US: openrouter_square.svg
 icon_large:
