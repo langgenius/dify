@@ -442,6 +442,7 @@ const TextGeneration: FC<IMainProps> = ({
     visionConfig={visionConfig}
     completionFiles={completionFiles}
     isShowTextToSpeech={!!textToSpeechConfig?.enabled}
+    siteInfo={siteInfo}
   />)
 
   const renderBatchRes = () => {

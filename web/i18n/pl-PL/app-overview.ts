@@ -48,6 +48,11 @@ const translation = {
           'Ten tekst będzie wyświetlany po stronie klienta, zapewniając podstawowe wskazówki, jak korzystać z aplikacji',
         webDescPlaceholder: 'Wpisz opis WebApp',
         language: 'Język',
+        workflow: {
+          title: 'Kroki przepływu pracy',
+          show: 'Pokaż',
+          hide: 'Ukryj',
+        },
         more: {
           entry: 'Pokaż więcej ustawień',
           copyright: 'Prawa autorskie',
