@@ -203,7 +203,7 @@ class ModelProviderFactory:
         # get all folders path under model_providers_path that do not start with __
         whitelist = [
             "baichuan", "chatglm", "deepseek", "hunyuan", "minimax", "moonshot",
-            "siliconflow", "tongyi", "volcengine_maas",
+            "tongyi", "volcengine_maas",
             "wenxin", "xinference", "yi", "zhipuai"
         ]
         model_provider_dir_paths = [
