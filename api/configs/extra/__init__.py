@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 from configs.extra.notion_config import NotionConfig
-from configs.extra.sentry_configs import SentryConfig
+from configs.extra.sentry_config import SentryConfig
 
 
 class ExtraServiceConfig(
