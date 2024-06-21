@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, PositiveFloat
+from pydantic import BaseModel, Field, NonNegativeFloat
 
 
 class SentryConfigs(BaseModel):
@@ -12,12 +12,12 @@ class SentryConfigs(BaseModel):
         default=None,
     )
 
-    SENTRY_TRACES_SAMPLE_RATE: PositiveFloat = Field(
+    SENTRY_TRACES_SAMPLE_RATE: NonNegativeFloat = Field(
         description='Sentry trace sample rate',
         default=1.0,
     )
 
-    SENTRY_PROFILES_SAMPLE_RATE: PositiveFloat = Field(
+    SENTRY_PROFILES_SAMPLE_RATE: NonNegativeFloat = Field(
         description='Sentry profiles sample rate',
         default=1.0,
     )

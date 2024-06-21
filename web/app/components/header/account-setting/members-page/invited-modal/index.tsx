@@ -83,7 +83,7 @@ const InvitedModal = ({
         )}
         <div className='flex justify-end'>
           <Button
-            className='w-[96px] text-sm font-medium'
+            className='w-[96px]'
             onClick={onCancel}
             variant='primary'
           >
