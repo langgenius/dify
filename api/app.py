@@ -2,7 +2,7 @@ import os
 
 from configs.app_configs import DifyConfigs
 
-if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
+if not os.environ.get("DEBUG") or os.environ.get("DEBUG", "false").lower() != 'true':
     from gevent import monkey
 
     monkey.patch_all()
@@ -152,27 +152,26 @@ def initialize_extensions(app):
 @login_manager.request_loader
 def load_user_from_request(request_from_flask_login):
     """Load user based on the request."""
-    if request.blueprint in ['console', 'inner_api']:
-        # Check if the user_id contains a dot, indicating the old format
-        auth_header = request.headers.get('Authorization', '')
-        if not auth_header:
-            auth_token = request.args.get('_token')
-            if not auth_token:
-                raise Unauthorized('Invalid Authorization token.')
-        else:
-            if ' ' not in auth_header:
-                raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-            auth_scheme, auth_token = auth_header.split(None, 1)
-            auth_scheme = auth_scheme.lower()
-            if auth_scheme != 'bearer':
-                raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-
-        decoded = PassportService().verify(auth_token)
-        user_id = decoded.get('user_id')
-
-        return AccountService.load_user(user_id)
-    else:
+    if request.blueprint not in ['console', 'inner_api']:
         return None
+    # Check if the user_id contains a dot, indicating the old format
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header:
+        auth_token = request.args.get('_token')
+        if not auth_token:
+            raise Unauthorized('Invalid Authorization token.')
+    else:
+        if ' ' not in auth_header:
+            raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+        auth_scheme, auth_token = auth_header.split(None, 1)
+        auth_scheme = auth_scheme.lower()
+        if auth_scheme != 'bearer':
+            raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+
+    decoded = PassportService().verify(auth_token)
+    user_id = decoded.get('user_id')
+
+    return AccountService.load_logged_in_account(account_id=user_id, token=auth_token)
 
 
 @login_manager.unauthorized_handler

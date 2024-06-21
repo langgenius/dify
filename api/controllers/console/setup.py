@@ -4,7 +4,7 @@ from flask import current_app, request
 from flask_restful import Resource, reqparse
 
 from extensions.ext_database import db
-from libs.helper import email, str_len
+from libs.helper import email, get_remote_ip, str_len
 from libs.password import valid_password
 from models.model import DifySetup
 from services.account_service import AccountService, RegisterService, TenantService
@@ -61,7 +61,7 @@ class SetupApi(Resource):
         TenantService.create_owner_tenant_if_not_exist(account)
 
         setup()
-        AccountService.update_last_login(account, request)
+        AccountService.update_last_login(account, ip_address=get_remote_ip(request))
 
         return {'result': 'success'}, 201
 
