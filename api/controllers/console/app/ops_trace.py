@@ -1,7 +1,7 @@
 from flask_restful import Resource, reqparse
 
 from controllers.console import api
-from controllers.console.app.error import TracingConfigIsExist, TracingConfigNotExist
+from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from libs.login import login_required
@@ -49,7 +49,9 @@ class TraceAppConfigApi(Resource):
             )
             if not result:
                 raise TracingConfigIsExist()
-            return {"result": "success"}
+            if result.get('error'):
+                raise TracingConfigCheckError()
+            return result
         except Exception as e:
             raise e
 

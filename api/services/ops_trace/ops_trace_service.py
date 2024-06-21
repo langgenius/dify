@@ -71,11 +71,11 @@ class OpsTraceService:
         """
         if tracing_provider not in [TracingProviderEnum.LANGFUSE.value,
                                     TracingProviderEnum.LANGSMITH.value] and tracing_provider != "":
-            raise {"error": f"Invalid tracing provider: {tracing_provider}"}
+            return {"error": f"Invalid tracing provider: {tracing_provider}"}
 
         # api check
         if not cls.check_trace_config_is_effective(tracing_config, tracing_provider):
-            return {"error": "Tracing config is not effective"}
+            return {"error": "Invalid Credentials"}
 
         # check if trace config already exists
         trace_config_data: TraceAppConfig = db.session.query(TraceAppConfig).filter(
@@ -96,7 +96,7 @@ class OpsTraceService:
         db.session.add(trace_config_data)
         db.session.commit()
 
-        return trace_config_data.to_dict()
+        return {"result": "success"}
 
     @classmethod
     def update_tracing_app_config(cls, app_id: str, tracing_provider: str, tracing_config: dict):

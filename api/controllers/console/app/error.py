@@ -109,3 +109,9 @@ class TracingConfigIsExist(BaseHTTPException):
     error_code = 'trace_config_is_exist'
     description = "Trace config is exist."
     code = 400
+
+
+class TracingConfigCheckError(BaseHTTPException):
+    error_code = 'trace_config_check_error'
+    description = "Invalid Credentials."
+    code = 400
