@@ -191,11 +191,12 @@ services:
       - db
       - redis
     volumes:
+      #- ./api:/app/api  # Mount your local api directory
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
     # uncomment to expose dify-api port to host
-    # ports:
-    #   - "5001:5001"
+    ports:
+      - "5001:5001"
     networks:
       - ssrf_proxy_network
       - default
@@ -358,8 +359,13 @@ services:
       # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
       SENTRY_DSN: ''
     # uncomment to expose dify-web port to host
-    # ports:
-    #   - "3000:3000"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./web:/app/web  # Mount your local web directory
+    command: npm install; npm run start #npm run dev  # Use this for development
+
+  
 
   # The postgres database.
   db:
