@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, NonNegativeFloat
 
 
-class SentryConfigs(BaseModel):
+class SentryConfig(BaseModel):
     """
     Sentry configs
     """
