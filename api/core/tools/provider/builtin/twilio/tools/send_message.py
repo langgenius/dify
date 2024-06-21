@@ -32,8 +32,8 @@ class TwilioAPIWrapper(BaseModel):
         must be empty.
     """
 
-    @field_validator('client', mode='before')
     @classmethod
+    @field_validator('client', mode='before')
     def set_validator(cls, values: dict) -> dict:
         """Validate that api key and python package exists in environment."""
         try:

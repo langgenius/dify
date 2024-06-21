@@ -11,7 +11,7 @@ import Button from '@/app/components/base/button'
 import type { FirecrawlConfig } from '@/models/common'
 import Field from '@/app/components/datasets/create/website/firecrawl/base/field'
 import Toast from '@/app/components/base/toast'
-import { createDataSourceApiKeyBinding } from '@/service/datasets'
+import { createFirecrawlApiKey } from '@/service/datasets'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 type Props = {
   onCancel: () => void
@@ -76,7 +76,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
     }
     try {
       setIsSaving(true)
-      await createDataSourceApiKeyBinding(postData)
+      await createFirecrawlApiKey(postData)
       Toast.notify({
         type: 'success',
         message: t('common.api.success'),

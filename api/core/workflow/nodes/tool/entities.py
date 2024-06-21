@@ -14,9 +14,9 @@ class ToolEntity(BaseModel):
     tool_label: str # redundancy
     tool_configurations: dict[str, Any]
 
-    @field_validator('tool_configurations', mode='before')
     @classmethod
-    def validate_tool_configurations(cls, value, values: ValidationInfo):
+    @field_validator('tool_configurations', mode='before')
+    def validate_tool_configurations(cls, value, values: ValidationInfo) -> dict[str, Any]:
         if not isinstance(value, dict):
             raise ValueError('tool_configurations must be a dictionary')
         
@@ -32,8 +32,8 @@ class ToolNodeData(BaseNodeData, ToolEntity):
         value: Union[Any, list[str]]
         type: Literal['mixed', 'variable', 'constant']
 
-        @field_validator('type', mode='before')
         @classmethod
+        @field_validator('type', mode='before')
         def check_type(cls, value, validation_info: ValidationInfo):
             typ = value
             value = validation_info.data.get('value')

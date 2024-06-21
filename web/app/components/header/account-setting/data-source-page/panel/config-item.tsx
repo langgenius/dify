@@ -26,7 +26,6 @@ type Props = {
   notionActions?: {
     onChangeAuthorizedPage: () => void
   }
-  readOnly: boolean
 }
 
 const ConfigItem: FC<Props> = ({
@@ -34,7 +33,6 @@ const ConfigItem: FC<Props> = ({
   payload,
   onRemove,
   notionActions,
-  readOnly,
 }) => {
   const { t } = useTranslation()
   const isNotion = type === DataSourceType.notion
@@ -67,7 +65,7 @@ const ConfigItem: FC<Props> = ({
       )}
 
       {
-        isWebsite && !readOnly && (
+        isWebsite && (
           <div className='p-2 text-gray-500 cursor-pointer rounded-md hover:bg-black/5' onClick={onRemove} >
             <Trash03 className='w-4 h-4 ' />
           </div>

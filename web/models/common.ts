@@ -62,7 +62,7 @@ export type TenantInfoResponse = {
   trial_end_reason: null | 'trial_exceeded' | 'using_custom'
 }
 
-export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_login_at' | 'last_active_at' | 'created_at'> & {
+export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_login_at' | 'last_login_at' | 'created_at'> & {
   avatar: string
   status: 'pending' | 'active' | 'banned' | 'closed'
   role: 'owner' | 'admin' | 'editor' | 'normal'
@@ -175,8 +175,16 @@ export type DataSourceNotion = {
 export enum DataSourceCategory {
   website = 'website',
 }
-export enum DataSourceProvider {
+export enum WebsiteProvider {
   fireCrawl = 'firecrawl',
+}
+
+export type WebsiteCredentials = {
+  auth_type: 'bearer'
+  config: {
+    base_url: string
+    api_key: string
+  }
 }
 
 export type FirecrawlConfig = {
@@ -184,17 +192,17 @@ export type FirecrawlConfig = {
   base_url: string
 }
 
-export type DataSourceItem = {
+export type DataSourceWebsiteItem = {
   id: string
-  category: DataSourceCategory
-  provider: DataSourceProvider
+  category: DataSourceCategory.website
+  provider: WebsiteProvider
+  credentials: WebsiteCredentials
   disabled: boolean
   created_at: number
   updated_at: number
 }
-
-export type DataSources = {
-  sources: DataSourceItem[]
+export type DataSourceWebsite = {
+  settings: DataSourceWebsiteItem[]
 }
 
 export type GithubRepo = {
