@@ -105,7 +105,7 @@ const InputsPanel = ({ onRun }: Props) => {
         <Button
           variant='primary'
           disabled={!canRun || workflowRunningData?.result?.status === WorkflowRunningStatus.Running}
-          className='py-0 w-full h-8 rounded-lg text-[13px] font-medium'
+          className='w-full'
           onClick={doRun}
         >
           {t('workflow.singleRun.startRun')}

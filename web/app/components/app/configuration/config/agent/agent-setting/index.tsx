@@ -137,13 +137,12 @@ const AgentSetting: FC<Props> = ({
         >
           <Button
             onClick={onCancel}
-            className='mr-2 text-sm font-medium'
+            className='mr-2'
           >
             {t('common.operation.cancel')}
           </Button>
           <Button
             variant='primary'
-            className='text-sm font-medium'
             onClick={handleSave}
           >
             {t('common.operation.save')}

@@ -240,7 +240,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                           <td className="p-2 pl-3">{getPath(item.server_url)}</td>
                           <td className="p-2 pl-3 w-[62px]">
                             <Button
-                              className='!h-6 !px-2 text-xs font-medium text-gray-700 whitespace-nowrap'
+                              size='small'
                               onClick={() => {
                                 setCurrTool(item)
                                 setIsShowTestApi(true)
@@ -302,12 +302,12 @@ const EditCustomCollectionModal: FC<Props> = ({
             <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 shrink-0 flex py-4 px-6 rounded-b-[10px] bg-gray-50 border-t border-black/5')} >
               {
                 isEdit && (
-                  <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onRemove}>{t('common.operation.remove')}</Button>
+                  <Button onClick={onRemove}>{t('common.operation.remove')}</Button>
                 )
               }
               <div className='flex space-x-2 '>
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700 bg-white' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+                <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
+                <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
               </div>
             </div>
           </div>

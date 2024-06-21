@@ -28,7 +28,7 @@ const Header: FC<IResultHeaderProps> = ({
       <div className='text-gray-800 text-2xl leading-4 font-normal'>{t('share.generation.resultTitle')}</div>
       <div className='flex items-center space-x-2'>
         <Button
-          className='flex items-center !h-7 !p-[2px] !pr-2'
+          className='h-7 p-[2px] pr-2'
           onClick={() => {
             copy(result)
             Toast.notify({ type: 'success', message: 'copied' })

@@ -244,14 +244,12 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           </div>
           <div className='flex items-center justify-end px-6 py-4'>
             <Button
-              className='mr-2 !h-8 !text-[13px]'
               onClick={() => setOpen(false)}
             >
               {t('common.operation.cancel')}
             </Button>
             <Button
               variant='primary'
-              className='!h-8 !text-[13px]'
               onClick={handleSave}
               disabled={!isCurrentWorkspaceManager}
             >

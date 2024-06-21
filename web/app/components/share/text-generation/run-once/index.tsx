@@ -118,7 +118,6 @@ const RunOnce: FC<IRunOnceProps> = ({
           <div className='w-full mt-4'>
             <div className="flex items-center justify-between">
               <Button
-                className='!h-8 !p-3'
                 onClick={onClear}
                 disabled={false}
               >
@@ -126,7 +125,6 @@ const RunOnce: FC<IRunOnceProps> = ({
               </Button>
               <Button
                 variant="primary"
-                className='!h-8 !pl-3 !pr-4'
                 onClick={onSend}
                 disabled={false}
               >

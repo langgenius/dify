@@ -171,8 +171,14 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
   const headerRight = !readonly ? (
     isFocus ? (
       <div className='flex items-center space-x-1'>
-        <div className='px-3 leading-[18px] text-xs font-medium text-gray-700 cursor-pointer' onClick={handleCancel}>{t('common.operation.cancel')}</div>
-        <Button className='!h-8 !px-3 text-xs' onClick={handleConfirm} variant="primary">{t('common.operation.save')}</Button>
+        <Button
+          variant='ghost'
+          size='small'
+          onClick={handleCancel}
+        >
+          {t('common.operation.cancel')}
+        </Button>
+        <Button size='small' onClick={handleConfirm} variant="primary">{t('common.operation.save')}</Button>
       </div>
     ) : (
       <OperationBtn type='edit' actionName={hasValue ? '' : t('appDebug.openingStatement.writeOpener') as string} onClick={handleEdit} />

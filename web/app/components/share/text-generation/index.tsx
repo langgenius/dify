@@ -482,7 +482,7 @@ const TextGeneration: FC<IMainProps> = ({
                 <div className='ml-1 text-[#D92D20]'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
                 <Button
                   variant='primary'
-                  className='ml-2 !h-8 !px-3'
+                  className='ml-2'
                   onClick={handleRetryAllFailedTask}
                 >{t('share.generation.batchFailed.retry')}</Button>
                 <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
@@ -545,7 +545,7 @@ const TextGeneration: FC<IMainProps> = ({
               </div>
               {!isPC && (
                 <Button
-                  className='shrink-0 !h-8 !px-3 ml-2'
+                  className='shrink-0 ml-2'
                   onClick={showResSidebar}
                 >
                   <div className='flex items-center space-x-2 text-primary-600 text-[13px] font-medium'>

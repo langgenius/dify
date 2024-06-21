@@ -137,13 +137,11 @@ const SegmentDetailComponent: FC<ISegmentDetailProps> = ({
         {isEditing && (
           <>
             <Button
-              className='mr-2 !h-7 !px-3 !py-[5px] text-xs font-medium text-gray-700 !rounded-md'
               onClick={handleCancel}>
               {t('common.operation.cancel')}
             </Button>
             <Button
               variant='primary'
-              className='!h-7 !px-3 !py-[5px] text-xs font-medium !rounded-md'
               onClick={handleSave}
               disabled={loading}
             >

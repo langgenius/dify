@@ -177,7 +177,7 @@ const AddToolModal: FC<Props> = ({
             <div className='sticky top-0 left-0 right-0'>
               <div className='sticky top-0 left-0 right-0 px-5 py-3 text-md font-semibold text-gray-900'>{t('tools.addTool')}</div>
               <div className='px-3 pt-2 pb-4'>
-                <Button variant='primary' className='w-[176px] text-[13px] leading-[18px] font-medium' onClick={() => setIsShowEditCustomCollectionModal(true)}>
+                <Button variant='primary' className='w-[176px]' onClick={() => setIsShowEditCustomCollectionModal(true)}>
                   <RiAddLine className='w-4 h-4 mr-1' />
                   {t('tools.createCustomTool')}
                 </Button>

@@ -230,7 +230,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
               onClick={async () => {
                 await onDelete?.(id)
               }}
-              className='border-red-700 border-[0.5px]'
+              className='border-red-700'
             >
               {t('common.operation.sure')}
             </Button>

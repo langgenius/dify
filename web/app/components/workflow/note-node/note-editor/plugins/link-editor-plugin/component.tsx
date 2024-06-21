@@ -88,10 +88,7 @@ const LinkEditorComponent = ({
                     />
                     <Button
                       variant='primary'
-                      className={cn(
-                        'py-0 px-2 h-6 text-xs',
-                        !url && 'cursor-not-allowed',
-                      )}
+                      size='small'
                       disabled={!url}
                       onClick={() => handleSaveLink(url)}
                     >

@@ -217,8 +217,8 @@ const ProviderDetail = ({
       <div className='flex gap-1 border-b-[0.5px] border-black/5'>
         {(collection.type === CollectionType.builtIn) && needAuth && (
           <Button
-            variant={isAuthed ? 'default' : 'primary'}
-            className={cn('shrink-0 my-3 w-full flex items-center', isAuthed && 'bg-white')}
+            variant={isAuthed ? 'secondary' : 'primary'}
+            className={cn('shrink-0 my-3 w-full', isAuthed && 'bg-white')}
             onClick={() => {
               if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
                 showSettingAuthModal()
@@ -233,7 +233,7 @@ const ProviderDetail = ({
         )}
         {collection.type === CollectionType.custom && !isDetailLoading && (
           <Button
-            className={cn('shrink-0 my-3 w-full flex items-center bg-white')}
+            className={cn('shrink-0 my-3 w-full')}
             onClick={() => setIsShowEditCustomCollectionModal(true)}
           >
             <Settings01 className='mr-1 w-4 h-4 text-gray-500' />
@@ -244,7 +244,7 @@ const ProviderDetail = ({
           <>
             <Button
               variant='primary'
-              className={cn('shrink-0 my-3 w-[183px] flex items-center')}
+              className={cn('shrink-0 my-3 w-[183px]')}
             >
               <a className='flex items-center text-white' href={`/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
                 <div className='leading-5 text-sm font-medium'>{t('tools.openInStudio')}</div>
@@ -252,7 +252,7 @@ const ProviderDetail = ({
               </a>
             </Button>
             <Button
-              className={cn('shrink-0 my-3 w-[183px] flex items-center bg-white')}
+              className={cn('shrink-0 my-3 w-[183px]')}
               onClick={() => setIsShowEditWorkflowToolModal(true)}
               disabled={!isCurrentWorkspaceManager}
             >

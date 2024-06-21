@@ -306,7 +306,7 @@ export const OperationAction: FC<{
           <Button
             variant='warning'
             onClick={() => onOperate('delete')}
-            className='border-red-700 border-[0.5px]'
+            className='border-red-700'
           >
             {t('common.operation.sure')}
           </Button>

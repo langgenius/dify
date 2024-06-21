@@ -54,7 +54,7 @@ const DeleteConfirmModal: FC<Props> = ({
           <Button
             variant='warning'
             onClick={onRemove}
-            className='border-red-700 border-[0.5px]'
+            className='border-red-700'
           >
             {t('common.operation.sure')}
           </Button>
