@@ -103,7 +103,6 @@ const translation = {
       title: 'Langfuse',
       description: '跟踪、评估、提示管理和指标，以调试和改进您的 LLM 应用程序。',
     },
-    inUse: '使用中',
     configProvider: {
       title: '配置 ',
       placeholder: '输入你的{{key}}',

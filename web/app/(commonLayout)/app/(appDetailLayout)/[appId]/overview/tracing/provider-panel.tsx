@@ -51,9 +51,9 @@ const ProviderPanel: FC<Props> = ({
       onClick={handleChosen}
     >
       <div className={'flex justify-between items-center space-x-1'}>
-        <div className='flex items-center'>
+        <div className='flex'>
           <Icon className='h-6' />
-          {isChosen && <div className='ml-1 flex items-center h-4  px-1 rounded-[4px] border border-primary-500 leading-4 text-xs font-medium text-primary-500 uppercase '>{t(`${I18N_PREFIX}.inUse`)}</div>}
+
         </div>
         <div
           className='flex px-2 items-center h-6 bg-white rounded-md border-[0.5px] border-gray-200 shadow-xs cursor-pointer text-gray-700 space-x-1'

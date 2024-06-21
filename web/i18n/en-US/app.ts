@@ -104,7 +104,6 @@ const translation = {
       title: 'Langfuse',
       description: 'Traces, evals, prompt management and metrics to debug and improve your LLM application.',
     },
-    inUse: 'In use',
     configProvider: {
       title: 'Config ',
       placeholder: 'Enter your {{key}}',
