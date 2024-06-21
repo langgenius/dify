@@ -40,9 +40,12 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
   return language.charAt(0).toUpperCase() + language.substring(1)
 }
 
-const preprocessLaTeX = (content: string) =>
-  content.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
+const preprocessLaTeX = (content: string) => {
+  if (typeof content !== 'string')
+    return content
+  return content.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
     .replace(/\\\((.*?)\\\)/gs, (_, equation) => `$${equation}$`)
+}
 
 export function PreCode(props: { children: any }) {
   const ref = useRef<HTMLPreElement>(null)
