@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import TracingIcon from './tracing-icon'
 import ProviderPanel from './provider-panel'
-import type { LangFuseConfig, LangSmithConfig } from './type'
 import { TracingProvider } from './type'
 import ProviderConfigModal from './provider-config-modal'
 import Indicator from '@/app/components/header/indicator'
@@ -15,20 +14,12 @@ const I18N_PREFIX = 'app.tracing'
 
 export type PopupProps = {
   enabled: boolean
-  onStatusChange: (enabled: boolean) => void
-  onChooseProvider: (provider: TracingProvider) => void
-  langSmithConfig: LangSmithConfig | null
-  langFuseConfig: LangFuseConfig | null
-  onConfigUpdated: () => void
+  onStatusChange?: (enabled: boolean) => void
 }
 
 const ConfigPopup: FC<PopupProps> = ({
   enabled,
   onStatusChange,
-  onChooseProvider,
-  langSmithConfig,
-  langFuseConfig,
-  onConfigUpdated,
 }) => {
   const { t } = useTranslation()
 
@@ -46,9 +37,9 @@ const ConfigPopup: FC<PopupProps> = ({
 
   const handleOnChoose = useCallback((provider: TracingProvider) => {
     return () => {
-      onChooseProvider(provider)
+      console.log(provider)
     }
-  }, [onChooseProvider])
+  }, [])
 
   return (
     <div className='w-[420px] p-4 rounded-2xl bg-white border-[0.5px] border-black/5 shadow-lg'>
@@ -92,7 +83,6 @@ const ConfigPopup: FC<PopupProps> = ({
       {isShowConfigModal && (
         <ProviderConfigModal
           type={currentProvider!}
-          payload={currentProvider === TracingProvider.langSmith ? langSmithConfig : langFuseConfig}
           onCancel={hideConfigModal}
           onSaved={hideConfigModal}
         />

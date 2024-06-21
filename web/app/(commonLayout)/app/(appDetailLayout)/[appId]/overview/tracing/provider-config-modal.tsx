@@ -4,7 +4,6 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { LangFuseConfig, LangSmithConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -15,13 +14,9 @@ import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Button from '@/app/components/base/button'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfirmUi from '@/app/components/base/confirm'
-import { addTracingConfig, updateTracingConfig } from '@/service/apps'
-import Toast from '@/app/components/base/toast'
-
 type Props = {
-  appId: string
   type: TracingProvider
-  payload?: LangSmithConfig | LangFuseConfig | null
+  payload?: any
   onRemove?: () => void
   onCancel: () => void
   onSaved: () => void
@@ -29,20 +24,7 @@ type Props = {
 
 const I18N_PREFIX = 'app.tracing.configProvider'
 
-const langSmithConfigTemplate = {
-  api_key: '',
-  project: '',
-  endpoint: '',
-}
-
-const langFuseConfigTemplate = {
-  public_key: '',
-  secret_key: '',
-  host: '',
-}
-
 const ProviderConfigModal: FC<Props> = ({
-  appId,
   type,
   payload,
   onRemove,
@@ -52,15 +34,7 @@ const ProviderConfigModal: FC<Props> = ({
   const { t } = useTranslation()
   const isEdit = !!payload
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<LangSmithConfig | LangFuseConfig>((() => {
-    if (isEdit)
-      return payload
-
-    if (type === TracingProvider.langSmith)
-      return langSmithConfigTemplate
-
-    return langFuseConfigTemplate
-  })())
+  const [config, setConfig] = useState<Record<string, string>>({})
   const [isShowRemoveConfirm, {
     setTrue: showRemoveConfirm,
     setFalse: hideRemoveConfirm,
@@ -72,64 +46,17 @@ const ProviderConfigModal: FC<Props> = ({
   }, [onRemove, hideRemoveConfirm])
 
   const handleConfigChange = useCallback((key: string) => {
-    return (value: string) => {
-      setConfig({
-        ...config,
-        [key]: value,
-      })
-    }
-  }, [config])
+    return () => {
 
-  const checkValid = useCallback(() => {
-    let errorMessage = ''
-    if (type === TracingProvider.langSmith) {
-      const postData = config as LangSmithConfig
-      if (!postData.api_key)
-        errorMessage = t('common.errorMsg.fieldRequired', { field: 'API Key' })
-      if (!errorMessage && !postData.project)
-        errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.project`) })
     }
+  }, [])
 
-    if (type === TracingProvider.langfuse) {
-      const postData = config as LangFuseConfig
-      if (!postData.public_key)
-        errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.publicKey`) })
-      if (!errorMessage && !postData.secret_key)
-        errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.secretKey`) })
-    }
-
-    return errorMessage
-  }, [config, t, type])
   const handleSave = useCallback(async () => {
     if (isSaving)
       return
-    const errorMessage = checkValid()
-    if (errorMessage) {
-      Toast.notify({
-        type: 'error',
-        message: errorMessage,
-      })
-      return
-    }
-    const action = isEdit ? updateTracingConfig : addTracingConfig
-    try {
-      await action({
-        appId,
-        body: {
-          tracing_provider: type,
-          tracing_config: payload as LangSmithConfig | LangFuseConfig,
-        },
-      })
-      Toast.notify({
-        type: 'success',
-        message: t('common.api.success'),
-      })
-      onSaved()
-    }
-    finally {
-      onSaved()
-    }
-  }, [appId, checkValid, isEdit, isSaving, onSaved, payload, t, type])
+
+    onSaved()
+  }, [isSaving, onSaved])
 
   return (
     <>
@@ -151,7 +78,7 @@ const ProviderConfigModal: FC<Props> = ({
                             label='API Key'
                             labelClassName='!text-sm'
                             isRequired
-                            value={(config as LangSmithConfig).api_key}
+                            value={config.api_key}
                             onChange={handleConfigChange('api_key')}
                             placeholder={t(`${I18N_PREFIX}.placeholder`, { key: 'API Key' })!}
                           />
@@ -159,14 +86,14 @@ const ProviderConfigModal: FC<Props> = ({
                             label={t(`${I18N_PREFIX}.project`)!}
                             labelClassName='!text-sm'
                             isRequired
-                            value={(config as LangSmithConfig).project}
+                            value={config.base_url}
                             onChange={handleConfigChange('project')}
                             placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.project`) })!}
                           />
                           <Field
                             label='Endpoint'
                             labelClassName='!text-sm'
-                            value={(config as LangSmithConfig).endpoint}
+                            value={config.base_url}
                             onChange={handleConfigChange('endpoint')}
                             placeholder={'https://api.smith.langchain.com'}
                           />
@@ -178,23 +105,23 @@ const ProviderConfigModal: FC<Props> = ({
                             label={t(`${I18N_PREFIX}.publicKey`)!}
                             labelClassName='!text-sm'
                             isRequired
-                            value={(config as LangFuseConfig).public_key}
+                            value={config.api_key}
                             onChange={handleConfigChange('public_key')}
                             placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.publicKey`) })!}
                           />
                           <Field
                             label={t(`${I18N_PREFIX}.secretKey`)!}
                             labelClassName='!text-sm'
-                            value={(config as LangFuseConfig).secret_key}
+                            value={config.base_url}
                             isRequired
-                            onChange={handleConfigChange('secret_key')}
+                            onChange={handleConfigChange('base_url')}
                             placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.secretKey`) })!}
                           />
                           <Field
                             label='Host'
                             labelClassName='!text-sm'
-                            value={(config as LangFuseConfig).host}
-                            onChange={handleConfigChange('host')}
+                            value={config.base_url}
+                            onChange={handleConfigChange('base_url')}
                             placeholder='https://cloud.langfuse.com'
                           />
                         </>
