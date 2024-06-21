@@ -30,8 +30,10 @@ import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAn
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import type { AppData } from '@/models/share'
 
 export type ChatProps = {
+  appData?: AppData
   chatList: ChatItem[]
   config?: ChatConfig
   isResponding?: boolean
@@ -57,6 +59,7 @@ export type ChatProps = {
   hideProcessDetail?: boolean
 }
 const Chat: FC<ChatProps> = ({
+  appData,
   config,
   onSend,
   chatList,
@@ -196,6 +199,7 @@ const Chat: FC<ChatProps> = ({
                   const isLast = item.id === chatList[chatList.length - 1]?.id
                   return (
                     <Answer
+                      appData={appData}
                       key={item.id}
                       item={item}
                       question={chatList[index - 1]?.content}

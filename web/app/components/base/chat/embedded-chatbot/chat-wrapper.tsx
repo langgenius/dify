@@ -18,6 +18,7 @@ import LogoAvatar from '@/app/components/base/logo/logo-embeded-chat-avatar'
 
 const ChatWrapper = () => {
   const {
+    appData,
     appParams,
     appPrevChatList,
     currentConversationId,
@@ -114,6 +115,7 @@ const ChatWrapper = () => {
 
   return (
     <Chat
+      appData={appData}
       config={appConfig}
       chatList={chatList}
       isResponding={isResponding}

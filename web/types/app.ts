@@ -274,6 +274,8 @@ export type SiteConfig = {
 
   icon: string
   icon_background: string
+
+  show_workflow_steps: boolean
 }
 
 /**

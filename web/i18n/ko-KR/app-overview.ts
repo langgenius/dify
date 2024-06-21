@@ -44,6 +44,11 @@ const translation = {
         webDescTip: '이 텍스트는 클라이언트 측에서 표시되며, 애플리케이션의 사용 방법에 대한 기본적인 안내를 제공합니다.',
         webDescPlaceholder: '웹앱 설명을 입력하세요',
         language: '언어',
+        workflow: {
+          title: '워크플로 단계',
+          show: '표시',
+          hide: '숨기기',
+        },
         more: {
           entry: '추가 설정 보기',
           copyright: '저작권',

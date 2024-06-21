@@ -44,6 +44,11 @@ const translation = {
         webDescTip: 'Ce texte sera affiché côté client, fournissant des directives de base sur la façon d\'utiliser l\'application',
         webDescPlaceholder: 'Entrez la description de l\'application Web',
         language: 'Langue',
+        workflow: {
+          title: 'Étapes du workflow',
+          show: 'Afficher',
+          hide: 'Masquer',
+        },
         more: {
           entry: 'Afficher plus de paramètres',
           copyright: 'Droits d\'auteur',

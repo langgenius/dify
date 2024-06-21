@@ -117,6 +117,7 @@ site_fields = {
     'customize_token_strategy': fields.String,
     'prompt_public': fields.Boolean,
     'app_base_url': fields.String,
+    'show_workflow_steps': fields.Boolean,
 }
 
 app_detail_fields_with_site = {
@@ -149,5 +150,6 @@ app_site_fields = {
     'privacy_policy': fields.String,
     'custom_disclaimer': fields.String,
     'customize_token_strategy': fields.String,
-    'prompt_public': fields.Boolean
+    'prompt_public': fields.Boolean,
+    'show_workflow_steps': fields.Boolean,
 }

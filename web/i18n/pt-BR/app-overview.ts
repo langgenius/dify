@@ -44,6 +44,11 @@ const translation = {
         webDescTip: 'Este texto será exibido no lado do cliente, fornecendo orientações básicas sobre como usar o aplicativo',
         webDescPlaceholder: 'Insira a descrição do WebApp',
         language: 'Idioma',
+        workflow: {
+          title: 'Etapas do fluxo de trabalho',
+          show: 'Mostrar',
+          hide: 'Ocultar',
+        },
         more: {
           entry: 'Mostrar mais configurações',
           copyright: 'Direitos autorais',

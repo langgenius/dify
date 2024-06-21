@@ -44,6 +44,11 @@ const translation = {
         webDescTip: '以下文字將展示在客戶端中，對應用進行說明和使用上的基本引導',
         webDescPlaceholder: '請輸入 WebApp 的描述',
         language: '語言',
+        workflow: {
+          title: '工作流程步驟',
+          show: '展示',
+          hide: '隱藏',
+        },
         more: {
           entry: '展示更多設定',
           copyright: '版權',
