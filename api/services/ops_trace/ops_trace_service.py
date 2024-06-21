@@ -69,7 +69,8 @@ class OpsTraceService:
         :param tracing_config: tracing config
         :return:
         """
-        if tracing_provider not in [TracingProviderEnum.LANGFUSE.value, TracingProviderEnum.LANGSMITH.value]:
+        if tracing_provider not in [TracingProviderEnum.LANGFUSE.value,
+                                    TracingProviderEnum.LANGSMITH.value] and tracing_provider != "":
             raise {"error": f"Invalid tracing provider: {tracing_provider}"}
 
         # api check

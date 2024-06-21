@@ -115,7 +115,7 @@ class CompletionAppRunner(AppRunner):
             if dataset_config and dataset_config.retrieve_config.query_variable:
                 query = inputs.get(dataset_config.retrieve_config.query_variable, "")
 
-            dataset_retrieval = DatasetRetrieval()
+            dataset_retrieval = DatasetRetrieval(application_generate_entity)
             context = dataset_retrieval.retrieve(
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,

@@ -54,7 +54,6 @@ from models.workflow import (
     WorkflowNodeExecution,
     WorkflowRunStatus,
 )
-from services.ops_trace.ops_trace_service import OpsTraceService
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +131,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             self._application_generate_entity.query
         )
 
-        generator = self._process_stream_response(workflow)
+        generator = self._process_stream_response(self._application_generate_entity.tracing_instance)
         if self._stream:
             return self._to_stream_response(generator)
         else:
@@ -183,12 +182,11 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 stream_response=stream_response
             )
 
-    def _process_stream_response(self, workflow: Optional[Workflow] = None) -> Generator[StreamResponse, None, None]:
+    def _process_stream_response(self, tracing_instance) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
         :return:
         """
-        tracing_instance = OpsTraceService.get_ops_trace_instance(app_id=self._conversation.app_id)
         for message in self._queue_manager.listen():
             event = message.event
 

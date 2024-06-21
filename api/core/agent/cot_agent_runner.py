@@ -21,7 +21,6 @@ from core.tools.tool.tool import Tool
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
 from services.ops_trace.base_trace_instance import BaseTraceInstance
-from services.ops_trace.ops_trace_service import OpsTraceService
 
 
 class CotAgentRunner(BaseAgentRunner, ABC):
@@ -46,9 +45,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self._init_react_state(query)
 
         # get tracing instance
-        tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=self.app_config.app_id
-        )
+        tracing_instance = app_generate_entity.tracing_instance
 
         # check model mode
         if 'Observation' not in app_generate_entity.model_conf.stop:

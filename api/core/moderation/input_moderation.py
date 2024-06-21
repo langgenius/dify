@@ -1,9 +1,10 @@
 import logging
+from typing import Any, Optional
 
 from core.app.app_config.entities import AppConfig
 from core.moderation.base import ModerationAction, ModerationException
 from core.moderation.factory import ModerationFactory
-from services.ops_trace.ops_trace_service import OpsTraceService
+from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 from services.ops_trace.utils import measure_time
 
 logger = logging.getLogger(__name__)
@@ -11,12 +12,13 @@ logger = logging.getLogger(__name__)
 
 class InputModeration:
     def check(
-            self, app_id: str,
-            tenant_id: str,
-            app_config: AppConfig,
-            inputs: dict,
-            query: str,
-            message_id: str,
+        self, app_id: str,
+        tenant_id: str,
+        app_config: AppConfig,
+        inputs: dict,
+        query: str,
+        message_id: str,
+        tracing_instance: Optional[Any] = None
     ) -> tuple[bool, dict, str]:
         """
         Process sensitive_word_avoidance.
@@ -26,6 +28,7 @@ class InputModeration:
         :param inputs: inputs
         :param query: query
         :param message_id: message id
+        :param tracing_instance: tracing instance
         :return:
         """
         if not app_config.sensitive_word_avoidance:
@@ -43,13 +46,6 @@ class InputModeration:
 
         with measure_time() as timer:
             moderation_result = moderation_factory.moderation_for_inputs(inputs, query)
-
-        from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
-
-        # get tracing instance
-        tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_id
-        )
 
         if tracing_instance:
             trace_manager = TraceQueueManager()

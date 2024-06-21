@@ -48,7 +48,6 @@ from models.workflow import (
     WorkflowNodeExecution,
     WorkflowRun,
 )
-from services.ops_trace.ops_trace_service import OpsTraceService
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +108,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         db.session.refresh(self._user)
         db.session.close()
 
-        generator = self._process_stream_response(app_id, workflow)
+        generator = self._process_stream_response(self._application_generate_entity.tracing_instance)
         if self._stream:
             return self._to_stream_response(generator)
         else:
@@ -165,14 +164,12 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
     def _process_stream_response(
         self,
-        app_id: Optional[str] = None,
-        workflow: Optional[Workflow] = None,
+        tracing_instance: Optional[Any] = None
     ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
         :return:
         """
-        tracing_instance = OpsTraceService.get_ops_trace_instance(app_id=app_id)
         for message in self._queue_manager.listen():
             event = message.event
 

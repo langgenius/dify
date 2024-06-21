@@ -155,7 +155,7 @@ class ChatAppRunner(AppRunner):
                 application_generate_entity.invoke_from
             )
 
-            dataset_retrieval = DatasetRetrieval()
+            dataset_retrieval = DatasetRetrieval(application_generate_entity)
             context = dataset_retrieval.retrieve(
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,

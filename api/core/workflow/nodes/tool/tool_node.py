@@ -13,9 +13,7 @@ from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from extensions.ext_database import db
-from models.workflow import Workflow, WorkflowNodeExecutionStatus
-from services.ops_trace.ops_trace_service import OpsTraceService
+from models.workflow import WorkflowNodeExecutionStatus
 
 
 class ToolNode(BaseNode):
@@ -56,11 +54,6 @@ class ToolNode(BaseNode):
         # get parameters
         parameters = self._generate_parameters(variable_pool, node_data, tool_runtime)
 
-        # get tracing instance
-        workflow: Workflow = db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
-        app_id = workflow.app_id
-        tracing_instance = OpsTraceService.get_ops_trace_instance(app_id=app_id)
-
         try:
             messages = ToolEngine.workflow_invoke(
                 tool=tool_runtime,
@@ -69,7 +62,6 @@ class ToolNode(BaseNode):
                 workflow_id=self.workflow_id, 
                 workflow_tool_callback=DifyWorkflowCallbackHandler(),
                 workflow_call_depth=self.workflow_call_depth,
-                tracing_instance=tracing_instance
             )
         except Exception as e:
             return NodeRunResult(

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional, cast
+from typing import cast
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
 from core.agent.cot_completion_agent_runner import CotCompletionAgentRunner
@@ -34,7 +34,6 @@ class AgentChatAppRunner(AppRunner):
         queue_manager: AppQueueManager,
         conversation: Conversation,
         message: Message,
-        tracing_instance: Optional[Any] = None
     ) -> None:
         """
         Run assistant application
@@ -225,7 +224,7 @@ class AgentChatAppRunner(AppRunner):
             runner_cls = FunctionCallAgentRunner
         else:
             raise ValueError(f"Invalid agent strategy: {agent_entity.strategy}")
-        
+
         runner = runner_cls(
             tenant_id=app_config.tenant_id,
             application_generate_entity=application_generate_entity,
@@ -247,7 +246,6 @@ class AgentChatAppRunner(AppRunner):
             message=message,
             query=query,
             inputs=inputs,
-            tracing_instance=tracing_instance,
         )
 
         # handle invoke result

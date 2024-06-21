@@ -95,6 +95,11 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             override_config_dict=override_model_config_dict
         )
 
+        # get tracing instance
+        tracing_instance = OpsTraceService.get_ops_trace_instance(
+            app_id=app_model.id,
+        )
+
         # init application generate entity
         application_generate_entity = CompletionAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -106,7 +111,8 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
-            extras=extras
+            extras=extras,
+            tracing_instance=tracing_instance
         )
 
         # init generate records
