@@ -85,34 +85,6 @@ const translation = {
     workflow: 'Workflow',
     completion: 'Completion',
   },
-  tracing: {
-    title: 'Tracing app performance',
-    description: 'Configuring a Third-Party LLMOps provider and tracing app performance.',
-    config: 'Config',
-    collapse: 'Collapse',
-    expand: 'Expand',
-    tracing: 'Tracing',
-    disabled: 'Disabled',
-    enabled: 'In Service',
-    tracingDescription: 'Capture the full context of app execution, including LLM calls, context, prompts, HTTP requests, and more, to a third-party tracing platform.',
-    configProviderTitle: 'Config provider to enable tracing',
-    langSmith: {
-      description: 'An all-in-one developer platform for every step of the LLM-powered application lifecycle.',
-    },
-    langfuse: {
-      description: 'Traces, evals, prompt management and metrics to debug and improve your LLM application.',
-    },
-    configProvider: {
-      title: 'Config',
-      placeholder: 'Enter your {key}',
-      project: 'Project',
-      endpoint: 'Endpoint',
-      publicKey: 'Public Key',
-      secretKey: 'Secret Key',
-      viewDocsLink: 'View LangSmith docs',
-      saveAndEnable: 'Save and Enable',
-    },
-  },
 }
 
 export default translation

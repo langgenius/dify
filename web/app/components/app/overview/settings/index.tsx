@@ -182,8 +182,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           />
         </>}
         <div className='mt-10 flex justify-end'>
-          <Button className='mr-2 flex-shrink-0 !text-sm' onClick={onHide}>{t('common.operation.cancel')}</Button>
-          <Button variant='primary' className='flex-shrink-0 !text-sm' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
+          <Button className='mr-2' onClick={onHide}>{t('common.operation.cancel')}</Button>
+          <Button variant='primary' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
         </div>
         {showEmojiPicker && <EmojiPicker
           onSelect={(icon, icon_background) => {

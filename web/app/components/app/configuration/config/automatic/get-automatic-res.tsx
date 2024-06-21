@@ -154,7 +154,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
             <div className='mt-6 flex justify-end'>
               <Button
-                className='flex space-x-2 items-center !h-8'
+                className='flex space-x-2'
                 variant='primary'
                 onClick={onGenerate}
                 disabled={isLoading}

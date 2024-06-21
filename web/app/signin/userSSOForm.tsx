@@ -90,7 +90,7 @@ const UserSSOForm: FC<UserSSOFormProps> = ({
             variant='primary'
             onClick={() => { handleSSOLogin() }}
             disabled={isLoading}
-            className="w-full !fone-medium !text-sm"
+            className="w-full"
           >{t('login.sso')}
           </Button>
         </div>
