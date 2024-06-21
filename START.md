@@ -4,7 +4,7 @@
 
 ```bash
 cd docker
-sudo docker compose -f docker-compose.middleware.yaml up -d
+docker compose -f docker-compose.middleware.yaml up -d
 ```
 
 ```bash
@@ -42,6 +42,15 @@ flask db upgrade
 ```bash
 npm install
 npm run build
+```
+
+```bash
+sudo kill $(sudo lsof -t -i :5432)
+sudo kill $(sudo lsof -t -i :3000)
+sudo kill $(sudo lsof -t -i :5001)
+sudo kill $(sudo lsof -t -i :6379)
+sudo kill $(sudo lsof -t -i :8080)
+sudo kill $(sudo lsof -t -i :3128)
 ```
 
 ## Documentation
