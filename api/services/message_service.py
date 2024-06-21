@@ -275,6 +275,7 @@ class MessageService:
         tracing_instance = OpsTraceService.get_ops_trace_instance(
             message_id=message_id
         )
+        
         if tracing_instance:
             trace_manager = TraceQueueManager()
             trace_manager.add_trace_task(

@@ -253,7 +253,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         workflow_nodes_executions = (
             db.session.query(WorkflowNodeExecution)
             .filter(WorkflowNodeExecution.workflow_run_id == workflow_run_id)
-            .order_by(WorkflowNodeExecution.created_at)
+            .order_by(WorkflowNodeExecution.index.desc())
             .all()
         )
 
@@ -269,7 +269,9 @@ class LangSmithDataTrace(BaseTraceInstance):
                 json.loads(node_execution.outputs) if node_execution.outputs else {}
             )
             created_at = node_execution.created_at if node_execution.created_at else datetime.now()
-            finished_at = node_execution.finished_at if node_execution.finished_at else datetime.now()
+            elapsed_time = node_execution.elapsed_time
+            finished_at = created_at + timedelta(seconds=elapsed_time)
+
             execution_metadata = (
                 json.loads(node_execution.execution_metadata)
                 if node_execution.execution_metadata

@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 from sqlalchemy import and_
 
@@ -47,7 +47,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         message: Message,
         user: Union[Account, EndUser],
         stream: bool = False,
-        tracing_instance: Optional[Any] = None
     ) -> Union[
         ChatbotAppBlockingResponse,
         CompletionAppBlockingResponse,
@@ -74,6 +73,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         )
 
         try:
+            tracing_instance = application_generate_entity.tracing_instance
             return generate_task_pipeline.process(tracing_instance)
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error

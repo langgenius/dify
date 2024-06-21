@@ -24,7 +24,6 @@ from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetr
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from services.ops_trace.ops_trace_service import OpsTraceService
 from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 from services.ops_trace.utils import measure_time
 
@@ -41,6 +40,9 @@ default_retrieval_model = {
 
 
 class DatasetRetrieval:
+    def __init__(self, application_generate_entity=None):
+        self.application_generate_entity = application_generate_entity
+
     def retrieve(
             self, app_id: str, user_id: str, tenant_id: str,
             model_config: ModelConfigWithCredentialsEntity,
@@ -355,9 +357,8 @@ class DatasetRetrieval:
             db.session.commit()
 
         # get tracing instance
-        tracing_instance = OpsTraceService.get_ops_trace_instance(
-            message_id=message_id
-        )
+        tracing_instance = self.application_generate_entity.tracing_instance if self.application_generate_entity else None
+
         if tracing_instance:
             trace_manager = TraceQueueManager()
             trace_manager.add_trace_task(

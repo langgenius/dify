@@ -3,7 +3,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Any, Optional, Union
+from typing import Union
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -24,6 +24,7 @@ from extensions.ext_database import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import Workflow
+from services.ops_trace.ops_trace_service import OpsTraceService
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         args: dict,
         invoke_from: InvokeFrom,
         stream: bool = True,
-        tracing_instance: Optional[Any] = None
     ) -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
@@ -87,6 +87,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow=workflow
         )
 
+        # get tracing instance
+        tracing_instance = OpsTraceService.get_ops_trace_instance(
+            app_id=app_model.id
+        )
+
         # init application generate entity
         application_generate_entity = AdvancedChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -98,7 +103,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
-            extras=extras
+            extras=extras,
+            tracing_instance=tracing_instance
         )
 
         return self._generate(

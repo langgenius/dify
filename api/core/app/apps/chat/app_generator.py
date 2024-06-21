@@ -103,6 +103,11 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             override_config_dict=override_model_config_dict
         )
 
+        # get tracing instance
+        tracing_instance = OpsTraceService.get_ops_trace_instance(
+            app_id=app_model.id,
+        )
+
         # init application generate entity
         application_generate_entity = ChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -115,7 +120,8 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
-            extras=extras
+            extras=extras,
+            tracing_instance=tracing_instance,
         )
 
         # init generate records
@@ -123,11 +129,6 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             conversation,
             message
         ) = self._init_generate_records(application_generate_entity, conversation)
-
-        # get tracing instance
-        tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_model.id,
-        )
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
@@ -158,7 +159,6 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             message=message,
             user=user,
             stream=stream,
-            tracing_instance=tracing_instance,
         )
 
         return ChatAppGenerateResponseConverter.convert(

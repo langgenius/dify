@@ -364,6 +364,7 @@ class AppRunner:
             inputs=inputs,
             query=query if query else '',
             message_id=message_id,
+            tracing_instance=app_generate_entity.tracing_instance
         )
     
     def check_hosting_moderation(self, application_generate_entity: EasyUIBasedAppGenerateEntity,

@@ -126,7 +126,6 @@ class ToolEngine:
                         user_id: str, workflow_id: str, 
                         workflow_tool_callback: DifyWorkflowCallbackHandler,
                         workflow_call_depth: int,
-                        tracing_instance: Optional[BaseTraceInstance] = None
                         ) -> list[ToolInvokeMessage]:
         """
         Workflow invokes the tool with the given arguments.
@@ -148,7 +147,6 @@ class ToolEngine:
                 tool_name=tool.identity.name,
                 tool_inputs=tool_parameters,
                 tool_outputs=response,
-                tracing_instance=tracing_instance,
             )
 
             return response

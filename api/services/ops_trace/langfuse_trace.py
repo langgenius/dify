@@ -341,7 +341,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             input=query,
             output=workflow_run_outputs,
             metadata=metadata,
-            session_id=conversion_id,
+            session_id=conversion_id if conversion_id else workflow_run_id,
             tags=["workflow"],
         )
 
@@ -351,7 +351,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         workflow_nodes_executions = (
             db.session.query(WorkflowNodeExecution)
             .filter(WorkflowNodeExecution.workflow_run_id == workflow_run_id)
-            .order_by(WorkflowNodeExecution.created_at)
+            .order_by(WorkflowNodeExecution.index.desc())
             .all()
         )
 
@@ -367,7 +367,9 @@ class LangFuseDataTrace(BaseTraceInstance):
                 json.loads(node_execution.outputs) if node_execution.outputs else {}
             )
             created_at = node_execution.created_at if node_execution.created_at else datetime.now()
-            finished_at = node_execution.finished_at if node_execution.finished_at else datetime.now()
+            elapsed_time = node_execution.elapsed_time
+            finished_at = created_at + timedelta(seconds=elapsed_time)
+
             metadata = json.loads(node_execution.execution_metadata) if node_execution.execution_metadata else {}
             metadata.update(
                 {

@@ -109,6 +109,11 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             override_config_dict=override_model_config_dict
         )
 
+        # get tracing instance
+        tracing_instance = OpsTraceService.get_ops_trace_instance(
+            app_id=app_model.id,
+        )
+
         # init application generate entity
         application_generate_entity = AgentChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -122,7 +127,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             stream=stream,
             invoke_from=invoke_from,
             extras=extras,
-            call_depth=0
+            call_depth=0,
+            tracing_instance=tracing_instance
         )
 
         # init generate records
@@ -161,7 +167,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             message=message,
             user=user,
             stream=stream,
-            tracing_instance=tracing_instance,
         )
 
         return AgentChatAppGenerateResponseConverter.convert(
@@ -199,7 +204,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                     queue_manager=queue_manager,
                     conversation=conversation,
                     message=message,
-                    tracing_instance=tracing_instance
                 )
             except GenerateTaskStoppedException:
                 pass

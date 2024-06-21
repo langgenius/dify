@@ -89,6 +89,9 @@ class AppGenerateEntity(BaseModel):
     # extra parameters, like: auto_generate_conversation_name
     extras: dict[str, Any] = {}
 
+    # tracing instance
+    tracing_instance: Optional[Any] = None
+
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     """
