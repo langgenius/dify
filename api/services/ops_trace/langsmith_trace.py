@@ -260,7 +260,10 @@ class LangSmithDataTrace(BaseTraceInstance):
             node_name = node_execution.title
             node_type = node_execution.node_type
             status = node_execution.status
-            inputs = json.loads(node_execution.inputs) if node_execution.inputs else {}
+            if node_type == "llm":
+                inputs = json.loads(node_execution.process_data).get("prompts", {})
+            else:
+                inputs = json.loads(node_execution.inputs) if node_execution.inputs else {}
             outputs = (
                 json.loads(node_execution.outputs) if node_execution.outputs else {}
             )
