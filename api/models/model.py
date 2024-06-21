@@ -1044,6 +1044,7 @@ class Site(db.Model):
     default_language = db.Column(db.String(255), nullable=False)
     copyright = db.Column(db.String(255))
     privacy_policy = db.Column(db.String(255))
+    show_workflow_steps = db.Column(db.Boolean, nullable=False, server_default=db.text('true'))
     custom_disclaimer = db.Column(db.String(255), nullable=True)
     customize_domain = db.Column(db.String(255))
     customize_token_strategy = db.Column(db.String(255), nullable=False)
