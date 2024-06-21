@@ -17,6 +17,7 @@ import { updateDatasetSetting } from '@/service/datasets'
 import type { DataSet, DataSetListResponse } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { type RetrievalConfig } from '@/types/app'
+import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -52,6 +53,7 @@ const Form = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { mutate } = useSWRConfig()
+  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const { dataset: currentDataset, mutateDatasetRes: mutateDatasets } = useContext(DatasetDetailContext)
   const { setShowAccountSettingModal } = useModalContext()
   const [loading, setLoading] = useState(false)
@@ -173,7 +175,7 @@ const Form = () => {
         </div>
         <div className='w-full sm:w-[480px]'>
           <PermissionSelector
-            disabled={!currentDataset?.embedding_available}
+            disabled={!currentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
             permission={permission}
             value={selectedMemberIDs}
             onChange={v => setPermission(v)}

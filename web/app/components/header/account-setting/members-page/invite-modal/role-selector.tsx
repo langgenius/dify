@@ -73,13 +73,13 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
             <Divider className='my-0' />
             <div className='p-1'>
               <div className='p-2 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => {
-                onChange('knowledgeAdmin')
+                onChange('dataset_operator')
                 setOpen(false)
               }}>
                 <div className='relative pl-5'>
-                  <div className='text-gray-700 text-sm leading-5'>{t('common.members.knowledgeAdmin')}</div>
-                  <div className='text-gray-500 text-xs leading-[18px]'>{t('common.members.knowledgeAdminTip')}</div>
-                  {value === 'knowledgeAdmin' && <Check className='absolute top-0.5 left-0 w-4 h-4 text-primary-600'/>}
+                  <div className='text-gray-700 text-sm leading-5'>{t('common.members.datasetOperator')}</div>
+                  <div className='text-gray-500 text-xs leading-[18px]'>{t('common.members.datasetOperatorTip')}</div>
+                  {value === 'dataset_operator' && <Check className='absolute top-0.5 left-0 w-4 h-4 text-primary-600'/>}
                 </div>
               </div>
             </div>

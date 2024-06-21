@@ -10,6 +10,7 @@ import Button from '@/app/components/base/button'
 import type { DataSet } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
+import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import type { RetrievalConfig } from '@/types/app'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
@@ -55,6 +56,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   const { setShowAccountSettingModal } = useModalContext()
   const [loading, setLoading] = useState(false)
+  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
   const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(localeCurrentDataset?.retrieval_model_dict as RetrievalConfig)
@@ -179,7 +181,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           <div className='w-full'>
             {/* TODO */}
             <PermissionSelector
-              disabled={!localeCurrentDataset?.embedding_available}
+              disabled={!localeCurrentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
               permission={localeCurrentDataset.permission}
               value={[]}
               onChange={v => handleValueChange('permission', v!)}

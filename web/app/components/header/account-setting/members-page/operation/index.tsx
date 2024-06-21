@@ -38,9 +38,10 @@ const Operation = ({
     admin: t('common.members.admin'),
     editor: t('common.members.editor'),
     normal: t('common.members.normal'),
-    knowledgeAdmin: t('common.members.knowledgeAdmin'),
+    datasetOperator: t('common.members.datasetOperator'),
   }
   const { notify } = useContext(ToastContext)
+  const toHump = (name: string) => name.replace(/_(\w)/g, (all, letter) => letter.toUpperCase())
   const handleDeleteMemberOrCancelInvitation = async () => {
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
@@ -100,7 +101,7 @@ const Operation = ({
               >
                 <div className="px-1 py-1">
                   {
-                    ['admin', 'editor', 'normal', 'knowledgeAdmin'].map(role => (
+                    ['admin', 'editor', 'normal', 'dataset_operator'].map(role => (
                       <Menu.Item key={role}>
                         <div className={itemClassName} onClick={() => handleUpdateMemberRole(role)}>
                           {
@@ -109,8 +110,8 @@ const Operation = ({
                               : <div className={itemIconClassName} />
                           }
                           <div>
-                            <div className={itemTitleClassName}>{t(`common.members.${role}`)}</div>
-                            <div className={itemDescClassName}>{t(`common.members.${role}Tip`)}</div>
+                            <div className={itemTitleClassName}>{t(`common.members.${toHump(role)}`)}</div>
+                            <div className={itemDescClassName}>{t(`common.members.${toHump(role)}Tip`)}</div>
                           </div>
                         </div>
                       </Menu.Item>
