@@ -207,7 +207,7 @@ class ToolNode(BaseNode):
         ])
 
     def _extract_tool_response_json(self, tool_response: list[ToolInvokeMessage]) -> list[dict]:
-        return [message.message for message in tool_response]
+        return [message.message for message in tool_response if message.type == ToolInvokeMessage.MessageType.JSON]
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(cls, node_data: ToolNodeData) -> dict[str, list[str]]:
