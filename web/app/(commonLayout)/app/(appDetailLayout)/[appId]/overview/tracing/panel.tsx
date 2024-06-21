@@ -72,13 +72,10 @@ const Panel: FC = () => {
   const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig)
 
   const fetchTracingConfig = async () => {
-    // TODO: not configured will return what
     const { tracing_config: langSmithConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
-    if (langSmithConfig)
-      setLangSmithConfig(langSmithConfig as LangSmithConfig)
+    setLangSmithConfig(langSmithConfig as LangSmithConfig)
     const { tracing_config: langFuseConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langfuse })
-    if (langFuseConfig)
-      setLangFuseConfig(langFuseConfig as LangFuseConfig)
+    setLangFuseConfig(langFuseConfig as LangFuseConfig)
   }
 
   const handleTracingConfigUpdated = (provider: TracingProvider, payload: LangSmithConfig | LangFuseConfig) => {
@@ -138,7 +135,6 @@ const Panel: FC = () => {
               hasConfigured={false}
               enabled={enabled}
               onStatusChange={handleTracingEnabledChange}
-              chosenProvider={inUseTracingProvider}
               onChooseProvider={handleChooseProvider}
               langSmithConfig={langSmithConfig}
               langFuseConfig={langFuseConfig}
@@ -182,7 +178,6 @@ const Panel: FC = () => {
           className='ml-2'
           enabled={enabled}
           onStatusChange={handleTracingEnabledChange}
-          chosenProvider={inUseTracingProvider}
           onChooseProvider={handleChooseProvider}
           langSmithConfig={langSmithConfig}
           langFuseConfig={langFuseConfig}

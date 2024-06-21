@@ -17,7 +17,6 @@ export type PopupProps = {
   appId: string
   enabled: boolean
   onStatusChange: (enabled: boolean) => void
-  chosenProvider: TracingProvider | null
   onChooseProvider: (provider: TracingProvider) => void
   langSmithConfig: LangSmithConfig | null
   langFuseConfig: LangFuseConfig | null
@@ -29,7 +28,6 @@ const ConfigPopup: FC<PopupProps> = ({
   appId,
   enabled,
   onStatusChange,
-  chosenProvider,
   onChooseProvider,
   langSmithConfig,
   langFuseConfig,
@@ -99,13 +97,10 @@ const ConfigPopup: FC<PopupProps> = ({
           <ProviderPanel
             type={TracingProvider.langSmith}
             onConfig={handleOnConfig(TracingProvider.langSmith)}
-            isChosen={chosenProvider === TracingProvider.langSmith}
             onChoose={handleOnChoose(TracingProvider.langSmith)}
           />
-          <ProviderPanel
-            type={TracingProvider.langfuse}
+          <ProviderPanel type={TracingProvider.langfuse}
             onConfig={handleOnConfig(TracingProvider.langfuse)}
-            isChosen={chosenProvider === TracingProvider.langfuse}
             onChoose={handleOnChoose(TracingProvider.langfuse)}
           />
         </div>

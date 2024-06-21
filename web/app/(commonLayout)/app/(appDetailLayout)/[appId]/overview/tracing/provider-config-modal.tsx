@@ -79,7 +79,7 @@ const ProviderConfigModal: FC<Props> = ({
       message: t('common.api.remove'),
     })
     onRemoved()
-  }, [hideRemoveConfirm, appId, type, t, onRemoved])
+  }, [onRemoved, hideRemoveConfirm])
 
   const handleConfigChange = useCallback((key: string) => {
     return (value: string) => {
@@ -127,7 +127,7 @@ const ProviderConfigModal: FC<Props> = ({
         appId,
         body: {
           tracing_provider: type,
-          tracing_config: config,
+          tracing_config: payload as LangSmithConfig | LangFuseConfig,
         },
       })
       Toast.notify({
@@ -141,7 +141,7 @@ const ProviderConfigModal: FC<Props> = ({
     finally {
       setIsSaving(true)
     }
-  }, [appId, checkValid, config, isEdit, isSaving, onChosen, onSaved, t, type])
+  }, [appId, checkValid, config, isEdit, isSaving, onChosen, onSaved, payload, t, type])
 
   return (
     <>
@@ -223,7 +223,7 @@ const ProviderConfigModal: FC<Props> = ({
                         <LinkExternal02 className='w-3 h-3' />
                       </a>
                       <div className='flex items-center'>
-                        {isEdit && (
+                        {!isEdit && (
                           <>
                             <Button
                               className='h-9 text-sm font-medium text-gray-700'
