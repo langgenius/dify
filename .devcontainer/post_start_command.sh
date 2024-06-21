@@ -1,3 +1,3 @@
 #!/bin/bash
 
-cd api && poetry install
+poetry install -C api
