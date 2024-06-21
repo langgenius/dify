@@ -95,11 +95,7 @@ const translation = {
     disabled: 'Disabled',
     enabled: 'In Service',
     tracingDescription: 'Capture the full context of app execution, including LLM calls, context, prompts, HTTP requests, and more, to a third-party tracing platform.',
-    configProviderTitle: {
-      configured: 'Configured',
-      notConfigured: 'Config provider to enable tracing',
-      moreProvider: 'More Provider',
-    },
+    configProviderTitle: 'Config provider to enable tracing',
     langsmith: {
       title: 'LangSmith',
       description: 'An all-in-one developer platform for every step of the LLM-powered application lifecycle.',

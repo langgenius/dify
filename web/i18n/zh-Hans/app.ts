@@ -94,11 +94,7 @@ const translation = {
     disabled: '已禁用',
     enabled: '已启用',
     tracingDescription: '捕获应用程序执行的完整上下文，包括 LLM 调用、上下文、提示、HTTP 请求等，发送到第三方跟踪平台。',
-    configProviderTitle: {
-      configured: '已配置',
-      notConfigured: '配置提供商以启用追踪',
-      moreProvider: '更多提供商',
-    },
+    configProviderTitle: '配置提供商以启用追踪',
     langsmith: {
       title: 'LangSmith',
       description: '一个全方位的开发者平台，适用于 LLM 驱动应用程序生命周期的每个步骤。',
