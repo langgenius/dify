@@ -14,7 +14,7 @@ const translation = {
     permissionsAllMember: 'Tất cả thành viên nhóm',
     indexMethod: 'Phương pháp chỉ mục',
     indexMethodHighQuality: 'Chất lượng cao',
-    indexMethodHighQualityTip: 'Gọi giao diện nhúng của OpenAI để xử lý để cung cấp độ chính xác cao hơn khi người dùng truy vấn.',
+    indexMethodHighQualityTip: 'Gọi mô hình Embedding để xử lý nhằm cung cấp độ chính xác cao hơn khi người dùng truy vấn.',
     indexMethodEconomy: 'Tiết kiệm',
     indexMethodEconomyTip: 'Sử dụng các công cụ nhúng vector ngoại tuyến, chỉ mục từ khóa, v.v. để giảm độ chính xác mà không cần chi tiêu token',
     embeddingModel: 'Mô hình nhúng',
