@@ -15,17 +15,16 @@ import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Button from '@/app/components/base/button'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfirmUi from '@/app/components/base/confirm'
-import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
+import { addTracingConfig, updateTracingConfig } from '@/service/apps'
 import Toast from '@/app/components/base/toast'
 
 type Props = {
   appId: string
   type: TracingProvider
   payload?: LangSmithConfig | LangFuseConfig | null
-  onRemoved: () => void
+  onRemove?: () => void
   onCancel: () => void
-  onSaved: (payload: LangSmithConfig | LangFuseConfig) => void
-  onChosen: (provider: TracingProvider) => void
+  onSaved: () => void
 }
 
 const I18N_PREFIX = 'app.tracing.configProvider'
@@ -46,10 +45,9 @@ const ProviderConfigModal: FC<Props> = ({
   appId,
   type,
   payload,
-  onRemoved,
+  onRemove,
   onCancel,
   onSaved,
-  onChosen,
 }) => {
   const { t } = useTranslation()
   const isEdit = !!payload
@@ -70,16 +68,8 @@ const ProviderConfigModal: FC<Props> = ({
 
   const handleRemove = useCallback(async () => {
     hideRemoveConfirm()
-    await removeTracingConfig({
-      appId,
-      provider: type,
-    })
-    Toast.notify({
-      type: 'success',
-      message: t('common.api.remove'),
-    })
-    onRemoved()
-  }, [onRemoved, hideRemoveConfirm])
+    onRemove?.()
+  }, [onRemove, hideRemoveConfirm])
 
   const handleConfigChange = useCallback((key: string) => {
     return (value: string) => {
@@ -134,14 +124,12 @@ const ProviderConfigModal: FC<Props> = ({
         type: 'success',
         message: t('common.api.success'),
       })
-      onSaved(config)
-      if (!isEdit)
-        onChosen(type)
+      onSaved()
     }
     finally {
-      setIsSaving(true)
+      onSaved()
     }
-  }, [appId, checkValid, config, isEdit, isSaving, onChosen, onSaved, payload, t, type])
+  }, [appId, checkValid, isEdit, isSaving, onSaved, payload, t, type])
 
   return (
     <>

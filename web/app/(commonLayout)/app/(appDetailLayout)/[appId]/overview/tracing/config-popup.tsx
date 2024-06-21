@@ -14,25 +14,21 @@ import Switch from '@/app/components/base/switch'
 const I18N_PREFIX = 'app.tracing'
 
 export type PopupProps = {
-  appId: string
   enabled: boolean
   onStatusChange: (enabled: boolean) => void
   onChooseProvider: (provider: TracingProvider) => void
   langSmithConfig: LangSmithConfig | null
   langFuseConfig: LangFuseConfig | null
-  onConfigUpdated: (provider: TracingProvider, payload: LangSmithConfig | LangFuseConfig) => void
-  onConfigRemoved: (provider: TracingProvider) => void
+  onConfigUpdated: () => void
 }
 
 const ConfigPopup: FC<PopupProps> = ({
-  appId,
   enabled,
   onStatusChange,
   onChooseProvider,
   langSmithConfig,
   langFuseConfig,
   onConfigUpdated,
-  onConfigRemoved,
 }) => {
   const { t } = useTranslation()
 
@@ -53,18 +49,6 @@ const ConfigPopup: FC<PopupProps> = ({
       onChooseProvider(provider)
     }
   }, [onChooseProvider])
-
-  const handleConfigUpdated = useCallback(() => {
-    return (payload: LangSmithConfig | LangFuseConfig) => {
-      onConfigUpdated(currentProvider!, payload)
-      hideConfigModal()
-    }
-  }, [currentProvider, hideConfigModal, onConfigUpdated])
-
-  const handleConfigRemoved = useCallback(() => {
-    onConfigRemoved(currentProvider!)
-    hideConfigModal()
-  }, [currentProvider, hideConfigModal, onConfigRemoved])
 
   return (
     <div className='w-[420px] p-4 rounded-2xl bg-white border-[0.5px] border-black/5 shadow-lg'>
@@ -107,13 +91,10 @@ const ConfigPopup: FC<PopupProps> = ({
       </div>
       {isShowConfigModal && (
         <ProviderConfigModal
-          appId={appId}
           type={currentProvider!}
           payload={currentProvider === TracingProvider.langSmith ? langSmithConfig : langFuseConfig}
           onCancel={hideConfigModal}
-          onSaved={handleConfigUpdated}
-          onChosen={onChooseProvider}
-          onRemoved={handleConfigRemoved}
+          onSaved={hideConfigModal}
         />
       )}
     </div>

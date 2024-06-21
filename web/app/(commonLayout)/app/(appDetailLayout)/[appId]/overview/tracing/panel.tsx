@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { usePathname } from 'next/navigation'
 import { useBoolean } from 'ahooks'
-import type { LangFuseConfig, LangSmithConfig } from './type'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ToggleExpandBtn from './toggle-fold-btn'
@@ -13,7 +12,7 @@ import ConfigButton from './config-button'
 import { LangfuseIcon, LangsmithIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
 import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
-import type { TracingStatus } from '@/models/app'
+import type { TracingConfig, TracingStatus } from '@/models/app'
 import Toast from '@/app/components/base/toast'
 
 const I18N_PREFIX = 'app.tracing'
@@ -51,45 +50,24 @@ const Panel: FC = () => {
       message: t('common.api.success'),
     })
   }
-
   const handleTracingEnabledChange = (enabled: boolean) => {
     handleTracingStatusChange({
       tracing_provider: tracingStatus?.tracing_provider || null,
       enabled,
     })
   }
-  const handleChooseProvider = (provider: TracingProvider) => {
-    handleTracingStatusChange({
-      tracing_provider: provider,
-      enabled,
-    })
-  }
   const inUseTracingProvider: TracingProvider | null = tracingStatus?.tracing_provider || null
   const InUseProviderIcon = inUseTracingProvider === TracingProvider.langSmith ? LangsmithIcon : LangfuseIcon
 
-  const [langSmithConfig, setLangSmithConfig] = useState<LangSmithConfig | null>(null)
-  const [langFuseConfig, setLangFuseConfig] = useState<LangFuseConfig | null>(null)
+  const [langSmithConfig, setLangSmithConfig] = useState<TracingConfig | null>(null)
+  const [langFuseConfig, setLangFuseConfig] = useState<TracingConfig | null>(null)
   const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig)
 
   const fetchTracingConfig = async () => {
-    const { tracing_config: langSmithConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
-    setLangSmithConfig(langSmithConfig as LangSmithConfig)
-    const { tracing_config: langFuseConfig } = await doFetchTracingConfig({ appId, provider: TracingProvider.langfuse })
-    setLangFuseConfig(langFuseConfig as LangFuseConfig)
-  }
-
-  const handleTracingConfigUpdated = (provider: TracingProvider, payload: LangSmithConfig | LangFuseConfig) => {
-    if (provider === TracingProvider.langSmith)
-      setLangSmithConfig(payload as LangSmithConfig)
-    else
-      setLangFuseConfig(payload as LangFuseConfig)
-  }
-
-  const handleTracingConfigRemoved = (provider: TracingProvider) => {
-    if (provider === TracingProvider.langSmith)
-      setLangSmithConfig(null)
-    else
-      setLangFuseConfig(null)
+    const langSmithConfig = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
+    setLangSmithConfig(langSmithConfig)
+    const langFuseConfig = await doFetchTracingConfig({ appId, provider: TracingProvider.langfuse })
+    setLangFuseConfig(langFuseConfig)
   }
 
   useEffect(() => {
@@ -103,12 +81,6 @@ const Panel: FC = () => {
   }, [])
 
   const [isFold, setFold] = useState(false)
-
-  if (!isLoaded) {
-    return <div className='mb-3'>
-      <Title />
-    </div>
-  }
 
   if (!isFold && !hasConfiguredTracing) {
     return (
@@ -131,15 +103,9 @@ const Panel: FC = () => {
 
           <div className='flex items-center space-x-1'>
             <ConfigButton
-              appId={appId}
               hasConfigured={false}
               enabled={enabled}
               onStatusChange={handleTracingEnabledChange}
-              onChooseProvider={handleChooseProvider}
-              langSmithConfig={langSmithConfig}
-              langFuseConfig={langFuseConfig}
-              onConfigUpdated={handleTracingConfigUpdated}
-              onConfigRemoved={handleTracingConfigRemoved}
             />
             <ToggleExpandBtn isFold={isFold} onFoldChange={setFold} />
           </div>
@@ -173,16 +139,10 @@ const Panel: FC = () => {
         )}
 
         <ConfigButton
-          appId={appId}
           hasConfigured
           className='ml-2'
           enabled={enabled}
           onStatusChange={handleTracingEnabledChange}
-          onChooseProvider={handleChooseProvider}
-          langSmithConfig={langSmithConfig}
-          langFuseConfig={langFuseConfig}
-          onConfigUpdated={handleTracingConfigUpdated}
-          onConfigRemoved={handleTracingConfigRemoved}
         />
         {!hasConfiguredTracing && (
           <>
