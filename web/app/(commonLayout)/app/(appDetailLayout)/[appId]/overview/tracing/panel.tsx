@@ -1,17 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { usePathname } from 'next/navigation'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ToggleExpandBtn from './toggle-fold-btn'
 import ConfigButton from './config-button'
 import { LangfuseIcon, LangsmithIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
-import { fetchTracingConfig } from '@/service/apps'
-import type { TracingConfig } from '@/models/app'
 
 const I18N_PREFIX = 'app.tracing'
 
@@ -30,27 +27,13 @@ const Title = ({
 }
 const Panel: FC = () => {
   const { t } = useTranslation()
-  const pathname = usePathname()
-  const matched = pathname.match(/\/app\/([^/]+)/)
-  const appId = (matched?.length && matched[1]) ? matched[1] : ''
 
   const inUseTracingProvider: TracingProvider | undefined = undefined
-  const [tracingConfig, setTracingConfig] = useState<TracingConfig | null>(null)
-
   const InUseProviderIcon = inUseTracingProvider === TracingProvider.langSmith ? LangsmithIcon : LangfuseIcon
   const hasConfiguredTracing = !!inUseTracingProvider
   const [isFold, setFold] = useState(false)
 
   const [enabled, setEnabled] = useState(false)
-
-  useEffect(() => {
-    (async () => {
-      const tracingConfig = await fetchTracingConfig({ appId })
-      setTracingConfig(tracingConfig)
-      // debugger
-    })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   if (!isFold && !hasConfiguredTracing) {
     return (

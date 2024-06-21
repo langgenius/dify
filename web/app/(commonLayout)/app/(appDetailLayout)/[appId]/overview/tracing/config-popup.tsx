@@ -27,7 +27,7 @@ const ConfigPopup: FC<PopupProps> = ({
   const [isShowConfigModal, {
     setTrue: showConfigModal,
     setFalse: hideConfigModal,
-  }] = useBoolean(false)
+  }] = useBoolean(true)
   const handleOnConfig = useCallback((provider: TracingProvider) => {
     return () => {
       setCurrentProvider(provider)
