@@ -110,7 +110,6 @@ class OracleVector(BaseVector):
             cur.close()
             conn.commit()
             conn.close()
-            #self.pool.putconn(conn)
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
