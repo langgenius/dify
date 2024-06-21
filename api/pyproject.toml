@@ -187,6 +187,7 @@ tenacity = "~8.3.0"
 cos-python-sdk-v5 = "1.9.30"
 novita-client = "^0.5.6"
 opensearch-py = "2.4.0"
+oracledb = "~2.2.1"
 
 [tool.poetry.group.dev]
 optional = true

@@ -6,6 +6,7 @@ from configs.middleware.redis_configs import RedisConfigs
 from configs.middleware.vdb.chroma_configs import ChromaConfigs
 from configs.middleware.vdb.milvus_configs import MilvusConfigs
 from configs.middleware.vdb.opensearch_configs import OpenSearchConfigs
+from configs.middleware.vdb.oracle_configs import OracleConfigs
 from configs.middleware.vdb.pgvector_configs import PGVectorConfigs
 from configs.middleware.vdb.pgvectors_configs import PGVectoRSConfigs
 from configs.middleware.vdb.qdrant_configs import QdrantConfigs
@@ -61,5 +62,6 @@ class MiddlewareConfigs(
     TencentVectorDBConfigs,
     TiDBVectorConfigs,
     WeaviateConfigs,
+    OracleConfigs,
 ):
     pass

@@ -93,3 +93,4 @@ novita_client~=0.5.6
 tenacity~=8.3.0
 opensearch-py==2.4.0
 cos-python-sdk-v5==1.9.30
+oracledb~=2.2.1
