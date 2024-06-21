@@ -14,6 +14,8 @@ from models.source import DataSourceOauthBinding
 logger = logging.getLogger(__name__)
 
 DOCUMENT_RAW_CONTENT_URL = "https://open.feishu-boe.cn/open-apis/docx/v1/documents/{document_id}/raw_content"
+DOCUMENT_BLOCK_CONTENT_URL = "https://open.feishu-boe.cn/open-apis/docx/v1/documents/{document_id}/blocks/{block_id}"
+DOCUMENT_ALL_BLOCK_URL = "https://open.feishu-boe.cn/open-apis/docx/v1/documents/{document_id}/blocks"
 LARK_WIKI_NODE_URL = "https://open.feishu-boe.cn/open-apis/wiki/v2/spaces/get_node"
 
 
@@ -36,10 +38,54 @@ class LarkWikiExtractor(BaseExtractor):
         )
         if self._lark_obj_type == "docx":
             raw_content = self.get_document_raw_content(self._lark_obj_token)
-            docs = [Document(page_content=raw_content)]
+            table_block_content = self.get_document_table_block_content(self._lark_obj_token, "")
+            docs = [Document(page_content=raw_content), Document(page_content=table_block_content)]
             return docs
         else:
             raise ValueError("lark obj type not supported")
+
+    def get_document_table_block_content(self, block_id: str, page_token: str) -> str:
+        block_data_list = []
+
+        cur_page_token = page_token
+        while True:
+            params = {
+                "page_token": cur_page_token,
+            }
+            document_all_block_url = DOCUMENT_ALL_BLOCK_URL.format(document_id=block_id)
+
+            response = requests.request(
+                "GET",
+                document_all_block_url,
+                headers={
+                    'Content-Type': 'application/json',
+                    'Authorization': f"Bearer {self._tenant_access_token}",
+                },
+                params=params
+            )
+
+            response_json = response.json()
+            if not response_json or "data" not in response_json:
+                return ""
+
+            data = response_json["data"]
+            items = data['items'] if "items" in data else []
+
+            for item in items:
+                block_type = item['block_type']
+                if block_type == 31:
+                    block_data_list.append(self.read_table_rows(item))
+            if "page_token" in data:
+                cur_page_token = data['page_token']
+
+            if "has_more" in data:
+                has_more = data['has_more']
+                if not has_more:
+                    break
+            else:
+                break
+
+        return "\n".join(block_data_list)
 
     def get_document_raw_content(self, document_id: str):
         headers = {
@@ -55,6 +101,64 @@ class LarkWikiExtractor(BaseExtractor):
 
         content = response_json["data"]["content"]
         return content
+
+    def get_document_block_content(self, document_id: str, block_id: str):
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f"Bearer {self._tenant_access_token}",
+        }
+        response = requests.get(url=DOCUMENT_BLOCK_CONTENT_URL.format(document_id=document_id, block_id=block_id),
+                                headers=headers,
+                                timeout=30)
+        response_json = response.json()
+        if not response.ok:
+            logger.error(
+                f"get document block content fail！status_code：{response.status_code}, code: {response_json['code']}, msg：{response_json['msg']}")
+            raise Exception(
+                f"get document block content fail！status_code：{response.status_code}, code: {response_json['code']}, msg：{response_json['msg']}")
+
+        res = response_json["data"]["block"]
+        if not res:
+            return ""
+
+        if "children" in res:
+            child_block_id_list = res["children"]
+            if child_block_id_list:
+                block_content_list = []
+                for child_block_id in child_block_id_list:
+                    block_content_list.append(self.get_document_block_content(document_id, child_block_id))
+                return "\n".join(block_content_list)
+        else:
+            if res["block_type"] == 2 and "text" in res and "elements" in res["text"]:
+                elements = res["text"]["elements"]
+                block_content_list = []
+                for element in elements:
+                    if "text_run" in element:
+                        block_content_list.append(element["text_run"]["content"])
+                        return "\n".join(block_content_list)
+
+    def read_table_rows(self, block) -> str:
+        block_type = block["block_type"]
+        parent_id = block["parent_id"]
+        if block_type == 31:
+            table_cells = block["table"]["cells"]
+            column_size = block["table"]["property"]["column_size"]
+            table_header_cells = table_cells[:column_size]
+            table_header_cell_texts = []
+            for block_id in table_header_cells:
+                head_block_content = self.get_document_block_content(parent_id, block_id)
+                table_header_cell_texts.append(head_block_content)
+
+            result_lines_arr = []
+
+            table_main_cells = table_cells[column_size:]
+            for i in range(len(table_main_cells)):
+                j = i % column_size
+                main_block_content = self.get_document_block_content(parent_id, table_main_cells[i])
+                result_lines_arr.append(f'{table_header_cell_texts[j]}:{main_block_content}')
+
+            result_lines = "\n".join(result_lines_arr)
+            return result_lines
 
     def update_last_edited_time(self, document_model: DocumentModel):
         if not document_model:
