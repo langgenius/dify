@@ -41,9 +41,10 @@ const ActivateForm = () => {
 
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
-  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
+  const [timezone, setTimezone] = useState('Asia/Shanghai')
   const [language, setLanguage] = useState(locale)
   const [showSuccess, setShowSuccess] = useState(false)
+  const defaultLanguage = useCallback(() => (window.navigator.language.startsWith('zh') ? LanguagesSupported[1] : LanguagesSupported[0]) || LanguagesSupported[0], [])
 
   const showErrorMessage = useCallback((message: string) => {
     Toast.notify({
