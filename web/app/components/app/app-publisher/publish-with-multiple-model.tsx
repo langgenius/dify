@@ -70,7 +70,7 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
         <Button
           variant='primary'
           disabled={!validModelConfigs.length}
-          className='mt-3 px-3 py-0 w-full h-8 border-[0.5px] border-primary-700 rounded-lg text-[13px] font-medium'
+          className='mt-3 w-full'
         >
           {t('appDebug.operation.applyConfig')}
           <RiArrowDownSLine className='ml-0.5 w-3 h-3' />

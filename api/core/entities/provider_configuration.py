@@ -206,8 +206,8 @@ class ProviderConfiguration(BaseModel):
                         credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
 
         credentials = model_provider_factory.provider_credentials_validate(
-            self.provider.provider,
-            credentials
+            provider=self.provider.provider,
+            credentials=credentials
         )
 
         for key, value in credentials.items():

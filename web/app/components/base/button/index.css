@@ -1,31 +1,43 @@
 @tailwind components;
 
 @layer components {
-  body .btn {
-    @apply inline-flex justify-center items-center content-center h-9 leading-5 rounded-lg px-4 py-2 text-base cursor-pointer whitespace-nowrap;
+  .btn {
+    @apply inline-flex justify-center items-center border-[0.5px] font-medium cursor-pointer whitespace-nowrap shadow;
   }
 
-  body .btn-default {
-    @apply border-solid border border-gray-200 cursor-pointer text-gray-700 hover:bg-white hover:shadow-sm hover:border-gray-300;
+  .btn-disabled {
+    @apply opacity-60 cursor-not-allowed;
   }
 
-  body .btn-default-disabled {
-    @apply border-solid border border-gray-200 bg-gray-200 cursor-not-allowed text-gray-800;
+  .btn-small {
+    @apply px-2 h-6 rounded-md text-xs
   }
 
-  body .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-600/75 cursor-pointer text-white hover:shadow-sm;
+  .btn-medium {
+    @apply px-3.5 h-8 rounded-lg text-[13px]
   }
 
-  body .btn-primary-disabled {
-    @apply bg-primary-200 cursor-not-allowed text-white;
+  .btn-large {
+    @apply px-4 h-9 rounded-[10px] text-sm font-semibold
   }
 
-  body .btn-warning {
-    @apply bg-red-600 hover:bg-red-600/75 cursor-pointer text-white hover:shadow-sm;
+  .btn-secondary {
+    @apply bg-white hover:bg-white/80 border-gray-200 hover:border-gray-300 text-gray-700;
   }
 
-  body .btn-warning-disabled {
-    @apply bg-red-600/75 cursor-not-allowed text-white;
+  .btn-secondary-accent {
+    @apply bg-white hover:bg-white/80 border-gray-200 hover:border-gray-300 text-primary-600;
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white;
+  }
+
+  .btn-warning {
+    @apply bg-red-600 hover:bg-red-700 text-white;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent hover:bg-gray-200 border-transparent shadow-none text-gray-700;
   }
 }
