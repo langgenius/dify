@@ -92,8 +92,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose }: CreateFromDSLModalProp
       />
       {isAppsFull && <AppsFull loc='app-create-dsl' />}
       <div className='pt-6 flex justify-end'>
-        <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-        <Button className='text-sm font-medium' disabled={isAppsFull || !currentFile} variant="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
+        <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
+        <Button disabled={isAppsFull || !currentFile} variant="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
       </div>
     </Modal>
   )
