@@ -189,7 +189,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
     </div>
     <Divider className='m-0' />
     <div className='w-full flex items-center justify-center p-3 gap-2'>
-      <Button variant="default" className='w-full' onClick={() => {
+      <Button className='w-full' onClick={() => {
         onClose && onClose()
       }}>
         {t('app.emoji.cancel')}
