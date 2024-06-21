@@ -44,6 +44,12 @@ npm install
 npm run build
 ```
 
+
+```bash
+sudo docker stop $(sudo docker ps -q)
+docker container prune
+```
+
 ```bash
 sudo kill $(sudo lsof -t -i :5432)
 sudo kill $(sudo lsof -t -i :3000)
