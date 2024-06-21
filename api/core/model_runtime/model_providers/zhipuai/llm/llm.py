@@ -11,6 +11,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageTool,
     SystemPromptMessage,
     UserPromptMessage,
+    ToolPromptMessage
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -462,6 +463,8 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
         elif isinstance(message, SystemPromptMessage):
+            message_text = content
+        elif isinstance(message, ToolPromptMessage):
             message_text = content
         else:
             raise ValueError(f"Got unknown type {message}")
