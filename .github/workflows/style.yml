@@ -114,7 +114,7 @@ jobs:
           VALIDATE_BASH: true
           VALIDATE_BASH_EXEC: true
           # FIXME: temporarily disabled until api-docker.yaml's run script is fixed for shellcheck
-          VALIDATE_GITHUB_ACTIONS: false
+          # VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_DOCKERFILE_HADOLINT: true
           VALIDATE_XML: true
           VALIDATE_YAML: true
