@@ -145,7 +145,7 @@ const Answer: FC<AnswerProps> = ({
             }
             {/** Hide workflow steps by it's settings in siteInfo */}
             {
-              workflowProcess && hideProcessDetail && appData && appData.site.workflow === 'show' && (
+              workflowProcess && hideProcessDetail && appData && appData.site.show_workflow_steps && (
                 <WorkflowProcess
                   data={workflowProcess}
                   item={item}

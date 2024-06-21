@@ -19,7 +19,7 @@ export type SiteInfo = {
   copyright?: string
   privacy_policy?: string
   custom_disclaimer?: string
-  workflow?: string
+  show_workflow_steps?: boolean
 }
 
 export type AppMeta = {

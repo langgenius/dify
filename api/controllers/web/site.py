@@ -34,7 +34,7 @@ class AppSiteApi(WebApiResource):
         'custom_disclaimer': fields.String,
         'default_language': fields.String,
         'prompt_public': fields.Boolean,
-        'workflow': fields.String,
+        'show_workflow_steps': fields.Boolean,
     }
 
     app_fields = {

@@ -34,7 +34,7 @@ export type ConfigParams = {
   custom_disclaimer: string
   icon: string
   icon_background: string
-  workflow: string
+  show_workflow_steps: boolean
 }
 
 const prefixSettings = 'appOverview.overview.appInfo.settings'
@@ -48,8 +48,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const { notify } = useToastContext()
   const [isShowMore, setIsShowMore] = useState(false)
   const { icon, icon_background } = appInfo
-  const { title, description, copyright, privacy_policy, custom_disclaimer, default_language, workflow } = appInfo.site
-  const [inputInfo, setInputInfo] = useState({ title, desc: description, copyright, privacyPolicy: privacy_policy, customDisclaimer: custom_disclaimer, workflow })
+  const { title, description, copyright, privacy_policy, custom_disclaimer, default_language, show_workflow_steps } = appInfo.site
+  const [inputInfo, setInputInfo] = useState({ title, desc: description, copyright, privacyPolicy: privacy_policy, customDisclaimer: custom_disclaimer, show_workflow_steps })
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
@@ -58,7 +58,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [emoji, setEmoji] = useState({ icon, icon_background })
 
   useEffect(() => {
-    setInputInfo({ title, desc: description, copyright, privacyPolicy: privacy_policy, customDisclaimer: custom_disclaimer, workflow })
+    setInputInfo({ title, desc: description, copyright, privacyPolicy: privacy_policy, customDisclaimer: custom_disclaimer, show_workflow_steps })
     setLanguage(default_language)
     setEmoji({ icon, icon_background })
   }, [appInfo])
@@ -86,7 +86,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       custom_disclaimer: inputInfo.customDisclaimer,
       icon: emoji.icon,
       icon_background: emoji.icon_background,
-      workflow: inputInfo.workflow,
+      show_workflow_steps: inputInfo.show_workflow_steps,
     }
     await onSave?.(params)
     setSaveLoading(false)
@@ -139,9 +139,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         {(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat') && <>
           <div className={`mt-6 mb-2 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.workflow.title`)}</div>
           <SimpleSelect
-            items={[{ name: t(`${prefixSettings}.workflow.show`), value: 'show' }, { name: t(`${prefixSettings}.workflow.hide`), value: 'hide' }]}
-            defaultValue={inputInfo.workflow}
-            onSelect={item => setInputInfo({ ...inputInfo, workflow: item.value as string })}
+            items={[{ name: t(`${prefixSettings}.workflow.show`), value: 'true' }, { name: t(`${prefixSettings}.workflow.hide`), value: 'false' }]}
+            defaultValue={inputInfo.show_workflow_steps ? 'true' : 'false'}
+            onSelect={item => setInputInfo({ ...inputInfo, show_workflow_steps: item.value === 'true' })}
           />
         </>}
         {!isShowMore && <div className='w-full cursor-pointer mt-8' onClick={() => setIsShowMore(true)}>

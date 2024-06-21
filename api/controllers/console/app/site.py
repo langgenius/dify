@@ -28,7 +28,7 @@ def parse_app_site_args():
                         required=False,
                         location='json')
     parser.add_argument('prompt_public', type=bool, required=False, location='json')
-    parser.add_argument('workflow', type=str, choices=['show', 'hide'], required=False, location='json')
+    parser.add_argument('show_workflow_steps', type=bool, required=False, location='json')
     return parser.parse_args()
 
 
@@ -61,7 +61,7 @@ class AppSite(Resource):
             'custom_disclaimer',
             'customize_token_strategy',
             'prompt_public',
-            'workflow'
+            'show_workflow_steps'
         ]:
             value = args.get(attr_name)
             if value is not None:

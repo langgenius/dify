@@ -53,7 +53,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           icon_background: app.icon_background,
           prompt_public: false,
           copyright: '',
-          workflow: 'show',
+          show_workflow_steps: true,
         },
         plan: 'basic',
       } as AppData
