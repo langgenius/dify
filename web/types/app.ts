@@ -160,6 +160,7 @@ export type ModelConfig = {
     enabled: boolean
     voice?: string
     language?: string
+    autoPlay?: 'enabled' | 'disabled'
   }
   retriever_resource: {
     enabled: boolean
@@ -341,6 +342,11 @@ export enum TransferMethod {
   all = 'all',
   local_file = 'local_file',
   remote_url = 'remote_url',
+}
+
+export enum ttsAutoPlay {
+  enabled = 'enabled',
+  disabled = 'disabled',
 }
 
 export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']

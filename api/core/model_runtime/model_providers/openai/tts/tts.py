@@ -3,7 +3,7 @@ from functools import reduce
 from io import BytesIO
 from typing import Optional
 
-from flask import Response, stream_with_context
+from flask import Response
 from openai import OpenAI
 from pydub import AudioSegment
 
@@ -33,16 +33,15 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         :param user: unique user id
         :return: text translated to audio file
         """
-        audio_type = self._get_model_audio_type(model, credentials)
+
         if not voice or voice not in [d['value'] for d in self.get_tts_model_voices(model=model, credentials=credentials)]:
             voice = self._get_model_default_voice(model, credentials)
         if streaming:
-            return Response(stream_with_context(self._tts_invoke_streaming(model=model,
-                                                                           credentials=credentials,
-                                                                           content_text=content_text,
-                                                                           tenant_id=tenant_id,
-                                                                           voice=voice)),
-                            status=200, mimetype=f'audio/{audio_type}')
+            return self._tts_invoke_streaming(model=model,
+                                              credentials=credentials,
+                                              content_text=content_text,
+                                              tenant_id=tenant_id,
+                                              voice=voice)
         else:
             return self._tts_invoke(model=model, credentials=credentials, content_text=content_text, voice=voice)
 

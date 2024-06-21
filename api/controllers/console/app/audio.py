@@ -115,6 +115,58 @@ class ChatMessageTextApi(Resource):
             logging.exception(f"internal server error, {str(e)}.")
             raise InternalServerError()
 
+class ChatMessageTextApiWithMessageId(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model
+    def post(self, app_model):
+        from werkzeug.exceptions import BadRequestKeyError, InternalServerError
+
+        try:
+            parser = reqparse.RequestParser()
+            parser.add_argument('message_id', type=str, required=True, location='json')
+            parser.add_argument('voice', type=str, location='json')
+            parser.add_argument('streaming', type=bool, location='json')
+            args = parser.parse_args()
+
+            message_id = args.get('message_id')
+            streaming = args.get('streaming') if args.get('streaming') else True
+            voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get('voice')
+            response = AudioService.transcript_tts(
+                app_model=app_model,
+                message_id=message_id,
+                voice=voice,
+                streaming=streaming
+            )
+            return response
+        except services.errors.app_model_config.AppModelConfigBrokenError:
+            logging.exception("App model config broken.")
+            raise AppUnavailableError()
+        except NoAudioUploadedServiceError:
+            raise NoAudioUploadedError()
+        except AudioTooLargeServiceError as e:
+            raise AudioTooLargeError(str(e))
+        except UnsupportedAudioTypeServiceError:
+            raise UnsupportedAudioTypeError()
+        except ProviderNotSupportSpeechToTextServiceError:
+            raise ProviderNotSupportSpeechToTextError()
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+        except ValueError as e:
+            raise e
+        except BadRequestKeyError as e:
+            raise e
+        except Exception as e:
+            logging.exception(f"internal server error, {str(e)}.")
+            raise InternalServerError()
+
 
 class TextModesApi(Resource):
     @setup_required
@@ -160,4 +212,5 @@ class TextModesApi(Resource):
 
 api.add_resource(ChatMessageAudioApi, '/apps/<uuid:app_id>/audio-to-text')
 api.add_resource(ChatMessageTextApi, '/apps/<uuid:app_id>/text-to-audio')
+api.add_resource(ChatMessageTextApiWithMessageId, '/apps/<uuid:app_id>/text-to-audio/message-id')
 api.add_resource(TextModesApi, '/apps/<uuid:app_id>/text-to-audio/voices')

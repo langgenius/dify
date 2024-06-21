@@ -115,7 +115,7 @@ const Operation: FC<OperationProps> = ({
             {showPromptLog && (
               <Log logItem={item} />
             )}
-            {(config?.text_to_speech?.enabled) && (
+            {(config?.text_to_speech?.enabled && config.text_to_speech?.autoPlay !== 'enabled') && (
               <>
                 <div className='mx-1 w-[1px] h-[14px] bg-gray-200'/>
                 <AudioBtn
