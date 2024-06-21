@@ -110,8 +110,6 @@ const translation = {
       publicKey: '公钥',
       secretKey: '密钥',
       viewDocsLink: '查看 {{key}} 的文档',
-      removeConfirmTitle: '删除 {{key}} 配置?',
-      removeConfirmContent: '当前配置正在使用中，删除它将关闭追踪功能。',
     },
   },
 }
