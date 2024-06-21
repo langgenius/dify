@@ -96,20 +96,10 @@ const translation = {
     tracingDescription: '捕获应用程序执行的完整上下文，包括 LLM 调用、上下文、提示、HTTP 请求等，发送到第三方跟踪平台。',
     configProviderTitle: '配置提供商以启用追踪',
     langSmith: {
-      title: 'LangSmith',
       description: '一个全方位的开发者平台，适用于 LLM 驱动应用程序生命周期的每个步骤。',
     },
     langfuse: {
-      title: 'Langfuse',
       description: '跟踪、评估、提示管理和指标，以调试和改进您的 LLM 应用程序。',
-    },
-    configProvider: {
-      title: '配置 ',
-      placeholder: '输入你的{{key}}',
-      project: '项目',
-      publicKey: '公钥',
-      secretKey: '密钥',
-      viewDocsLink: '查看 {{key}} 的文档',
     },
   },
 }

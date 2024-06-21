@@ -23,7 +23,7 @@ const ConfigPopup: FC<PopupProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const [currentProvider, setCurrentProvider] = useState<TracingProvider | null>(TracingProvider.langfuse)
+  const [currentProvider, setCurrentProvider] = useState<TracingProvider | null>(TracingProvider.langSmith)
   const [isShowConfigModal, {
     setTrue: showConfigModal,
     setFalse: hideConfigModal,

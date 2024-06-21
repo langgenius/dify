@@ -28,7 +28,7 @@ const ConfigBtn: FC<Props> = ({
   ...popupProps
 }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const handleTrigger = useCallback(() => {
     setOpen(v => !v)
   }, [setOpen])
