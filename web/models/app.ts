@@ -131,11 +131,6 @@ export type AppVoicesListResponse = [{
   value: string
 }]
 
-export type TracingStatus = {
-  enabled: boolean
-  tracing_provider: TracingProvider | null
-}
-
 export type TracingConfig = {
   tracing_provider: TracingProvider
   tracing_config: LangSmitConfig | LangFuseConfig

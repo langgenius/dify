@@ -4,16 +4,14 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { usePathname } from 'next/navigation'
-import { useBoolean } from 'ahooks'
 import { TracingProvider } from './type'
 import TracingIcon from './tracing-icon'
 import ToggleExpandBtn from './toggle-fold-btn'
 import ConfigButton from './config-button'
 import { LangfuseIcon, LangsmithIcon } from '@/app/components/base/icons/src/public/tracing'
 import Indicator from '@/app/components/header/indicator'
-import { fetchTracingConfig as doFetchTracingConfig, fetchTracingStatus, updateTracingStatus } from '@/service/apps'
-import type { TracingConfig, TracingStatus } from '@/models/app'
-import Toast from '@/app/components/base/toast'
+import { fetchTracingConfig } from '@/service/apps'
+import type { TracingConfig } from '@/models/app'
 
 const I18N_PREFIX = 'app.tracing'
 
@@ -36,51 +34,23 @@ const Panel: FC = () => {
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
 
-  const [isLoaded, {
-    setTrue: setLoaded,
-  }] = useBoolean(false)
+  const inUseTracingProvider: TracingProvider | undefined = undefined
+  const [tracingConfig, setTracingConfig] = useState<TracingConfig | null>(null)
 
-  const [tracingStatus, setTracingStatus] = useState<TracingStatus | null>(null)
-  const enabled = tracingStatus?.enabled || false
-  const handleTracingStatusChange = async (tracingStatus: TracingStatus) => {
-    await updateTracingStatus({ appId, body: tracingStatus })
-    setTracingStatus(tracingStatus)
-    Toast.notify({
-      type: 'success',
-      message: t('common.api.success'),
-    })
-  }
-  const handleTracingEnabledChange = (enabled: boolean) => {
-    handleTracingStatusChange({
-      tracing_provider: tracingStatus?.tracing_provider || null,
-      enabled,
-    })
-  }
-  const inUseTracingProvider: TracingProvider | null = tracingStatus?.tracing_provider || null
   const InUseProviderIcon = inUseTracingProvider === TracingProvider.langSmith ? LangsmithIcon : LangfuseIcon
+  const hasConfiguredTracing = !!inUseTracingProvider
+  const [isFold, setFold] = useState(false)
 
-  const [langSmithConfig, setLangSmithConfig] = useState<TracingConfig | null>(null)
-  const [langFuseConfig, setLangFuseConfig] = useState<TracingConfig | null>(null)
-  const hasConfiguredTracing = !!(langSmithConfig || langFuseConfig)
-
-  const fetchTracingConfig = async () => {
-    const langSmithConfig = await doFetchTracingConfig({ appId, provider: TracingProvider.langSmith })
-    setLangSmithConfig(langSmithConfig)
-    const langFuseConfig = await doFetchTracingConfig({ appId, provider: TracingProvider.langfuse })
-    setLangFuseConfig(langFuseConfig)
-  }
+  const [enabled, setEnabled] = useState(false)
 
   useEffect(() => {
     (async () => {
-      const tracingStatus = await fetchTracingStatus({ appId })
-      setTracingStatus(tracingStatus)
-      await fetchTracingConfig()
-      setLoaded()
+      const tracingConfig = await fetchTracingConfig({ appId })
+      setTracingConfig(tracingConfig)
+      // debugger
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const [isFold, setFold] = useState(false)
 
   if (!isFold && !hasConfiguredTracing) {
     return (
@@ -105,7 +75,7 @@ const Panel: FC = () => {
             <ConfigButton
               hasConfigured={false}
               enabled={enabled}
-              onStatusChange={handleTracingEnabledChange}
+              onStatusChange={setEnabled}
             />
             <ToggleExpandBtn isFold={isFold} onFoldChange={setFold} />
           </div>
@@ -142,7 +112,7 @@ const Panel: FC = () => {
           hasConfigured
           className='ml-2'
           enabled={enabled}
-          onStatusChange={handleTracingEnabledChange}
+          onStatusChange={setEnabled}
         />
         {!hasConfiguredTracing && (
           <>
@@ -150,8 +120,10 @@ const Panel: FC = () => {
             <ToggleExpandBtn isFold={isFold} onFoldChange={setFold} />
           </>
         )}
+
       </div>
     </div>
+
   )
 }
 export default React.memo(Panel)

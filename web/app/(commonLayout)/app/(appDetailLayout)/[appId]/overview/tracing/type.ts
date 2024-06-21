@@ -1,5 +1,5 @@
 export enum TracingProvider {
-  langSmith = 'langsmith',
+  langSmith = 'langSmith',
   langfuse = 'langfuse',
 }
 
