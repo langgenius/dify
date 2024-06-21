@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.10
+    image: langgenius/dify-api:0.6.11
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -81,6 +81,7 @@ services:
       # only available when STORAGE_TYPE is `local`.
       STORAGE_LOCAL_PATH: storage
       # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
+      S3_USE_AWS_MANAGED_IAM: 'false'
       S3_ENDPOINT: 'https://xxx.r2.cloudflarestorage.com'
       S3_BUCKET_NAME: 'difyai'
       S3_ACCESS_KEY: 'ak-difyai'
@@ -95,6 +96,19 @@ services:
       GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
       # if you want to use Application Default Credentials, you can leave GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 empty.
       GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
+      # The Alibaba Cloud OSS configurations, only available when STORAGE_TYPE is `aliyun-oss`
+      ALIYUN_OSS_BUCKET_NAME: 'your-bucket-name'
+      ALIYUN_OSS_ACCESS_KEY: 'your-access-key'
+      ALIYUN_OSS_SECRET_KEY: 'your-secret-key'
+      ALIYUN_OSS_ENDPOINT: 'https://oss-ap-southeast-1-internal.aliyuncs.com'
+      ALIYUN_OSS_REGION: 'ap-southeast-1'
+      ALIYUN_OSS_AUTH_VERSION: 'v4'
+      # The Tencent COS storage configurations, only available when STORAGE_TYPE is `tencent-cos`.
+      TENCENT_COS_BUCKET_NAME: 'your-bucket-name'
+      TENCENT_COS_SECRET_KEY: 'your-secret-key'
+      TENCENT_COS_SECRET_ID: 'your-secret-id'
+      TENCENT_COS_REGION: 'your-region'
+      TENCENT_COS_SCHEME: 'your-scheme'
       # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
@@ -140,6 +154,13 @@ services:
       TIDB_VECTOR_USER: xxx.root
       TIDB_VECTOR_PASSWORD: xxxxxx
       TIDB_VECTOR_DATABASE: dify
+      # Chroma configuration
+      CHROMA_HOST: 127.0.0.1
+      CHROMA_PORT: 8000
+      CHROMA_TENANT: default_tenant
+      CHROMA_DATABASE: default_database
+      CHROMA_AUTH_PROVIDER: chromadb.auth.token_authn.TokenAuthClientProvider
+      CHROMA_AUTH_CREDENTIALS: xxxxxx
       # Mail configuration, support: resend, smtp
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -195,7 +216,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.10
+    image: langgenius/dify-api:0.6.11
     restart: always
     environment:
       CONSOLE_WEB_URL: ''
@@ -229,6 +250,7 @@ services:
       STORAGE_TYPE: local
       STORAGE_LOCAL_PATH: storage
       # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
+      S3_USE_AWS_MANAGED_IAM: 'false'
       S3_ENDPOINT: 'https://xxx.r2.cloudflarestorage.com'
       S3_BUCKET_NAME: 'difyai'
       S3_ACCESS_KEY: 'ak-difyai'
@@ -243,6 +265,19 @@ services:
       GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
       # if you want to use Application Default Credentials, you can leave GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 empty.
       GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
+      # The Alibaba Cloud OSS configurations, only available when STORAGE_TYPE is `aliyun-oss`
+      ALIYUN_OSS_BUCKET_NAME: 'your-bucket-name'
+      ALIYUN_OSS_ACCESS_KEY: 'your-access-key'
+      ALIYUN_OSS_SECRET_KEY: 'your-secret-key'
+      ALIYUN_OSS_ENDPOINT: 'https://oss-ap-southeast-1-internal.aliyuncs.com'
+      ALIYUN_OSS_REGION: 'ap-southeast-1'
+      ALIYUN_OSS_AUTH_VERSION: 'v4'
+      # The Tencent COS storage configurations, only available when STORAGE_TYPE is `tencent-cos`.
+      TENCENT_COS_BUCKET_NAME: 'your-bucket-name'
+      TENCENT_COS_SECRET_KEY: 'your-secret-key'
+      TENCENT_COS_SECRET_ID: 'your-secret-id'
+      TENCENT_COS_REGION: 'your-region'
+      TENCENT_COS_SCHEME: 'your-scheme'
       # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`, `pgvector`.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
@@ -289,6 +324,20 @@ services:
       RELYT_USER: postgres
       RELYT_PASSWORD: difyai123456
       RELYT_DATABASE: postgres
+      # tencent configurations
+      TENCENT_VECTOR_DB_URL: http://127.0.0.1
+      TENCENT_VECTOR_DB_API_KEY: dify
+      TENCENT_VECTOR_DB_TIMEOUT: 30
+      TENCENT_VECTOR_DB_USERNAME: dify
+      TENCENT_VECTOR_DB_DATABASE: dify
+      TENCENT_VECTOR_DB_SHARD: 1
+      TENCENT_VECTOR_DB_REPLICAS: 2
+      # OpenSearch configuration
+      OPENSEARCH_HOST: 127.0.0.1
+      OPENSEARCH_PORT: 9200
+      OPENSEARCH_USER: admin
+      OPENSEARCH_PASSWORD: admin
+      OPENSEARCH_SECURE: 'true'
       # pgvector configurations
       PGVECTOR_HOST: pgvector
       PGVECTOR_PORT: 5432
@@ -301,6 +350,13 @@ services:
       TIDB_VECTOR_USER: xxx.root
       TIDB_VECTOR_PASSWORD: xxxxxx
       TIDB_VECTOR_DATABASE: dify
+      # Chroma configuration
+      CHROMA_HOST: 127.0.0.1
+      CHROMA_PORT: 8000
+      CHROMA_TENANT: default_tenant
+      CHROMA_DATABASE: default_database
+      CHROMA_AUTH_PROVIDER: chromadb.auth.token_authn.TokenAuthClientProvider
+      CHROMA_AUTH_CREDENTIALS: xxxxxx
       # Notion import configuration, support public and internal
       NOTION_INTEGRATION_TYPE: public
       NOTION_CLIENT_SECRET: you-client-secret
@@ -320,7 +376,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.6.10
+    image: langgenius/dify-web:0.6.11
     restart: always
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
@@ -351,6 +407,9 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
+      # notice!: if you use windows-wsl2, postgres may not work properly due to the ntfs issue.you can use volumes to mount the data directory to the host.
+      # if you use the following config, you need to uncomment the volumes configuration below at the end of the file.
+      # - postgres:/var/lib/postgresql/data
     # uncomment to expose db(postgresql) port to host
     # ports:
     #   - "5432:5432"
@@ -488,6 +547,9 @@ services:
     ports:
       - "80:80"
       #- "443:443"
+# notice: if you use windows-wsl2, postgres may not work properly due to the ntfs issue.you can use volumes to mount the data directory to the host.
+# volumes:
+#   postgres:
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:

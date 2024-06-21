@@ -20,7 +20,7 @@ body:
   - type: input
     attributes:
       label: Dify version
-      placeholder: 0.3.21
+      placeholder: 0.6.11
       description: See about section in Dify console
     validations:
       required: true
@@ -40,7 +40,7 @@ body:
   - type: textarea
     attributes:
       label: Steps to reproduce
-      description: We highly suggest including screenshots and a bug report log.
+      description: We highly suggest including screenshots and a bug report log. Please use the right markdown syntax for code blocks.
       placeholder: Having detailed steps helps us reproduce the bug.
     validations:
       required: true

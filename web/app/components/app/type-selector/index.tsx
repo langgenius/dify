@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
 import cn from 'classnames'
+import { RiArrowDownSLine } from '@remixicon/react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check, DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
@@ -44,7 +44,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
                 </div>
                 <div className=''>{t('app.typeSelector.all')}</div>
                 <div className='w-4 h-4 p-[1px]'>
-                  <ChevronDown className='w-3.5 h-3.5' />
+                  <RiArrowDownSLine className='w-3.5 h-3.5' />
                 </div>
               </>
             )}

@@ -5,7 +5,10 @@ import copy from 'copy-to-clipboard'
 import cn from 'classnames'
 import Wrap from './wrap'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
-import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
+import {
+  Clipboard,
+  ClipboardCheck,
+} from '@/app/components/base/icons/src/vender/line/files'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 

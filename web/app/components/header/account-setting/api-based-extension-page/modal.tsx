@@ -75,7 +75,6 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
     <Modal
       isShow
       onClose={() => { }}
-      wrapperClassName='!z-[103]'
       className='!p-8 !pb-6 !max-w-none !w-[640px]'
     >
       <div className='mb-2 text-xl font-semibold text-gray-900'>
@@ -136,7 +135,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
           {t('common.operation.cancel')}
         </Button>
         <Button
-          type='primary'
+          variant='primary'
           className='text-sm font-medium'
           disabled={!localeData.name || !localeData.api_endpoint || !localeData.api_key || loading}
           onClick={handleSave}

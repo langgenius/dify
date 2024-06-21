@@ -210,7 +210,7 @@ class ToolManager:
         if parameter_rule.type == ToolParameter.ToolParameterType.SELECT:
             # check if tool_parameter_config in options
             options = list(map(lambda x: x.value, parameter_rule.options))
-            if parameter_value not in options:
+            if parameter_value is not None and parameter_value not in options:
                 raise ValueError(
                     f"tool parameter {parameter_rule.name} value {parameter_value} not in options {options}")
 

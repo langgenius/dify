@@ -125,6 +125,10 @@ type Shape = {
     nodeData: VariableAssignerNodeType
   }
   setEnteringNodePayload: (enteringNodePayload?: Shape['enteringNodePayload']) => void
+  isSyncingWorkflowDraft: boolean
+  setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft: boolean) => void
+  controlPromptEditorRerenderKey: number
+  setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
 }
 
 export const createWorkflowStore = () => {
@@ -209,6 +213,10 @@ export const createWorkflowStore = () => {
     setConnectingNodePayload: connectingNodePayload => set(() => ({ connectingNodePayload })),
     enteringNodePayload: undefined,
     setEnteringNodePayload: enteringNodePayload => set(() => ({ enteringNodePayload })),
+    isSyncingWorkflowDraft: false,
+    setIsSyncingWorkflowDraft: isSyncingWorkflowDraft => set(() => ({ isSyncingWorkflowDraft })),
+    controlPromptEditorRerenderKey: 0,
+    setControlPromptEditorRerenderKey: controlPromptEditorRerenderKey => set(() => ({ controlPromptEditorRerenderKey })),
   }))
 }
 

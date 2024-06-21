@@ -39,7 +39,6 @@ class Vector:
     def _init_vector(self) -> BaseVector:
         config = current_app.config
         vector_type = config.get('VECTOR_STORE')
-
         if self._dataset.index_struct_dict:
             vector_type = self._dataset.index_struct_dict['type']
 
@@ -52,6 +51,9 @@ class Vector:
     @staticmethod
     def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
         match vector_type:
+            case VectorType.CHROMA:
+                from core.rag.datasource.vdb.chroma.chroma_vector import ChromaVectorFactory
+                return ChromaVectorFactory
             case VectorType.MILVUS:
                 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
                 return MilvusVectorFactory
@@ -73,6 +75,12 @@ class Vector:
             case VectorType.WEAVIATE:
                 from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
                 return WeaviateVectorFactory
+            case VectorType.TENCENT:
+                from core.rag.datasource.vdb.tencent.tencent_vector import TencentVectorFactory
+                return TencentVectorFactory
+            case VectorType.OPENSEARCH:
+                from core.rag.datasource.vdb.opensearch.opensearch_vector import OpenSearchVectorFactory
+                return OpenSearchVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 

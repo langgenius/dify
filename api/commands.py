@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 import secrets
 from typing import Optional
 
@@ -12,6 +13,7 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
@@ -309,11 +311,27 @@ def migrate_knowledge_vector_database():
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
+                elif vector_type == VectorType.TENCENT:
+                    dataset_id = dataset.id
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+                    index_struct_dict = {
+                        "type": VectorType.TENCENT,
+                        "vector_store": {"class_prefix": collection_name}
+                    }
+                    dataset.index_struct = json.dumps(index_struct_dict)
                 elif vector_type == VectorType.PGVECTOR:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
                         "type": VectorType.PGVECTOR,
+                        "vector_store": {"class_prefix": collection_name}
+                    }
+                    dataset.index_struct = json.dumps(index_struct_dict)
+                elif vector_type == VectorType.OPENSEARCH:
+                    dataset_id = dataset.id
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+                    index_struct_dict = {
+                        "type": VectorType.OPENSEARCH,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
@@ -545,6 +563,28 @@ def create_tenant(email: str, language: Optional[str] = None):
                            'Account: {}\nPassword: {}'.format(email, new_password), fg='green'))
 
 
+@click.command('upgrade-db', help='upgrade the database')
+def upgrade_db():
+    click.echo('Preparing database migration...')
+    lock = redis_client.lock(name='db_upgrade_lock', timeout=60)
+    if lock.acquire(blocking=False):
+        try:
+            click.echo(click.style('Start database migration.', fg='green'))
+
+            # run db migration
+            import flask_migrate
+            flask_migrate.upgrade()
+
+            click.echo(click.style('Database migration successful!', fg='green'))
+
+        except Exception as e:
+            logging.exception(f'Database migration failed, error: {e}')
+        finally:
+            lock.release()
+    else:
+        click.echo('Database migration skipped')
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
@@ -553,4 +593,4 @@ def register_commands(app):
     app.cli.add_command(convert_to_agent_apps)
     app.cli.add_command(add_qdrant_doc_id_index)
     app.cli.add_command(create_tenant)
-
+    app.cli.add_command(upgrade_db)
