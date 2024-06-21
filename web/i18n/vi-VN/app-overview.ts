@@ -44,6 +44,11 @@ const translation = {
         webDescTip: 'Văn bản này sẽ được hiển thị ở phía máy khách, cung cấp hướng dẫn cơ bản về cách sử dụng ứng dụng',
         webDescPlaceholder: 'Nhập mô tả của ứng dụng web',
         language: 'Ngôn ngữ',
+        workflow: {
+          title: 'Các Bước Quy trình',
+          show: 'Hiển thị',
+          hide: 'Ẩn',
+        },
         more: {
           entry: 'Hiển thị thêm cài đặt',
           copyright: 'Bản quyền',

@@ -1,6 +1,10 @@
 [project]
 requires-python = ">=3.10"
 
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
 [tool.ruff]
 exclude = [
 ]
@@ -77,17 +81,10 @@ MOCK_SWITCH = "true"
 CODE_MAX_STRING_LENGTH = "80000"
 CODE_EXECUTION_ENDPOINT="http://127.0.0.1:8194"
 CODE_EXECUTION_API_KEY="dify-sandbox"
-
 FIRECRAWL_API_KEY = "fc-"
-
-
 
 [tool.poetry]
 name = "dify-api"
-version = "0.6.11"
-description = ""
-authors = ["Dify <hello@dify.ai>"]
-readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
@@ -155,7 +152,7 @@ numpy = "~1.26.4"
 unstructured = {version = "~0.10.27", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"]}
 bs4 = "~0.0.1"
 markdown = "~3.5.1"
-httpx = {version = "~0.24.1", extras = ["socks"]}
+httpx = {version = "~0.27.0", extras = ["socks"]}
 matplotlib = "~3.8.2"
 yfinance = "~0.2.40"
 pydub = "~0.25.1"
@@ -172,6 +169,7 @@ lxml = "5.1.0"
 xlrd = "~2.0.1"
 pydantic = "~2.7.4"
 pydantic_extra_types = "~2.8.1"
+pydantic-settings = "~2.3.3"
 pgvecto-rs = "0.1.4"
 firecrawl-py = "0.0.5"
 oss2 = "2.18.5"
@@ -183,7 +181,11 @@ vanna = {version = "0.5.5", extras = ["postgres", "mysql", "clickhouse", "duckdb
 kaleido = "0.2.1"
 tencentcloud-sdk-python-hunyuan = "~3.0.1158"
 tcvectordb = "1.3.2"
-chromadb = "~0.5.0"
+chromadb = "~0.5.1"
+tenacity = "~8.3.0"
+cos-python-sdk-v5 = "1.9.30"
+novita-client = "^0.5.6"
+opensearch-py = "2.4.0"
 
 [tool.poetry.group.dev]
 optional = true
@@ -201,4 +203,3 @@ optional = true
 [tool.poetry.group.lint.dependencies]
 ruff = "~0.4.8"
 dotenv-linter = "~0.5.0"
-

@@ -171,7 +171,7 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
             <div className='flex items-center justify-end gap-2 mt-6'>
               <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
               <Button
-                type='primary'
+                variant='primary'
                 onClick={handleSave}
                 disabled={
                   loading

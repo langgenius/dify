@@ -105,7 +105,8 @@ const Sidebar: FC<ISidebarProps> = ({
       <div className="flex flex-shrink-0 p-4 !pb-0">
         <Button
           onClick={() => onStartChat({})}
-          className="flex group w-full flex-shrink-0 !justify-start !h-9 text-primary-600 items-center text-sm">
+          variant='secondary-accent'
+          className="group w-full flex-shrink-0 justify-start">
           <PencilSquareIcon className="mr-2 h-4 w-4" /> {t('share.chat.newChat')}
         </Button>
       </div>
