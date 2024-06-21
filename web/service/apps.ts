@@ -126,6 +126,10 @@ export const fetchAppVoices: Fetcher<AppVoicesListResponse, { appId: string; lan
 // Tracing
 export const fetchTracingStatus: Fetcher<TracingStatus, { appId: string }> = ({ appId }) => {
   return get(`/apps/${appId}/trace`)
+  // return Promise.resolve({
+  //   enabled: false,
+  //   tracing_provider: 'langfuse',
+  // })
 }
 
 export const updateTracingStatus: Fetcher<CommonResponse, { appId: string; body: Record<string, any> }> = ({ appId, body }) => {
@@ -138,6 +142,30 @@ export const fetchTracingConfig: Fetcher<TracingConfig & { has_not_configured: t
       tracing_provider: provider,
     },
   })
+  // if (provider === TracingProvider.langSmith) {
+  //   // return Promise.resolve({
+  //   //   has_not_configured: true,
+  //   // })
+  //   return Promise.resolve({
+  //     tracing_provider: 'langsmith',
+  //     tracing_config: {
+  //       api_key: '123132*********************21',
+  //       endpoint: 'https://api.langsmith.ai',
+  //       project: 'test',
+  //     },
+  //   })
+  // }
+  // return Promise.resolve({
+  //   has_not_configured: true,
+  // })
+  // return Promise.resolve({
+  //   tracing_provider: 'langfuse',
+  //   tracing_config: {
+  //     public_key: '123132*********************21',
+  //     secret_key: '888877*********55',
+  //     host: 'https://api.langfuse.ai',
+  //   },
+  // })
 }
 
 export const addTracingConfig: Fetcher<CommonResponse, { appId: string; body: TracingConfig }> = ({ appId, body }) => {
@@ -149,5 +177,9 @@ export const updateTracingConfig: Fetcher<CommonResponse, { appId: string; body:
 }
 
 export const removeTracingConfig: Fetcher<CommonResponse, { appId: string; provider: TracingProvider }> = ({ appId, provider }) => {
-  return del(`/apps/${appId}/trace-config?tracing_provider=${provider}`)
+  return del(`/apps/${appId}/trace-config`, {
+    body: {
+      tracing_provider: provider,
+    },
+  })
 }

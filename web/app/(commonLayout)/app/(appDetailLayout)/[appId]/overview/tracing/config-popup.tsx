@@ -56,9 +56,11 @@ const ConfigPopup: FC<PopupProps> = ({
     }
   }, [onChooseProvider])
 
-  const handleConfigUpdated = useCallback((payload: LangSmithConfig | LangFuseConfig) => {
-    onConfigUpdated(currentProvider!, payload)
-    hideConfigModal()
+  const handleConfigUpdated = useCallback(() => {
+    return (payload: LangSmithConfig | LangFuseConfig) => {
+      onConfigUpdated(currentProvider!, payload)
+      hideConfigModal()
+    }
   }, [currentProvider, hideConfigModal, onConfigUpdated])
 
   const handleConfigRemoved = useCallback(() => {
