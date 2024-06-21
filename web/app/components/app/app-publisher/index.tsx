@@ -65,7 +65,8 @@ const AppPublisher = ({
   const appDetail = useAppStore(state => state.appDetail)
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
-  const appURL = `${appBaseURL}/${appMode}/${accessToken}`
+  const localAppBaseURL = window.location.origin
+  const appURL = `${localAppBaseURL}/${appMode}/${accessToken}`
 
   const language = useGetLanguage()
   const formatTimeFromNow = useCallback((time: number) => {
@@ -235,7 +236,6 @@ const AppPublisher = ({
         onClose={() => setEmbeddingModalOpen(false)}
         appBaseUrl={appBaseURL}
         accessToken={accessToken}
-        className='z-50'
       />
     </PortalToFollowElem >
   )

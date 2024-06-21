@@ -31,7 +31,7 @@ const AllTools = ({
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
     if (activeTab === ToolTypeEnum.All)
-      mergedTools = [...buildInTools, ...customTools]
+      mergedTools = [...buildInTools, ...customTools, ...workflowTools]
     if (activeTab === ToolTypeEnum.BuiltIn)
       mergedTools = buildInTools
     if (activeTab === ToolTypeEnum.Custom)

@@ -9,7 +9,7 @@ if ! command -v ruff &> /dev/null; then
 fi
 
 # run ruff linter
-ruff check --fix ./api
+ruff check --fix --preview ./api
 
 # env files linting relies on `dotenv-linter` in path
 if ! command -v dotenv-linter &> /dev/null; then

@@ -391,3 +391,4 @@ export const PARAMETER_EXTRACTOR_COMMON_STRUCT: Var[] = [
 ]
 
 export const WORKFLOW_DATA_UPDATE = 'WORKFLOW_DATA_UPDATE'
+export const CUSTOM_NODE = 'custom'

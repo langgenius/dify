@@ -80,8 +80,10 @@ const TextGeneration: FC<IMainProps> = ({
   const pathname = usePathname()
   useEffect(() => {
     const params = new URLSearchParams(searchParams)
-    params.delete('mode')
-    router.replace(`${pathname}?${params.toString()}`)
+    if (params.has('mode')) {
+      params.delete('mode')
+      router.replace(`${pathname}?${params.toString()}`)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

@@ -24,7 +24,10 @@ type Action = {
 
 export const useStore = create<State & Action>(set => ({
   appDetail: undefined,
-  setAppDetail: appDetail => set(() => ({ appDetail })),
+  setAppDetail: (appDetail) => {
+    console.trace('setAppDetail', appDetail)
+    set(() => ({ appDetail }))
+  },
   appSidebarExpand: '',
   setAppSiderbarExpand: appSidebarExpand => set(() => ({ appSidebarExpand })),
   currentLogItem: undefined,

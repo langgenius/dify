@@ -44,7 +44,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const isChatApp = mode === 'chat'
+  const isChatApp = mode === 'chat' || mode === 'advanced-chat'
 
   return <Modal
     title={t(`${prefixCustomize}.title`)}

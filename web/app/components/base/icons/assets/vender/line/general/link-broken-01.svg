@@ -1,0 +1,10 @@
+<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Left Icon" clip-path="url(#clip0_6246_47371)">
+<path id="Icon" d="M4.5 2V1M7.5 10V11M2 4.5H1M10 7.5H11M2.45711 2.45711L1.75 1.75M9.54289 9.54289L10.25 10.25M6 8.82843L4.93934 9.88909C4.15829 10.6701 2.89196 10.6701 2.11091 9.88909C1.32986 9.10804 1.32986 7.84171 2.11091 7.06066L3.17157 6M8.82843 6L9.88909 4.93934C10.6701 4.15829 10.6701 2.89196 9.88909 2.11091C9.10804 1.32986 7.84171 1.32986 7.06066 2.11091L6 3.17157" stroke="#667085" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<defs>
+<clipPath id="clip0_6246_47371">
+<rect width="12" height="12" fill="white"/>
+</clipPath>
+</defs>
+</svg>

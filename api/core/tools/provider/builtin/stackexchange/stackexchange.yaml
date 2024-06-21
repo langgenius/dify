@@ -6,5 +6,8 @@ identity:
     zh_Hans: Stack Exchange
   description:
     en_US: Access questions and answers from the Stack Exchange and its sub-sites.
-    zh_Hans: 从Stack Exchange和其子论坛获取问题和答案。
+    zh_Hans: 从 Stack Exchange 和其子论坛获取问题和答案。
   icon: icon.svg
+  tags:
+    - search
+    - utilities

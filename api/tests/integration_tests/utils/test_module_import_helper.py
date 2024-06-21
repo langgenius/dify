@@ -1,6 +1,6 @@
 import os
 
-from core.utils.module_import_helper import import_module_from_source, load_single_subclass_from_source
+from core.helper.module_import_helper import import_module_from_source, load_single_subclass_from_source
 from tests.integration_tests.utils.parent_class import ParentClass
 
 

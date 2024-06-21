@@ -17,7 +17,8 @@
                 "FLASK_DEBUG": "1",
                 "GEVENT_SUPPORT": "True"
             },
-            "console": "integratedTerminal"
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}"
         },
         {
             "name": "Python: Flask",
@@ -36,7 +37,8 @@
                 "--debug"
             ],
             "jinja": true,
-            "justMyCode": true
+            "justMyCode": true,
+            "python": "${command:python.interpreterPath}"
         }
     ]
 }

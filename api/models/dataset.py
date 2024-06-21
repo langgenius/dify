@@ -76,7 +76,8 @@ class Dataset(db.Model):
 
     @property
     def app_count(self):
-        return db.session.query(func.count(AppDatasetJoin.id)).filter(AppDatasetJoin.dataset_id == self.id).scalar()
+        return db.session.query(func.count(AppDatasetJoin.id)).filter(AppDatasetJoin.dataset_id == self.id,
+                                                                      App.id == AppDatasetJoin.app_id).scalar()
 
     @property
     def document_count(self):
@@ -269,7 +270,7 @@ class Document(db.Model):
         255), nullable=False, server_default=db.text("'text_model'::character varying"))
     doc_language = db.Column(db.String(255), nullable=True)
 
-    DATA_SOURCES = ['upload_file', 'notion_import']
+    DATA_SOURCES = ['upload_file', 'notion_import', 'website_crawl']
 
     @property
     def display_status(self):
@@ -321,7 +322,7 @@ class Document(db.Model):
                             'created_at': file_detail.created_at.timestamp()
                         }
                     }
-            elif self.data_source_type == 'notion_import':
+            elif self.data_source_type == 'notion_import' or self.data_source_type == 'website_crawl':
                 return json.loads(self.data_source_info)
         return {}
 

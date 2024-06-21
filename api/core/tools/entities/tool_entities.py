@@ -1,10 +1,28 @@
 from enum import Enum
 from typing import Any, Optional, Union, cast
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from core.tools.entities.common_entities import I18nObject
 
+
+class ToolLabelEnum(Enum):
+    SEARCH = 'search'
+    IMAGE = 'image'
+    VIDEOS = 'videos'
+    WEATHER = 'weather'
+    FINANCE = 'finance'
+    DESIGN = 'design'
+    TRAVEL = 'travel'
+    SOCIAL = 'social'
+    NEWS = 'news'
+    MEDICAL = 'medical'
+    PRODUCTIVITY = 'productivity'
+    EDUCATION = 'education'
+    BUSINESS = 'business'
+    ENTERTAINMENT = 'entertainment'
+    UTILITIES = 'utilities'
+    OTHER = 'other'
 
 class ToolProviderType(Enum):
     """
@@ -98,8 +116,17 @@ class ToolParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
 
+    @field_validator('value', mode='before')
+    @classmethod
+    def transform_id_to_str(cls, value) -> str:
+        if not isinstance(value, str):
+            return str(value)
+        else:
+            return value
+
+
 class ToolParameter(BaseModel):
-    class ToolParameterType(Enum):
+    class ToolParameterType(str, Enum):
         STRING = "string"
         NUMBER = "number"
         BOOLEAN = "boolean"
@@ -157,6 +184,7 @@ class ToolProviderIdentity(BaseModel):
     description: I18nObject = Field(..., description="The description of the tool")
     icon: str = Field(..., description="The icon of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
+    tags: Optional[list[ToolLabelEnum]] = Field(default=[], description="The tags of the tool", )
 
 class ToolDescription(BaseModel):
     human: I18nObject = Field(..., description="The description presented to the user")
@@ -258,7 +286,7 @@ class ToolRuntimeVariablePool(BaseModel):
             'conversation_id': self.conversation_id,
             'user_id': self.user_id,
             'tenant_id': self.tenant_id,
-            'pool': [variable.dict() for variable in self.pool],
+            'pool': [variable.model_dump() for variable in self.pool],
         }
     
     def set_text(self, tool_name: str, name: str, value: str) -> None:

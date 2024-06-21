@@ -37,7 +37,7 @@ export type AppCardProps = {
 const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 
@@ -116,7 +116,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         onRefresh()
       mutateApps()
       onPlanInfoChanged()
-      getRedirection(isCurrentWorkspaceManager, newApp, push)
+      getRedirection(isCurrentWorkspaceEditor, newApp, push)
     }
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
@@ -224,7 +224,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       <div
         onClick={(e) => {
           e.preventDefault()
-          getRedirection(isCurrentWorkspaceManager, app, push)
+          getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
         className='group flex col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
       >
@@ -298,7 +298,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               />
             </div>
           </div>
-          {isCurrentWorkspaceManager && (
+          {isCurrentWorkspaceEditor && (
             <>
               <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200'/>
               <div className='!hidden group-hover:!flex shrink-0'>
