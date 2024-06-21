@@ -43,15 +43,13 @@ const Panel: FC = () => {
 
   const [tracingStatus, setTracingStatus] = useState<TracingStatus | null>(null)
   const enabled = tracingStatus?.enabled || false
-  const handleTracingStatusChange = async (tracingStatus: TracingStatus, noToast?: boolean) => {
+  const handleTracingStatusChange = async (tracingStatus: TracingStatus) => {
     await updateTracingStatus({ appId, body: tracingStatus })
     setTracingStatus(tracingStatus)
-    if (!noToast) {
-      Toast.notify({
-        type: 'success',
-        message: t('common.api.success'),
-      })
-    }
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.success'),
+    })
   }
 
   const handleTracingEnabledChange = (enabled: boolean) => {
@@ -94,12 +92,6 @@ const Panel: FC = () => {
       setLangSmithConfig(null)
     else
       setLangFuseConfig(null)
-    if (provider === inUseTracingProvider) {
-      handleTracingStatusChange({
-        enabled: false,
-        tracing_provider: null,
-      }, true)
-    }
   }
 
   useEffect(() => {
@@ -163,7 +155,7 @@ const Panel: FC = () => {
     <div className='mb-3 flex justify-between items-center'>
       <Title />
       <div className='flex items-center p-2 rounded-xl border-[0.5px] border-gray-200 shadow-xs hover:bg-gray-100'>
-        {!inUseTracingProvider
+        {!hasConfiguredTracing
           ? <>
             <TracingIcon size='md' className='mr-2' />
             <div className='leading-5 text-sm font-semibold text-gray-700'>{t(`${I18N_PREFIX}.title`)}</div>
