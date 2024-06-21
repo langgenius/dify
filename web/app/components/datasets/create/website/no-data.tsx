@@ -27,7 +27,7 @@ const NoData: FC<Props> = ({
           {t(`${I18N_PREFIX}.fireCrawlNotConfiguredDescription`)}
         </div>
       </div>
-      <Button variant='primary' onClick={onConfig} className='!h-8 text-[13px] font-medium ' >
+      <Button variant='primary' onClick={onConfig}>
         {t(`${I18N_PREFIX}.configure`)}
       </Button>
     </div>
