@@ -4,7 +4,7 @@
 
 ```bash
 cd docker
-docker compose -f docker-compose.middleware.yaml up -d
+sudo docker compose -f docker-compose.middleware.yaml up -d
 ```
 
 ```bash
