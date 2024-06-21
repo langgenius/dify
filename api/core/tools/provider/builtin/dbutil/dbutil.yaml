@@ -1,14 +1,14 @@
-identity: # 工具供应商的基本信息
-  author: Nut # 作者
-  name: dbutil # 名称，唯一，不允许和其他供应商重名
-  label: # 标签，用于前端展示
-    en_US: DbUtil # 英文标签
-    zh_Hans: DbUtil # 中文标签
-  description: # 描述，用于前端展示
-    en_US: DbUtil # 英文描述
-    zh_Hans: DbUtil # 中文描述
-  icon: icon.svg # 图标，需要放置在当前模块的_assets文件夹下
-  tags: # 标签，用于前端展示
+identity:
+  author: Nut
+  name: dbutil
+  label:
+    en_US: DbUtil
+    zh_Hans: DbUtil
+  description:
+    en_US: Database Utils
+    zh_Hans: 数据库查询工具
+  icon: icon.svg
+  tags:
     - utilities
 credentials_for_provider:
 

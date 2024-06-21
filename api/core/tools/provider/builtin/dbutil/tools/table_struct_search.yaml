@@ -1,0 +1,52 @@
+identity:
+  name: table_struct_search
+  author: Nut
+  label:
+    en_US: tableStructSearchUtil
+    zh_Hans: 表结构查询
+description:
+  human:
+    en_US: A tool for table struct search.
+    zh_Hans: 一个用于查询表结构的工具。输入应该是一个搜索查询。
+  llm: A tool for table struct search.Input should be a search query.
+parameters:
+  - name: db_type
+    type: select
+    required: true
+    options:
+      - value: mysql
+        label:
+          en_US: mysql
+          zh_Hans: mysql
+    default: mysql
+    label:
+      en_US: Database type
+      zh_Hans: 数据库类型
+    human_description:
+      en_US: used for selecting the database type, mysql or other
+      zh_Hans: 用于选择数据库类型
+    form: form
+  - name: db_connection
+    type: string
+    required: true
+    label:
+      en_US: DB connections
+      zh_Hans: 数据库连接
+    human_description:
+      en_US: DB connection url,example：mysql+pymysql://root:xxxxx@localhost:3306/test
+      zh_Hans: DB连接字符串,例如：mysql+pymysql://root:xxxxx@localhost:3306/test
+    llm_description: DB connections
+    form: form
+  - name: query_tbl
+    type: string
+    required: true
+    label:
+      en_US: table name
+      zh_Hans: 表名
+    human_description:
+      en_US: table name
+      zh_Hans: 表名
+    llm_description: sql for searching
+    form: llm
+
+

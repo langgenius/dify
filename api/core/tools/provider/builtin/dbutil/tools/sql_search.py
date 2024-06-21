@@ -1,14 +1,13 @@
 import json
 from typing import Any, Union
-import logging
 import datetime
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.provider.builtin.dbutil.tools.use_db import use_db
+from core.tools.provider.builtin.dbutil.tools.use_db_util import useDbUtil
 from pandas import Timestamp
 
-class SqlutilTool(BuiltinTool):
+class SqlSearchTool(BuiltinTool):
     def _invoke(
         self, user_id: str, tool_parameters: dict[str, Any]
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
@@ -17,32 +16,32 @@ class SqlutilTool(BuiltinTool):
         """
         db_type = tool_parameters.get("db_type", "")
         if not db_type:
-            return self.create_text_message("请选择数据库类型")
+            return self.create_text_message("Please select the database type")
         db_connection = tool_parameters.get("db_connection", "")
         if not db_connection:
-            return self.create_text_message("请填写数据库链接信息，例如：mysql+pymysql://admin:admin@localhost:13306/qabi")
+            return self.create_text_message("Please fill in the database link information, such as：mysql+pymysql://admin:admin@localhost:13306/test")
         query_sql = tool_parameters.get("query_sql", "")
         if not query_sql:
-            return self.create_text_message("请填写查询sql，例如：select * from tbl_name")
+            return self.create_text_message("Please fill in the query SQL, for example：select * from tbl_name")
 
-        use_chiness_colname = tool_parameters.get("use_chiness_colname", "")
+        use_comment_colname = tool_parameters.get("use_comment_colname", "")
         table_name = tool_parameters.get("table_name", "")
         try:
-            db = use_db(db_connection, logging)
+            db = useDbUtil(db_connection)
 
         except Exception as e:
             return self.create_text_message(
-                "创建数据库链接异常. {}".format(e)
+                "Database link creation exception. {}".format(e)
             )
 
         try:
             records = db.run_query(query_sql)
-            logging.info("db result(%s): %s", type(records), records)
 
             if records == None:
                 records = []
 
-            if table_name and 'True'==use_chiness_colname:
+            # Replace column name with comment
+            if table_name and 'True'==use_comment_colname:
                 col_name: dict = db.get_columns_dict(table_name)
                 if col_name:
                     n = len(records)
@@ -55,10 +54,8 @@ class SqlutilTool(BuiltinTool):
             for record in records:
                 for key in record:
                     if type(record[key]) is Timestamp:
-                        #logging.info(record[key])
                         record[key] = record[key].strftime('%Y-%m-%d %H:%M:%S')
                     if type(record[key]) is datetime.date:
-                        #logging.info(record[key])
                         record[key] = record[key].strftime('%Y-%m-%d')
                     if record[key] is None:
                         record[key] = 'None'
@@ -66,8 +63,7 @@ class SqlutilTool(BuiltinTool):
             return self.create_text_message(
                 json.dumps(records, ensure_ascii=False)
             )
-            #return json.dumps(error_message)
         except Exception as e:
             return self.create_text_message(
-                "执行sql异常. {}".format(e)
+                "SQL execution exception. {}".format(e)
             )

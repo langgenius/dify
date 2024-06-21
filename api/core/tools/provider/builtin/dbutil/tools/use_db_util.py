@@ -1,16 +1,10 @@
 from sqlalchemy import create_engine, text
 import pandas as pd
-import logging
 
-
-class use_db():
-    def __init__(self, connection_string: str, logger: logging) -> None:
+class useDbUtil():
+    def __init__(self, connection_string: str) -> None:
         self.connection_string = connection_string
-        self.logger = logger
         self.engine = create_engine(self.connection_string, pool_size=100,pool_recycle=36)
-
-    # def get_engine(self):
-    #     return create_engine(self.connection_string)
 
     def run_query(self, query_string: str):
         '''
@@ -20,7 +14,6 @@ class use_db():
         if query_string == '':
             return None
         try:
-            # engine = self.get_engine()
             query_string = query_string.replace('%', '%%')
             df = pd.read_sql_query(query_string, self.engine, parse_dates="%Y-%m-%d %H:%M:%S")
             df = df.fillna('')
@@ -61,7 +54,7 @@ class use_db():
 
     def get_structure_colzhnames(self, table):
         '''
-        Get a table structure with its col types, return in string
+        Get a table structure with its col comment, return in string
         parma: table: table name
         '''
         fields = self.get_fields(table)
@@ -75,7 +68,6 @@ class use_db():
         '''
         Only use this function to get the root databases.
         '''
-        # engine = self.get_engine()
         cursor = self.engine.connect().execute(text("show databases;"))
         results = cursor.fetchall()
         return [
@@ -86,7 +78,6 @@ class use_db():
 
     def get_fields(self, table_name):
         """Get column fields about specified table."""
-        # engine = self.get_engine()
         cursor = self.engine.connect().execute(
             text(
                 f"SELECT COLUMN_NAME, COLUMN_COMMENT,DATA_TYPE  from information_schema.COLUMNS where table_name='{table_name}'".format(
@@ -99,7 +90,6 @@ class use_db():
 
     def get_table_comments(self, db_name):
         """get table's comment"""
-        # engine = self.get_engine()
         cursor = self.engine.connect().execute(
             text(
                 f"""SELECT table_name, table_comment FROM information_schema.tables   WHERE table_schema = '{db_name}'""".format(
@@ -116,13 +106,8 @@ class use_db():
 
         return names, comments
 
-        # return [
-        #     (table_comment[0], table_comment[1]) for table_comment in table_comments
-        # ]
-
     def get_create_table(self, table_name):
         """get table schema"""
-        # engine = self.get_engine()
         cursor = self.engine.connect().execute(
             text(
                 f"""SHOW CREATE TABLE {table_name}""".format(
@@ -151,12 +136,7 @@ class use_db():
             )
         )
         fields = cursor.fetchall()
-        print(fields)
         dic: dict = {}
         for field in fields:
-            print(field)
-            print(field[0],"-----------",field[1])
-
             dic[field[0]]=str(field[1])
-        print("use_db.get_columns_dict.dic---------------------------------",dic)    
         return dic
