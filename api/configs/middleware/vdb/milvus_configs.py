@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, PositiveInt
 
 
-class MilvusConfigs(BaseModel):
+class MilvusConfig(BaseModel):
     """
     Milvus configs
     """
