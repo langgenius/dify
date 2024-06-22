@@ -39,7 +39,7 @@ parameter_rules:
     default: 1024
     max: 4096
 pricing:
-  input: '0.5'
-  output: '1.5'
-  unit: '0.000001'
+  input: "0.5"
+  output: "1.5"
+  unit: "0.000001"
   currency: USD

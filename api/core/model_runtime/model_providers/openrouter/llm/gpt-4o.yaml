@@ -37,7 +37,7 @@ parameter_rules:
       - text
       - json_object
 pricing:
-  input: '5.00'
-  output: '15.00'
-  unit: '0.000001'
+  input: "5.00"
+  output: "15.00"
+  unit: "0.000001"
   currency: USD

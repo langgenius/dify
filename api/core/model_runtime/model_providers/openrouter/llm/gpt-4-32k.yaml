@@ -29,9 +29,11 @@ parameter_rules:
       en_US: Seed
     type: int
     help:
-      zh_Hans: 如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint
+      zh_Hans:
+        如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint
         响应参数来监视变化。
-      en_US: If specified, model will make a best effort to sample deterministically,
+      en_US:
+        If specified, model will make a best effort to sample deterministically,
         such that repeated requests with the same seed and parameters should return
         the same result. Determinism is not guaranteed, and you should refer to the
         system_fingerprint response parameter to monitor changes in the backend.
@@ -49,7 +51,7 @@ parameter_rules:
       - text
       - json_object
 pricing:
-  input: '0.06'
-  output: '0.12'
-  unit: '0.001'
+  input: "0.06"
+  output: "0.12"
+  unit: "0.001"
   currency: USD

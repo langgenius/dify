@@ -33,7 +33,7 @@ parameter_rules:
   - name: response_format
     use_template: response_format
 pricing:
-  input: '15.00'
-  output: '75.00'
-  unit: '0.000001'
+  input: "15.00"
+  output: "75.00"
+  unit: "0.000001"
   currency: USD
