@@ -16,7 +16,7 @@ const ContrlBtnGroup: FC<IContrlBtnGroupProps> = ({ onSave, onReset }) => {
     <div className="fixed left-[224px] bottom-0 w-[519px] h-[64px]">
       <div className={`${s.ctrlBtn} flex items-center h-full pl-4  gap-2 bg-white`}>
         <Button variant='primary' onClick={onSave}>{t('appDebug.operation.applyConfig')}</Button>
-        <Button variant='default' onClick={onReset}>{t('appDebug.operation.resetConfig')}</Button>
+        <Button onClick={onReset}>{t('appDebug.operation.resetConfig')}</Button>
       </div>
     </div>
   )

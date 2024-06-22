@@ -95,8 +95,8 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         </div>
       </div>
       <div className='pt-6 flex justify-end'>
-        <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onClose}>{t('common.operation.cancel')}</Button>
-        <Button className='text-sm font-medium' disabled={loading} variant="primary" onClick={onConfirm}>{t('common.operation.save')}</Button>
+        <Button className='mr-2' onClick={onClose}>{t('common.operation.cancel')}</Button>
+        <Button disabled={loading} variant="primary" onClick={onConfirm}>{t('common.operation.save')}</Button>
       </div>
     </Modal>
   )

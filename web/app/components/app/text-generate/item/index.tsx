@@ -28,6 +28,7 @@ import EditReplyModal from '@/app/components/app/annotation/edit-annotation-moda
 import { useStore as useAppStore } from '@/app/components/app/store'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import type { SiteInfo } from '@/models/share'
 
 const MAX_DEPTH = 3
 
@@ -62,6 +63,7 @@ export type IGenerationItemProps = {
   contentClassName?: string
   footerClassName?: string
   hideProcessDetail?: boolean
+  siteInfo: SiteInfo | null
 }
 
 export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
@@ -113,6 +115,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   innerClassName,
   contentClassName,
   hideProcessDetail,
+  siteInfo,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -152,6 +155,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     installedAppId,
     controlClearMoreLikeThis,
     isWorkflow,
+    siteInfo,
   }
 
   const handleMoreLikeThis = async () => {
@@ -297,7 +301,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             }
             <div className={`flex ${contentClassName}`}>
               <div className='grow w-0'>
-                {workflowProcessData && (
+                {siteInfo && siteInfo.show_workflow_steps && workflowProcessData && (
                   <WorkflowProcessItem grayBg hideInfo data={workflowProcessData} expand={workflowProcessData.expand} hideProcessDetail={hideProcessDetail} />
                 )}
                 {workflowProcessData && !isError && (
