@@ -8,20 +8,20 @@ from configs.middleware.storage.amazon_s3_storage_config import S3StorageConfig
 from configs.middleware.storage.azure_blob_storage_config import AzureBlobStorageConfig
 from configs.middleware.storage.google_cloud_storage_config import GoogleCloudStorageConfig
 from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
-from configs.middleware.vdb.chroma_configs import ChromaConfigs
-from configs.middleware.vdb.milvus_configs import MilvusConfigs
-from configs.middleware.vdb.opensearch_configs import OpenSearchConfigs
-from configs.middleware.vdb.oracle_configs import OracleConfigs
-from configs.middleware.vdb.pgvector_configs import PGVectorConfigs
-from configs.middleware.vdb.pgvectors_configs import PGVectoRSConfigs
-from configs.middleware.vdb.qdrant_configs import QdrantConfigs
-from configs.middleware.vdb.relyt_configs import RelytConfigs
-from configs.middleware.vdb.tencent_vector_configs import TencentVectorDBConfigs
-from configs.middleware.vdb.tidb_vector_configs import TiDBVectorConfigs
-from configs.middleware.vdb.weaviate_configs import WeaviateConfigs
+from configs.middleware.vdb.chroma_config import ChromaConfig
+from configs.middleware.vdb.milvus_config import MilvusConfig
+from configs.middleware.vdb.opensearch_config import OpenSearchConfig
+from configs.middleware.vdb.oracle_config import OracleConfig
+from configs.middleware.vdb.pgvector_config import PGVectorConfig
+from configs.middleware.vdb.pgvectors_config import PGVectoRSConfig
+from configs.middleware.vdb.qdrant_config import QdrantConfig
+from configs.middleware.vdb.relyt_config import RelytConfig
+from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
+from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
+from configs.middleware.vdb.weaviate_config import WeaviateConfig
 
 
-class StorageConfigs(BaseModel):
+class StorageConfig(BaseModel):
     STORAGE_TYPE: str = Field(
         description='storage type,'
                     ' default to `local`,'
@@ -35,21 +35,21 @@ class StorageConfigs(BaseModel):
     )
 
 
-class VectorStoreConfigs(BaseModel):
+class VectorStoreConfig(BaseModel):
     VECTOR_STORE: Optional[str] = Field(
         description='vector store type',
         default=None,
     )
 
 
-class KeywordStoreConfigs(BaseModel):
+class KeywordStoreConfig(BaseModel):
     KEYWORD_STORE: str = Field(
         description='keyword store type',
         default='jieba',
     )
 
 
-class DatabaseConfigs:
+class DatabaseConfig:
     DB_HOST: str = Field(
         description='db host',
         default='localhost',
@@ -130,7 +130,7 @@ class DatabaseConfigs:
         }
 
 
-class CeleryConfigs(DatabaseConfigs):
+class CeleryConfig(DatabaseConfig):
     CELERY_BACKEND: str = Field(
         description='Celery backend, available values are `database`, `redis`',
         default='database',
@@ -155,13 +155,13 @@ class CeleryConfigs(DatabaseConfigs):
 
 class MiddlewareConfig(
     # place the configs in alphabet order
-    CeleryConfigs,
-    DatabaseConfigs,
-    KeywordStoreConfigs,
+    CeleryConfig,
+    DatabaseConfig,
+    KeywordStoreConfig,
     RedisConfig,
 
     # configs of storage and storage providers
-    StorageConfigs,
+    StorageConfig,
     AliyunOSSStorageConfig,
     AzureBlobStorageConfig,
     GoogleCloudStorageConfig,
@@ -169,17 +169,17 @@ class MiddlewareConfig(
     S3StorageConfig,
 
     # configs of vdb and vdb providers
-    VectorStoreConfigs,
-    ChromaConfigs,
-    MilvusConfigs,
-    OpenSearchConfigs,
-    OracleConfigs,
-    PGVectorConfigs,
-    PGVectoRSConfigs,
-    QdrantConfigs,
-    RelytConfigs,
-    TencentVectorDBConfigs,
-    TiDBVectorConfigs,
-    WeaviateConfigs,
+    VectorStoreConfig,
+    ChromaConfig,
+    MilvusConfig,
+    OpenSearchConfig,
+    OracleConfig,
+    PGVectorConfig,
+    PGVectoRSConfig,
+    QdrantConfig,
+    RelytConfig,
+    TencentVectorDBConfig,
+    TiDBVectorConfig,
+    WeaviateConfig,
 ):
     pass

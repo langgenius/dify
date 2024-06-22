@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, PositiveInt
 
 
-class TiDBVectorConfigs(BaseModel):
+class TiDBVectorConfig(BaseModel):
     """
     TiDB Vector configs
     """
