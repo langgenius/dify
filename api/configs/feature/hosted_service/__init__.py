@@ -68,6 +68,32 @@ class HostedOpenAiConfig(BaseModel):
     )
 
 
+class HostedAzureOpenAiConfig(BaseModel):
+    """
+    Hosted OpenAI service config
+    """
+
+    HOSTED_AZURE_OPENAI_ENABLED: bool = Field(
+        description='',
+        default=False,
+    )
+
+    HOSTED_OPENAI_API_KEY: Optional[str] = Field(
+        description='',
+        default=None,
+    )
+
+    HOSTED_AZURE_OPENAI_API_BASE: Optional[str] = Field(
+        description='',
+        default=None,
+    )
+
+    HOSTED_AZURE_OPENAI_QUOTA_LIMIT: NonNegativeInt = Field(
+        description='',
+        default=200,
+    )
+
+
 class HostedAnthropicConfig(BaseModel):
     """
     Hosted Azure OpenAI service config
@@ -99,8 +125,84 @@ class HostedAnthropicConfig(BaseModel):
     )
 
 
+class HostedMinmaxConfig(BaseModel):
+    """
+    Hosted Minmax service config
+    """
+
+    HOSTED_MINIMAX_ENABLED: bool = Field(
+        description='',
+        default=False,
+    )
+
+
+class HostedSparkConfig(BaseModel):
+    """
+    Hosted Spark service config
+    """
+
+    HOSTED_SPARK_ENABLED: bool = Field(
+        description='',
+        default=False,
+    )
+
+
+class HostedZhipuAIConfig(BaseModel):
+    """
+    Hosted Minmax service config
+    """
+
+    HOSTED_ZHIPUAI_ENABLED: bool = Field(
+        description='',
+        default=False,
+    )
+
+
+class HostedModerationConfig(BaseModel):
+    """
+    Hosted Moderation service config
+    """
+
+    HOSTED_MODERATION_ENABLED: bool = Field(
+        description='',
+        default=False,
+    )
+
+    HOSTED_MODERATION_PROVIDERS: str = Field(
+        description='',
+        default='',
+    )
+
+
+class HostedFetchAppTemplateConfig(BaseModel):
+    """
+    Hosted Moderation service config
+    """
+
+    HOSTED_FETCH_APP_TEMPLATES_MODE: str = Field(
+        description='the mode for fetching app templates,'
+                    ' default to remote,'
+                    ' available values: remote, db, builtin',
+        default='remote',
+    )
+
+    HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN: str = Field(
+        description='the domain for fetching remote app templates',
+        default='https://tmpl.dify.ai',
+    )
+
+
 class HostedServiceConfig(
-    HostedOpenAiConfig,
+    # place the configs in alphabet order
     HostedAnthropicConfig,
+    HostedAzureOpenAiConfig,
+    HostedFetchAppTemplateConfig,
+    HostedMinmaxConfig,
+    HostedOpenAiConfig,
+    HostedSparkConfig,
+    HostedZhipuAIConfig,
+
+    # moderation
+    HostedModerationConfig,
 ):
     pass
