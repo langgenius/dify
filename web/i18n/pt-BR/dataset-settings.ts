@@ -14,7 +14,7 @@ const translation = {
     permissionsAllMember: 'Todos os membros da equipe',
     indexMethod: 'Método de indexação',
     indexMethodHighQuality: 'Alta qualidade',
-    indexMethodHighQualityTip: 'Chame a interface de incorporação da OpenAI para processamento, fornecendo maior precisão quando os usuários consultam.',
+    indexMethodHighQualityTip: 'Invocar o modelo de Embedding para processamento para fornecer maior precisão nas consultas dos usuários.',
     indexMethodEconomy: 'Econômico',
     indexMethodEconomyTip: 'Use motores de vetor offline, índices de palavras-chave, etc. para reduzir a precisão sem gastar tokens.',
     embeddingModel: 'Modelo de incorporação',

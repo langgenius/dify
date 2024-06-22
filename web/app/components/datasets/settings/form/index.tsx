@@ -243,8 +243,8 @@ const Form = () => {
           <div className={labelClass} />
           <div className='w-[480px]'>
             <Button
-              className='min-w-24 text-sm'
-              type='primary'
+              className='min-w-24'
+              variant='primary'
               onClick={handleSave}
             >
               {t('datasetSettings.form.save')}

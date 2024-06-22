@@ -61,8 +61,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         # convert tools into ModelRuntime Tool format
         tool_instances, self._prompt_messages_tools = self._init_prompt_tools()
 
-        prompt_messages = self._organize_prompt_messages()
-
         function_call_state = True
         llm_usage = {
             'usage': None

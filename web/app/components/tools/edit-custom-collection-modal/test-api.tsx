@@ -107,7 +107,7 @@ const TestApi: FC<Props> = ({
               </div>
 
             </div>
-            <Button type='primary' className=' mt-4 w-full h-10 !text-[13px] leading-[18px] font-medium' onClick={handleTest}>{t('tools.test.title')}</Button>
+            <Button variant='primary' className=' mt-4 w-full h-10' onClick={handleTest}>{t('tools.test.title')}</Button>
             <div className='mt-6'>
               <div className='flex items-center space-x-3'>
                 <div className='leading-[18px] text-xs font-semibold text-gray-500'>{t('tools.test.testResult')}</div>
