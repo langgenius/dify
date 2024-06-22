@@ -68,5 +68,39 @@ class HostedOpenAiConfig(BaseModel):
     )
 
 
-class HostedServiceConfig:
+class HostedAnthropicConfig(BaseModel):
+    """
+    Hosted Azure OpenAI service config
+    """
+
+    HOSTED_ANTHROPIC_API_BASE: Optional[str] = Field(
+        description='',
+        default=None,
+    )
+
+    HOSTED_ANTHROPIC_API_KEY: Optional[str] = Field(
+        description='',
+        default=None,
+    )
+
+    HOSTED_ANTHROPIC_TRIAL_ENABLED: bool = Field(
+        description='',
+        default=False,
+    )
+
+    HOSTED_ANTHROPIC_QUOTA_LIMIT: NonNegativeInt = Field(
+        description='',
+        default=600000,
+    )
+
+    HOSTED_ANTHROPIC_PAID_ENABLED: bool = Field(
+        description='',
+        default=False,
+    )
+
+
+class HostedServiceConfig(
+    HostedOpenAiConfig,
+    HostedAnthropicConfig,
+):
     pass
