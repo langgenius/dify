@@ -23,3 +23,8 @@ parameter_rules:
     min: 1
     max: 4096
     default: 1024
+pricing:
+  input: "0.14"
+  output: "0.28"
+  unit: "0.000001"
+  currency: USD
