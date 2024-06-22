@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt
 
 
-class RedisConfigs(BaseModel):
+class RedisConfig(BaseModel):
     """
     Redis configs
     """

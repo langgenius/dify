@@ -1,14 +1,14 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from configs.deploy import DeploymentConfigs
-from configs.enterprise import EnterpriseFeatureConfigs
-from configs.extra import ExtraServiceConfigs
-from configs.feature import FeatureConfigs
-from configs.middleware import MiddlewareConfigs
+from configs.deploy import DeploymentConfig
+from configs.enterprise import EnterpriseFeatureConfig
+from configs.extra import ExtraServiceConfig
+from configs.feature import FeatureConfig
+from configs.middleware import MiddlewareConfig
 from configs.packaging import PackagingInfo
 
 
-class DifyConfigs(
+class DifyConfig(
     # based on pydantic-settings
     BaseSettings,
 
@@ -16,20 +16,20 @@ class DifyConfigs(
     PackagingInfo,
 
     # Deployment configs
-    DeploymentConfigs,
+    DeploymentConfig,
 
     # Feature configs
-    FeatureConfigs,
+    FeatureConfig,
 
     # Middleware configs
-    MiddlewareConfigs,
+    MiddlewareConfig,
 
     # Extra service configs
-    ExtraServiceConfigs,
+    ExtraServiceConfig,
 
     # Enterprise feature configs
     # **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
-    EnterpriseFeatureConfigs,
+    EnterpriseFeatureConfig,
 ):
 
     model_config = SettingsConfigDict(
