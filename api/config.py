@@ -5,6 +5,7 @@ import dotenv
 DEFAULTS = {
 }
 
+
 def get_env(key):
     return os.environ.get(key, DEFAULTS.get(key))
 
