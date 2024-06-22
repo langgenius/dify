@@ -51,9 +51,6 @@ const ConfigFirecrawlModal: FC<Props> = ({
           field: 'API Key',
         })
       }
-      else if (!config.api_key.startsWith('fc-')) {
-        errorMsg = t(`${I18N_PREFIX}.apiKeyFormatError`)
-      }
     }
 
     if (errorMsg) {
