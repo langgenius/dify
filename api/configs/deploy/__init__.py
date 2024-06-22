@@ -5,6 +5,11 @@ class DeploymentConfig(BaseModel):
     """
     Deployment configs
     """
+    TESTING: bool = Field(
+        description='',
+        default=False,
+    )
+
     EDITION: str = Field(
         description='deployment edition',
         default='SELF_HOSTED',
