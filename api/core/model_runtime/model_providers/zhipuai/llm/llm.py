@@ -10,8 +10,8 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageRole,
     PromptMessageTool,
     SystemPromptMessage,
+    ToolPromptMessage,
     UserPromptMessage,
-    ToolPromptMessage
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
