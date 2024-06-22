@@ -9,8 +9,6 @@ DEFAULTS = {
     'DB_PORT': '5432',
     'DB_DATABASE': 'dify',
     'DB_CHARSET': '',
-    'S3_USE_AWS_MANAGED_IAM': 'False',
-    'S3_ADDRESS_STYLE': 'auto',
     'SQLALCHEMY_DATABASE_URI_SCHEME': 'postgresql',
     'SQLALCHEMY_POOL_SIZE': 30,
     'SQLALCHEMY_MAX_OVERFLOW': 10,
@@ -99,41 +97,6 @@ class Config:
         self.CELERY_RESULT_BACKEND = 'db+{}'.format(self.SQLALCHEMY_DATABASE_URI) \
             if self.CELERY_BACKEND == 'database' else self.CELERY_BROKER_URL
         self.BROKER_USE_SSL = self.CELERY_BROKER_URL.startswith('rediss://') if self.CELERY_BROKER_URL else False
-
-
-        # S3 Storage settings
-        self.S3_USE_AWS_MANAGED_IAM = get_bool_env('S3_USE_AWS_MANAGED_IAM')
-        self.S3_ENDPOINT = get_env('S3_ENDPOINT')
-        self.S3_BUCKET_NAME = get_env('S3_BUCKET_NAME')
-        self.S3_ACCESS_KEY = get_env('S3_ACCESS_KEY')
-        self.S3_SECRET_KEY = get_env('S3_SECRET_KEY')
-        self.S3_REGION = get_env('S3_REGION')
-        self.S3_ADDRESS_STYLE = get_env('S3_ADDRESS_STYLE')
-
-        # Azure Blob Storage settings
-        self.AZURE_BLOB_ACCOUNT_NAME = get_env('AZURE_BLOB_ACCOUNT_NAME')
-        self.AZURE_BLOB_ACCOUNT_KEY = get_env('AZURE_BLOB_ACCOUNT_KEY')
-        self.AZURE_BLOB_CONTAINER_NAME = get_env('AZURE_BLOB_CONTAINER_NAME')
-        self.AZURE_BLOB_ACCOUNT_URL = get_env('AZURE_BLOB_ACCOUNT_URL')
-
-        # Aliyun Storage settings
-        self.ALIYUN_OSS_BUCKET_NAME = get_env('ALIYUN_OSS_BUCKET_NAME')
-        self.ALIYUN_OSS_ACCESS_KEY = get_env('ALIYUN_OSS_ACCESS_KEY')
-        self.ALIYUN_OSS_SECRET_KEY = get_env('ALIYUN_OSS_SECRET_KEY')
-        self.ALIYUN_OSS_ENDPOINT = get_env('ALIYUN_OSS_ENDPOINT')
-        self.ALIYUN_OSS_REGION = get_env('ALIYUN_OSS_REGION')
-        self.ALIYUN_OSS_AUTH_VERSION = get_env('ALIYUN_OSS_AUTH_VERSION')
-
-        # Google Cloud Storage settings
-        self.GOOGLE_STORAGE_BUCKET_NAME = get_env('GOOGLE_STORAGE_BUCKET_NAME')
-        self.GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 = get_env('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')
-
-        # Tencent Cos Storage settings
-        self.TENCENT_COS_BUCKET_NAME = get_env('TENCENT_COS_BUCKET_NAME')
-        self.TENCENT_COS_REGION = get_env('TENCENT_COS_REGION')
-        self.TENCENT_COS_SECRET_ID = get_env('TENCENT_COS_SECRET_ID')
-        self.TENCENT_COS_SECRET_KEY = get_env('TENCENT_COS_SECRET_KEY')
-        self.TENCENT_COS_SCHEME = get_env('TENCENT_COS_SCHEME')
 
         # ------------------------
         # Platform Configurations.
