@@ -2,6 +2,8 @@ from typing import Optional
 
 from pydantic import AliasChoices, BaseModel, Field, NonNegativeInt, PositiveInt
 
+from configs.feature.hosted_service import HostedServiceConfig
+
 
 class SecurityConfig(BaseModel):
     """
@@ -421,5 +423,8 @@ class FeatureConfig(
     UpdateConfig,
     WorkflowConfig,
     WorkspaceConfig,
+
+    # hosted services config
+    HostedServiceConfig,
 ):
     pass
