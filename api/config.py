@@ -3,19 +3,6 @@ import os
 import dotenv
 
 DEFAULTS = {
-    'DB_USERNAME': 'postgres',
-    'DB_PASSWORD': '',
-    'DB_HOST': 'localhost',
-    'DB_PORT': '5432',
-    'DB_DATABASE': 'dify',
-    'DB_CHARSET': '',
-    'SQLALCHEMY_DATABASE_URI_SCHEME': 'postgresql',
-    'SQLALCHEMY_POOL_SIZE': 30,
-    'SQLALCHEMY_MAX_OVERFLOW': 10,
-    'SQLALCHEMY_POOL_RECYCLE': 3600,
-    'SQLALCHEMY_POOL_PRE_PING': 'False',
-    'SQLALCHEMY_ECHO': 'False',
-    'CELERY_BACKEND': 'database',
     'HOSTED_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_OPENAI_TRIAL_ENABLED': 'False',
     'HOSTED_OPENAI_TRIAL_MODELS': 'gpt-3.5-turbo,gpt-3.5-turbo-1106,gpt-3.5-turbo-instruct,gpt-3.5-turbo-16k,gpt-3.5-turbo-16k-0613,gpt-3.5-turbo-0613,gpt-3.5-turbo-0125,text-davinci-003',
@@ -66,37 +53,6 @@ class Config:
             'CONSOLE_CORS_ALLOW_ORIGINS', get_env('CONSOLE_WEB_URL'))
         self.WEB_API_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
             'WEB_API_CORS_ALLOW_ORIGINS', '*')
-
-        # ------------------------
-        # Database Configurations.
-        # ------------------------
-        db_credentials = {
-            key: get_env(key) for key in
-            ['DB_USERNAME', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_CHARSET']
-        }
-        self.SQLALCHEMY_DATABASE_URI_SCHEME = get_env('SQLALCHEMY_DATABASE_URI_SCHEME')
-
-        db_extras = f"?client_encoding={db_credentials['DB_CHARSET']}" if db_credentials['DB_CHARSET'] else ""
-
-        self.SQLALCHEMY_DATABASE_URI = f"{self.SQLALCHEMY_DATABASE_URI_SCHEME}://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
-        self.SQLALCHEMY_ENGINE_OPTIONS = {
-            'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
-            'max_overflow': int(get_env('SQLALCHEMY_MAX_OVERFLOW')),
-            'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE')),
-            'pool_pre_ping': get_bool_env('SQLALCHEMY_POOL_PRE_PING'),
-            'connect_args': {'options': '-c timezone=UTC'},
-        }
-
-        self.SQLALCHEMY_ECHO = get_bool_env('SQLALCHEMY_ECHO')
-
-        # ------------------------
-        # Celery worker Configurations.
-        # ------------------------
-        self.CELERY_BROKER_URL = get_env('CELERY_BROKER_URL')
-        self.CELERY_BACKEND = get_env('CELERY_BACKEND')
-        self.CELERY_RESULT_BACKEND = 'db+{}'.format(self.SQLALCHEMY_DATABASE_URI) \
-            if self.CELERY_BACKEND == 'database' else self.CELERY_BROKER_URL
-        self.BROKER_USE_SSL = self.CELERY_BROKER_URL.startswith('rediss://') if self.CELERY_BROKER_URL else False
 
         # ------------------------
         # Platform Configurations.
