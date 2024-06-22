@@ -60,3 +60,14 @@ def test_flask_configs(example_env_file):
     assert config['CONSOLE_API_URL'] == 'https://example.com'
     # fallback to alias choices value as CONSOLE_API_URL
     assert config['FILES_URL'] == 'https://example.com'
+
+    assert config['SQLALCHEMY_DATABASE_URI'] == 'postgresql://postgres:@localhost:5432/dify'
+    assert config['SQLALCHEMY_ENGINE_OPTIONS'] == {
+        'connect_args': {
+            'options': '-c timezone=UTC',
+        },
+        'max_overflow': 10,
+        'pool_pre_ping': False,
+        'pool_recycle': 3600,
+        'pool_size': 30,
+    }
