@@ -3,6 +3,11 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from configs.middleware.redis_config import RedisConfig
+from configs.middleware.storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
+from configs.middleware.storage.amazon_s3_storage_config import S3StorageConfig
+from configs.middleware.storage.azure_blob_storage_config import AzureBlobStorageConfig
+from configs.middleware.storage.google_cloud_storage_config import GoogleCloudStorageConfig
+from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
 from configs.middleware.vdb.chroma_configs import ChromaConfigs
 from configs.middleware.vdb.milvus_configs import MilvusConfigs
 from configs.middleware.vdb.opensearch_configs import OpenSearchConfigs
@@ -48,13 +53,21 @@ class MiddlewareConfig(
     # place the configs in alphabet order
     KeywordStoreConfigs,
     RedisConfig,
+
+    # configs of storage and storage providers
     StorageConfigs,
+    AliyunOSSStorageConfig,
+    AzureBlobStorageConfig,
+    GoogleCloudStorageConfig,
+    TencentCloudCOSStorageConfig,
+    S3StorageConfig,
 
     # configs of vdb and vdb providers
     VectorStoreConfigs,
     ChromaConfigs,
     MilvusConfigs,
     OpenSearchConfigs,
+    OracleConfigs,
     PGVectorConfigs,
     PGVectoRSConfigs,
     QdrantConfigs,
@@ -62,6 +75,5 @@ class MiddlewareConfig(
     TencentVectorDBConfigs,
     TiDBVectorConfigs,
     WeaviateConfigs,
-    OracleConfigs,
 ):
     pass
