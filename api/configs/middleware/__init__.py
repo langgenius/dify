@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from configs.middleware.redis_configs import RedisConfigs
+from configs.middleware.redis_config import RedisConfig
 from configs.middleware.vdb.chroma_configs import ChromaConfigs
 from configs.middleware.vdb.milvus_configs import MilvusConfigs
 from configs.middleware.vdb.opensearch_configs import OpenSearchConfigs
@@ -44,10 +44,10 @@ class KeywordStoreConfigs(BaseModel):
     )
 
 
-class MiddlewareConfigs(
+class MiddlewareConfig(
     # place the configs in alphabet order
     KeywordStoreConfigs,
-    RedisConfigs,
+    RedisConfig,
     StorageConfigs,
 
     # configs of vdb and vdb providers
