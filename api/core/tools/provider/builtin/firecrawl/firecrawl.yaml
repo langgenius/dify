@@ -25,3 +25,12 @@ credentials_for_provider:
       en_US: Get your Firecrawl API key from your Firecrawl account settings.
       zh_CN: 从您的 Firecrawl 账户设置中获取 Firecrawl API 密钥。
     url: https://www.firecrawl.dev/account
+  firecrawl_api_url:
+    type: secret-input
+    required: false
+    label:
+      en_US: Firecrawl API url
+      zh_CN: Firecrawl API url
+    placeholder:
+      en_US: Please enter your custom Fireclaw API URL
+      zh_CN: 请输入您的自定义 Firecrawl API URL
