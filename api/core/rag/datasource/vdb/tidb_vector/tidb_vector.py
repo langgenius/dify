@@ -65,7 +65,7 @@ class TiDBVector(BaseVector):
         super().__init__(collection_name)
         self._client_config = config
         self._url = (f"mysql+pymysql://{config.user}:{config.password}@{config.host}:{config.port}/{config.database}?"
-                     f"ssl_verify_cert=true&ssl_verify_identity=true&program_name={current_app.config['APPLICATION_NAME']}")
+                     f"ssl_verify_cert=true&ssl_verify_identity=true&program_name={config.program_name}")
         self._distance_func = distance_func.lower()
         self._engine = create_engine(self._url)
         self._orm_base = declarative_base()
@@ -245,5 +245,6 @@ class TiDBVectorFactory(AbstractVectorFactory):
                 user=config.get('TIDB_VECTOR_USER'),
                 password=config.get('TIDB_VECTOR_PASSWORD'),
                 database=config.get('TIDB_VECTOR_DATABASE'),
+                program_name=config.get('APPLICATION_NAME'),
             ),
         )
