@@ -12,6 +12,8 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.ops.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.utils import measure_time
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
 from core.rag.rerank.rerank import RerankRunner
@@ -24,8 +26,6 @@ from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetr
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
-from services.ops_trace.utils import measure_time
 
 default_retrieval_model = {
     'search_method': RetrievalMethod.SEMANTIC_SEARCH,

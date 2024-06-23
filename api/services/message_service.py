@@ -7,6 +7,8 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from core.ops.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.utils import measure_time
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
@@ -20,8 +22,6 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.ops_trace.ops_trace_service import OpsTraceService
-from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
-from services.ops_trace.utils import measure_time
 from services.workflow_service import WorkflowService
 
 

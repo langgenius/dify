@@ -44,13 +44,13 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.ops.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models.account import Account
 from models.model import AppMode, Conversation, EndUser, Message, MessageAgentThought
-from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 
 logger = logging.getLogger(__name__)
 

@@ -10,10 +10,10 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.ops.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from services.ops_trace.ops_trace_service import OpsTraceService
-from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
-from services.ops_trace.utils import measure_time
 
 
 class LLMGenerator:

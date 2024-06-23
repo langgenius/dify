@@ -9,6 +9,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod
+from core.ops.base_trace_instance import BaseTraceInstance
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, ToolInvokeMeta, ToolParameter
 from core.tools.errors import (
     ToolEngineInvokeError,
@@ -24,7 +25,6 @@ from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from extensions.ext_database import db
 from models.model import Message, MessageFile
-from services.ops_trace.base_trace_instance import BaseTraceInstance
 
 
 class ToolEngine:

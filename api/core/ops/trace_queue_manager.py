@@ -2,9 +2,9 @@ import queue
 import threading
 from enum import Enum
 
+from core.ops.utils import get_message_data
 from extensions.ext_database import db
 from models.model import Conversation, MessageFile
-from services.ops_trace.utils import get_message_data
 
 
 class TraceTaskName(str, Enum):
@@ -31,32 +31,32 @@ class TraceTask:
 
     def preprocess(self):
         if self.trace_type == TraceTaskName.CONVERSATION_TRACE:
-            return TraceTaskName.CONVERSATION_TRACE, self.process_conversation_trace(**self.kwargs)
+            return TraceTaskName.CONVERSATION_TRACE, self.conversation_trace(**self.kwargs)
         if self.trace_type == TraceTaskName.WORKFLOW_TRACE:
-            return TraceTaskName.WORKFLOW_TRACE, self.process_workflow_trace(**self.kwargs)
+            return TraceTaskName.WORKFLOW_TRACE, self.workflow_trace(**self.kwargs)
         elif self.trace_type == TraceTaskName.MESSAGE_TRACE:
-            return TraceTaskName.MESSAGE_TRACE, self.process_message_trace(**self.kwargs)
+            return TraceTaskName.MESSAGE_TRACE, self.message_trace(**self.kwargs)
         elif self.trace_type == TraceTaskName.MODERATION_TRACE:
-            return TraceTaskName.MODERATION_TRACE, self.process_moderation_trace(**self.kwargs)
+            return TraceTaskName.MODERATION_TRACE, self.moderation_trace(**self.kwargs)
         elif self.trace_type == TraceTaskName.SUGGESTED_QUESTION_TRACE:
-            return TraceTaskName.SUGGESTED_QUESTION_TRACE, self.process_suggested_question_trace(**self.kwargs)
+            return TraceTaskName.SUGGESTED_QUESTION_TRACE, self.suggested_question_trace(**self.kwargs)
         elif self.trace_type == TraceTaskName.DATASET_RETRIEVAL_TRACE:
-            return TraceTaskName.DATASET_RETRIEVAL_TRACE, self.process_dataset_retrieval_trace(**self.kwargs)
+            return TraceTaskName.DATASET_RETRIEVAL_TRACE, self.dataset_retrieval_trace(**self.kwargs)
         elif self.trace_type == TraceTaskName.TOOL_TRACE:
-            return TraceTaskName.TOOL_TRACE, self.process_tool_trace(**self.kwargs)
+            return TraceTaskName.TOOL_TRACE, self.tool_trace(**self.kwargs)
         elif self.trace_type == TraceTaskName.GENERATE_NAME_TRACE:
-            return TraceTaskName.GENERATE_NAME_TRACE, self.process_generate_name_trace(**self.kwargs)
+            return TraceTaskName.GENERATE_NAME_TRACE, self.generate_name_trace(**self.kwargs)
         else:
             return '', {}
 
     # process methods for different trace types
-    def process_conversation_trace(self, **kwargs):
+    def conversation_trace(self, **kwargs):
         return kwargs
 
-    def process_workflow_trace(self, **kwargs):
+    def workflow_trace(self, **kwargs):
         return kwargs
 
-    def process_message_trace(self, **kwargs):
+    def message_trace(self, **kwargs):
         message_id = kwargs.get('message_id')
         message_data = get_message_data(message_id)
         if not message_data:
@@ -69,7 +69,19 @@ class TraceTask:
         kwargs['conversation_mode'] = conversation_mode
         return kwargs
 
-    def process_moderation_trace(self, **kwargs):
+    def moderation_trace(
+        self,
+        message_id=None,
+        **kwargs
+    ):
+        message_id = message_id
+        message_data = get_message_data(message_id)
+        if not message_data:
+            return {}
+        kwargs['message_data'] = message_data
+        return kwargs
+
+    def suggested_question_trace(self, **kwargs):
         message_id = kwargs.get('message_id')
         message_data = get_message_data(message_id)
         if not message_data:
@@ -77,7 +89,7 @@ class TraceTask:
         kwargs['message_data'] = message_data
         return kwargs
 
-    def process_suggested_question_trace(self, **kwargs):
+    def dataset_retrieval_trace(self, **kwargs):
         message_id = kwargs.get('message_id')
         message_data = get_message_data(message_id)
         if not message_data:
@@ -85,15 +97,7 @@ class TraceTask:
         kwargs['message_data'] = message_data
         return kwargs
 
-    def process_dataset_retrieval_trace(self, **kwargs):
-        message_id = kwargs.get('message_id')
-        message_data = get_message_data(message_id)
-        if not message_data:
-            return {}
-        kwargs['message_data'] = message_data
-        return kwargs
-
-    def process_tool_trace(self, **kwargs):
+    def tool_trace(self, **kwargs):
         message_id = kwargs.get('message_id')
         message_data = get_message_data(message_id)
         if not message_data:
@@ -103,7 +107,7 @@ class TraceTask:
         kwargs['message_file_data'] = message_file_data
         return kwargs
 
-    def process_generate_name_trace(self, **kwargs):
+    def generate_name_trace(self, **kwargs):
         return kwargs
 
 

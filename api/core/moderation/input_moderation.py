@@ -4,8 +4,8 @@ from typing import Any, Optional
 from core.app.app_config.entities import AppConfig
 from core.moderation.base import ModerationAction, ModerationException
 from core.moderation.factory import ModerationFactory
-from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
-from services.ops_trace.utils import measure_time
+from core.ops.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.utils import measure_time
 
 logger = logging.getLogger(__name__)
 

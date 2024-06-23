@@ -15,12 +15,12 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.ops.base_trace_instance import BaseTraceInstance
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool.tool import Tool
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
-from services.ops_trace.base_trace_instance import BaseTraceInstance
 
 
 class CotAgentRunner(BaseAgentRunner, ABC):

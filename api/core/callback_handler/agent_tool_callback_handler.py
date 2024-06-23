@@ -3,7 +3,7 @@ from typing import Any, Optional, TextIO, Union
 
 from pydantic import BaseModel
 
-from services.ops_trace.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 
 _TEXT_COLOR_MAPPING = {
     "blue": "36;1",
