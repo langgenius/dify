@@ -4,7 +4,7 @@ import { useClickAway } from 'ahooks'
 import { RiCloseLine } from '@remixicon/react'
 import Card from './card'
 import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
-import type { IChatItem } from '@/app/components/app/chat/type'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 
 type PromptLogModalProps = {
   currentLogItem?: IChatItem
