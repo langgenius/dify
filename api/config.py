@@ -127,6 +127,7 @@ class Config:
         self.LOG_FORMAT = get_env('LOG_FORMAT')
         self.LOG_DATEFORMAT = get_env('LOG_DATEFORMAT')
         self.API_COMPRESSION_ENABLED = get_bool_env('API_COMPRESSION_ENABLED')
+        self.APPLICATION_NAME = "langgenius/dify"
 
         # The backend URL prefix of the console API.
         # used to concatenate the login authorization callback or notion integration callback.
