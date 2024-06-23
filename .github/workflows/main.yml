@@ -1,6 +1,7 @@
 name: Run Pytest
 
 on:
+  workflow_dispatch: {} # 手动触发事件
   pull_request:
     branches:
       - main
