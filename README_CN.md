@@ -27,6 +27,7 @@
     <a href="https://github.com/langgenius/dify/discussions/" target="_blank">
         <img alt="Discussion posts" src="https://img.shields.io/github/discussions/langgenius/dify?labelColor=%20%239b8afb&color=%20%237a5af8"></a>
 </p>
+<p></p>
 
 <div align="center">
   <a href="./README.md"><img alt="上个月的提交次数" src="https://img.shields.io/badge/英文-d9d9d9"></a>
