@@ -9,10 +9,10 @@ description:
   human:
     en_US: |
       Execute SQL and return JSON or markdown.
-      Return value JSON format: [{"column1":"value1","column2":"value2"},{"column1":"value1","column2":"value2"}]
+      Return value JSON format: [[{"column1":"value1","column2":"value2"},{"column1":"value1","column2":"value2"}], ...]
     zh_Hans: |
       执行SQL，返回值为JSON或者markdown。
-      返回值JSON格式：[{"column1":"value1","column2":"value2"},{"column1":"value1","column2":"value2"}]
+      返回值JSON格式：[[{"column1":"value1","column2":"value2"},{"column1":"value1","column2":"value2"}], ...]
   llm: A tool for executing SQL
 parameters:
   - name: sql
