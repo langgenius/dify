@@ -10,4 +10,6 @@ class VectorType(str, Enum):
     RELYT = 'relyt'
     TIDB_VECTOR = 'tidb_vector'
     WEAVIATE = 'weaviate'
+    OPENSEARCH = 'opensearch'
     TENCENT = 'tencent'
+    ORACLE = 'oracle'

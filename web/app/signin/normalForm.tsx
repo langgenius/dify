@@ -156,9 +156,8 @@ const NormalForm = () => {
               <div className='w-full'>
                 <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
                   <Button
-                    type='default'
                     disabled={isLoading}
-                    className='w-full hover:!bg-gray-50 !text-sm !font-medium'
+                    className='w-full hover:!bg-gray-50'
                   >
                     <>
                       <span className={
@@ -175,9 +174,8 @@ const NormalForm = () => {
               <div className='w-full'>
                 <a href={getPurifyHref(`${apiPrefix}/oauth/login/google`)}>
                   <Button
-                    type='default'
                     disabled={isLoading}
-                    className='w-full hover:!bg-gray-50 !text-sm !font-medium'
+                    className='w-full hover:!bg-gray-50'
                   >
                     <>
                       <span className={
@@ -271,10 +269,10 @@ const NormalForm = () => {
                 <div className='mb-2'>
                   <Button
                     tabIndex={0}
-                    type='primary'
+                    variant='primary'
                     onClick={handleEmailPasswordLogin}
                     disabled={isLoading}
-                    className="w-full !fone-medium !text-sm"
+                    className="w-full"
                   >{t('login.signBtn')}</Button>
                 </div>
               </form>

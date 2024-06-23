@@ -148,7 +148,7 @@ const InstallForm = () => {
               </div>
 
               <div>
-                <Button type='primary' className='w-full !fone-medium !text-sm' onClick={handleSetting}>
+                <Button variant='primary' className='w-full' onClick={handleSetting}>
                   {t('login.installBtn')}
                 </Button>
               </div>

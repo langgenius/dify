@@ -13,8 +13,7 @@ const translation = {
   },
   firecrawl: {
     configFirecrawl: 'Configure 🔥Firecrawl',
-    apiKeyPlaceholder: 'API key from firecrawl.dev, starting with "fc-"',
-    apiKeyFormatError: 'API key should start with "fc-"',
+    apiKeyPlaceholder: 'API key from firecrawl.dev',
     getApiKeyLinkText: 'Get your API key from firecrawl.dev',
   },
   stepOne: {

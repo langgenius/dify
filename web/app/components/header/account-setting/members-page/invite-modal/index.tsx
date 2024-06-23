@@ -61,7 +61,7 @@ const InviteModal = ({
           onSend(invitation_results)
         }
       }
-      catch (e) {}
+      catch (e) { }
     }
     else {
       notify({ type: 'error', message: t('common.members.emailInvalid') })
@@ -92,7 +92,7 @@ const InviteModal = ({
                 <div data-tag key={index} className={cn(s.emailBackground)}>
                   <div data-tag-item>{email}</div>
                   <span data-tag-handle onClick={() => removeEmail(index)}>
-                      ×
+                    ×
                   </span>
                 </div>
               }
@@ -148,10 +148,10 @@ const InviteModal = ({
           </Listbox>
           <Button
             tabIndex={0}
-            className='w-full text-sm font-medium'
+            className='w-full'
             onClick={handleSend}
             disabled={!emails.length}
-            type='primary'
+            variant='primary'
           >
             {t('common.members.sendInvite')}
           </Button>

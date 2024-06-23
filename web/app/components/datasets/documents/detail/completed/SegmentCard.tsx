@@ -3,6 +3,10 @@ import React, { useState } from 'react'
 import cn from 'classnames'
 import { ArrowUpRightIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
+import {
+  RiDeleteBinLine,
+  RiErrorWarningFill,
+} from '@remixicon/react'
 import { StatusItem } from '../../list'
 import { DocumentTitle } from '../index'
 import s from './style.module.css'
@@ -14,8 +18,6 @@ import Divider from '@/app/components/base/divider'
 import Indicator from '@/app/components/header/indicator'
 import { formatNumber } from '@/utils/format'
 import type { SegmentDetailModel } from '@/models/datasets'
-import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 
 const ProgressBar: FC<{ percent: number; loading: boolean }> = ({ percent, loading }) => {
   return (
@@ -188,7 +190,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                     e.stopPropagation()
                     setShowModal(true)
                   }}>
-                    <Trash03 className='w-[14px] h-[14px] text-gray-500 group-hover/delete:text-red-600' />
+                    <RiDeleteBinLine className='w-[14px] h-[14px] text-gray-500 group-hover/delete:text-red-600' />
                   </div>
                 )}
               </div>
@@ -218,17 +220,17 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       {showModal && <Modal isShow={showModal} onClose={() => setShowModal(false)} className={s.delModal} closable>
         <div>
           <div className={s.warningWrapper}>
-            <AlertCircle className='w-6 h-6 text-red-600' />
+            <RiErrorWarningFill className='w-6 h-6 text-red-600' />
           </div>
           <div className='text-xl font-semibold text-gray-900 mb-1'>{t('datasetDocuments.segment.delete')}</div>
           <div className='flex gap-2 justify-end'>
             <Button onClick={() => setShowModal(false)}>{t('common.operation.cancel')}</Button>
             <Button
-              type='warning'
+              variant='warning'
               onClick={async () => {
                 await onDelete?.(id)
               }}
-              className='border-red-700 border-[0.5px]'
+              className='border-red-700'
             >
               {t('common.operation.sure')}
             </Button>
