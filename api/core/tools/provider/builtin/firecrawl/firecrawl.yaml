@@ -26,7 +26,7 @@ credentials_for_provider:
       zh_CN: 从您的 Firecrawl 账户设置中获取 Firecrawl API 密钥。
     url: https://www.firecrawl.dev/account
   firecrawl_api_url:
-    type: secret-input
+    type: text-input
     required: false
     label:
       en_US: Firecrawl API url
@@ -37,3 +37,4 @@ credentials_for_provider:
     help:
       en_US: Fireclaw supports local deployment. If a key is not set, you can freely fill in the key.
       zh_CN: Fireclaw支持本地部署。如果未设置密钥，则可以自由填写密钥。
+    default: https://api.firecrawl.dev 
