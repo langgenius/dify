@@ -34,3 +34,6 @@ credentials_for_provider:
     placeholder:
       en_US: Please enter your custom Fireclaw API URL
       zh_CN: 请输入您的自定义 Firecrawl API URL
+    help:
+      en_US: Fireclaw supports local deployment. If a key is not set, you can freely fill in the key.
+      zh_CN: Fireclaw支持本地部署。如果未设置密钥，则可以自由填写密钥。
