@@ -71,10 +71,9 @@ class TraceTask:
 
     def moderation_trace(
         self,
-        message_id=None,
         **kwargs
     ):
-        message_id = message_id
+        message_id = kwargs.get('message_id')
         message_data = get_message_data(message_id)
         if not message_data:
             return {}
