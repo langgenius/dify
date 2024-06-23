@@ -9,7 +9,9 @@ from core.tools.tool.builtin_tool import BuiltinTool
 class CrawlTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         # initialize the app object with the api key
-        app = FirecrawlApp(api_key=self.runtime.credentials['firecrawl_api_key'])
+        api_key = self.runtime.credentials['firecrawl_api_key']
+        api_url = self.runtime.credentials['firecrawl_api_url']
+        app = FirecrawlApp(api_key=api_key, api_url=api_url)
 
         options = {
             'crawlerOptions': {
