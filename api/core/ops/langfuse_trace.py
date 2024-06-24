@@ -2,12 +2,11 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Optional
 
 from langfuse import Langfuse
 
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
-from core.moderation.base import ModerationInputsResult
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.langfuse_trace_entity import (
     GenerationUsage,
@@ -29,7 +28,6 @@ from core.ops.entities.trace_entity import (
 from core.ops.model import LangfuseConfig
 from core.ops.utils import filter_none_values
 from extensions.ext_database import db
-from models.dataset import Document
 from models.model import MessageFile
 from models.workflow import WorkflowNodeExecution
 
@@ -216,10 +214,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         self.add_generation(langfuse_generation_data)
 
-    def moderation_trace(
-        self, trace_info: ModerationTraceInfo, message_id: str = None, moderation_result: ModerationInputsResult = None,
-        **kwargs
-    ):
+    def moderation_trace(self, trace_info: ModerationTraceInfo, **kwargs):
         span_data = LangfuseSpan(
             name="moderation",
             input=trace_info.inputs,
@@ -237,9 +232,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         self.add_span(langfuse_span_data=span_data)
 
-    def suggested_question_trace(
-        self, trace_info: SuggestedQuestionTraceInfo, message_id: str = None, suggested_question: str = None, **kwargs
-    ):
+    def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo, **kwargs):
         message_data = trace_info.message_data
         generation_usage = GenerationUsage(
             totalTokens=len(str(trace_info.suggested_question)),
@@ -264,37 +257,20 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         self.add_generation(langfuse_generation_data=generation_data)
 
-    def dataset_retrieval_trace(
-        self, trace_info: DatasetRetrievalTraceInfo, message_id: str = None, documents: list[Document] = None, **kwargs
-    ):
+    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo, **kwargs):
         dataset_retrieval_span_data = LangfuseSpan(
             name="dataset_retrieval",
             input=trace_info.inputs,
             output={"documents": trace_info.documents},
             trace_id=trace_info.message_id,
-            start_time=trace_info.start_time,
-            end_time=trace_info.end_time,
+            start_time=trace_info.start_time or trace_info.message_data.created_at,
+            end_time=trace_info.end_time or trace_info.message_data.updated_at,
             metadata=trace_info.metadata,
         )
 
         self.add_span(langfuse_span_data=dataset_retrieval_span_data)
 
-    def tool_trace(
-        self, trace_info: ToolTraceInfo, message_id: str = None, tool_name: str = None,
-        tool_inputs: dict[str, Any] = None,
-        tool_outputs: str = None,
-        **kwargs
-    ):
-        metadata = {
-            "message_id": trace_info.message_id,
-            "tool_name": trace_info.tool_name,
-            "tool_inputs": trace_info.tool_inputs,
-            "tool_outputs": trace_info.tool_outputs,
-            "tool_config": trace_info.tool_config,
-            "time_cost": trace_info.time_cost,
-            "error": trace_info.error,
-            "tool_parameters": trace_info.tool_parameters,
-        }
+    def tool_trace(self, trace_info: ToolTraceInfo, **kwargs):
         tool_span_data = LangfuseSpan(
             name=trace_info.tool_name,
             input=trace_info.tool_inputs,
@@ -302,21 +278,14 @@ class LangFuseDataTrace(BaseTraceInstance):
             trace_id=trace_info.message_id,
             start_time=trace_info.start_time,
             end_time=trace_info.end_time,
-            metadata=metadata,
+            metadata=trace_info.metadata,
             level=LevelEnum.DEFAULT if trace_info.error == "" else LevelEnum.ERROR,
             status_message=trace_info.error,
         )
 
         self.add_span(langfuse_span_data=tool_span_data)
 
-    def generate_name_trace(
-        self,
-        trace_info: GenerateNameTraceInfo,
-        conversation_id: str = None,
-        inputs: str = None,
-        generate_conversation_name: str = None,
-        **kwargs
-    ):
+    def generate_name_trace(self, trace_info: GenerateNameTraceInfo, **kwargs):
         name_generation_trace_data = LangfuseTrace(
             name="generate_name",
             input=trace_info.inputs,

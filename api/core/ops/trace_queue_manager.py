@@ -183,7 +183,7 @@ class TraceTask:
             inputs=inputs,
             outputs=message_data.answer,
             file_list=message_data.message[0].get("files", []),
-            created_at=created_at,
+            start_at=created_at,
             end_time=created_at + timedelta(seconds=message_data.provider_response_latency),
             metadata=metadata,
             message_file_data=message_file_data,
@@ -283,6 +283,7 @@ class TraceTask:
             start_time=timer.get("start"),
             end_time=timer.get("end"),
             metadata=metadata,
+            message_data=message_data,
         )
 
         return dataset_retrieval_trace_info
@@ -321,12 +322,14 @@ class TraceTask:
             "tool_parameters": tool_parameters,
         }
 
+        file_url = ""
         message_file_data = db.session.query(MessageFile).filter_by(message_id=message_id).first()
         if message_file_data:
             message_file_id = message_file_data.id if message_file_data else None
             type = message_file_data.type
             created_by_role = message_file_data.created_by_role
             created_user_id = message_file_data.created_by
+            file_url = f"{self.file_base_url}/{message_file_data.url}"
 
             metadata.update(
                 {
@@ -353,6 +356,7 @@ class TraceTask:
             tool_config=tool_config,
             time_cost=time_cost,
             tool_parameters=tool_parameters,
+            file_url=file_url,
         )
 
         return tool_trace_info

@@ -2,20 +2,26 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Any
 
 from langsmith import Client
 
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
-from core.moderation.base import ModerationInputsResult
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.langsmith_trace_entity import LangSmithRunModel, LangSmithRunType, LangSmithRunUpdateModel
+from core.ops.entities.trace_entity import (
+    DatasetRetrievalTraceInfo,
+    GenerateNameTraceInfo,
+    MessageTraceInfo,
+    ModerationTraceInfo,
+    SuggestedQuestionTraceInfo,
+    ToolTraceInfo,
+    WorkflowTraceInfo,
+)
 from core.ops.model import LangSmithConfig
 from core.ops.utils import filter_none_values
 from extensions.ext_database import db
-from models.dataset import Document
-from models.model import Message, MessageAgentThought, MessageFile
-from models.workflow import WorkflowNodeExecution, WorkflowRun
+from models.model import MessageFile
+from models.workflow import WorkflowNodeExecution
 
 logger = logging.getLogger(__name__)
 
@@ -36,54 +42,37 @@ class LangSmithDataTrace(BaseTraceInstance):
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
-    def workflow_trace(self, workflow_run: WorkflowRun, **kwargs):
-        conversion_id = kwargs.get("conversation_id")
-        workflow_id = workflow_run.workflow_id
-        tenant_id = workflow_run.tenant_id
-        workflow_run_id = workflow_run.id
-        workflow_run_created_at = workflow_run.created_at
-        workflow_run_finished_at = workflow_run.finished_at
-        workflow_run_elapsed_time = workflow_run.elapsed_time
-        workflow_run_status = workflow_run.status
-        workflow_run_inputs = (
-            json.loads(workflow_run.inputs) if workflow_run.inputs else {}
-        )
-        workflow_run_outputs = (
-            json.loads(workflow_run.outputs) if workflow_run.outputs else {}
-        )
-        workflow_run_version = workflow_run.version
-        error = workflow_run.error if workflow_run.error else ""
+    def trace(self, trace_info, **kwargs):
+        if isinstance(trace_info, WorkflowTraceInfo):
+            self.workflow_trace(trace_info)
+        if isinstance(trace_info, MessageTraceInfo):
+            self.message_trace(trace_info)
+        if isinstance(trace_info, ModerationTraceInfo):
+            self.moderation_trace(trace_info)
+        if isinstance(trace_info, SuggestedQuestionTraceInfo):
+            self.suggested_question_trace(trace_info)
+        if isinstance(trace_info, DatasetRetrievalTraceInfo):
+            self.dataset_retrieval_trace(trace_info)
+        if isinstance(trace_info, ToolTraceInfo):
+            self.tool_trace(trace_info)
+        if isinstance(trace_info, GenerateNameTraceInfo):
+            self.generate_name_trace(trace_info)
 
-        total_tokens = workflow_run.total_tokens
-
-        file_list = workflow_run_inputs.get("sys.file") if workflow_run_inputs.get("sys.file") else []
-        query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
-
-        metadata = {
-            "workflow_id": workflow_id,
-            "conversation_id": conversion_id,
-            "workflow_run_id": workflow_run_id,
-            "tenant_id": tenant_id,
-            "elapsed_time": workflow_run_elapsed_time,
-            "status": workflow_run_status,
-            "version": workflow_run_version,
-            "total_tokens": total_tokens,
-        }
-
+    def workflow_trace(self, trace_info: WorkflowTraceInfo):
         langsmith_run = LangSmithRunModel(
-            file_list=file_list,
-            total_tokens=total_tokens,
-            id=workflow_run_id,
-            name=f"workflow_run_{workflow_run_id}",
-            inputs=query,
+            file_list=trace_info.file_list,
+            total_tokens=trace_info.total_tokens,
+            id=trace_info.workflow_run_id,
+            name=f"workflow_run_{trace_info.workflow_run_id}",
+            inputs=trace_info.query,
             run_type=LangSmithRunType.tool,
-            start_time=workflow_run_created_at,
-            end_time=workflow_run_finished_at,
-            outputs=workflow_run_outputs,
+            start_time=trace_info.workflow_data.workflow_run_created_at,
+            end_time=trace_info.workflow_data.workflow_run_finished_at,
+            outputs=trace_info.workflow_data.workflow_run_outputs,
             extra={
-                "metadata": metadata,
+                "metadata": trace_info.metadata,
             },
-            error=error,
+            error=trace_info.error,
             tags=["workflow"],
         )
 
@@ -92,7 +81,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         # through workflow_run_id get all_nodes_execution
         workflow_nodes_executions = (
             db.session.query(WorkflowNodeExecution)
-            .filter(WorkflowNodeExecution.workflow_run_id == workflow_run_id)
+            .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
             .order_by(WorkflowNodeExecution.index.desc())
             .all()
         )
@@ -125,6 +114,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             metadata = json.loads(node_execution.execution_metadata) if node_execution.execution_metadata else {}
             metadata.update(
                 {
+                    "workflow_run_id": trace_info.workflow_run_id,
                     "node_execution_id": node_execution_id,
                     "tenant_id": tenant_id,
                     "app_id": app_id,
@@ -150,274 +140,154 @@ class LangSmithDataTrace(BaseTraceInstance):
                 start_time=created_at,
                 end_time=finished_at,
                 outputs=outputs,
-                file_list=file_list,
+                file_list=trace_info.file_list,
                 extra={
                     "metadata": metadata,
                 },
-                parent_run_id=workflow_run_id,
+                parent_run_id=trace_info.workflow_run_id,
                 tags=["node_execution"],
             )
 
             self.add_run(langsmith_run)
 
-    def message_trace(self, message_id: str, conversation_id: str, **kwargs):
-        message_data = kwargs.get("message_data")
-        conversation_mode = kwargs.get("conversation_mode")
-        message_tokens = message_data.message_tokens
-        answer_tokens = message_data.answer_tokens
-        total_tokens = message_tokens + answer_tokens
-        error = message_data.error if message_data.error else ""
-        inputs = message_data.message
-        file_list = inputs[0].get("files", [])
-        provider_response_latency = message_data.provider_response_latency
-        created_at = message_data.created_at
-        end_time = created_at + timedelta(seconds=provider_response_latency)
-
+    def message_trace(self, trace_info: MessageTraceInfo, **kwargs):
         # get message file data
-        message_file_data: MessageFile = kwargs.get("message_file_data")
+        file_list = trace_info.file_list
+        message_file_data: MessageFile = trace_info.message_file_data
         file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
         file_list.append(file_url)
+        metadata = trace_info.metadata
+        message_data = trace_info.message_data
+        message_id = message_data.id
 
-        metadata = {
-            "conversation_id": conversation_id,
-            "ls_provider": message_data.model_provider,
-            "ls_model_name": message_data.model_id,
-            "status": message_data.status,
-            "from_end_user_id": message_data.from_account_id,
-            "from_account_id": message_data.from_account_id,
-            "agent_based": message_data.agent_based,
-            "workflow_run_id": message_data.workflow_run_id,
-            "from_source": message_data.from_source,
-        }
         message_run = LangSmithRunModel(
-            input_tokens=message_tokens,
-            output_tokens=answer_tokens,
-            total_tokens=total_tokens,
+            input_tokens=trace_info.message_tokens,
+            output_tokens=trace_info.answer_tokens,
+            total_tokens=trace_info.total_tokens,
             id=message_id,
             name=f"message_{message_id}",
-            inputs=inputs,
+            inputs=trace_info.inputs,
             run_type=LangSmithRunType.chain,
-            start_time=created_at,
-            end_time=end_time,
+            start_time=trace_info.created_at,
+            end_time=trace_info.end_time,
             outputs=message_data.answer,
             extra={
                 "metadata": metadata,
             },
-            tags=["message", str(conversation_mode)],
-            error=error,
+            tags=["message", str(trace_info.conversation_mode)],
+            error=trace_info.error,
             file_list=file_list,
         )
         self.add_run(message_run)
 
         # create llm run parented to message run
         llm_run = LangSmithRunModel(
-            input_tokens=message_tokens,
-            output_tokens=answer_tokens,
-            total_tokens=total_tokens,
+            input_tokens=trace_info.message_tokens,
+            output_tokens=trace_info.answer_tokens,
+            total_tokens=trace_info.total_tokens,
             name=f"llm_{message_id}",
-            inputs=inputs,
+            inputs=trace_info.inputs,
             run_type=LangSmithRunType.llm,
-            start_time=created_at,
-            end_time=end_time,
+            start_time=trace_info.start_at,
+            end_time=trace_info.end_time,
             outputs=message_data.answer,
             extra={
                 "metadata": metadata,
             },
             parent_run_id=message_id,
-            tags=["llm", str(conversation_mode)],
-            error=error,
+            tags=["llm", str(trace_info.conversation_mode)],
+            error=trace_info.error,
             file_list=file_list,
         )
         self.add_run(llm_run)
 
-    def moderation_trace(self, message_id: str, moderation_result: ModerationInputsResult, **kwargs):
-        inputs = kwargs.get("inputs")
-        message_data = kwargs.get("message_data")
-        flagged = moderation_result.flagged
-        action = moderation_result.action
-        preset_response = moderation_result.preset_response
-        query = moderation_result.query
-        timer = kwargs.get("timer")
-        start_time = timer.get("start")
-        end_time = timer.get("end")
-
-        metadata = {
-            "message_id": message_id,
-            "action": action,
-            "preset_response": preset_response,
-            "query": query,
-        }
-
+    def moderation_trace(self, trace_info: ModerationTraceInfo, **kwargs):
         langsmith_run = LangSmithRunModel(
             name="moderation",
-            inputs=inputs,
+            inputs=trace_info.inputs,
             outputs={
-                "action": action,
-                "flagged": flagged,
-                "preset_response": preset_response,
-                "inputs": inputs,
+                "action": trace_info.action,
+                "flagged": trace_info.flagged,
+                "preset_response": trace_info.preset_response,
+                "inputs": trace_info.inputs,
             },
             run_type=LangSmithRunType.tool,
             extra={
-                "metadata": metadata,
+                "metadata": trace_info.metadata,
             },
             tags=["moderation"],
-            parent_run_id=message_id,
-            start_time=start_time or message_data.created_at,
-            end_time=end_time or message_data.updated_at,
+            parent_run_id=trace_info.message_id,
+            start_time=trace_info.start_time or trace_info.message_data.created_at,
+            end_time=trace_info.end_time or trace_info.message_data.updated_at,
         )
 
         self.add_run(langsmith_run)
 
-    def suggested_question_trace(self, message_id: str, suggested_question: str, **kwargs):
-        message_data = kwargs.get("message_data")
-        timer = kwargs.get("timer")
-        start_time = timer.get("start")
-        end_time = timer.get("end")
-        inputs = message_data.query
-
-        metadata = {
-            "message_id": message_id,
-            "ls_provider": message_data.model_provider,
-            "ls_model_name": message_data.model_id,
-            "status": message_data.status,
-            "from_end_user_id": message_data.from_account_id,
-            "from_account_id": message_data.from_account_id,
-            "agent_based": message_data.agent_based,
-            "workflow_run_id": message_data.workflow_run_id,
-            "from_source": message_data.from_source,
-        }
-
+    def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo, **kwargs):
+        message_data = trace_info.message_data
         suggested_question_run = LangSmithRunModel(
             name="suggested_question",
-            inputs=inputs,
-            outputs=suggested_question,
+            inputs=trace_info.inputs,
+            outputs=trace_info.suggested_question,
             run_type=LangSmithRunType.tool,
             extra={
-                "metadata": metadata,
+                "metadata": trace_info.metadata,
             },
             tags=["suggested_question"],
-            parent_run_id=message_id,
-            start_time=start_time or message_data.created_at,
-            end_time=end_time or message_data.updated_at,
+            parent_run_id=trace_info.message_id,
+            start_time=trace_info.start_time or message_data.created_at,
+            end_time=trace_info.end_time or message_data.updated_at,
         )
 
         self.add_run(suggested_question_run)
 
-    def dataset_retrieval_trace(self, message_id: str, documents: list[Document], **kwargs):
-        message_data = kwargs.get("message_data")
-        inputs = message_data.query if message_data.query else message_data.inputs
-        metadata = {
-            "message_id": message_id,
-            "documents": documents
-        }
-        timer = kwargs.get("timer")
-        start_time = timer.get("start")
-        end_time = timer.get("end")
-
+    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo, **kwargs):
         dataset_retrieval_run = LangSmithRunModel(
             name="dataset_retrieval",
-            inputs=inputs,
-            outputs={"documents": documents},
+            inputs=trace_info.inputs,
+            outputs={"documents": trace_info.documents},
             run_type=LangSmithRunType.retriever,
             extra={
-                "metadata": metadata,
+                "metadata": trace_info.metadata,
             },
             tags=["dataset_retrieval"],
-            parent_run_id=message_id,
-            start_time=start_time or message_data.created_at,
-            end_time=end_time or message_data.updated_at,
+            parent_run_id=trace_info.message_id,
+            start_time=trace_info.start_time or trace_info.message_data.created_at,
+            end_time=trace_info.end_time or trace_info.message_data.updated_at,
         )
 
         self.add_run(dataset_retrieval_run)
 
-    def tool_trace(self, message_id: str, tool_name: str, tool_inputs: dict[str, Any], tool_outputs: str, **kwargs):
-        message_data: Message = kwargs.get("message_data")
-        created_time = message_data.created_at
-        end_time = message_data.updated_at
-        tool_config = {}
-        time_cost = 0
-        error = ""
-        tool_parameters = {}
-        file_url = ""
-
-        agent_thoughts: list[MessageAgentThought] = message_data.agent_thoughts
-        for agent_thought in agent_thoughts:
-            if tool_name in agent_thought.tools:
-                created_time = agent_thought.created_at
-                tool_meta_data = agent_thought.tool_meta.get(tool_name, {})
-                tool_config = tool_meta_data.get('tool_config', {})
-                time_cost = tool_meta_data.get('time_cost', 0)
-                end_time = created_time + timedelta(seconds=time_cost)
-                error = tool_meta_data.get('error', "")
-                tool_parameters = tool_meta_data.get('tool_parameters', {})
-
-        metadata = {
-            "message_id": message_id,
-            "tool_name": tool_name,
-            "tool_inputs": tool_inputs,
-            "tool_outputs": tool_outputs,
-            "tool_config": tool_config,
-            "time_cost": time_cost,
-            "error": error,
-            "tool_parameters": tool_parameters,
-        }
-
-        # get message file data
-        message_file_data: MessageFile = kwargs.get("message_file_data")
-        if message_file_data:
-            message_file_id = message_file_data.id if message_file_data else None
-            type = message_file_data.type
-            created_by_role = message_file_data.created_by_role
-            created_user_id = message_file_data.created_by
-            file_url = f"{self.file_base_url}/{message_file_data.url}"
-
-            metadata.update(
-                {
-                    "message_file_id": message_file_id,
-                    "created_by_role": created_by_role,
-                    "created_user_id": created_user_id,
-                    "type": type,
-                }
-            )
-
+    def tool_trace(self, trace_info: ToolTraceInfo, **kwargs):
         tool_run = LangSmithRunModel(
-            name=tool_name,
-            inputs=tool_inputs,
-            outputs=tool_outputs,
+            name=trace_info.tool_name,
+            inputs=trace_info.tool_inputs,
+            outputs=trace_info.tool_outputs,
             run_type=LangSmithRunType.tool,
             extra={
-                "metadata": metadata,
+                "metadata": trace_info.metadata,
             },
-            tags=["tool", tool_name],
-            parent_run_id=message_id,
-            start_time=created_time,
-            end_time=end_time,
-            file_list=[file_url],
+            tags=["tool", trace_info.tool_name],
+            parent_run_id=trace_info.message_id,
+            start_time=trace_info.start_time,
+            end_time=trace_info.end_time,
+            file_list=[trace_info.file_url],
         )
 
         self.add_run(tool_run)
 
-    def generate_name_trace(self, conversation_id: str, inputs: str, generate_conversation_name: str, **kwargs):
-        timer = kwargs.get("timer")
-        start_time = timer.get("start")
-        end_time = timer.get("end")
-
-        metadata = {
-            "conversation_id": conversation_id,
-        }
-
+    def generate_name_trace(self, trace_info: GenerateNameTraceInfo, **kwargs):
         name_run = LangSmithRunModel(
             name="generate_name",
-            inputs=inputs,
-            outputs=generate_conversation_name,
+            inputs=trace_info.inputs,
+            outputs=trace_info.outputs,
             run_type=LangSmithRunType.tool,
             extra={
-                "metadata": metadata,
+                "metadata": trace_info.metadata,
             },
             tags=["generate_name"],
-            start_time=start_time or datetime.now(),
-            end_time=end_time or datetime.now(),
+            start_time=trace_info.start_time or datetime.now(),
+            end_time=trace_info.end_time or datetime.now(),
         )
 
         self.add_run(name_run)

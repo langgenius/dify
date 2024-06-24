@@ -15,7 +15,7 @@ class WorkflowTraceInfo(BaseModel):
     workflow_run_inputs: dict[str, Any]
     workflow_run_outputs: dict[str, Any]
     workflow_run_version: str
-    error: str
+    error: Union[str, None]
     total_tokens: int
     file_list: list[str]
     query: str
@@ -32,7 +32,7 @@ class MessageTraceInfo(BaseModel):
     inputs: Union[str, dict[str, Any], list, None]
     outputs: Union[str, dict[str, Any], list, None]
     file_list: list[str]
-    created_at: datetime
+    start_at: datetime
     end_time: datetime
     metadata: dict[str, Any]
     message_file_data: Any
@@ -81,6 +81,7 @@ class DatasetRetrievalTraceInfo(BaseModel):
     start_time: datetime
     end_time: datetime
     metadata: dict[str, Any]
+    message_data: Any
 
 
 class ToolTraceInfo(BaseModel):
@@ -99,6 +100,7 @@ class ToolTraceInfo(BaseModel):
     tool_config: dict[str, Any]
     time_cost: Union[int, float]
     tool_parameters: dict[str, Any]
+    file_url: Union[str, None, list]
 
 
 class GenerateNameTraceInfo(BaseModel):
