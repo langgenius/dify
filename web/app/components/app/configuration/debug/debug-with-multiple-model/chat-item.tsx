@@ -128,6 +128,7 @@ const ChatItem: FC<ChatItemProps> = ({
       showPromptLog
       questionIcon={<Avatar name={userProfile.name} size={40} />}
       allToolIcons={allToolIcons}
+      hideLogModal
     />
   )
 }

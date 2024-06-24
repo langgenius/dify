@@ -39,6 +39,7 @@ import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
+import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
@@ -370,11 +371,13 @@ const Debug: FC<IDebug> = ({
     handleVisionConfigInMultipleModel()
   }, [multipleModelConfigs, mode])
 
-  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal } = useAppStore(useShallow(state => ({
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showPromptLogModal: state.showPromptLogModal,
     setShowPromptLogModal: state.setShowPromptLogModal,
+    showAgentLogModal: state.showAgentLogModal,
+    setShowAgentLogModal: state.setShowAgentLogModal,
   })))
   const [width, setWidth] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -434,13 +437,33 @@ const Debug: FC<IDebug> = ({
       </div>
       {
         debugWithMultipleModel && (
-          <div className='grow mt-3 overflow-hidden'>
+          <div className='grow mt-3 overflow-hidden' ref={ref}>
             <DebugWithMultipleModel
               multipleModelConfigs={multipleModelConfigs}
               onMultipleModelConfigsChange={onMultipleModelConfigsChange}
               onDebugWithMultipleModelChange={handleChangeToSingleModel}
               checkCanSend={checkCanSend}
             />
+            {showPromptLogModal && (
+              <PromptLogModal
+                width={width}
+                currentLogItem={currentLogItem}
+                onCancel={() => {
+                  setCurrentLogItem()
+                  setShowPromptLogModal(false)
+                }}
+              />
+            )}
+            {showAgentLogModal && (
+              <AgentLogModal
+                width={width}
+                currentLogItem={currentLogItem}
+                onCancel={() => {
+                  setCurrentLogItem()
+                  setShowAgentLogModal(false)
+                }}
+              />
+            )}
           </div>
         )
       }
@@ -474,6 +497,7 @@ const Debug: FC<IDebug> = ({
                     supportAnnotation
                     appId={appId}
                     varList={varList}
+                    siteInfo={null}
                   />
                 )}
               </div>
