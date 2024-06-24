@@ -85,25 +85,26 @@ class OpsTraceService:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         # api check
-        if not cls.check_trace_config_is_effective(tracing_config, tracing_provider):
-            raise ValueError("Invalid Credentials")
+        # if not cls.check_trace_config_is_effective(tracing_config, tracing_provider):
+        #     raise ValueError("Invalid Credentials")
 
         # check if trace config already exists
-        trace_config = db.session.query(TraceAppConfig).filter(
+        current_trace_config = db.session.query(TraceAppConfig).filter(
             TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
         ).first()
 
-        if not trace_config:
+        if not current_trace_config:
             return None
 
         # get tenant id
         tenant_id = db.session.query(App).filter(App.id == app_id).first().tenant_id
-        tracing_config = cls.encrypt_tracing_config(tenant_id, tracing_provider, tracing_config)
-
-        trace_config.tracing_config = tracing_config
+        tracing_config = cls.encrypt_tracing_config(
+            tenant_id, tracing_provider, tracing_config, current_trace_config.tracing_config
+        )
+        current_trace_config.tracing_config = tracing_config
         db.session.commit()
 
-        return trace_config.to_dict()
+        return current_trace_config.to_dict()
 
     @classmethod
     def delete_tracing_app_config(cls, app_id: str, tracing_provider: str):
@@ -126,20 +127,23 @@ class OpsTraceService:
         return True
 
     @classmethod
-    def encrypt_tracing_config(cls, tenant_id: str, tracing_provider: str, tracing_config: dict):
+    def encrypt_tracing_config(
+        cls, tenant_id: str, tracing_provider: str, tracing_config: dict, current_trace_config=None
+    ):
         """
         Encrypt tracing config
         :param tenant_id: tenant id
         :param tracing_provider: tracing provider
         :param tracing_config: tracing config
+        :param current_trace_config: current trace config
         :return:
         """
         if tracing_provider == TracingProviderEnum.LANGFUSE.value:
             tracing_config = LangfuseConfig(**tracing_config)
-            tracing_config = LangFuseDataTrace.encrypt_config(tenant_id, tracing_config)
+            tracing_config = LangFuseDataTrace.encrypt_config(tenant_id, tracing_config, current_trace_config)
         elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
             tracing_config = LangSmithConfig(**tracing_config)
-            tracing_config = LangSmithDataTrace.encrypt_config(tenant_id, tracing_config)
+            tracing_config = LangSmithDataTrace.encrypt_config(tenant_id, tracing_config, current_trace_config)
 
         return tracing_config.model_dump()
 

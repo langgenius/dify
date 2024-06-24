@@ -352,7 +352,27 @@ class LangFuseDataTrace(BaseTraceInstance):
         return LangfuseConfig(public_key=public_key, secret_key=secret_key, host=config.host)
 
     @classmethod
-    def encrypt_config(cls, tenant_id, config: LangfuseConfig):
+    def encrypt_config(cls, tenant_id, config: LangfuseConfig, current_trace_config: dict = None):
+        if "*" in config.public_key and "*" in config.secret_key:
+            return LangfuseConfig(
+                public_key=current_trace_config.get("public_key"),
+                secret_key=current_trace_config.get("secret_key"),
+                host=config.host
+            )
+        if "*" in config.public_key:
+            decrypt_secret_key = encrypt_token(tenant_id, config.secret_key)
+            return LangfuseConfig(
+                public_key=current_trace_config.get("public_key"),
+                secret_key=decrypt_secret_key,
+                host=config.host
+            )
+        if "*" in config.secret_key:
+            decrypt_public_key = encrypt_token(tenant_id, config.public_key)
+            return LangfuseConfig(
+                public_key=decrypt_public_key,
+                secret_key=current_trace_config.get("secret_key"),
+                host=config.host
+            )
         decrypt_public_key = encrypt_token(tenant_id, config.public_key)
         decrypt_secret_key = encrypt_token(tenant_id, config.secret_key)
         return LangfuseConfig(public_key=decrypt_public_key, secret_key=decrypt_secret_key, host=config.host)

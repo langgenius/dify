@@ -336,7 +336,11 @@ class LangSmithDataTrace(BaseTraceInstance):
         return LangSmithConfig(api_key=api_key, project=config.project, endpoint=config.endpoint)
 
     @classmethod
-    def encrypt_config(cls, tenant_id, config: LangSmithConfig):
+    def encrypt_config(cls, tenant_id, config: LangSmithConfig, current_trace_config=None):
+        if "*" in config.api_key:
+            return LangSmithConfig(
+                api_key=current_trace_config.get("api_key"), project=config.project, endpoint=config.endpoint
+            )
         api_key = encrypt_token(tenant_id, config.api_key)
         return LangSmithConfig(api_key=api_key, project=config.project, endpoint=config.endpoint)
 
