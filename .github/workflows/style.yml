@@ -11,6 +11,7 @@ concurrency:
 
 jobs:
   python-style:
+    if: contains(github.event.pull_request.changed_files, 'api/')
     name: Python Style
     runs-on: ubuntu-latest
 
@@ -50,6 +51,7 @@ jobs:
         run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
 
   web-style:
+    if: contains(github.event.pull_request.changed_files, 'web/')
     name: Web Style
     runs-on: ubuntu-latest
     defaults:
