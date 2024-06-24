@@ -1,6 +1,6 @@
 import os
 
-from configs.app_configs import DifyConfigs
+from configs.app_config import DifyConfig
 
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG", "false").lower() != 'true':
     from gevent import monkey
@@ -83,7 +83,7 @@ def create_flask_app_with_configs() -> Flask:
     """
     dify_app = DifyApp(__name__)
     dify_app.config.from_object(Config())
-    dify_app.config.from_mapping(DifyConfigs().model_dump())
+    dify_app.config.from_mapping(DifyConfig().model_dump())
     return dify_app
 
 

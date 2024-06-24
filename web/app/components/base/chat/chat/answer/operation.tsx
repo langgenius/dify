@@ -8,7 +8,7 @@ import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type { ChatItem } from '../../types'
 import { useChatContext } from '../context'
-import CopyBtn from '@/app/components/app/chat/copy-btn'
+import CopyBtn from '@/app/components/base/copy-btn'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import AudioBtn from '@/app/components/base/audio-btn'
 import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
@@ -18,7 +18,7 @@ import {
   ThumbsUp,
 } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import Log from '@/app/components/app/chat/log'
+import Log from '@/app/components/base/chat/chat/log'
 
 type OperationProps = {
   item: ChatItem

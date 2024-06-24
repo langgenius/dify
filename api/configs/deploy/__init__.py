@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 
-class DeploymentConfigs(BaseModel):
+class DeploymentConfig(BaseModel):
     """
     Deployment configs
     """
