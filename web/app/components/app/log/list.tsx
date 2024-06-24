@@ -642,7 +642,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <Tooltip
         htmlContent={
           <span className='text-xs text-gray-500 inline-flex items-center'>
-            <RiEditFill className='mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
+            <RiEditFill className='w-3 h-3 mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         }
         className={(isHighlight && !isChatMode) ? '' : '!hidden'}
