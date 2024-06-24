@@ -22,6 +22,7 @@ const translation = {
     dataSourceType: {
       file: '导入已有文本',
       notion: '同步自 Notion 内容',
+      feishu: '同步自 飞书 内容',
       web: '同步自 Web 站点',
     },
     uploader: {

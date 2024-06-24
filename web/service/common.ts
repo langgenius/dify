@@ -5,6 +5,7 @@ import type {
   ApiBasedExtension,
   CodeBasedExtension,
   CommonResponse,
+  DataSourceFeishu,
   DataSourceNotion,
   FileUploadConfigResponse,
   ICurrentWorkspace,
@@ -298,3 +299,19 @@ export const enableModel = (url: string, body: { model: string; model_type: Mode
 
 export const disableModel = (url: string, body: { model: string; model_type: ModelTypeEnum }) =>
   patch<CommonResponse>(url, { body })
+
+export const fetchFeishuDataSource: Fetcher<{ data: DataSourceFeishu[] }, { url: string }> = ({ url }) => {
+  return get<{ data: DataSourceFeishu[] }>(url)
+}
+
+export const syncDataSourceFeishu: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
+  return get<CommonResponse>(url)
+}
+
+export const updateDataSourceFeishuAction: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
+  return patch<CommonResponse>(url)
+}
+
+export const fetchFeishuConnection: Fetcher<{ data: string }, string> = (url) => {
+  return get(url) as Promise<{ data: string }>
+}
