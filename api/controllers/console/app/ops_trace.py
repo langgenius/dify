@@ -4,8 +4,8 @@ from controllers.console import api
 from controllers.console.app.error import TracingConfigCheckError, TracingConfigIsExist, TracingConfigNotExist
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.ops.ops_trace_service import OpsTraceService
 from libs.login import login_required
-from services.ops_trace.ops_trace_service import OpsTraceService
 
 
 class TraceAppConfigApi(Resource):

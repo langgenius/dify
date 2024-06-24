@@ -18,11 +18,11 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
+from core.ops.ops_trace_service import OpsTraceService
 from core.ops.utils import get_message_data
 from extensions.ext_database import db
 from models.model import Conversation, MessageAgentThought, MessageFile
 from models.workflow import WorkflowRun
-from services.ops_trace.ops_trace_service import OpsTraceService
 
 
 class TraceTaskName(str, Enum):
