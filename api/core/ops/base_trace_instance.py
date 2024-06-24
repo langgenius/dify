@@ -69,3 +69,32 @@ class BaseTraceInstance(ABC):
         Subclasses must implement specific tracing logic for name generation activities.
         """
         return kwargs
+
+    @abstractmethod
+    def api_check_trace(self, **kwargs):
+        """
+        Abstract method to trace API check activities.
+        Subclasses must implement specific tracing logic for API check operations.
+        """
+        return kwargs
+
+    @abstractmethod
+    def obfuscate_config(self, **kwargs):
+        """
+        Obfuscate configuration data.
+        """
+        return kwargs
+
+    @abstractmethod
+    def encrypt_config(self, **kwargs):
+        """
+        Encrypt configuration data.
+        """
+        return kwargs
+
+    @abstractmethod
+    def decryption_config(self, **kwargs):
+        """
+        Decrypt configuration data.
+        """
+        return kwargs
