@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 from datetime import datetime, timezone
 from mimetypes import guess_type
@@ -188,6 +189,8 @@ class ToolEngine:
             elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                  response.type == ToolInvokeMessage.MessageType.IMAGE:
                 result += "image has been created and sent to user already, you do not need to create it, just tell the user to check it now."
+            elif response.type == ToolInvokeMessage.MessageType.JSON:
+                result += f"tool response: {json.dumps(response.message, ensure_ascii=False)}."
             else:
                 result += f"tool response: {response.message}."
 
