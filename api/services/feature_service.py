@@ -30,6 +30,7 @@ class FeatureModel(BaseModel):
     docs_processing: str = 'standard'
     can_replace_logo: bool = False
     model_load_balancing_enabled: bool = False
+    dataset_operator_enabled: bool = False
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
