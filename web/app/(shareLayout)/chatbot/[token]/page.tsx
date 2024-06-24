@@ -1,14 +1,12 @@
 'use client'
-import type { FC } from 'react'
 import React, { useEffect } from 'react'
 import cn from 'classnames'
-import type { IMainProps } from '@/app/components/share/chat'
 import EmbeddedChatbot from '@/app/components/base/chat/embedded-chatbot'
 import Loading from '@/app/components/base/loading'
 import { fetchSystemFeatures } from '@/service/share'
 import LogoSite from '@/app/components/base/logo/logo-site'
 
-const Chatbot: FC<IMainProps> = () => {
+const Chatbot = () => {
   const [isSSOEnforced, setIsSSOEnforced] = React.useState(true)
   const [loading, setLoading] = React.useState(true)
 
