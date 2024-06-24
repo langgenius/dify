@@ -1,0 +1,86 @@
+identity:
+  name: json_insert
+  author: Mingwei Zhang
+  label:
+    en_US: JSON Insert
+    zh_Hans: JSON 插入
+    pt_BR: JSON Insert
+description:
+  human:
+    en_US: A tool for inserting JSON content
+    zh_Hans: 一个插入 JSON 内容的工具
+    pt_BR: A tool for inserting JSON content
+  llm: A tool for inserting JSON content
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: JSON content
+      zh_Hans: JSON 内容
+      pt_BR: JSON content
+    human_description:
+      en_US: JSON content
+      zh_Hans: JSON 内容
+      pt_BR: JSON content
+    form: llm
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 查询
+      pt_BR: Query
+    human_description:
+      en_US: Object to insert
+      zh_Hans: 待插入的对象
+      pt_BR: Object to insert
+    form: llm
+  - name: new_value
+    type: string
+    required: true
+    label:
+      en_US: New Value
+      zh_Hans: 新值
+      pt_BR: New Value
+    human_description:
+      en_US: New Value
+      zh_Hans: 新值
+      pt_BR: New Value
+    form: llm
+  # - name: insert_position
+  #   type: string
+  #   required: false
+  #   label:
+  #     en_US: Insert Position
+  #     zh_Hans: 插入位置
+  #     pt_BR: Insert Position
+  #   human_description:
+  #     en_US: Insert Position，optional, default to the end of the array
+  #     zh_Hans: 插入位置，向数组中插入时可选，默认为末尾
+  #     pt_BR: Insert Position，optional, default to the end of the array
+    form: llm
+  - name: create_path
+    type: select
+    required: true
+    default: "False"
+    label:
+      en_US: Whether to create a path
+      zh_Hans: 是否创建路径
+      pt_BR: Whether to create a path
+    human_description:
+      en_US: Whether to create a path when the path does not exist
+      zh_Hans: 查询路径不存在时是否创建路径
+      pt_BR: Whether to create a path when the path does not exist
+    options:
+      - value: "True"
+        label:
+          en_US: "Yes"
+          zh_Hans: 是
+          pt_BR: "Yes"
+      - value: "False"
+        label:
+          en_US: "No"
+          zh_Hans: 否
+          pt_BR: "No"
+    form: form
