@@ -5,12 +5,12 @@ from pydantic import BaseModel
 
 
 class BaseTraceInfo(BaseModel):
-    message_id: str
+    message_id: Optional[str] = None
     message_data: Any
     inputs: Union[str, dict[str, Any], list, None]
     outputs: Union[str, dict[str, Any], list, None]
-    start_time: datetime
-    end_time: datetime
+    start_time: Optional[datetime] = None
+    end_time: Optional[datetime] = None
     metadata: dict[str, Any]
 
 

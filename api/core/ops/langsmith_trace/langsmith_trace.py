@@ -169,7 +169,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             name=f"message_{message_id}",
             inputs=trace_info.inputs,
             run_type=LangSmithRunType.chain,
-            start_time=trace_info.start_at,
+            start_time=trace_info.start_time,
             end_time=trace_info.end_time,
             outputs=message_data.answer,
             extra={
@@ -189,7 +189,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             name=f"llm_{message_id}",
             inputs=trace_info.inputs,
             run_type=LangSmithRunType.llm,
-            start_time=trace_info.start_at,
+            start_time=trace_info.start_time,
             end_time=trace_info.end_time,
             outputs=message_data.answer,
             extra={

@@ -183,7 +183,7 @@ class TraceTask:
             inputs=inputs,
             outputs=message_data.answer,
             file_list=message_data.message[0].get("files", []),
-            start_at=created_at,
+            start_time=created_at,
             end_time=created_at + timedelta(seconds=message_data.provider_response_latency),
             metadata=metadata,
             message_file_data=message_file_data,

@@ -158,7 +158,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 "total_tokens": trace_info.total_tokens,
                 "error": trace_info.error,
                 "provider_response_latency": message_data.provider_response_latency,
-                "created_at": trace_info.start_at,
+                "created_at": trace_info.start_time,
             },
             output=trace_info.outputs,
             metadata=metadata,
@@ -179,7 +179,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         langfuse_generation_data = LangfuseGeneration(
             name=f"generation_{message_id}",
             trace_id=message_id,
-            start_time=trace_info.start_at,
+            start_time=trace_info.start_time,
             end_time=trace_info.end_time,
             model=message_data.model_id,
             input=trace_info.inputs,
