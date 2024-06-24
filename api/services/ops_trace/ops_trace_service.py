@@ -2,9 +2,9 @@ import json
 from typing import Union
 from uuid import UUID
 
-from core.ops.langfuse_trace import LangFuseDataTrace
-from core.ops.langsmith_trace import LangSmithDataTrace
-from core.ops.model import LangfuseConfig, LangSmithConfig, TracingProviderEnum
+from core.ops.entities.config_entity import LangfuseConfig, LangSmithConfig, TracingProviderEnum
+from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
+from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
 from extensions.ext_database import db
 from models.model import App, AppModelConfig, Conversation, Message, TraceAppConfig
 

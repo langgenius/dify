@@ -8,6 +8,7 @@ from langfuse import Langfuse
 
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.base_trace_instance import BaseTraceInstance
+from core.ops.entities.config_entity import LangfuseConfig
 from core.ops.entities.langfuse_trace_entity import (
     GenerationUsage,
     LangfuseGeneration,
@@ -26,7 +27,6 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from core.ops.model import LangfuseConfig
 from core.ops.utils import filter_none_values
 from extensions.ext_database import db
 from models.model import MessageFile
