@@ -315,7 +315,6 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             message=message,
             user=user,
             stream=stream,
-            tracing_instance=tracing_instance,
         )
 
         return CompletionAppGenerateResponseConverter.convert(

@@ -338,7 +338,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         )
 
         try:
-            return generate_task_pipeline.process(workflow)
+            return generate_task_pipeline.process()
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedException()

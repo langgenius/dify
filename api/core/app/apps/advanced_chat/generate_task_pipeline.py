@@ -115,10 +115,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         self._stream_generate_routes = self._get_stream_generate_routes()
         self._conversation_name_generate_thread = None
 
-    def process(
-        self,
-        workflow: Optional[Workflow] = None
-    ) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
+    def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
         Process generate task pipeline.
         :return:

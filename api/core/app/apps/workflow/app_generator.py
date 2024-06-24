@@ -3,7 +3,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Any, Optional, Union
+from typing import Union
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -39,7 +39,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         stream: bool = True,
         call_depth: int = 0,
-        tracing_instance: Optional[Any] = None
     ) -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
@@ -51,7 +50,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param invoke_from: invoke from source
         :param stream: is stream
         :param call_depth: call depth
-        :param tracing_instance: ops tracing instance
         """
         inputs = args['inputs']
 
