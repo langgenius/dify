@@ -40,6 +40,7 @@ const ConfigItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const isNotion = type === DataSourceType.notion
+  const isFeishu = type === DataSourceType.feishu
   const isWebsite = type === DataSourceType.website
   const onChangeAuthorizedPage = notionActions?.onChangeAuthorizedPage || function () { }
 
@@ -67,7 +68,13 @@ const ConfigItem: FC<Props> = ({
         }} onAuthAgain={onChangeAuthorizedPage}
         />
       )}
-
+      {isFeishu && (
+        <Operate payload={{
+          id: payload.id,
+          total: payload.notionConfig?.total || 0,
+        }} onAuthAgain={onChangeAuthorizedPage}
+        />
+      )}
       {
         isWebsite && !readOnly && (
           <div className='p-2 text-gray-500 cursor-pointer rounded-md hover:bg-black/5' onClick={onRemove} >
