@@ -1,17 +1,30 @@
 import type { FC } from 'react'
-import { memo } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiArrowGoBackLine,
   RiArrowGoForwardFill,
 } from '@remixicon/react'
 import TipPopup from '../operator/tip-popup'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
 
 export type UndoRedoProps = { handleUndo: () => void; handleRedo: () => void }
 const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
   const { t } = useTranslation()
+  const { store } = useWorkflowHistoryStore()
+  const [buttonsDisabled, setButtonsDisabled] = useState({ undo: true, redo: true })
+
+  useEffect(() => {
+    const unsubscribe = store.temporal.subscribe((state) => {
+      setButtonsDisabled({
+        undo: state.pastStates.length === 0,
+        redo: state.futureStates.length === 0,
+      })
+    })
+    return () => unsubscribe()
+  }, [store])
 
   const { nodesReadOnly } = useNodesReadOnly()
 
@@ -23,9 +36,9 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           className={`
         flex items-center px-1.5 w-8 h-8 rounded-md text-[13px] font-medium 
         hover:bg-black/5 hover:text-gray-700 cursor-pointer select-none
-        ${nodesReadOnly && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
+        ${(nodesReadOnly || buttonsDisabled.undo) && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
       `}
-          onClick={() => !nodesReadOnly && handleUndo()}
+          onClick={() => !nodesReadOnly && !buttonsDisabled.undo && handleUndo()}
         >
           <RiArrowGoBackLine className='h-4 w-4' />
         </div>
@@ -36,9 +49,9 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           className={`
         flex items-center px-1.5 w-8 h-8 rounded-md text-[13px] font-medium 
         hover:bg-black/5 hover:text-gray-700 cursor-pointer select-none
-        ${nodesReadOnly && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
+        ${(nodesReadOnly || buttonsDisabled.redo) && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
       `}
-          onClick={() => !nodesReadOnly && handleRedo()}
+          onClick={() => !nodesReadOnly && !buttonsDisabled.redo && handleRedo()}
         >
           <RiArrowGoForwardFill className='h-4 w-4' />
         </div>
