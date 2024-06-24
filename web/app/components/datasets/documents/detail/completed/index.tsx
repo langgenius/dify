@@ -6,6 +6,10 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { debounce, isNil, omitBy } from 'lodash-es'
 import cn from 'classnames'
+import {
+  RiCloseLine,
+  RiEditLine,
+} from '@remixicon/react'
 import { StatusItem } from '../../list'
 import { DocumentContext } from '../index'
 import { ProcessStatus } from '../segment-add'
@@ -23,7 +27,6 @@ import { deleteSegment, disableSegment, enableSegment, fetchSegments, updateSegm
 import type { SegmentDetailModel, SegmentUpdator, SegmentsQuery, SegmentsResponse } from '@/models/datasets'
 import { asyncRunSafe } from '@/utils'
 import type { CommonResponse } from '@/models/common'
-import { Edit03, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
 import Button from '@/app/components/base/button'
 import NewSegmentModal from '@/app/components/datasets/documents/detail/new-segment-modal'
@@ -134,13 +137,11 @@ const SegmentDetailComponent: FC<ISegmentDetailProps> = ({
         {isEditing && (
           <>
             <Button
-              className='mr-2 !h-7 !px-3 !py-[5px] text-xs font-medium text-gray-700 !rounded-md'
               onClick={handleCancel}>
               {t('common.operation.cancel')}
             </Button>
             <Button
-              type='primary'
-              className='!h-7 !px-3 !py-[5px] text-xs font-medium !rounded-md'
+              variant='primary'
               onClick={handleSave}
               disabled={loading}
             >
@@ -152,13 +153,13 @@ const SegmentDetailComponent: FC<ISegmentDetailProps> = ({
           <>
             <div className='group relative flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
               <div className={cn(s.editTip, 'hidden items-center absolute -top-10 px-3 h-[34px] bg-white rounded-lg whitespace-nowrap text-xs font-semibold text-gray-700 group-hover:flex')}>{t('common.operation.edit')}</div>
-              <Edit03 className='w-4 h-4 text-gray-500' onClick={() => setIsEditing(true)} />
+              <RiEditLine className='w-4 h-4 text-gray-500' onClick={() => setIsEditing(true)} />
             </div>
             <div className='mx-3 w-[1px] h-3 bg-gray-200' />
           </>
         )}
         <div className='flex justify-center items-center w-6 h-6 cursor-pointer' onClick={onCancel}>
-          <XClose className='w-4 h-4 text-gray-500' />
+          <RiCloseLine className='w-4 h-4 text-gray-500' />
         </div>
       </div>
       <SegmentIndexTag positionId={segInfo?.position || ''} className='w-fit mt-[2px] mb-6' />
@@ -402,7 +403,7 @@ const Completed: FC<ICompletedProps> = ({
         onClick={onClickCard}
         archived={archived}
       />
-      <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px] !overflow-visible'>
+      <Modal isShow={currSegment.showModal} onClose={() => { }} className='!max-w-[640px] !overflow-visible'>
         <SegmentDetail
           embeddingAvailable={embeddingAvailable}
           segInfo={currSegment.segInfo ?? { id: '' }}

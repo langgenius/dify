@@ -99,8 +99,8 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
             credentials.refresh(request)
             token = credentials.token
 
-        # Vertex AI Anthropic Claude3 Opus model avaiable in us-east5 region, Sonnet and Haiku avaiable in us-central1 region
-        if 'opus' in model:
+        # Vertex AI Anthropic Claude3 Opus model available in us-east5 region, Sonnet and Haiku available in us-central1 region
+        if 'opus' or 'claude-3-5-sonnet' in model:
             location = 'us-east5'
         else:
             location = 'us-central1'

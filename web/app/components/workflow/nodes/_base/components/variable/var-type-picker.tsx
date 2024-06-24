@@ -2,13 +2,13 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import cn from 'classnames'
+import { RiArrowDownSLine } from '@remixicon/react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { VarType } from '@/app/components/workflow/types'
 
 type Props = {
@@ -45,7 +45,7 @@ const VarReferencePicker: FC<Props> = ({
         <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className='w-[120px] cursor-pointer'>
           <div className='flex items-center h-8 justify-between px-2.5 rounded-lg border-0 bg-gray-100 text-gray-900 text-[13px]'>
             <div className='capitalize grow w-0 truncate' title={value}>{value}</div>
-            <ChevronDown className='shrink-0 w-3.5 h-3.5 text-gray-700' />
+            <RiArrowDownSLine className='shrink-0 w-3.5 h-3.5 text-gray-700' />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{

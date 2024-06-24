@@ -3,6 +3,9 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import produce from 'immer'
 import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import Drawer from '@/app/components/base/drawer-plus'
@@ -13,7 +16,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
@@ -149,7 +151,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                     }
                     selector='workflow-tool-modal-tooltip'
                   >
-                    <HelpCircle className='ml-2 w-[14px] h-[14px] text-gray-400' />
+                    <RiQuestionLine className='ml-2 w-[14px] h-[14px] text-gray-400' />
                   </Tooltip>
                 </div>
                 <input
@@ -208,7 +210,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                               </div>
                             )}
                             {item.name !== '__image' && (
-                              <MethodSelector value={item.form} onChange={value => handleParameterChange('form', value, index)}/>
+                              <MethodSelector value={item.form} onChange={value => handleParameterChange('form', value, index)} />
                             )}
                           </td>
                           <td className="p-2 pl-3 text-gray-500 w-[236px]">
@@ -242,11 +244,11 @@ const WorkflowToolAsModal: FC<Props> = ({
             </div>
             <div className={cn((!isAdd && onRemove) ? 'justify-between' : 'justify-end', 'mt-2 shrink-0 flex py-4 px-6 rounded-b-[10px] bg-gray-50 border-t border-black/5')} >
               {!isAdd && onRemove && (
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onRemove}>{t('common.operation.remove')}</Button>
+                <Button onClick={onRemove}>{t('common.operation.remove')}</Button>
               )}
               <div className='flex space-x-2 '>
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                <Button disabled={!label || !name || !isNameValid(name)} className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={() => {
+                <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
+                <Button disabled={!label || !name || !isNameValid(name)} variant='primary' onClick={() => {
                   if (isAdd)
                     onConfirm()
                   else

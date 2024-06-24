@@ -145,8 +145,8 @@ const OneMoreStep = () => {
           </div>
           <div>
             <Button
-              type='primary'
-              className='w-full !fone-medium !text-sm'
+              variant='primary'
+              className='w-full'
               disabled={state.formState === 'processing'}
               onClick={() => {
                 dispatch({ type: 'formState', value: 'processing' })

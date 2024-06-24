@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import ItemPanel from './item-panel'
 import Button from '@/app/components/base/button'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
 import Slider from '@/app/components/base/slider'
@@ -53,7 +53,7 @@ const AgentSetting: FC<Props> = ({
               onClick={onCancel}
               className='flex justify-center items-center w-6 h-6 cursor-pointer'
             >
-              <XClose className='w-4 h-4 text-gray-500' />
+              <RiCloseLine className='w-4 h-4 text-gray-500' />
             </div>
           </div>
         </div>
@@ -137,13 +137,12 @@ const AgentSetting: FC<Props> = ({
         >
           <Button
             onClick={onCancel}
-            className='mr-2 text-sm font-medium'
+            className='mr-2'
           >
             {t('common.operation.cancel')}
           </Button>
           <Button
-            type='primary'
-            className='text-sm font-medium'
+            variant='primary'
             onClick={handleSave}
           >
             {t('common.operation.save')}

@@ -2,9 +2,10 @@
 import { useTranslation } from 'react-i18next'
 import classNames from 'classnames'
 import Link from 'next/link'
+import dayjs from 'dayjs'
+import { RiCloseLine } from '@remixicon/react'
 import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import type { LangGeniusVersionResponse } from '@/models/common'
 import { IS_CE_EDITION } from '@/config'
 import LogoSite from '@/app/components/base/logo/logo-site'
@@ -31,15 +32,15 @@ export default function AccountAbout({
       className={s.modal}
     >
       <div className='relative pt-4'>
-        <div className='absolute flex items-center justify-center w-8 h-8 cursor-pointer -top-2 -right-4' onClick={onCancel}>
-          <XClose className='w-4 h-4 text-gray-500' />
+        <div className='absolute -top-2 -right-4 flex justify-center items-center w-8 h-8 cursor-pointer' onClick={onCancel}>
+          <RiCloseLine className='w-4 h-4 text-gray-500' />
         </div>
         <div>
           <LogoSite className='mx-auto mb-2' />
-          <div className='mb-3 text-xs font-normal text-center text-gray-500'>Version {langeniusVersionInfo?.current_version}</div>
-          <div className='mb-4 text-xs font-normal text-center text-gray-700'>
-            <div>© 2023 LangGenius, Inc., Contributors.</div>
-            {/* <div className='text-[#1C64F2]'>
+          <div className='mb-3 text-center text-xs font-normal text-gray-500'>Version {langeniusVersionInfo?.current_version}</div>
+          <div className='mb-4 text-center text-xs font-normal text-gray-700'>
+            <div>© {dayjs().year()} LangGenius, Inc., Contributors.</div>
+            <div className='text-[#1C64F2]'>
               {
                 IS_CE_EDITION
                   ? <Link href={'https://github.com/langgenius/dify/blob/main/LICENSE'} target='_blank' rel='noopener noreferrer'>Open Source License</Link>
@@ -48,11 +49,11 @@ export default function AccountAbout({
                     <Link href='https://dify.ai/terms' target='_blank' rel='noopener noreferrer'>Terms of Service</Link>
                   </>
               }
-            </div> */}
+            </div>
           </div>
         </div>
         <div className='mb-4 -mx-8 h-[0.5px] bg-gray-200' />
-        <div className='flex items-center justify-between'>
+        <div className='flex justify-between items-center'>
           <div className='text-xs font-medium text-gray-800'>
             {
               isLatest

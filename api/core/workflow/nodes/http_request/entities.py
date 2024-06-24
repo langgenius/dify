@@ -1,7 +1,7 @@
 import os
 from typing import Literal, Optional, Union
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ValidationInfo, field_validator
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 
@@ -22,15 +22,15 @@ class HttpRequestNodeData(BaseNodeData):
             header: Union[None, str] = None
 
         type: Literal['no-auth', 'api-key']
-        config: Optional[Config]
+        config: Optional[Config] = None
 
-        @classmethod
         @field_validator('config', mode='before')
-        def check_config(cls, v, values):
+        @classmethod
+        def check_config(cls, v: Config, values: ValidationInfo):
             """
             Check config, if type is no-auth, config should be None, otherwise it should be a dict.
             """
-            if values['type'] == 'no-auth':
+            if values.data['type'] == 'no-auth':
                 return None
             else:
                 if not v or not isinstance(v, dict):
@@ -52,6 +52,6 @@ class HttpRequestNodeData(BaseNodeData):
     authorization: Authorization
     headers: str
     params: str
-    body: Optional[Body]
+    body: Optional[Body] = None
     timeout: Optional[Timeout] = None
     mask_authorization_header: Optional[bool] = True

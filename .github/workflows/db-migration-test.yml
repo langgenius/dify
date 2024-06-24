@@ -38,13 +38,14 @@ jobs:
       - name: Install dependencies
         run: poetry install -C api
 
-      - name: Set up Middleware
+      - name: Set up Middlewares
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml
           services: |
             db
+            redis
 
       - name: Prepare configs
         run: |
@@ -54,4 +55,4 @@ jobs:
       - name: Run DB Migration
         run: |
           cd api
-          poetry run python -m flask db upgrade
+          poetry run python -m flask upgrade-db

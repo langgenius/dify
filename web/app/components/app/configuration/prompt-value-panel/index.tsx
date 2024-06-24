@@ -4,6 +4,10 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
+  RiArrowDownSLine,
+  RiArrowRightLine,
+} from '@remixicon/react'
+import {
   PlayIcon,
 } from '@heroicons/react/24/solid'
 import ConfigContext from '@/context/debug-configuration'
@@ -12,7 +16,6 @@ import { AppType, ModelModeType } from '@/types/app'
 import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import Button from '@/app/components/base/button'
-import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import Tooltip from '@/app/components/base/tooltip-plus'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -62,7 +65,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   const renderRunButton = () => {
     return (
       <Button
-        type="primary"
+        variant="primary"
         disabled={canNotRun}
         onClick={() => onSend && onSend()}
         className="w-[80px] !h-8">
@@ -102,8 +105,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
           <div className='flex items-center space-x-1 cursor-pointer' onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
             {
               userInputFieldCollapse
-                ? <ChevronRight className='w-3 h-3 text-gray-300' />
-                : <ChevronDown className='w-3 h-3 text-gray-300' />
+                ? <RiArrowRightLine className='w-3 h-3 text-gray-300' />
+                : <RiArrowDownSLine className='w-3 h-3 text-gray-300' />
             }
             <div className='text-xs font-medium text-gray-800 uppercase'>{t('appDebug.inputs.userInputField')}</div>
           </div>
@@ -195,7 +198,6 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             <div className="mt-5 border-b border-gray-100"></div>
             <div className="flex justify-between mt-4 px-4">
               <Button
-                className='!h-8 !p-3'
                 onClick={onClear}
                 disabled={false}
               >

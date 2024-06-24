@@ -5,7 +5,7 @@ import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { useContext } from 'use-context-selector'
-import { UserPlusIcon } from '@heroicons/react/24/outline'
+import { RiUserAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import InviteModal from './invite-modal'
 import InvitedModal from './invited-modal'
@@ -80,7 +80,7 @@ const MembersPage = () => {
             text-[13px] font-medium text-primary-600 bg-white
             shadow-xs rounded-lg ${(isCurrentWorkspaceManager && !isMemberFull) ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
           } onClick={() => (isCurrentWorkspaceManager && !isMemberFull) && setInviteModalVisible(true)}>
-            <UserPlusIcon className='w-4 h-4 mr-2 ' />
+            <RiUserAddLine className='w-4 h-4 mr-2 ' />
             {t('common.members.invite')}
           </div>
         </div>
