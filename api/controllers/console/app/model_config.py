@@ -17,7 +17,6 @@ from libs.login import login_required
 from models.model import AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
 
-
 class ModelConfigResource(Resource):
 
     @setup_required
@@ -25,6 +24,7 @@ class ModelConfigResource(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
     def post(self, app_model):
+        
         """Modify app model config"""
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
