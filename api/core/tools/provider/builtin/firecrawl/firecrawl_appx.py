@@ -1,5 +1,7 @@
-import requests
 import time
+
+import requests
+
 
 class FirecrawlApp:
     def __init__(self, api_key=None, base_url=None):
