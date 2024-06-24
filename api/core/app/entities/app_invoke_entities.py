@@ -7,7 +7,6 @@ from core.app.app_config.entities import AppConfig, EasyUIBasedAppConfig, Workfl
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file.file_obj import FileVar
 from core.model_runtime.entities.model_entities import AIModelEntity
-from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.trace_queue_manager import TraceQueueManager
 
 
@@ -92,7 +91,6 @@ class AppGenerateEntity(BaseModel):
     extras: dict[str, Any] = {}
 
     # tracing instance
-    tracing_instance: Optional[BaseTraceInstance] = None
     trace_manager: Optional[TraceQueueManager] = None
 
     class Config:

@@ -22,7 +22,6 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.workflow_iteration_cycle_manage import WorkflowIterationCycleManage
 from core.file.file_obj import FileVar
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType
@@ -103,7 +102,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         total_steps: int,
         outputs: Optional[str] = None,
         conversation_id: Optional[str] = None,
-        tracing_instance: Optional[BaseTraceInstance] = None,
         trace_manager: Optional[TraceQueueManager] = None
     ) -> WorkflowRun:
         """
@@ -128,15 +126,13 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         db.session.refresh(workflow_run)
         db.session.close()
 
-        if tracing_instance:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    tracing_instance,
-                    TraceTaskName.WORKFLOW_TRACE,
-                    workflow_run=workflow_run,
-                    conversation_id=conversation_id,
-                )
+        trace_manager.add_trace_task(
+            TraceTask(
+                TraceTaskName.WORKFLOW_TRACE,
+                workflow_run=workflow_run,
+                conversation_id=conversation_id,
             )
+        )
 
         return workflow_run
 
@@ -148,7 +144,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         status: WorkflowRunStatus,
         error: str,
         conversation_id: Optional[str] = None,
-        tracing_instance: Optional[BaseTraceInstance] = None,
         trace_manager: Optional[TraceQueueManager] = None
     ) -> WorkflowRun:
         """
@@ -172,15 +167,13 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         db.session.refresh(workflow_run)
         db.session.close()
 
-        if tracing_instance:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    tracing_instance,
-                    TraceTaskName.WORKFLOW_TRACE,
-                    workflow_run=workflow_run,
-                    conversation_id=conversation_id,
-                )
+        trace_manager.add_trace_task(
+            TraceTask(
+                TraceTaskName.WORKFLOW_TRACE,
+                workflow_run=workflow_run,
+                conversation_id=conversation_id,
             )
+        )
 
         return workflow_run
 
@@ -532,7 +525,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
 
     def _handle_workflow_finished(
         self, event: QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent,
-        tracing_instance: Optional[BaseTraceInstance] = None,
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None
     ) -> Optional[WorkflowRun]:
@@ -552,7 +544,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
                 status=WorkflowRunStatus.STOPPED,
                 error='Workflow stopped.',
                 conversation_id=conversation_id,
-                tracing_instance=tracing_instance,
                 trace_manager=trace_manager
             )
 
@@ -576,7 +567,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
                 status=WorkflowRunStatus.FAILED,
                 error=event.error,
                 conversation_id=conversation_id,
-                tracing_instance=tracing_instance,
                 trace_manager=trace_manager
             )
         else:
@@ -594,7 +584,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
                 total_steps=self._task_state.total_steps,
                 outputs=outputs,
                 conversation_id=conversation_id,
-                tracing_instance=tracing_instance,
                 trace_manager=trace_manager
             )
 

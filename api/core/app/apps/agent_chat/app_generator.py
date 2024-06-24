@@ -23,7 +23,6 @@ from core.ops.trace_queue_manager import TraceQueueManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser
-from services.ops_trace.ops_trace_service import OpsTraceService
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +70,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             app_model=app_model,
             conversation=conversation
         )
-        
+
         # validate override model config
         override_model_config_dict = None
         if args.get('model_config'):
@@ -106,10 +105,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         )
 
         # get tracing instance
-        tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_model.id,
-        )
-        trace_manager = TraceQueueManager()
+        trace_manager = TraceQueueManager(app_model.id)
 
         # init application generate entity
         application_generate_entity = AgentChatAppGenerateEntity(
@@ -125,7 +121,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=invoke_from,
             extras=extras,
             call_depth=0,
-            tracing_instance=tracing_instance,
             trace_manager=trace_manager
         )
 

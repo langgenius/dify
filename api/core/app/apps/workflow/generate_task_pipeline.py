@@ -36,7 +36,6 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
-from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.trace_queue_manager import TraceQueueManager
 from core.workflow.entities.node_entities import NodeType, SystemVariable
 from core.workflow.nodes.end.end_node import EndNode
@@ -107,7 +106,6 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         db.session.close()
 
         generator = self._process_stream_response(
-            tracing_instance=self._application_generate_entity.tracing_instance,
             trace_manager=self._application_generate_entity.trace_manager
         )
         if self._stream:
@@ -165,7 +163,6 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
     def _process_stream_response(
         self,
-        tracing_instance: Optional[BaseTraceInstance] = None,
         trace_manager: Optional[TraceQueueManager] = None
     ) -> Generator[StreamResponse, None, None]:
         """
@@ -225,7 +222,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 self._handle_iteration_operation(event)
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
                 workflow_run = self._handle_workflow_finished(
-                    event, tracing_instance=tracing_instance, trace_manager=trace_manager
+                    event, trace_manager=trace_manager
                 )
 
                 # save workflow app log

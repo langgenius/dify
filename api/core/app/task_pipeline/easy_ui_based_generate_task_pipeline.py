@@ -44,7 +44,6 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -125,7 +124,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             )
 
         generator = self._process_stream_response(
-            tracing_instance=self._application_generate_entity.tracing_instance,
             trace_manager=self._application_generate_entity.trace_manager
         )
         if self._stream:
@@ -205,7 +203,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                 )
 
     def _process_stream_response(
-        self, tracing_instance: Optional[BaseTraceInstance] = None, trace_manager: Optional[TraceQueueManager] = None
+        self, trace_manager: Optional[TraceQueueManager] = None
     ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
@@ -233,7 +231,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                     yield self._message_replace_to_stream_response(answer=output_moderation_answer)
 
                 # Save message
-                self._save_message(tracing_instance, trace_manager)
+                self._save_message(trace_manager)
 
                 yield self._message_end_to_stream_response()
             elif isinstance(event, QueueRetrieverResourcesEvent):
@@ -279,7 +277,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             self._conversation_name_generate_thread.join()
 
     def _save_message(
-        self, tracing_instance: Optional[BaseTraceInstance] = None, trace_manager: Optional[TraceQueueManager] = None
+        self, trace_manager: Optional[TraceQueueManager] = None
     ) -> None:
         """
         Save message.
@@ -311,15 +309,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
 
         db.session.commit()
 
-        if tracing_instance:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    tracing_instance,
-                    TraceTaskName.MESSAGE_TRACE,
-                    conversation_id=self._conversation.id,
-                    message_id=self._message.id
-                )
+        trace_manager.add_trace_task(
+            TraceTask(
+                TraceTaskName.MESSAGE_TRACE,
+                conversation_id=self._conversation.id,
+                message_id=self._message.id
             )
+        )
 
         message_was_created.send(
             self._message,

@@ -13,7 +13,6 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeErr
 from core.ops.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from services.ops_trace.ops_trace_service import OpsTraceService
 
 
 class LLMGenerator:
@@ -54,22 +53,17 @@ class LLMGenerator:
             name = name[:75] + '...'
 
         # get tracing instance
-        tracing_instance = OpsTraceService.get_ops_trace_instance(
-            conversation_id=conversation_id
-        )
-        if tracing_instance:
-            trace_manager = TraceQueueManager()
-            trace_manager.add_trace_task(
-                TraceTask(
-                    tracing_instance,
-                    TraceTaskName.GENERATE_NAME_TRACE,
-                    conversation_id=conversation_id,
-                    generate_conversation_name=name,
-                    inputs=prompt,
-                    timer=timer,
-                    tenant_id=tenant_id,
-                )
+        trace_manager = TraceQueueManager(conversation_id=conversation_id)
+        trace_manager.add_trace_task(
+            TraceTask(
+                TraceTaskName.GENERATE_NAME_TRACE,
+                conversation_id=conversation_id,
+                generate_conversation_name=name,
+                inputs=prompt,
+                timer=timer,
+                tenant_id=tenant_id,
             )
+        )
 
         return name
 

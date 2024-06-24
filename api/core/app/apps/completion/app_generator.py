@@ -97,10 +97,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         )
 
         # get tracing instance
-        tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_model.id
-        )
-        trace_manager = TraceQueueManager()
+        trace_manager = TraceQueueManager(app_model.id)
 
         # init application generate entity
         application_generate_entity = CompletionAppGenerateEntity(
@@ -114,7 +111,6 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             stream=stream,
             invoke_from=invoke_from,
             extras=extras,
-            tracing_instance=tracing_instance,
             trace_manager=trace_manager
         )
 

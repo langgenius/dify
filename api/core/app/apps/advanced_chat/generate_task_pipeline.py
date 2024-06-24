@@ -42,7 +42,6 @@ from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.file.file_obj import FileVar
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.trace_queue_manager import TraceQueueManager
 from core.workflow.entities.node_entities import NodeType, SystemVariable
 from core.workflow.nodes.answer.answer_node import AnswerNode
@@ -131,7 +130,6 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         )
 
         generator = self._process_stream_response(
-            tracing_instance=self._application_generate_entity.tracing_instance,
             trace_manager=self._application_generate_entity.trace_manager
         )
         if self._stream:
@@ -185,7 +183,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             )
 
     def _process_stream_response(
-        self, tracing_instance: Optional[BaseTraceInstance] = None, trace_manager: Optional[TraceQueueManager] = None
+        self, trace_manager: Optional[TraceQueueManager] = None
     ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
@@ -259,8 +257,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 self._handle_iteration_operation(event)
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
                 workflow_run = self._handle_workflow_finished(
-                    event, tracing_instance=tracing_instance, conversation_id=self._conversation.id,
-                    trace_manager=trace_manager
+                    event, conversation_id=self._conversation.id, trace_manager=trace_manager
                 )
                 if workflow_run:
                     yield self._workflow_finish_to_stream_response(

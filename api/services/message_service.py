@@ -21,7 +21,6 @@ from services.errors.message import (
     MessageNotExistsError,
     SuggestedQuestionsAfterAnswerDisabledError,
 )
-from services.ops_trace.ops_trace_service import OpsTraceService
 from services.workflow_service import WorkflowService
 
 
@@ -272,20 +271,14 @@ class MessageService:
             )
 
         # get tracing instance
-        tracing_instance = OpsTraceService.get_ops_trace_instance(
-            message_id=message_id
-        )
-        
-        if tracing_instance:
-            trace_manager = TraceQueueManager()
-            trace_manager.add_trace_task(
-                TraceTask(
-                    tracing_instance,
-                    TraceTaskName.SUGGESTED_QUESTION_TRACE,
-                    message_id=message_id,
-                    suggested_question=questions,
-                    timer=timer
-                )
+        trace_manager = TraceQueueManager(message_id=message_id)
+        trace_manager.add_trace_task(
+            TraceTask(
+                TraceTaskName.SUGGESTED_QUESTION_TRACE,
+                message_id=message_id,
+                suggested_question=questions,
+                timer=timer
             )
+        )
 
         return questions

@@ -364,7 +364,6 @@ class AppRunner:
             inputs=inputs,
             query=query if query else '',
             message_id=message_id,
-            tracing_instance=app_generate_entity.tracing_instance,
             trace_manager=app_generate_entity.trace_manager
         )
     

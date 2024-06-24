@@ -25,7 +25,6 @@ from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser
 from models.workflow import Workflow
-from services.ops_trace.ops_trace_service import OpsTraceService
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +72,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         )
 
         # get tracing instance
-        tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_model.id,
-        )
-        trace_manager = TraceQueueManager()
+        trace_manager = TraceQueueManager(app_model.id)
 
         # init application generate entity
         application_generate_entity = WorkflowAppGenerateEntity(
@@ -88,7 +84,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
             stream=stream,
             invoke_from=invoke_from,
             call_depth=call_depth,
-            tracing_instance=tracing_instance,
             trace_manager=trace_manager
         )
 

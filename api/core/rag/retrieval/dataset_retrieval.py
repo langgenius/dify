@@ -357,19 +357,16 @@ class DatasetRetrieval:
             db.session.commit()
 
         # get tracing instance
-        tracing_instance = self.application_generate_entity.tracing_instance if self.application_generate_entity else None
         trace_manager = self.application_generate_entity.trace_manager if self.application_generate_entity else None
 
-        if tracing_instance:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    tracing_instance,
-                    TraceTaskName.DATASET_RETRIEVAL_TRACE,
-                    message_id=message_id,
-                    documents=documents,
-                    timer=timer
-                )
+        trace_manager.add_trace_task(
+            TraceTask(
+                TraceTaskName.DATASET_RETRIEVAL_TRACE,
+                message_id=message_id,
+                documents=documents,
+                timer=timer
             )
+        )
 
     def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str) -> None:
         """

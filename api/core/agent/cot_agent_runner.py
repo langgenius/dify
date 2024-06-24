@@ -15,7 +15,6 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.trace_queue_manager import TraceQueueManager
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
@@ -219,7 +218,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         action=scratchpad.action, 
                         tool_instances=tool_instances,
                         message_file_ids=message_file_ids,
-                        tracing_instance=tracing_instance,
                         trace_manager=trace_manager,
                     )
                     scratchpad.observation = tool_invoke_response
@@ -290,7 +288,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
     def _handle_invoke_action(self, action: AgentScratchpadUnit.Action, 
                               tool_instances: dict[str, Tool],
                               message_file_ids: list[str],
-                              tracing_instance: Optional[BaseTraceInstance] = None,
                               trace_manager: Optional[TraceQueueManager] = None
                               ) -> tuple[str, ToolInvokeMeta]:
         """
@@ -323,7 +320,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             message=self.message,
             invoke_from=self.application_generate_entity.invoke_from,
             agent_tool_callback=self.agent_callback,
-            tracing_instance=tracing_instance,
             trace_manager=trace_manager,
         )
 

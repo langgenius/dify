@@ -8,6 +8,7 @@ from typing import Any
 
 from flask import Flask, current_app
 
+from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
@@ -21,6 +22,7 @@ from core.ops.utils import get_message_data
 from extensions.ext_database import db
 from models.model import Conversation, MessageAgentThought, MessageFile
 from models.workflow import WorkflowRun
+from services.ops_trace.ops_trace_service import OpsTraceService
 
 
 class TraceTaskName(str, Enum):
@@ -37,7 +39,6 @@ class TraceTaskName(str, Enum):
 class TraceTask:
     def __init__(
         self,
-        trace_instance: Any,
         trace_type: Any,
         message_id: str = None,
         workflow_run: WorkflowRun = None,
@@ -45,7 +46,6 @@ class TraceTask:
         timer: Any = None,
         **kwargs
     ):
-        self.trace_instance = trace_instance
         self.trace_type = trace_type
         self.message_id = message_id
         self.workflow_run = workflow_run
@@ -54,10 +54,11 @@ class TraceTask:
         self.kwargs = kwargs
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
-    def execute(self):
+    def execute(self, trace_instance: BaseTraceInstance):
         method_name, trace_info = self.preprocess()
-        method = self.trace_instance.trace
-        method(trace_info)
+        if trace_instance:
+            method = trace_instance.trace
+            method(trace_info)
 
     def preprocess(self):
         if self.trace_type == TraceTaskName.CONVERSATION_TRACE:
@@ -385,12 +386,14 @@ class TraceTask:
 
 
 class TraceQueueManager:
-    def __init__(self):
+    def __init__(self, app_id=None, conversation_id=None, message_id=None):
+        tracing_instance = OpsTraceService.get_ops_trace_instance(app_id, conversation_id, message_id)
         self.queue = queue.Queue()
         self.is_running = True
         self.thread = threading.Thread(
             target=self.process_queue, kwargs={
-                'flask_app': current_app._get_current_object()
+                'flask_app': current_app._get_current_object(),
+                'trace_instance': tracing_instance
             }
         )
         self.thread.start()
@@ -398,15 +401,15 @@ class TraceQueueManager:
     def stop(self):
         self.is_running = False
 
-    def process_queue(self, flask_app: Flask):
+    def process_queue(self, flask_app: Flask, trace_instance: BaseTraceInstance):
         with flask_app.app_context():
             while self.is_running:
                 try:
                     task = self.queue.get(timeout=60)
-                    task.execute()
+                    task.execute(trace_instance)
                     self.queue.task_done()
                 except queue.Empty:
                     self.stop()
 
-    def add_trace_task(self, trace_task):
+    def add_trace_task(self, trace_task: TraceTask):
         self.queue.put(trace_task)
