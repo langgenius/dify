@@ -79,7 +79,7 @@ class TraceTask:
                 self.message_id, self.timer, **self.kwargs
             )
         elif self.trace_type == TraceTaskName.TOOL_TRACE:
-            return TraceTaskName.TOOL_TRACE, self.tool_trace(self.message_id, **self.kwargs)
+            return TraceTaskName.TOOL_TRACE, self.tool_trace(self.message_id, self.timer, **self.kwargs)
         elif self.trace_type == TraceTaskName.GENERATE_NAME_TRACE:
             return TraceTaskName.GENERATE_NAME_TRACE, self.generate_name_trace(
                 self.conversation_id, self.timer, **self.kwargs
@@ -288,7 +288,7 @@ class TraceTask:
 
         return dataset_retrieval_trace_info
 
-    def tool_trace(self, message_id, **kwargs):
+    def tool_trace(self, message_id, timer, **kwargs):
         tool_name = kwargs.get('tool_name')
         tool_inputs = kwargs.get('tool_inputs')
         tool_outputs = kwargs.get('tool_outputs')
@@ -344,8 +344,8 @@ class TraceTask:
             message_id=message_id,
             message_data=message_data,
             tool_name=tool_name,
-            start_time=created_time,
-            end_time=end_time,
+            start_time=timer.get("start") if timer else created_time,
+            end_time=timer.get("end") if timer else end_time,
             tool_inputs=tool_inputs,
             tool_outputs=tool_outputs,
             metadata=metadata,
