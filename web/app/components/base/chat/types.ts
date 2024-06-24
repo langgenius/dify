@@ -3,7 +3,7 @@ import type {
   VisionFile,
   VisionSettings,
 } from '@/types/app'
-import type { IChatItem } from '@/app/components/app/chat/type'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { NodeTracing } from '@/types/workflow'
 import type { WorkflowRunningStatus } from '@/app/components/workflow/types'
 

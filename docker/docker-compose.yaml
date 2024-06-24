@@ -106,7 +106,7 @@ x-shared-env: &shared-env
   OPENSEARCH_USER: admin
   OPENSEARCH_PASSWORD: admin
   OPENSEARCH_SECURE: 'true'
-  # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`.
+  # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`,`pgvector`, `chroma`, 'opensearch', 'tidb_vector'.
   VECTOR_STORE: weaviate
   # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
   WEAVIATE_ENDPOINT: http://weaviate:8080
