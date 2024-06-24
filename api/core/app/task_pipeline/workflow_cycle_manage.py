@@ -206,7 +206,8 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
             title=node_title,
             status=WorkflowNodeExecutionStatus.RUNNING.value,
             created_by_role=workflow_run.created_by_role,
-            created_by=workflow_run.created_by
+            created_by=workflow_run.created_by,
+            created_at=datetime.now(timezone.utc).replace(tzinfo=None)
         )
 
         db.session.add(workflow_node_execution)
