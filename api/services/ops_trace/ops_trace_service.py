@@ -291,7 +291,7 @@ class OpsTraceService:
         :return:
         """
         # auth check
-        if tracing_provider not in [TracingProviderEnum.LANGFUSE.value, TracingProviderEnum.LANGSMITH.value]:
+        if tracing_provider not in [TracingProviderEnum.LANGFUSE.value, TracingProviderEnum.LANGSMITH.value, None, ""]:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
         app_config: App = db.session.query(App).filter(App.id == app_id).first()
 
