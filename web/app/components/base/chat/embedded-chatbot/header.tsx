@@ -2,18 +2,15 @@ import type { FC } from 'react'
 import React from 'react'
 import { RiRefreshLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
-import { Theme } from './theme/theme-context'
+import type { Theme } from './theme/theme-context'
 import { CssTransform } from './theme/utils'
-
+import Tooltip from '@/app/components/base/tooltip'
 
 export type IHeaderProps = {
   isMobile?: boolean
   customerIcon?: React.ReactNode
   title: string
   theme?: Theme
-  // icon: string
-  // icon_background: string
   onCreateNewChat?: () => void
 }
 const Header: FC<IHeaderProps> = ({
@@ -21,8 +18,6 @@ const Header: FC<IHeaderProps> = ({
   customerIcon,
   title,
   theme,
-  // icon,
-  // icon_background,
   onCreateNewChat,
 }) => {
   const { t } = useTranslation()
