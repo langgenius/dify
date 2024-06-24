@@ -97,7 +97,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
         # get tracing instance
         tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_model.id,
+            app_id=app_model.id
         )
 
         # init application generate entity
@@ -120,11 +120,6 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             conversation,
             message
         ) = self._init_generate_records(application_generate_entity)
-
-        # get tracing instance
-        tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_model.id
-        )
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
@@ -154,7 +149,6 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             message=message,
             user=user,
             stream=stream,
-            tracing_instance=tracing_instance,
         )
 
         return CompletionAppGenerateResponseConverter.convert(
