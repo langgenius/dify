@@ -71,7 +71,7 @@ class BaseTraceInstance(ABC):
         return kwargs
 
     @abstractmethod
-    def api_check_trace(self, **kwargs):
+    def api_check(self, **kwargs):
         """
         Abstract method to trace API check activities.
         Subclasses must implement specific tracing logic for API check operations.
