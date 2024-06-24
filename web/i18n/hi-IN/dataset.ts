@@ -12,7 +12,7 @@ const translation = {
   datasetDeleted: 'ज्ञान हटा दिया गया',
   datasetDeleteFailed: 'ज्ञान हटाने में विफल',
   didYouKnow: 'क्या आप जानते हैं?',
-  intro1: 'ज्ञान को Dify एप्लिकेशन में ',
+  intro1: 'ज्ञान को Vigie एप्लिकेशन में ',
   intro2: 'एक संदर्भ के रूप में ',
   intro3: ',',
   intro4: 'या यह ',

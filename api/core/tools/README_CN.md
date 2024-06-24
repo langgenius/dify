@@ -1,6 +1,6 @@
 # Tools
 
-该模块提供了各Agent和Workflow中会使用的内置工具的调用、鉴权接口，并为 Dify 提供了统一的工具供应商的信息和凭据表单规则。
+该模块提供了各Agent和Workflow中会使用的内置工具的调用、鉴权接口，并为 Vigie 提供了统一的工具供应商的信息和凭据表单规则。
 
 - 一方面将工具和业务代码解耦，方便开发者对模型横向扩展，
 - 另一方面提供了只需在后端定义供应商和工具，即可在前端页面直接展示，无需修改前端逻辑。
@@ -8,7 +8,7 @@
 ## 功能介绍
 
 对于给Agent和Workflow提供的工具，我们当前将其分为两类：
-- `Built-in Tools` 内置工具，即Dify内部实现的工具，通过硬编码的方式提供给Agent和Workflow使用。
+- `Built-in Tools` 内置工具，即Vigie内部实现的工具，通过硬编码的方式提供给Agent和Workflow使用。
 - `Api-Based Tools` 基于API的工具，即通过调用第三方API实现的工具，`Api-Based Tool`不需要再额外定义，只需提供`OpenAPI` `Swagger` `OpenAI plugin`等接口文档即可。
 
 ### 内置工具供应商

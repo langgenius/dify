@@ -158,8 +158,8 @@ const translation = {
     newPassword: 'Nowe hasło',
     confirmPassword: 'Potwierdź hasło',
     notEqual: 'Dwa hasła są różne.',
-    langGeniusAccount: 'Konto Dify',
-    langGeniusAccountTip: 'Twoje konto Dify i powiązane dane użytkownika.',
+    langGeniusAccount: 'Konto Vigie',
+    langGeniusAccountTip: 'Twoje konto Vigie i powiązane dane użytkownika.',
     editName: 'Edytuj nazwę',
     showAppLength: 'Pokaż {{length}} aplikacje',
     delete: 'Usuń konto',
@@ -190,7 +190,7 @@ const translation = {
     invitedAsRole: 'Zaproszony jako użytkownik typu {{role}}',
     invitationSent: 'Zaproszenie wysłane',
     invitationSentTip:
-      'Zaproszenie zostało wysłane, a oni mogą zalogować się do Dify, aby uzyskać dostęp do danych Twojego zespołu.',
+      'Zaproszenie zostało wysłane, a oni mogą zalogować się do Vigie, aby uzyskać dostęp do danych Twojego zespołu.',
     invitationLink: 'Link zaproszenia',
     failedinvitationEmails: 'Poniższe osoby nie zostały pomyślnie zaproszone',
     ok: 'OK',
@@ -239,7 +239,7 @@ const translation = {
       openaiHosted: 'Hostowany OpenAI',
       onTrial: 'NA PROBĘ',
       exhausted: 'WYCZERPANY LIMIT',
-      desc: 'Usługa hostowania OpenAI dostarczana przez Dify pozwala korzystać z modeli takich jak GPT-3.5. Przed wyczerpaniem limitu próbnego należy skonfigurować inne dostawców modeli.',
+      desc: 'Usługa hostowania OpenAI dostarczana przez Vigie pozwala korzystać z modeli takich jak GPT-3.5. Przed wyczerpaniem limitu próbnego należy skonfigurować inne dostawców modeli.',
       callTimes: 'Czasy wywołań',
       usedUp: 'Limit próbny został wyczerpany. Dodaj własnego dostawcę modeli.',
       useYourModel: 'Aktualnie używany jest własny dostawca modeli.',
@@ -386,7 +386,7 @@ const translation = {
   },
   apiBasedExtension: {
     title:
-      'Rozszerzenia oparte na interfejsie API zapewniają scentralizowane zarządzanie interfejsami API, upraszczając konfigurację dla łatwego użytkowania w aplikacjach Dify.',
+      'Rozszerzenia oparte na interfejsie API zapewniają scentralizowane zarządzanie interfejsami API, upraszczając konfigurację dla łatwego użytkowania w aplikacjach Vigie.',
     link: 'Dowiedz się, jak opracować własne rozszerzenie interfejsu API.',
     linkUrl: 'https://docs.dify.ai/features/extension/api_based_extension',
     add: 'Dodaj rozszerzenie interfejsu API',
@@ -417,8 +417,8 @@ const translation = {
   about: {
     changeLog: 'Dziennik zmian',
     updateNow: 'Aktualizuj teraz',
-    nowAvailable: 'Dify {{version}} jest teraz dostępny.',
-    latestAvailable: 'Dify {{version}} jest najnowszą dostępną wersją.',
+    nowAvailable: 'Vigie {{version}} jest teraz dostępny.',
+    latestAvailable: 'Vigie {{version}} jest najnowszą dostępną wersją.',
   },
   appMenus: {
     overview: 'Przegląd',

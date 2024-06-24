@@ -1,6 +1,6 @@
 identity:
   name: news_search
-  author: Dify
+  author: Vigie
   label:
     en_US: News Search API
     zh_Hans: News Search API

@@ -44,7 +44,7 @@ export const routes = {
   },
 };
 
-export class DifyClient {
+export class VigieClient {
   constructor(apiKey, baseUrl = BASE_URL) {
     this.apiKey = apiKey;
     this.baseUrl = baseUrl;
@@ -131,7 +131,7 @@ export class DifyClient {
   }
 }
 
-export class CompletionClient extends DifyClient {
+export class CompletionClient extends VigieClient {
   createCompletionMessage(inputs, user, stream = false, files = null) {
     const data = {
       inputs,
@@ -164,7 +164,7 @@ export class CompletionClient extends DifyClient {
   }
 }
 
-export class ChatClient extends DifyClient {
+export class ChatClient extends VigieClient {
   createChatMessage(
     inputs,
     query,

@@ -1,6 +1,6 @@
 # dify-client
 
-A Dify App Service-API Client, using for build a webapp by request Service-API
+A Vigie App Service-API Client, using for build a webapp by request Service-API
 
 ## Usage
 
@@ -121,12 +121,12 @@ print(result.get("answer"))
 - upload file when using vision model
 
 ```python
-from dify_client import DifyClient
+from dify_client import VigieClient
 
 api_key = "your_api_key"
 
 # Initialize Client
-dify_client = DifyClient(api_key)
+dify_client = VigieClient(api_key)
 
 file_path = "your_image_file_path"
 file_name = "panda.jpeg"

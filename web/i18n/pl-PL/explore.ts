@@ -16,7 +16,7 @@ const translation = {
     },
   },
   apps: {
-    title: 'Odkrywaj aplikacje stworzone przez Dify',
+    title: 'Odkrywaj aplikacje stworzone przez Vigie',
     description:
       'Wykorzystaj te aplikacje szablonowe natychmiast lub dostosuj własne aplikacje na podstawie szablonów.',
     allCategories: 'Polecane',

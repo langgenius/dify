@@ -68,7 +68,7 @@ class XinferenceProvider(Provider):
 
 - 调用异常错误映射表
 
-  当模型调用异常时需要映射到 Runtime 指定的 `InvokeError` 类型，方便 Dify 针对不同错误做不同后续处理。
+  当模型调用异常时需要映射到 Runtime 指定的 `InvokeError` 类型，方便 Vigie 针对不同错误做不同后续处理。
 
   Runtime Errors:
 

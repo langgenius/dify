@@ -1,4 +1,4 @@
-# Dify Code of Conduct
+# Vigie Code of Conduct
 
 ## Our Pledge
 

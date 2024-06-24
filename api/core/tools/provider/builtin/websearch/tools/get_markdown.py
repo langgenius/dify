@@ -26,7 +26,7 @@ class SerplyApi:
             "X-API-KEY": self.serply_api_key,
             "X-User-Agent": kwargs.get("device", "desktop"),
             "X-Proxy-Location": location,
-            "User-Agent": "Dify",
+            "User-Agent": "Vigie",
         }
         data = {"url": url, "method": "GET", "response_type": "markdown"}
         res = requests.post(url, headers=headers, json=data)

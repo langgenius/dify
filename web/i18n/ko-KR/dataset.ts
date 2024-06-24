@@ -10,7 +10,7 @@ const translation = {
   datasetDeleted: '지식이 삭제되었습니다',
   datasetDeleteFailed: '지식 삭제에 실패했습니다',
   didYouKnow: '알고 계셨나요?',
-  intro1: '지식을 Dify 애플리케이션에 ',
+  intro1: '지식을 Vigie 애플리케이션에 ',
   intro2: '컨텍스트로',
   intro3: ' 통합할 수 있습니다.',
   intro4: '혹은, ',

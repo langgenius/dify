@@ -1,4 +1,4 @@
-import { DifyClient, BASE_URL, routes } from ".";
+import { VigieClient, BASE_URL, routes } from ".";
 
 import axios from 'axios'
 
@@ -7,7 +7,7 @@ jest.mock('axios')
 describe('Client', () => {
   let difyClient
   beforeEach(() => {
-    difyClient = new DifyClient('test')
+    difyClient = new VigieClient('test')
   })
 
   test('should create a client', () => {
@@ -24,7 +24,7 @@ describe('Send Requests', () => {
   let difyClient
 
   beforeEach(() => {
-    difyClient = new DifyClient('test')
+    difyClient = new VigieClient('test')
   })
 
   afterEach(() => {

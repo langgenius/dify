@@ -1,6 +1,6 @@
 # Model Runtime
 
-This module provides the interface for invoking and authenticating various models, and offers Dify a unified information and credentials form rule for model providers.
+This module provides the interface for invoking and authenticating various models, and offers Vigie a unified information and credentials form rule for model providers.
 
 - On one hand, it decouples models from upstream and downstream processes, facilitating horizontal expansion for developers,
 - On the other hand, it allows for direct display of providers and models in the frontend interface by simply defining them in the backend, eliminating the need to modify frontend logic.

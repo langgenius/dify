@@ -3,7 +3,7 @@ from textwrap import dedent
 import pytest
 from flask import Flask
 
-from configs.app_config import DifyConfig
+from configs.app_config import VigieConfig
 
 EXAMPLE_ENV_FILENAME = '.env'
 
@@ -21,7 +21,7 @@ def example_env_file(tmp_path, monkeypatch) -> str:
 
 def test_dify_config_undefined_entry(example_env_file):
     # load dotenv file with pydantic-settings
-    config = DifyConfig(_env_file=example_env_file)
+    config = VigieConfig(_env_file=example_env_file)
 
     # entries not defined in app settings
     with pytest.raises(TypeError):
@@ -31,7 +31,7 @@ def test_dify_config_undefined_entry(example_env_file):
 
 def test_dify_config(example_env_file):
     # load dotenv file with pydantic-settings
-    config = DifyConfig(_env_file=example_env_file)
+    config = VigieConfig(_env_file=example_env_file)
 
     # constant values
     assert config.COMMIT_SHA == ''
@@ -44,7 +44,7 @@ def test_dify_config(example_env_file):
 
 def test_flask_configs(example_env_file):
     flask_app = Flask('app')
-    flask_app.config.from_mapping(DifyConfig(_env_file=example_env_file).model_dump())
+    flask_app.config.from_mapping(VigieConfig(_env_file=example_env_file).model_dump())
     config = flask_app.config
 
     # configs read from dotenv directly

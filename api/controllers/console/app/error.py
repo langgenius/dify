@@ -16,14 +16,14 @@ class ProviderNotInitializeError(BaseHTTPException):
 
 class ProviderQuotaExceededError(BaseHTTPException):
     error_code = 'provider_quota_exceeded'
-    description = "Your quota for Dify Hosted Model Provider has been exhausted. " \
+    description = "Your quota for Vigie Hosted Model Provider has been exhausted. " \
                   "Please go to Settings -> Model Provider to complete your own provider credentials."
     code = 400
 
 
 class ProviderModelCurrentlyNotSupportError(BaseHTTPException):
     error_code = 'model_currently_not_support'
-    description = "Dify Hosted OpenAI trial currently not support the GPT-4 model."
+    description = "Vigie Hosted OpenAI trial currently not support the GPT-4 model."
     code = 400
 
 

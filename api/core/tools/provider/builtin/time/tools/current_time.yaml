@@ -1,6 +1,6 @@
 identity:
   name: current_time
-  author: Dify
+  author: Vigie
   label:
     en_US: Current Time
     zh_Hans: 获取当前时间

@@ -9,7 +9,7 @@ import {
   useEmbeddedChatbotContext,
 } from './context'
 import { useEmbeddedChatbot } from './hooks'
-import { isDify } from './utils'
+import { isVigie } from './utils'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -42,7 +42,7 @@ const Chatbot = () => {
       if (customConfig)
         document.title = `${site.title}`
       else
-        document.title = `${site.title} - Powered by Dify`
+        document.title = `${site.title} - Powered by Vigie`
     }
   }, [site, customConfig])
 
@@ -62,7 +62,7 @@ const Chatbot = () => {
       <Header
         isMobile={isMobile}
         title={site?.title || ''}
-        customerIcon={isDify() ? difyIcon : ''}
+        customerIcon={isVigie() ? difyIcon : ''}
         onCreateNewChat={handleNewConversation}
       />
       <div className='flex bg-white overflow-hidden'>

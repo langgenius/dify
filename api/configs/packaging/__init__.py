@@ -7,7 +7,7 @@ class PackagingInfo(BaseModel):
     """
 
     CURRENT_VERSION: str = Field(
-        description='Dify version',
+        description='Vigie version',
         default='0.6.11',
     )
 

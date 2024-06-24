@@ -123,7 +123,7 @@ class TencentVector(BaseVector):
                 name=self._collection_name,
                 shard=self._client_config.shard,
                 replicas=self._client_config.replicas,
-                description="Collection for Dify",
+                description="Collection for Vigie",
                 index=index,
             )
             redis_client.set(collection_exist_cache_key, 1, ex=3600)

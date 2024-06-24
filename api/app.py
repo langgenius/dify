@@ -1,6 +1,6 @@
 import os
 
-from configs.app_config import DifyConfig
+from configs.app_config import VigieConfig
 
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG", "false").lower() != 'true':
     from gevent import monkey
@@ -60,7 +60,7 @@ else:
     time.tzset()
 
 
-class DifyApp(Flask):
+class VigieApp(Flask):
     pass
 
 
@@ -81,9 +81,9 @@ def create_flask_app_with_configs() -> Flask:
     create a raw flask app
     with configs loaded from .env file
     """
-    dify_app = DifyApp(__name__)
+    dify_app = VigieApp(__name__)
     dify_app.config.from_object(Config())
-    dify_app.config.from_mapping(DifyConfig().model_dump())
+    dify_app.config.from_mapping(VigieConfig().model_dump())
     return dify_app
 
 

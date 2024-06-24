@@ -8,7 +8,7 @@ import type {
 import { useChat } from '../chat/hooks'
 import { useEmbeddedChatbotContext } from './context'
 import ConfigPanel from './config-panel'
-import { isDify } from './utils'
+import { isVigie } from './utils'
 import {
   fetchSuggestedQuestions,
   getUrl,
@@ -128,7 +128,7 @@ const ChatWrapper = () => {
       allToolIcons={appMeta?.tool_icons || {}}
       onFeedback={handleFeedback}
       suggestedQuestions={suggestedQuestions}
-      answerIcon={isDify() ? <LogoAvatar className='relative shrink-0' /> : null}
+      answerIcon={isVigie() ? <LogoAvatar className='relative shrink-0' /> : null}
       hideProcessDetail
     />
   )

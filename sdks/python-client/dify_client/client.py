@@ -1,7 +1,7 @@
 import requests
 
 
-class DifyClient:
+class VigieClient:
     def __init__(self, api_key):
         self.api_key = api_key
         self.base_url = "https://api.dify.ai/v1"
@@ -45,7 +45,7 @@ class DifyClient:
         return self._send_request_with_files("POST", "/files/upload", data=data, files=files)
 
 
-class CompletionClient(DifyClient):
+class CompletionClient(VigieClient):
     def create_completion_message(self, inputs, response_mode, user, files=None):
         data = {
             "inputs": inputs,
@@ -57,7 +57,7 @@ class CompletionClient(DifyClient):
                                   stream=True if response_mode == "streaming" else False)
 
 
-class ChatClient(DifyClient):
+class ChatClient(VigieClient):
     def create_chat_message(self, inputs, query, user, response_mode="blocking", conversation_id=None, files=None):
         data = {
             "inputs": inputs,

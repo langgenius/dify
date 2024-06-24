@@ -11,7 +11,7 @@ const translation = {
   datasetDeleted: 'Знання видалено',
   datasetDeleteFailed: 'Не вдалося видалити Знання',
   didYouKnow: 'Чи знаєте ви?',
-  intro1: 'Знання можна інтегрувати до програми Dify ',
+  intro1: 'Знання можна інтегрувати до програми Vigie ',
   intro2: 'як контекст',
   intro3: ',',
   intro4: 'або його ',

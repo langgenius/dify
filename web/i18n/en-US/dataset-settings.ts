@@ -7,7 +7,7 @@ const translation = {
     nameError: 'Name cannot be empty',
     desc: 'Knowledge description',
     descInfo: 'Please write a clear textual description to outline the content of the Knowledge. This description will be used as a basis for matching when selecting from multiple Knowledge for inference.',
-    descPlaceholder: 'Describe what is in this Knowledge. A detailed description allows AI to access the content of the Knowledge in a timely manner. If empty, Dify will use the default hit strategy.',
+    descPlaceholder: 'Describe what is in this Knowledge. A detailed description allows AI to access the content of the Knowledge in a timely manner. If empty, Vigie will use the default hit strategy.',
     descWrite: 'Learn how to write a good Knowledge description.',
     permissions: 'Permissions',
     permissionsOnlyMe: 'Only me',

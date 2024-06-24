@@ -1,6 +1,6 @@
 identity:
   name: stable_diffusion
-  author: Dify
+  author: Vigie
   label:
     en_US: Stable Diffusion WebUI
     zh_Hans: Stable Diffusion WebUI

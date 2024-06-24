@@ -8,7 +8,7 @@ from configs.middleware import MiddlewareConfig
 from configs.packaging import PackagingInfo
 
 
-class DifyConfig(
+class VigieConfig(
     # based on pydantic-settings
     BaseSettings,
 

@@ -70,7 +70,7 @@ const translation = {
       title: '주석 응답 쿼터',
       tooltip: '수동으로 편집 및 응답 주석 달기로 앱의 사용자 정의 가능한 고품질 질의응답 기능을 제공합니다 (채팅 앱에만 해당).',
     },
-    ragAPIRequestTooltip: 'Dify의 지식베이스 처리 기능을 호출하는 API 호출 수를 나타냅니다.',
+    ragAPIRequestTooltip: 'Vigie의 지식베이스 처리 기능을 호출하는 API 호출 수를 나타냅니다.',
     receiptInfo: '팀 소유자 및 팀 관리자만 구독 및 청구 정보를 볼 수 있습니다',
   },
   plans: {

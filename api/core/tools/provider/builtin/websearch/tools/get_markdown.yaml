@@ -1,6 +1,6 @@
 identity:
   name: get_markdown
-  author: Dify
+  author: Vigie
   label:
     en_US: Get Markdown API
     zh_Hans: Get Markdown API

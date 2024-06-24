@@ -12,7 +12,7 @@ services:
         target: /opt/oracle/oradata
       - ./startupscripts:/opt/oracle/scripts/startup
     environment:
-      - ORACLE_PWD=Dify123456
+      - ORACLE_PWD=Vigie123456
       - ORACLE_CHARACTERSET=AL32UTF8
 volumes:
   oradata_vector:

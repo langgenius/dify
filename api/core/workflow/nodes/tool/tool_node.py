@@ -1,7 +1,7 @@
 from os import path
 from typing import Optional, cast
 
-from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.callback_handler.workflow_tool_callback_handler import VigieWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.tool.tool import Tool
@@ -60,7 +60,7 @@ class ToolNode(BaseNode):
                 tool_parameters=parameters,
                 user_id=self.user_id,
                 workflow_id=self.workflow_id, 
-                workflow_tool_callback=DifyWorkflowCallbackHandler(),
+                workflow_tool_callback=VigieWorkflowCallbackHandler(),
                 workflow_call_depth=self.workflow_call_depth,
             )
         except Exception as e:

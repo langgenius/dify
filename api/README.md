@@ -1,9 +1,9 @@
-# Dify Backend API
+# Vigie Backend API
 
 ## Usage
 
 > [!IMPORTANT]
-> In the v0.6.12 release, we deprecated `pip` as the package management tool for Dify API Backend service and replaced it with `poetry`.
+> In the v0.6.12 release, we deprecated `pip` as the package management tool for Vigie API Backend service and replaced it with `poetry`.
 
 1. Start the docker-compose stack
 
@@ -30,7 +30,7 @@
 
 4. Create environment.
 
-   Dify API service uses [Poetry](https://python-poetry.org/docs/) to manage dependencies. You can execute `poetry shell` to activate the environment.
+   Vigie API service uses [Poetry](https://python-poetry.org/docs/) to manage dependencies. You can execute `poetry shell` to activate the environment.
 
 5. Install dependencies
 
@@ -61,7 +61,7 @@
    poetry run python -m flask run --host 0.0.0.0 --port=5001 --debug
    ```
 
-8. Start Dify [web](../web) service.
+8. Start Vigie [web](../web) service.
 9. Setup your application by visiting `http://localhost:3000`...
 10. If you need to debug local async processing, please start the worker service.
 

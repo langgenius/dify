@@ -108,7 +108,7 @@ class AppGenerateResponseConverter(ABC):
             ProviderTokenNotInitError: {'code': 'provider_not_initialize', 'status': 400},
             QuotaExceededError: {
                 'code': 'provider_quota_exceeded',
-                'message': "Your quota for Dify Hosted Model Provider has been exhausted. "
+                'message': "Your quota for Vigie Hosted Model Provider has been exhausted. "
                            "Please go to Settings -> Model Provider to complete your own provider credentials.",
                 'status': 400
             },

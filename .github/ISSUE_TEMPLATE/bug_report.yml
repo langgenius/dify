@@ -19,16 +19,16 @@ body:
 
   - type: input
     attributes:
-      label: Dify version
+      label: Vigie version
       placeholder: 0.6.11
-      description: See about section in Dify console
+      description: See about section in Vigie console
     validations:
       required: true
 
   - type: dropdown
     attributes:
       label: Cloud or Self Hosted
-      description: How / Where was Dify installed from?
+      description: How / Where was Vigie installed from?
       multiple: true
       options:
         - Cloud

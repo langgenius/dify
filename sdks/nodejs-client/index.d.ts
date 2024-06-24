@@ -14,7 +14,7 @@ interface HeaderParams {
 interface User {
 }
 
-export declare class DifyClient {
+export declare class VigieClient {
   constructor(apiKey: string, baseUrl?: string);
 
   updateApiKey(apiKey: string): void;
@@ -35,7 +35,7 @@ export declare class DifyClient {
   fileUpload(data: FormData): Promise<any>;
 }
 
-export declare class CompletionClient extends DifyClient {
+export declare class CompletionClient extends VigieClient {
   createCompletionMessage(
     inputs: any,
     user: User,
@@ -44,7 +44,7 @@ export declare class CompletionClient extends DifyClient {
   ): Promise<any>;
 }
 
-export declare class ChatClient extends DifyClient {
+export declare class ChatClient extends VigieClient {
   createChatMessage(
     inputs: any,
     query: string,

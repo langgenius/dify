@@ -11,7 +11,7 @@ const translation = {
   datasetDeleted: 'Kiến thức đã bị xóa',
   datasetDeleteFailed: 'Xóa Kiến thức không thành công',
   didYouKnow: 'Bạn đã biết chưa?',
-  intro1: 'Kiến thức có thể được tích hợp vào ứng dụng Dify ',
+  intro1: 'Kiến thức có thể được tích hợp vào ứng dụng Vigie ',
   intro2: 'như một ngữ cảnh',
   intro3: ',',
   intro4: 'hoặc nó ',

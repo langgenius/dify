@@ -6,7 +6,7 @@ from flask_restful import Resource, reqparse
 from extensions.ext_database import db
 from libs.helper import email, get_remote_ip, str_len
 from libs.password import valid_password
-from models.model import DifySetup
+from models.model import VigieSetup
 from services.account_service import AccountService, RegisterService, TenantService
 
 from . import api
@@ -67,7 +67,7 @@ class SetupApi(Resource):
 
 
 def setup():
-    dify_setup = DifySetup(
+    dify_setup = VigieSetup(
         version=current_app.config['CURRENT_VERSION']
     )
     db.session.add(dify_setup)
@@ -90,7 +90,7 @@ def setup_required(view):
 
 def get_setup_status():
     if current_app.config['EDITION'] == 'SELF_HOSTED':
-        return DifySetup.query.first()
+        return VigieSetup.query.first()
     else:
         return True
 

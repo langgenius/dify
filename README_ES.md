@@ -1,7 +1,7 @@
 ![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
 
 <p align="center">
-  <a href="https://cloud.dify.ai">Dify Cloud</a> ·
+  <a href="https://cloud.dify.ai">Vigie Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Auto-alojamiento</a> ·
   <a href="https://docs.dify.ai">Documentación</a> ·
   <a href="https://cal.com/guchenhe/dify-demo">Programar demostración</a>
@@ -43,7 +43,7 @@
 <p align="center">
   <a href="https://trendshift.io/repositories/2152" target="_blank"><img src="https://trendshift.io/api/badge/repositories/2152" alt="langgenius%2Fdify | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 </p>
-Dify es una plataforma de desarrollo de aplicaciones de LLM de código abierto. Su interfaz intuitiva combina flujo de trabajo de IA, pipeline RAG, capacidades de agente, gestión de modelos, características de observabilidad y más, lo que le permite pasar rápidamente de un prototipo a producción. Aquí hay una lista de las características principales:
+Vigie es una plataforma de desarrollo de aplicaciones de LLM de código abierto. Su interfaz intuitiva combina flujo de trabajo de IA, pipeline RAG, capacidades de agente, gestión de modelos, características de observabilidad y más, lo que le permite pasar rápidamente de un prototipo a producción. Aquí hay una lista de las características principales:
 </br> </br>
 
 **1. Flujo de trabajo**: 
@@ -69,20 +69,20 @@ Dify es una plataforma de desarrollo de aplicaciones de LLM de código abierto. 
 **5. Capacidades de agente**: 
   Puedes definir agent
 
-es basados en LLM Function Calling o ReAct, y agregar herramientas preconstruidas o personalizadas para el agente. Dify proporciona más de 50 herramientas integradas para agentes de IA, como Búsqueda de Google, DELL·E, Difusión Estable y WolframAlpha.
+es basados en LLM Function Calling o ReAct, y agregar herramientas preconstruidas o personalizadas para el agente. Vigie proporciona más de 50 herramientas integradas para agentes de IA, como Búsqueda de Google, DELL·E, Difusión Estable y WolframAlpha.
 
 **6. LLMOps**: 
   Supervisa y analiza registros de aplicaciones y rendimiento a lo largo del tiempo. Podrías mejorar continuamente prompts, conjuntos de datos y modelos basados en datos de producción y anotaciones.
 
 **7. Backend como servicio**: 
-  Todas las ofertas de Dify vienen con APIs correspondientes, por lo que podrías integrar Dify sin esfuerzo en tu propia lógica empresarial.
+  Todas las ofertas de Vigie vienen con APIs correspondientes, por lo que podrías integrar Vigie sin esfuerzo en tu propia lógica empresarial.
 
 
 ## Comparación de características
 <table style="width: 100%;">
   <tr>
     <th align="center">Característica</th>
-    <th align="center">Dify.AI</th>
+    <th align="center">Vigie.AI</th>
     <th align="center">LangChain</th>
     <th align="center">Flowise</th>
     <th align="center">API de Asistentes de OpenAI</th>
@@ -145,46 +145,46 @@ es basados en LLM Function Calling o ReAct, y agregar herramientas preconstruida
   </tr>
 </table>
 
-## Usando Dify
+## Usando Vigie
 
 - **Nube </br>**
-Hospedamos un servicio [Dify Cloud](https://dify.ai) para que cualquiera lo pruebe sin configuración. Proporciona todas las capacidades de la versión autoimplementada e incluye 200 llamadas gratuitas a GPT-4 en el plan sandbox.
+Hospedamos un servicio [Vigie Cloud](https://dify.ai) para que cualquiera lo pruebe sin configuración. Proporciona todas las capacidades de la versión autoimplementada e incluye 200 llamadas gratuitas a GPT-4 en el plan sandbox.
 
-- **Auto-alojamiento de Dify Community Edition</br>**
-Pon rápidamente Dify en funcionamiento en tu entorno con esta [guía de inicio rápido](#quick-start).
+- **Auto-alojamiento de Vigie Community Edition</br>**
+Pon rápidamente Vigie en funcionamiento en tu entorno con esta [guía de inicio rápido](#quick-start).
 Usa nuestra [documentación](https://docs.dify.ai) para más referencias e instrucciones más detalladas.
 
-- **Dify para Empresas / Organizaciones</br>**
+- **Vigie para Empresas / Organizaciones</br>**
 Proporcionamos características adicionales centradas en la empresa. [Programa una reunión con nosotros](https://cal.com/guchenhe/30min) o [envíanos un correo electrónico](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry) para discutir las necesidades empresariales. </br>
-  > Para startups y pequeñas empresas que utilizan AWS, echa un vistazo a [Dify Premium en AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) e impleméntalo en tu propio VPC de AWS con un clic. Es una AMI asequible que ofrece la opción de crear aplicaciones con logotipo y marca personalizados.
+  > Para startups y pequeñas empresas que utilizan AWS, echa un vistazo a [Vigie Premium en AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) e impleméntalo en tu propio VPC de AWS con un clic. Es una AMI asequible que ofrece la opción de crear aplicaciones con logotipo y marca personalizados.
 
 
 ## Manteniéndote al tanto
 
-Dale estrella a Dify en GitHub y serás notificado instantáneamente de las nuevas versiones.
+Dale estrella a Vigie en GitHub y serás notificado instantáneamente de las nuevas versiones.
 
 ![danos estrella](https://github.com/langgenius/dify/assets/13230914/b823edc1-6388-4e25-ad45-2f6b187adbb4)
 
 
 
 ## Inicio Rápido
-> Antes de instalar Dify, asegúrate de que tu máquina cumpla con los siguientes requisitos mínimos del sistema:
+> Antes de instalar Vigie, asegúrate de que tu máquina cumpla con los siguientes requisitos mínimos del sistema:
 > 
 >- CPU >= 2 núcleos
 >- RAM >= 4GB
 
 </br>
 
-La forma más fácil de iniciar el servidor de Dify es ejecutar nuestro archivo [docker-compose.yml](docker/docker-compose.yaml). Antes de ejecutar el comando de instalación, asegúrate de que [Docker](https://docs.docker.com/get-docker/) y [Docker Compose](https://docs.docker.com/compose/install/) estén instalados en tu máquina:
+La forma más fácil de iniciar el servidor de Vigie es ejecutar nuestro archivo [docker-compose.yml](docker/docker-compose.yaml). Antes de ejecutar el comando de instalación, asegúrate de que [Docker](https://docs.docker.com/get-docker/) y [Docker Compose](https://docs.docker.com/compose/install/) estén instalados en tu máquina:
 
 ```bash
 cd docker
 docker compose up -d
 ```
 
-Después de ejecutarlo, puedes acceder al panel de control de Dify en tu navegador en [http://localhost/install](http://localhost/install) y comenzar el proceso de inicialización.
+Después de ejecutarlo, puedes acceder al panel de control de Vigie en tu navegador en [http://localhost/install](http://localhost/install) y comenzar el proceso de inicialización.
 
-> Si deseas contribuir a Dify o realizar desarrollo adicional, consulta nuestra [guía para implementar desde el código fuente](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
+> Si deseas contribuir a Vigie o realizar desarrollo adicional, consulta nuestra [guía para implementar desde el código fuente](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
 
 ## Próximos pasos
 
@@ -192,7 +192,7 @@ Si necesitas personalizar la configuración, consulta los comentarios en nuestro
 
 . Después de realizar los cambios, ejecuta `docker-compose up -d` nuevamente. Puedes ver la lista completa de variables de entorno [aquí](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
-Si desea configurar una configuración de alta disponibilidad, la comunidad proporciona [Gráficos Helm](https://helm.sh/) y archivos YAML, a través de los cuales puede desplegar Dify en Kubernetes.
+Si desea configurar una configuración de alta disponibilidad, la comunidad proporciona [Gráficos Helm](https://helm.sh/) y archivos YAML, a través de los cuales puede desplegar Vigie en Kubernetes.
 
 - [Gráfico Helm por @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Gráfico Helm por @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
@@ -202,10 +202,10 @@ Si desea configurar una configuración de alta disponibilidad, la comunidad prop
 ## Contribuir
 
 Para aquellos que deseen contribuir con código, consulten nuestra [Guía de contribución](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). 
-Al mismo tiempo, considera apoyar a Dify compartiéndolo en redes sociales y en eventos y conferencias.
+Al mismo tiempo, considera apoyar a Vigie compartiéndolo en redes sociales y en eventos y conferencias.
 
 
-> Estamos buscando colaboradores para ayudar con la traducción de Dify a idiomas que no sean el mandarín o el inglés. Si estás interesado en ayudar, consulta el [README de i18n](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) para obtener más información y déjanos un comentario en el canal `global-users` de nuestro [Servidor de Comunidad en Discord](https://discord.gg/8Tpq4AcN9c).
+> Estamos buscando colaboradores para ayudar con la traducción de Vigie a idiomas que no sean el mandarín o el inglés. Si estás interesado en ayudar, consulta el [README de i18n](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) para obtener más información y déjanos un comentario en el canal `global-users` de nuestro [Servidor de Comunidad en Discord](https://discord.gg/8Tpq4AcN9c).
 
 **Contribuidores**
 
@@ -216,8 +216,8 @@ Al mismo tiempo, considera apoyar a Dify compartiéndolo en redes sociales y en 
 ## Comunidad y Contacto
 
 * [Discusión en GitHub](https://github.com/langgenius/dify/discussions). Lo mejor para: compartir comentarios y hacer preguntas.
-* [Reporte de problemas en GitHub](https://github.com/langgenius/dify/issues). Lo mejor para: errores que encuentres usando Dify.AI y propuestas de características. Consulta nuestra [Guía de contribución](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-* [Correo electrónico](mailto:support@dify.ai?subject=[GitHub]Questions%20About%20Dify). Lo mejor para: preguntas que tengas sobre el uso de Dify.AI.
+* [Reporte de problemas en GitHub](https://github.com/langgenius/dify/issues). Lo mejor para: errores que encuentres usando Vigie.AI y propuestas de características. Consulta nuestra [Guía de contribución](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
+* [Correo electrónico](mailto:support@dify.ai?subject=[GitHub]Questions%20About%20Vigie). Lo mejor para: preguntas que tengas sobre el uso de Vigie.AI.
 * [Discord](https://discord.gg/FngNHpbcY7). Lo mejor para: compartir tus aplicaciones y pasar el rato con la comunidad.
 * [Twitter](https://twitter.com/dify_ai). Lo mejor para: compartir tus aplicaciones y pasar el rato con la comunidad.
 
@@ -249,4 +249,4 @@ Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En
 
 ## Licencia
 
-Este repositorio está disponible bajo la [Licencia de Código Abierto de Dify](LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.
+Este repositorio está disponible bajo la [Licencia de Código Abierto de Vigie](LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.

@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from dify_client.client import ChatClient, CompletionClient, DifyClient
+from dify_client.client import ChatClient, CompletionClient, VigieClient
 
 API_KEY = os.environ.get("API_KEY")
 APP_ID = os.environ.get("APP_ID")
@@ -72,9 +72,9 @@ class TestCompletionClient(unittest.TestCase):
         self.assertIn("answer", response.text)
 
 
-class TestDifyClient(unittest.TestCase):
+class TestVigieClient(unittest.TestCase):
     def setUp(self):
-        self.dify_client = DifyClient(API_KEY)
+        self.dify_client = VigieClient(API_KEY)
 
     def test_message_feedback(self):
         response = self.dify_client.message_feedback("your_message_id", 'like', "test_user")

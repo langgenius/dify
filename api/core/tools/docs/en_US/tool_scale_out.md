@@ -15,7 +15,7 @@ Subsequently, all operations related to this tool will be carried out under this
 
 ```yaml
 identity: # Basic information of the tool provider
-  author: Dify # Author
+  author: Vigie # Author
   name: google # Name, unique, no duplication with other providers
   label: # Label for frontend display
     en_US: Google # English label
@@ -58,7 +58,7 @@ Google, as a third-party tool, uses the API provided by SerpApi, which requires 
 After configuring the credential field, the effect is as follows:
 ```yaml
 identity:
-  author: Dify
+  author: Vigie
   name: google
   label:
     en_US: Google
@@ -94,7 +94,7 @@ Still taking GoogleSearch as an example, we need to create a `tools` module unde
 ```yaml
 identity: # Basic information of the tool
   name: google_search # Tool name, unique, no duplication with other tools
-  author: Dify # Author
+  author: Vigie # Author
   label: # Label for frontend display
     en_US: GoogleSearch # English label
     zh_Hans: 谷歌搜索 # Chinese label
@@ -146,7 +146,7 @@ parameters: # Parameter list
         - In `llm` mode, if the parameter is required, the Agent is required to infer this parameter
         - In `form` mode, if the parameter is required, the user is required to fill in this parameter on the frontend before the conversation starts
     - `options` Parameter options
-        - In `llm` mode, Dify will pass all options to LLM, LLM can infer based on these options
+        - In `llm` mode, Vigie will pass all options to LLM, LLM can infer based on these options
         - In `form` mode, when `type` is `select`, the frontend will display these options
     - `default` Default value
     - `label` Parameter label, for frontend display
