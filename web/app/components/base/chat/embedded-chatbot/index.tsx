@@ -18,6 +18,7 @@ import LogoHeader from '@/app/components/base/logo/logo-embeded-chat-header'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import ConfigPanel from '@/app/components/base/chat/embedded-chatbot/config-panel'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
+import { useThemeContext } from './theme/theme-context'
 
 const Chatbot = () => {
   const {
@@ -35,10 +36,13 @@ const Chatbot = () => {
   const customConfig = appData?.custom_config
   const site = appData?.site
 
+  const themeBuilder = useThemeContext()
+
   const difyIcon = <LogoHeader />
 
   useEffect(() => {
     if (site) {
+      themeBuilder.buildTheme(site.chat_color_theme, site.chat_color_theme_inverted)
       if (customConfig)
         document.title = `${site.title}`
       else
@@ -87,6 +91,7 @@ const Chatbot = () => {
 const EmbeddedChatbotWrapper = () => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const themeBuilder = useThemeContext()
 
   const {
     appInfoError,
@@ -141,6 +146,7 @@ const EmbeddedChatbotWrapper = () => {
     appId,
     handleFeedback,
     currentChatInstanceRef,
+    themeBuilder,
   }}>
     <Chatbot />
   </EmbeddedChatbotContext.Provider>

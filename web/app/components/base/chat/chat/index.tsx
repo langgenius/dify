@@ -31,6 +31,7 @@ import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { AppData } from '@/models/share'
+import { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 
 export type ChatProps = {
   appData?: AppData
@@ -58,6 +59,7 @@ export type ChatProps = {
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   hideLogModal?: boolean
+  themeBuilder: ThemeBuilder | null
 }
 const Chat: FC<ChatProps> = ({
   appData,
@@ -85,6 +87,7 @@ const Chat: FC<ChatProps> = ({
   chatAnswerContainerInner,
   hideProcessDetail,
   hideLogModal,
+  themeBuilder
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -221,6 +224,7 @@ const Chat: FC<ChatProps> = ({
                     key={item.id}
                     item={item}
                     questionIcon={questionIcon}
+                    theme={themeBuilder?.theme}
                   />
                 )
               })
@@ -262,6 +266,7 @@ const Chat: FC<ChatProps> = ({
                   visionConfig={config?.file_upload?.image}
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
+                  themeBuilder={themeBuilder}
                 />
               )
             }

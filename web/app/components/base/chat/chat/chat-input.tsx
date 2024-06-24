@@ -30,16 +30,20 @@ import {
   useDraggableUploader,
   useImageFiles,
 } from '@/app/components/base/image-uploader/hooks'
+import { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
+import { CssTransform } from '../embedded-chatbot/theme/utils'
 
 type ChatInputProps = {
   visionConfig?: VisionConfig
   speechToTextConfig?: EnableType
   onSend?: OnSend
+  themeBuilder: ThemeBuilder | null
 }
 const ChatInput: FC<ChatInputProps> = ({
   visionConfig,
   speechToTextConfig,
   onSend,
+  themeBuilder,
 }) => {
   const { appData } = useChatWithHistoryContext()
   const { t } = useTranslation()
@@ -112,14 +116,25 @@ const ChatInput: FC<ChatInputProps> = ({
     })
   }
 
+  const [isActiveIconFocused, setActiveIconFocused] = useState(false)
+
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const sendIconThemeStyle = themeBuilder?.theme
+    ? {
+      color: (isActiveIconFocused || query || (query.trim() !== '')) ? themeBuilder.theme.primaryColor : '#d1d5db',
+    }
+    : {}
   const sendBtn = (
     <div
       className='group flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[#EBF5FF] cursor-pointer'
+      onMouseEnter={() => setActiveIconFocused(true)}
+      onMouseLeave={() => setActiveIconFocused(false)}
       onClick={handleSend}
+      style={isActiveIconFocused ? CssTransform(themeBuilder?.theme?.chatBubbleColorStyle ?? '') : {}}
     >
       <Send03
+        style={sendIconThemeStyle}
         className={`
           w-5 h-5 text-gray-300 group-hover:text-primary-600
           ${!!query.trim() && 'text-primary-600'}

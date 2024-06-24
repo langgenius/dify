@@ -13,6 +13,7 @@ import type {
   AppMeta,
   ConversationItem,
 } from '@/models/share'
+import { ThemeBuilder } from './theme/theme-context'
 
 export type EmbeddedChatbotContextValue = {
   appInfoError?: any
@@ -40,6 +41,7 @@ export type EmbeddedChatbotContextValue = {
   appId?: string
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
+  themeBuilder: ThemeBuilder | null
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
@@ -60,5 +62,6 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   isInstalledApp: false,
   handleFeedback: () => {},
   currentChatInstanceRef: { current: { handleStop: () => {} } },
+  themeBuilder: null,
 })
 export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)
