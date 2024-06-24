@@ -9,6 +9,7 @@ from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.langsmith_trace_entity import LangSmithRunModel, LangSmithRunType, LangSmithRunUpdateModel
 from core.ops.entities.trace_entity import (
+    BaseTraceInfo,
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
     MessageTraceInfo,
@@ -42,7 +43,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
-    def trace(self, trace_info, **kwargs):
+    def trace(self, trace_info: BaseTraceInfo):
         if isinstance(trace_info, WorkflowTraceInfo):
             self.workflow_trace(trace_info)
         if isinstance(trace_info, MessageTraceInfo):
@@ -304,7 +305,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.langsmith_client.create_run(**data)
             logger.debug("LangSmith Run created successfully.")
         except Exception as e:
-            raise f"LangSmith Failed to create run: {str(e)}"
+            raise ValueError(f"LangSmith Failed to create run: {str(e)}")
 
     def update_run(self, update_run_data: LangSmithRunUpdateModel):
         data = update_run_data.model_dump()
@@ -313,7 +314,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.langsmith_client.update_run(**data)
             logger.debug("LangSmith Run updated successfully.")
         except Exception as e:
-            raise f"LangSmith Failed to update run: {str(e)}"
+            raise ValueError(f"LangSmith Failed to update run: {str(e)}")
 
     def api_check(self):
         try:

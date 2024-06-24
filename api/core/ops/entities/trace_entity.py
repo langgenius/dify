@@ -1,12 +1,22 @@
 from datetime import datetime
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel
 
 
-class WorkflowTraceInfo(BaseModel):
+class BaseTraceInfo(BaseModel):
+    message_id: str
+    message_data: Any
+    inputs: Union[str, dict[str, Any], list, None]
+    outputs: Union[str, dict[str, Any], list, None]
+    start_time: datetime
+    end_time: datetime
+    metadata: dict[str, Any]
+
+
+class WorkflowTraceInfo(BaseTraceInfo):
     workflow_data: Any
-    conversation_id: Union[str, None]
+    conversation_id: Optional[str] = None
     workflow_id: str
     tenant_id: str
     workflow_run_id: str
@@ -15,55 +25,36 @@ class WorkflowTraceInfo(BaseModel):
     workflow_run_inputs: dict[str, Any]
     workflow_run_outputs: dict[str, Any]
     workflow_run_version: str
-    error: Union[str, None]
+    error: Optional[str] = None
     total_tokens: int
     file_list: list[str]
     query: str
     metadata: dict[str, Any]
 
 
-class MessageTraceInfo(BaseModel):
-    message_data: Any
+class MessageTraceInfo(BaseTraceInfo):
     conversation_model: str
     message_tokens: int
     answer_tokens: int
     total_tokens: int
-    error: str
-    inputs: Union[str, dict[str, Any], list, None]
-    outputs: Union[str, dict[str, Any], list, None]
+    error: Optional[str] = None
     file_list: list[str]
-    start_at: datetime
-    end_time: datetime
-    metadata: dict[str, Any]
     message_file_data: Any
     conversation_mode: str
 
 
-class ModerationTraceInfo(BaseModel):
-    message_id: str
-    inputs: dict[str, Any]
-    message_data: Any
+class ModerationTraceInfo(BaseTraceInfo):
     flagged: bool
     action: str
     preset_response: str
     query: str
-    start_time: datetime
-    end_time: datetime
-    metadata: dict[str, Any]
 
 
 #
-class SuggestedQuestionTraceInfo(BaseModel):
-    message_id: str
-    message_data: Any
-    inputs: Union[str, dict[str, Any], list, None]
-    outputs: Union[str, dict[str, Any], list, None]
-    start_time: datetime
-    end_time: datetime
-    metadata: dict[str, Any]
+class SuggestedQuestionTraceInfo(BaseTraceInfo):
     total_tokens: int
-    status: Union[str, None]
-    error: Union[str, None]
+    status: Optional[str] = None
+    error: Optional[str] = None
     from_account_id: str
     agent_based: bool
     from_source: str
@@ -71,44 +62,26 @@ class SuggestedQuestionTraceInfo(BaseModel):
     model_id: str
     suggested_question: list[str]
     level: str
-    status_message: Union[str, None]
+    status_message: Optional[str] = None
 
 
-class DatasetRetrievalTraceInfo(BaseModel):
-    message_id: str
-    inputs: Union[str, dict[str, Any], list, None]
+class DatasetRetrievalTraceInfo(BaseTraceInfo):
     documents: Any
-    start_time: datetime
-    end_time: datetime
-    metadata: dict[str, Any]
-    message_data: Any
 
 
-class ToolTraceInfo(BaseModel):
-    message_id: str
-    message_data: Any
+class ToolTraceInfo(BaseTraceInfo):
     tool_name: str
-    start_time: datetime
-    end_time: datetime
     tool_inputs: dict[str, Any]
     tool_outputs: str
     metadata: dict[str, Any]
     message_file_data: Any
-    error: Union[str, None]
-    inputs: Union[str, dict[str, Any], list, None]
-    outputs: Union[str, dict[str, Any], list, None]
+    error: Optional[str] = None
     tool_config: dict[str, Any]
     time_cost: Union[int, float]
     tool_parameters: dict[str, Any]
     file_url: Union[str, None, list]
 
 
-class GenerateNameTraceInfo(BaseModel):
+class GenerateNameTraceInfo(BaseTraceInfo):
     conversation_id: str
-    inputs: Union[str, dict[str, Any], list, None]
-    outputs: Union[str, dict[str, Any], list, None]
-    start_time: datetime
-    end_time: datetime
-    metadata: dict[str, Any]
     tenant_id: str
-

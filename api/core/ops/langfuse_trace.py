@@ -17,6 +17,7 @@ from core.ops.entities.langfuse_trace_entity import (
     UnitEnum,
 )
 from core.ops.entities.trace_entity import (
+    BaseTraceInfo,
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
     MessageTraceInfo,
@@ -49,7 +50,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
-    def trace(self, trace_info, **kwargs):
+    def trace(self, trace_info: BaseTraceInfo):
         if isinstance(trace_info, WorkflowTraceInfo):
             self.workflow_trace(trace_info)
         if isinstance(trace_info, MessageTraceInfo):
@@ -293,7 +294,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.langfuse_client.trace(**format_trace_data)
             logger.debug("LangFuse Trace created successfully")
         except Exception as e:
-            raise f"LangFuse Failed to create trace: {str(e)}"
+            raise ValueError(f"LangFuse Failed to create trace: {str(e)}")
 
     def add_span(self, langfuse_span_data: Optional[LangfuseSpan] = None):
         format_span_data = (
@@ -303,7 +304,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.langfuse_client.span(**format_span_data)
             logger.debug("LangFuse Span created successfully")
         except Exception as e:
-            raise f"LangFuse Failed to create span: {str(e)}"
+            raise ValueError(f"LangFuse Failed to create span: {str(e)}")
 
     def update_span(self, span, langfuse_span_data: Optional[LangfuseSpan] = None):
         format_span_data = (
@@ -324,7 +325,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.langfuse_client.generation(**format_generation_data)
             logger.debug("LangFuse Generation created successfully")
         except Exception as e:
-            raise f"LangFuse Failed to create generation: {str(e)}"
+            raise ValueError(f"LangFuse Failed to create generation: {str(e)}")
 
     def update_generation(
         self, generation, langfuse_generation_data: Optional[LangfuseGeneration] = None

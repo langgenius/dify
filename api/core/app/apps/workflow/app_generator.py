@@ -283,10 +283,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user=user,
             stream=stream
         )
-        app_id = application_generate_entity.app_config.app_id
 
         try:
-            return generate_task_pipeline.process(app_id, workflow)
+            return generate_task_pipeline.process()
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedException()

@@ -95,11 +95,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         self._stream_generate_nodes = self._get_stream_generate_nodes()
         self._iteration_nested_relations = self._get_iteration_nested_relations(self._workflow.graph_dict)
 
-    def process(
-        self,
-        app_id: Optional[str] = None,
-        workflow: Optional[Workflow] = None,
-    ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
+    def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
         """
         Process generate task pipeline.
         :return:
