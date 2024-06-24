@@ -160,6 +160,8 @@ const Workflow: FC<WorkflowProps> = memo(({
   useEventListener('keydown', (e) => {
     if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey))
       e.preventDefault()
+    if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey))
+      e.preventDefault()
   })
   useEventListener('mousemove', (e) => {
     const containerClientRect = workflowContainerRef.current?.getBoundingClientRect()
