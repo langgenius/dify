@@ -118,29 +118,6 @@ class LangFuseDataTrace(BaseTraceInstance):
                 }
             )
 
-            process_data = json.loads(node_execution.process_data) if node_execution.process_data else {}
-            if process_data and process_data.get("model_mode") == "chat":
-                # add generation
-                node_total_tokens = json.loads(node_execution.execution_metadata).get("total_tokens")
-                generation_usage = GenerationUsage(
-                    totalTokens=node_total_tokens,
-                )
-
-                langfuse_generation_data = LangfuseGeneration(
-                    name=f"{node_name}_{node_execution_id}",
-                    trace_id=trace_info.workflow_run_id,
-                    start_time=created_at,
-                    end_time=finished_at,
-                    input=inputs,
-                    output=outputs,
-                    metadata=metadata,
-                    level=LevelEnum.DEFAULT if status == 'succeeded' else LevelEnum.ERROR,
-                    status_message=trace_info.error if trace_info.error else "",
-                    usage=generation_usage,
-                )
-
-                self.add_generation(langfuse_generation_data)
-
             # add span
             span_data = LangfuseSpan(
                 name=f"{node_name}_{node_execution_id}",

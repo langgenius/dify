@@ -66,8 +66,8 @@ class LangSmithDataTrace(BaseTraceInstance):
             name=f"workflow_run_{trace_info.workflow_run_id}",
             inputs=trace_info.query,
             run_type=LangSmithRunType.tool,
-            start_time=trace_info.workflow_data.workflow_run_created_at,
-            end_time=trace_info.workflow_data.workflow_run_finished_at,
+            start_time=trace_info.workflow_data.created_at,
+            end_time=trace_info.workflow_data.finished_at,
             outputs=trace_info.workflow_data.workflow_run_outputs,
             extra={
                 "metadata": trace_info.metadata,
