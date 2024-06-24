@@ -3,35 +3,6 @@ import os
 import dotenv
 
 DEFAULTS = {
-    'DB_USERNAME': 'postgres',
-    'DB_PASSWORD': '',
-    'DB_HOST': 'localhost',
-    'DB_PORT': '5432',
-    'DB_DATABASE': 'dify',
-    'DB_CHARSET': '',
-    'S3_USE_AWS_MANAGED_IAM': 'False',
-    'S3_ADDRESS_STYLE': 'auto',
-    'SQLALCHEMY_DATABASE_URI_SCHEME': 'postgresql',
-    'SQLALCHEMY_POOL_SIZE': 30,
-    'SQLALCHEMY_MAX_OVERFLOW': 10,
-    'SQLALCHEMY_POOL_RECYCLE': 3600,
-    'SQLALCHEMY_POOL_PRE_PING': 'False',
-    'SQLALCHEMY_ECHO': 'False',
-    'CELERY_BACKEND': 'database',
-    'HOSTED_OPENAI_QUOTA_LIMIT': 200,
-    'HOSTED_OPENAI_TRIAL_ENABLED': 'False',
-    'HOSTED_OPENAI_TRIAL_MODELS': 'gpt-3.5-turbo,gpt-3.5-turbo-1106,gpt-3.5-turbo-instruct,gpt-3.5-turbo-16k,gpt-3.5-turbo-16k-0613,gpt-3.5-turbo-0613,gpt-3.5-turbo-0125,text-davinci-003',
-    'HOSTED_OPENAI_PAID_ENABLED': 'False',
-    'HOSTED_OPENAI_PAID_MODELS': 'gpt-4,gpt-4-turbo-preview,gpt-4-turbo-2024-04-09,gpt-4-1106-preview,gpt-4-0125-preview,gpt-3.5-turbo,gpt-3.5-turbo-16k,gpt-3.5-turbo-16k-0613,gpt-3.5-turbo-1106,gpt-3.5-turbo-0613,gpt-3.5-turbo-0125,gpt-3.5-turbo-instruct,text-davinci-003',
-    'HOSTED_AZURE_OPENAI_ENABLED': 'False',
-    'HOSTED_AZURE_OPENAI_QUOTA_LIMIT': 200,
-    'HOSTED_ANTHROPIC_QUOTA_LIMIT': 600000,
-    'HOSTED_ANTHROPIC_TRIAL_ENABLED': 'False',
-    'HOSTED_ANTHROPIC_PAID_ENABLED': 'False',
-    'HOSTED_MODERATION_ENABLED': 'False',
-    'HOSTED_MODERATION_PROVIDERS': '',
-    'HOSTED_FETCH_APP_TEMPLATES_MODE': 'remote',
-    'HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN': 'https://tmpl.dify.ai',
 }
 
 
@@ -62,12 +33,14 @@ class Config:
         dotenv.load_dotenv()
 
         self.TESTING = False
+        self.APPLICATION_NAME = "langgenius/dify"
 
         # cors settings
         self.CONSOLE_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
             'CONSOLE_CORS_ALLOW_ORIGINS', get_env('CONSOLE_WEB_URL'))
         self.WEB_API_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
             'WEB_API_CORS_ALLOW_ORIGINS', '*')
+<<<<<<< HEAD
 
         # ------------------------
         # Database Configurations.
@@ -172,3 +145,5 @@ class Config:
         # fetch app templates mode, remote, builtin, db(only for dify SaaS), default: remote
         self.HOSTED_FETCH_APP_TEMPLATES_MODE = get_env('HOSTED_FETCH_APP_TEMPLATES_MODE')
         self.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = get_env('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN')
+=======
+>>>>>>> upstream/main

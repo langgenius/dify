@@ -12,3 +12,4 @@ class VectorType(str, Enum):
     WEAVIATE = 'weaviate'
     OPENSEARCH = 'opensearch'
     TENCENT = 'tencent'
+    ORACLE = 'oracle'
