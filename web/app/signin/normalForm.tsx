@@ -224,21 +224,9 @@ const NormalForm = () => {
                 <div className='mb-4'>
                   <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
                     <span>{t('login.password')}</span>
-                    {/* <Tooltip
-                      selector='forget-password'
-                      htmlContent={
-                        <div>
-                          <div className='font-medium'>{t('login.forget')}</div>
-                          <div className='font-medium text-gray-500'>
-                            <code>
-                              sudo rm -rf /
-                            </code>
-                          </div>
-                        </div>
-                      }
-                    >
-                      <span className='cursor-pointer text-primary-600'>{t('login.forget')}</span>
-                    </Tooltip> */}
+                    <Link href='/forgot-password' className='text-primary-600'>
+                      {t('login.forget')}
+                    </Link>
                   </label>
                   <div className="relative mt-1">
                     <input
