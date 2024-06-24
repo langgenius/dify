@@ -436,7 +436,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} 已是最新版本。',
   },
   appMenus: {
-    overview: '可观察性',
+    overview: '监测',
     promptEng: '编排',
     apiAccess: '访问 API',
     logAndAnn: '日志与标注',

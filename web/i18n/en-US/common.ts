@@ -440,7 +440,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} is the latest version available.',
   },
   appMenus: {
-    overview: 'Observability',
+    overview: 'Monitoring',
     promptEng: 'Orchestrate',
     apiAccess: 'API Access',
     logAndAnn: 'Logs & Ann.',

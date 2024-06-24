@@ -29,7 +29,7 @@ const Title = ({
 
   return (
     <div className={cn(className, 'flex items-center text-lg font-semibold text-gray-900')}>
-      {t('appOverview.overview.title')}
+      {t('common.appMenus.overview')}
     </div>
   )
 }
