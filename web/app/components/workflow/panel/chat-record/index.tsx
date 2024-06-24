@@ -14,7 +14,7 @@ import { useWorkflowRun } from '../../hooks'
 import UserInput from './user-input'
 import Chat from '@/app/components/base/chat/chat'
 import type { ChatItem } from '@/app/components/base/chat/types'
-import { fetchConvesationMessages } from '@/service/debug'
+import { fetchConversationMessages } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 
@@ -51,11 +51,11 @@ const ChatRecord = () => {
     return res
   }, [chatList])
 
-  const handleFetchConvesationMessages = useCallback(async () => {
+  const handleFetchConversationMessages = useCallback(async () => {
     if (appDetail && currentConversationID) {
       try {
         setFetched(false)
-        const res = await fetchConvesationMessages(appDetail.id, currentConversationID)
+        const res = await fetchConversationMessages(appDetail.id, currentConversationID)
         setFetched(true)
         setChatList((res as any).data)
       }
@@ -65,8 +65,8 @@ const ChatRecord = () => {
     }
   }, [appDetail, currentConversationID])
   useEffect(() => {
-    handleFetchConvesationMessages()
-  }, [currentConversationID, appDetail, handleFetchConvesationMessages])
+    handleFetchConversationMessages()
+  }, [currentConversationID, appDetail, handleFetchConversationMessages])
 
   return (
     <div

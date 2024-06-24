@@ -9,9 +9,9 @@ import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs
 import type { RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
-import CopyBtn from '@/app/components/app/chat/copy-btn'
-import SVGBtn from '@/app/components/app/chat/svg'
-import Flowchart from '@/app/components/app/chat/mermaid'
+import CopyBtn from '@/app/components/base/copy-btn'
+import SVGBtn from '@/app/components/base/svg'
+import Flowchart from '@/app/components/base/mermaid'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
