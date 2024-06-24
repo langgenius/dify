@@ -57,6 +57,7 @@ export type ChatProps = {
   onFeedback?: (messageId: string, feedback: Feedback) => void
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
+  hideLogModal?: boolean
 }
 const Chat: FC<ChatProps> = ({
   appData,
@@ -83,6 +84,7 @@ const Chat: FC<ChatProps> = ({
   onFeedback,
   chatAnswerContainerInner,
   hideProcessDetail,
+  hideLogModal,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -263,12 +265,9 @@ const Chat: FC<ChatProps> = ({
                 />
               )
             }
-            {appData && appData.site.custom_disclaimer && <div className='text-xs text-gray-500 mt-1 text-center'>
-              {appData.site.custom_disclaimer}
-            </div>}
           </div>
         </div>
-        {showPromptLogModal && (
+        {showPromptLogModal && !hideLogModal && (
           <PromptLogModal
             width={width}
             currentLogItem={currentLogItem}
@@ -278,7 +277,7 @@ const Chat: FC<ChatProps> = ({
             }}
           />
         )}
-        {showAgentLogModal && (
+        {showAgentLogModal && !hideLogModal && (
           <AgentLogModal
             width={width}
             currentLogItem={currentLogItem}

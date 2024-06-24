@@ -265,7 +265,7 @@ class AppModelConfig(db.Model):
     @property
     def retriever_resource_dict(self) -> dict:
         return json.loads(self.retriever_resource) if self.retriever_resource \
-            else {"enabled": False}
+            else {"enabled": True}
 
     @property
     def annotation_reply_dict(self) -> dict:
