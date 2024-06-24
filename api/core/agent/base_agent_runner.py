@@ -32,7 +32,6 @@ from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.tool_entities import (
-    ToolInvokeMessage,
     ToolParameter,
     ToolRuntimeVariablePool,
 )
@@ -141,24 +140,6 @@ class BaseAgentRunner(AppRunner):
             app_generate_entity.app_config.prompt_template.simple_prompt_template = ''
 
         return app_generate_entity
-
-    def _convert_tool_response_to_str(self, tool_response: list[ToolInvokeMessage]) -> str:
-        """
-        Handle tool response
-        """
-        result = ''
-        for response in tool_response:
-            if response.type == ToolInvokeMessage.MessageType.TEXT:
-                result += response.message
-            elif response.type == ToolInvokeMessage.MessageType.LINK:
-                result += f"result link: {response.message}. please tell user to check it."
-            elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
-                 response.type == ToolInvokeMessage.MessageType.IMAGE:
-                result += "image has been created and sent to user already, you do not need to create it, just tell the user to check it now."
-            else:
-                result += f"tool response: {response.message}."
-
-        return result
     
     def _convert_tool_to_prompt_message_tool(self, tool: AgentToolEntity) -> tuple[PromptMessageTool, Tool]:
         """
