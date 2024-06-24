@@ -2089,8 +2089,8 @@ description = "Python SDK for Firecrawl API"
 optional = false
 python-versions = "*"
 files = [
-    {file = "firecrawl-py-0.0.5.tar.gz", hash = "sha256:3d1cc30b7d86c12aa06e6434ebb526072cd70ab9a0c8b145008efe044a1cd09c"},
-    {file = "firecrawl_py-0.0.5-py3-none-any.whl", hash = "sha256:476694345141c0145a1bee9c01a8ad0103f75892c12a122dc511a3adad0785e7"},
+    {file = "firecrawl-py-0.0.16.tar.gz", hash = "sha256:6c662fa0a549bc7f5c0acb704baba6731869ca0451094034264dfc1b4eb086e4"},
+    {file = "firecrawl_py-0.0.16-py3-none-any.whl", hash = "sha256:9024f483b501852a6b9c4e6cdfc9e8dde452d922afac357080bb278a0c9c2a26"},
 ]
 
 [package.dependencies]
