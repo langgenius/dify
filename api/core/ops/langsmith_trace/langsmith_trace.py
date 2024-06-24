@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 
 from langsmith import Client
 
-from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import LangSmithConfig
 from core.ops.entities.trace_entity import (
@@ -34,16 +33,14 @@ logger = logging.getLogger(__name__)
 class LangSmithDataTrace(BaseTraceInstance):
     def __init__(
         self,
-        langsmith_key: str = None,
-        project_name: str = None,
-        endpoint: str = "https://api.smith.langchain.com"
+        langsmith_config: LangSmithConfig,
     ):
-        super().__init__()
-        self.langsmith_key = langsmith_key
-        self.project_name = project_name
+        super().__init__(langsmith_config)
+        self.langsmith_key = langsmith_config.api_key
+        self.project_name = langsmith_config.project
         self.project_id = None
         self.langsmith_client = Client(
-            api_key=langsmith_key, api_url=endpoint
+            api_key=langsmith_config.api_key, api_url=langsmith_config.endpoint
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
@@ -328,23 +325,4 @@ class LangSmithDataTrace(BaseTraceInstance):
             return True
         except Exception as e:
             logger.debug(f"LangSmith API check failed: {str(e)}")
-            return False
-
-    @classmethod
-    def obfuscate_config(cls, config: LangSmithConfig):
-        api_key = obfuscated_token(config.api_key)
-        return LangSmithConfig(api_key=api_key, project=config.project, endpoint=config.endpoint)
-
-    @classmethod
-    def encrypt_config(cls, tenant_id, config: LangSmithConfig, current_trace_config=None):
-        if "*" in config.api_key:
-            return LangSmithConfig(
-                api_key=current_trace_config.get("api_key"), project=config.project, endpoint=config.endpoint
-            )
-        api_key = encrypt_token(tenant_id, config.api_key)
-        return LangSmithConfig(api_key=api_key, project=config.project, endpoint=config.endpoint)
-
-    @classmethod
-    def decrypt_config(cls, tenant_id, config: LangSmithConfig):
-        api_key = decrypt_token(tenant_id, config.api_key)
-        return LangSmithConfig(api_key=api_key, project=config.project, endpoint=config.endpoint)
+            raise ValueError(f"LangSmith API check failed: {str(e)}")

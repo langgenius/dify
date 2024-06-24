@@ -2,11 +2,31 @@ import json
 from typing import Union
 from uuid import UUID
 
-from core.ops.entities.config_entity import LangfuseConfig, LangSmithConfig, TracingProviderEnum
+from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
+from core.ops.entities.config_entity import (
+    LangfuseConfig,
+    LangSmithConfig,
+    TracingProviderEnum,
+)
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
 from extensions.ext_database import db
 from models.model import App, AppModelConfig, Conversation, Message, TraceAppConfig
+
+provider_config_map = {
+    TracingProviderEnum.LANGFUSE.value: {
+        'config_class': LangfuseConfig,
+        'secret_keys': ('public_key', 'secret_key'),
+        'other_keys': ('host',),
+        'trace_instance': LangFuseDataTrace
+    },
+    TracingProviderEnum.LANGSMITH.value: {
+        'config_class': LangSmithConfig,
+        'secret_keys': ('api_key',),
+        'other_keys': ('project', 'endpoint'),
+        'trace_instance': LangSmithDataTrace
+    }
+}
 
 
 class OpsTraceService:
@@ -47,6 +67,13 @@ class OpsTraceService:
                                     TracingProviderEnum.LANGSMITH.value] and tracing_provider != "":
             return {"error": f"Invalid tracing provider: {tracing_provider}"}
 
+        config_class, other_keys = provider_config_map[tracing_provider]['config_class'], \
+            provider_config_map[tracing_provider]['other_keys']
+        default_config_instance = config_class(**tracing_config)
+        for key in other_keys:
+            if key in tracing_config and tracing_config[key] == "":
+                tracing_config[key] = getattr(default_config_instance, key, None)
+
         # api check
         if not cls.check_trace_config_is_effective(tracing_config, tracing_provider):
             return {"error": "Invalid Credentials"}
@@ -84,10 +111,6 @@ class OpsTraceService:
         if tracing_provider not in [TracingProviderEnum.LANGFUSE.value, TracingProviderEnum.LANGSMITH.value]:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
-        # api check
-        # if not cls.check_trace_config_is_effective(tracing_config, tracing_provider):
-        #     raise ValueError("Invalid Credentials")
-
         # check if trace config already exists
         current_trace_config = db.session.query(TraceAppConfig).filter(
             TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
@@ -101,6 +124,13 @@ class OpsTraceService:
         tracing_config = cls.encrypt_tracing_config(
             tenant_id, tracing_provider, tracing_config, current_trace_config.tracing_config
         )
+
+        # api check
+        # decrypt_token
+        decrypt_tracing_config = cls.decrypt_tracing_config(tenant_id, tracing_provider, tracing_config)
+        if not cls.check_trace_config_is_effective(decrypt_tracing_config, tracing_provider):
+            raise ValueError("Invalid Credentials")
+
         current_trace_config.tracing_config = tracing_config
         db.session.commit()
 
@@ -131,21 +161,34 @@ class OpsTraceService:
         cls, tenant_id: str, tracing_provider: str, tracing_config: dict, current_trace_config=None
     ):
         """
-        Encrypt tracing config
+        Encrypt tracing config.
         :param tenant_id: tenant id
         :param tracing_provider: tracing provider
-        :param tracing_config: tracing config
-        :param current_trace_config: current trace config
-        :return:
+        :param tracing_config: tracing config dictionary to be encrypted
+        :param current_trace_config: current tracing configuration for keeping existing values
+        :return: encrypted tracing configuration
         """
-        if tracing_provider == TracingProviderEnum.LANGFUSE.value:
-            tracing_config = LangfuseConfig(**tracing_config)
-            tracing_config = LangFuseDataTrace.encrypt_config(tenant_id, tracing_config, current_trace_config)
-        elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
-            tracing_config = LangSmithConfig(**tracing_config)
-            tracing_config = LangSmithDataTrace.encrypt_config(tenant_id, tracing_config, current_trace_config)
+        # Get the configuration class and the keys that require encryption
+        config_class, secret_keys, other_keys = provider_config_map[tracing_provider]['config_class'], \
+            provider_config_map[tracing_provider]['secret_keys'], provider_config_map[tracing_provider]['other_keys']
 
-        return tracing_config.model_dump()
+        new_config = {}
+        # Encrypt necessary keys
+        for key in secret_keys:
+            if key in tracing_config:
+                if '*' in tracing_config[key]:
+                    # If the key contains '*', retain the original value from the current config
+                    new_config[key] = current_trace_config.get(key, tracing_config[key])
+                else:
+                    # Otherwise, encrypt the key
+                    new_config[key] = encrypt_token(tenant_id, tracing_config[key])
+
+        for key in other_keys:
+            new_config[key] = tracing_config.get(key, "")
+
+        # Create a new instance of the config class with the new configuration
+        encrypted_config = config_class(**new_config)
+        return encrypted_config.model_dump()
 
     @classmethod
     def decrypt_tracing_config(cls, tenant_id: str, tracing_provider: str, tracing_config: dict):
@@ -156,14 +199,17 @@ class OpsTraceService:
         :param tracing_config: tracing config
         :return:
         """
-        if tracing_provider == TracingProviderEnum.LANGFUSE.value:
-            tracing_config = LangfuseConfig(**tracing_config)
-            tracing_config = LangFuseDataTrace.decrypt_config(tenant_id, tracing_config)
-        elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
-            tracing_config = LangSmithConfig(**tracing_config)
-            tracing_config = LangSmithDataTrace.decrypt_config(tenant_id, tracing_config)
+        config_class, secret_keys, other_keys = provider_config_map[tracing_provider]['config_class'], \
+            provider_config_map[tracing_provider]['secret_keys'], provider_config_map[tracing_provider]['other_keys']
+        new_config = {}
+        for key in secret_keys:
+            if key in tracing_config:
+                new_config[key] = decrypt_token(tenant_id, tracing_config[key])
 
-        return tracing_config.model_dump()
+        for key in other_keys:
+            new_config[key] = tracing_config.get(key, "")
+
+        return config_class(**new_config).model_dump()
 
     @classmethod
     def obfuscated_decrypt_token(cls, tracing_provider: str, decrypt_tracing_config:dict):
@@ -173,14 +219,17 @@ class OpsTraceService:
         :param decrypt_tracing_config: tracing config
         :return:
         """
-        obfuscate_config = None
-        if tracing_provider == TracingProviderEnum.LANGFUSE.value:
-            decrypt_tracing_config = LangfuseConfig(**decrypt_tracing_config)
-            obfuscate_config = LangFuseDataTrace.obfuscate_config(decrypt_tracing_config)
-        elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
-            decrypt_tracing_config = LangSmithConfig(**decrypt_tracing_config)
-            obfuscate_config = LangSmithDataTrace.obfuscate_config(decrypt_tracing_config)
-        return obfuscate_config.model_dump()
+        config_class, secret_keys, other_keys = provider_config_map[tracing_provider]['config_class'], \
+            provider_config_map[tracing_provider]['secret_keys'], provider_config_map[tracing_provider]['other_keys']
+        new_config = {}
+        for key in secret_keys:
+            if key in decrypt_tracing_config:
+                new_config[key] = obfuscated_token(decrypt_tracing_config[key])
+
+        for key in other_keys:
+            new_config[key] = decrypt_tracing_config.get(key, "")
+
+        return config_class(**new_config).model_dump()
 
     @classmethod
     def get_decrypted_tracing_config(cls, app_id: str, tracing_provider: str):
@@ -246,24 +295,8 @@ class OpsTraceService:
         # decrypt_token
         decrypt_trace_config = cls.get_decrypted_tracing_config(app_id, tracing_provider)
         if app_ops_trace_config.get('enabled'):
-            if tracing_provider == TracingProviderEnum.LANGFUSE.value:
-                langfuse_client_public_key = decrypt_trace_config.get('public_key')
-                langfuse_client_secret_key = decrypt_trace_config.get('secret_key')
-                langfuse_host = decrypt_trace_config.get('host')
-                tracing_instance = LangFuseDataTrace(
-                    langfuse_client_public_key,
-                    langfuse_client_secret_key,
-                    langfuse_host,
-                )
-            elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
-                langsmith_api_key = decrypt_trace_config.get('api_key')
-                langsmith_project = decrypt_trace_config.get('project')
-                langsmith_endpoint = decrypt_trace_config.get('endpoint')
-                tracing_instance = LangSmithDataTrace(
-                    langsmith_api_key,
-                    langsmith_project,
-                    langsmith_endpoint,
-                )
+            config_class = provider_config_map[tracing_provider]['config_class']
+            tracing_instance = config_class(**decrypt_trace_config)
 
             return tracing_instance
 
@@ -297,8 +330,8 @@ class OpsTraceService:
         # auth check
         if tracing_provider not in [TracingProviderEnum.LANGFUSE.value, TracingProviderEnum.LANGSMITH.value, None, ""]:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
-        app_config: App = db.session.query(App).filter(App.id == app_id).first()
 
+        app_config: App = db.session.query(App).filter(App.id == app_id).first()
         app_config.tracing = json.dumps(
             {
                 "enabled": enabled,
@@ -331,21 +364,7 @@ class OpsTraceService:
         :param tracing_provider: tracing provider
         :return:
         """
-        if tracing_provider == TracingProviderEnum.LANGFUSE.value:
-            tracing_config = LangfuseConfig(**tracing_config)
-            langfuse_trace_instance = LangFuseDataTrace(
-                tracing_config.public_key,
-                tracing_config.secret_key,
-                tracing_config.host,
-            )
-            return langfuse_trace_instance.api_check()
-        elif tracing_provider == TracingProviderEnum.LANGSMITH.value:
-            tracing_config = LangSmithConfig(**tracing_config)
-            langsmith_trace_instance = LangSmithDataTrace(
-                tracing_config.api_key,
-                tracing_config.project,
-                tracing_config.endpoint,
-            )
-            return langsmith_trace_instance.api_check()
-        else:
-            raise ValueError(f"Unsupported tracing provider: {tracing_provider}")
+        config_type, trace_instance = provider_config_map[tracing_provider]['config_class'], \
+            provider_config_map[tracing_provider]['trace_instance']
+        tracing_config = config_type(**tracing_config)
+        return trace_instance(tracing_config).api_check()

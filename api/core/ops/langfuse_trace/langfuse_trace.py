@@ -6,7 +6,6 @@ from typing import Optional
 
 from langfuse import Langfuse
 
-from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import LangfuseConfig
 from core.ops.entities.trace_entity import (
@@ -38,15 +37,13 @@ logger = logging.getLogger(__name__)
 class LangFuseDataTrace(BaseTraceInstance):
     def __init__(
         self,
-        langfuse_client_public_key: str = None,
-        langfuse_client_secret_key: str = None,
-        langfuse_client_host: str = "https://cloud.langfuse.com",
+        langfuse_config: LangfuseConfig,
     ):
-        super().__init__()
+        super().__init__(langfuse_config)
         self.langfuse_client = Langfuse(
-            public_key=langfuse_client_public_key,
-            secret_key=langfuse_client_secret_key,
-            host=langfuse_client_host,
+            public_key=langfuse_config.public_key,
+            secret_key=langfuse_config.secret_key,
+            host=langfuse_config.host,
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
@@ -343,42 +340,4 @@ class LangFuseDataTrace(BaseTraceInstance):
             return self.langfuse_client.auth_check()
         except Exception as e:
             logger.debug(f"LangFuse API check failed: {str(e)}")
-            return False
-
-    @classmethod
-    def obfuscate_config(cls, config: LangfuseConfig):
-        public_key = obfuscated_token(config.public_key)
-        secret_key = obfuscated_token(config.secret_key)
-        return LangfuseConfig(public_key=public_key, secret_key=secret_key, host=config.host)
-
-    @classmethod
-    def encrypt_config(cls, tenant_id, config: LangfuseConfig, current_trace_config: dict = None):
-        if "*" in config.public_key and "*" in config.secret_key:
-            return LangfuseConfig(
-                public_key=current_trace_config.get("public_key"),
-                secret_key=current_trace_config.get("secret_key"),
-                host=config.host
-            )
-        if "*" in config.public_key:
-            decrypt_secret_key = encrypt_token(tenant_id, config.secret_key)
-            return LangfuseConfig(
-                public_key=current_trace_config.get("public_key"),
-                secret_key=decrypt_secret_key,
-                host=config.host
-            )
-        if "*" in config.secret_key:
-            decrypt_public_key = encrypt_token(tenant_id, config.public_key)
-            return LangfuseConfig(
-                public_key=decrypt_public_key,
-                secret_key=current_trace_config.get("secret_key"),
-                host=config.host
-            )
-        decrypt_public_key = encrypt_token(tenant_id, config.public_key)
-        decrypt_secret_key = encrypt_token(tenant_id, config.secret_key)
-        return LangfuseConfig(public_key=decrypt_public_key, secret_key=decrypt_secret_key, host=config.host)
-
-    @classmethod
-    def decrypt_config(cls, tenant_id, config: LangfuseConfig):
-        decrypt_public_key = decrypt_token(tenant_id, config.public_key)
-        decrypt_secret_key = decrypt_token(tenant_id, config.secret_key)
-        return LangfuseConfig(public_key=decrypt_public_key, secret_key=decrypt_secret_key, host=config.host)
+            raise ValueError(f"LangFuse API check failed: {str(e)}")

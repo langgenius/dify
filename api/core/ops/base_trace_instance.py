@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from core.ops.entities.config_entity import BaseTracingConfig
 from core.ops.entities.trace_entity import BaseTraceInfo
 
 
@@ -9,12 +10,12 @@ class BaseTraceInstance(ABC):
     """
 
     @abstractmethod
-    def __init__(self):
+    def __init__(self, trace_config: BaseTracingConfig):
         """
         Abstract initializer for the trace instance.
         Distribute trace tasks by matching entities
         """
-        ...
+        self.trace_config = trace_config
 
     @abstractmethod
     def trace(self, trace_info: BaseTraceInfo):
