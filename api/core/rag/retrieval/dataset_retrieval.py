@@ -12,7 +12,7 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.ops.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.trace_queue_manager import TraceTask, TraceTaskName
 from core.ops.utils import measure_time
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
@@ -358,9 +358,9 @@ class DatasetRetrieval:
 
         # get tracing instance
         tracing_instance = self.application_generate_entity.tracing_instance if self.application_generate_entity else None
+        trace_manager = self.application_generate_entity.trace_manager if self.application_generate_entity else None
 
         if tracing_instance:
-            trace_manager = TraceQueueManager()
             trace_manager.add_trace_task(
                 TraceTask(
                     tracing_instance,

@@ -20,6 +20,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.ops.trace_queue_manager import TraceQueueManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser
@@ -77,6 +78,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         tracing_instance = OpsTraceService.get_ops_trace_instance(
             app_id=app_model.id,
         )
+        trace_manager = TraceQueueManager()
 
         # init application generate entity
         application_generate_entity = WorkflowAppGenerateEntity(
@@ -88,7 +90,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             stream=stream,
             invoke_from=invoke_from,
             call_depth=call_depth,
-            tracing_instance=tracing_instance
+            tracing_instance=tracing_instance,
+            trace_manager=trace_manager
         )
 
         return self._generate(

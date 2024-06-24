@@ -16,6 +16,7 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.ops.base_trace_instance import BaseTraceInstance
+from core.ops.trace_queue_manager import TraceQueueManager
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool.tool import Tool
@@ -46,6 +47,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         # get tracing instance
         tracing_instance = app_generate_entity.tracing_instance
+        trace_manager = app_generate_entity.trace_manager
 
         # check model mode
         if 'Observation' not in app_generate_entity.model_conf.stop:
@@ -218,6 +220,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         tool_instances=tool_instances,
                         message_file_ids=message_file_ids,
                         tracing_instance=tracing_instance,
+                        trace_manager=trace_manager,
                     )
                     scratchpad.observation = tool_invoke_response
                     scratchpad.agent_response = tool_invoke_response
@@ -287,7 +290,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
     def _handle_invoke_action(self, action: AgentScratchpadUnit.Action, 
                               tool_instances: dict[str, Tool],
                               message_file_ids: list[str],
-                              tracing_instance: Optional[BaseTraceInstance] = None
+                              tracing_instance: Optional[BaseTraceInstance] = None,
+                              trace_manager: Optional[TraceQueueManager] = None
                               ) -> tuple[str, ToolInvokeMeta]:
         """
         handle invoke action
@@ -320,6 +324,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             invoke_from=self.application_generate_entity.invoke_from,
             agent_tool_callback=self.agent_callback,
             tracing_instance=tracing_instance,
+            trace_manager=trace_manager,
         )
 
         # publish files

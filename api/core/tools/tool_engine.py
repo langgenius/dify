@@ -10,6 +10,7 @@ from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackH
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod
 from core.ops.base_trace_instance import BaseTraceInstance
+from core.ops.trace_queue_manager import TraceQueueManager
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, ToolInvokeMeta, ToolParameter
 from core.tools.errors import (
     ToolEngineInvokeError,
@@ -36,7 +37,8 @@ class ToolEngine:
         tool: Tool, tool_parameters: Union[str, dict],
         user_id: str, tenant_id: str, message: Message, invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
-        tracing_instance: Optional[BaseTraceInstance] = None
+        tracing_instance: Optional[BaseTraceInstance] = None,
+        trace_manager: Optional[TraceQueueManager] = None
     ) -> tuple[str, list[tuple[MessageFile, bool]], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
@@ -90,6 +92,7 @@ class ToolEngine:
                 tool_outputs=plain_text,
                 message_id=message.id,
                 tracing_instance=tracing_instance,
+                trace_manager=trace_manager
             )
 
             # transform tool invoke message to get LLM friendly message

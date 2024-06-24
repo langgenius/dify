@@ -8,7 +8,6 @@ from langsmith import Client
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import LangSmithConfig
-from core.ops.entities.langsmith_trace_entity import LangSmithRunModel, LangSmithRunType, LangSmithRunUpdateModel
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
@@ -18,6 +17,11 @@ from core.ops.entities.trace_entity import (
     SuggestedQuestionTraceInfo,
     ToolTraceInfo,
     WorkflowTraceInfo,
+)
+from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
+    LangSmithRunModel,
+    LangSmithRunType,
+    LangSmithRunUpdateModel,
 )
 from core.ops.utils import filter_none_values
 from extensions.ext_database import db
@@ -65,11 +69,11 @@ class LangSmithDataTrace(BaseTraceInstance):
             total_tokens=trace_info.total_tokens,
             id=trace_info.workflow_run_id,
             name=f"workflow_run_{trace_info.workflow_run_id}",
-            inputs=trace_info.query,
+            inputs=trace_info.workflow_run_inputs,
             run_type=LangSmithRunType.tool,
             start_time=trace_info.workflow_data.created_at,
             end_time=trace_info.workflow_data.finished_at,
-            outputs=trace_info.workflow_data.workflow_run_outputs,
+            outputs=trace_info.workflow_run_outputs,
             extra={
                 "metadata": trace_info.metadata,
             },
@@ -151,7 +155,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
             self.add_run(langsmith_run)
 
-    def message_trace(self, trace_info: MessageTraceInfo, **kwargs):
+    def message_trace(self, trace_info: MessageTraceInfo):
         # get message file data
         file_list = trace_info.file_list
         message_file_data: MessageFile = trace_info.message_file_data
@@ -202,7 +206,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         )
         self.add_run(llm_run)
 
-    def moderation_trace(self, trace_info: ModerationTraceInfo, **kwargs):
+    def moderation_trace(self, trace_info: ModerationTraceInfo):
         langsmith_run = LangSmithRunModel(
             name="moderation",
             inputs=trace_info.inputs,
@@ -224,7 +228,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         self.add_run(langsmith_run)
 
-    def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo, **kwargs):
+    def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
         message_data = trace_info.message_data
         suggested_question_run = LangSmithRunModel(
             name="suggested_question",
@@ -242,7 +246,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         self.add_run(suggested_question_run)
 
-    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo, **kwargs):
+    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo):
         dataset_retrieval_run = LangSmithRunModel(
             name="dataset_retrieval",
             inputs=trace_info.inputs,
@@ -259,7 +263,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         self.add_run(dataset_retrieval_run)
 
-    def tool_trace(self, trace_info: ToolTraceInfo, **kwargs):
+    def tool_trace(self, trace_info: ToolTraceInfo):
         tool_run = LangSmithRunModel(
             name=trace_info.tool_name,
             inputs=trace_info.tool_inputs,
@@ -277,7 +281,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
         self.add_run(tool_run)
 
-    def generate_name_trace(self, trace_info: GenerateNameTraceInfo, **kwargs):
+    def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
         name_run = LangSmithRunModel(
             name="generate_name",
             inputs=trace_info.inputs,

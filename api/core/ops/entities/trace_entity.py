@@ -6,9 +6,9 @@ from pydantic import BaseModel
 
 class BaseTraceInfo(BaseModel):
     message_id: Optional[str] = None
-    message_data: Any
-    inputs: Union[str, dict[str, Any], list, None]
-    outputs: Union[str, dict[str, Any], list, None]
+    message_data: Optional[Any] = None
+    inputs: Optional[Union[str, dict[str, Any], list]] = None
+    outputs: Optional[Union[str, dict[str, Any], list]] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     metadata: dict[str, Any]
@@ -50,7 +50,6 @@ class ModerationTraceInfo(BaseTraceInfo):
     query: str
 
 
-#
 class SuggestedQuestionTraceInfo(BaseTraceInfo):
     total_tokens: int
     status: Optional[str] = None

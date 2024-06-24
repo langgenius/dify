@@ -6,6 +6,8 @@ from datetime import timedelta
 from enum import Enum
 from typing import Any
 
+from flask import Flask, current_app
+
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
@@ -53,10 +55,6 @@ class TraceTask:
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
     def execute(self):
-        # method_name, processed_kwargs = self.preprocess()
-        # method = self.trace_instance.trace
-        # method(**processed_kwargs)
-
         method_name, trace_info = self.preprocess()
         method = self.trace_instance.trace
         method(trace_info)
@@ -388,21 +386,23 @@ class TraceTask:
 
 class TraceQueueManager:
     def __init__(self):
-        from app import app
-        self.app = app
         self.queue = queue.Queue()
         self.is_running = True
-        self.thread = threading.Thread(target=self.process_queue)
+        self.thread = threading.Thread(
+            target=self.process_queue, kwargs={
+                'flask_app': current_app._get_current_object()
+            }
+        )
         self.thread.start()
 
     def stop(self):
         self.is_running = False
 
-    def process_queue(self):
-        with self.app.app_context():
+    def process_queue(self, flask_app: Flask):
+        with flask_app.app_context():
             while self.is_running:
                 try:
-                    task = self.queue.get(timeout=1)
+                    task = self.queue.get(timeout=60)
                     task.execute()
                     self.queue.task_done()
                 except queue.Empty:

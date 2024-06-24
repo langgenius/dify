@@ -73,8 +73,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         )
 
         try:
-            tracing_instance = application_generate_entity.tracing_instance
-            return generate_task_pipeline.process(tracing_instance)
+            return generate_task_pipeline.process()
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedException()

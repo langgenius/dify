@@ -19,6 +19,7 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.ops.trace_queue_manager import TraceQueueManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser, Message
@@ -99,6 +100,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         tracing_instance = OpsTraceService.get_ops_trace_instance(
             app_id=app_model.id
         )
+        trace_manager = TraceQueueManager()
 
         # init application generate entity
         application_generate_entity = CompletionAppGenerateEntity(
@@ -112,7 +114,8 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             stream=stream,
             invoke_from=invoke_from,
             extras=extras,
-            tracing_instance=tracing_instance
+            tracing_instance=tracing_instance,
+            trace_manager=trace_manager
         )
 
         # init generate records
@@ -165,7 +168,6 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         :param flask_app: Flask app
         :param application_generate_entity: application generate entity
         :param queue_manager: queue manager
-        :param conversation_id: conversation ID
         :param message_id: message ID
         :return:
         """

@@ -1,7 +1,7 @@
 import json
 import time
 from datetime import datetime, timezone
-from typing import Any, Optional, Union, cast
+from typing import Optional, Union, cast
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
@@ -103,7 +103,8 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         total_steps: int,
         outputs: Optional[str] = None,
         conversation_id: Optional[str] = None,
-        tracing_instance: Optional[BaseTraceInstance] = None
+        tracing_instance: Optional[BaseTraceInstance] = None,
+        trace_manager: Optional[TraceQueueManager] = None
     ) -> WorkflowRun:
         """
         Workflow run success
@@ -128,7 +129,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         db.session.close()
 
         if tracing_instance:
-            trace_manager = TraceQueueManager()
             trace_manager.add_trace_task(
                 TraceTask(
                     tracing_instance,
@@ -148,7 +148,8 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         status: WorkflowRunStatus,
         error: str,
         conversation_id: Optional[str] = None,
-        tracing_instance: Optional[Any] = None
+        tracing_instance: Optional[BaseTraceInstance] = None,
+        trace_manager: Optional[TraceQueueManager] = None
     ) -> WorkflowRun:
         """
         Workflow run failed
@@ -172,7 +173,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         db.session.close()
 
         if tracing_instance:
-            trace_manager = TraceQueueManager()
             trace_manager.add_trace_task(
                 TraceTask(
                     tracing_instance,
@@ -533,7 +533,8 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
     def _handle_workflow_finished(
         self, event: QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent,
         tracing_instance: Optional[BaseTraceInstance] = None,
-        conversation_id: Optional[str] = None
+        conversation_id: Optional[str] = None,
+        trace_manager: Optional[TraceQueueManager] = None
     ) -> Optional[WorkflowRun]:
         workflow_run = db.session.query(WorkflowRun).filter(
             WorkflowRun.id == self._task_state.workflow_run_id).first()
@@ -551,6 +552,8 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
                 status=WorkflowRunStatus.STOPPED,
                 error='Workflow stopped.',
                 conversation_id=conversation_id,
+                tracing_instance=tracing_instance,
+                trace_manager=trace_manager
             )
 
             latest_node_execution_info = self._task_state.latest_node_execution_info
@@ -574,6 +577,7 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
                 error=event.error,
                 conversation_id=conversation_id,
                 tracing_instance=tracing_instance,
+                trace_manager=trace_manager
             )
         else:
             if self._task_state.latest_node_execution_info:
@@ -591,6 +595,7 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
                 outputs=outputs,
                 conversation_id=conversation_id,
                 tracing_instance=tracing_instance,
+                trace_manager=trace_manager
             )
 
         self._task_state.workflow_run_id = workflow_run.id

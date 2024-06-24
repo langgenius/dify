@@ -3,6 +3,7 @@ from typing import Any, Optional, TextIO, Union
 
 from pydantic import BaseModel
 
+from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.trace_queue_manager import TraceQueueManager, TraceTask, TraceTaskName
 
 _TEXT_COLOR_MAPPING = {
@@ -55,7 +56,8 @@ class DifyAgentCallbackHandler(BaseModel):
         tool_outputs: str,
         message_id: Optional[str] = None,
         timer: Optional[Any] = None,
-        tracing_instance: Optional[Any] = None,
+        tracing_instance: Optional[BaseTraceInstance] = None,
+        trace_manager: Optional[TraceQueueManager] = None
     ) -> None:
         """If not the final action, print out observation."""
         print_text("\n[on_tool_end]\n", color=self.color)
@@ -65,7 +67,6 @@ class DifyAgentCallbackHandler(BaseModel):
         print_text("\n")
 
         if tracing_instance:
-            trace_manager = TraceQueueManager()
             trace_manager.add_trace_task(
                 TraceTask(
                     tracing_instance,

@@ -9,14 +9,6 @@ from langfuse import Langfuse
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import LangfuseConfig
-from core.ops.entities.langfuse_trace_entity import (
-    GenerationUsage,
-    LangfuseGeneration,
-    LangfuseSpan,
-    LangfuseTrace,
-    LevelEnum,
-    UnitEnum,
-)
 from core.ops.entities.trace_entity import (
     BaseTraceInfo,
     DatasetRetrievalTraceInfo,
@@ -26,6 +18,14 @@ from core.ops.entities.trace_entity import (
     SuggestedQuestionTraceInfo,
     ToolTraceInfo,
     WorkflowTraceInfo,
+)
+from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
+    GenerationUsage,
+    LangfuseGeneration,
+    LangfuseSpan,
+    LangfuseTrace,
+    LevelEnum,
+    UnitEnum,
 )
 from core.ops.utils import filter_none_values
 from extensions.ext_database import db
@@ -192,7 +192,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         self.add_generation(langfuse_generation_data)
 
-    def moderation_trace(self, trace_info: ModerationTraceInfo, **kwargs):
+    def moderation_trace(self, trace_info: ModerationTraceInfo):
         span_data = LangfuseSpan(
             name="moderation",
             input=trace_info.inputs,
@@ -210,7 +210,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         self.add_span(langfuse_span_data=span_data)
 
-    def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo, **kwargs):
+    def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
         message_data = trace_info.message_data
         generation_usage = GenerationUsage(
             totalTokens=len(str(trace_info.suggested_question)),
@@ -235,7 +235,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         self.add_generation(langfuse_generation_data=generation_data)
 
-    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo, **kwargs):
+    def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo):
         dataset_retrieval_span_data = LangfuseSpan(
             name="dataset_retrieval",
             input=trace_info.inputs,
@@ -248,7 +248,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         self.add_span(langfuse_span_data=dataset_retrieval_span_data)
 
-    def tool_trace(self, trace_info: ToolTraceInfo, **kwargs):
+    def tool_trace(self, trace_info: ToolTraceInfo):
         tool_span_data = LangfuseSpan(
             name=trace_info.tool_name,
             input=trace_info.tool_inputs,
@@ -263,7 +263,7 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         self.add_span(langfuse_span_data=tool_span_data)
 
-    def generate_name_trace(self, trace_info: GenerateNameTraceInfo, **kwargs):
+    def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
         name_generation_trace_data = LangfuseTrace(
             name="generate_name",
             input=trace_info.inputs,

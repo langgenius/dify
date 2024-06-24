@@ -20,6 +20,7 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.ops.trace_queue_manager import TraceQueueManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
@@ -91,6 +92,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         tracing_instance = OpsTraceService.get_ops_trace_instance(
             app_id=app_model.id
         )
+        trace_manager = TraceQueueManager()
 
         # init application generate entity
         application_generate_entity = AdvancedChatAppGenerateEntity(
@@ -104,7 +106,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             stream=stream,
             invoke_from=invoke_from,
             extras=extras,
-            tracing_instance=tracing_instance
+            tracing_instance=tracing_instance,
+            trace_manager=trace_manager
         )
 
         return self._generate(
