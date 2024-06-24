@@ -21,11 +21,11 @@ class NotionInfo(BaseModel):
         super().__init__(**data)
 
 
-class LarkWikiInfo(BaseModel):
+class FeishuWikiInfo(BaseModel):
     """
-    LarkWiki import info.
+    FeishuWiki import info.
     """
-    lark_workspace_id: str
+    feishu_workspace_id: str
     obj_token: str
     obj_type: str
     document: Document = None
@@ -61,7 +61,7 @@ class ExtractSetting(BaseModel):
     datasource_type: str
     upload_file: Optional[UploadFile] = None
     notion_info: Optional[NotionInfo] = None
-    larkwiki_info: Optional[LarkWikiInfo] = None
+    feishuwiki_info: Optional[FeishuWikiInfo] = None
     website_info: Optional[WebsiteInfo] = None
     document_model: Optional[str] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)

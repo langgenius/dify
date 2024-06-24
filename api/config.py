@@ -135,9 +135,9 @@ class Config:
         self.TENCENT_COS_SECRET_KEY = get_env('TENCENT_COS_SECRET_KEY')
         self.TENCENT_COS_SCHEME = get_env('TENCENT_COS_SCHEME')
 
-        # Lark wiki setting
-        self.LARK_APP_ID = get_env('LARK_APP_ID')
-        self.LARK_APP_SECRET = get_env('LARK_APP_SECRET')
+        # Feishu wiki setting
+        self.FEISHU_APP_ID = get_env('FEISHU_APP_ID')
+        self.FEISHU_APP_SECRET = get_env('FEISHU_APP_SECRET')
 
         # ------------------------
         # Platform Configurations.

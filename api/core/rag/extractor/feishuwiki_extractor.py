@@ -7,7 +7,7 @@ import requests
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
-from libs.oauth_data_source import LarkWikiOAuth
+from libs.oauth_data_source import FeishuWikiOAuth
 from models.dataset import Document as DocumentModel
 from models.source import DataSourceOauthBinding
 
@@ -16,33 +16,33 @@ logger = logging.getLogger(__name__)
 DOCUMENT_RAW_CONTENT_URL = "https://open.feishu-boe.cn/open-apis/docx/v1/documents/{document_id}/raw_content"
 DOCUMENT_BLOCK_CONTENT_URL = "https://open.feishu-boe.cn/open-apis/docx/v1/documents/{document_id}/blocks/{block_id}"
 DOCUMENT_ALL_BLOCK_URL = "https://open.feishu-boe.cn/open-apis/docx/v1/documents/{document_id}/blocks"
-LARK_WIKI_NODE_URL = "https://open.feishu-boe.cn/open-apis/wiki/v2/spaces/get_node"
+FEISHU_WIKI_NODE_URL = "https://open.feishu-boe.cn/open-apis/wiki/v2/spaces/get_node"
 
 
-class LarkWikiExtractor(BaseExtractor):
+class FeishuWikiExtractor(BaseExtractor):
 
-    def __init__(self, lark_workspace_id: str,
+    def __init__(self, feishu_workspace_id: str,
                  obj_token: str,
                  obj_type: str,
                  tenant_id: str,
                  document_model: Optional[DocumentModel] = None):
         self._document_model = document_model
-        self._notion_workspace_id = lark_workspace_id
-        self._lark_obj_token = obj_token
-        self._lark_obj_type = obj_type
-        self._tenant_access_token = self._get_tenant_access_token(tenant_id, lark_workspace_id)
+        self._feishu_workspace_id = feishu_workspace_id
+        self._feishu_obj_token = obj_token
+        self._feishu_obj_type = obj_type
+        self._tenant_access_token = self._get_tenant_access_token(tenant_id, feishu_workspace_id)
 
     def extract(self) -> list[Document]:
         self.update_last_edited_time(
             self._document_model
         )
-        if self._lark_obj_type == "docx":
-            raw_content = self.get_document_raw_content(self._lark_obj_token)
-            table_block_content = self.get_document_table_block_content(self._lark_obj_token, "")
+        if self._feishu_obj_type == "docx":
+            raw_content = self.get_document_raw_content(self._feishu_obj_token)
+            table_block_content = self.get_document_table_block_content(self._feishu_obj_token, "")
             docs = [Document(page_content=raw_content), Document(page_content=table_block_content)]
             return docs
         else:
-            raise ValueError("lark obj type not supported")
+            raise ValueError("feishu obj type not supported")
 
     def get_document_table_block_content(self, block_id: str, page_token: str) -> str:
         block_data_list = []
@@ -164,7 +164,7 @@ class LarkWikiExtractor(BaseExtractor):
         if not document_model:
             return
 
-        last_edited_time = self.get_lark_wiki_node_last_edited_time()
+        last_edited_time = self.get_feishu_wiki_node_last_edited_time()
         data_source_info = document_model.data_source_info_dict
         data_source_info['last_edited_time'] = last_edited_time
         update_params = {
@@ -174,42 +174,42 @@ class LarkWikiExtractor(BaseExtractor):
         DocumentModel.query.filter_by(id=document_model.id).update(update_params)
         db.session.commit()
 
-    def get_lark_wiki_node_last_edited_time(self):
+    def get_feishu_wiki_node_last_edited_time(self):
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f"Bearer {self._tenant_access_token}",
         }
         params = {
-            "token": self._lark_obj_token,
-            "obj_type": self._lark_obj_type,
+            "token": self._feishu_obj_token,
+            "obj_type": self._feishu_obj_type,
         }
-        response = requests.get(url=LARK_WIKI_NODE_URL, params=params, headers=headers, timeout=30)
+        response = requests.get(url=FEISHU_WIKI_NODE_URL, params=params, headers=headers, timeout=30)
         response_json = response.json()
         if not response.ok:
             raise Exception(
-                f"get lark wiki node fail！status_code：{response.status_code}, code: {response_json['code']}, msg：{response_json['msg']}")
+                f"get feishu wiki node fail！status_code：{response.status_code}, code: {response_json['code']}, msg：{response_json['msg']}")
         node = response_json["data"]["node"]
         return node["obj_edit_time"]
 
     @classmethod
-    def _get_tenant_access_token(cls, tenant_id: str, lark_workspace_id: str) -> str:
+    def _get_tenant_access_token(cls, tenant_id: str, feishu_workspace_id: str) -> str:
         data_source_binding = DataSourceOauthBinding.query.filter(
             db.and_(
                 DataSourceOauthBinding.tenant_id == tenant_id,
-                DataSourceOauthBinding.provider == 'larkwiki',
+                DataSourceOauthBinding.provider == 'feishuwiki',
                 DataSourceOauthBinding.disabled == False,
-                DataSourceOauthBinding.source_info['workspace_id'] == f'"{lark_workspace_id}"'
+                DataSourceOauthBinding.source_info['workspace_id'] == f'"{feishu_workspace_id}"'
             )
         ).first()
 
         if not data_source_binding:
-            raise Exception(f'No larkwiki data source binding found for tenant {tenant_id} '
-                            f'and larkwiki workspace {lark_workspace_id}')
+            raise Exception(f'No feishuwiki data source binding found for tenant {tenant_id} '
+                            f'and feishuwiki workspace {feishu_workspace_id}')
 
         app_id = data_source_binding.source_info['workspace_name']
         app_secret = data_source_binding.access_token
 
-        larkwiki_oauth = LarkWikiOAuth(app_id=app_id,
-                                       app_secret=app_secret)
+        feishuwiki_oauth = FeishuWikiOAuth(app_id=app_id,
+                                           app_secret=app_secret)
 
-        return larkwiki_oauth.get_tenant_access_token()
+        return feishuwiki_oauth.get_tenant_access_token()

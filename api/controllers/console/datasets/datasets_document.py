@@ -436,18 +436,18 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 }
                 info_list.append(notion_info)
 
-            elif data_source_info and 'lark_workspace_id' in data_source_info and 'obj_token' in data_source_info:
+            elif data_source_info and 'feishu_workspace_id' in data_source_info and 'obj_token' in data_source_info:
                 pages = []
                 page = {
                     'obj_token': data_source_info['obj_token'],
                     'obj_type': data_source_info['obj_type']
                 }
                 pages.append(page)
-                larkwiki_info = {
-                    'workspace_id': data_source_info['lark_workspace_id'],
+                feishuwiki_info = {
+                    'workspace_id': data_source_info['feishu_workspace_id'],
                     'pages': pages
                 }
-                info_list.append(larkwiki_info)
+                info_list.append(feishuwiki_info)
 
             if document.data_source_type == 'upload_file':
                 file_id = data_source_info['upload_file_id']
@@ -479,11 +479,11 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 )
                 extract_settings.append(extract_setting)
 
-            elif document.data_source_type == 'larkwiki_import':
+            elif document.data_source_type == 'feishuwiki_import':
                 extract_setting = ExtractSetting(
-                    datasource_type="larkwiki_import",
-                    larkwiki_info={
-                        "lark_workspace_id": data_source_info['lark_workspace_id'],
+                    datasource_type="feishuwiki_import",
+                    feishuwiki_info={
+                        "feishu_workspace_id": data_source_info['feishu_workspace_id'],
                         "obj_token": data_source_info['obj_token'],
                         "obj_type": data_source_info['obj_type'],
                         "tenant_id": current_user.current_tenant_id

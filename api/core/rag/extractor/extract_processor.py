@@ -11,9 +11,9 @@ from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.excel_extractor import ExcelExtractor
+from core.rag.extractor.feishuwiki_extractor import FeishuWikiExtractor
 from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
 from core.rag.extractor.html_extractor import HtmlExtractor
-from core.rag.extractor.larkwiki_extractor import LarkWikiExtractor
 from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
@@ -156,13 +156,13 @@ class ExtractProcessor:
                 tenant_id=extract_setting.notion_info.tenant_id,
             )
             return extractor.extract()
-        elif extract_setting.datasource_type == DatasourceType.LarkWiki.value:
-            extractor = LarkWikiExtractor(
-                lark_workspace_id=extract_setting.larkwiki_info.lark_workspace_id,
-                obj_token=extract_setting.larkwiki_info.obj_token,
-                obj_type=extract_setting.larkwiki_info.obj_type,
-                document_model=extract_setting.larkwiki_info.document,
-                tenant_id=extract_setting.larkwiki_info.tenant_id,
+        elif extract_setting.datasource_type == DatasourceType.FEISHU_WIKI.value:
+            extractor = FeishuWikiExtractor(
+                feishu_workspace_id=extract_setting.feishuwiki_info.feishu_workspace_id,
+                obj_token=extract_setting.feishuwiki_info.obj_token,
+                obj_type=extract_setting.feishuwiki_info.obj_type,
+                document_model=extract_setting.feishuwiki_info.document,
+                tenant_id=extract_setting.feishuwiki_info.tenant_id,
             )
             return extractor.extract()
         elif extract_setting.datasource_type == DatasourceType.WEBSITE.value:

@@ -16,7 +16,7 @@ integrate_page_fields = {
     'parent_id': fields.String,
     'type': fields.String,
 
-    # lark wiki
+    # feishu wiki
     'obj_token': fields.String,
     'obj_type': fields.String,
     'space_id': fields.String,
@@ -33,8 +33,8 @@ integrate_notion_info_list_fields = {
     'notion_info': fields.List(fields.Nested(integrate_workspace_fields)),
 }
 
-integrate_larkwiki_info_list_fields = {
-    'larkwiki_info': fields.List(fields.Nested(integrate_workspace_fields)),
+integrate_feishuwiki_info_list_fields = {
+    'feishuwiki_info': fields.List(fields.Nested(integrate_workspace_fields)),
 }
 
 integrate_icon_fields = {
@@ -50,7 +50,7 @@ integrate_page_fields = {
     'parent_id': fields.String,
     'type': fields.String,
 
-    # lark wiki
+    # feishu wiki
     'obj_token': fields.String,
     'obj_type': fields.String,
     'space_id': fields.String,

@@ -7,7 +7,7 @@ from celery import shared_task
 from werkzeug.exceptions import NotFound
 
 from core.indexing_runner import DocumentIsPausedException, IndexingRunner
-from core.rag.extractor.larkwiki_extractor import LarkWikiExtractor
+from core.rag.extractor.feishuwiki_extractor import FeishuWikiExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
@@ -36,13 +36,13 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         raise NotFound('Document not found')
 
     data_source_info = document.data_source_info_dict
-    if document.data_source_type not in ['notion_import', 'larkwiki_import']:
+    if document.data_source_type not in ['notion_import', 'feishuwiki_import']:
         return
 
     page_edited_time = data_source_info.get('last_edited_time')
     workspace_id = data_source_info.get(
-        'notion_workspace_id' if document.data_source_type == 'notion_import' else 'lark_workspace_id')
-    provider = "notion" if document.data_source_type == "notion_import" else "larkwiki"
+        'notion_workspace_id' if document.data_source_type == 'notion_import' else 'feishu_workspace_id')
+    provider = "notion" if document.data_source_type == "notion_import" else "feishuwiki"
     data_source_binding = DataSourceOauthBinding.query.filter(
         db.and_(
             DataSourceOauthBinding.tenant_id == document.tenant_id,
@@ -68,14 +68,14 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
     else:
         obj_token = data_source_info.get('obj_token')
         obj_type = data_source_info.get('obj_type')
-        loader = LarkWikiExtractor(
-            lark_workspace_id=workspace_id,
+        loader = FeishuWikiExtractor(
+            feishu_workspace_id=workspace_id,
             obj_token=obj_token,
             obj_type=obj_type,
             tenant_id=document.tenant_id
         )
 
-    last_edited_time = loader.get_notion_last_edited_time() if document.data_source_type == 'notion_import' else loader.get_lark_wiki_node_last_edited_time()
+    last_edited_time = loader.get_notion_last_edited_time() if document.data_source_type == 'notion_import' else loader.get_feishu_wiki_node_last_edited_time()
 
     # check the page is updated
     if last_edited_time != page_edited_time:

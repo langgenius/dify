@@ -23,7 +23,7 @@ class OAuthDataSource:
         raise NotImplementedError()
 
 
-class LarkWikiOAuthDataSource:
+class FeishuWikiOAuthDataSource:
     def __init__(self, app_id: str, app_secret: str):
         self.app_id = app_id
         self.app_secret = app_secret
@@ -309,10 +309,10 @@ class NotionOAuth(OAuthDataSource):
         return results
 
 
-class LarkWikiOAuth(LarkWikiOAuthDataSource):
-    _LARK_TENANT_ACCESS_TOKEN_URL = 'https://open.feishu-boe.cn/open-apis/auth/v3/tenant_access_token/internal'
-    _LARK_WIKI_SPACES_SEARCH = 'https://open.feishu-boe.cn/open-apis/wiki/v2/spaces'
-    _LARK_WIKI_NODES_SEARCH = 'https://open.feishu-boe.cn/open-apis/wiki/v2/spaces/{space_id}/nodes'
+class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
+    _FEISHU_TENANT_ACCESS_TOKEN_URL = 'https://open.feishu-boe.cn/open-apis/auth/v3/tenant_access_token/internal'
+    _FEISHU_WIKI_SPACES_SEARCH = 'https://open.feishu-boe.cn/open-apis/wiki/v2/spaces'
+    _FEISHU_WIKI_NODES_SEARCH = 'https://open.feishu-boe.cn/open-apis/wiki/v2/spaces/{space_id}/nodes'
 
     def get_tenant_access_token(self):
         data = {
@@ -320,17 +320,17 @@ class LarkWikiOAuth(LarkWikiOAuthDataSource):
             "app_secret": self.app_secret
         }
         headers = {'Accept': 'application/json'}
-        response = requests.post(self._LARK_TENANT_ACCESS_TOKEN_URL, data=data, headers=headers)
+        response = requests.post(self._FEISHU_TENANT_ACCESS_TOKEN_URL, data=data, headers=headers)
         response_json = response.json()
 
         code = response_json.get('code')
         tenant_access_token = response_json.get('tenant_access_token')
 
         if code != 0:
-            raise ValueError(f"Error in Lark OAuth: {response_json}")
+            raise ValueError(f"Error in Feishu OAuth: {response_json}")
         return tenant_access_token
 
-    def get_lark_wiki_spaces(self, page_token: str = "", page_size: int = 50):
+    def get_feishu_wiki_spaces(self, page_token: str = "", page_size: int = 50):
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f"Bearer {self.get_tenant_access_token()}",
@@ -341,36 +341,36 @@ class LarkWikiOAuth(LarkWikiOAuthDataSource):
             "page_token": page_token,
         }
 
-        response = requests.get(url=self._LARK_WIKI_SPACES_SEARCH, params=params, headers=headers, timeout=(30, 60))
+        response = requests.get(url=self._FEISHU_WIKI_SPACES_SEARCH, params=params, headers=headers, timeout=(30, 60))
         response_json = response.json()
 
         if not response.ok:
             raise Exception(
-                f"get lark wiki spaces fail！status_code：{response.status_code}, code: {response_json['code']}, msg：{response_json['msg']}")
+                f"get feishu wiki spaces fail！status_code：{response.status_code}, code: {response_json['code']}, msg：{response_json['msg']}")
 
         spaces = response_json["data"]["items"]
         has_more = response_json["data"]["has_more"]
 
         if has_more:
             next_page_token = response_json["data"]["page_token"]
-            next_spaces = self.get_lark_wiki_spaces(next_page_token)
+            next_spaces = self.get_feishu_wiki_spaces(next_page_token)
             spaces.extend(next_spaces)
 
         return spaces
 
-    def save_lark_wiki_data_source(self):
+    def save_feishu_wiki_data_source(self):
         workspace_name = self.app_id
         workspace_icon = None
         workspace_id = current_user.current_tenant_id
 
-        spaces = self.get_lark_wiki_spaces()
+        spaces = self.get_feishu_wiki_spaces()
         pages = []
 
         for space in spaces:
             space_type = space['space_type']
             if space_type == 'team':
                 space_id = space['space_id']
-                nodes = self.get_all_lark_wiki_nodes(space_id)
+                nodes = self.get_all_feishu_wiki_nodes(space_id)
                 pages.extend(nodes)
 
         source_info = {
@@ -384,7 +384,7 @@ class LarkWikiOAuth(LarkWikiOAuthDataSource):
         data_source_binding = DataSourceOauthBinding.query.filter(
             db.and_(
                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceOauthBinding.provider == 'larkwiki',
+                DataSourceOauthBinding.provider == 'feishuwiki',
                 DataSourceOauthBinding.access_token == self.app_secret
             )
         ).first()
@@ -397,7 +397,7 @@ class LarkWikiOAuth(LarkWikiOAuthDataSource):
                 tenant_id=current_user.current_tenant_id,
                 access_token=self.app_secret,
                 source_info=source_info,
-                provider='larkwiki'
+                provider='feishuwiki'
             )
             db.session.add(new_data_source_binding)
             db.session.commit()
@@ -406,7 +406,7 @@ class LarkWikiOAuth(LarkWikiOAuthDataSource):
         data_source_binding = DataSourceOauthBinding.query.filter(
             db.and_(
                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceOauthBinding.provider == 'larkwiki',
+                DataSourceOauthBinding.provider == 'feishuwiki',
                 DataSourceOauthBinding.id == binding_id,
                 DataSourceOauthBinding.disabled == False
             )
@@ -416,14 +416,14 @@ class LarkWikiOAuth(LarkWikiOAuthDataSource):
             workspace_icon = None
             workspace_id = current_user.current_tenant_id
 
-            spaces = self.get_lark_wiki_spaces()
+            spaces = self.get_feishu_wiki_spaces()
             pages = []
 
             for space in spaces:
                 space_type = space['space_type']
                 if space_type == 'team':
                     space_id = space['space_id']
-                    nodes = self.get_all_lark_wiki_nodes(space_id)
+                    nodes = self.get_all_feishu_wiki_nodes(space_id)
                     pages.extend(nodes)
 
             source_info = {
@@ -440,8 +440,8 @@ class LarkWikiOAuth(LarkWikiOAuthDataSource):
         else:
             raise ValueError('Data source binding not found')
 
-    def get_all_lark_wiki_nodes(self, space_id: str):
-        nodes = self.get_lark_wiki_nodes(space_id)
+    def get_all_feishu_wiki_nodes(self, space_id: str):
+        nodes = self.get_feishu_wiki_nodes(space_id)
         res = []
         for node in nodes:
             queue = [node]
@@ -465,14 +465,14 @@ class LarkWikiOAuth(LarkWikiOAuthDataSource):
                     has_child = node["has_child"]
                     if has_child:
                         node_token = node["node_token"]
-                        child_nodes = self.get_lark_wiki_nodes(space_id, "", node_token)
+                        child_nodes = self.get_feishu_wiki_nodes(space_id, "", node_token)
                         queue.extend(child_nodes)
                 res.extend(level)
                 index += 1
         return res
 
-    def get_lark_wiki_nodes(self, space_id: str, page_token: str = "", parent_node_token: str = "",
-                            page_size: int = 50):
+    def get_feishu_wiki_nodes(self, space_id: str, page_token: str = "", parent_node_token: str = "",
+                              page_size: int = 50):
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f"Bearer {self.get_tenant_access_token()}",
@@ -484,20 +484,20 @@ class LarkWikiOAuth(LarkWikiOAuthDataSource):
             "parent_node_token": parent_node_token,
         }
 
-        response = requests.get(url=self._LARK_WIKI_NODES_SEARCH.format(space_id=space_id), params=params,
+        response = requests.get(url=self._FEISHU_WIKI_NODES_SEARCH.format(space_id=space_id), params=params,
                                 headers=headers, timeout=(30, 60))
         response_json = response.json()
 
         if not response.ok:
             raise Exception(
-                f"get lark wiki nodes fail！status_code：{response.status_code}, code: {response_json['code']}, msg：{response_json['msg']}")
+                f"get feishu wiki nodes fail！status_code：{response.status_code}, code: {response_json['code']}, msg：{response_json['msg']}")
 
         nodes = response_json["data"]["items"]
         has_more = response_json["data"]["has_more"]
 
         if has_more:
             next_page_token = response_json["data"]["page_token"]
-            next_nodes = self.get_lark_wiki_nodes(space_id, next_page_token, parent_node_token)
+            next_nodes = self.get_feishu_wiki_nodes(space_id, next_page_token, parent_node_token)
             nodes.extend(next_nodes)
 
         return nodes
