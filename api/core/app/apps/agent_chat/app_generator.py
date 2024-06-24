@@ -147,7 +147,6 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             'queue_manager': queue_manager,
             'conversation_id': conversation.id,
             'message_id': message.id,
-            'tracing_instance': tracing_instance,
         })
 
         worker_thread.start()

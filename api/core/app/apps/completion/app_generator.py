@@ -25,7 +25,6 @@ from models.account import Account
 from models.model import App, EndUser, Message
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.message import MessageNotExistsError
-from services.ops_trace.ops_trace_service import OpsTraceService
 
 logger = logging.getLogger(__name__)
 
@@ -277,11 +276,6 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             conversation,
             message
         ) = self._init_generate_records(application_generate_entity)
-
-        # get tracing instance
-        tracing_instance = OpsTraceService.get_ops_trace_instance(
-            app_id=app_model.id
-        )
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(

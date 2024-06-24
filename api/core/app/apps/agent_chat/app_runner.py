@@ -41,7 +41,6 @@ class AgentChatAppRunner(AppRunner):
         :param queue_manager: application queue manager
         :param conversation: conversation
         :param message: message
-        :param tracing_instance: tracing instance
         :return:
         """
         app_config = application_generate_entity.app_config

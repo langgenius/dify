@@ -112,7 +112,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         :param total_steps: total steps
         :param outputs: outputs
         :param conversation_id: conversation id
-        :param tracing_instance: tracing instance
         :return:
         """
         workflow_run.status = WorkflowRunStatus.SUCCEEDED.value

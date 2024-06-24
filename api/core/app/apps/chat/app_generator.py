@@ -43,7 +43,6 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         :param args: request args
         :param invoke_from: invoke from source
         :param stream: is stream
-        :param tracing_instance: tracing instance
         """
         if not args.get('query'):
             raise ValueError('query is required')
