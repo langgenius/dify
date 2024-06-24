@@ -16,7 +16,8 @@ def tidb_vector():
             port="4000",
             user="xxx.root",
             password="xxxxxx",
-            database="dify"
+            database="dify",
+            program_name="langgenius/dify"
         )
     )
 
