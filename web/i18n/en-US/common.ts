@@ -160,6 +160,9 @@ const translation = {
     langGeniusAccountTip: 'Your Dify account and associated user data.',
     editName: 'Edit Name',
     showAppLength: 'Show {{length}} apps',
+    delete: 'Delete Account',
+    deleteTip: 'Deleting your account will permanently erase all your data and it cannot be recovered.',
+    deleteConfirmTip: 'To confirm, please send the following from your registered email to ',
   },
   members: {
     team: 'Team',

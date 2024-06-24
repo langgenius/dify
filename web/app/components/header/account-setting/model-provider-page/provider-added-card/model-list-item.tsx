@@ -75,7 +75,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
           model.fetch_from === ConfigurationMethodEnum.customizableModel
             ? (
               <Button
-                className='hidden group-hover:flex py-0 h-7 text-xs font-medium text-gray-700'
+                className='hidden group-hover:flex h-7'
                 onClick={() => onConfig({ __model_name: model.model, __model_type: model.model_type })}
               >
                 <Settings01 className='mr-[5px] w-3.5 h-3.5' />
@@ -85,7 +85,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
             : ((modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status))
               ? (
                 <Button
-                  className='opacity-0 group-hover:opacity-100 px-3 h-[28px] text-xs text-gray-700 rounded-md transition-opacity'
+                  className='opacity-0 group-hover:opacity-100 h-[28px] transition-opacity'
                   onClick={() => onModifyLoadBalancing?.(model)}
                 >
                   <Balance className='mr-1 w-[14px] h-[14px]' />

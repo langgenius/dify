@@ -73,17 +73,15 @@ class MockChatClass:
         return FunctionCall(name=function_name, arguments=dumps(parameters))
         
     @staticmethod
-    def generate_tool_calls(
-        tools: list[ChatCompletionToolParam] | NotGiven = NOT_GIVEN,
-    ) -> Optional[list[ChatCompletionMessageToolCall]]:
+    def generate_tool_calls(tools = NOT_GIVEN) -> Optional[list[ChatCompletionMessageToolCall]]:
         list_tool_calls = []
         if not tools or len(tools) == 0:
             return None
-        tool: ChatCompletionToolParam = tools[0]
+        tool = tools[0]
 
-        if tools['type'] != 'function':
+        if 'type' in tools and tools['type'] != 'function':
             return None
-        
+
         function = tool['function']
 
         function_call = MockChatClass.generate_function_call(functions=[function])

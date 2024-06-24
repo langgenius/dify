@@ -186,7 +186,6 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     <Modal
       isShow
       onClose={() => { }}
-      wrapperClassName='z-[101]'
       className='!p-8 !pb-6 !max-w-none !w-[640px]'
     >
       <div className='mb-2 text-xl font-semibold text-gray-900'>
@@ -272,13 +271,12 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       <div className='flex items-center justify-end mt-6'>
         <Button
           onClick={onCancel}
-          className='mr-2 text-sm font-medium'
+          className='mr-2'
         >
           {t('common.operation.cancel')}
         </Button>
         <Button
-          type='primary'
-          className='text-sm font-medium'
+          variant='primary'
           onClick={handleSave}
         >
           {t('common.operation.save')}
@@ -287,7 +285,6 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       {
         showEmojiPicker && (
           <EmojiPicker
-            className='!z-[200]'
             onSelect={(icon, icon_background) => {
               handleValueChange({ icon, icon_background })
               setShowEmojiPicker(false)
