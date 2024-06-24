@@ -74,12 +74,12 @@ class WorkflowAppRunner:
             if application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
             else UserFrom.END_USER,
             invoke_from=application_generate_entity.invoke_from,
+            callbacks=workflow_callbacks,
             user_inputs=inputs,
             system_inputs={
                 SystemVariable.FILES: files,
                 SystemVariable.USER_ID: user_id
             },
-            callbacks=workflow_callbacks,
             call_depth=application_generate_entity.call_depth
         )
 

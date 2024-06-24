@@ -8,7 +8,7 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.workflow_engine_manager import WorkflowEngineManager
+from core.workflow.workflow_engine_manager import WorkflowEngineManager, node_classes
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.account import Account
@@ -159,8 +159,13 @@ class WorkflowService:
         Get default block configs
         """
         # return default block config
-        workflow_engine_manager = WorkflowEngineManager()
-        return workflow_engine_manager.get_default_configs()
+        default_block_configs = []
+        for node_type, node_class in node_classes.items():
+            default_config = node_class.get_default_config()
+            if default_config:
+                default_block_configs.append(default_config)
+
+        return default_block_configs
 
     def get_default_block_config(self, node_type: str, filters: Optional[dict] = None) -> Optional[dict]:
         """
@@ -169,11 +174,18 @@ class WorkflowService:
         :param filters: filter by node config parameters.
         :return:
         """
-        node_type = NodeType.value_of(node_type)
+        node_type_enum: NodeType = NodeType.value_of(node_type)
 
         # return default block config
-        workflow_engine_manager = WorkflowEngineManager()
-        return workflow_engine_manager.get_default_config(node_type, filters)
+        node_class = node_classes.get(node_type_enum)
+        if not node_class:
+            return None
+
+        default_config = node_class.get_default_config(filters=filters)
+        if not default_config:
+            return None
+
+        return default_config
 
     def run_draft_workflow_node(self, app_model: App,
                                 node_id: str,
