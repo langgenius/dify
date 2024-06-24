@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
-class NotionConfigs(BaseModel):
+class NotionConfig(BaseModel):
     """
     Notion integration configs
     """
