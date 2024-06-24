@@ -34,8 +34,15 @@ class JSONParseTool(BuiltinTool):
             input_data = json.loads(content)
             expr = parse(json_filter)
             result = [match.value for match in expr.find(input_data)]
+            
             if len(result) == 1:
-                return result[0]
-            return result
+                result = result[0]
+            
+            if isinstance(result, (dict, list)):
+                return json.dumps(result)
+            elif isinstance(result, (str, int, float, bool)) or result is None:
+                return str(result)
+            else:
+                return repr(result)
         except Exception as e:
-            return e
+            return str(e)
