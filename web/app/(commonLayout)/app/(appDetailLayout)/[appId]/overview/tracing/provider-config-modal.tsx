@@ -105,8 +105,10 @@ const ProviderConfigModal: FC<Props> = ({
       const postData = config as LangFuseConfig
       if (!errorMessage && !postData.secret_key)
         errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.secretKey`) })
-      if (!postData.public_key)
+      if (!errorMessage && !postData.public_key)
         errorMessage = t('common.errorMsg.fieldRequired', { field: t(`${I18N_PREFIX}.publicKey`) })
+      if (!errorMessage && !postData.host)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Host' })
     }
 
     return errorMessage
@@ -206,6 +208,7 @@ const ProviderConfigModal: FC<Props> = ({
                           <Field
                             label='Host'
                             labelClassName='!text-sm'
+                            isRequired
                             value={(config as LangFuseConfig).host}
                             onChange={handleConfigChange('host')}
                             placeholder='https://cloud.langfuse.com'
