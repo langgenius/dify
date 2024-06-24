@@ -156,7 +156,7 @@ class ExtractProcessor:
                 tenant_id=extract_setting.notion_info.tenant_id,
             )
             return extractor.extract()
-        elif extract_setting.datasource_type == DatasourceType.FEISHU_WIKI.value:
+        elif extract_setting.datasource_type == DatasourceType.FEISHUWIKI.value:
             extractor = FeishuWikiExtractor(
                 feishu_workspace_id=extract_setting.feishuwiki_info.feishu_workspace_id,
                 obj_token=extract_setting.feishuwiki_info.obj_token,
