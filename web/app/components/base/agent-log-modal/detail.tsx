@@ -12,7 +12,7 @@ import Loading from '@/app/components/base/loading'
 import { fetchAgentLogDetail } from '@/service/log'
 import type { AgentIteration, AgentLogDetailResponse } from '@/models/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import type { IChatItem } from '@/app/components/app/chat/type'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 
 export type AgentLogDetailProps = {
   activeTab?: 'DETAIL' | 'TRACING'

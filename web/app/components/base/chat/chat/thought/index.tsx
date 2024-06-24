@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React from 'react'
 import { useContext } from 'use-context-selector'
 import type { ThoughtItem, ToolInfoInThought } from '../type'
-import Tool from '@/app/components/app/chat/thought/tool'
+import Tool from '@/app/components/base/chat/chat/thought/tool'
 import type { Emoji } from '@/app/components/tools/types'
 
 import I18n from '@/context/i18n'

@@ -7,7 +7,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import { MessageDotsCircle } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Edit02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Star06 } from '@/app/components/base/icons/src/vender/solid/shapes'
-import { FootLogo } from '@/app/components/share/chat/welcome/massive-component'
+import LogoSite from '@/app/components/base/logo/logo-site'
 
 const ConfigPanel = () => {
   const { t } = useTranslation()
@@ -153,7 +153,7 @@ const ConfigPanel = () => {
                       {
                         customConfig?.replace_webapp_logo
                           ? <img src={customConfig?.replace_webapp_logo} alt='logo' className='block w-auto h-5' />
-                          : <FootLogo />
+                          : <LogoSite className='!h-5' />
                       }
                     </div>
                   </div>
