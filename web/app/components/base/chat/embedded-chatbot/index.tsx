@@ -30,19 +30,18 @@ const Chatbot = () => {
     showConfigPanelBeforeChat,
     appChatListDataLoading,
     handleNewConversation,
+    themeBuilder,
   } = useEmbeddedChatbotContext()
 
   const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatList.length)
   const customConfig = appData?.custom_config
   const site = appData?.site
 
-  const themeBuilder = useThemeContext()
-
   const difyIcon = <LogoHeader />
 
   useEffect(() => {
+    themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
     if (site) {
-      themeBuilder.buildTheme(site.chat_color_theme, site.chat_color_theme_inverted)
       if (customConfig)
         document.title = `${site.title}`
       else
@@ -67,6 +66,7 @@ const Chatbot = () => {
         isMobile={isMobile}
         title={site?.title || ''}
         customerIcon={isDify() ? difyIcon : ''}
+        theme={themeBuilder?.theme}
         onCreateNewChat={handleNewConversation}
       />
       <div className='flex bg-white overflow-hidden'>

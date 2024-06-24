@@ -41,7 +41,7 @@ export type EmbeddedChatbotContextValue = {
   appId?: string
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
-  themeBuilder: ThemeBuilder | null
+  themeBuilder?: ThemeBuilder
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
@@ -62,6 +62,5 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   isInstalledApp: false,
   handleFeedback: () => {},
   currentChatInstanceRef: { current: { handleStop: () => {} } },
-  themeBuilder: null,
 })
 export const useEmbeddedChatbotContext = () => useContext(EmbeddedChatbotContext)

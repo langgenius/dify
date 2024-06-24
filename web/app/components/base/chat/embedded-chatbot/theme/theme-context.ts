@@ -44,17 +44,24 @@ export class Theme {
 }
 
 export class ThemeBuilder {
-  public theme: Theme | null = null
+  private _theme?: Theme
   private buildChecker = false
+
+  public get theme() {
+    if (this._theme === undefined)
+      throw new Error('The theme should be built first and then accessed')
+    else
+      return this._theme
+  }
 
   public buildTheme(chatColorTheme: string | null = null, chatColorThemeInverted = false) {
     if (!this.buildChecker) {
-      this.theme = new Theme(chatColorTheme, chatColorThemeInverted)
+      this._theme = new Theme(chatColorTheme, chatColorThemeInverted)
       this.buildChecker = true
     }
     else {
       if (this.theme?.chatColorTheme !== chatColorTheme || this.theme?.chatColorThemeInverted !== chatColorThemeInverted) {
-        this.theme = new Theme(chatColorTheme, chatColorThemeInverted)
+        this._theme = new Theme(chatColorTheme, chatColorThemeInverted)
         this.buildChecker = true
       }
     }

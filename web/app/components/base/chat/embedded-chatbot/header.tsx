@@ -3,23 +3,29 @@ import React from 'react'
 import { RiRefreshLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
-import { useThemeContext } from './theme/theme-context'
+import { Theme } from './theme/theme-context'
 import { CssTransform } from './theme/utils'
+
 
 export type IHeaderProps = {
   isMobile?: boolean
   customerIcon?: React.ReactNode
   title: string
+  theme?: Theme
+  // icon: string
+  // icon_background: string
   onCreateNewChat?: () => void
 }
 const Header: FC<IHeaderProps> = ({
   isMobile,
   customerIcon,
   title,
+  theme,
+  // icon,
+  // icon_background,
   onCreateNewChat,
 }) => {
   const { t } = useTranslation()
-  const themeBuilder = useThemeContext()
   if (!isMobile)
     return null
 
@@ -28,13 +34,13 @@ const Header: FC<IHeaderProps> = ({
       className={`
         shrink-0 flex items-center justify-between h-14 px-4 
       `}
-      style={Object.assign({}, CssTransform(themeBuilder.theme?.backgroundHeaderColorStyle ?? ''), CssTransform(themeBuilder.theme?.headerBorderBottomStyle ?? '')) }
+      style={Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? ''), CssTransform(theme?.headerBorderBottomStyle ?? '')) }
     >
       <div className="flex items-center space-x-2">
         {customerIcon}
         <div
           className={'text-sm font-bold text-white'}
-          style={CssTransform(themeBuilder.theme?.colorFontOnHeaderStyle ?? '')}
+          style={CssTransform(theme?.colorFontOnHeaderStyle ?? '')}
         >
           {title}
         </div>
@@ -47,7 +53,7 @@ const Header: FC<IHeaderProps> = ({
         <div className='flex cursor-pointer hover:rounded-lg hover:bg-black/5 w-8 h-8 items-center justify-center' onClick={() => {
           onCreateNewChat?.()
         }}>
-          <RiRefreshLine className="h-4 w-4 text-sm font-bold text-white" color={themeBuilder.theme?.colorPathOnHeader}/>
+          <RiRefreshLine className="h-4 w-4 text-sm font-bold text-white" color={theme?.colorPathOnHeader}/>
         </div>
       </Tooltip>
     </div>

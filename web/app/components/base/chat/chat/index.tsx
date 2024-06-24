@@ -59,8 +59,9 @@ export type ChatProps = {
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   hideLogModal?: boolean
-  themeBuilder: ThemeBuilder | null
+  themeBuilder?: ThemeBuilder
 }
+
 const Chat: FC<ChatProps> = ({
   appData,
   config,
@@ -266,7 +267,7 @@ const Chat: FC<ChatProps> = ({
                   visionConfig={config?.file_upload?.image}
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
-                  themeBuilder={themeBuilder}
+                  theme={themeBuilder?.theme}
                 />
               )
             }

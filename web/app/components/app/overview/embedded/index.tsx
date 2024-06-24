@@ -75,7 +75,7 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
 
   const { langeniusVersionInfo } = useAppContext()
   const themeBuilder = useThemeContext()
-  themeBuilder.buildTheme(siteInfo?.chat_color_theme ?? '#1C64F2', siteInfo?.chat_color_theme_inverted ?? false)
+  themeBuilder.buildTheme(siteInfo?.chat_color_theme ?? null, siteInfo?.chat_color_theme_inverted ?? false)
   const isTestEnv = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
   const onClickCopy = () => {
     if (option === 'chromePlugin') {
