@@ -17,12 +17,21 @@ from core.ops.entities.langfuse_trace_entity import (
     LevelEnum,
     UnitEnum,
 )
+from core.ops.entities.trace_entity import (
+    DatasetRetrievalTraceInfo,
+    GenerateNameTraceInfo,
+    MessageTraceInfo,
+    ModerationTraceInfo,
+    SuggestedQuestionTraceInfo,
+    ToolTraceInfo,
+    WorkflowTraceInfo,
+)
 from core.ops.model import LangfuseConfig
 from core.ops.utils import filter_none_values
 from extensions.ext_database import db
 from models.dataset import Document
-from models.model import Message, MessageAgentThought, MessageFile
-from models.workflow import WorkflowNodeExecution, WorkflowRun
+from models.model import MessageFile
+from models.workflow import WorkflowNodeExecution
 
 logger = logging.getLogger(__name__)
 
@@ -42,47 +51,31 @@ class LangFuseDataTrace(BaseTraceInstance):
         )
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
-    def workflow_trace(self, workflow_run: WorkflowRun, **kwargs):
-        conversion_id = kwargs.get("conversation_id")
-        workflow_id = workflow_run.workflow_id
-        tenant_id = workflow_run.tenant_id
-        workflow_run_id = workflow_run.id
-        workflow_run_elapsed_time = workflow_run.elapsed_time
-        workflow_run_status = workflow_run.status
-        workflow_run_inputs = (
-            json.loads(workflow_run.inputs) if workflow_run.inputs else {}
-        )
-        workflow_run_outputs = (
-            json.loads(workflow_run.outputs) if workflow_run.outputs else {}
-        )
-        workflow_run_version = workflow_run.version
-        error = workflow_run.error if workflow_run.error else ""
+    def trace(self, trace_info, **kwargs):
+        if isinstance(trace_info, WorkflowTraceInfo):
+            self.workflow_trace(trace_info)
+        if isinstance(trace_info, MessageTraceInfo):
+            self.message_trace(trace_info)
+        if isinstance(trace_info, ModerationTraceInfo):
+            self.moderation_trace(trace_info)
+        if isinstance(trace_info, SuggestedQuestionTraceInfo):
+            self.suggested_question_trace(trace_info)
+        if isinstance(trace_info, DatasetRetrievalTraceInfo):
+            self.dataset_retrieval_trace(trace_info)
+        if isinstance(trace_info, ToolTraceInfo):
+            self.tool_trace(trace_info)
+        if isinstance(trace_info, GenerateNameTraceInfo):
+            self.generate_name_trace(trace_info)
 
-        total_tokens = workflow_run.total_tokens
-
-        file_list = workflow_run_inputs.get("sys.file") if workflow_run_inputs.get("sys.file") else []
-        query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
-
-        metadata = {
-            "workflow_id": workflow_id,
-            "conversation_id": conversion_id,
-            "workflow_run_id": workflow_run_id,
-            "tenant_id": tenant_id,
-            "elapsed_time": workflow_run_elapsed_time,
-            "status": workflow_run_status,
-            "version": workflow_run_version,
-            "total_tokens": total_tokens,
-            "file_list": file_list,
-        }
-
+    def workflow_trace(self, trace_info: WorkflowTraceInfo):
         trace_data = LangfuseTrace(
-            id=workflow_run_id,
-            name=f"workflow_{workflow_run_id}",
-            user_id=tenant_id,
-            input=query,
-            output=workflow_run_outputs,
-            metadata=metadata,
-            session_id=conversion_id if conversion_id else workflow_run_id,
+            id=trace_info.workflow_run_id,
+            name=f"workflow_{trace_info.workflow_run_id}",
+            user_id=trace_info.tenant_id,
+            input=trace_info.query,
+            output=trace_info.workflow_run_outputs,
+            metadata=trace_info.metadata,
+            session_id=trace_info.conversation_id if trace_info.conversation_id else trace_info.workflow_run_id,
             tags=["workflow"],
         )
 
@@ -91,7 +84,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         # through workflow_run_id get all_nodes_execution
         workflow_nodes_executions = (
             db.session.query(WorkflowNodeExecution)
-            .filter(WorkflowNodeExecution.workflow_run_id == workflow_run_id)
+            .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
             .order_by(WorkflowNodeExecution.index.desc())
             .all()
         )
@@ -117,7 +110,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             metadata = json.loads(node_execution.execution_metadata) if node_execution.execution_metadata else {}
             metadata.update(
                 {
-                    "workflow_run_id": workflow_run_id,
+                    "workflow_run_id": trace_info.workflow_run_id,
                     "node_execution_id": node_execution_id,
                     "tenant_id": tenant_id,
                     "app_id": app_id,
@@ -137,14 +130,14 @@ class LangFuseDataTrace(BaseTraceInstance):
 
                 langfuse_generation_data = LangfuseGeneration(
                     name=f"{node_name}_{node_execution_id}",
-                    trace_id=workflow_run_id,
+                    trace_id=trace_info.workflow_run_id,
                     start_time=created_at,
                     end_time=finished_at,
                     input=inputs,
                     output=outputs,
                     metadata=metadata,
                     level=LevelEnum.DEFAULT if status == 'succeeded' else LevelEnum.ERROR,
-                    status_message=error if error else "",
+                    status_message=trace_info.error if trace_info.error else "",
                     usage=generation_usage,
                 )
 
@@ -155,83 +148,65 @@ class LangFuseDataTrace(BaseTraceInstance):
                 name=f"{node_name}_{node_execution_id}",
                 input=inputs,
                 output=outputs,
-                trace_id=workflow_run_id,
+                trace_id=trace_info.workflow_run_id,
                 start_time=created_at,
                 end_time=finished_at,
                 metadata=metadata,
                 level=LevelEnum.DEFAULT if status == 'succeeded' else LevelEnum.ERROR,
-                status_message=error if error else "",
+                status_message=trace_info.error if trace_info.error else "",
             )
 
             self.add_span(langfuse_span_data=span_data)
 
-    def message_trace(self, message_id: str, conversation_id: str, **kwargs):
-        message_data = kwargs.get("message_data")
-        conversation_mode = kwargs.get("conversation_mode")
-        message_tokens = message_data.message_tokens
-        answer_tokens = message_data.answer_tokens
-        total_tokens = message_tokens + answer_tokens
-        error = message_data.error if message_data.error else ""
-        input = message_data.message
-        file_list = input[0].get("files", [])
-        provider_response_latency = message_data.provider_response_latency
-        created_at = message_data.created_at
-        end_time = created_at + timedelta(seconds=provider_response_latency)
-
+    def message_trace(
+        self, trace_info: MessageTraceInfo, **kwargs
+    ):
         # get message file data
-        message_file_data: MessageFile = kwargs.get("message_file_data")
+        file_list = trace_info.file_list
+        message_file_data: MessageFile = trace_info.message_file_data
         file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
         file_list.append(file_url)
-
-        metadata = {
-            "conversation_id": conversation_id,
-            "ls_provider": message_data.model_provider,
-            "ls_model_name": message_data.model_id,
-            "status": message_data.status,
-            "from_end_user_id": message_data.from_account_id,
-            "from_account_id": message_data.from_account_id,
-            "agent_based": message_data.agent_based,
-            "workflow_run_id": message_data.workflow_run_id,
-            "from_source": message_data.from_source,
-        }
+        metadata = trace_info.metadata
+        message_data = trace_info.message_data
+        message_id = message_data.id
 
         trace_data = LangfuseTrace(
             id=message_id,
             user_id=message_data.from_end_user_id if message_data.from_end_user_id else message_data.from_account_id,
             name=f"message_{message_id}",
             input={
-                "message": input,
+                "message": trace_info.inputs,
                 "files": file_list,
-                "message_tokens": message_tokens,
-                "answer_tokens": answer_tokens,
-                "total_tokens": total_tokens,
-                "error": error,
-                "provider_response_latency": provider_response_latency,
-                "created_at": created_at,
+                "message_tokens": trace_info.message_tokens,
+                "answer_tokens": trace_info.answer_tokens,
+                "total_tokens": trace_info.total_tokens,
+                "error": trace_info.error,
+                "provider_response_latency": message_data.provider_response_latency,
+                "created_at": trace_info.created_at,
             },
-            output=message_data.answer,
+            output=trace_info.outputs,
             metadata=metadata,
-            session_id=conversation_id,
-            tags=["message", str(conversation_mode)],
-        )
+            session_id=message_data.conversation_id,
+            tags=["message", str(trace_info.conversation_mode)],
+            version=None, release=None, public=None, )
         self.add_trace(langfuse_trace_data=trace_data)
 
         # start add span
         generation_usage = GenerationUsage(
-            totalTokens=total_tokens,
-            input=message_tokens,
-            output=answer_tokens,
-            total=total_tokens,
+            totalTokens=trace_info.total_tokens,
+            input=trace_info.message_tokens,
+            output=trace_info.answer_tokens,
+            total=trace_info.total_tokens,
             unit=UnitEnum.TOKENS,
         )
 
         langfuse_generation_data = LangfuseGeneration(
             name=f"generation_{message_id}",
             trace_id=message_id,
-            start_time=created_at,
-            end_time=end_time,
+            start_time=trace_info.created_at,
+            end_time=trace_info.end_time,
             model=message_data.model_id,
-            input=input,
+            input=trace_info.inputs,
             output=message_data.answer,
             metadata=metadata,
             level=LevelEnum.DEFAULT if message_data.status != 'error' else LevelEnum.ERROR,
@@ -241,76 +216,47 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         self.add_generation(langfuse_generation_data)
 
-    def moderation_trace(self, message_id: str, moderation_result: ModerationInputsResult, **kwargs):
-        inputs = kwargs.get("inputs")
-        message_data = kwargs.get("message_data")
-        flagged = moderation_result.flagged
-        action = moderation_result.action
-        preset_response = moderation_result.preset_response
-        query = moderation_result.query
-        timer = kwargs.get("timer")
-        start_time = timer.get("start")
-        end_time = timer.get("end")
-
-        metadata = {
-            "message_id": message_id,
-            "action": action,
-            "preset_response": preset_response,
-            "query": query,
-        }
-
+    def moderation_trace(
+        self, trace_info: ModerationTraceInfo, message_id: str = None, moderation_result: ModerationInputsResult = None,
+        **kwargs
+    ):
         span_data = LangfuseSpan(
             name="moderation",
-            input=inputs,
+            input=trace_info.inputs,
             output={
-                "action": action,
-                "flagged": flagged,
-                "preset_response": preset_response,
-                "inputs": inputs,
+                "action": trace_info.action,
+                "flagged": trace_info.flagged,
+                "preset_response": trace_info.preset_response,
+                "inputs": trace_info.inputs,
             },
-            trace_id=message_id,
-            start_time=start_time or message_data.created_at,
-            end_time=end_time or message_data.created_at,
-            metadata=metadata,
+            trace_id=trace_info.message_id,
+            start_time=trace_info.start_time or trace_info.message_data.created_at,
+            end_time=trace_info.end_time or trace_info.message_data.created_at,
+            metadata=trace_info.metadata,
         )
 
         self.add_span(langfuse_span_data=span_data)
 
-    def suggested_question_trace(self, message_id: str, suggested_question: str, **kwargs):
-        message_data = kwargs.get("message_data")
-        timer = kwargs.get("timer")
-        start_time = timer.get("start")
-        end_time = timer.get("end")
-        input = message_data.query
-
-        metadata = {
-            "message_id": message_id,
-            "ls_provider": message_data.model_provider,
-            "ls_model_name": message_data.model_id,
-            "status": message_data.status,
-            "from_end_user_id": message_data.from_account_id,
-            "from_account_id": message_data.from_account_id,
-            "agent_based": message_data.agent_based,
-            "workflow_run_id": message_data.workflow_run_id,
-            "from_source": message_data.from_source,
-        }
-
+    def suggested_question_trace(
+        self, trace_info: SuggestedQuestionTraceInfo, message_id: str = None, suggested_question: str = None, **kwargs
+    ):
+        message_data = trace_info.message_data
         generation_usage = GenerationUsage(
-            totalTokens=len(suggested_question),
-            input=len(input),
-            output=len(suggested_question),
-            total=len(suggested_question),
+            totalTokens=len(str(trace_info.suggested_question)),
+            input=len(trace_info.inputs),
+            output=len(trace_info.suggested_question),
+            total=len(trace_info.suggested_question),
             unit=UnitEnum.CHARACTERS,
         )
 
         generation_data = LangfuseGeneration(
             name="suggested_question",
-            input=input,
-            output=str(suggested_question),
-            trace_id=message_id,
-            start_time=start_time,
-            end_time=end_time,
-            metadata=metadata,
+            input=trace_info.inputs,
+            output=str(trace_info.suggested_question),
+            trace_id=trace_info.message_id,
+            start_time=trace_info.start_time,
+            end_time=trace_info.end_time,
+            metadata=trace_info.metadata,
             level=LevelEnum.DEFAULT if message_data.status != 'error' else LevelEnum.ERROR,
             status_message=message_data.error if message_data.error else "",
             usage=generation_usage,
@@ -318,120 +264,78 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         self.add_generation(langfuse_generation_data=generation_data)
 
-    def dataset_retrieval_trace(self, message_id: str, documents: list[Document], **kwargs):
-        message_data = kwargs.get("message_data")
-        inputs = message_data.query if message_data.query else message_data.inputs
-        metadata = {
-            "message_id": message_id,
-            "documents": documents
-        }
-        timer = kwargs.get("timer")
-        start_time = timer.get("start")
-        end_time = timer.get("end")
-
+    def dataset_retrieval_trace(
+        self, trace_info: DatasetRetrievalTraceInfo, message_id: str = None, documents: list[Document] = None, **kwargs
+    ):
         dataset_retrieval_span_data = LangfuseSpan(
             name="dataset_retrieval",
-            input=inputs,
-            output={"documents": documents},
-            trace_id=message_id,
-            start_time=start_time,
-            end_time=end_time,
-            metadata=metadata,
+            input=trace_info.inputs,
+            output={"documents": trace_info.documents},
+            trace_id=trace_info.message_id,
+            start_time=trace_info.start_time,
+            end_time=trace_info.end_time,
+            metadata=trace_info.metadata,
         )
 
         self.add_span(langfuse_span_data=dataset_retrieval_span_data)
 
-    def tool_trace(self, message_id: str, tool_name: str, tool_inputs: dict[str, Any], tool_outputs: str, **kwargs):
-        message_data: Message = kwargs.get("message_data")
-        created_time = message_data.created_at
-        end_time = message_data.updated_at
-        tool_config = {}
-        time_cost = 0
-        error = None
-        tool_parameters = {}
-
-        agent_thoughts: list[MessageAgentThought] = message_data.agent_thoughts
-        for agent_thought in agent_thoughts:
-            if tool_name in agent_thought.tools:
-                created_time = agent_thought.created_at
-                tool_meta_data = agent_thought.tool_meta.get(tool_name, {})
-                tool_config = tool_meta_data.get('tool_config', {})
-                time_cost = tool_meta_data.get('time_cost', 0)
-                end_time = created_time + timedelta(seconds=time_cost)
-                error = tool_meta_data.get('error', "")
-                tool_parameters = tool_meta_data.get('tool_parameters', {})
-
+    def tool_trace(
+        self, trace_info: ToolTraceInfo, message_id: str = None, tool_name: str = None,
+        tool_inputs: dict[str, Any] = None,
+        tool_outputs: str = None,
+        **kwargs
+    ):
         metadata = {
-            "message_id": message_id,
-            "tool_name": tool_name,
-            "tool_inputs": tool_inputs,
-            "tool_outputs": tool_outputs,
-            "tool_config": tool_config,
-            "time_cost": time_cost,
-            "error": error,
-            "tool_parameters": tool_parameters,
+            "message_id": trace_info.message_id,
+            "tool_name": trace_info.tool_name,
+            "tool_inputs": trace_info.tool_inputs,
+            "tool_outputs": trace_info.tool_outputs,
+            "tool_config": trace_info.tool_config,
+            "time_cost": trace_info.time_cost,
+            "error": trace_info.error,
+            "tool_parameters": trace_info.tool_parameters,
         }
-
-        # get message file data
-        message_file_data: MessageFile = kwargs.get("message_file_data")
-        if message_file_data:
-            message_file_id = message_file_data.id if message_file_data else None
-            type = message_file_data.type
-            created_by_role = message_file_data.created_by_role
-            created_user_id = message_file_data.created_by
-
-            metadata.update(
-                {
-                    "message_file_id": message_file_id,
-                    "created_by_role": created_by_role,
-                    "created_user_id": created_user_id,
-                    "type": type,
-                }
-            )
-
         tool_span_data = LangfuseSpan(
-            name=tool_name,
-            input=tool_inputs,
-            output=tool_outputs,
-            trace_id=message_id,
-            start_time=created_time,
-            end_time=end_time,
+            name=trace_info.tool_name,
+            input=trace_info.tool_inputs,
+            output=trace_info.tool_outputs,
+            trace_id=trace_info.message_id,
+            start_time=trace_info.start_time,
+            end_time=trace_info.end_time,
             metadata=metadata,
-            level=LevelEnum.DEFAULT if error == "" else LevelEnum.ERROR,
-            status_message=error,
+            level=LevelEnum.DEFAULT if trace_info.error == "" else LevelEnum.ERROR,
+            status_message=trace_info.error,
         )
 
         self.add_span(langfuse_span_data=tool_span_data)
 
-    def generate_name_trace(self, conversation_id: str, inputs: str, generate_conversation_name: str, **kwargs):
-        timer = kwargs.get("timer")
-        tenant_id = kwargs.get("tenant_id")
-        start_time = timer.get("start")
-        end_time = timer.get("end")
-
-        metadata = {
-            "conversation_id": conversation_id,
-        }
-
+    def generate_name_trace(
+        self,
+        trace_info: GenerateNameTraceInfo,
+        conversation_id: str = None,
+        inputs: str = None,
+        generate_conversation_name: str = None,
+        **kwargs
+    ):
         name_generation_trace_data = LangfuseTrace(
             name="generate_name",
-            input=inputs,
-            output=generate_conversation_name,
-            user_id=tenant_id,
-            metadata=metadata,
-            session_id=conversation_id,
+            input=trace_info.inputs,
+            output=trace_info.outputs,
+            user_id=trace_info.tenant_id,
+            metadata=trace_info.metadata,
+            session_id=trace_info.conversation_id,
         )
 
         self.add_trace(langfuse_trace_data=name_generation_trace_data)
 
         name_generation_span_data = LangfuseSpan(
             name="generate_name",
-            input=inputs,
-            output=generate_conversation_name,
-            trace_id=conversation_id,
-            start_time=start_time,
-            end_time=end_time,
-            metadata=metadata,
+            input=trace_info.inputs,
+            output=trace_info.outputs,
+            trace_id=trace_info.conversation_id,
+            start_time=trace_info.start_time,
+            end_time=trace_info.end_time,
+            metadata=trace_info.metadata,
         )
         self.add_span(langfuse_span_data=name_generation_span_data)
 

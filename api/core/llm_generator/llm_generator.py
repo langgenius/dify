@@ -62,7 +62,7 @@ class LLMGenerator:
             trace_manager.add_trace_task(
                 TraceTask(
                     tracing_instance,
-                    TraceTaskName.SUGGESTED_QUESTION_TRACE,
+                    TraceTaskName.GENERATE_NAME_TRACE,
                     conversation_id=conversation_id,
                     generate_conversation_name=name,
                     inputs=prompt,

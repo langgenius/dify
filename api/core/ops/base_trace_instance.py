@@ -10,9 +10,17 @@ class BaseTraceInstance(ABC):
     def __init__(self):
         """
         Abstract initializer for the trace instance.
-        All subclasses must provide their own initialization logic.
+        Distribute trace tasks by matching entities
         """
         ...
+
+    @abstractmethod
+    def trace(self, **kwargs):
+        """
+        Abstract method to trace activities.
+        Subclasses must implement specific tracing logic for activities.
+        """
+        return kwargs
 
     @abstractmethod
     def message_trace(self, **kwargs):
