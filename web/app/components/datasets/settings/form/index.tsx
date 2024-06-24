@@ -194,7 +194,7 @@ const Form = () => {
           </div>
         </>
       )}
-      {currentDataset && currentDataset.indexing_technique === 'high_quality' && (
+      {indexMethod === 'high_quality' && (
         <div className={rowClass}>
           <div className={labelClass}>
             <div>{t('datasetSettings.form.embeddingModel')}</div>
