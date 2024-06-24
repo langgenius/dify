@@ -26,6 +26,7 @@ class TiDBVectorConfig(BaseModel):
     user: str
     password: str
     database: str
+    program_name: str
 
     @model_validator(mode='before')
     def validate_config(cls, values: dict) -> dict:
@@ -39,6 +40,8 @@ class TiDBVectorConfig(BaseModel):
             raise ValueError("config TIDB_VECTOR_PASSWORD is required")
         if not values['database']:
             raise ValueError("config TIDB_VECTOR_DATABASE is required")
+        if not values['program_name']:
+            raise ValueError("config APPLICATION_NAME is required")
         return values
 
 
