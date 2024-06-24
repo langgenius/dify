@@ -33,6 +33,7 @@ class Config:
         dotenv.load_dotenv()
 
         self.TESTING = False
+        self.APPLICATION_NAME = "langgenius/dify"
 
         # cors settings
         self.CONSOLE_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
