@@ -66,6 +66,7 @@ import {
   getKeyboardKeyCodeBySystem,
   initialEdges,
   initialNodes,
+  isEventTargetInputArea,
 } from './utils'
 import {
   CUSTOM_NODE,
@@ -217,8 +218,18 @@ const Workflow: FC<WorkflowProps> = memo(({
 
   useKeyPress('delete', handleNodesDelete)
   useKeyPress(['delete', 'backspace'], handleEdgeDelete)
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, handleNodesCopy, { exactMatch: true, useCapture: true })
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.v`, handleNodesPaste, { exactMatch: true, useCapture: true })
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement))
+      return
+
+    handleNodesCopy()
+  }, { exactMatch: true, useCapture: true })
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.v`, (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement))
+      return
+
+    handleNodesPaste()
+  }, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, handleNodesDuplicate, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, handleStartWorkflowRun, { exactMatch: true, useCapture: true })
 

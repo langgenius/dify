@@ -7,6 +7,10 @@ import {
   memo,
   useCallback,
 } from 'react'
+import {
+  RiCloseLine,
+  RiPlayLargeLine,
+} from '@remixicon/react'
 import cn from 'classnames'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
@@ -18,9 +22,6 @@ import {
   TitleInput,
 } from './components/title-description-input'
 import { useResizePanel } from './hooks/use-resize-panel'
-import {
-  XClose,
-} from '@/app/components/base/icons/src/vender/line/general'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   useAvailableBlocks,
@@ -32,7 +33,6 @@ import {
   useWorkflow,
 } from '@/app/components/workflow/hooks'
 import { canRunBySingle } from '@/app/components/workflow/utils'
-import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import type { Node } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -129,7 +129,7 @@ const BasePanel: FC<BasePanelProps> = ({
                         handleSyncWorkflowDraft(true)
                       }}
                     >
-                      <Play className='w-4 h-4 text-gray-500' />
+                      <RiPlayLargeLine className='w-4 h-4 text-gray-500' />
                     </div>
                   </TooltipPlus>
                 )
@@ -141,7 +141,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 className='flex items-center justify-center w-6 h-6 cursor-pointer'
                 onClick={() => handleNodeSelect(id, true)}
               >
-                <XClose className='w-4 h-4' />
+                <RiCloseLine className='w-4 h-4' />
               </div>
             </div>
           </div>

@@ -6,6 +6,10 @@ import {
   useState,
 } from 'react'
 import cn from 'classnames'
+import {
+  RiZoomInLine,
+  RiZoomOutLine,
+} from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import {
@@ -28,10 +32,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import {
-  ZoomIn,
-  ZoomOut,
-} from '@/app/components/base/icons/src/vender/line/editor'
 
 enum ZoomType {
   zoomIn = 'zoomIn',
@@ -234,7 +234,7 @@ const ZoomInOut: FC = () => {
                   zoomOut()
                 }}
               >
-                <ZoomOut className='w-4 h-4' />
+                <RiZoomOutLine className='w-4 h-4' />
               </div>
             </TipPopup>
             <div className='w-[34px]'>{parseFloat(`${zoom * 100}`).toFixed(0)}%</div>
@@ -249,7 +249,7 @@ const ZoomInOut: FC = () => {
                   zoomIn()
                 }}
               >
-                <ZoomIn className='w-4 h-4' />
+                <RiZoomInLine className='w-4 h-4' />
               </div>
             </TipPopup>
           </div>

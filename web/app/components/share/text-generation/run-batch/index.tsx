@@ -6,10 +6,12 @@ import {
 } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiLoader2Line,
+} from '@remixicon/react'
 import CSVReader from './csv-reader'
 import CSVDownload from './csv-download'
 import Button from '@/app/components/base/button'
-import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 export type IRunBatchProps = {
   vars: { name: string }[]
   onSend: (data: string[][]) => void
@@ -34,7 +36,7 @@ const RunBatch: FC<IRunBatchProps> = ({
   const handleSend = () => {
     onSend(csvData)
   }
-  const Icon = isAllFinished ? PlayIcon : Loading02
+  const Icon = isAllFinished ? PlayIcon : RiLoader2Line
   return (
     <div className='pt-4'>
       <CSVReader onParsed={handleParsed} />
@@ -42,8 +44,8 @@ const RunBatch: FC<IRunBatchProps> = ({
       <div className='mt-4 h-[1px] bg-gray-100'></div>
       <div className='flex justify-end'>
         <Button
-          type="primary"
-          className='mt-4 !h-8 !pl-3 !pr-4'
+          variant="primary"
+          className='mt-4 pl-3 pr-4'
           onClick={handleSend}
           disabled={!isParsed || !isAllFinished}
         >

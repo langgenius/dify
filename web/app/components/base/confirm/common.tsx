@@ -1,10 +1,12 @@
 import type { FC, ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiCloseLine,
+  RiErrorWarningFill,
+} from '@remixicon/react'
 import s from './common.module.css'
 import Modal from '@/app/components/base/modal'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import Button from '@/app/components/base/button'
 
@@ -41,7 +43,7 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
 
   const CONFIRM_MAP: Record<string, { icon: ReactElement; confirmText: string }> = {
     danger: {
-      icon: <AlertCircle className='w-6 h-6 text-[#D92D20]' />,
+      icon: <RiErrorWarningFill className='w-6 h-6 text-[#D92D20]' />,
       confirmText: t('common.operation.remove'),
     },
     success: {
@@ -51,10 +53,10 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
   }
 
   return (
-    <Modal isShow={isShow} onClose={() => {}} className='!w-[480px] !max-w-[480px] !p-0 !rounded-2xl' wrapperClassName={confirmWrapperClassName}>
+    <Modal isShow={isShow} onClose={() => { }} className='!w-[480px] !max-w-[480px] !p-0 !rounded-2xl' wrapperClassName={confirmWrapperClassName}>
       <div className={cn(s[`wrapper-${type}`], 'relative p-8')}>
         <div className='flex items-center justify-center absolute top-4 right-4 w-8 h-8 cursor-pointer' onClick={onCancel}>
-          <XClose className='w-4 h-4 text-gray-500' />
+          <RiCloseLine className='w-4 h-4 text-gray-500' />
         </div>
         <div className='flex items-center justify-center mb-3 w-12 h-12 bg-white shadow-xl rounded-xl'>
           {CONFIRM_MAP[type].icon}
@@ -69,7 +71,7 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
               {
                 showOperateCancel && (
                   <Button
-                    className='mr-2 min-w-24 text-sm font-medium !text-gray-700'
+                    className='mr-2'
                     onClick={onCancel}
                   >
                     {t('common.operation.cancel')}
@@ -77,7 +79,7 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
                 )
               }
               <Button
-                type='primary'
+                variant='primary'
                 className={confirmBtnClassName || ''}
                 onClick={onConfirm}
                 disabled={confirmDisabled}
