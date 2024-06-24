@@ -75,6 +75,10 @@
   background-image: url(../assets/notion.svg);
   background-size: 20px;
 }
+.datasetIcon.feishu {
+  background-image: url(../assets/feishu.svg);
+  background-size: 20px;
+}
 .datasetIcon.web {
   background-image: url(../assets/web.svg);
 }

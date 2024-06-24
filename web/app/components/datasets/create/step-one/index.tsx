@@ -14,6 +14,7 @@ import type { NotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
+import { FeishuPageSelector } from '@/app/components/base/feishu-page-selector'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
@@ -170,6 +171,23 @@ const StepOne = ({
                 <div
                   className={cn(
                     s.dataSourceItem,
+                    dataSourceType === DataSourceType.FEISHU && s.active,
+                    dataSourceTypeDisable && dataSourceType !== DataSourceType.FEISHU && s.disabled,
+                  )}
+                  onClick={() => {
+                    if (dataSourceTypeDisable)
+                      return
+                    changeType(DataSourceType.FEISHU)
+                    hideFilePreview()
+                    hideNotionPagePreview()
+                  }}
+                >
+                  <span className={cn(s.datasetIcon, s.feishu)} />
+                  {t('datasetCreation.stepOne.dataSourceType.feishu')}
+                </div>
+                <div
+                  className={cn(
+                    s.dataSourceItem,
                     dataSourceType === DataSourceType.WEB && s.active,
                     dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
                   )}
@@ -207,6 +225,28 @@ const StepOne = ({
                 <>
                   <div className='mb-8 w-[640px]'>
                     <NotionPageSelector
+                      value={notionPages.map(page => page.page_id)}
+                      onSelect={updateNotionPages}
+                      onPreview={updateCurrentPage}
+                    />
+                  </div>
+                  {isShowVectorSpaceFull && (
+                    <div className='max-w-[640px] mb-4'>
+                      <VectorSpaceFull />
+                    </div>
+                  )}
+                  <Button disabled={isShowVectorSpaceFull || !notionPages.length} className={s.submitButton} variant='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+                </>
+              )}
+            </>
+          )}
+          {dataSourceType === DataSourceType.FEISHU && (
+            <>
+              {!hasConnection && <NotionConnector onSetting={onSetting} />}
+              {hasConnection && (
+                <>
+                  <div className='mb-8 w-[640px]'>
+                    <FeishuPageSelector
                       value={notionPages.map(page => page.page_id)}
                       onSelect={updateNotionPages}
                       onPreview={updateCurrentPage}
