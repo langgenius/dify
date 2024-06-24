@@ -48,5 +48,3 @@ parameters:
       zh_Hans: 表名
     llm_description: sql for searching
     form: llm
-
-
