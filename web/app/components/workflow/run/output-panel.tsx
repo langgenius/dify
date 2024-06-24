@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { Markdown } from '@/app/components/base/markdown'
-import LoadingAnim from '@/app/components/app/chat/loading-anim'
+import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 
 type OutputPanelProps = {
   isRunning?: boolean

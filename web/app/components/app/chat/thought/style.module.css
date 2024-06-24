@@ -1,7 +1,0 @@
-.wrap {
-  background-color: rgba(255, 255, 255, 0.92);
-}
-
-.wrapHoverEffect:hover{
-  box-shadow: 0px 1px 2px 0px rgba(16, 24, 40, 0.06), 0px 1px 3px 0px rgba(16, 24, 40, 0.1);
-}
