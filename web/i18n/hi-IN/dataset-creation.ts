@@ -13,8 +13,7 @@ const translation = {
   },
   firecrawl: {
     configFirecrawl: '🔥फायरक्रॉल को कॉन्फ़िगर करें',
-    apiKeyPlaceholder: 'firecrawl.dev से API कुंजी, "fc-" से शुरू होती है',
-    apiKeyFormatError: 'API कुंजी "fc-" से शुरू होनी चाहिए',
+    apiKeyPlaceholder: 'firecrawl.dev से API कुंजी',
     getApiKeyLinkText: 'firecrawl.dev से अपनी API कुंजी प्राप्त करें',
   },
   stepOne: {

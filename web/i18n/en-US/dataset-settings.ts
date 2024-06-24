@@ -16,7 +16,7 @@ const translation = {
     me: '(You)',
     indexMethod: 'Index Method',
     indexMethodHighQuality: 'High Quality',
-    indexMethodHighQualityTip: 'Call OpenAI\'s embedding interface for processing to provide higher accuracy when users query.',
+    indexMethodHighQualityTip: 'Call Embedding model for processing to provide higher accuracy when users query.',
     indexMethodEconomy: 'Economical',
     indexMethodEconomyTip: 'Use offline vector engines, keyword indexes, etc. to reduce accuracy without spending tokens',
     embeddingModel: 'Embedding Model',

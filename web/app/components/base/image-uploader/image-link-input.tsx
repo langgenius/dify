@@ -43,7 +43,7 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({
       />
       <Button
         variant='primary'
-        className='!h-6 text-xs font-medium'
+        size='small'
         disabled={!imageLink || disabled}
         onClick={handleClick}
       >
