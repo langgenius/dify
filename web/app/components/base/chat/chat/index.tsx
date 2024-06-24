@@ -263,9 +263,6 @@ const Chat: FC<ChatProps> = ({
                 />
               )
             }
-            {appData && appData.site.custom_disclaimer && <div className='text-xs text-gray-500 mt-1 text-center'>
-              {appData.site.custom_disclaimer}
-            </div>}
           </div>
         </div>
         {showPromptLogModal && (
