@@ -86,12 +86,12 @@ const ConfigCredential: FC<Props> = ({
                 <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex ')} >
                   {
                     (collection.is_team_authorization && !isHideRemoveBtn) && (
-                      <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onRemove}>{t('common.operation.remove')}</Button>
+                      <Button onClick={onRemove}>{t('common.operation.remove')}</Button>
                     )
                   }
                   < div className='flex space-x-2'>
-                    <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700 bg-white' onClick={onCancel}>{t('common.operation.cancel')}</Button>
-                    <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' variant='primary' onClick={() => onSaved(tempCredential)}>{t('common.operation.save')}</Button>
+                    <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
+                    <Button variant='primary' onClick={() => onSaved(tempCredential)}>{t('common.operation.save')}</Button>
                   </div>
                 </div>
               </>

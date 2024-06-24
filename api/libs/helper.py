@@ -140,7 +140,7 @@ def generate_string(n):
     return result
 
 
-def get_remote_ip(request):
+def get_remote_ip(request) -> str:
     if request.headers.get('CF-Connecting-IP'):
         return request.headers.get('Cf-Connecting-Ip')
     elif request.headers.getlist("X-Forwarded-For"):

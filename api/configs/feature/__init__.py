@@ -2,8 +2,10 @@ from typing import Optional
 
 from pydantic import AliasChoices, BaseModel, Field, NonNegativeInt, PositiveInt
 
+from configs.feature.hosted_service import HostedServiceConfig
 
-class SecurityConfigs(BaseModel):
+
+class SecurityConfig(BaseModel):
     """
     Secret Key configs
     """
@@ -16,7 +18,7 @@ class SecurityConfigs(BaseModel):
     )
 
 
-class AppExecutionConfigs(BaseModel):
+class AppExecutionConfig(BaseModel):
     """
     App Execution configs
     """
@@ -26,7 +28,7 @@ class AppExecutionConfigs(BaseModel):
     )
 
 
-class CodeExecutionSandboxConfigs(BaseModel):
+class CodeExecutionSandboxConfig(BaseModel):
     """
     Code Execution Sandbox configs
     """
@@ -41,7 +43,7 @@ class CodeExecutionSandboxConfigs(BaseModel):
     )
 
 
-class EndpointConfigs(BaseModel):
+class EndpointConfig(BaseModel):
     """
     Module URL configs
     """
@@ -70,7 +72,7 @@ class EndpointConfigs(BaseModel):
     )
 
 
-class FileAccessConfigs(BaseModel):
+class FileAccessConfig(BaseModel):
     """
     File Access configs
     """
@@ -89,7 +91,7 @@ class FileAccessConfigs(BaseModel):
     )
 
 
-class FileUploadConfigs(BaseModel):
+class FileUploadConfig(BaseModel):
     """
     File Uploading configs
     """
@@ -114,7 +116,7 @@ class FileUploadConfigs(BaseModel):
     )
 
 
-class HttpConfigs(BaseModel):
+class HttpConfig(BaseModel):
     """
     HTTP configs
     """
@@ -124,7 +126,7 @@ class HttpConfigs(BaseModel):
     )
 
 
-class InnerAPIConfigs(BaseModel):
+class InnerAPIConfig(BaseModel):
     """
     Inner API configs
     """
@@ -139,7 +141,7 @@ class InnerAPIConfigs(BaseModel):
     )
 
 
-class LoggingConfigs(BaseModel):
+class LoggingConfig(BaseModel):
     """
     Logging configs
     """
@@ -171,7 +173,7 @@ class LoggingConfigs(BaseModel):
     )
 
 
-class ModelLoadBalanceConfigs(BaseModel):
+class ModelLoadBalanceConfig(BaseModel):
     """
     Model load balance configs
     """
@@ -181,7 +183,7 @@ class ModelLoadBalanceConfigs(BaseModel):
     )
 
 
-class BillingConfigs(BaseModel):
+class BillingConfig(BaseModel):
     """
     Platform Billing Configurations
     """
@@ -191,7 +193,7 @@ class BillingConfigs(BaseModel):
     )
 
 
-class UpdateConfigs(BaseModel):
+class UpdateConfig(BaseModel):
     """
     Update configs
     """
@@ -201,7 +203,7 @@ class UpdateConfigs(BaseModel):
     )
 
 
-class WorkflowConfigs(BaseModel):
+class WorkflowConfig(BaseModel):
     """
     Workflow feature configs
     """
@@ -222,7 +224,7 @@ class WorkflowConfigs(BaseModel):
     )
 
 
-class OAuthConfigs(BaseModel):
+class OAuthConfig(BaseModel):
     """
     oauth configs
     """
@@ -252,7 +254,7 @@ class OAuthConfigs(BaseModel):
     )
 
 
-class ModerationConfigs(BaseModel):
+class ModerationConfig(BaseModel):
     """
     Moderation in app configs.
     """
@@ -264,7 +266,7 @@ class ModerationConfigs(BaseModel):
     )
 
 
-class ToolConfigs(BaseModel):
+class ToolConfig(BaseModel):
     """
     Tool configs
     """
@@ -275,7 +277,7 @@ class ToolConfigs(BaseModel):
     )
 
 
-class MailConfigs(BaseModel):
+class MailConfig(BaseModel):
     """
     Mail Configurations
     """
@@ -331,7 +333,7 @@ class MailConfigs(BaseModel):
     )
 
 
-class RagEtlConfigs(BaseModel):
+class RagEtlConfig(BaseModel):
     """
     RAG ETL Configurations.
     """
@@ -357,7 +359,7 @@ class RagEtlConfigs(BaseModel):
     )
 
 
-class DataSetConfigs(BaseModel):
+class DataSetConfig(BaseModel):
     """
     Dataset configs
     """
@@ -368,7 +370,7 @@ class DataSetConfigs(BaseModel):
     )
 
 
-class WorkspaceConfigs(BaseModel):
+class WorkspaceConfig(BaseModel):
     """
     Workspace configs
     """
@@ -379,7 +381,7 @@ class WorkspaceConfigs(BaseModel):
     )
 
 
-class IndexingConfigs(BaseModel):
+class IndexingConfig(BaseModel):
     """
     Indexing configs.
     """
@@ -390,36 +392,39 @@ class IndexingConfigs(BaseModel):
     )
 
 
-class ImageFormatConfigs(BaseModel):
+class ImageFormatConfig(BaseModel):
     MULTIMODAL_SEND_IMAGE_FORMAT: str = Field(
         description='multi model send image format, support base64, url, default is base64',
         default='base64',
     )
 
 
-class FeatureConfigs(
+class FeatureConfig(
     # place the configs in alphabet order
-    AppExecutionConfigs,
-    BillingConfigs,
-    CodeExecutionSandboxConfigs,
-    DataSetConfigs,
-    EndpointConfigs,
-    FileAccessConfigs,
-    FileUploadConfigs,
-    HttpConfigs,
-    ImageFormatConfigs,
-    InnerAPIConfigs,
-    IndexingConfigs,
-    LoggingConfigs,
-    MailConfigs,
-    ModelLoadBalanceConfigs,
-    ModerationConfigs,
-    OAuthConfigs,
-    RagEtlConfigs,
-    SecurityConfigs,
-    ToolConfigs,
-    UpdateConfigs,
-    WorkflowConfigs,
-    WorkspaceConfigs,
+    AppExecutionConfig,
+    BillingConfig,
+    CodeExecutionSandboxConfig,
+    DataSetConfig,
+    EndpointConfig,
+    FileAccessConfig,
+    FileUploadConfig,
+    HttpConfig,
+    ImageFormatConfig,
+    InnerAPIConfig,
+    IndexingConfig,
+    LoggingConfig,
+    MailConfig,
+    ModelLoadBalanceConfig,
+    ModerationConfig,
+    OAuthConfig,
+    RagEtlConfig,
+    SecurityConfig,
+    ToolConfig,
+    UpdateConfig,
+    WorkflowConfig,
+    WorkspaceConfig,
+
+    # hosted services config
+    HostedServiceConfig,
 ):
     pass

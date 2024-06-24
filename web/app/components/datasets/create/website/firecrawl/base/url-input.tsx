@@ -37,7 +37,7 @@ const UrlInput: FC<Props> = ({
       <Button
         variant='primary'
         onClick={handleOnRun}
-        className='ml-2 !h-8 text-[13px] font-medium'
+        className='ml-2'
         loading={isRunning}
       >
         {!isRunning ? t(`${I18N_PREFIX}.run`) : ''}

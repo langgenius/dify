@@ -108,8 +108,9 @@ const Blocks = ({
                 )}
                 {!needAuth && !added && addable && (
                   <Button
-                    variant='default'
-                    className={cn('hidden shrink-0 items-center !h-6 px-2 py-1 bg-white text-xs font-medium leading-[18px] text-primary-600 group-hover/item:flex')}
+                    variant='secondary-accent'
+                    size='small'
+                    className={cn('hidden shrink-0 items-center group-hover/item:flex')}
                     onClick={() => onSelect(toolWithProvider, tool)}
                   >
                     <RiAddLine className='w-3 h-3' />
@@ -118,8 +119,9 @@ const Blocks = ({
                 )}
                 {needAuth && (
                   <Button
-                    variant='default'
-                    className={cn('hidden shrink-0 items-center !h-6 px-2 py-1 bg-white text-xs font-medium leading-[18px] text-primary-600 group-hover/item:flex')}
+                    variant='secondary-accent'
+                    size='small'
+                    className={cn('hidden shrink-0 group-hover/item:flex')}
                     onClick={() => onAuthSetup(toolWithProvider)}
                   >{t('tools.auth.setup')}</Button>
                 )}

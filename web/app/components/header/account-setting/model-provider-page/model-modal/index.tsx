@@ -326,7 +326,8 @@ const ModelModal: FC<ModelModalProps> = ({
                   {
                     isEditMode && (
                       <Button
-                        className='mr-2 h-9 text-sm font-medium text-[#D92D20]'
+                        size='large'
+                        className='mr-2 text-[#D92D20]'
                         onClick={() => setShowConfirm(true)}
                       >
                         {t('common.operation.remove')}
@@ -334,13 +335,14 @@ const ModelModal: FC<ModelModalProps> = ({
                     )
                   }
                   <Button
-                    className='mr-2 h-9 text-sm font-medium text-gray-700'
+                    size='large'
+                    className='mr-2'
                     onClick={onCancel}
                   >
                     {t('common.operation.cancel')}
                   </Button>
                   <Button
-                    className='h-9 text-sm font-medium'
+                    size='large'
                     variant='primary'
                     onClick={handleSave}
                     disabled={
