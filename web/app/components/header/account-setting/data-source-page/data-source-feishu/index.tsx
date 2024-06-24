@@ -9,6 +9,8 @@ import { useAppContext } from '@/context/app-context'
 import { fetchFeishuConnection } from '@/service/common'
 import FeishuIcon from '@/app/components/base/feishu-icon'
 
+export const FeishuProvider = 'feishuwiki'
+
 const Icon: FC<{
   src: string
   name: string
@@ -31,7 +33,7 @@ const DataSourceFeishu: FC<Props> = ({
 }) => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const [canConnectFeishu, setCanConnectFeishu] = useState(false)
-  const { data } = useSWR(canConnectFeishu ? '/oauth/data-source/feishu' : null, fetchFeishuConnection)
+  const { data } = useSWR(canConnectFeishu ? '/oauth/data-source/feishuwiki' : null, fetchFeishuConnection)
 
   const connected = !!workspaces.length
 
