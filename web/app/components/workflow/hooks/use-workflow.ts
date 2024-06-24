@@ -485,7 +485,9 @@ export const useWorkflowInit = () => {
                   nodes: nodesTemplate,
                   edges: edgesTemplate,
                 },
-                features: {},
+                features: {
+                  retriever_resource: { enabled: true },
+                },
               },
             }).then((res) => {
               workflowStore.getState().setDraftUpdatedAt(res.updated_at)
