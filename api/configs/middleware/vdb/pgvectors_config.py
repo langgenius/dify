@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, PositiveInt
 
 
-class PGVectoRSConfigs(BaseModel):
+class PGVectoRSConfig(BaseModel):
     """
     PGVectoRS configs
     """

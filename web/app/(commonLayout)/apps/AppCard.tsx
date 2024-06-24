@@ -279,27 +279,27 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           'items-center shrink-0 mt-1 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
           tags.length ? 'flex' : '!hidden group-hover:!flex',
         )}>
-          <div className={cn('grow flex items-center gap-1 w-0')} onClick={(e) => {
-            e.stopPropagation()
-            e.preventDefault()
-          }}>
-            <div className={cn(
-              'group-hover:!block group-hover:!mr-0 mr-[41px] grow w-full',
-              tags.length ? '!block' : '!hidden',
-            )}>
-              <TagSelector
-                position='bl'
-                type='app'
-                targetID={app.id}
-                value={tags.map(tag => tag.id)}
-                selectedTags={tags}
-                onCacheUpdate={setTags}
-                onChange={onRefresh}
-              />
-            </div>
-          </div>
           {isCurrentWorkspaceEditor && (
             <>
+              <div className={cn('grow flex items-center gap-1 w-0')} onClick={(e) => {
+                e.stopPropagation()
+                e.preventDefault()
+              }}>
+                <div className={cn(
+                  'group-hover:!block group-hover:!mr-0 mr-[41px] grow w-full',
+                  tags.length ? '!block' : '!hidden',
+                )}>
+                  <TagSelector
+                    position='bl'
+                    type='app'
+                    targetID={app.id}
+                    value={tags.map(tag => tag.id)}
+                    selectedTags={tags}
+                    onCacheUpdate={setTags}
+                    onChange={onRefresh}
+                  />
+                </div>
+              </div>
               <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200'/>
               <div className='!hidden group-hover:!flex shrink-0'>
                 <CustomPopover

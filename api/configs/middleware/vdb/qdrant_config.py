@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt
 
 
-class QdrantConfigs(BaseModel):
+class QdrantConfig(BaseModel):
     """
     Qdrant configs
     """

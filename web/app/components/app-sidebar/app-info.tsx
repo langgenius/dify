@@ -16,7 +16,7 @@ import Divider from '@/app/components/base/divider'
 import Confirm from '@/app/components/base/confirm'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
-import AppsContext from '@/context/app-context'
+import AppsContext, { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import DuplicateAppModal from '@/app/components/app/duplicate-modal'
@@ -142,6 +142,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
     setShowConfirmDelete(false)
   }, [appDetail, mutateApps, notify, onPlanInfoChanged, replace, t])
 
+  const { isCurrentWorkspaceEditor } = useAppContext()
+
   if (!appDetail)
     return null
 
@@ -154,10 +156,13 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
     >
       <div className='relative'>
         <PortalToFollowElemTrigger
-          onClick={() => setOpen(v => !v)}
+          onClick={() => {
+            if (isCurrentWorkspaceEditor)
+              setOpen(v => !v)
+          }}
           className='block'
         >
-          <div className={cn('flex cursor-pointer p-1 rounded-lg hover:bg-gray-100', open && 'bg-gray-100')}>
+          <div className={cn('flex p-1 rounded-lg', open && 'bg-gray-100', isCurrentWorkspaceEditor && 'hover:bg-gray-100 cursor-pointer')}>
             <div className='relative shrink-0 mr-2'>
               <AppIcon size={expand ? 'large' : 'small'} icon={appDetail.icon} background={appDetail.icon_background} />
               <span className={cn(

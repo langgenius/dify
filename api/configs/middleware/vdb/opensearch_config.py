@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, PositiveInt
 
 
-class OpenSearchConfigs(BaseModel):
+class OpenSearchConfig(BaseModel):
     """
     OpenSearch configs
     """

@@ -7,7 +7,6 @@
 
 # testing
 /coverage
-*.lock
 
 # next.js
 /.next/

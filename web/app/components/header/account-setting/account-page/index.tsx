@@ -246,10 +246,9 @@ export default function AccountPage() {
       )}
       {showDeleteAccountModal && (
         <Modal
-          wrapperClassName='z-20'
           className={classNames('p-8 max-w-[480px] w-[480px]', s.bg)}
           isShow={showDeleteAccountModal}
-          onClose={() => {}}
+          onClose={() => { }}
         >
           <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={() => setShowDeleteAccountModal(false)}>
             <RiCloseLine className='w-4 h-4 text-gray-500' />

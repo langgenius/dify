@@ -154,6 +154,12 @@ services:
       TIDB_VECTOR_USER: xxx.root
       TIDB_VECTOR_PASSWORD: xxxxxx
       TIDB_VECTOR_DATABASE: dify
+      # oracle configurations
+      ORACLE_HOST: oracle
+      ORACLE_PORT: 1521
+      ORACLE_USER: dify
+      ORACLE_PASSWORD: dify
+      ORACLE_DATABASE: FREEPDB1
       # Chroma configuration
       CHROMA_HOST: 127.0.0.1
       CHROMA_PORT: 8000
@@ -204,12 +210,11 @@ services:
       - db
       - redis
     volumes:
-      #- ./api:/app/api  # Mount your local api directory
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
     # uncomment to expose dify-api port to host
-    ports:
-      - "5001:5001"
+    # ports:
+    #   - "5001:5001"
     networks:
       - ssrf_proxy_network
       - default
@@ -351,6 +356,12 @@ services:
       TIDB_VECTOR_USER: xxx.root
       TIDB_VECTOR_PASSWORD: xxxxxx
       TIDB_VECTOR_DATABASE: dify
+      # oracle configurations
+      ORACLE_HOST: oracle
+      ORACLE_PORT: 1521
+      ORACLE_USER: dify
+      ORACLE_PASSWORD: dify
+      ORACLE_DATABASE: FREEPDB1
       # Chroma configuration
       CHROMA_HOST: 127.0.0.1
       CHROMA_PORT: 8000
@@ -391,13 +402,8 @@ services:
       # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
       SENTRY_DSN: ''
     # uncomment to expose dify-web port to host
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./web:/app/web  # Mount your local web directory
-    command: npm install; npm run start #npm run dev  # Use this for development
-
-  
+    # ports:
+    #   - "3000:3000"
 
   # The postgres database.
   db:
@@ -536,6 +542,22 @@ services:
   #     timeout: 3s
   #     retries: 30
 
+  # The oracle vector database.
+  # Uncomment to use oracle23ai as vector store. Also need to Uncomment volumes block
+  # oracle:
+  #   image: container-registry.oracle.com/database/free:latest
+  #   restart: always
+  #   ports:
+  #     - 1521:1521
+  #   volumes:
+  #     - type: volume
+  #       source: oradata
+  #       target: /opt/oracle/oradata
+  #     - ./startupscripts:/opt/oracle/scripts/startup
+  #   environment:
+  #     - ORACLE_PWD=Dify123456
+  #     - ORACLE_CHARACTERSET=AL32UTF8
+
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
@@ -561,3 +583,6 @@ networks:
   ssrf_proxy_network:
     driver: bridge
     internal: true
+
+#volumes:
+#  oradata:

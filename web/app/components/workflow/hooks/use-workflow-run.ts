@@ -186,6 +186,10 @@ export const useWorkflowRun = () => {
               ...draft.result,
               ...data,
             } as any
+            if (isStringOutput) {
+              draft.resultTabActive = true
+              draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+            }
           }))
 
           prevNodeId = ''
