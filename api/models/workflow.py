@@ -3,12 +3,16 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import Any, Optional, Union
 
+from flask_login import current_user
 from pydantic import BaseModel
 
+from core.helper import encrypter
 from extensions.ext_database import db
 from libs import helper
 from models import StringUUID
 from models.account import Account
+from models.helpers import encrypt_environment_variable
+from models.model import EndUser
 
 
 class CreatedByRole(Enum):
@@ -222,8 +226,27 @@ class Workflow(db.Model):
         return DBEnvironmentVariable.model_validate_json(self._environment_variables).data
 
     @environment_variables.setter
-    def environment_variables(self, value: Sequence[EnvironmentVariable]):
-        self._environment_variables = DBEnvironmentVariable(data=value).model_dump_json()
+    def environment_variables(self, vars: Sequence[EnvironmentVariable]):
+        # get current user from flask context, may not a good way.
+        user = current_user
+        if not isinstance(user, Account | EndUser):
+            raise ValueError('current user is not account or end user')
+        
+
+        previous_vars = {var.name: var for var in self.environment_variables}
+
+        new_vars = []
+        for var in vars:
+            if var.name in previous_vars and var != previous_vars[var.name]:
+                new_vars.append(var)
+            elif var.name in previous_vars and var == previous_vars[var.name]:
+                new_vars.append(previous_vars[var.name])
+            elif var.value_type == EnvironmentType.SECRET:
+                new_vars.append(encrypt_environment_variable(var, encrypt_func=lambda t: encrypter.encrypt_token(user.current_tenant_id, t)))
+            else:
+                new_vars.append(var)
+
+        self._environment_variables = DBEnvironmentVariable(data=new_vars).model_dump_json()
 
 
 class WorkflowRunTriggeredFrom(Enum):
