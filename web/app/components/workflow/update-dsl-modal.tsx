@@ -97,7 +97,7 @@ const UpdateDSLModal = ({
     }
     catch (e) {
       setLoading(false)
-      notify({ type: 'success', message: t('workflow.common.importFailure') })
+      notify({ type: 'error', message: t('workflow.common.importFailure') })
     }
     isCreatingRef.current = false
   }, [currentFile, fileContent, onCancel, notify, t, eventEmitter, appDetail, onImport])
