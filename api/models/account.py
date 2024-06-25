@@ -120,10 +120,12 @@ class TenantAccountRole(str, enum.Enum):
     ADMIN = 'admin'
     EDITOR = 'editor'
     NORMAL = 'normal'
+    DATASET_OPERATOR = 'dataset_operator'
 
     @staticmethod
     def is_valid_role(role: str) -> bool:
-        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.NORMAL}
+        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR,
+                                 TenantAccountRole.NORMAL, TenantAccountRole.DATASET_OPERATOR}
 
     @staticmethod
     def is_privileged_role(role: str) -> bool:
