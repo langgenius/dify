@@ -73,6 +73,8 @@ const translation = {
     backupCurrentDraft: 'Backup Current Draft',
     chooseDSL: 'Choose DSL(yml) file',
     overwriteAndImport: 'Overwrite and Import',
+    importFailure: 'Import failure',
+    importSuccess: 'Import success',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

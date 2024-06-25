@@ -29,17 +29,20 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 type UpdateDSLModalProps = {
   onCancel: () => void
   onBackup: () => void
+  onImport?: () => void
 }
 
 const UpdateDSLModal = ({
   onCancel,
   onBackup,
+  onImport,
 }: UpdateDSLModalProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(s => s.appDetail)
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()
+  const [loading, setLoading] = useState(false)
   const { eventEmitter } = useEventEmitterContextContext()
 
   const readFile = (file: File) => {
@@ -68,6 +71,7 @@ const UpdateDSLModal = ({
       return
     try {
       if (appDetail && fileContent) {
+        setLoading(true)
         const {
           graph,
           features,
@@ -82,15 +86,19 @@ const UpdateDSLModal = ({
             features,
           },
         } as any)
+        if (onImport)
+          onImport()
+        notify({ type: 'success', message: t('workflow.common.importSuccess') })
+        setLoading(false)
         onCancel()
-        notify({ type: 'success', message: t('app.newApp.appCreated') })
       }
     }
     catch (e) {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      setLoading(false)
+      notify({ type: 'success', message: t('workflow.common.importFailure') })
     }
     isCreatingRef.current = false
-  }, [currentFile, fileContent, onCancel, notify, t, eventEmitter, appDetail])
+  }, [currentFile, fileContent, onCancel, notify, t, eventEmitter, appDetail, onImport])
 
   return (
     <Modal
@@ -128,7 +136,14 @@ const UpdateDSLModal = ({
       </div>
       <div className='flex justify-end'>
         <Button className='mr-2' onClick={onCancel}>{t('app.newApp.Cancel')}</Button>
-        <Button disabled={!currentFile} variant='warning' onClick={handleImport}>{t('workflow.common.overwriteAndImport')}</Button>
+        <Button
+          disabled={!currentFile || loading}
+          variant='warning'
+          onClick={handleImport}
+          loading={loading}
+        >
+          {t('workflow.common.overwriteAndImport')}
+        </Button>
       </div>
     </Modal>
   )

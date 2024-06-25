@@ -221,6 +221,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   } = useSelectionInteractions()
   const {
     handlePaneContextMenu,
+    handlePaneContextmenuCancel,
   } = usePanelInteractions()
   const {
     isValidConnection,
@@ -291,6 +292,7 @@ const Workflow: FC<WorkflowProps> = memo(({
           <UpdateDSLModal
             onCancel={() => setShowImportDSLModal(false)}
             onBackup={handleExportDSL}
+            onImport={handlePaneContextmenuCancel}
           />
         )
       }

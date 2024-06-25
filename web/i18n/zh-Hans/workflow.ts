@@ -73,6 +73,8 @@ const translation = {
     backupCurrentDraft: '备份当前草稿',
     chooseDSL: '选择 DSL(yml) 文件',
     overwriteAndImport: '覆盖并导入',
+    importFailure: '导入失败',
+    importSuccess: '导入成功',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
