@@ -116,6 +116,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     setShowConfirm,
     setControlPromptEditorRerenderKey,
     setShowImportDSLModal,
+    setSyncWorkflowDraftHash,
   } = workflowStore.getState()
   const {
     handleSyncWorkflowDraft,
@@ -139,6 +140,10 @@ const Workflow: FC<WorkflowProps> = memo(({
 
         setFeatures(v.payload.features)
       }
+
+      if (v.payload.hash)
+        setSyncWorkflowDraftHash(v.payload.hash)
+
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     }
   })
