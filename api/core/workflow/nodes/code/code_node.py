@@ -288,8 +288,8 @@ class CodeNode(BaseNode):
             parameters_validated[output_name] = True
 
         # check if all output parameters are validated
-        if len(parameters_validated) != len(result):
-            raise ValueError('Not all output parameters are validated.')
+        # if len(parameters_validated) != len(result):
+        #     raise ValueError('Not all output parameters are validated.')
 
         return transformed_result
 
