@@ -85,3 +85,5 @@ pymysql==1.1.1
 tidb-vector==0.0.9
 google-cloud-aiplatform==1.49.0
 vanna[postgres,mysql,clickhouse,duckdb]==0.5.5
+antlr4-python3-runtime==4.11
+antlr4-tools==0.2.1

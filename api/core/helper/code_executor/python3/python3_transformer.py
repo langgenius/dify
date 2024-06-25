@@ -36,16 +36,11 @@ class Python3TemplateTransformer(TemplateTransformer):
             
             import json
             from base64 import b64decode
-            
+
             # decode and prepare input dict
             inputs_obj = json.loads(b64decode('{cls._inputs_placeholder}').decode('utf-8'))
             
             # execute main function
-            output_obj = main(**inputs_obj)
-            
-            # convert output to json and print
-            output_json = json.dumps(output_obj, indent=4)
-            result = f'''<<RESULT>>{{output_json}}<<RESULT>>'''
-            print(result)
+            main_result = main(**inputs_obj)
             """)
         return runner_script

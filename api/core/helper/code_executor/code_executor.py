@@ -3,6 +3,7 @@ import time
 from enum import Enum
 from threading import Lock
 from typing import Literal, Optional
+import json
 
 from httpx import get, post
 from pydantic import BaseModel
@@ -14,6 +15,10 @@ from core.helper.code_executor.javascript.javascript_transformer import NodeJsTe
 from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTransformer
 from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
 from core.helper.code_executor.template_transformer import TemplateTransformer
+
+from io import StringIO 
+import sys
+import traceback
 
 logger = logging.getLogger(__name__)
 
@@ -74,49 +79,34 @@ class CodeExecutor:
         :param code: code
         :return:
         """
-        url = URL(CODE_EXECUTION_ENDPOINT) / 'v1' / 'sandbox' / 'run'
 
-        headers = {
-            'X-Api-Key': CODE_EXECUTION_API_KEY
-        }
+        def exec_code(code):
+            exec_result = {}
+            with Capturing() as output:
+                exec(code, locals(), locals())
+                exec_result = locals().get('main_result')
 
-        data = {
-            'language': cls.code_language_to_running_language.get(language),
-            'code': code,
-            'preload': preload,
-            'enable_network': True
-        }
+            observation = ""
+            for line in output:
+                observation += line
+                observation += "\n"
 
-        if dependencies:
-            data['dependencies'] = [dependency.dict() for dependency in dependencies]
+            if exec_result is None:
+                exec_result = {}
+            exec_result['output'] = observation
+            return exec_result
 
+        exec_result = ""
         try:
-            response = post(str(url), json=data, headers=headers, timeout=CODE_EXECUTION_TIMEOUT)
-            if response.status_code == 503:
-                raise CodeExecutionException('Code execution service is unavailable')
-            elif response.status_code != 200:
-                raise Exception(f'Failed to execute code, got status code {response.status_code}, please check if the sandbox service is running')
-        except CodeExecutionException as e:
-            raise e
+            exec_result = exec_code(code)
         except Exception as e:
-            raise CodeExecutionException('Failed to execute code, which is likely a network issue,'
-                                         ' please check if the sandbox service is running.'
-                                         f' ( Error: {str(e)} )')
-        
-        try:
-            response = response.json()
-        except:
-            raise CodeExecutionException('Failed to parse response')
-        
-        response = CodeExecutionResponse(**response)
+            exec_result = traceback.format_exc()
+            
+        json_string = json.dumps(exec_result, indent=4)
 
-        if response.code != 0:
-            raise CodeExecutionException(response.message)
+        result = f'''<<RESULT>>{json_string}<<RESULT>>'''
+        return result
         
-        if response.data.error:
-            raise CodeExecutionException(response.data.error)
-        
-        return response.data.stdout
 
     @classmethod
     def execute_workflow_code_template(cls, language: Literal['python3', 'javascript', 'jinja2'], code: str, inputs: dict, dependencies: Optional[list[CodeDependency]] = None) -> dict:
@@ -130,7 +120,7 @@ class CodeExecutor:
         template_transformer = cls.code_template_transformers.get(language)
         if not template_transformer:
             raise CodeExecutionException(f'Unsupported language {language}')
-
+        
         runner, preload, dependencies = template_transformer.transform_caller(code, inputs, dependencies)
 
         try:
@@ -195,3 +185,15 @@ class CodeExecutor:
         except Exception as e:
             logger.exception(f'Failed to list dependencies: {e}')
             return []
+
+
+class Capturing(list):
+    def __enter__(self):
+        self._stdout = sys.stdout
+        sys.stdout = self._stringio = StringIO()
+        return self
+    def __exit__(self, *args):
+        self.extend(self._stringio.getvalue().splitlines())
+        del self._stringio    # free up some memory
+        sys.stdout = self._stdout
+        
