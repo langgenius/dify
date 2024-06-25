@@ -1234,6 +1234,9 @@ export const useNodesInteractions = () => {
   }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleHistoryBack = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
     const {
       shortcutsDisabled,
     } = workflowStore.getState()
@@ -1250,9 +1253,12 @@ export const useNodesInteractions = () => {
 
     setEdges(edges)
     setNodes(nodes)
-  }, [store, undo, workflowHistoryStore, workflowStore])
+  }, [store, undo, workflowHistoryStore, workflowStore, getNodesReadOnly])
 
   const handleHistoryForward = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
     const {
       shortcutsDisabled,
     } = workflowStore.getState()
@@ -1269,7 +1275,7 @@ export const useNodesInteractions = () => {
 
     setEdges(edges)
     setNodes(nodes)
-  }, [redo, store, workflowHistoryStore, workflowStore])
+  }, [redo, store, workflowHistoryStore, workflowStore, getNodesReadOnly])
 
   return {
     handleNodeDragStart,
