@@ -129,6 +129,8 @@ type Shape = {
   setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft: boolean) => void
   controlPromptEditorRerenderKey: number
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
+  showImportDSLModal: boolean
+  setShowImportDSLModal: (showImportDSLModal: boolean) => void
 }
 
 export const createWorkflowStore = () => {
@@ -217,6 +219,8 @@ export const createWorkflowStore = () => {
     setIsSyncingWorkflowDraft: isSyncingWorkflowDraft => set(() => ({ isSyncingWorkflowDraft })),
     controlPromptEditorRerenderKey: 0,
     setControlPromptEditorRerenderKey: controlPromptEditorRerenderKey => set(() => ({ controlPromptEditorRerenderKey })),
+    showImportDSLModal: false,
+    setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
   }))
 }
 
