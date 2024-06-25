@@ -14,12 +14,12 @@ class TencentVectorDBConfig(BaseModel):
     )
 
     TENCENT_VECTOR_DB_API_KEY: Optional[str] = Field(
-        description='Tencent Vector api key',
+        description='Tencent Vector API key',
         default=None,
     )
 
     TENCENT_VECTOR_DB_TIMEOUT: PositiveInt = Field(
-        description='Tencent Vector timeout',
+        description='Tencent Vector timeout in seconds',
         default=30,
     )
 
