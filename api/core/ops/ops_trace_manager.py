@@ -35,14 +35,14 @@ from models.workflow import WorkflowRun
 provider_config_map = {
     TracingProviderEnum.LANGFUSE.value: {
         'config_class': LangfuseConfig,
-        'secret_keys': ('public_key', 'secret_key'),
-        'other_keys': ('host',),
+        'secret_keys': ['public_key', 'secret_key'],
+        'other_keys': ['host'],
         'trace_instance': LangFuseDataTrace
     },
     TracingProviderEnum.LANGSMITH.value: {
         'config_class': LangSmithConfig,
-        'secret_keys': ('api_key',),
-        'other_keys': ('project', 'endpoint'),
+        'secret_keys': ['api_key'],
+        'other_keys': ['project', 'endpoint'],
         'trace_instance': LangSmithDataTrace
     }
 }
@@ -657,8 +657,3 @@ class TraceQueueManager:
 
     def add_trace_task(self, trace_task: TraceTask):
         self.queue.put(trace_task)
-
-
-if __name__ == '__main__':
-    print(provider_config_map.keys())
-    print(type(provider_config_map.keys()))
