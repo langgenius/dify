@@ -35,8 +35,11 @@ const translation = {
   invalidInvitationCode: '无效的邀请码',
   accountAlreadyInited: '账户已经初始化',
   forgotPassword: '忘记密码？',
-  forgotPasswordDesc: '请输入您的电子邮件地址以重置您的密码。我们将发送一封电子邮件，其中包含如何重置密码的说明。',
-  forgotPasswordBtn: '发送重置链接',
+  resetLinkSent: '重置链接已发送',
+  sendResetLink: '发送重置链接',
+  backToSignIn: '返回登录',
+  forgotPasswordDesc: '请输入您的电子邮件地址以重置密码。我们将向您发送一封电子邮件，包含如何重置密码的说明。',
+  checkEmailForResetLink: '请检查您的电子邮件以获取重置密码的链接。如果几分钟内没有收到，请检查您的垃圾邮件文件夹。',
   error: {
     emailEmpty: '邮箱不能为空',
     emailInValid: '请输入有效的邮箱地址',

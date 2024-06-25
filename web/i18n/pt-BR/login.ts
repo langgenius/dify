@@ -35,8 +35,11 @@ const translation = {
   invalidInvitationCode: 'Código de convite inválido',
   accountAlreadyInited: 'Conta já iniciada',
   forgotPassword: 'Esqueceu sua senha?',
-  forgotPasswordDesc: 'Por favor, insira seu endereço de email para redefinir sua senha. Nós lhe enviaremos um email com as instruções para redefinir sua senha.',
-  forgotPasswordBtn: 'Enviar link de redefinição',
+  resetLinkSent: 'Link de redefinição enviado',
+  sendResetLink: 'Enviar link de redefinição',
+  backToSignIn: 'Voltar para login',
+  forgotPasswordDesc: 'Por favor, insira seu endereço de e-mail para redefinir sua senha. Enviaremos um e-mail com instruções sobre como redefinir sua senha.',
+  checkEmailForResetLink: 'Verifique seu e-mail para um link para redefinir sua senha. Se não aparecer dentro de alguns minutos, verifique sua pasta de spam.',
   error: {
     emailEmpty: 'O endereço de e-mail é obrigatório',
     emailInValid: 'Digite um endereço de e-mail válido',

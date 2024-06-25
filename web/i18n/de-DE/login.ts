@@ -35,8 +35,11 @@ const translation = {
   invalidInvitationCode: 'Ungültiger Einladungscode',
   accountAlreadyInited: 'Konto bereits initialisiert',
   forgotPassword: 'Passwort vergessen?',
+  resetLinkSent: 'Link zum Zurücksetzen gesendet',
+  sendResetLink: 'Link zum Zurücksetzen senden',
+  backToSignIn: 'Zurück zur Anmeldung',
   forgotPasswordDesc: 'Bitte geben Sie Ihre E-Mail-Adresse ein, um Ihr Passwort zurückzusetzen. Wir senden Ihnen eine E-Mail mit Anweisungen zum Zurücksetzen Ihres Passworts.',
-  forgotPasswordBtn: 'Link zum Zurücksetzen senden',
+  checkEmailForResetLink: 'Bitte überprüfen Sie Ihre E-Mails auf einen Link zum Zurücksetzen Ihres Passworts. Wenn er nicht innerhalb weniger Minuten erscheint, überprüfen Sie bitte Ihren Spam-Ordner.',
   error: {
     emailEmpty: 'E-Mail-Adresse wird benötigt',
     emailInValid: 'Bitte gib eine gültige E-Mail-Adresse ein',

@@ -35,8 +35,11 @@ const translation = {
   invalidInvitationCode: 'Mã mời không hợp lệ',
   accountAlreadyInited: 'Tài khoản đã được khởi tạo',
   forgotPassword: 'Quên mật khẩu?',
+  resetLinkSent: 'Đã gửi liên kết đặt lại mật khẩu',
+  sendResetLink: 'Gửi liên kết đặt lại mật khẩu',
+  backToSignIn: 'Quay lại đăng nhập',
   forgotPasswordDesc: 'Vui lòng nhập địa chỉ email của bạn để đặt lại mật khẩu. Chúng tôi sẽ gửi cho bạn một email với hướng dẫn về cách đặt lại mật khẩu.',
-  forgotPasswordBtn: 'Gửi liên kết đặt lại',
+  checkEmailForResetLink: 'Vui lòng kiểm tra email của bạn để nhận liên kết đặt lại mật khẩu. Nếu không thấy trong vài phút, hãy kiểm tra thư mục spam.',
   error: {
     emailEmpty: 'Địa chỉ Email là bắt buộc',
     emailInValid: 'Vui lòng nhập một địa chỉ email hợp lệ',

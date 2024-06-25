@@ -40,8 +40,11 @@ const translation = {
   invalidInvitationCode: 'Niewłaściwy kod zaproszenia',
   accountAlreadyInited: 'Konto już zainicjowane',
   forgotPassword: 'Zapomniałeś hasła?',
-  forgotPasswordDesc: 'Wprowadź swój adres e-mail, aby zresetować hasło. Wyślemy Ci e-mail z instrukcjami dotyczącymi resetowania hasła.',
-  forgotPasswordBtn: 'Wyślij link do resetowania',
+  resetLinkSent: 'Link resetujący został wysłany',
+  sendResetLink: 'Wyślij link resetujący',
+  backToSignIn: 'Powrót do logowania',
+  forgotPasswordDesc: 'Proszę podać swój adres e-mail, aby zresetować hasło. Wyślemy Ci e-mail z instrukcjami, jak zresetować hasło.',
+  checkEmailForResetLink: 'Proszę sprawdzić swój e-mail w poszukiwaniu linku do resetowania hasła. Jeśli nie pojawi się w ciągu kilku minut, sprawdź folder spam.',
   error: {
     emailEmpty: 'Adres e-mail jest wymagany',
     emailInValid: 'Proszę wpisać prawidłowy adres e-mail',

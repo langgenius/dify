@@ -35,8 +35,11 @@ const translation = {
   invalidInvitationCode: '유효하지 않은 초대 코드입니다.',
   accountAlreadyInited: '계정은 이미 초기화되었습니다.',
   forgotPassword: '비밀번호를 잊으셨나요?',
-  forgotPasswordDesc: '비밀번호를 재설정하려면 이메일 주소를 입력하세요. 비밀번호 재설정 방법이 포함된 이메일을 보내드립니다.',
-  forgotPasswordBtn: '재설정 링크 보내기',
+  resetLinkSent: '재설정 링크가 전송되었습니다',
+  sendResetLink: '재설정 링크 보내기',
+  backToSignIn: '로그인으로 돌아가기',
+  forgotPasswordDesc: '비밀번호를 재설정하려면 이메일 주소를 입력하세요. 비밀번호 재설정 방법에 대한 이메일을 보내드리겠습니다.',
+  checkEmailForResetLink: '비밀번호 재설정 링크를 확인하려면 이메일을 확인하세요. 몇 분 내에 나타나지 않으면 스팸 폴더를 확인하세요.',
   error: {
     emailEmpty: '이메일 주소를 입력하세요.',
     emailInValid: '유효한 이메일 주소를 입력하세요.',
