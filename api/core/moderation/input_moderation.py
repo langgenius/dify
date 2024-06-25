@@ -47,15 +47,16 @@ class InputModeration:
         with measure_time() as timer:
             moderation_result = moderation_factory.moderation_for_inputs(inputs, query)
 
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.MODERATION_TRACE,
-                message_id=message_id,
-                moderation_result=moderation_result,
-                inputs=inputs,
-                timer=timer
+        if trace_manager:
+            trace_manager.add_trace_task(
+                TraceTask(
+                    TraceTaskName.MODERATION_TRACE,
+                    message_id=message_id,
+                    moderation_result=moderation_result,
+                    inputs=inputs,
+                    timer=timer
+                )
             )
-        )
         
         if not moderation_result.flagged:
             return False, inputs, query
