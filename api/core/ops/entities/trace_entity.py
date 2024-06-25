@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class BaseTraceInfo(BaseModel):
@@ -13,6 +13,14 @@ class BaseTraceInfo(BaseModel):
     end_time: Optional[datetime] = None
     metadata: dict[str, Any]
 
+    @field_validator("inputs", "outputs")
+    def ensure_type(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, str | dict | list):
+            return v
+        else:
+            return ""
 
 class WorkflowTraceInfo(BaseTraceInfo):
     workflow_data: Any
@@ -55,10 +63,10 @@ class SuggestedQuestionTraceInfo(BaseTraceInfo):
     status: Optional[str] = None
     error: Optional[str] = None
     from_account_id: Optional[str] = None
-    agent_based: bool
-    from_source: str
-    model_provider: str
-    model_id: str
+    agent_based: Optional[bool] = None
+    from_source: Optional[str] = None
+    model_provider: Optional[str] = None
+    model_id: Optional[str] = None
     suggested_question: list[str]
     level: str
     status_message: Optional[str] = None
