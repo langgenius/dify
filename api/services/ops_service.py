@@ -1,4 +1,3 @@
-from core.ops.entities.config_entity import TracingProviderEnum
 from core.ops.ops_trace_manager import OpsTraceManager, provider_config_map
 from extensions.ext_database import db
 from models.model import App, TraceAppConfig
@@ -38,8 +37,7 @@ class OpsService:
         :param tracing_config: tracing config
         :return:
         """
-        if tracing_provider not in [TracingProviderEnum.LANGFUSE.value,
-                                    TracingProviderEnum.LANGSMITH.value] and tracing_provider != "":
+        if tracing_config not in provider_config_map.keys() and tracing_provider != "":
             return {"error": f"Invalid tracing provider: {tracing_provider}"}
 
         config_class, other_keys = provider_config_map[tracing_provider]['config_class'], \
@@ -83,7 +81,7 @@ class OpsService:
         :param tracing_config: tracing config
         :return:
         """
-        if tracing_provider not in [TracingProviderEnum.LANGFUSE.value, TracingProviderEnum.LANGSMITH.value]:
+        if tracing_provider not in provider_config_map.keys():
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         # check if trace config already exists

@@ -224,7 +224,7 @@ class OpsTraceManager:
         :return:
         """
         # auth check
-        if tracing_provider not in [TracingProviderEnum.LANGFUSE.value, TracingProviderEnum.LANGSMITH.value, None, ""]:
+        if tracing_provider not in provider_config_map.keys() and tracing_provider != "":
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         app_config: App = db.session.query(App).filter(App.id == app_id).first()
@@ -654,3 +654,8 @@ class TraceQueueManager:
 
     def add_trace_task(self, trace_task: TraceTask):
         self.queue.put(trace_task)
+
+
+if __name__ == '__main__':
+    print(provider_config_map.keys())
+    print(type(provider_config_map.keys()))

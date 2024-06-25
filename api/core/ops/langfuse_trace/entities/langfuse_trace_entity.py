@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from core.ops.utils import replace_text_with_content
@@ -266,10 +266,11 @@ class LangfuseGeneration(BaseModel):
         description="The version of the generation type. Used to understand how changes to the span type affect "
                     "metrics. Useful in debugging.",
     )
+
+    model_config = ConfigDict(protected_namespaces=())
+
     @field_validator("input", "output")
     def ensure_dict(cls, v, info: ValidationInfo):
         field_name = info.field_name
         return validate_input_output(v, field_name)
 
-    class Config:
-        protected_namespaces = ()

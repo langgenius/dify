@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class BaseTraceInfo(BaseModel):
@@ -63,10 +63,9 @@ class SuggestedQuestionTraceInfo(BaseTraceInfo):
     level: str
     status_message: Optional[str] = None
 
-    class Config:
-        protected_namespaces = ()
+    model_config = ConfigDict(protected_namespaces=())
 
-        
+
 class DatasetRetrievalTraceInfo(BaseTraceInfo):
     documents: Any
 
