@@ -87,7 +87,7 @@ def create_flask_app_with_configs() -> Flask:
     for key, value in dify_app.config.items():
         if isinstance(value, str):
             os.environ[key] = value
-        elif isinstance(value, (int, float, bool)):
+        elif isinstance(value, int | float | bool):
             os.environ[key] = str(value)
         elif value is None:
             os.environ[key] = ''
