@@ -68,6 +68,11 @@ const translation = {
     workflowAsToolTip: 'Tool reconfiguration is required after the workflow update.',
     viewDetailInTracingPanel: 'View details',
     syncingData: 'Syncing data, just a few seconds.',
+    importDSL: 'Import DSL',
+    importDSLTip: 'Current draft will be overwritten. Export workflow as backup before importing.',
+    backupCurrentDraft: 'Backup Current Draft',
+    chooseDSL: 'Choose DSL(yml) file',
+    overwriteAndImport: 'Overwrite and Import',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

@@ -20,6 +20,7 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
   useOnViewportChange,
+  useReactFlow,
 } from 'reactflow'
 import type {
   Viewport,
@@ -32,6 +33,7 @@ import type {
 } from './types'
 import { WorkflowContextProvider } from './context'
 import {
+  useDSL,
   useEdgesInteractions,
   useNodesInteractions,
   useNodesReadOnly,
@@ -58,6 +60,7 @@ import CandidateNode from './candidate-node'
 import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
+import UpdateDSLModal from './update-dsl-modal'
 import {
   useStore,
   useWorkflowStore,
@@ -76,6 +79,7 @@ import {
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Confirm from '@/app/components/base/confirm/common'
 
@@ -99,15 +103,19 @@ const Workflow: FC<WorkflowProps> = memo(({
 }) => {
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
+  const reactflow = useReactFlow()
+  const featuresStore = useFeaturesStore()
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const showConfirm = useStore(s => s.showConfirm)
+  const showImportDSLModal = useStore(s => s.showImportDSLModal)
   const {
     setShowConfirm,
     setControlPromptEditorRerenderKey,
+    setShowImportDSLModal,
   } = workflowStore.getState()
   const {
     handleSyncWorkflowDraft,
@@ -122,6 +130,15 @@ const Workflow: FC<WorkflowProps> = memo(({
     if (v.type === WORKFLOW_DATA_UPDATE) {
       setNodes(v.payload.nodes)
       setEdges(v.payload.edges)
+
+      if (v.payload.viewport)
+        reactflow.setViewport(v.payload.viewport)
+
+      if (v.payload.features && featuresStore) {
+        const { setFeatures } = featuresStore.getState()
+
+        setFeatures(v.payload.features)
+      }
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     }
   })
@@ -209,6 +226,9 @@ const Workflow: FC<WorkflowProps> = memo(({
     isValidConnection,
   } = useWorkflow()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
+  const {
+    handleExportDSL,
+  } = useDSL()
 
   useOnViewportChange({
     onEnd: () => {
@@ -263,6 +283,14 @@ const Workflow: FC<WorkflowProps> = memo(({
             title={showConfirm.title}
             desc={showConfirm.desc}
             confirmWrapperClassName='!z-[11]'
+          />
+        )
+      }
+      {
+        showImportDSLModal && (
+          <UpdateDSLModal
+            onCancel={() => setShowImportDSLModal(false)}
+            onBackup={handleExportDSL}
           />
         )
       }
