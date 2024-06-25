@@ -1,9 +1,11 @@
+import json
 from typing import Any, Union
+
+from jsonpath_ng import parse
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
-import json
-from jsonpath_ng import parse
 
 class JSONParseTool(BuiltinTool):
     def _invoke(self,
@@ -39,9 +41,9 @@ class JSONParseTool(BuiltinTool):
             if len(result) == 1:
                 result = result[0]
             
-            if isinstance(result, (dict, list)):
+            if isinstance(result, dict | list):
                 return json.dumps(result, ensure_ascii=True)
-            elif isinstance(result, (str, int, float, bool)) or result is None:
+            elif isinstance(result, str | int | float | bool) or result is None:
                 return str(result)
             else:
                 return repr(result)

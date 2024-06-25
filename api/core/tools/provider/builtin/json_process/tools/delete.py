@@ -1,9 +1,11 @@
+import json
 from typing import Any, Union
+
+from jsonpath_ng import parse
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
-import json
-from jsonpath_ng import parse
 
 class JSONDeleteTool(BuiltinTool):
     def _invoke(self,
