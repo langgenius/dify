@@ -188,22 +188,19 @@ class DatasetApi(Resource):
                             nullable=True,
                             help='Invalid indexing technique.')
         parser.add_argument('permission', type=str, location='json', choices=(
-            'only_me', 'all_team_members', 'part_users'), help='Invalid permission.'
+            'only_me', 'all_team_members', 'partial_members'), help='Invalid permission.'
                             )
         parser.add_argument('embedding_model', type=str,
                             location='json', help='Invalid embedding model.')
         parser.add_argument('embedding_model_provider', type=str,
                             location='json', help='Invalid embedding model provider.')
         parser.add_argument('retrieval_model', type=dict, location='json', help='Invalid retrieval model.')
-        parser.add_argument('part_users_list', type=list, location='json', help='Invalid parent user list.')
+        parser.add_argument('partial_member_list', type=list, location='json', help='Invalid parent user list.')
         args = parser.parse_args()
-
+        data = request.get_json()
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        if not current_user.is_dataset_editing_role:
             raise Forbidden()
-
-        if args.get('part_users_list') and args.get('permission') == 'part_users':
-            DatasetPermissionService.update_part_users_list(dataset_id_str, args.get('part_users_list'))
 
         dataset = DatasetService.update_dataset(
             dataset_id_str, args, current_user)
@@ -211,7 +208,14 @@ class DatasetApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        return marshal(dataset, dataset_detail_fields), 200
+        result_data = marshal(dataset, dataset_detail_fields)
+
+        if data.get('partial_member_list') and data.get('permission') == 'partial_members':
+            DatasetPermissionService.update_partial_member_list(dataset_id_str, data.get('partial_member_list'))
+            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
+            result_data.update({'part_users_list': part_users_list})
+
+        return result_data, 200
 
     @setup_required
     @login_required
@@ -577,11 +581,10 @@ class DatasetPermissionUserListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        part_users_list = DatasetPermissionService.get_dataset_parent_users_list(dataset_id_str)
-        print(part_users_list)
-        print(type(part_users_list))
+        partial_members_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
+
         return {
-            'data': part_users_list,
+            'data': partial_members_list,
         }, 200
 
 

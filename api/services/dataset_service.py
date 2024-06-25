@@ -159,7 +159,7 @@ class DatasetService:
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
-        data.pop('part_users_list', None)
+        data.pop('partial_member_list', None)
         filtered_data = {k: v for k, v in data.items() if v is not None or k == 'description'}
         dataset = DatasetService.get_dataset(dataset_id)
         DatasetService.check_dataset_permission(dataset, user)
@@ -265,11 +265,11 @@ class DatasetService:
                 f'User {user.id} does not have permission to access dataset {dataset.id}')
             raise NoPermissionError(
                 'You do not have permission to access this dataset.')
-        if dataset.permission == 'part_users':
+        if dataset.permission == 'partial_members':
             user_permission = DatasetPermission.query.filter_by(
                 dataset_id=dataset.id, account_id=user.id
             ).first()
-            if not user_permission and dataset.tenant_id != user.current_tenant_id:
+            if not user_permission and dataset.tenant_id != user.current_tenant_id and dataset.created_by != user.id:
                 logging.debug(
                     f'User {user.id} does not have permission to access dataset {dataset.id}'
                 )
@@ -1480,7 +1480,7 @@ class DatasetCollectionBindingService:
 
 class DatasetPermissionService:
     @classmethod
-    def get_dataset_parent_users_list(cls, dataset_id):
+    def get_dataset_partial_member_list(cls, dataset_id):
         user_list_query = db.session.query(
             DatasetPermission.account_id,
             DatasetPermission.account_role,
@@ -1499,7 +1499,7 @@ class DatasetPermissionService:
         return user_list
 
     @classmethod
-    def update_part_users_list(cls, dataset_id, user_list):
+    def update_partial_member_list(cls, dataset_id, user_list):
         try:
             db.session.query(DatasetPermission).filter(DatasetPermission.dataset_id == dataset_id).delete()
             permissions = []

@@ -139,6 +139,9 @@ class TenantAccountRole(str, enum.Enum):
     def is_editing_role(role: str) -> bool:
         return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
 
+    @staticmethod
+    def is_dataset_editing_role(role: str) -> bool:
+        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.DATASET_OPERATOR}
 
 class Tenant(db.Model):
     __tablename__ = 'tenants'
