@@ -309,13 +309,14 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
 
         db.session.commit()
 
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.MESSAGE_TRACE,
-                conversation_id=self._conversation.id,
-                message_id=self._message.id
+        if trace_manager:
+            trace_manager.add_trace_task(
+                TraceTask(
+                    TraceTaskName.MESSAGE_TRACE,
+                    conversation_id=self._conversation.id,
+                    message_id=self._message.id
+                )
             )
-        )
 
         message_was_created.send(
             self._message,
