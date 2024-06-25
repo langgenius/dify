@@ -34,6 +34,9 @@ const translation = {
   donthave: '还没有邀请码？',
   invalidInvitationCode: '无效的邀请码',
   accountAlreadyInited: '账户已经初始化',
+  forgotPassword: '忘记密码？',
+  forgotPasswordDesc: '请输入您的电子邮件地址以重置您的密码。我们将发送一封电子邮件，其中包含如何重置密码的说明。',
+  forgotPasswordBtn: '发送重置链接',
   error: {
     emailEmpty: '邮箱不能为空',
     emailInValid: '请输入有效的邮箱地址',

@@ -34,6 +34,9 @@ const translation = {
   donthave: 'お持ちでない場合',
   invalidInvitationCode: '無効な招待コード',
   accountAlreadyInited: 'アカウントは既に初期化されています',
+  forgotPassword: 'パスワードをお忘れですか？',
+  forgotPasswordDesc: 'パスワードをリセットするために、メールアドレスを入力してください。パスワードリセットの手順が記載されたメールを送信します。',
+  forgotPasswordBtn: 'リセットリンクを送信',
   error: {
     emailEmpty: 'メールアドレスは必須です',
     emailInValid: '有効なメールアドレスを入力してください',

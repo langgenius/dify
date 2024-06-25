@@ -34,6 +34,9 @@ const translation = {
   donthave: '계정이 없으신가요?',
   invalidInvitationCode: '유효하지 않은 초대 코드입니다.',
   accountAlreadyInited: '계정은 이미 초기화되었습니다.',
+  forgotPassword: '비밀번호를 잊으셨나요?',
+  forgotPasswordDesc: '비밀번호를 재설정하려면 이메일 주소를 입력하세요. 비밀번호 재설정 방법이 포함된 이메일을 보내드립니다.',
+  forgotPasswordBtn: '재설정 링크 보내기',
   error: {
     emailEmpty: '이메일 주소를 입력하세요.',
     emailInValid: '유효한 이메일 주소를 입력하세요.',

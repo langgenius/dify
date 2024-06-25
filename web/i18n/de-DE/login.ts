@@ -34,6 +34,9 @@ const translation = {
   donthave: 'Hast du nicht?',
   invalidInvitationCode: 'Ungültiger Einladungscode',
   accountAlreadyInited: 'Konto bereits initialisiert',
+  forgotPassword: 'Passwort vergessen?',
+  forgotPasswordDesc: 'Bitte geben Sie Ihre E-Mail-Adresse ein, um Ihr Passwort zurückzusetzen. Wir senden Ihnen eine E-Mail mit Anweisungen zum Zurücksetzen Ihres Passworts.',
+  forgotPasswordBtn: 'Link zum Zurücksetzen senden',
   error: {
     emailEmpty: 'E-Mail-Adresse wird benötigt',
     emailInValid: 'Bitte gib eine gültige E-Mail-Adresse ein',

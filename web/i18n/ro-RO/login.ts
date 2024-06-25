@@ -35,6 +35,9 @@ const translation = {
   donthave: 'Nu ai?',
   invalidInvitationCode: 'Cod de invitație invalid',
   accountAlreadyInited: 'Contul este deja inițializat',
+  forgotPassword: 'Ai uitat parola?',
+  forgotPasswordDesc: 'Vă rugăm să introduceți adresa de e-mail pentru a vă reseta parola. Vă vom trimite un e-mail cu instrucțiuni despre cum să vă resetați parola.',
+  forgotPasswordBtn: 'Trimite link de resetare',
   error: {
     emailEmpty: 'Adresa de email este obligatorie',
     emailInValid: 'Te rugăm să introduci o adresă de email validă',

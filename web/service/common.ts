@@ -298,3 +298,6 @@ export const enableModel = (url: string, body: { model: string; model_type: Mode
 
 export const disableModel = (url: string, body: { model: string; model_type: ModelTypeEnum }) =>
   patch<CommonResponse>(url, { body })
+
+export const verifyEmail: Fetcher<CommonResponse, { url: string; body: { email: string } }> = ({ url, body }) =>
+  post<CommonResponse>(url, { body })

@@ -34,6 +34,9 @@ const translation = {
   donthave: '還沒有邀請碼？',
   invalidInvitationCode: '無效的邀請碼',
   accountAlreadyInited: '賬戶已經初始化',
+  forgotPassword: '忘記密碼？',
+  forgotPasswordDesc: '請輸入您的電子郵件地址以重置您的密碼。我們將發送一封電子郵件，其中包含如何重置密碼的說明。',
+  forgotPasswordBtn: '發送重置鏈接',
   error: {
     emailEmpty: '郵箱不能為空',
     emailInValid: '請輸入有效的郵箱地址',

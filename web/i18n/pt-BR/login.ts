@@ -34,6 +34,9 @@ const translation = {
   donthave: 'Não tem?',
   invalidInvitationCode: 'Código de convite inválido',
   accountAlreadyInited: 'Conta já iniciada',
+  forgotPassword: 'Esqueceu sua senha?',
+  forgotPasswordDesc: 'Por favor, insira seu endereço de email para redefinir sua senha. Nós lhe enviaremos um email com as instruções para redefinir sua senha.',
+  forgotPasswordBtn: 'Enviar link de redefinição',
   error: {
     emailEmpty: 'O endereço de e-mail é obrigatório',
     emailInValid: 'Digite um endereço de e-mail válido',

@@ -34,6 +34,9 @@ const translation = {
   donthave: 'Vous n\'avez pas ?',
   invalidInvitationCode: 'Code d\'invitation invalide',
   accountAlreadyInited: 'Compte déjà initialisé',
+  forgotPassword: 'Mot de passe oublié ?',
+  forgotPasswordDesc: 'Veuillez entrer votre adresse email pour réinitialiser votre mot de passe. Nous vous enverrons un email avec les instructions pour réinitialiser votre mot de passe.',
+  forgotPasswordBtn: 'Envoyer le lien de réinitialisation',
   error: {
     emailEmpty: 'Une adresse e-mail est requise',
     emailInValid: 'Veuillez entrer une adresse email valide',

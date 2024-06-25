@@ -39,6 +39,9 @@ const translation = {
   donthave: 'नहीं है?',
   invalidInvitationCode: 'अवैध निमंत्रण कोड',
   accountAlreadyInited: 'खाता पहले से प्रारंभ किया गया है',
+  forgotPassword: 'पासवर्ड भूल गए?',
+  forgotPasswordDesc: 'कृपया अपना पासवर्ड रीसेट करने के लिए अपना ईमेल पता दर्ज करें। हम आपको पासवर्ड रीसेट करने के निर्देशों के साथ एक ईमेल भेजेंगे।',
+  forgotPasswordBtn: 'रीसेट लिंक भेजें',
   error: {
     emailEmpty: 'ईमेल पता आवश्यक है',
     emailInValid: 'कृपया एक मान्य ईमेल पता दर्ज करें',

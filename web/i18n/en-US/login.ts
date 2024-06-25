@@ -35,6 +35,12 @@ const translation = {
   donthave: 'Don\'t have?',
   invalidInvitationCode: 'Invalid invitation code',
   accountAlreadyInited: 'Account already initialized',
+  forgotPassword: 'Forgot your password?',
+  forgotPasswordDesc: 'Please enter your email address to reset your password. We will send you an email with instructions on how to reset your password.',
+  sendResetLink: 'Send reset link',
+  checkEmailForResetLink: 'Please check your email for a link to reset your password. If it doesn\'t appear within a few minutes, make sure to check your spam folder.',
+  resetLinkSent: 'Reset link sent',
+  backToSignIn: 'Return to sign in',
   error: {
     emailEmpty: 'Email address is required',
     emailInValid: 'Please enter a valid email address',
