@@ -21,6 +21,7 @@ from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig
 from models.tools import ApiToolProvider
+from models.workflow import EnvironmentVariable
 from services.tag_service import TagService
 from services.workflow_service import WorkflowService
 
@@ -192,12 +193,16 @@ class AppService:
         if workflow:
             # init draft workflow
             workflow_service = WorkflowService()
+            # parse environment variables.
+            environment_variables_list = workflow.get('environment_variables') or []
+            environment_variables = [EnvironmentVariable(**obj) for obj in environment_variables_list]
             draft_workflow = workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=workflow.get('graph'),
                 features=workflow.get('features'),
                 unique_hash=None,
-                account=account
+                account=account,
+                environment_variables=environment_variables
             )
             workflow_service.publish_workflow(
                 app_model=app,
@@ -243,9 +248,12 @@ class AppService:
         if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
             workflow_service = WorkflowService()
             workflow = workflow_service.get_draft_workflow(app)
+            if not workflow:
+                raise ValueError("Draft workflow not found")
             export_data['workflow'] = {
                 "graph": workflow.graph_dict,
-                "features": workflow.features_dict
+                "features": workflow.features_dict,
+                "environment_variables": [var.export() for var in workflow.environment_variables if var.exportable]
             }
         else:
             app_model_config = app.app_model_config

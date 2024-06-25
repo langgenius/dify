@@ -19,6 +19,7 @@ from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.model import App, AppMode
+from models.workflow import EnvironmentVariable
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import WorkflowService
@@ -39,7 +40,7 @@ class DraftWorkflowApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        
+
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model=app_model)
@@ -62,13 +63,15 @@ class DraftWorkflowApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
         
-        content_type = request.headers.get('Content-Type')
+        content_type = request.headers.get('Content-Type', '')
 
         if 'application/json' in content_type:
             parser = reqparse.RequestParser()
             parser.add_argument('graph', type=dict, required=True, nullable=False, location='json')
             parser.add_argument('features', type=dict, required=True, nullable=False, location='json')
             parser.add_argument('hash', type=str, required=False, location='json')
+            # TODO: set this to required=True after frontend is updated
+            parser.add_argument('environment_variables', type=list, required=False, location='json')
             args = parser.parse_args()
         elif 'text/plain' in content_type:
             try:
@@ -82,7 +85,8 @@ class DraftWorkflowApi(Resource):
                 args = {
                     'graph': data.get('graph'),
                     'features': data.get('features'),
-                    'hash': data.get('hash')
+                    'hash': data.get('hash'),
+                    'environment_variables': data.get('environment_variables')
                 }
             except json.JSONDecodeError:
                 return {'message': 'Invalid JSON data'}, 400
@@ -92,12 +96,15 @@ class DraftWorkflowApi(Resource):
         workflow_service = WorkflowService()
 
         try:
+            environment_variables_list = args.get('environment_variables') or []
+            environment_variables = [EnvironmentVariable(**obj) for obj in environment_variables_list]
             workflow = workflow_service.sync_draft_workflow(
                 app_model=app_model,
-                graph=args.get('graph'),
-                features=args.get('features'),
+                graph=args['graph'],
+                features=args['features'],
                 unique_hash=args.get('hash'),
-                account=current_user
+                account=current_user,
+                environment_variables=environment_variables,
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()

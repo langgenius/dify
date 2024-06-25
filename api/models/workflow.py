@@ -1,6 +1,9 @@
 import json
+from collections.abc import Sequence
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Optional, Union
+
+from pydantic import BaseModel
 
 from extensions.ext_database import db
 from libs import helper
@@ -62,6 +65,30 @@ class WorkflowType(Enum):
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
 
 
+class EnvironmentType(str, Enum):
+    STRING = 'string'
+    NUMBER = 'number'
+    SECRET = 'secret'
+
+class EnvironmentVariable(BaseModel):
+    name: str
+    value: Any
+    value_type: EnvironmentType
+    exportable: bool
+
+    def export(self):
+        if not self.exportable:
+            raise ValueError(f'environment variable {self.name} is not exportable')
+        if self.value_type == EnvironmentType.SECRET:
+            cp =  self.model_copy()
+            cp.value = None
+            return cp.model_dump(mode='json')
+        return self.model_dump(mode='json')
+
+class DBEnvironmentVariable(BaseModel):
+    data: Sequence[EnvironmentVariable]
+
+
 class Workflow(db.Model):
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
@@ -112,6 +139,19 @@ class Workflow(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_by = db.Column(StringUUID)
     updated_at = db.Column(db.DateTime)
+    # TODO: update this field to sqlalchemy column after frontend update.
+    # JSON example:
+    # {
+    #   "data": [
+    #     { 
+    #         "name": "ENV_VAR_NAME", 
+    #         "value": "ENV_VAR_VALUE",
+    #         "value_type": "string",
+    #         "exportable": true
+    #     }, 
+    #   ]
+    # }
+    _environment_variables = '{"data": [{"name": "TEST_ENV_NAME", "value": "TEST_ENV_VALUE", "value_type": "string", "exportable": true}, {"name": "TEST_ENV_NAME_2", "value": "TEST_ENV_VALUE_2", "value_type": "string", "exportable": true}]}'
 
     @property
     def created_by_account(self):
@@ -176,6 +216,15 @@ class Workflow(db.Model):
         return db.session.query(WorkflowToolProvider).filter(
             WorkflowToolProvider.app_id == self.app_id
         ).first() is not None
+
+    @property
+    def environment_variables(self) -> Sequence[EnvironmentVariable]:
+        return DBEnvironmentVariable.model_validate_json(self._environment_variables).data
+
+    @environment_variables.setter
+    def environment_variables(self, value: Sequence[EnvironmentVariable]):
+        self._environment_variables = DBEnvironmentVariable(data=value).model_dump_json()
+
 
 class WorkflowRunTriggeredFrom(Enum):
     """

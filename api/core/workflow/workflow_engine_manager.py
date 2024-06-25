@@ -123,7 +123,8 @@ class WorkflowEngineManager:
         if not variable_pool:
             variable_pool = VariablePool(
                 system_variables=system_inputs,
-                user_inputs=user_inputs
+                user_inputs=user_inputs,
+                environment_variables=workflow.environment_variables,
             )
 
         workflow_call_max_depth = current_app.config.get("WORKFLOW_CALL_MAX_DEPTH")
@@ -447,7 +448,8 @@ class WorkflowEngineManager:
         # init variable pool
         variable_pool = VariablePool(
             system_variables={},
-            user_inputs={}
+            user_inputs={},
+            environment_variables=workflow.environment_variables,
         )
 
         # variable selector to variable mapping
@@ -940,12 +942,14 @@ class WorkflowEngineManager:
 
         return new_value
 
-    def _mapping_user_inputs_to_variable_pool(self, 
-                                              variable_mapping: dict,
-                                              user_inputs: dict,
-                                              variable_pool: VariablePool,
-                                              tenant_id: str,
-                                              node_instance: BaseNode):
+    def _mapping_user_inputs_to_variable_pool(
+        self, 
+        variable_mapping: dict,
+        user_inputs: dict,
+        variable_pool: VariablePool,
+        tenant_id: str,
+        node_instance: BaseNode
+    ):
         for variable_key, variable_selector in variable_mapping.items():
             if variable_key not in user_inputs:
                 raise ValueError(f'Variable key {variable_key} not found in user inputs.')

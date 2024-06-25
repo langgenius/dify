@@ -1,8 +1,10 @@
+from collections.abc import Sequence
 from enum import Enum
 from typing import Any, Optional, Union
 
 from core.file.file_obj import FileVar
 from core.workflow.entities.node_entities import SystemVariable
+from models.workflow import EnvironmentVariable
 
 VariableValue = Union[str, int, float, dict, list, FileVar]
 
@@ -21,10 +23,17 @@ class ValueType(Enum):
     FILE = "file"
 
 
+ENVIRONMENT_VARIABLE_NODE_ID = 'env'
+
 class VariablePool:
 
-    def __init__(self, system_variables: dict[SystemVariable, Any],
-                 user_inputs: dict) -> None:
+    def __init__(
+        self,
+        system_variables: dict[SystemVariable, Any],
+        user_inputs: dict,
+        # TODO: remove Optional
+        environment_variables: Optional[Sequence[EnvironmentVariable]] = None,
+    ) -> None:
         # system variables
         # for example:
         # {
@@ -36,6 +45,9 @@ class VariablePool:
         self.system_variables = system_variables
         for system_variable, value in system_variables.items():
             self.append_variable('sys', [system_variable.value], value)
+        self.environment_variables = environment_variables or []
+        for var in self.environment_variables:
+            self.append_variable(ENVIRONMENT_VARIABLE_NODE_ID, [var.name], var.value)
 
     def append_variable(self, node_id: str, variable_key_list: list[str], value: VariableValue) -> None:
         """
