@@ -150,9 +150,9 @@ class OpsTraceManager:
     @classmethod
     def get_ops_trace_instance(
         cls,
-        app_id: Union[UUID, str] = None,
-        message_id: str = None,
-        conversation_id: str = None
+        app_id: Optional[Union[UUID, str]] = None,
+        message_id: Optional[str] = None,
+        conversation_id: Optional[str] = None
     ):
         """
         Get ops trace through model config
@@ -161,20 +161,23 @@ class OpsTraceManager:
         :param conversation_id: conversation_id
         :return:
         """
-        if conversation_id:
+        if conversation_id is not None:
             conversation_data: Conversation = db.session.query(Conversation).filter(
                 Conversation.id == conversation_id
             ).first()
-            app_id = conversation_data.app_id
+            if conversation_data:
+                app_id = conversation_data.app_id
 
-        if message_id:
+        if message_id is not None:
             record: Message = db.session.query(Message).filter(Message.id == message_id).first()
             app_id = record.app_id
 
         if isinstance(app_id, UUID):
             app_id = str(app_id)
 
-        tracing_instance = None
+        if app_id is None:
+            return None
+
         app: App = db.session.query(App).filter(
             App.id == app_id
         ).first()
