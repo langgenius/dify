@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Optional, Union
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -20,7 +21,6 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.workflow_service import WorkflowService
-import re
 
 
 class MessageService:
