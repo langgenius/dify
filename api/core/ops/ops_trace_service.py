@@ -295,9 +295,9 @@ class OpsTraceService:
         # decrypt_token
         decrypt_trace_config = cls.get_decrypted_tracing_config(app_id, tracing_provider)
         if app_ops_trace_config.get('enabled'):
-            config_class = provider_config_map[tracing_provider]['config_class']
-            tracing_instance = config_class(**decrypt_trace_config)
-
+            trace_instance, config_class = provider_config_map[tracing_provider]['trace_instance'], \
+                provider_config_map[tracing_provider]['config_class']
+            tracing_instance = trace_instance(config_class(**decrypt_trace_config))
             return tracing_instance
 
         return None

@@ -4,7 +4,7 @@ import queue
 import threading
 from datetime import timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 from flask import Flask, current_app
 
@@ -40,10 +40,10 @@ class TraceTask:
     def __init__(
         self,
         trace_type: Any,
-        message_id: str = None,
-        workflow_run: WorkflowRun = None,
-        conversation_id: str = None,
-        timer: Any = None,
+        message_id: Optional[str] = None,
+        workflow_run: Optional[WorkflowRun] = None,
+        conversation_id: Optional[str] = None,
+        timer: Optional[Any] = None,
         **kwargs
     ):
         self.trace_type = trace_type
