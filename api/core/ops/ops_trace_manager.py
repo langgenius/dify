@@ -395,9 +395,12 @@ class TraceTask:
 
         # get message file data
         message_file_data = db.session.query(MessageFile).filter_by(message_id=message_id).first()
-        file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
-        file_list = inputs[0].get("files", [])
-        file_list.append(file_url)
+        file_list = []
+        if message_file_data.url is not None:
+            file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
+            file_list.append(file_url)
+        else:
+            file_list.append(str(message_file_data.upload_file_id))
 
         metadata = {
             "conversation_id": message_data.conversation_id,
@@ -422,7 +425,7 @@ class TraceTask:
             error=message_data.error if message_data.error else "",
             inputs=inputs,
             outputs=message_data.answer,
-            file_list=message_data.message[0].get("files", []),
+            file_list=file_list,
             start_time=created_at,
             end_time=created_at + timedelta(seconds=message_data.provider_response_latency),
             metadata=metadata,

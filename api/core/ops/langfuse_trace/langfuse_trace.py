@@ -28,7 +28,6 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
 )
 from core.ops.utils import filter_none_values
 from extensions.ext_database import db
-from models.model import MessageFile
 from models.workflow import WorkflowNodeExecution
 
 logger = logging.getLogger(__name__)
@@ -136,9 +135,6 @@ class LangFuseDataTrace(BaseTraceInstance):
     ):
         # get message file data
         file_list = trace_info.file_list
-        message_file_data: MessageFile = trace_info.message_file_data
-        file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
-        file_list.append(file_url)
         metadata = trace_info.metadata
         message_data = trace_info.message_data
         message_id = message_data.id
@@ -161,7 +157,10 @@ class LangFuseDataTrace(BaseTraceInstance):
             metadata=metadata,
             session_id=message_data.conversation_id,
             tags=["message", str(trace_info.conversation_mode)],
-            version=None, release=None, public=None, )
+            version=None,
+            release=None,
+            public=None,
+        )
         self.add_trace(langfuse_trace_data=trace_data)
 
         # start add span
