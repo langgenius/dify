@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import React, { useState } from 'react'
 import { RiArrowDownSLine } from '@remixicon/react'
+import { useProviderContext } from '@/context/provider-context'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -18,6 +19,9 @@ export type RoleSelectorProps = {
 const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+  const { datasetOperatorEnabled } = useProviderContext()
+
+  const toHump = (name: string) => name.replace(/_(\w)/g, (all, letter) => letter.toUpperCase())
 
   return (
     <PortalToFollowElem
@@ -32,7 +36,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
           className='block'
         >
           <div className={cn('flex items-center px-3 py-2 rounded-lg bg-gray-100 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}>
-            <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('common.members.invitedAsRole', { role: t(`common.members.${value}`) })}</div>
+            <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('common.members.invitedAsRole', { role: t(`common.members.${toHump(value)}`) })}</div>
             <RiArrowDownSLine className='shrink-0 w-4 h-4 text-gray-700' />
           </div>
         </PortalToFollowElemTrigger>
@@ -70,19 +74,23 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
                 </div>
               </div>
             </div>
-            <Divider className='my-0' />
-            <div className='p-1'>
-              <div className='p-2 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => {
-                onChange('dataset_operator')
-                setOpen(false)
-              }}>
-                <div className='relative pl-5'>
-                  <div className='text-gray-700 text-sm leading-5'>{t('common.members.datasetOperator')}</div>
-                  <div className='text-gray-500 text-xs leading-[18px]'>{t('common.members.datasetOperatorTip')}</div>
-                  {value === 'dataset_operator' && <Check className='absolute top-0.5 left-0 w-4 h-4 text-primary-600'/>}
+            {datasetOperatorEnabled && (
+              <>
+                <Divider className='my-0' />
+                <div className='p-1'>
+                  <div className='p-2 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => {
+                    onChange('dataset_operator')
+                    setOpen(false)
+                  }}>
+                    <div className='relative pl-5'>
+                      <div className='text-gray-700 text-sm leading-5'>{t('common.members.datasetOperator')}</div>
+                      <div className='text-gray-500 text-xs leading-[18px]'>{t('common.members.datasetOperatorTip')}</div>
+                      {value === 'dataset_operator' && <Check className='absolute top-0.5 left-0 w-4 h-4 text-primary-600'/>}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </PortalToFollowElemContent>
       </div>

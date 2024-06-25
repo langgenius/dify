@@ -65,7 +65,7 @@ export type TenantInfoResponse = {
 export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_login_at' | 'last_active_at' | 'created_at'> & {
   avatar: string
   status: 'pending' | 'active' | 'banned' | 'closed'
-  role: 'owner' | 'admin' | 'editor' | 'normal'
+  role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
 }
 
 export enum ProviderName {

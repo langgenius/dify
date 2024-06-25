@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import React, { useMemo, useState } from 'react'
-import { useDebounceFn, useMount } from 'ahooks'
+import { useDebounceFn } from 'ahooks'
 import { RiArrowDownSLine } from '@remixicon/react'
 import {
   PortalToFollowElem,
@@ -14,22 +14,21 @@ import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { Users01, UsersPlus } from '@/app/components/base/icons/src/vender/solid/users'
 import type { DatasetPermission } from '@/models/datasets'
 import { useAppContext } from '@/context/app-context'
-import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
 export type RoleSelectorProps = {
   disabled?: boolean
   permission?: DatasetPermission
   value: string[]
+  memberList: Member[]
   onChange: (permission?: DatasetPermission) => void
   onMemberSelect: (v: string[]) => void
 }
 
-const PermissionSelector = ({ disabled, permission, value, onChange, onMemberSelect }: RoleSelectorProps) => {
+const PermissionSelector = ({ disabled, permission, value, memberList, onChange, onMemberSelect }: RoleSelectorProps) => {
   const { t } = useTranslation()
   const { userProfile } = useAppContext()
   const [open, setOpen] = useState(false)
 
-  const [memberList, setMemberList] = useState<Member[]>([])
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
   const { run: handleSearch } = useDebounceFn(() => {
@@ -38,14 +37,6 @@ const PermissionSelector = ({ disabled, permission, value, onChange, onMemberSel
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
     handleSearch()
-  }
-
-  const getMembers = async () => {
-    const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
-    if (!accounts)
-      setMemberList([])
-    else
-      setMemberList(accounts)
   }
   const selectMember = (member: Member) => {
     if (value.includes(member.id))
@@ -64,12 +55,8 @@ const PermissionSelector = ({ disabled, permission, value, onChange, onMemberSel
     return userProfile.name.includes(searchKeywords) || userProfile.email.includes(searchKeywords)
   }, [searchKeywords, userProfile])
   const filteredMemberList = useMemo(() => {
-    return memberList.filter(member => (member.name.includes(searchKeywords) || member.email.includes(searchKeywords)) && member.id !== userProfile.id)
+    return memberList.filter(member => (member.name.includes(searchKeywords) || member.email.includes(searchKeywords)) && member.id !== userProfile.id && ['owner', 'admin', 'editor', 'dataset_operator'].includes(member.role))
   }, [memberList, searchKeywords, userProfile])
-
-  useMount(() => {
-    getMembers()
-  })
 
   return (
     <PortalToFollowElem
@@ -99,12 +86,12 @@ const PermissionSelector = ({ disabled, permission, value, onChange, onMemberSel
               {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-gray-700' />}
             </div>
           )}
-          {permission === 'selected_team_members' && (
+          {permission === 'partial_members' && (
             <div className={cn('flex items-center px-3 py-[6px] rounded-lg bg-gray-100 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}>
               <div className='mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#EEF4FF]'>
                 <Users01 className='w-3.5 h-3.5 text-[#444CE7]' />
               </div>
-              <div className='grow mr-2 text-gray-900 text-sm leading-5 truncate'>{selectedMembers}</div>
+              <div title={selectedMembers} className='grow mr-2 text-gray-900 text-sm leading-5 truncate'>{selectedMembers}</div>
               {!disabled && <RiArrowDownSLine className='shrink-0 w-4 h-4 text-gray-700' />}
             </div>
           )}
@@ -135,19 +122,19 @@ const PermissionSelector = ({ disabled, permission, value, onChange, onMemberSel
                 </div>
               </div>
               <div className='pl-3 pr-2 py-1 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => {
-                onChange('selected_team_members')
+                onChange('partial_members')
                 onMemberSelect([userProfile.id])
               }}>
                 <div className='flex items-center gap-2'>
-                  <div className={cn('mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#FFF6ED]', permission === 'selected_team_members' && '!bg-[#EEF4FF]')}>
-                    <UsersPlus className={cn('w-3.5 h-3.5 text-[#FB6514]', permission === 'selected_team_members' && '!text-[#444CE7]')} />
+                  <div className={cn('mr-2 flex items-center justify-center w-6 h-6 rounded-lg bg-[#FFF6ED]', permission === 'partial_members' && '!bg-[#EEF4FF]')}>
+                    <UsersPlus className={cn('w-3.5 h-3.5 text-[#FB6514]', permission === 'partial_members' && '!text-[#444CE7]')} />
                   </div>
                   <div className='grow mr-2 text-gray-900 text-sm leading-5'>{t('datasetSettings.form.permissionsInvitedMembers')}</div>
-                  {permission === 'selected_team_members' && <Check className='w-4 h-4 text-primary-600' />}
+                  {permission === 'partial_members' && <Check className='w-4 h-4 text-primary-600' />}
                 </div>
               </div>
             </div>
-            {permission === 'selected_team_members' && (
+            {permission === 'partial_members' && (
               <div className='max-h-[360px] border-t-[1px] border-gray-100 p-1 overflow-y-auto'>
                 <div className='sticky left-0 top-0 p-2 pb-1 bg-white'>
                   <SearchInput white value={keywords} onChange={handleKeywordsChange} />

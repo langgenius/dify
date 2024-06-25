@@ -1,11 +1,12 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import { Fragment } from 'react'
+import { Fragment, useMemo } from 'react'
 import { useContext } from 'use-context-selector'
 import { Menu, Transition } from '@headlessui/react'
 import cn from 'classnames'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import s from './index.module.css'
+import { useProviderContext } from '@/context/provider-context'
 import type { Member } from '@/models/common'
 import { deleteMemberOrCancelInvitation, updateMemberRole } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
@@ -33,13 +34,20 @@ const Operation = ({
   onOperate,
 }: IOperationProps) => {
   const { t } = useTranslation()
+  const { datasetOperatorEnabled } = useProviderContext()
   const RoleMap = {
     owner: t('common.members.owner'),
     admin: t('common.members.admin'),
     editor: t('common.members.editor'),
     normal: t('common.members.normal'),
-    datasetOperator: t('common.members.datasetOperator'),
+    dataset_operator: t('common.members.datasetOperator'),
   }
+  const roleList = useMemo(() => {
+    return [
+      ...['admin', 'editor', 'normal'],
+      ...(datasetOperatorEnabled ? ['dataset_operator'] : []),
+    ]
+  }, [datasetOperatorEnabled])
   const { notify } = useContext(ToastContext)
   const toHump = (name: string) => name.replace(/_(\w)/g, (all, letter) => letter.toUpperCase())
   const handleDeleteMemberOrCancelInvitation = async () => {
@@ -101,7 +109,7 @@ const Operation = ({
               >
                 <div className="px-1 py-1">
                   {
-                    ['admin', 'editor', 'normal', 'dataset_operator'].map(role => (
+                    roleList.map(role => (
                       <Menu.Item key={role}>
                         <div className={itemClassName} onClick={() => handleUpdateMemberRole(role)}>
                           {
