@@ -145,3 +145,4 @@
    ```
 
    The started celery app handles the async tasks, e.g. dataset importing and documents indexing.
+
