@@ -143,7 +143,8 @@ class WorkflowService:
             version=str(datetime.now(timezone.utc).replace(tzinfo=None)),
             graph=draft_workflow.graph,
             features=draft_workflow.features,
-            created_by=account.id
+            created_by=account.id,
+            environment_variables=draft_workflow.environment_variables
         )
 
         # commit db session changes
