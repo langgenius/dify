@@ -29,6 +29,7 @@ class JSONParseTool(BuiltinTool):
         except Exception:
             return self.create_text_message('Failed to extract JSON content')
 
+    # Extract data from JSON content
     def _extract(self, content: str, json_filter: str) -> str:
         try:
             input_data = json.loads(content)
@@ -39,7 +40,7 @@ class JSONParseTool(BuiltinTool):
                 result = result[0]
             
             if isinstance(result, (dict, list)):
-                return json.dumps(result)
+                return json.dumps(result, ensure_ascii=True)
             elif isinstance(result, (str, int, float, bool)) or result is None:
                 return str(result)
             else:

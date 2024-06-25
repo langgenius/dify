@@ -23,6 +23,7 @@ parameters:
       en_US: JSON content
       zh_Hans: JSON 内容
       pt_BR: JSON content
+    llm_description: JSON content to be processed
     form: llm
   - name: query
     type: string
@@ -35,6 +36,7 @@ parameters:
       en_US: Object to insert
       zh_Hans: 待插入的对象
       pt_BR: Object to insert
+    llm_description: JSONPath query to locate the element to insert
     form: llm
   - name: new_value
     type: string
@@ -47,6 +49,7 @@ parameters:
       en_US: New Value
       zh_Hans: 新值
       pt_BR: New Value
+    llm_description: New Value to insert
     form: llm
   # - name: insert_position
   #   type: string
@@ -59,7 +62,7 @@ parameters:
   #     en_US: Insert Position，optional, default to the end of the array
   #     zh_Hans: 插入位置，向数组中插入时可选，默认为末尾
   #     pt_BR: Insert Position，optional, default to the end of the array
-    form: llm
+  #   form: llm
   - name: create_path
     type: select
     required: true

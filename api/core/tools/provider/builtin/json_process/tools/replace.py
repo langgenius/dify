@@ -60,7 +60,7 @@ class JSONReplaceTool(BuiltinTool):
                 new_value = match.value.replace(replace_pattern, replace_value)
                 match.full_path.update(input_data, new_value)
             
-            return json.dumps(input_data)
+            return json.dumps(input_data, ensure_ascii=True)
         except Exception as e:
             return str(e)
         
@@ -84,7 +84,7 @@ class JSONReplaceTool(BuiltinTool):
                         if isinstance(item, dict) and old_key in item:
                             value = item.pop(old_key)
                             item[replace_value] = value
-            return json.dumps(input_data)
+            return json.dumps(input_data, ensure_ascii=True)
         except Exception as e:
             return str(e)
         
@@ -99,6 +99,6 @@ class JSONReplaceTool(BuiltinTool):
             for match in matches:
                 match.full_path.update(input_data, replace_value)
                 
-            return json.dumps(input_data)
+            return json.dumps(input_data, ensure_ascii=True)
         except Exception as e:
             return str(e)

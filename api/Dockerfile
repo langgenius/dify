@@ -23,9 +23,6 @@ RUN apt-get update \
 COPY pyproject.toml poetry.lock ./
 RUN poetry install --sync --no-cache --no-root
 
-# install jsonpath-ng==1.6.1
-RUN poetry add jsonpath-ng==1.6.1
-
 # production stage
 FROM base AS production
 

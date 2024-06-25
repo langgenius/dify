@@ -23,6 +23,7 @@ parameters:
       en_US: JSON content to be processed
       zh_Hans: 待处理的 JSON 内容
       pt_BR: JSON content to be processed
+    llm_description: JSON content to be processed
     form: llm
   - name: query
     type: string
@@ -35,4 +36,5 @@ parameters:
       en_US: JSONPath query to locate the element to delete
       zh_Hans: 用于定位要删除元素的 JSONPath 查询
       pt_BR: JSONPath query to locate the element to delete
+    llm_description: JSONPath query to locate the element to delete
     form: llm

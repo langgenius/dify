@@ -53,12 +53,12 @@ class JSONParseTool(BuiltinTool):
             matches = expr.find(input_data)
             
             if not matches and create_path:
-                # 创建新路径
+                # create new path
                 path_parts = query.strip('$').strip('.').split('.')
                 current = input_data
                 for i, part in enumerate(path_parts):
                     if '[' in part and ']' in part:
-                        # 处理数组索引
+                        # process array index
                         array_name, index = part.split('[')
                         index = int(index.rstrip(']'))
                         if array_name not in current:
@@ -75,21 +75,21 @@ class JSONParseTool(BuiltinTool):
             else:
                 for match in matches:
                     if isinstance(match.value, dict):
-                        # 向对象插入键值对
+                        # insert new value into dict
                         if isinstance(new_value, dict):
                             match.value.update(new_value)
                         else:
                             raise ValueError("Cannot insert non-dict value into dict")
                     elif isinstance(match.value, list):
-                        # 向数组插入元素
+                        # insert new value into list
                         if index is None:
                             match.value.append(new_value)
                         else:
                             match.value.insert(int(index), new_value)
                     else:
-                        # 替换原有值
+                        # replace old value with new value
                         match.full_path.update(input_data, new_value)
             
-            return json.dumps(input_data)
+            return json.dumps(input_data, ensure_ascii=True)
         except Exception as e:
             return str(e)

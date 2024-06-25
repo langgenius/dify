@@ -23,6 +23,7 @@ parameters:
       en_US: JSON data
       zh_Hans: JSON数据
       pt_BR: JSON数据
+    llm_description: JSON data to be processed
     form: llm
   - name: json_filter
     type: string
@@ -32,7 +33,8 @@ parameters:
       zh_Hans: JSON解析对象
       pt_BR: JSON filter
     human_description:
-      en_US: The JSON filter to extract
-      zh_Hans: 待解析出的 JSON 字段
-      pt_BR: The JSON filter to extract
+      en_US: JSON fields to be parsed
+      zh_Hans: 需要解析的 JSON 字段
+      pt_BR: JSON fields to be parsed
+    llm_description: JSON fields to be parsed
     form: llm

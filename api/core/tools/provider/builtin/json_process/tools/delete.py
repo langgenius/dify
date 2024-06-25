@@ -37,7 +37,7 @@ class JSONDeleteTool(BuiltinTool):
             matches = expr.find(input_data)
             
             if not matches:
-                return json.dumps(input_data)  # No changes if no matches found
+                return json.dumps(input_data, ensure_ascii=True)  # No changes if no matches found
             
             for match in matches:
                 if isinstance(match.context.value, dict):
@@ -52,6 +52,6 @@ class JSONDeleteTool(BuiltinTool):
                     if parent:
                         del parent.value[match.path.fields[-1]]
             
-            return json.dumps(input_data)
+            return json.dumps(input_data, ensure_ascii=True)
         except Exception as e:
             raise Exception(f"Delete operation failed: {str(e)}")

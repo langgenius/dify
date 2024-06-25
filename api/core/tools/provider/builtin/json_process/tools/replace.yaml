@@ -23,6 +23,7 @@ parameters:
       en_US: JSON content
       zh_Hans: JSON 内容
       pt_BR: JSON content
+    llm_description: JSON content to be processed
     form: llm
   - name: query
     type: string
@@ -35,6 +36,7 @@ parameters:
       en_US: Query
       zh_Hans: 查询
       pt_BR: Query
+    llm_description: JSONPath query to locate the element to replace
     form: llm
   - name: replace_pattern
     type: string
@@ -47,6 +49,7 @@ parameters:
       en_US: String to be replaced
       zh_Hans: 待替换字符串
       pt_BR: String to be replaced
+    llm_description: String to be replaced
     form: llm
   - name: replace_value
     type: string
@@ -59,6 +62,7 @@ parameters:
       en_US: New Value
       zh_Hans: New Value
       pt_BR: New Value
+    llm_description: New Value to replace
     form: llm
   - name: replace_model
     type: select
