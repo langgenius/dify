@@ -84,7 +84,7 @@ def create_flask_app_with_configs() -> Flask:
     dify_app.config.from_mapping(DifyConfig().model_dump())
 
     # populate configs into system environment variables
-    for key, value in app.config.items():
+    for key, value in dify_app.config.items():
         if isinstance(value, str):
             os.environ[key] = value
         elif isinstance(value, (int, float, bool)):
