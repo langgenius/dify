@@ -5,7 +5,7 @@ from controllers.console.app.error import TracingConfigCheckError, TracingConfig
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from libs.login import login_required
-from services.ops_service import OpsTraceManager
+from services.ops_service import OpsService
 
 
 class TraceAppConfigApi(Resource):
@@ -22,7 +22,7 @@ class TraceAppConfigApi(Resource):
         args = parser.parse_args()
 
         try:
-            trace_config = OpsTraceManager.get_tracing_app_config(
+            trace_config = OpsService.get_tracing_app_config(
                 app_id=app_id, tracing_provider=args['tracing_provider']
                 )
             if not trace_config:
@@ -42,7 +42,7 @@ class TraceAppConfigApi(Resource):
         args = parser.parse_args()
 
         try:
-            result = OpsTraceManager.create_tracing_app_config(
+            result = OpsService.create_tracing_app_config(
                 app_id=app_id,
                 tracing_provider=args['tracing_provider'],
                 tracing_config=args['tracing_config']
@@ -66,7 +66,7 @@ class TraceAppConfigApi(Resource):
         args = parser.parse_args()
 
         try:
-            result = OpsTraceManager.update_tracing_app_config(
+            result = OpsService.update_tracing_app_config(
                 app_id=app_id,
                 tracing_provider=args['tracing_provider'],
                 tracing_config=args['tracing_config']
@@ -87,7 +87,7 @@ class TraceAppConfigApi(Resource):
         args = parser.parse_args()
 
         try:
-            result = OpsTraceManager.delete_tracing_app_config(
+            result = OpsService.delete_tracing_app_config(
                 app_id=app_id,
                 tracing_provider=args['tracing_provider']
             )

@@ -63,7 +63,10 @@ class SuggestedQuestionTraceInfo(BaseTraceInfo):
     level: str
     status_message: Optional[str] = None
 
+    class Config:
+        protected_namespaces = ()
 
+        
 class DatasetRetrievalTraceInfo(BaseTraceInfo):
     documents: Any
 

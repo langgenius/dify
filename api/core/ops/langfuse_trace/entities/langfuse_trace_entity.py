@@ -266,8 +266,10 @@ class LangfuseGeneration(BaseModel):
         description="The version of the generation type. Used to understand how changes to the span type affect "
                     "metrics. Useful in debugging.",
     )
-
     @field_validator("input", "output")
     def ensure_dict(cls, v, info: ValidationInfo):
         field_name = info.field_name
         return validate_input_output(v, field_name)
+
+    class Config:
+        protected_namespaces = ()
