@@ -155,7 +155,7 @@ class Workflow(db.Model):
     #     }, 
     #   ]
     # }
-    _environment_variables = '{"data": [{"name": "TEST_ENV_NAME", "value": "TEST_ENV_VALUE", "value_type": "string", "exportable": true}, {"name": "TEST_ENV_NAME_2", "value": "TEST_ENV_VALUE_2", "value_type": "string", "exportable": true}]}'
+    _environment_variables = '{"data": [{"name": "TEST_ENV_NAME", "value": "TEST_ENV_VALUE", "value_type": "string", "exportable": true}, {"name": "TEST_ENV_NAME_2", "value":2, "value_type": "number", "exportable": true}]}'
 
     @property
     def created_by_account(self):
