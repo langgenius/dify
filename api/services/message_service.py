@@ -271,7 +271,7 @@ class MessageService:
             )
 
         # get tracing instance
-        trace_manager = TraceQueueManager(message_id=message_id)
+        trace_manager = TraceQueueManager(app_id=app_model.id)
         trace_manager.add_trace_task(
             TraceTask(
                 TraceTaskName.SUGGESTED_QUESTION_TRACE,
