@@ -70,43 +70,6 @@ class ChatAudioApi(InstalledAppResource):
 
 class ChatTextApi(InstalledAppResource):
     def post(self, installed_app):
-        app_model = installed_app.app
-
-        try:
-            response = AudioService.transcript_tts(
-                app_model=app_model,
-                text=request.form['text'],
-                voice=request.form['voice'] if request.form.get('voice') else app_model.app_model_config.text_to_speech_dict.get('voice'),
-                streaming=False
-            )
-            return {'data': response.data.decode('latin1')}
-        except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logging.exception("internal server error.")
-            raise InternalServerError()
-
-class ChatTextApiWithMessageId(InstalledAppResource):
-    def post(self, installed_app):
         from flask_restful import reqparse
 
         app_model = installed_app.app
@@ -119,7 +82,8 @@ class ChatTextApiWithMessageId(InstalledAppResource):
 
             message_id = args.get('message_id')
             streaming = args.get('streaming') if args.get('streaming') else True
-            voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get('voice')
+            voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get(
+                'voice')
             response = AudioService.transcript_tts(
                 app_model=app_model,
                 message_id=message_id,
@@ -155,5 +119,5 @@ class ChatTextApiWithMessageId(InstalledAppResource):
 
 api.add_resource(ChatAudioApi, '/installed-apps/<uuid:installed_app_id>/audio-to-text', endpoint='installed_app_audio')
 api.add_resource(ChatTextApi, '/installed-apps/<uuid:installed_app_id>/text-to-audio', endpoint='installed_app_text')
-api.add_resource(ChatTextApiWithMessageId, '/installed-apps/<uuid:installed_app_id>/text-to-audio/message-id',
-                 endpoint='installed_app_text_with_message_id')
+# api.add_resource(ChatTextApiWithMessageId, '/installed-apps/<uuid:installed_app_id>/text-to-audio/message-id',
+#                  endpoint='installed_app_text_with_message_id')

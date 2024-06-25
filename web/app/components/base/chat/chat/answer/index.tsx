@@ -10,14 +10,14 @@ import type {
   ChatItem,
 } from '../../types'
 import { useChatContext } from '../context'
+import type { AudioPlayer } from '../../../audio-btn/audio'
+import { getAudioPlayer } from '../../../audio-btn/audio'
 import Operation from './operation'
 import AgentContent from './agent-content'
 import BasicContent from './basic-content'
 import SuggestedQuestions from './suggested-questions'
 import More from './more'
 import WorkflowProcess from './workflow-process'
-import type AudioPlayer from './audio'
-import { getAudioPlayer } from './audio'
 import { AnswerTriangle } from '@/app/components/base/icons/src/vender/solid/general'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
@@ -97,19 +97,22 @@ const Answer: FC<AnswerProps> = ({
       setContentWidth(contentRef.current?.clientWidth)
   }
 
+  const audio_finished_call = () => {
+    console.log('audio finished')
+  }
   const autoPlayAudioForMessage = async (messageId: string) => {
     let url = ''
     let isPublic = false
 
     if (params.token) {
-      url = '/text-to-audio/message-id'
+      url = '/text-to-audio'
       isPublic = true
     }
     else if (params.appId) {
       if (pathname.search('explore/installed') > -1)
-        url = `/installed-apps/${params.appId}/text-to-audio/message-id`
+        url = `/installed-apps/${params.appId}/text-to-audio`
       else
-        url = `/apps/${params.appId}/text-to-audio/message-id`
+        url = `/apps/${params.appId}/text-to-audio`
     }
 
     try {
@@ -121,7 +124,7 @@ const Answer: FC<AnswerProps> = ({
 
       const reader = audioResponse.body.getReader() // 获取reader
 
-      const audioPlayer = getAudioPlayer()
+      const audioPlayer = getAudioPlayer(messageId, audio_finished_call, true)
 
       audioPlayerRef.current = audioPlayer
 
@@ -163,9 +166,9 @@ const Answer: FC<AnswerProps> = ({
   }, [responding])
 
   useEffect(() => {
-    if (messageIDFromDB && autoPlayAudio && responding)
+    if (messageIDFromDB && autoPlayAudio)
       autoPlayAudioForMessage(messageIDFromDB)
-  }, [messageIDFromDB, autoPlayAudio, responding])
+  }, [messageIDFromDB, autoPlayAudio])
 
   return (
     <div className='flex mb-2 last:mb-0'>

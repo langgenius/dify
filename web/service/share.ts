@@ -214,7 +214,7 @@ export const textToAudio = (url: string, isPublicAPI: boolean, body: FormData) =
   return (getAction('post', !isPublicAPI))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ data: string }>
 }
 
-export const textToAudioStream = (url: string, isPublicAPI: boolean, body: { streaming: boolean; voice?: string; message_id: string }) => {
+export const textToAudioStream = (url: string, isPublicAPI: boolean, body: { streaming: boolean; voice?: string; message_id?: string; text?: string }) => {
   return (getAction('post', !isPublicAPI))(url, { body }, { needAllResponseContent: true })
 }
 

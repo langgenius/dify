@@ -36,14 +36,12 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
 
         if not voice or voice not in [d['value'] for d in self.get_tts_model_voices(model=model, credentials=credentials)]:
             voice = self._get_model_default_voice(model, credentials)
-        if streaming:
-            return self._tts_invoke_streaming(model=model,
-                                              credentials=credentials,
-                                              content_text=content_text,
-                                              tenant_id=tenant_id,
-                                              voice=voice)
-        else:
-            return self._tts_invoke(model=model, credentials=credentials, content_text=content_text, voice=voice)
+        # if streaming:
+        return self._tts_invoke_streaming(model=model,
+                                          credentials=credentials,
+                                          content_text=content_text,
+                                          tenant_id=tenant_id,
+                                          voice=voice)
 
     def validate_credentials(self, model: str, credentials: dict, user: Optional[str] = None) -> None:
         """

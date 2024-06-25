@@ -115,13 +115,13 @@ const Operation: FC<OperationProps> = ({
             {showPromptLog && (
               <Log logItem={item} />
             )}
-            {(config?.text_to_speech?.enabled && config.text_to_speech?.autoPlay !== 'enabled') && (
+            {(config?.text_to_speech?.enabled) && (
               <>
                 <div className='mx-1 w-[1px] h-[14px] bg-gray-200'/>
                 <AudioBtn
+                  id={id}
                   value={content}
                   noCache={false}
-                  voice={config?.text_to_speech?.voice}
                   className='hidden group-hover:block'
                 />
               </>

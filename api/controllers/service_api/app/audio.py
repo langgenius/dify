@@ -72,50 +72,6 @@ class AudioApi(Resource):
 class TextApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     def post(self, app_model: App, end_user: EndUser):
-        parser = reqparse.RequestParser()
-        parser.add_argument('text', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('voice', type=str, location='json')
-        parser.add_argument('streaming', type=bool, required=False, nullable=False, location='json')
-        args = parser.parse_args()
-
-        try:
-            response = AudioService.transcript_tts(
-                app_model=app_model,
-                text=args['text'],
-                end_user=end_user,
-                voice=args.get('voice'),
-                streaming=args['streaming']
-            )
-
-            return response
-        except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logging.exception("internal server error.")
-            raise InternalServerError()
-
-class TextApiWithMessageId(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    def post(self, app_model: App, end_user: EndUser):
         try:
             parser = reqparse.RequestParser()
             parser.add_argument('message_id', type=str, required=True, location='json')
@@ -125,7 +81,8 @@ class TextApiWithMessageId(Resource):
 
             message_id = args.get('message_id')
             streaming = args.get('streaming') if args.get('streaming') else True
-            voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get('voice')
+            voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get(
+                'voice')
             response = AudioService.transcript_tts(
                 app_model=app_model,
                 message_id=message_id,
@@ -163,4 +120,3 @@ class TextApiWithMessageId(Resource):
 
 api.add_resource(AudioApi, '/audio-to-text')
 api.add_resource(TextApi, '/text-to-audio')
-api.add_resource(TextApiWithMessageId, '/text-to-audio/message-id')

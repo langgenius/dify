@@ -82,10 +82,12 @@ class AudioService:
         from extensions.ext_database import db
         from extensions.ext_redis import redis_client
 
-        look = redis_client.setnx(f"{REDIS_MESSAGE_PREFIX}lock:{message_id}", '1')
-        if not look:
-            return None
+        lock_key = f"{REDIS_MESSAGE_PREFIX}lock:{message_id}"
+
+        look = redis_client.setnx(lock_key, '1')
         redis_client.expire(f"{REDIS_MESSAGE_PREFIX}{message_id}", 1800)
+        tts_max_trunk_size = 5
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 
         def invoke_tts(text: str, voice: Optional[str] = None):
             with app.app_context():
@@ -147,12 +149,13 @@ class AudioService:
                 Message.id == message_id
             ).first()
             if message.answer == '' and message.status == 'normal':
+                if not look:
+                    return None
+
                 def generate():
                     future_queue = queue.Queue()
-                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
 
                     def process_redis():
-
                         with app.app_context():
                             text_buff = []
                             times_count = 0
@@ -179,7 +182,7 @@ class AudioService:
                                 tt = "".join(text_buff)
                                 sens, temp_str = extract_sentence(tt)
 
-                                if len(sens) > 0 and len(sens) > min(7, times_count):
+                                if len(sens) > 0 and len(sens) > min(tts_max_trunk_size, times_count):
                                     times_count += 1
                                     text_buff.clear()
                                     text_buff.append(temp_str)
@@ -192,31 +195,57 @@ class AudioService:
                                 futures_result = executor.submit(invoke_tts, voice_text, voice)
                                 future_queue.put(futures_result)
                             future_queue.put(None)
-                            redis_client.delete(f"{REDIS_MESSAGE_PREFIX}{message_id}")
 
                     threading.Thread(target=process_redis).start()
                     while True:
                         try:
-                            futures = future_queue.get(timeout=160)
+                            futures = future_queue.get(timeout=5)
                             if futures is None:
-                                executor.shutdown(wait=False)
                                 break
                             yield from futures.result()
-                        except Exception:
-                            executor.shutdown(wait=False)
+                        except Exception as e:
+                            logger.error(e)
                             break
+                    redis_client.delete(lock_key)
+                    executor.shutdown(wait=False)
 
                 return Response(stream_with_context(generate()))
             else:
-                response = invoke_tts(message.answer, voice)
+                sens, tmp_str = extract_sentence(message.answer)
+                if tmp_str:
+                    sens.append(tmp_str)
+                if len(sens) > tts_max_trunk_size:
+                    ft = [executor.submit(invoke_tts, "".join(sens[i:i + tts_max_trunk_size]), voice=voice) for i in
+                          range(0, len(sens), tts_max_trunk_size)]
+
+                    def generate(futures):
+                        for index, future in enumerate(futures):
+                            if index == len(futures) - 1:
+                                tts_result = future.result()
+                                executor.shutdown(wait=False)
+                                redis_client.delete(lock_key)
+                                yield from tts_result
+                            else:
+                                yield from future.result()
+
+
+                    return Response(stream_with_context(generate(ft)))
+                else:
+                    response = invoke_tts(message.answer, voice)
+                redis_client.delete(lock_key)
                 if isinstance(response, Generator):
                     return Response(stream_with_context(response))
                 return response
         else:
             try:
-                return invoke_tts(text, voice)
+                def generator(t: str, v: str):
+                    yield from invoke_tts(t, v)
+
+                return Response(stream_with_context(generator(text, voice)))
             except Exception as e:
                 raise e
+            finally:
+                redis_client.delete(lock_key)
 
     @classmethod
     def transcript_tts_voices(cls, tenant_id: str, language: str):

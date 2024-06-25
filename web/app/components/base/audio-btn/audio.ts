@@ -1,3 +1,4 @@
+import { uuid4 } from '@sentry/utils'
 import Toast from '@/app/components/base/toast'
 
 export function byteArrayToArrayBuffer(byteArray: Uint8Array): ArrayBuffer {
@@ -16,16 +17,23 @@ declare global {
   }
 }
 
-class AudioPlayer {
+export class AudioPlayer {
   mediaSource: MediaSource | null
   audio: HTMLAudioElement
   audioContext: AudioContext
   sourceBuffer?: SourceBuffer
   cacheBuffers: ArrayBuffer[] = []
   pauseTimer: number | null = null
+  msgId: string
+  finishCallback: (() => void) | undefined
 
-  constructor() {
+  constructor(msgId: string | undefined, finishCallback: (() => void) | undefined) {
     this.audioContext = new AudioContext()
+    this.finishCallback = finishCallback
+    if (!msgId)
+      this.msgId = uuid4().toString()
+    else
+      this.msgId = msgId
 
     // Compatible with iphone ios17 ManagedMediaSource
     const MediaSource = window.MediaSource || window.ManagedMediaSource
@@ -39,6 +47,12 @@ class AudioPlayer {
     this.mediaSource = MediaSource ? new MediaSource() : null
 
     this.audio = new Audio()
+    if (finishCallback) {
+      this.audio.addEventListener('ended', finishCallback, true)
+      this.audio.addEventListener('paused', finishCallback, true)
+      this.audio.addEventListener('loaded', finishCallback, true)
+    }
+
     this.audio.src = this.mediaSource ? URL.createObjectURL(this.mediaSource) : ''
 
     this.audioContextConnect()
@@ -62,7 +76,6 @@ class AudioPlayer {
           const cacheBuffer = this.cacheBuffers.shift()!
           this.sourceBuffer?.appendBuffer(cacheBuffer)
         }
-
         this.pauseAudio()
       })
     })
@@ -81,13 +94,26 @@ class AudioPlayer {
     setTimeout(() => {
       if (this.audio.paused) {
         try {
-          this.audio.play()
+          this.audioContext.resume().then(r => this.audio.play())
+          // else this.audio.play().finally(this.finishCallback)
         }
         catch (e) {
           this.playAudio()
         }
       }
     }, 200)
+  }
+
+  public finishReceiver() {
+    // this.mediaSource?.addEventListener('updateend', () => {
+    //   this.mediaSource?.endOfStream('decode')
+    // }, true)
+    try {
+      this.mediaSource?.endOfStream()
+    }
+    catch (e) {
+      console.error(e)
+    }
   }
 
   public receiveAudioData(unit8Array: Uint8Array) {
@@ -106,21 +132,25 @@ class AudioPlayer {
 
   public stop() {
     this.audio.pause()
-    this.cacheBuffers = []
-    if (this.sourceBuffer?.updating)
-      this.sourceBuffer?.abort?.()
-    else if (this.sourceBuffer && this.sourceBuffer?.buffered.length > 0)
-      this.sourceBuffer?.remove(0, this.sourceBuffer.buffered.end(0))
-
-    audioPlayer = null
   }
 }
 
-export function getAudioPlayer() {
-  if (audioPlayer)
+export function getAudioPlayer(msgId?: string | undefined, finishCallback?: () => void, forceNew?: boolean): AudioPlayer {
+  if (forceNew) {
+    audioPlayer = new AudioPlayer(msgId, finishCallback)
     return audioPlayer
-  else
-    audioPlayer = new AudioPlayer()
+  }
+  if (audioPlayer) {
+    if (audioPlayer.msgId !== msgId) {
+      audioPlayer.cacheBuffers = []
+      if (audioPlayer.sourceBuffer?.updating)
+        audioPlayer.sourceBuffer?.abort?.()
+      else if (audioPlayer.sourceBuffer && audioPlayer.sourceBuffer?.buffered.length > 0)
+        audioPlayer.sourceBuffer?.remove(0, audioPlayer.sourceBuffer.buffered.end(0))
+      audioPlayer = new AudioPlayer(msgId, finishCallback)
+    }
+  }
+  else { audioPlayer = new AudioPlayer(msgId, finishCallback) }
 
   return audioPlayer
 }

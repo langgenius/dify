@@ -69,43 +69,6 @@ class AudioApi(WebApiResource):
 
 class TextApi(WebApiResource):
     def post(self, app_model: App, end_user):
-        try:
-            response = AudioService.transcript_tts(
-                app_model=app_model,
-                text=request.form['text'],
-                end_user=end_user.external_user_id,
-                voice=request.form['voice'] if request.form.get('voice') else None,
-                streaming=False
-            )
-
-            return {'data': response.data.decode('latin1')}
-        except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
-        except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logging.exception(f"internal server error: {str(e)}")
-            raise InternalServerError()
-
-class TextApiWithMessageId(WebApiResource):
-    def post(self, app_model: App, end_user):
         from flask_restful import reqparse
         try:
             parser = reqparse.RequestParser()
@@ -116,7 +79,8 @@ class TextApiWithMessageId(WebApiResource):
 
             message_id = args.get('message_id')
             streaming = args.get('streaming') if args.get('streaming') else True
-            voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get('voice')
+            voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get(
+                'voice')
 
             response = AudioService.transcript_tts(
                 app_model=app_model,
@@ -152,6 +116,6 @@ class TextApiWithMessageId(WebApiResource):
             logging.exception(f"internal server error: {str(e)}")
             raise InternalServerError()
 
+
 api.add_resource(AudioApi, '/audio-to-text')
 api.add_resource(TextApi, '/text-to-audio')
-api.add_resource(TextApiWithMessageId, '/text-to-audio/message-id')

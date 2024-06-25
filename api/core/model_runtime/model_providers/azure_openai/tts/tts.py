@@ -38,13 +38,11 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
         audio_type = self._get_model_audio_type(model, credentials)
         if not voice or voice not in [d['value'] for d in self.get_tts_model_voices(model=model, credentials=credentials)]:
             voice = self._get_model_default_voice(model, credentials)
-        if streaming:
-            return self._tts_invoke_streaming(model=model,
-                                              credentials=credentials,
-                                              content_text=content_text,
-                                              voice=voice)
-        else:
-            return self._tts_invoke(model=model, credentials=credentials, content_text=content_text, voice=voice)
+
+        return self._tts_invoke_streaming(model=model,
+                                          credentials=credentials,
+                                          content_text=content_text,
+                                          voice=voice)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
