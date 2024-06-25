@@ -51,18 +51,6 @@ parameters:
       pt_BR: New Value
     llm_description: New Value to insert
     form: llm
-  # - name: insert_position
-  #   type: string
-  #   required: false
-  #   label:
-  #     en_US: Insert Position
-  #     zh_Hans: 插入位置
-  #     pt_BR: Insert Position
-  #   human_description:
-  #     en_US: Insert Position，optional, default to the end of the array
-  #     zh_Hans: 插入位置，向数组中插入时可选，默认为末尾
-  #     pt_BR: Insert Position，optional, default to the end of the array
-  #   form: llm
   - name: create_path
     type: select
     required: true
