@@ -139,6 +139,9 @@ class WorkflowService:
         if app_mode not in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
             raise ValueError("Only support import workflow in advanced-chat or workflow app.")
 
+        if app_data.get('mode') != app_model.mode:
+            raise ValueError(f"App mode {app_data.get('mode')} is not matched with current app mode {app_model.mode}")
+
         if not workflow:
             raise ValueError("Missing workflow in data argument "
                              "when app mode is advanced-chat or workflow")
