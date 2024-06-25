@@ -29,14 +29,14 @@ class GraphNode(BaseModel):
     target_edge_config: Optional[dict] = None
     """original target edge config"""
 
-    sub_graph: Optional["Graph"] = None
-    """sub graph for iteration or loop node"""
-
     def add_child(self, node_id: str) -> None:
         self.children_node_ids.append(node_id)
 
 
 class Graph(BaseModel):
+    graph: dict
+    """graph from workflow"""
+
     graph_nodes: dict[str, GraphNode] = {}
     """graph nodes"""
 
@@ -46,7 +46,6 @@ class Graph(BaseModel):
     def add_edge(self, edge_config: dict,
                  source_node_config: dict,
                  target_node_config: dict,
-                 source_node_sub_graph: Optional["Graph"] = None,
                  is_continue_callback: Optional[Callable] = None) -> None:
         """
         Add edge to the graph
@@ -54,7 +53,6 @@ class Graph(BaseModel):
         :param edge_config: edge config
         :param source_node_config: source node config
         :param target_node_config: target node config
-        :param source_node_sub_graph: sub graph for iteration or loop node
         :param is_continue_callback: condition callback
         """
         source_node_id = source_node_config.get('id')
@@ -71,7 +69,6 @@ class Graph(BaseModel):
                 node_config=source_node_config,
                 children_node_ids=[target_node_id],
                 target_edge_config=edge_config,
-                sub_graph=source_node_sub_graph
             )
 
             self.add_graph_node(source_graph_node)
@@ -79,7 +76,6 @@ class Graph(BaseModel):
             source_node = self.graph_nodes[source_node_id]
             source_node.add_child(target_node_id)
             source_node.target_edge_config = edge_config
-            source_node.sub_graph = source_node_sub_graph
 
         source_handle = None
         if edge_config.get('sourceHandle'):
