@@ -54,7 +54,7 @@ class SuggestedQuestionTraceInfo(BaseTraceInfo):
     total_tokens: int
     status: Optional[str] = None
     error: Optional[str] = None
-    from_account_id: str
+    from_account_id: Optional[str] = None
     agent_based: bool
     from_source: str
     model_provider: str
