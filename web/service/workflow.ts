@@ -56,5 +56,5 @@ export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}
 }
 
 export const updateWorkflowDraftFromDSL = (appId: string, data: string) => {
-  return post<FetchWorkflowDraftResponse>(`/console/api/apps/${appId}/workflows/draft/import`, { body: { data } })
+  return post<FetchWorkflowDraftResponse>(`apps/${appId}/workflows/draft/import`, { body: { data } })
 }
