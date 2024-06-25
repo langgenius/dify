@@ -357,13 +357,12 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       <div className='flex items-center justify-end'>
         <Button
           onClick={onCancel}
-          className='mr-2 text-sm font-medium'
+          className='mr-2'
         >
           {t('common.operation.cancel')}
         </Button>
         <Button
           variant='primary'
-          className='text-sm font-medium'
           onClick={handleSave}
           disabled={localeData.type === 'openai_moderation' && !openaiProviderConfiged}
         >

@@ -9,9 +9,9 @@ import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs
 import type { RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
-import CopyBtn from '@/app/components/app/chat/copy-btn'
-import SVGBtn from '@/app/components/app/chat/svg'
-import Flowchart from '@/app/components/app/chat/mermaid'
+import CopyBtn from '@/app/components/base/copy-btn'
+import SVGBtn from '@/app/components/base/svg'
+import Flowchart from '@/app/components/base/mermaid'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -40,9 +40,12 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
   return language.charAt(0).toUpperCase() + language.substring(1)
 }
 
-const preprocessLaTeX = (content: string) =>
-  content.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
+const preprocessLaTeX = (content: string) => {
+  if (typeof content !== 'string')
+    return content
+  return content.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
     .replace(/\\\((.*?)\\\)/gs, (_, equation) => `$${equation}$`)
+}
 
 export function PreCode(props: { children: any }) {
   const ref = useRef<HTMLPreElement>(null)

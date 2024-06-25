@@ -1,6 +1,6 @@
 import os
 
-from configs.app_configs import DifyConfigs
+from configs.app_config import DifyConfig
 
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG", "false").lower() != 'true':
     from gevent import monkey
@@ -24,7 +24,6 @@ from flask_cors import CORS
 from werkzeug.exceptions import Unauthorized
 
 from commands import register_commands
-from config import Config
 
 # DO NOT REMOVE BELOW
 from events import event_handlers
@@ -82,8 +81,7 @@ def create_flask_app_with_configs() -> Flask:
     with configs loaded from .env file
     """
     dify_app = DifyApp(__name__)
-    dify_app.config.from_object(Config())
-    dify_app.config.from_mapping(DifyConfigs().model_dump())
+    dify_app.config.from_mapping(DifyConfig().model_dump())
     return dify_app
 
 
@@ -232,7 +230,7 @@ def register_blueprints(app):
 app = create_app()
 celery = app.extensions["celery"]
 
-if app.config['TESTING']:
+if app.config.get('TESTING'):
     print("App is running in TESTING mode")
 
 

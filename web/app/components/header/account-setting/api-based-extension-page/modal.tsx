@@ -130,13 +130,12 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
       <div className='flex items-center justify-end mt-6'>
         <Button
           onClick={onCancel}
-          className='mr-2 text-sm font-medium'
+          className='mr-2'
         >
           {t('common.operation.cancel')}
         </Button>
         <Button
           variant='primary'
-          className='text-sm font-medium'
           disabled={!localeData.name || !localeData.api_endpoint || !localeData.api_key || loading}
           onClick={handleSave}
         >
