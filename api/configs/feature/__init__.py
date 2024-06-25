@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import AliasChoices, BaseModel, Field, NonNegativeInt, PositiveInt
+from pydantic import AliasChoices, BaseModel, Field, NonNegativeInt, PositiveInt, computed_field
 
 from configs.feature.hosted_service import HostedServiceConfig
 
@@ -124,6 +124,28 @@ class HttpConfig(BaseModel):
         description='whether to enable HTTP response compression of gzip',
         default=False,
     )
+
+    inner_CONSOLE_CORS_ALLOW_ORIGINS: str = Field(
+        description='',
+        validation_alias=AliasChoices('CONSOLE_CORS_ALLOW_ORIGINS', 'CONSOLE_WEB_URL'),
+        default='',
+    )
+
+    @computed_field
+    @property
+    def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
+        return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(',')
+
+    inner_WEB_API_CORS_ALLOW_ORIGINS: Optional[str] = Field(
+        description='',
+        validation_alias=AliasChoices('WEB_API_CORS_ALLOW_ORIGINS'),
+        default='*',
+    )
+
+    @computed_field
+    @property
+    def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
+        return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(',')
 
 
 class InnerAPIConfig(BaseModel):

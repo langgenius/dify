@@ -77,7 +77,6 @@ jobs:
             docker/docker-compose.pgvecto-rs.yaml
             docker/docker-compose.pgvector.yaml
             docker/docker-compose.chroma.yaml
-            docker/docker-compose.oracle.yaml
           services: |
             weaviate
             qdrant
@@ -87,7 +86,6 @@ jobs:
             pgvecto-rs
             pgvector
             chroma
-            oracle
 
       - name: Test Vector Stores
         run: poetry run -C api bash dev/pytest/pytest_vdb.sh
