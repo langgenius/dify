@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import Optional
 
 from core.llm_generator.output_parser.errors import OutputParserException
@@ -46,7 +47,8 @@ class LLMGenerator:
                 stream=False
             )
         answer = response.message.content
-        result_dict = json.loads(answer)
+        cleaned_answer = re.sub(r'^.*(\{.*\}).*$', r'\1', answer, flags=re.DOTALL)
+        result_dict = json.loads(cleaned_answer)
         answer = result_dict['Your Output']
         name = answer.strip()
 
