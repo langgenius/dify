@@ -17,7 +17,7 @@ class GraphNode(BaseModel):
     source_handle: Optional[str] = None
     """current node source handle from the previous node result"""
 
-    is_continue_callback: Optional[Callable] = None
+    run_condition_callback: Optional[Callable] = None
     """condition function check if the node can be executed"""
 
     node_config: dict
@@ -34,8 +34,8 @@ class GraphNode(BaseModel):
 
 
 class Graph(BaseModel):
-    graph: dict
-    """graph from workflow"""
+    graph_config: dict
+    """graph config from workflow"""
 
     graph_nodes: dict[str, GraphNode] = {}
     """graph nodes"""
@@ -46,14 +46,14 @@ class Graph(BaseModel):
     def add_edge(self, edge_config: dict,
                  source_node_config: dict,
                  target_node_config: dict,
-                 is_continue_callback: Optional[Callable] = None) -> None:
+                 run_condition_callback: Optional[Callable] = None) -> None:
         """
         Add edge to the graph
 
         :param edge_config: edge config
         :param source_node_config: source node config
         :param target_node_config: target node config
-        :param is_continue_callback: condition callback
+        :param run_condition_callback: condition callback
         """
         source_node_id = source_node_config.get('id')
         if not source_node_id:
@@ -77,17 +77,12 @@ class Graph(BaseModel):
             source_node.add_child(target_node_id)
             source_node.target_edge_config = edge_config
 
-        source_handle = None
-        if edge_config.get('sourceHandle'):
-            source_handle = edge_config.get('sourceHandle')
-
         if target_node_id not in self.graph_nodes:
             target_graph_node = GraphNode(
                 id=target_node_id,
                 predecessor_node_id=source_node_id,
                 node_config=target_node_config,
-                source_handle=source_handle,
-                is_continue_callback=is_continue_callback,
+                run_condition_callback=run_condition_callback,
                 source_edge_config=edge_config,
             )
 
@@ -95,8 +90,7 @@ class Graph(BaseModel):
         else:
             target_node = self.graph_nodes[target_node_id]
             target_node.predecessor_node_id = source_node_id
-            target_node.source_handle = source_handle
-            target_node.is_continue_callback = is_continue_callback
+            target_node.run_condition_callback = run_condition_callback
             target_node.source_edge_config = edge_config
 
     def add_graph_node(self, graph_node: GraphNode) -> None:
@@ -135,7 +129,7 @@ class Graph(BaseModel):
         if not graph_node.children_node_ids:
             return None
 
-        descendants_graph = Graph()
+        descendants_graph = Graph(graph_config=self.graph_config)
         descendants_graph.add_graph_node(graph_node)
 
         for child_node_id in graph_node.children_node_ids:
