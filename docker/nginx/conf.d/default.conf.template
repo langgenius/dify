@@ -2,7 +2,7 @@
 
 server {
     listen 80;
-    server_name _;
+    server_name ${NGINX_SERVER_NAME};
 
     location /console/api {
       proxy_pass http://api:5001;
@@ -30,5 +30,5 @@ server {
     }
 
     # placeholder for https config defined in https.conf.template
-    
+    ${HTTPS_CONFIG}
 }
