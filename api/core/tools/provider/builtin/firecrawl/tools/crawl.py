@@ -1,15 +1,14 @@
 from typing import Any, Union
 
-from firecrawl import FirecrawlApp
-
 from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.provider.builtin.firecrawl.firecrawl_appx import FirecrawlApp
 from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class CrawlTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         # initialize the app object with the api key
-        app = FirecrawlApp(api_key=self.runtime.credentials['firecrawl_api_key'])
+        app = FirecrawlApp(api_key=self.runtime.credentials['firecrawl_api_key'], base_url=self.runtime.credentials['base_url'])
 
         options = {
             'crawlerOptions': {
