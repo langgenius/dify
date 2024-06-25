@@ -64,16 +64,17 @@ class DifyAgentCallbackHandler(BaseModel):
         print_text("Outputs: " + str(tool_outputs)[:1000] + "\n", color=self.color)
         print_text("\n")
 
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.TOOL_TRACE,
-                message_id=message_id,
-                tool_name=tool_name,
-                tool_inputs=tool_inputs,
-                tool_outputs=tool_outputs,
-                timer=timer,
+        if trace_manager:
+            trace_manager.add_trace_task(
+                TraceTask(
+                    TraceTaskName.TOOL_TRACE,
+                    message_id=message_id,
+                    tool_name=tool_name,
+                    tool_inputs=tool_inputs,
+                    tool_outputs=tool_outputs,
+                    timer=timer,
+                )
             )
-        )
 
     def on_tool_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
