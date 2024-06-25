@@ -46,8 +46,8 @@ class MessageTraceInfo(BaseTraceInfo):
     answer_tokens: int
     total_tokens: int
     error: Optional[str] = None
-    file_list: list[str]
-    message_file_data: Any
+    file_list: Optional[Union[str, dict[str, Any], list]] = None
+    message_file_data: Optional[Any] = None
     conversation_mode: str
 
 
