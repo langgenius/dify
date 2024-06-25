@@ -36,7 +36,7 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           className={`
         flex items-center px-1.5 w-8 h-8 rounded-md text-[13px] font-medium 
         hover:bg-black/5 hover:text-gray-700 cursor-pointer select-none
-        ${(nodesReadOnly || buttonsDisabled.undo) && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
+        ${(nodesReadOnly || buttonsDisabled.undo) && 'hover:bg-transparent opacity-50 !cursor-not-allowed'}
       `}
           onClick={() => !nodesReadOnly && !buttonsDisabled.undo && handleUndo()}
         >
@@ -49,7 +49,7 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           className={`
         flex items-center px-1.5 w-8 h-8 rounded-md text-[13px] font-medium 
         hover:bg-black/5 hover:text-gray-700 cursor-pointer select-none
-        ${(nodesReadOnly || buttonsDisabled.redo) && 'bg-primary-50 opacity-50 !cursor-not-allowed'}
+        ${(nodesReadOnly || buttonsDisabled.redo) && 'hover:bg-transparent opacity-50 !cursor-not-allowed'}
       `}
           onClick={() => !nodesReadOnly && !buttonsDisabled.redo && handleRedo()}
         >
