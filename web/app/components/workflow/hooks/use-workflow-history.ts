@@ -30,6 +30,7 @@ export enum WorkflowHistoryEvent {
   NoteAdd = 'NoteAdd',
   NoteChange = 'NoteChange',
   NoteDelete = 'NoteDelete',
+  LayoutOrganize = 'LayoutOrganize',
 }
 
 export const useWorkflowHistory = () => {
@@ -73,6 +74,11 @@ export const useWorkflowHistory = () => {
 
   const saveStateToHistory = useCallback((event: WorkflowHistoryEvent) => {
     switch (event) {
+      case WorkflowHistoryEvent.NoteChange:
+        // Hint: Note change does not trigger when note text changes,
+        // because the note editors have their own history states.
+        saveStateToHistoryRef.current(event)
+        break
       case WorkflowHistoryEvent.NodeTitleChange:
       case WorkflowHistoryEvent.NodeDescriptionChange:
       case WorkflowHistoryEvent.NodeDragStop:
@@ -85,11 +91,7 @@ export const useWorkflowHistory = () => {
       case WorkflowHistoryEvent.NodeAdd:
       case WorkflowHistoryEvent.NodeResize:
       case WorkflowHistoryEvent.NoteAdd:
-      case WorkflowHistoryEvent.NoteChange:
-        // Hint: Note change does not trigger when note text changes,
-        // because the note editors have their own history states.
-        saveStateToHistoryRef.current(event)
-        break
+      case WorkflowHistoryEvent.LayoutOrganize:
       case WorkflowHistoryEvent.NoteDelete:
         saveStateToHistoryRef.current(event)
         break
@@ -107,6 +109,7 @@ export const useWorkflowHistory = () => {
         return t('workflow.changeHistory.nodeTitleChange')
       case WorkflowHistoryEvent.NodeDescriptionChange:
         return t('workflow.changeHistory.nodeDescriptionChange')
+      case WorkflowHistoryEvent.LayoutOrganize:
       case WorkflowHistoryEvent.NodeDragStop:
         return t('workflow.changeHistory.nodeDragStop')
       case WorkflowHistoryEvent.NodeChange:
