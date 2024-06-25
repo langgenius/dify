@@ -68,6 +68,13 @@ const translation = {
     workflowAsToolTip: '工作流更新后需要重新配置工具参数',
     viewDetailInTracingPanel: '查看详细信息',
     syncingData: '同步数据中，只需几秒钟。',
+    importDSL: '导入 DSL',
+    importDSLTip: '当前草稿将被覆盖。在导入之前请导出工作流作为备份。',
+    backupCurrentDraft: '备份当前草稿',
+    chooseDSL: '选择 DSL(yml) 文件',
+    overwriteAndImport: '覆盖并导入',
+    importFailure: '导入失败',
+    importSuccess: '导入成功',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
