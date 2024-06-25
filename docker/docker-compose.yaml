@@ -467,11 +467,11 @@ services:
       timeout: 3s
       retries: 30
 
-  # pgvector-rs vector store
-  pgvector-rs:
+  # pgvecto-rs vector store
+  pgvecto-rs:
     image: tensorchord/pgvecto-rs:pg16-v0.2.0
     profiles:
-      - pgvector-rs
+      - pgvecto-rs
     restart: always
     environment:
       PGUSER: ${PGUSER:-postgres}
@@ -482,7 +482,7 @@ services:
       # postgres data directory
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     volumes:
-      - ./volumes/pgvectors/data:/var/lib/postgresql/data
+      - ./volumes/pgvecto_rs/data:/var/lib/postgresql/data
     # uncomment to expose db(postgresql) port to host
     ports:
       - "5431:5432"
@@ -650,4 +650,4 @@ networks:
     internal: true
 
 volumes:
-  oradata_vector:
+  oradata:
