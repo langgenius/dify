@@ -30,7 +30,7 @@ from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
 from core.ops.utils import get_message_data
 from extensions.ext_database import db
 from models.model import App, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, TraceAppConfig
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowAppLog, WorkflowRun
 
 provider_config_map = {
     TracingProviderEnum.LANGFUSE.value: {
@@ -351,6 +351,13 @@ class TraceTask:
         file_list = workflow_run_inputs.get("sys.file") if workflow_run_inputs.get("sys.file") else []
         query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
 
+        # get workflow_app_log_id
+        workflow_app_log_data = db.session.query(WorkflowAppLog).filter_by(workflow_run_id=workflow_run.id).first()
+        workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
+        # get message_id
+        message_data = db.session.query(Message.id).filter_by(workflow_run_id=workflow_run_id).first()
+        message_id = str(message_data.id) if message_data else None
+
         metadata = {
             "workflow_id": workflow_id,
             "conversation_id": conversation_id,
@@ -380,6 +387,10 @@ class TraceTask:
             file_list=file_list,
             query=query,
             metadata=metadata,
+            workflow_app_log_id=workflow_app_log_id,
+            message_id=message_id,
+            start_time=workflow_run.created_at,
+            end_time=workflow_run.finished_at,
         )
 
         return workflow_trace_info
@@ -396,11 +407,9 @@ class TraceTask:
         # get message file data
         message_file_data = db.session.query(MessageFile).filter_by(message_id=message_id).first()
         file_list = []
-        if message_file_data.url is not None:
+        if message_file_data and message_file_data.url is not None:
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
             file_list.append(file_url)
-        else:
-            file_list.append(str(message_file_data.upload_file_id))
 
         metadata = {
             "conversation_id": message_data.conversation_id,
@@ -447,8 +456,17 @@ class TraceTask:
             "preset_response": moderation_result.preset_response,
             "query": moderation_result.query,
         }
+
+        # get workflow_app_log_id
+        workflow_app_log_id = None
+        if message_data.workflow_run_id:
+            workflow_app_log_data = db.session.query(WorkflowAppLog).filter_by(
+                workflow_run_id=message_data.workflow_run_id
+            ).first()
+            workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
+
         moderation_trace_info = ModerationTraceInfo(
-            message_id=message_id,
+            message_id=workflow_app_log_id if workflow_app_log_id else message_id,
             inputs=inputs,
             message_data=message_data,
             flagged=moderation_result.flagged,
@@ -478,8 +496,17 @@ class TraceTask:
             "workflow_run_id": message_data.workflow_run_id,
             "from_source": message_data.from_source,
         }
+
+        # get workflow_app_log_id
+        workflow_app_log_id = None
+        if message_data.workflow_run_id:
+            workflow_app_log_data = db.session.query(WorkflowAppLog).filter_by(
+                workflow_run_id=message_data.workflow_run_id
+            ).first()
+            workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
+
         suggested_question_trace_info = SuggestedQuestionTraceInfo(
-            message_id=message_id,
+            message_id=workflow_app_log_id if workflow_app_log_id else message_id,
             message_data=message_data,
             inputs=message_data.message,
             outputs=message_data.answer,

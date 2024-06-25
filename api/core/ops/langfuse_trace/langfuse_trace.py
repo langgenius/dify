@@ -28,6 +28,7 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
 )
 from core.ops.utils import filter_none_values
 from extensions.ext_database import db
+from models.model import EndUser
 from models.workflow import WorkflowNodeExecution
 
 logger = logging.getLogger(__name__)
@@ -63,17 +64,24 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
+        name = f"workflow_{trace_info.workflow_run_id}"
+        trace_id = trace_info.workflow_run_id
+        if trace_info.message_id:
+            name = f"message_{trace_info.message_id}"
+            trace_id = trace_info.message_id
+        elif trace_info.workflow_app_log_id:
+            name = f"workflow_{trace_info.workflow_app_log_id}"
+            trace_id = trace_info.workflow_app_log_id
         trace_data = LangfuseTrace(
-            id=trace_info.workflow_run_id,
-            name=f"workflow_{trace_info.workflow_run_id}",
+            id=trace_id,
             user_id=trace_info.tenant_id,
-            input=trace_info.query,
+            name=name,
+            input=trace_info.workflow_run_inputs,
             output=trace_info.workflow_run_outputs,
             metadata=trace_info.metadata,
-            session_id=trace_info.conversation_id if trace_info.conversation_id else trace_info.workflow_run_id,
+            session_id=trace_info.conversation_id,
             tags=["workflow"],
         )
-
         self.add_trace(langfuse_trace_data=trace_data)
 
         # through workflow_run_id get all_nodes_execution
@@ -120,7 +128,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 name=f"{node_name}_{node_execution_id}",
                 input=inputs,
                 output=outputs,
-                trace_id=trace_info.workflow_run_id,
+                trace_id=trace_id,
                 start_time=created_at,
                 end_time=finished_at,
                 metadata=metadata,
@@ -139,9 +147,16 @@ class LangFuseDataTrace(BaseTraceInstance):
         message_data = trace_info.message_data
         message_id = message_data.id
 
+        user_id = message_data.from_account_id
+        if message_data.from_end_user_id:
+            end_user_data: EndUser = db.session.query(EndUser).filter(
+                EndUser.id == message_data.from_end_user_id
+            ).first().session_id
+            user_id = end_user_data.session_id
+
         trace_data = LangfuseTrace(
             id=message_id,
-            user_id=message_data.from_end_user_id if message_data.from_end_user_id else message_data.from_account_id,
+            user_id=user_id,
             name=f"message_{message_id}",
             input={
                 "message": trace_info.inputs,

@@ -25,6 +25,7 @@ class BaseTraceInfo(BaseModel):
 class WorkflowTraceInfo(BaseTraceInfo):
     workflow_data: Any
     conversation_id: Optional[str] = None
+    workflow_app_log_id: Optional[str] = None
     workflow_id: str
     tenant_id: str
     workflow_run_id: str
@@ -70,6 +71,7 @@ class SuggestedQuestionTraceInfo(BaseTraceInfo):
     suggested_question: list[str]
     level: str
     status_message: Optional[str] = None
+    workflow_run_id: Optional[str] = None
 
     model_config = ConfigDict(protected_namespaces=())
 

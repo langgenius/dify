@@ -24,7 +24,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
 )
 from core.ops.utils import filter_none_values
 from extensions.ext_database import db
-from models.model import MessageFile
+from models.model import EndUser, MessageFile
 from models.workflow import WorkflowNodeExecution
 
 logger = logging.getLogger(__name__)
@@ -61,11 +61,28 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
+        if trace_info.message_id:
+            message_run = LangSmithRunModel(
+                id=trace_info.message_id,
+                name=f"message_{trace_info.message_id}",
+                inputs=trace_info.workflow_run_inputs,
+                outputs=trace_info.workflow_run_outputs,
+                run_type=LangSmithRunType.chain,
+                start_time=trace_info.start_time,
+                end_time=trace_info.end_time,
+                extra={
+                    "metadata": trace_info.metadata,
+                },
+                tags=["message"],
+                error=trace_info.error
+            )
+            self.add_run(message_run)
+
         langsmith_run = LangSmithRunModel(
             file_list=trace_info.file_list,
             total_tokens=trace_info.total_tokens,
-            id=trace_info.workflow_run_id,
-            name=f"workflow_run_{trace_info.workflow_run_id}",
+            id=trace_info.workflow_app_log_id if trace_info.workflow_app_log_id else trace_info.workflow_run_id,
+            name=f"workflow_{trace_info.workflow_app_log_id}" if trace_info.workflow_app_log_id else f"workflow_{trace_info.workflow_run_id}",
             inputs=trace_info.workflow_run_inputs,
             run_type=LangSmithRunType.tool,
             start_time=trace_info.workflow_data.created_at,
@@ -76,6 +93,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             },
             error=trace_info.error,
             tags=["workflow"],
+            parent_run_id=trace_info.message_id if trace_info.message_id else None,
         )
 
         self.add_run(langsmith_run)
@@ -146,7 +164,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                 extra={
                     "metadata": metadata,
                 },
-                parent_run_id=trace_info.workflow_run_id,
+                parent_run_id=trace_info.workflow_app_log_id if trace_info.workflow_app_log_id else trace_info.workflow_run_id,
                 tags=["node_execution"],
             )
 
@@ -161,6 +179,15 @@ class LangSmithDataTrace(BaseTraceInstance):
         metadata = trace_info.metadata
         message_data = trace_info.message_data
         message_id = message_data.id
+
+        user_id = message_data.from_account_id
+        if message_data.from_end_user_id:
+            end_user_data: EndUser = db.session.query(EndUser).filter(
+                EndUser.id == message_data.from_end_user_id
+            ).first().session_id
+            end_user_id = end_user_data.session_id
+            metadata["end_user_id"] = end_user_id
+            metadata["user_id"] = user_id
 
         message_run = LangSmithRunModel(
             input_tokens=trace_info.message_tokens,
