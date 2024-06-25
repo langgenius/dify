@@ -5,6 +5,16 @@ class DeploymentConfig(BaseModel):
     """
     Deployment configs
     """
+    APPLICATION_NAME: str = Field(
+        description='application name',
+        default='langgenius/dify',
+    )
+
+    TESTING: bool = Field(
+        description='',
+        default=False,
+    )
+
     EDITION: str = Field(
         description='deployment edition',
         default='SELF_HOSTED',
