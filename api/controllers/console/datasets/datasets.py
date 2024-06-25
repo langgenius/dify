@@ -188,22 +188,22 @@ class DatasetApi(Resource):
                             nullable=True,
                             help='Invalid indexing technique.')
         parser.add_argument('permission', type=str, location='json', choices=(
-            'only_me', 'all_team_members', 'part_user'), help='Invalid permission.'
+            'only_me', 'all_team_members', 'part_users'), help='Invalid permission.'
                             )
         parser.add_argument('embedding_model', type=str,
                             location='json', help='Invalid embedding model.')
         parser.add_argument('embedding_model_provider', type=str,
                             location='json', help='Invalid embedding model provider.')
         parser.add_argument('retrieval_model', type=dict, location='json', help='Invalid retrieval model.')
-        parser.add_argument('part_user_list', type=list, location='json', help='Invalid parent user list.')
+        parser.add_argument('part_users_list', type=list, location='json', help='Invalid parent user list.')
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
 
-        if args.get('part_user_list') and args.get('permission') == 'part_user':
-            DatasetPermissionService.update_part_user_list(dataset_id_str, args.get('part_user_list'))
+        if args.get('part_users_list') and args.get('permission') == 'part_users':
+            DatasetPermissionService.update_part_users_list(dataset_id_str, args.get('part_users_list'))
 
         dataset = DatasetService.update_dataset(
             dataset_id_str, args, current_user)
@@ -577,10 +577,11 @@ class DatasetPermissionUserListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        part_user_list = DatasetPermissionService.get_dataset_parent_user_list(dataset_id_str)
-
+        part_users_list = DatasetPermissionService.get_dataset_parent_users_list(dataset_id_str)
+        print(part_users_list)
+        print(type(part_users_list))
         return {
-            'data': part_user_list,
+            'data': part_users_list,
         }, 200
 
 

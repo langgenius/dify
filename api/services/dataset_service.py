@@ -159,6 +159,7 @@ class DatasetService:
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
+        data.pop('part_users_list', None)
         filtered_data = {k: v for k, v in data.items() if v is not None or k == 'description'}
         dataset = DatasetService.get_dataset(dataset_id)
         DatasetService.check_dataset_permission(dataset, user)
@@ -264,6 +265,17 @@ class DatasetService:
                 f'User {user.id} does not have permission to access dataset {dataset.id}')
             raise NoPermissionError(
                 'You do not have permission to access this dataset.')
+        if dataset.permission == 'part_users':
+            user_permission = DatasetPermission.query.filter_by(
+                dataset_id=dataset.id, account_id=user.id
+            ).first()
+            if not user_permission and dataset.tenant_id != user.current_tenant_id:
+                logging.debug(
+                    f'User {user.id} does not have permission to access dataset {dataset.id}'
+                )
+                raise NoPermissionError(
+                    'You do not have permission to access this dataset.'
+                )
 
     @staticmethod
     def get_dataset_queries(dataset_id: str, page: int, per_page: int):
@@ -1468,10 +1480,10 @@ class DatasetCollectionBindingService:
 
 class DatasetPermissionService:
     @classmethod
-    def get_dataset_parent_user_list(cls, dataset_id):
-        user_list = db.session.query(
+    def get_dataset_parent_users_list(cls, dataset_id):
+        user_list_query = db.session.query(
             DatasetPermission.account_id,
-            DatasetPermission.role,
+            DatasetPermission.account_role,
             Account.email
         ).join(
             Account, Account.id == DatasetPermission.account_id
@@ -1479,10 +1491,15 @@ class DatasetPermissionService:
             DatasetPermission.dataset_id == dataset_id
         ).all()
 
+        user_list = [
+            {"account_id": account_id, "account_role": account_role, "email": email}
+            for account_id, account_role, email in user_list_query
+        ]
+
         return user_list
 
     @classmethod
-    def update_part_user_list(cls, dataset_id, user_list):
+    def update_part_users_list(cls, dataset_id, user_list):
         try:
             db.session.query(DatasetPermission).filter(DatasetPermission.dataset_id == dataset_id).delete()
             permissions = []
