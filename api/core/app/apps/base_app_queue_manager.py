@@ -1,4 +1,3 @@
-import logging
 import queue
 import time
 from abc import abstractmethod
@@ -9,16 +8,12 @@ from typing import Any
 from flask import current_app
 from sqlalchemy.orm import DeclarativeMeta
 
-from constants.constants import REDIS_MESSAGE_PREFIX
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
-    QueueAgentMessageEvent,
     QueueErrorEvent,
-    QueueLLMChunkEvent,
     QueuePingEvent,
     QueueStopEvent,
-    QueueTextChunkEvent,
 )
 from extensions.ext_redis import redis_client
 
@@ -26,7 +21,6 @@ from extensions.ext_redis import redis_client
 class PublishFrom(Enum):
     APPLICATION_MANAGER = 1
     TASK_PIPELINE = 2
-logger = logging.getLogger(__name__)
 
 
 class AppQueueManager:
@@ -57,31 +51,11 @@ class AppQueueManager:
         listen_timeout = current_app.config.get("APP_MAX_EXECUTION_TIME")
         start_time = time.time()
         last_ping_time = 0
-        last_message = None
         while True:
             try:
                 message = self._q.get(timeout=1)
                 if message is None:
-                    try:
-                        if last_message:
-                            redis_client.rpush(f"{REDIS_MESSAGE_PREFIX}{last_message.message_id}", "None")
-                            redis_client.expire(f"{REDIS_MESSAGE_PREFIX}{last_message.message_id}", 600)
-                    except Exception as e:
-                        logger.warning(e)
                     break
-                try:
-                    if isinstance(message.event, QueueAgentMessageEvent | QueueLLMChunkEvent):
-                        text = message.event.chunk.delta.message.content
-                        redis_client.rpush(f"{REDIS_MESSAGE_PREFIX}{message.message_id}", text)
-                        redis_client.expire(f"{REDIS_MESSAGE_PREFIX}{message.message_id}", 6000)
-                        last_message = message
-                    elif isinstance(message.event, QueueTextChunkEvent):
-                        text = message.event.text
-                        redis_client.rpush(f"{REDIS_MESSAGE_PREFIX}{message.message_id}", text)
-                        redis_client.expire(f"{REDIS_MESSAGE_PREFIX}{message.message_id}", 6000)
-                        last_message = message
-                except Exception as e:
-                    logger.warning(e)
 
                 yield message
             except queue.Empty:

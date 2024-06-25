@@ -4,6 +4,7 @@ import time
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
+from core.app.apps.advanced_chat.app_generator_redis_publisher import AppGeneratorRedisPublisher
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
@@ -202,7 +203,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
         Process stream response.
         :return:
         """
+        publisher = AppGeneratorRedisPublisher()
         for message in self._queue_manager.listen():
+            publisher.publish(message=message)
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
@@ -265,7 +268,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                 yield self._ping_stream_response()
             else:
                 continue
-
+        publisher.publish(None)
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 

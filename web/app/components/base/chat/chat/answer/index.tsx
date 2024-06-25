@@ -166,9 +166,9 @@ const Answer: FC<AnswerProps> = ({
   }, [responding])
 
   useEffect(() => {
-    if (messageIDFromDB && autoPlayAudio)
+    if (messageIDFromDB && autoPlayAudio && responding)
       autoPlayAudioForMessage(messageIDFromDB)
-  }, [messageIDFromDB, autoPlayAudio])
+  }, [messageIDFromDB, autoPlayAudio, responding])
 
   return (
     <div className='flex mb-2 last:mb-0'>
