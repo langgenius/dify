@@ -96,7 +96,9 @@ class ConversationService:
 
         # generate conversation name
         try:
-            name = LLMGenerator.generate_conversation_name(app_model.tenant_id, message.query, conversation.id)
+            name = LLMGenerator.generate_conversation_name(
+                app_model.tenant_id, message.query, conversation.id, app_model.id
+            )
             conversation.name = name
         except:
             pass

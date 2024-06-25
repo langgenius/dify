@@ -17,7 +17,9 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 
 class LLMGenerator:
     @classmethod
-    def generate_conversation_name(cls, tenant_id: str, query, conversation_id: Optional[str] = None):
+    def generate_conversation_name(
+        cls, tenant_id: str, query, conversation_id: Optional[str] = None, app_id: Optional[str] = None
+    ):
         prompt = CONVERSATION_TITLE_PROMPT
 
         if len(query) > 2000:
@@ -43,7 +45,6 @@ class LLMGenerator:
                 },
                 stream=False
             )
-
         answer = response.message.content
         result_dict = json.loads(answer)
         answer = result_dict['Your Output']
@@ -53,7 +54,7 @@ class LLMGenerator:
             name = name[:75] + '...'
 
         # get tracing instance
-        trace_manager = TraceQueueManager(conversation_id=conversation_id)
+        trace_manager = TraceQueueManager(app_id=app_id)
         trace_manager.add_trace_task(
             TraceTask(
                 TraceTaskName.GENERATE_NAME_TRACE,
