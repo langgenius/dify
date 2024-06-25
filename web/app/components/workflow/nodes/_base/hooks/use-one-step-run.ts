@@ -166,11 +166,11 @@ const useOneStepRun = <T>({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data._isSingleRun])
 
-  const workflowStore = useWorkflowStore();
+  const workflowStore = useWorkflowStore()
   useEffect(() => {
     workflowStore.getState().setShowSingleRunPanel(!!isShowSingleRun)
   }, [isShowSingleRun])
-  
+
   const hideSingleRun = () => {
     handleNodeDataUpdate({
       id,
