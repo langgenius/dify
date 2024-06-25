@@ -26,6 +26,7 @@ from models.dataset import (
     AppDatasetJoin,
     Dataset,
     DatasetCollectionBinding,
+    DatasetPermission,
     DatasetProcessRule,
     DatasetQuery,
     Document,
@@ -1463,3 +1464,38 @@ class DatasetCollectionBindingService:
             first()
 
         return dataset_collection_binding
+
+
+class DatasetPermissionService:
+    @classmethod
+    def get_dataset_parent_user_list(cls, dataset_id):
+        user_list = db.session.query(
+            DatasetPermission.account_id,
+            DatasetPermission.role,
+            Account.email
+        ).join(
+            Account, Account.id == DatasetPermission.account_id
+        ).filter(
+            DatasetPermission.dataset_id == dataset_id
+        ).all()
+
+        return user_list
+
+    @classmethod
+    def update_part_user_list(cls, dataset_id, user_list):
+        try:
+            db.session.query(DatasetPermission).filter(DatasetPermission.dataset_id == dataset_id).delete()
+            permissions = []
+            for user in user_list:
+                permission = DatasetPermission(
+                    dataset_id=dataset_id,
+                    account_id=user['user_id'],
+                    account_role=user['role']
+                )
+                permissions.append(permission)
+
+            db.session.add_all(permissions)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            raise e

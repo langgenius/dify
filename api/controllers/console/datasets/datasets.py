@@ -25,7 +25,7 @@ from fields.document_fields import document_status_fields
 from libs.login import login_required
 from models.dataset import Dataset, Document, DocumentSegment
 from models.model import ApiToken, UploadFile
-from services.dataset_service import DatasetService, DocumentService
+from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
 
 def _validate_name(name):
@@ -188,17 +188,22 @@ class DatasetApi(Resource):
                             nullable=True,
                             help='Invalid indexing technique.')
         parser.add_argument('permission', type=str, location='json', choices=(
-            'only_me', 'all_team_members'), help='Invalid permission.')
+            'only_me', 'all_team_members', 'part_user'), help='Invalid permission.'
+                            )
         parser.add_argument('embedding_model', type=str,
                             location='json', help='Invalid embedding model.')
         parser.add_argument('embedding_model_provider', type=str,
                             location='json', help='Invalid embedding model provider.')
         parser.add_argument('retrieval_model', type=dict, location='json', help='Invalid retrieval model.')
+        parser.add_argument('part_user_list', type=list, location='json', help='Invalid parent user list.')
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
+
+        if args.get('part_user_list') and args.get('permission') == 'part_user':
+            DatasetPermissionService.update_part_user_list(dataset_id_str, args.get('part_user_list'))
 
         dataset = DatasetService.update_dataset(
             dataset_id_str, args, current_user)
@@ -558,6 +563,27 @@ class DatasetErrorDocs(Resource):
         }, 200
 
 
+class DatasetPermissionUserListApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id):
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        part_user_list = DatasetPermissionService.get_dataset_parent_user_list(dataset_id_str)
+
+        return {
+            'data': part_user_list,
+        }, 200
+
+
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
@@ -570,3 +596,4 @@ api.add_resource(DatasetApiDeleteApi, '/datasets/api-keys/<uuid:api_key_id>')
 api.add_resource(DatasetApiBaseUrlApi, '/datasets/api-base-info')
 api.add_resource(DatasetRetrievalSettingApi, '/datasets/retrieval-setting')
 api.add_resource(DatasetRetrievalSettingMockApi, '/datasets/retrieval-setting/<string:vector_type>')
+api.add_resource(DatasetPermissionUserListApi, '/datasets/<uuid:dataset_id>/permission-part-users')
