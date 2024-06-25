@@ -33,7 +33,7 @@ class CodeExecutionSandboxConfig(BaseModel):
     Code Execution Sandbox configs
     """
     CODE_EXECUTION_ENDPOINT: str = Field(
-        description='whether to enable HTTP response compression of gzip',
+        description='endpoint URL of code execution servcie',
         default='http://sandbox:8194',
     )
 
