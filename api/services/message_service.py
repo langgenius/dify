@@ -20,6 +20,7 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.workflow_service import WorkflowService
+import re
 
 
 class MessageService:
@@ -68,6 +69,13 @@ class MessageService:
                 has_more = True
 
         history_messages = list(reversed(history_messages))
+
+        # 进行特殊处理，截取“问询”字段
+        for hismessage in history_messages:
+            if hismessage.query:
+                match = re.search(r'\u95EE\u8BE2\n(.*)', hismessage.query, re.DOTALL)
+                if match:
+                    hismessage.query = match.group(1)
 
         return InfiniteScrollPagination(
             data=history_messages,
