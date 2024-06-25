@@ -8,7 +8,7 @@ from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
-from core.ops.ops_trace_service import OpsTraceService
+from core.ops.ops_trace_manager import OpsTraceManager
 from fields.app_fields import (
     app_detail_fields,
     app_detail_fields_with_site,
@@ -288,7 +288,7 @@ class AppTraceApi(Resource):
     @account_initialization_required
     def get(self, app_id):
         """Get app trace"""
-        app_trace_config = OpsTraceService.get_app_tracing_config(
+        app_trace_config = OpsTraceManager.get_app_tracing_config(
             app_id=app_id
         )
 
@@ -306,7 +306,7 @@ class AppTraceApi(Resource):
         parser.add_argument('tracing_provider', type=str, required=True, location='json')
         args = parser.parse_args()
 
-        OpsTraceService.update_app_tracing_config(
+        OpsTraceManager.update_app_tracing_config(
             app_id=app_id,
             enabled=args['enabled'],
             tracing_provider=args['tracing_provider'],

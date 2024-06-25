@@ -15,7 +15,7 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.ops.trace_queue_manager import TraceQueueManager
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool.tool import Tool

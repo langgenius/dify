@@ -4,11 +4,18 @@ import queue
 import threading
 from datetime import timedelta
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Union
+from uuid import UUID
 
 from flask import Flask, current_app
 
+from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.base_trace_instance import BaseTraceInstance
+from core.ops.entities.config_entity import (
+    LangfuseConfig,
+    LangSmithConfig,
+    TracingProviderEnum,
+)
 from core.ops.entities.trace_entity import (
     DatasetRetrievalTraceInfo,
     GenerateNameTraceInfo,
@@ -18,11 +25,242 @@ from core.ops.entities.trace_entity import (
     ToolTraceInfo,
     WorkflowTraceInfo,
 )
-from core.ops.ops_trace_service import OpsTraceService
+from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
+from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
 from core.ops.utils import get_message_data
 from extensions.ext_database import db
-from models.model import Conversation, MessageAgentThought, MessageFile
+from models.model import App, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, TraceAppConfig
 from models.workflow import WorkflowRun
+
+provider_config_map = {
+    TracingProviderEnum.LANGFUSE.value: {
+        'config_class': LangfuseConfig,
+        'secret_keys': ('public_key', 'secret_key'),
+        'other_keys': ('host',),
+        'trace_instance': LangFuseDataTrace
+    },
+    TracingProviderEnum.LANGSMITH.value: {
+        'config_class': LangSmithConfig,
+        'secret_keys': ('api_key',),
+        'other_keys': ('project', 'endpoint'),
+        'trace_instance': LangSmithDataTrace
+    }
+}
+
+
+class OpsTraceManager:
+    @classmethod
+    def encrypt_tracing_config(
+        cls, tenant_id: str, tracing_provider: str, tracing_config: dict, current_trace_config=None
+    ):
+        """
+        Encrypt tracing config.
+        :param tenant_id: tenant id
+        :param tracing_provider: tracing provider
+        :param tracing_config: tracing config dictionary to be encrypted
+        :param current_trace_config: current tracing configuration for keeping existing values
+        :return: encrypted tracing configuration
+        """
+        # Get the configuration class and the keys that require encryption
+        config_class, secret_keys, other_keys = provider_config_map[tracing_provider]['config_class'], \
+            provider_config_map[tracing_provider]['secret_keys'], provider_config_map[tracing_provider]['other_keys']
+
+        new_config = {}
+        # Encrypt necessary keys
+        for key in secret_keys:
+            if key in tracing_config:
+                if '*' in tracing_config[key]:
+                    # If the key contains '*', retain the original value from the current config
+                    new_config[key] = current_trace_config.get(key, tracing_config[key])
+                else:
+                    # Otherwise, encrypt the key
+                    new_config[key] = encrypt_token(tenant_id, tracing_config[key])
+
+        for key in other_keys:
+            new_config[key] = tracing_config.get(key, "")
+
+        # Create a new instance of the config class with the new configuration
+        encrypted_config = config_class(**new_config)
+        return encrypted_config.model_dump()
+
+    @classmethod
+    def decrypt_tracing_config(cls, tenant_id: str, tracing_provider: str, tracing_config: dict):
+        """
+        Decrypt tracing config
+        :param tenant_id: tenant id
+        :param tracing_provider: tracing provider
+        :param tracing_config: tracing config
+        :return:
+        """
+        config_class, secret_keys, other_keys = provider_config_map[tracing_provider]['config_class'], \
+            provider_config_map[tracing_provider]['secret_keys'], provider_config_map[tracing_provider]['other_keys']
+        new_config = {}
+        for key in secret_keys:
+            if key in tracing_config:
+                new_config[key] = decrypt_token(tenant_id, tracing_config[key])
+
+        for key in other_keys:
+            new_config[key] = tracing_config.get(key, "")
+
+        return config_class(**new_config).model_dump()
+
+    @classmethod
+    def obfuscated_decrypt_token(cls, tracing_provider: str, decrypt_tracing_config:dict):
+        """
+        Decrypt tracing config
+        :param tracing_provider: tracing provider
+        :param decrypt_tracing_config: tracing config
+        :return:
+        """
+        config_class, secret_keys, other_keys = provider_config_map[tracing_provider]['config_class'], \
+            provider_config_map[tracing_provider]['secret_keys'], provider_config_map[tracing_provider]['other_keys']
+        new_config = {}
+        for key in secret_keys:
+            if key in decrypt_tracing_config:
+                new_config[key] = obfuscated_token(decrypt_tracing_config[key])
+
+        for key in other_keys:
+            new_config[key] = decrypt_tracing_config.get(key, "")
+
+        return config_class(**new_config).model_dump()
+
+    @classmethod
+    def get_decrypted_tracing_config(cls, app_id: str, tracing_provider: str):
+        """
+        Get decrypted tracing config
+        :param app_id: app id
+        :param tracing_provider: tracing provider
+        :return:
+        """
+        trace_config_data: TraceAppConfig = db.session.query(TraceAppConfig).filter(
+            TraceAppConfig.app_id == app_id, TraceAppConfig.tracing_provider == tracing_provider
+        ).first()
+
+        if not trace_config_data:
+            return None
+
+        # decrypt_token
+        tenant_id = db.session.query(App).filter(App.id == app_id).first().tenant_id
+        decrypt_tracing_config = cls.decrypt_tracing_config(
+            tenant_id, tracing_provider, trace_config_data.tracing_config
+        )
+
+        return decrypt_tracing_config
+
+    @classmethod
+    def get_ops_trace_instance(
+        cls,
+        app_id: Union[UUID, str] = None,
+        message_id: str = None,
+        conversation_id: str = None
+    ):
+        """
+        Get ops trace through model config
+        :param app_id: app_id
+        :param message_id: message_id
+        :param conversation_id: conversation_id
+        :return:
+        """
+        if conversation_id:
+            conversation_data: Conversation = db.session.query(Conversation).filter(
+                Conversation.id == conversation_id
+            ).first()
+            app_id = conversation_data.app_id
+
+        if message_id:
+            record: Message = db.session.query(Message).filter(Message.id == message_id).first()
+            app_id = record.app_id
+
+        if isinstance(app_id, UUID):
+            app_id = str(app_id)
+
+        tracing_instance = None
+        app: App = db.session.query(App).filter(
+            App.id == app_id
+        ).first()
+        app_ops_trace_config = json.loads(app.tracing) if app.tracing else None
+
+        if app_ops_trace_config is not None:
+            tracing_provider = app_ops_trace_config.get('tracing_provider')
+        else:
+            return None
+
+        # decrypt_token
+        decrypt_trace_config = cls.get_decrypted_tracing_config(app_id, tracing_provider)
+        if app_ops_trace_config.get('enabled'):
+            trace_instance, config_class = provider_config_map[tracing_provider]['trace_instance'], \
+                provider_config_map[tracing_provider]['config_class']
+            tracing_instance = trace_instance(config_class(**decrypt_trace_config))
+            return tracing_instance
+
+        return None
+
+    @classmethod
+    def get_app_config_through_message_id(cls, message_id: str):
+        app_model_config = None
+        message_data = db.session.query(Message).filter(Message.id == message_id).first()
+        conversation_id = message_data.conversation_id
+        conversation_data = db.session.query(Conversation).filter(Conversation.id == conversation_id).first()
+
+        if conversation_data.app_model_config_id:
+            app_model_config = db.session.query(AppModelConfig).filter(
+                AppModelConfig.id == conversation_data.app_model_config_id
+            ).first()
+        elif conversation_data.app_model_config_id is None and conversation_data.override_model_configs:
+            app_model_config = conversation_data.override_model_configs
+
+        return app_model_config
+
+    @classmethod
+    def update_app_tracing_config(cls, app_id: str, enabled: bool, tracing_provider: str):
+        """
+        Update app tracing config
+        :param app_id: app id
+        :param enabled: enabled
+        :param tracing_provider: tracing provider
+        :return:
+        """
+        # auth check
+        if tracing_provider not in [TracingProviderEnum.LANGFUSE.value, TracingProviderEnum.LANGSMITH.value, None, ""]:
+            raise ValueError(f"Invalid tracing provider: {tracing_provider}")
+
+        app_config: App = db.session.query(App).filter(App.id == app_id).first()
+        app_config.tracing = json.dumps(
+            {
+                "enabled": enabled,
+                "tracing_provider": tracing_provider,
+            }
+        )
+        db.session.commit()
+
+    @classmethod
+    def get_app_tracing_config(cls, app_id: str):
+        """
+        Get app tracing config
+        :param app_id: app id
+        :return:
+        """
+        app: App = db.session.query(App).filter(App.id == app_id).first()
+        if not app.tracing:
+            return {
+                "enabled": False,
+                "tracing_provider": None
+            }
+        app_trace_config = json.loads(app.tracing)
+        return app_trace_config
+
+    @staticmethod
+    def check_trace_config_is_effective(tracing_config: dict, tracing_provider: str):
+        """
+        Check trace config is effective
+        :param tracing_config: tracing config
+        :param tracing_provider: tracing provider
+        :return:
+        """
+        config_type, trace_instance = provider_config_map[tracing_provider]['config_class'], \
+            provider_config_map[tracing_provider]['trace_instance']
+        tracing_config = config_type(**tracing_config)
+        return trace_instance(tracing_config).api_check()
 
 
 class TraceTaskName(str, Enum):
@@ -387,7 +625,7 @@ class TraceTask:
 
 class TraceQueueManager:
     def __init__(self, app_id=None, conversation_id=None, message_id=None):
-        tracing_instance = OpsTraceService.get_ops_trace_instance(app_id, conversation_id, message_id)
+        tracing_instance = OpsTraceManager.get_ops_trace_instance(app_id, conversation_id, message_id)
         self.queue = queue.Queue()
         self.is_running = True
         self.thread = threading.Thread(

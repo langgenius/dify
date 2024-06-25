@@ -42,7 +42,7 @@ from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.file.file_obj import FileVar
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.ops.trace_queue_manager import TraceQueueManager
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.entities.node_entities import NodeType, SystemVariable
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.answer.entities import TextGenerateRouteChunk, VarGenerateRouteChunk

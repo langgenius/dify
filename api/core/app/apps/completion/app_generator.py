@@ -19,7 +19,7 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-from core.ops.trace_queue_manager import TraceQueueManager
+from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser, Message

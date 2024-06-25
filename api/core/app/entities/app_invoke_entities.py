@@ -7,7 +7,7 @@ from core.app.app_config.entities import AppConfig, EasyUIBasedAppConfig, Workfl
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file.file_obj import FileVar
 from core.model_runtime.entities.model_entities import AIModelEntity
-from core.ops.trace_queue_manager import TraceQueueManager
+from core.ops.ops_trace_manager import TraceQueueManager
 
 
 class InvokeFrom(Enum):

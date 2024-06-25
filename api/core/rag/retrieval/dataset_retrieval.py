@@ -12,7 +12,7 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.ops.trace_queue_manager import TraceTask, TraceTaskName
+from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.ops.utils import measure_time
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
