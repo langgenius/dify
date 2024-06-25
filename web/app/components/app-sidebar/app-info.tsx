@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
 import cn from 'classnames'
+import { RiArrowDownSLine } from '@remixicon/react'
 import React, { useCallback, useState } from 'react'
 import AppIcon from '../base/app-icon'
 import SwitchAppModal from '../app/switch-app-modal'
@@ -11,7 +12,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import Divider from '@/app/components/base/divider'
 import Confirm from '@/app/components/base/confirm'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -27,6 +27,7 @@ import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTrave
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
+import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
 
 export type IAppInfoProps = {
   expand: boolean
@@ -45,6 +46,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showSwitchTip, setShowSwitchTip] = useState<string>('')
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
+  const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
 
   const mutateApps = useContextSelector(
     AppsContext,
@@ -190,7 +192,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               <div className="grow w-0">
                 <div className='flex justify-between items-center text-sm leading-5 font-medium text-gray-900'>
                   <div className='truncate' title={appDetail.name}>{appDetail.name}</div>
-                  {isCurrentWorkspaceEditor && <ChevronDown className='shrink-0 ml-[2px] w-3 h-3 text-gray-500' />}
+                  {isCurrentWorkspaceEditor && <RiArrowDownSLine className='shrink-0 ml-[2px] w-3 h-3 text-gray-500' />}
                 </div>
                 <div className='flex items-center text-[10px] leading-[18px] font-medium text-gray-500 gap-1'>
                   {appDetail.mode === 'advanced-chat' && (
@@ -295,9 +297,6 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
               }}>
                 <span className='text-gray-700 text-sm leading-5'>{t('app.duplicate')}</span>
               </div>
-              <div className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer' onClick={onExport}>
-                <span className='text-gray-700 text-sm leading-5'>{t('app.export')}</span>
-              </div>
               {(appDetail.mode === 'completion' || appDetail.mode === 'chat') && (
                 <>
                   <Divider className="!my-1" />
@@ -314,6 +313,22 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                   </div>
                 </>
               )}
+              <Divider className="!my-1" />
+              <div className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer' onClick={onExport}>
+                <span className='text-gray-700 text-sm leading-5'>{t('app.export')}</span>
+              </div>
+              {
+                (appDetail.mode === 'advanced-chat' || appDetail.mode === 'workflow') && (
+                  <div
+                    className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer'
+                    onClick={() => {
+                      setOpen(false)
+                      setShowImportDSLModal(true)
+                    }}>
+                    <span className='text-gray-700 text-sm leading-5'>{t('workflow.common.importDSL')}</span>
+                  </div>
+                )
+              }
               <Divider className="!my-1" />
               <div className='group h-9 py-2 px-3 mx-1 flex items-center hover:bg-red-50 rounded-lg cursor-pointer' onClick={() => {
                 setOpen(false)
@@ -388,6 +403,14 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             onCancel={() => setShowConfirmDelete(false)}
           />
         )}
+        {
+          showImportDSLModal && (
+            <UpdateDSLModal
+              onCancel={() => setShowImportDSLModal(false)}
+              onBackup={onExport}
+            />
+          )
+        }
       </div>
     </PortalToFollowElem>
   )

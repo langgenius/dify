@@ -3,6 +3,10 @@
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
+import {
+  RiAddLine,
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +20,6 @@ import { getInputKeys } from '@/app/components/base/block-input'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import { getNewVar } from '@/utils/var'
 import { varHighlightHTML } from '@/app/components/app/configuration/base/var-highlight'
-import { Plus, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 
 const MAX_QUESTION_NUM = 5
 
@@ -131,8 +134,20 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   const headerRight = !readonly ? (
     isFocus ? (
       <div className='flex items-center space-x-1'>
-        <div className='px-3 leading-[18px] text-xs font-medium text-gray-700 cursor-pointer' onClick={handleCancel}>{t('common.operation.cancel')}</div>
-        <Button className='!h-8 !px-3 text-xs' onClick={handleConfirm} type="primary">{t('common.operation.save')}</Button>
+        <Button
+          variant='ghost'
+          size='small'
+          onClick={handleCancel}
+        >
+          {t('common.operation.cancel')}
+        </Button>
+        <Button
+          onClick={handleConfirm}
+          variant="primary"
+          size='small'
+        >
+          {t('common.operation.save')}
+        </Button>
       </div>
     ) : (
       <OperationBtn type='edit' actionName={hasValue ? '' : t('appDebug.openingStatement.writeOpener') as string} onClick={handleEdit} />
@@ -192,7 +207,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
                     setTempSuggestedQuestions(tempSuggestedQuestions.filter((_, i) => index !== i))
                   }}
                 >
-                  <Trash03 className='w-3.5 h-3.5' />
+                  <RiDeleteBinLine className='w-3.5 h-3.5' />
                 </div>
               </div>
             )
@@ -201,7 +216,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
           <div
             onClick={() => { setTempSuggestedQuestions([...tempSuggestedQuestions, '']) }}
             className='mt-1 flex items-center h-9 px-3 gap-2 rounded-lg cursor-pointer text-gray-400  bg-gray-100 hover:bg-gray-200'>
-            <Plus className='w-4 h-4'></Plus>
+            <RiAddLine className='w-4 h-4' />
             <div className='text-gray-500 text-[13px]'>{t('appDebug.variableConig.addOption')}</div>
           </div>
         )}

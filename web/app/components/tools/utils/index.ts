@@ -1,4 +1,4 @@
-import type { ThoughtItem } from '../../app/chat/type'
+import type { ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
 
 export const sortAgentSorts = (list: ThoughtItem[]) => {
