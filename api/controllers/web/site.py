@@ -26,6 +26,8 @@ class AppSiteApi(WebApiResource):
 
     site_fields = {
         'title': fields.String,
+        'chat_color_theme': fields.String,
+        'chat_color_theme_inverted': fields.Boolean,
         'icon': fields.String,
         'icon_background': fields.String,
         'description': fields.String,

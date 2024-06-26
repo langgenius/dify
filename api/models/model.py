@@ -1042,6 +1042,8 @@ class Site(db.Model):
     icon_background = db.Column(db.String(255))
     description = db.Column(db.Text)
     default_language = db.Column(db.String(255), nullable=False)
+    chat_color_theme = db.Column(db.String(255))
+    chat_color_theme_inverted = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     copyright = db.Column(db.String(255))
     privacy_policy = db.Column(db.String(255))
     show_workflow_steps = db.Column(db.Boolean, nullable=False, server_default=db.text('true'))
