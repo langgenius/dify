@@ -33,6 +33,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Loading from '@/app/components/base/loading'
+import { useAppContext } from '@/context/app-context'
 
 type Props = {
   collection: Collection
@@ -51,6 +52,7 @@ const ProviderDetail = ({
   const isAuthed = collection.is_team_authorization
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
@@ -221,6 +223,7 @@ const ProviderDetail = ({
               if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
                 showSettingAuthModal()
             }}
+            disabled={!isCurrentWorkspaceManager}
           >
             {isAuthed && <Indicator className='mr-2' color={'green'} />}
             <div className={cn('text-white leading-[18px] text-[13px] font-medium', isAuthed && '!text-gray-700')}>
@@ -251,6 +254,7 @@ const ProviderDetail = ({
             <Button
               className={cn('shrink-0 my-3 w-[183px] flex items-center bg-white')}
               onClick={() => setIsShowEditWorkflowToolModal(true)}
+              disabled={!isCurrentWorkspaceManager}
             >
               <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
             </Button>

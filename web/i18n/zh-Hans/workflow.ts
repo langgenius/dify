@@ -67,6 +67,7 @@ const translation = {
     manageInTools: '访问工具页',
     workflowAsToolTip: '工作流更新后需要重新配置工具参数',
     viewDetailInTracingPanel: '查看详细信息',
+    syncingData: '同步数据中，只需几秒钟。',
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
@@ -410,6 +411,25 @@ const translation = {
       iteration_one: '{{count}}个迭代',
       iteration_other: '{{count}}个迭代',
       currentIteration: '当前迭代',
+    },
+    note: {
+      addNote: '添加注释',
+      editor: {
+        placeholder: '输入注释...',
+        small: '小',
+        medium: '中',
+        large: '大',
+        bold: '加粗',
+        italic: '斜体',
+        strikethrough: '删除线',
+        link: '链接',
+        openLink: '打开',
+        unlink: '取消链接',
+        enterUrl: '输入链接...',
+        invalidUrl: '无效的链接',
+        bulletList: '列表',
+        showAuthor: '显示作者',
+      },
     },
   },
   tracing: {

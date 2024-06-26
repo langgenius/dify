@@ -28,15 +28,15 @@ class PubMedAPIWrapper(BaseModel):
           if False: the `metadata` gets only the most informative fields.
     """
 
-    base_url_esearch = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?"
-    base_url_efetch = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?"
-    max_retry = 5
-    sleep_time = 0.2
+    base_url_esearch: str = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?"
+    base_url_efetch: str = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?"
+    max_retry: int = 5
+    sleep_time: float = 0.2
 
     # Default values for the parameters
     top_k_results: int = 3
     load_max_docs: int = 25
-    ARXIV_MAX_QUERY_LENGTH = 300
+    ARXIV_MAX_QUERY_LENGTH: int = 300
     doc_content_chars_max: int = 2000
     load_all_available_meta: bool = False
     email: str = "your_email@example.com"
@@ -160,8 +160,8 @@ class PubMedAPIWrapper(BaseModel):
 class PubmedQueryRun(BaseModel):
     """Tool that searches the PubMed API."""
 
-    name = "PubMed"
-    description = (
+    name: str = "PubMed"
+    description: str = (
         "A wrapper around PubMed.org "
         "Useful for when you need to answer questions about Physics, Mathematics, "
         "Computer Science, Quantitative Biology, Quantitative Finance, Statistics, "

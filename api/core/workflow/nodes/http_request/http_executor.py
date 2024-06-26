@@ -42,7 +42,10 @@ class HttpExecutorResponse:
         return any(v in content_type for v in file_content_types)
 
     def get_content_type(self) -> str:
-        return self.headers.get('content-type')
+        if 'content-type' in self.headers:
+            return self.headers.get('content-type')
+        else:
+            return self.headers.get('Content-Type') or ""
 
     def extract_file(self) -> tuple[str, bytes]:
         """

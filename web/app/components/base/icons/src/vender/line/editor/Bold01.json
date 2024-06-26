@@ -1,0 +1,39 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "17",
+			"height": "16",
+			"viewBox": "0 0 17 16",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Icon"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Icon_2",
+							"d": "M4.5 7.99996H9.83333C11.3061 7.99996 12.5 6.80605 12.5 5.33329C12.5 3.86053 11.3061 2.66663 9.83333 2.66663H4.5V7.99996ZM4.5 7.99996H10.5C11.9728 7.99996 13.1667 9.19387 13.1667 10.6666C13.1667 12.1394 11.9728 13.3333 10.5 13.3333H4.5V7.99996Z",
+							"stroke": "currentColor",
+							"stroke-width": "1.5",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					}
+				]
+			}
+		]
+	},
+	"name": "Bold01"
+}

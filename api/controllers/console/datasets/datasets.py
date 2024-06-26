@@ -8,13 +8,14 @@ import services
 from controllers.console import api
 from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
-from controllers.console.datasets.error import DatasetNameDuplicateError
+from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from extensions.ext_database import db
 from fields.app_fields import related_app_list
@@ -106,8 +107,8 @@ class DatasetListApi(Resource):
                             help='Invalid indexing technique.')
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         try:
@@ -194,8 +195,8 @@ class DatasetApi(Resource):
         parser.add_argument('retrieval_model', type=dict, location='json', help='Invalid retrieval model.')
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         dataset = DatasetService.update_dataset(
@@ -212,14 +213,17 @@ class DatasetApi(Resource):
     def delete(self, dataset_id):
         dataset_id_str = str(dataset_id)
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
-        if DatasetService.delete_dataset(dataset_id_str, current_user):
-            return {'result': 'success'}, 204
-        else:
-            raise NotFound("Dataset not found.")
+        try:
+            if DatasetService.delete_dataset(dataset_id_str, current_user):
+                return {'result': 'success'}, 204
+            else:
+                raise NotFound("Dataset not found.")
+        except services.errors.dataset.DatasetInUseError:
+            raise DatasetInUseError()
 
 
 class DatasetQueryApi(Resource):
@@ -311,6 +315,22 @@ class DatasetIndexingEstimateApi(Resource):
                         document_model=args['doc_form']
                     )
                     extract_settings.append(extract_setting)
+        elif args['info_list']['data_source_type'] == 'website_crawl':
+            website_info_list = args['info_list']['website_info_list']
+            for url in website_info_list['urls']:
+                extract_setting = ExtractSetting(
+                    datasource_type="website_crawl",
+                    website_info={
+                        "provider": website_info_list['provider'],
+                        "job_id": website_info_list['job_id'],
+                        "url": url,
+                        "tenant_id": current_user.current_tenant_id,
+                        "mode": 'crawl',
+                        "only_main_content": website_info_list['only_main_content']
+                    },
+                    document_model=args['doc_form']
+                )
+                extract_settings.append(extract_setting)
         else:
             raise ValueError('Data source type not support')
         indexing_runner = IndexingRunner()
@@ -476,20 +496,21 @@ class DatasetRetrievalSettingApi(Resource):
     @account_initialization_required
     def get(self):
         vector_type = current_app.config['VECTOR_STORE']
-        if vector_type in {"milvus", "relyt", "pgvector", "pgvecto_rs", 'tidb_vector'}:
-            return {
-                'retrieval_method': [
-                    'semantic_search'
-                ]
-            }
-        elif vector_type in {"qdrant", "weaviate"}:
-            return {
-                'retrieval_method': [
-                    'semantic_search', 'full_text_search', 'hybrid_search'
-                ]
-            }
-        else:
-            raise ValueError("Unsupported vector db type.")
+        match vector_type:
+            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA | VectorType.TENCENT:
+                return {
+                    'retrieval_method': [
+                        'semantic_search'
+                    ]
+                }
+            case VectorType.QDRANT | VectorType.WEAVIATE:
+                return {
+                    'retrieval_method': [
+                        'semantic_search', 'full_text_search', 'hybrid_search'
+                    ]
+                }
+            case _:
+                raise ValueError(f"Unsupported vector db type {vector_type}.")
 
 
 class DatasetRetrievalSettingMockApi(Resource):
@@ -497,20 +518,23 @@ class DatasetRetrievalSettingMockApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, vector_type):
-        if vector_type in {'milvus', 'relyt', 'pgvector', 'tidb_vector'}:
-            return {
-                'retrieval_method': [
-                    'semantic_search'
-                ]
-            }
-        elif vector_type in {'qdrant', 'weaviate'}:
-            return {
-                'retrieval_method': [
-                    'semantic_search', 'full_text_search', 'hybrid_search'
-                ]
-            }
-        else:
-            raise ValueError("Unsupported vector db type.")
+        match vector_type:
+            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA | VectorType.TENCEN:
+                return {
+                    'retrieval_method': [
+                        'semantic_search'
+                    ]
+                }
+            case VectorType.QDRANT | VectorType.WEAVIATE:
+                return {
+                    'retrieval_method': [
+                        'semantic_search', 'full_text_search', 'hybrid_search'
+                    ]
+                }
+            case _:
+                raise ValueError(f"Unsupported vector db type {vector_type}.")
+
+
 
 class DatasetErrorDocs(Resource):
     @setup_required

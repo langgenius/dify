@@ -43,9 +43,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self._init_react_state(query)
 
         # check model mode
-        if 'Observation' not in app_generate_entity.model_config.stop:
-            if app_generate_entity.model_config.provider not in self._ignore_observation_providers:
-                app_generate_entity.model_config.stop.append('Observation')
+        if 'Observation' not in app_generate_entity.model_conf.stop:
+            if app_generate_entity.model_conf.provider not in self._ignore_observation_providers:
+                app_generate_entity.model_conf.stop.append('Observation')
 
         app_config = self.app_config
 
@@ -109,9 +109,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             # invoke model
             chunks: Generator[LLMResultChunk, None, None] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
-                model_parameters=app_generate_entity.model_config.parameters,
+                model_parameters=app_generate_entity.model_conf.parameters,
                 tools=[],
-                stop=app_generate_entity.model_config.stop,
+                stop=app_generate_entity.model_conf.stop,
                 stream=True,
                 user=self.user_id,
                 callbacks=[],
@@ -141,8 +141,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 if isinstance(chunk, AgentScratchpadUnit.Action):
                     action = chunk
                     # detect action
-                    scratchpad.agent_response += json.dumps(chunk.dict())
-                    scratchpad.action_str = json.dumps(chunk.dict())
+                    scratchpad.agent_response += json.dumps(chunk.model_dump())
+                    scratchpad.action_str = json.dumps(chunk.model_dump())
                     scratchpad.action = action
                 else:
                     scratchpad.agent_response += chunk
