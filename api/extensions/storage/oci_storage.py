@@ -30,7 +30,7 @@ class OCIStorage(BaseStorage):
                 data = client.get_object(Bucket=self.bucket_name, Key=filename)['Body'].read()
         except ClientError as ex:
             if ex.response['Error']['Code'] == 'NoSuchKey':
-                raise FileNotFoundError("File not found")
+                raise FileNotFoundError("File not foundss")
             else:
                 raise
         return data
@@ -43,7 +43,7 @@ class OCIStorage(BaseStorage):
                     yield from response['Body'].iter_chunks()
             except ClientError as ex:
                 if ex.response['Error']['Code'] == 'NoSuchKey':
-                    raise FileNotFoundError("File not found")
+                    raise FileNotFoundError("File not foundss")
                 else:
                     raise
         return generate()
