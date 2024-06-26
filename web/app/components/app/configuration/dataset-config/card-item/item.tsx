@@ -10,6 +10,7 @@ import { formatNumber } from '@/utils/format'
 import FileIcon from '@/app/components/base/file-icon'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
+import { Globe06 } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import Drawer from '@/app/components/base/drawer'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
@@ -51,6 +52,13 @@ const Item: FC<ItemProps> = ({
         config.data_source_type === DataSourceType.NOTION && (
           <div className='shrink-0 flex items-center justify-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-[#EAECF5]'>
             <FileIcon type='notion' className='w-4 h-4' />
+          </div>
+        )
+      }
+      {
+        config.data_source_type === DataSourceType.WEB && (
+          <div className='shrink-0 flex items-center justify-center mr-2 w-6 h-6 bg-[#F5FAFF] border-[0.5px] border-blue-100 rounded-md'>
+            <Globe06 className='w-4 h-4 text-blue-600' />
           </div>
         )
       }
