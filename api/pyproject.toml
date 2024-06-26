@@ -61,6 +61,8 @@ ignore = [
     "F811", # redefined-while-unused
 ]
 
+[tool.ruff.format]
+quote-style = "single"
 
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii"
