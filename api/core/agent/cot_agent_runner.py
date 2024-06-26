@@ -316,17 +316,17 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         )
 
         # publish files
-        for message_file, save_as in message_files:
+        for message_file_id, save_as in message_files:
             if save_as:
                 self.variables_pool.set_file(
-                    tool_name=tool_call_name, value=message_file.id, name=save_as)
+                    tool_name=tool_call_name, value=message_file_id, name=save_as)
 
             # publish message file
             self.queue_manager.publish(QueueMessageFileEvent(
-                message_file_id=message_file.id
+                message_file_id=message_file_id
             ), PublishFrom.APPLICATION_MANAGER)
             # add message file ids
-            message_file_ids.append(message_file.id)
+            message_file_ids.append(message_file_id)
 
         return tool_invoke_response, tool_invoke_meta
 
