@@ -64,25 +64,46 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        name = f"workflow_{trace_info.workflow_run_id}"
-        trace_id = trace_info.workflow_run_id
+        trace_id = trace_info.workflow_app_log_id if trace_info.workflow_app_log_id else trace_info.workflow_run_id
         if trace_info.message_id:
-            name = f"message_{trace_info.message_id}"
             trace_id = trace_info.message_id
-        elif trace_info.workflow_app_log_id:
-            name = f"workflow_{trace_info.workflow_app_log_id}"
-            trace_id = trace_info.workflow_app_log_id
-        trace_data = LangfuseTrace(
-            id=trace_id,
-            user_id=trace_info.tenant_id,
-            name=name,
-            input=trace_info.workflow_run_inputs,
-            output=trace_info.workflow_run_outputs,
-            metadata=trace_info.metadata,
-            session_id=trace_info.conversation_id,
-            tags=["workflow"],
-        )
-        self.add_trace(langfuse_trace_data=trace_data)
+            name = f"message_{trace_info.message_id}"
+            trace_data = LangfuseTrace(
+                id=trace_info.message_id,
+                user_id=trace_info.tenant_id,
+                name=name,
+                input=trace_info.workflow_run_inputs,
+                output=trace_info.workflow_run_outputs,
+                metadata=trace_info.metadata,
+                session_id=trace_info.conversation_id,
+                tags=["message", "workflow"],
+            )
+            self.add_trace(langfuse_trace_data=trace_data)
+            workflow_span_data = LangfuseSpan(
+                id=trace_info.workflow_app_log_id if trace_info.workflow_app_log_id else trace_info.workflow_run_id,
+                name=f"workflow_{trace_info.workflow_app_log_id}" if trace_info.workflow_app_log_id else f"workflow_{trace_info.workflow_run_id}",
+                input=trace_info.workflow_run_inputs,
+                output=trace_info.workflow_run_outputs,
+                trace_id=trace_id,
+                start_time=trace_info.start_time,
+                end_time=trace_info.end_time,
+                metadata=trace_info.metadata,
+                level=LevelEnum.DEFAULT if trace_info.error == "" else LevelEnum.ERROR,
+                status_message=trace_info.error if trace_info.error else "",
+            )
+            self.add_span(langfuse_span_data=workflow_span_data)
+        else:
+            trace_data = LangfuseTrace(
+                id=trace_id,
+                user_id=trace_info.tenant_id,
+                name=f"workflow_{trace_info.workflow_app_log_id}" if trace_info.workflow_app_log_id else f"workflow_{trace_info.workflow_run_id}",
+                input=trace_info.workflow_run_inputs,
+                output=trace_info.workflow_run_outputs,
+                metadata=trace_info.metadata,
+                session_id=trace_info.conversation_id,
+                tags=["workflow"],
+            )
+            self.add_trace(langfuse_trace_data=trace_data)
 
         # through workflow_run_id get all_nodes_execution
         workflow_nodes_executions = (
@@ -124,17 +145,31 @@ class LangFuseDataTrace(BaseTraceInstance):
             )
 
             # add span
-            span_data = LangfuseSpan(
-                name=f"{node_name}_{node_execution_id}",
-                input=inputs,
-                output=outputs,
-                trace_id=trace_id,
-                start_time=created_at,
-                end_time=finished_at,
-                metadata=metadata,
-                level=LevelEnum.DEFAULT if status == 'succeeded' else LevelEnum.ERROR,
-                status_message=trace_info.error if trace_info.error else "",
-            )
+            if trace_info.message_id:
+                span_data = LangfuseSpan(
+                    name=f"{node_name}_{node_execution_id}",
+                    input=inputs,
+                    output=outputs,
+                    trace_id=trace_id,
+                    start_time=created_at,
+                    end_time=finished_at,
+                    metadata=metadata,
+                    level=LevelEnum.DEFAULT if status == 'succeeded' else LevelEnum.ERROR,
+                    status_message=trace_info.error if trace_info.error else "",
+                    parent_observation_id=trace_info.workflow_app_log_id if trace_info.workflow_app_log_id else trace_info.workflow_run_id,
+                )
+            else:
+                span_data = LangfuseSpan(
+                    name=f"{node_name}_{node_execution_id}",
+                    input=inputs,
+                    output=outputs,
+                    trace_id=trace_id,
+                    start_time=created_at,
+                    end_time=finished_at,
+                    metadata=metadata,
+                    level=LevelEnum.DEFAULT if status == 'succeeded' else LevelEnum.ERROR,
+                    status_message=trace_info.error if trace_info.error else "",
+                )
 
             self.add_span(langfuse_span_data=span_data)
 

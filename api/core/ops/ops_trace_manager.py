@@ -421,6 +421,7 @@ class TraceTask:
             "agent_based": message_data.agent_based,
             "workflow_run_id": message_data.workflow_run_id,
             "from_source": message_data.from_source,
+            "message_id": message_id,
         }
 
         message_tokens = message_data.message_tokens

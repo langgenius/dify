@@ -163,6 +163,10 @@ class LangfuseSpan(BaseModel):
         description="The version of the span type. Used to understand how changes to the span type affect metrics. "
                     "Useful in debugging.",
     )
+    parent_observation_id: Optional[str] = Field(
+        default=None,
+        description="The id of the observation the span belongs to. Used to link spans to observations.",
+    )
 
     @field_validator("input", "output")
     def ensure_dict(cls, v, info: ValidationInfo):
