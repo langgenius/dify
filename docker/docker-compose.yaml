@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: dify
+    image: langgenius/dify-api:0.6.11
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -76,7 +76,7 @@ services:
       # you must use the HTTPS protocol and set the configuration to `SameSite=None, Secure=true, HttpOnly=true`.
       #
       # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage` and `oci-storage`, Default: `local`
-      STORAGE_TYPE: oci-storage
+      STORAGE_TYPE: local
       # The path to the local storage directory, the directory relative the root path of API service codes or absolute path. Default: `storage` or `/home/john/storage`.
       # only available when STORAGE_TYPE is `local`.
       STORAGE_LOCAL_PATH: storage
@@ -110,11 +110,11 @@ services:
       TENCENT_COS_REGION: 'your-region'
       TENCENT_COS_SCHEME: 'your-scheme'
       # The Oracle OCI storage configurations, only available when STORAGE_TYPE is `oci-storage`.
-      OCI_ENDPOINT: "https://sehubjapacprod.compat.objectstorage.us-ashburn-1.oraclecloud.com"
-      OCI_BUCKET_NAME: ocibucket
-      OCI_ACCESS_KEY: "cee09042c3c79600e69714eec6a62e2797fe8d15"
-      OCI_SECRET_KEY: "qXLWIshqd7OiLS//ql3LGV1M+huznQB88EBQj2bEoyE="
-      OCI_REGION: "us-ashburn-1"
+      OCI_ENDPOINT: your-endpoint
+      OCI_BUCKET_NAME: your-bucket-name
+      OCI_ACCESS_KEY: your-access-key
+      OCI_SECRET_KEY: your-secret-key
+      OCI_REGION: your-region
 
       # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`,`pgvector`, `chroma`, 'opensearch', 'tidb_vector'.
       VECTOR_STORE: weaviate
@@ -229,7 +229,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: dify
+    image: langgenius/dify-api:0.6.11
     restart: always
     environment:
       CONSOLE_WEB_URL: ''
