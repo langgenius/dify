@@ -73,6 +73,8 @@ const translation = {
     privacyPolicyPlaceholder: '請輸入隱私協議',
     customDisclaimer: '自定義免責聲明',
     customDisclaimerPlaceholder: '請輸入自定義免責聲明',
+    deleteToolConfirmTitle: '刪除這個工具？',
+    deleteToolConfirmContent: '刪除工具是不可逆的。用戶將無法再訪問您的工具。',
   },
   test: {
     title: '測試',

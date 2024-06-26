@@ -8,6 +8,7 @@ import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderReq
 import ToolItem from './tool-item'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
+import Confirm from '@/app/components/base/confirm'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
@@ -83,6 +84,8 @@ const ProviderDetail = ({
   // custom provider
   const [customCollection, setCustomCollection] = useState<CustomCollectionBackend | WorkflowToolProviderResponse | null>(null)
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [deleteAction, setDeleteAction] = useState(null)
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await updateCustomCollection(data)
     onRefreshData()
@@ -157,6 +160,23 @@ const ProviderDetail = ({
       message: t('common.api.actionSuccess'),
     })
     setIsShowEditWorkflowToolModal(false)
+  }
+  const onClickCustomToolDelete = () => {
+    setDeleteAction('customTool')
+    setShowConfirmDelete(true)
+  }
+  const onClickWorkflowToolDelete = () => {
+    setDeleteAction('workflowTool')
+    setShowConfirmDelete(true)
+  }
+  const handleConfirmDelete = () => {
+    if (deleteAction === 'customTool')
+      doRemoveCustomToolCollection()
+
+    else if (deleteAction === 'workflowTool')
+      removeWorkflowToolProvider()
+
+    setShowConfirmDelete(false)
   }
 
   // ToolList
@@ -330,15 +350,25 @@ const ProviderDetail = ({
           payload={customCollection}
           onHide={() => setIsShowEditCustomCollectionModal(false)}
           onEdit={doUpdateCustomToolCollection}
-          onRemove={doRemoveCustomToolCollection}
+          onRemove={onClickCustomToolDelete}
         />
       )}
       {isShowEditWorkflowToolModal && (
         <WorkflowToolModal
           payload={customCollection}
           onHide={() => setIsShowEditWorkflowToolModal(false)}
-          onRemove={removeWorkflowToolProvider}
+          onRemove={onClickWorkflowToolDelete}
           onSave={updateWorkflowToolProvider}
+        />
+      )}
+      {showConfirmDelete && (
+        <Confirm
+          title={t('tools.createTool.deleteToolConfirmTitle')}
+          content={t('tools.createTool.deleteToolConfirmContent')}
+          isShow={showConfirmDelete}
+          onClose={() => setShowConfirmDelete(false)}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setShowConfirmDelete(false)}
         />
       )}
     </div>
