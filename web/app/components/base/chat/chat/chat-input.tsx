@@ -8,6 +8,7 @@ import { useContext } from 'use-context-selector'
 import Recorder from 'js-audio-recorder'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'rc-textarea'
+import { RiRefreshLine } from '@remixicon/react'
 import type {
   EnableType,
   OnSend,
@@ -35,11 +36,13 @@ type ChatInputProps = {
   visionConfig?: VisionConfig
   speechToTextConfig?: EnableType
   onSend?: OnSend
+  onCreateNewChat?: () => void
 }
 const ChatInput: FC<ChatInputProps> = ({
   visionConfig,
   speechToTextConfig,
   onSend,
+  onCreateNewChat,
 }) => {
   const { appData } = useChatWithHistoryContext()
   const { t } = useTranslation()
@@ -214,6 +217,20 @@ const ChatInput: FC<ChatInputProps> = ({
                   {sendBtn}
                 </TooltipPlus>
               )}
+            <div className='mx-2 w-[1px] h-4 bg-black opacity-5'/>
+            <TooltipPlus
+              popupContent={
+                <div>{t('share.chat.resetChat')}</div>
+              }
+            >
+              <div
+                className='group flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[#EBF5FF] cursor-pointer'
+                onClick={() => {
+                  onCreateNewChat?.()
+                }}>
+                <RiRefreshLine className="w-5 h-5 text-gray-300 group-hover:text-primary-600"/>
+              </div>
+            </TooltipPlus>
           </div>
           {
             voiceInputShow && (

@@ -58,6 +58,8 @@ export type ChatProps = {
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   hideLogModal?: boolean
+  onCreateNewChat?: () => void
+
 }
 const Chat: FC<ChatProps> = ({
   appData,
@@ -85,6 +87,8 @@ const Chat: FC<ChatProps> = ({
   chatAnswerContainerInner,
   hideProcessDetail,
   hideLogModal,
+  onCreateNewChat,
+
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -262,6 +266,7 @@ const Chat: FC<ChatProps> = ({
                   visionConfig={config?.file_upload?.image}
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
+                  onCreateNewChat={onCreateNewChat}
                 />
               )
             }
