@@ -1,8 +1,9 @@
+import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import NodeRunResult
@@ -20,7 +21,7 @@ class RuntimeNode(BaseModel):
         FAILED = "failed"
         PAUSED = "paused"
 
-    id: str
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     """random id for current runtime node"""
 
     graph_node: GraphNode
@@ -97,4 +98,4 @@ class WorkflowRuntimeState(BaseModel):
     total_tokens: int = 0
     node_run_steps: int = 0
 
-    runtime_graph: RuntimeGraph
+    runtime_graph: RuntimeGraph = Field(default_factory=RuntimeGraph)
