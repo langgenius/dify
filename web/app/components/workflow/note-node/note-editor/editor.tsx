@@ -13,6 +13,7 @@ import { ListPlugin } from '@lexical/react/LexicalListPlugin'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
+import { useWorkflowHistoryStore } from '../../workflow-history-store'
 import LinkEditorPlugin from './plugins/link-editor-plugin'
 import FormatDetectorPlugin from './plugins/format-detector-plugin'
 // import TreeView from '@/app/components/base/prompt-editor/plugins/tree-view'
@@ -32,12 +33,16 @@ const Editor = ({
     onChange?.(editorState)
   }, [onChange])
 
+  const { setShortcutsEnabled } = useWorkflowHistoryStore()
+
   return (
     <div className='relative'>
       <RichTextPlugin
         contentEditable={
           <div>
             <ContentEditable
+              onFocus={() => setShortcutsEnabled(false)}
+              onBlur={() => setShortcutsEnabled(true)}
               spellCheck={false}
               className='w-full h-full outline-none caret-primary-600'
               placeholder={placeholder}
