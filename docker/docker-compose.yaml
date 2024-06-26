@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: dify-oci:1.0
+    image: dify
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -229,7 +229,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: dify-oci:1.0
+    image: dify
     restart: always
     environment:
       CONSOLE_WEB_URL: ''
