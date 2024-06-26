@@ -132,7 +132,6 @@ const AddExtractParameter: FC<Props> = ({
           isShow
           onClose={hideModal}
           className='!w-[400px] !max-w-[400px] !p-4'
-          wrapperClassName='!z-[100]'
         >
           <div>
             <div className='space-y-2'>
@@ -181,8 +180,8 @@ const AddExtractParameter: FC<Props> = ({
               </Field>
             </div>
             <div className='mt-4 flex justify-end space-x-2'>
-              <Button className='flex !h-8 !w-[95px] text-[13px] font-medium text-gray-700' onClick={hideModal} >{t('common.operation.cancel')}</Button>
-              <Button className='flex !h-8 !w-[95px] text-[13px] font-medium' type='primary' onClick={handleSave} >{isAdd ? t('common.operation.add') : t('common.operation.save')}</Button>
+              <Button className='!w-[95px]' onClick={hideModal} >{t('common.operation.cancel')}</Button>
+              <Button className='!w-[95px]' variant='primary' onClick={handleSave} >{isAdd ? t('common.operation.add') : t('common.operation.save')}</Button>
             </div>
           </div>
         </Modal>

@@ -18,6 +18,7 @@ import LogoAvatar from '@/app/components/base/logo/logo-embeded-chat-avatar'
 
 const ChatWrapper = () => {
   const {
+    appData,
     appParams,
     appPrevChatList,
     currentConversationId,
@@ -31,6 +32,7 @@ const ChatWrapper = () => {
     appMeta,
     handleFeedback,
     currentChatInstanceRef,
+    themeBuilder,
   } = useEmbeddedChatbotContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -114,6 +116,7 @@ const ChatWrapper = () => {
 
   return (
     <Chat
+      appData={appData}
       config={appConfig}
       chatList={chatList}
       isResponding={isResponding}
@@ -128,6 +131,7 @@ const ChatWrapper = () => {
       suggestedQuestions={suggestedQuestions}
       answerIcon={isDify() ? <LogoAvatar className='relative shrink-0' /> : null}
       hideProcessDetail
+      themeBuilder={themeBuilder}
     />
   )
 }

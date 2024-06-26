@@ -1,24 +1,23 @@
 import type { FC } from 'react'
 import React from 'react'
+import { RiRefreshLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-// import AppIcon from '@/app/components/base/app-icon'
-import { ReplayIcon } from '@/app/components/app/chat/icon-component'
+import type { Theme } from './theme/theme-context'
+import { CssTransform } from './theme/utils'
 import Tooltip from '@/app/components/base/tooltip'
 
 export type IHeaderProps = {
   isMobile?: boolean
   customerIcon?: React.ReactNode
   title: string
-  // icon: string
-  // icon_background: string
+  theme?: Theme
   onCreateNewChat?: () => void
 }
 const Header: FC<IHeaderProps> = ({
   isMobile,
   customerIcon,
   title,
-  // icon,
-  // icon_background,
+  theme,
   onCreateNewChat,
 }) => {
   const { t } = useTranslation()
@@ -28,14 +27,15 @@ const Header: FC<IHeaderProps> = ({
   return (
     <div
       className={`
-        shrink-0 flex items-center justify-between h-14 px-4 bg-gray-100 
-        bg-gradient-to-r from-blue-600 to-sky-500
+        shrink-0 flex items-center justify-between h-14 px-4 
       `}
+      style={Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? ''), CssTransform(theme?.headerBorderBottomStyle ?? '')) }
     >
       <div className="flex items-center space-x-2">
         {customerIcon}
         <div
           className={'text-sm font-bold text-white'}
+          style={CssTransform(theme?.colorFontOnHeaderStyle ?? '')}
         >
           {title}
         </div>
@@ -48,7 +48,7 @@ const Header: FC<IHeaderProps> = ({
         <div className='flex cursor-pointer hover:rounded-lg hover:bg-black/5 w-8 h-8 items-center justify-center' onClick={() => {
           onCreateNewChat?.()
         }}>
-          <ReplayIcon className="h-4 w-4 text-sm font-bold text-white" />
+          <RiRefreshLine className="h-4 w-4 text-sm font-bold text-white" color={theme?.colorPathOnHeader}/>
         </div>
       </Tooltip>
     </div>

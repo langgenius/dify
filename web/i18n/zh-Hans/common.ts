@@ -12,6 +12,7 @@ const translation = {
     cancel: '取消',
     clear: '清空',
     save: '保存',
+    saveAndEnable: '保存并启用',
     edit: '编辑',
     add: '添加',
     added: '已添加',
@@ -160,6 +161,9 @@ const translation = {
     langGeniusAccountTip: '您的 Dify 账号和相关的用户数据。',
     editName: '编辑名字',
     showAppLength: '显示 {{length}} 个应用',
+    delete: '删除账户',
+    deleteTip: '删除账户后，所有数据将被永久删除且不可恢复。',
+    deleteConfirmTip: '请将以下内容通过您的账户邮箱发送到 ',
   },
   members: {
     team: '团队',
@@ -432,7 +436,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} 已是最新版本。',
   },
   appMenus: {
-    overview: '概览',
+    overview: '监测',
     promptEng: '编排',
     apiAccess: '访问 API',
     logAndAnn: '日志与标注',

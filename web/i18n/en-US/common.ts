@@ -12,6 +12,7 @@ const translation = {
     cancel: 'Cancel',
     clear: 'Clear',
     save: 'Save',
+    saveAndEnable: 'Save & Enable',
     edit: 'Edit',
     add: 'Add',
     added: 'Added',
@@ -160,6 +161,9 @@ const translation = {
     langGeniusAccountTip: 'Your Dify account and associated user data.',
     editName: 'Edit Name',
     showAppLength: 'Show {{length}} apps',
+    delete: 'Delete Account',
+    deleteTip: 'Deleting your account will permanently erase all your data and it cannot be recovered.',
+    deleteConfirmTip: 'To confirm, please send the following from your registered email to ',
   },
   members: {
     team: 'Team',
@@ -436,7 +440,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} is the latest version available.',
   },
   appMenus: {
-    overview: 'Overview',
+    overview: 'Monitoring',
     promptEng: 'Orchestrate',
     apiAccess: 'API Access',
     logAndAnn: 'Logs & Ann.',

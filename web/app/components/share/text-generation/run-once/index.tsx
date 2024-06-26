@@ -118,15 +118,13 @@ const RunOnce: FC<IRunOnceProps> = ({
           <div className='w-full mt-4'>
             <div className="flex items-center justify-between">
               <Button
-                className='!h-8 !p-3'
                 onClick={onClear}
                 disabled={false}
               >
                 <span className='text-[13px]'>{t('common.operation.clear')}</span>
               </Button>
               <Button
-                type="primary"
-                className='!h-8 !pl-3 !pr-4'
+                variant="primary"
                 onClick={onSend}
                 disabled={false}
               >

@@ -44,6 +44,15 @@ const translation = {
         webDescTip: 'このテキストはクライアント側に表示され、アプリケーションの使用方法の基本的なガイダンスを提供します。',
         webDescPlaceholder: 'WebAppの説明を入力してください',
         language: '言語',
+        workflow: {
+          title: 'ワークフローステップ',
+          show: '表示',
+          hide: '非表示',
+        },
+        chatColorTheme: 'チャットボットのカラーテーマ',
+        chatColorThemeDesc: 'チャットボットのカラーテーマを設定します',
+        chatColorThemeInverted: '反転',
+        invalidHexMessage: '無効な16進数値',
         more: {
           entry: 'その他の設定を表示',
           copyright: '著作権',

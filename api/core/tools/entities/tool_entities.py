@@ -95,6 +95,7 @@ class ToolInvokeMessage(BaseModel):
         IMAGE = "image"
         LINK = "link"
         BLOB = "blob"
+        JSON = "json"
         IMAGE_LINK = "image_link"
         FILE_VAR = "file_var"
 
@@ -102,7 +103,7 @@ class ToolInvokeMessage(BaseModel):
     """
         plain text, image url or link url
     """
-    message: Union[str, bytes] = None
+    message: Union[str, bytes, dict] = None
     meta: dict[str, Any] = None
     save_as: str = ''
 
@@ -116,10 +117,10 @@ class ToolParameterOption(BaseModel):
     value: str = Field(..., description="The value of the option")
     label: I18nObject = Field(..., description="The label of the option")
 
-    @classmethod
     @field_validator('value', mode='before')
+    @classmethod
     def transform_id_to_str(cls, value) -> str:
-        if isinstance(value, bool):
+        if not isinstance(value, str):
             return str(value)
         else:
             return value

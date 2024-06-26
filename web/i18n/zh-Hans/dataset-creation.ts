@@ -13,8 +13,7 @@ const translation = {
   },
   firecrawl: {
     configFirecrawl: '配置 🔥Firecrawl',
-    apiKeyPlaceholder: '从 firecrawl.dev 获取 API Key，以 "fc-" 开头',
-    apiKeyFormatError: 'API Key 应以 "fc-" 开头',
+    apiKeyPlaceholder: '从 firecrawl.dev 获取 API Key',
     getApiKeyLinkText: '从 firecrawl.dev 获取您的 API Key',
   },
   stepOne: {

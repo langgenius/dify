@@ -1,0 +1,96 @@
+identity:
+  name: get_markdown
+  author: Dify
+  label:
+    en_US: Get Markdown API
+    zh_Hans: Get Markdown API
+description:
+  human:
+    en_US: A tool to perform convert a webpage to markdown to make it easier for LLMs to understand.
+    zh_Hans: 一个将网页转换为 Markdown 的工具，以便模型更容易理解
+  llm: A tool to perform convert a webpage to markdown to make it easier for LLMs to understand.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: URL
+      zh_Hans: URL
+    human_description:
+      en_US: URL that you want to grab the content from
+      zh_Hans: 您要从中获取内容的 URL
+    llm_description: Defines the link want to grab content from.
+    form: llm
+  - name: location
+    type: string
+    required: false
+    default: US
+    label:
+      en_US: Location
+      zh_Hans: 询问
+    human_description:
+      en_US: Defines from where you want the search to originate. (For example - New York)
+      zh_Hans: 定义您想要搜索的起始位置。 （例如 - 纽约）
+    llm_description: Defines from where you want the search to originate. (For example - New York)
+    form: form
+    options:
+      - value: AU
+        label:
+          en_US: Australia
+          zh_Hans: 澳大利亚
+          pt_BR: Australia
+      - value: BR
+        label:
+          en_US: Brazil
+          zh_Hans: 巴西
+          pt_BR: Brazil
+      - value: CA
+        label:
+          en_US: Canada
+          zh_Hans: 加拿大
+          pt_BR: Canada
+      - value: DE
+        label:
+          en_US: Germany
+          zh_Hans: 德国
+          pt_BR: Germany
+      - value: FR
+        label:
+          en_US: France
+          zh_Hans: 法国
+          pt_BR: France
+      - value: GB
+        label:
+          en_US: United Kingdom
+          zh_Hans: 英国
+          pt_BR: United Kingdom
+      - value: US
+        label:
+          en_US: United States
+          zh_Hans: 美国
+          pt_BR: United States
+      - value: JP
+        label:
+          en_US: Japan
+          zh_Hans: 日本
+          pt_BR: Japan
+      - value: IN
+        label:
+          en_US: India
+          zh_Hans: 印度
+          pt_BR: India
+      - value: KR
+        label:
+          en_US: Korea
+          zh_Hans: 韩国
+          pt_BR: Korea
+      - value: SG
+        label:
+          en_US: Singapore
+          zh_Hans: 新加坡
+          pt_BR: Singapore
+      - value: SE
+        label:
+          en_US: Sweden
+          zh_Hans: 瑞典
+          pt_BR: Sweden
