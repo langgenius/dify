@@ -94,5 +94,5 @@ class ToolTraceInfo(BaseTraceInfo):
 
 
 class GenerateNameTraceInfo(BaseTraceInfo):
-    conversation_id: str
+    conversation_id: Optional[str] = None
     tenant_id: str
