@@ -35,6 +35,29 @@ const OutputVarList: FC<Props> = ({
     }
   })
 
+  const handleVarNameChange = useCallback((index: number) => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const oldKey = list[index].variable
+      const newKey = e.target.value
+
+      const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
+      if (!isValid) {
+        Toast.notify({
+          type: 'error',
+          message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+        })
+        return
+      }
+
+      const newOutputs = produce(outputs, (draft) => {
+        draft[newKey] = draft[oldKey]
+        delete draft[oldKey]
+      })
+      onChange(newOutputs, index, newKey)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list, onChange, outputs, outputKeyOrders])
+
   const handleVarNameFocus = useCallback((index: number) => {
     return () => {
       const oldVar = list[index]
@@ -67,29 +90,6 @@ const OutputVarList: FC<Props> = ({
       setEditVar(null)
     }
   }, [list, onChange, onRemove, outputs, editVar, t])
-
-  const handleVarNameChange = useCallback((index: number) => {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const oldKey = list[index].variable
-      const newKey = e.target.value
-
-      const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
-      if (!isValid) {
-        Toast.notify({
-          type: 'error',
-          message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
-        })
-        return
-      }
-
-      const newOutputs = produce(outputs, (draft) => {
-        draft[newKey] = draft[oldKey]
-        delete draft[oldKey]
-      })
-      onChange(newOutputs, index, newKey)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [list, onChange, outputs, outputKeyOrders])
 
   const handleVarTypeChange = useCallback((index: number) => {
     return (value: string) => {
