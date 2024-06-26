@@ -10,6 +10,7 @@ import {
 } from './context'
 import { useEmbeddedChatbot } from './hooks'
 import { isDify } from './utils'
+import { useThemeContext } from './theme/theme-context'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -29,6 +30,7 @@ const Chatbot = () => {
     showConfigPanelBeforeChat,
     appChatListDataLoading,
     handleNewConversation,
+    themeBuilder,
   } = useEmbeddedChatbotContext()
 
   const chatReady = (!showConfigPanelBeforeChat || !!appPrevChatList.length)
@@ -38,6 +40,7 @@ const Chatbot = () => {
   const difyIcon = <LogoHeader />
 
   useEffect(() => {
+    themeBuilder?.buildTheme(site?.chat_color_theme, site?.chat_color_theme_inverted)
     if (site) {
       if (customConfig)
         document.title = `${site.title}`
@@ -63,6 +66,7 @@ const Chatbot = () => {
         isMobile={isMobile}
         title={site?.title || ''}
         customerIcon={isDify() ? difyIcon : ''}
+        theme={themeBuilder?.theme}
         onCreateNewChat={handleNewConversation}
       />
       <div className='flex bg-white overflow-hidden'>
@@ -87,6 +91,7 @@ const Chatbot = () => {
 const EmbeddedChatbotWrapper = () => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const themeBuilder = useThemeContext()
 
   const {
     appInfoError,
@@ -141,6 +146,7 @@ const EmbeddedChatbotWrapper = () => {
     appId,
     handleFeedback,
     currentChatInstanceRef,
+    themeBuilder,
   }}>
     <Chatbot />
   </EmbeddedChatbotContext.Provider>

@@ -48,6 +48,15 @@ const translation = {
           'Ten tekst będzie wyświetlany po stronie klienta, zapewniając podstawowe wskazówki, jak korzystać z aplikacji',
         webDescPlaceholder: 'Wpisz opis WebApp',
         language: 'Język',
+        workflow: {
+          title: 'Kroki przepływu pracy',
+          show: 'Pokaż',
+          hide: 'Ukryj',
+        },
+        chatColorTheme: 'Motyw kolorystyczny czatu',
+        chatColorThemeDesc: 'Ustaw motyw kolorystyczny czatu',
+        chatColorThemeInverted: 'Odwrócony',
+        invalidHexMessage: 'Nieprawidłowa wartość heksadecymalna',
         more: {
           entry: 'Pokaż więcej ustawień',
           copyright: 'Prawa autorskie',

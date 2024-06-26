@@ -42,6 +42,7 @@ import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_b
 import { useNodesExtraData } from './use-nodes-data'
 import { useWorkflowTemplate } from './use-workflow-template'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   fetchNodesDefaultConfigs,
@@ -71,6 +72,7 @@ export const useWorkflow = () => {
   const workflowStore = useWorkflowStore()
   const nodesExtraData = useNodesExtraData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { saveStateToHistory } = useWorkflowHistory()
 
   const setPanelWidth = useCallback((width: number) => {
     localStorage.setItem('workflow-node-panel-width', `${width}`)
@@ -122,10 +124,11 @@ export const useWorkflow = () => {
       y: 0,
       zoom,
     })
+    saveStateToHistory(WorkflowHistoryEvent.LayoutOrganize)
     setTimeout(() => {
       handleSyncWorkflowDraft()
     })
-  }, [store, reactflow, handleSyncWorkflowDraft, workflowStore])
+  }, [workflowStore, store, reactflow, saveStateToHistory, handleSyncWorkflowDraft])
 
   const getTreeLeafNodes = useCallback((nodeId: string) => {
     const {
@@ -485,7 +488,9 @@ export const useWorkflowInit = () => {
                   nodes: nodesTemplate,
                   edges: edgesTemplate,
                 },
-                features: {},
+                features: {
+                  retriever_resource: { enabled: true },
+                },
               },
             }).then((res) => {
               workflowStore.getState().setDraftUpdatedAt(res.updated_at)

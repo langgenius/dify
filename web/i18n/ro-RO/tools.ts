@@ -71,6 +71,8 @@ const translation = {
     },
     privacyPolicy: 'Politica de Confidențialitate',
     privacyPolicyPlaceholder: 'Vă rugăm să introduceți politica de confidențialitate',
+    deleteToolConfirmTitle: 'Ștergeți această unealtă?',
+    deleteToolConfirmContent: ' Ștergerea uneltă este irreversibilă. Utilizatorii nu vor mai putea accesa uneltă dvs.',
   },
   test: {
     title: 'Testează',

@@ -3,10 +3,10 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { RiCloseLine } from '@remixicon/react'
 import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
 import NodePanel from './node'
 import type { NodeTracing } from '@/types/workflow'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 const i18nPrefix = 'workflow.singleRun'
 
 type Props = {
@@ -32,7 +32,7 @@ const IterationResultPanel: FC<Props> = ({
             {t(`${i18nPrefix}.testRunIteration`)}
           </div>
           <div className='ml-2 shrink-0 p-1 cursor-pointer' onClick={onHide}>
-            <XClose className='w-4 h-4 text-gray-500 ' />
+            <RiCloseLine className='w-4 h-4 text-gray-500 ' />
           </div>
         </div>
         <div className='flex items-center py-2 space-x-1 text-primary-600 cursor-pointer' onClick={onBack}>

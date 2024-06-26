@@ -74,13 +74,14 @@ class ToolNode(BaseNode):
             )
 
         # convert tool messages
-        plain_text, files = self._convert_tool_messages(messages)
+        plain_text, files, json = self._convert_tool_messages(messages)
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             outputs={
                 'text': plain_text,
-                'files': files
+                'files': files,
+                'json': json
             },
             metadata={
                 NodeRunMetadataKey.TOOL_INFO: tool_info
@@ -149,8 +150,9 @@ class ToolNode(BaseNode):
         # extract plain text and files
         files = self._extract_tool_response_binary(messages)
         plain_text = self._extract_tool_response_text(messages)
+        json = self._extract_tool_response_json(messages)
 
-        return plain_text, files
+        return plain_text, files, json
 
     def _extract_tool_response_binary(self, tool_response: list[ToolInvokeMessage]) -> list[FileVar]:
         """
@@ -172,6 +174,7 @@ class ToolNode(BaseNode):
                     tenant_id=self.tenant_id,
                     type=FileType.IMAGE,
                     transfer_method=FileTransferMethod.TOOL_FILE,
+                    url=url,
                     related_id=tool_file_id,
                     filename=filename,
                     extension=ext,
@@ -203,7 +206,9 @@ class ToolNode(BaseNode):
             f'Link: {message.message}' if message.type == ToolInvokeMessage.MessageType.LINK else ''
             for message in tool_response
         ])
-    
+
+    def _extract_tool_response_json(self, tool_response: list[ToolInvokeMessage]) -> list[dict]:
+        return [message.message for message in tool_response if message.type == ToolInvokeMessage.MessageType.JSON]
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(cls, node_data: ToolNodeData) -> dict[str, list[str]]:

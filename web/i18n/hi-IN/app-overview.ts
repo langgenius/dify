@@ -48,6 +48,15 @@ const translation = {
           'यह टेक्स्ट क्लाइंट साइड पर प्रदर्शित होगा, जो एप्लिकेशन का उपयोग करने के लिए बुनियादी मार्गदर्शन प्रदान करेगा',
         webDescPlaceholder: 'वेबऐप का विवरण दर्ज करें',
         language: 'भाषा',
+        workflow: {
+          title: 'वर्कफ़्लो स्टेप्स',
+          show: 'दिखाएं',
+          hide: 'छुपाएं',
+        },
+        chatColorTheme: 'चैटबॉट का रंग थीम',
+        chatColorThemeDesc: 'चैटबॉट का रंग थीम निर्धारित करें',
+        chatColorThemeInverted: 'उल्टा',
+        invalidHexMessage: 'अमान्य हेक्स मान',
         more: {
           entry: 'अधिक सेटिंग्स दिखाएं',
           copyright: 'कॉपीराइट',

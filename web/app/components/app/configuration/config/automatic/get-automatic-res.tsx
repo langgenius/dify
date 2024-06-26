@@ -154,8 +154,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
             <div className='mt-6 flex justify-end'>
               <Button
-                className='flex space-x-2 items-center !h-8'
-                type='primary'
+                className='flex space-x-2'
+                variant='primary'
                 onClick={onGenerate}
                 disabled={isLoading}
               >
@@ -198,7 +198,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
             <div className='sticky bottom-0 flex justify-end right-0 py-4 bg-white'>
               <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
-              <Button type='primary' className='ml-2' onClick={() => {
+              <Button variant='primary' className='ml-2' onClick={() => {
                 setShowConfirmOverwrite(true)
               }}>{t('appDebug.automatic.apply')}</Button>
             </div>

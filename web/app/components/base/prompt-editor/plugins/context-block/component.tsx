@@ -1,12 +1,14 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
 import { UPDATE_DATASETS_EVENT_EMITTER } from '../../constants'
 import type { Dataset } from './index'
 import { DELETE_CONTEXT_BLOCK_COMMAND } from './index'
 import { File05, Folder } from '@/app/components/base/icons/src/vender/solid/files'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -82,7 +84,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
                 </div>
                 <div className='flex items-center h-8 text-[#155EEF] cursor-pointer' onClick={onAddContext}>
                   <div className='shrink-0 flex justify-center items-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-gray-100'>
-                    <Plus className='w-[14px] h-[14px]' />
+                    <RiAddLine className='w-[14px] h-[14px]' />
                   </div>
                   <div className='text-[13px] font-medium' title=''>{t('common.promptEditor.context.modal.add')}</div>
                 </div>
