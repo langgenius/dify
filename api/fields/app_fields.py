@@ -50,6 +50,7 @@ app_detail_fields = {
     'enable_site': fields.Boolean,
     'enable_api': fields.Boolean,
     'model_config': fields.Nested(model_config_fields, attribute='app_model_config', allow_null=True),
+    'tracing': fields.Raw,
     'created_at': TimestampField
 }
 
