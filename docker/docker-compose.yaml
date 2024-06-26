@@ -292,11 +292,11 @@ services:
       TENCENT_COS_REGION: 'your-region'
       TENCENT_COS_SCHEME: 'your-scheme'
       # The Oracle OCI storage configurations, only available when STORAGE_TYPE is `oci-storage`.
-      OCI_ENDPOINT: "https://sehubjapacprod.compat.objectstorage.us-ashburn-1.oraclecloud.com"
-      OCI_BUCKET_NAME: ocibucket
-      OCI_ACCESS_KEY: "cee09042c3c79600e69714eec6a62e2797fe8d15"
-      OCI_SECRET_KEY: "qXLWIshqd7OiLS//ql3LGV1M+huznQB88EBQj2bEoyE="
-      OCI_REGION: "us-ashburn-1"
+      OCI_ENDPOINT: your-endpoint
+      OCI_BUCKET_NAME: oyour-bucket-name
+      OCI_ACCESS_KEY: your-access-key
+      OCI_SECRET_KEY: your-secret-key
+      OCI_REGION: your-region
       # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`, `pgvector`, `chroma`, 'opensearch', 'tidb_vector'.
       VECTOR_STORE: weaviate
       # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
