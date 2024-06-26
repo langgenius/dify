@@ -27,7 +27,7 @@ class ToolFileManager:
         sign file to get a temporary url
         """
         base_url = current_app.config.get('FILES_URL')
-        file_preview_url = f'{base_url}/files/tools/{tool_file_id}{extension}'
+        file_preview_url = f'{base_url}/files/tools/{tool_file_id}{extension or ".png"}'
 
         timestamp = str(int(time.time()))
         nonce = os.urandom(16).hex()

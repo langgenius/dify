@@ -62,13 +62,13 @@ class EndpointConfig(BaseModel):
     SERVICE_API_URL: str = Field(
         description='Service API Url prefix.'
                     'used to display Service API Base Url to the front-end.',
-        default='https://api.dify.ai',
+        default='https://dify.ddit.ai',
     )
 
     APP_WEB_URL: str = Field(
         description='WebApp Url prefix.'
                     'used to display WebAPP API Base Url to the front-end.',
-        default='https://udify.app',
+        default='https://dify.ddit.ai',
     )
 
 
