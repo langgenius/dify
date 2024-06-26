@@ -8,7 +8,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph import Graph, GraphNode
-from core.workflow.nodes.base_node import BaseNode, UserFrom
+from core.workflow.nodes.base_node import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
 
@@ -25,9 +25,6 @@ class RuntimeNode(BaseModel):
 
     graph_node: GraphNode
     """graph node"""
-
-    node_instance: BaseNode
-    """node instance"""
 
     node_run_result: Optional[NodeRunResult] = None
     """node run result"""

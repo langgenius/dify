@@ -14,9 +14,6 @@ class GraphNode(BaseModel):
     children_node_ids: list[str] = []
     """children node ids"""
 
-    source_handle: Optional[str] = None
-    """current node source handle from the previous node result"""
-
     run_condition_callback: Optional[Callable] = None
     """condition function check if the node can be executed"""
 
