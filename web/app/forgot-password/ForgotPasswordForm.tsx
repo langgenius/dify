@@ -11,7 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import Loading from '../components/base/loading'
 import Button from '@/app/components/base/button'
 
-import { fetchInitValidateStatus, fetchSetupStatus, setup, verifyEmail } from '@/service/common'
+import { fetchInitValidateStatus, fetchSetupStatus, forgotPassword, setup } from '@/service/common'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 
 const accountFormSchema = z.object({
@@ -28,7 +28,7 @@ const ForgotPasswordForm = () => {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [isEmailSent, setIsEmailSent] = useState(false)
-  const { register, trigger, formState: { errors } } = useForm<AccountFormValues>({
+  const { register, trigger, getValues, formState: { errors } } = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
     defaultValues: { email: '' },
   })
@@ -44,15 +44,14 @@ const ForgotPasswordForm = () => {
 
   const handleVerifyEmail = async (email: string) => {
     try {
-      const res = await verifyEmail({
-        url: '/verify-email',
+      const res = await forgotPassword({
+        url: 'account/forgot-password',
         body: { email },
       })
-      if (res.result === 'success') {
-        console.log('Email verified successfully')
+      if (res.result === 'success')
         setIsEmailSent(true)
-      }
-      else { console.error('Email verification failed') }
+
+      else console.error('Email verification failed')
     }
     catch (error) {
       console.error('Request failed:', error)
@@ -64,9 +63,9 @@ const ForgotPasswordForm = () => {
       router.push('/signin')
     }
     else {
-      const isValid = await trigger()
+      const isValid = await trigger('email')
       if (isValid) {
-        const email = (await trigger('email')).toString()
+        const email = getValues('email')
         await handleVerifyEmail(email)
       }
     }

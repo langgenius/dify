@@ -11,6 +11,8 @@ from controllers.console.setup import setup_required
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
+    EmailNotRegisteredError,
+    InvalidEmailError,
     InvalidInvitationCodeError,
     RepeatPasswordNotMatchError,
 )
@@ -18,8 +20,9 @@ from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.helper import TimestampField, timezone
+from libs.helper import email as email_validate
 from libs.login import login_required
-from models.account import AccountIntegrate, InvitationCode
+from models.account import Account, AccountIntegrate, InvitationCode
 from services.account_service import AccountService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 
@@ -244,6 +247,28 @@ class AccountIntegrateApi(Resource):
 
         return {'data': integrate_data}
 
+class AccountForgotPasswordApi(Resource):
+
+    @setup_required
+    @account_initialization_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('email', type=str, required=True, location='json')
+        args = parser.parse_args()
+
+        email = args['email']
+
+        if not email_validate(email):
+            raise InvalidEmailError()
+
+        account = Account.query.filter_by(email=email).first()
+
+        if account:
+            AccountService.send_reset_password_email(account=account)
+            return {"result": "success"}
+        else:
+            raise EmailNotRegisteredError()
+
 
 # Register API resources
 api.add_resource(AccountInitApi, '/account/init')
@@ -257,3 +282,4 @@ api.add_resource(AccountPasswordApi, '/account/password')
 api.add_resource(AccountIntegrateApi, '/account/integrates')
 # api.add_resource(AccountEmailApi, '/account/email')
 # api.add_resource(AccountEmailVerifyApi, '/account/email-verify')
+api.add_resource(AccountForgotPasswordApi, '/account/forgot-password')

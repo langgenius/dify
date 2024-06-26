@@ -35,3 +35,13 @@ class AccountNotInitializedError(BaseHTTPException):
     error_code = 'account_not_initialized'
     description = "The account has not been initialized yet. Please proceed with the initialization process first."
     code = 400
+
+class InvalidEmailError(BaseHTTPException):
+    error_code = 'invalid_email'
+    description = "The email address is not valid."
+    code = 400
+
+class EmailNotRegisteredError(BaseHTTPException):
+    error_code = 'email_not_registered'
+    description = "Sorry, the email address is not registered."
+    code = 400
