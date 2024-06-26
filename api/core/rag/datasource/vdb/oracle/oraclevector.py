@@ -156,13 +156,6 @@ class OracleVector(BaseVector):
     #            idss.append(record[0])
     #    return idss
 
-    #def delete_by_document_id(self, document_id: str):
-    #    ids = self.get_ids_by_metadata_field('doc_id', document_id)
-    #    if len(ids)>0:
-    #        with self._get_cursor() as cur:
-    #            cur.execute(f"delete FROM {self.table_name} d WHERE d.meta.doc_id in '%s'" % ("','".join(ids),))
-
-
     def delete_by_ids(self, ids: list[str]) -> None:
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s" % (tuple(ids),))

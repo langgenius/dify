@@ -91,17 +91,12 @@ class TestOpenSearchVector:
         assert hits_by_vector[0].metadata['document_id'] == self.example_doc_id, \
             f"Expected document ID {self.example_doc_id}, got {hits_by_vector[0].metadata['document_id']}"
 
-    def test_delete_by_document_id(self):
-        self.vector._client.delete_by_query.return_value = {'deleted': 1}
-
         doc = Document(page_content="Test content to delete", metadata={"document_id": self.example_doc_id})
         embedding = [0.1] * 128
 
         with patch('opensearchpy.helpers.bulk') as mock_bulk:
             mock_bulk.return_value = ([], [])
             self.vector.add_texts([doc], [embedding])
-
-        self.vector.delete_by_document_id(document_id=self.example_doc_id)
 
         self.vector._client.search.return_value = {'hits': {'total': {'value': 0}, 'hits': []}}
 
@@ -168,10 +163,6 @@ class TestOpenSearchVectorWithRedis:
         expected_length = 1
         expected_doc_id = "example_doc_id"
         self.tester.test_search_by_full_text(search_response, expected_length, expected_doc_id)
-
-    def test_delete_by_document_id(self):
-        self.tester.setup_method()
-        self.tester.test_delete_by_document_id()
 
     def test_get_ids_by_metadata_field(self):
         self.tester.setup_method()
