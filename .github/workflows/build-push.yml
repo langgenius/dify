@@ -19,7 +19,7 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    if: github.repository == 'langgenius/dify'
+    if: github.event.pull_request.draft == false
     strategy:
       matrix:
         include:
