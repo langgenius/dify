@@ -91,18 +91,6 @@ class TestOpenSearchVector:
         assert hits_by_vector[0].metadata['document_id'] == self.example_doc_id, \
             f"Expected document ID {self.example_doc_id}, got {hits_by_vector[0].metadata['document_id']}"
 
-        doc = Document(page_content="Test content to delete", metadata={"document_id": self.example_doc_id})
-        embedding = [0.1] * 128
-
-        with patch('opensearchpy.helpers.bulk') as mock_bulk:
-            mock_bulk.return_value = ([], [])
-            self.vector.add_texts([doc], [embedding])
-
-        self.vector._client.search.return_value = {'hits': {'total': {'value': 0}, 'hits': []}}
-
-        ids = self.vector.get_ids_by_metadata_field(key='document_id', value=self.example_doc_id)
-        assert ids is None or len(ids) == 0
-
     def test_get_ids_by_metadata_field(self):
         mock_response = {
             'hits': {
