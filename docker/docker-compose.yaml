@@ -260,7 +260,7 @@ services:
       # The configurations of celery broker.
       CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
       # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage`, Default: `local`
-      STORAGE_TYPE: oci-storage
+      STORAGE_TYPE: local
       STORAGE_LOCAL_PATH: storage
       # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
       S3_USE_AWS_MANAGED_IAM: 'false'
