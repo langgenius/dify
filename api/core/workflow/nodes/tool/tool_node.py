@@ -174,6 +174,7 @@ class ToolNode(BaseNode):
                     tenant_id=self.tenant_id,
                     type=FileType.IMAGE,
                     transfer_method=FileTransferMethod.TOOL_FILE,
+                    url=url,
                     related_id=tool_file_id,
                     filename=filename,
                     extension=ext,
