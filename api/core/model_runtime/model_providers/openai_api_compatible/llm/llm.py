@@ -305,7 +305,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
         if completion_type is LLMMode.CHAT:
             endpoint_url = urljoin(endpoint_url, 'chat/completions')
-            data['messages'] = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
+            data['messages'] = [self._convert_prompt_message_to_dict(m, credentials) for m in prompt_messages]
         elif completion_type is LLMMode.COMPLETION:
             endpoint_url = urljoin(endpoint_url, 'completions')
             data['prompt'] = prompt_messages[0].content
@@ -582,7 +582,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
         return result
 
-    def _convert_prompt_message_to_dict(self, message: PromptMessage) -> dict:
+    def _convert_prompt_message_to_dict(self, message: PromptMessage, credentials: dict = None) -> dict:
         """
         Convert PromptMessage to dict for OpenAI API format
         """
@@ -636,7 +636,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             #     "tool_call_id": message.tool_call_id
             # }
             message_dict = {
-                "role": "function",
+                "role": "tool" if credentials and credentials.get('function_calling_type', 'no_call') == 'tool_call' else "function",
                 "content": message.content,
                 "name": message.tool_call_id
             }
