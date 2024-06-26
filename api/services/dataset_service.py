@@ -21,7 +21,7 @@ from events.document_event import document_was_deleted
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
-from models.account import Account
+from models.account import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
     Dataset,
@@ -57,9 +57,30 @@ class DatasetService:
 
     @staticmethod
     def get_datasets(page, per_page, provider="vendor", tenant_id=None, user=None, search=None, tag_ids=None):
+        # current user identity is the database manager, and the knowledge base permissions are all
+        current_user_role = current_user._current_tenant.current_role
+        if current_user_role == TenantAccountRole.DATASET_OPERATOR:
+            # through the dataset_permission table to find the dataset_id that the current user has permission to
+            dataset_permission = DatasetPermission.query.filter_by(account_id=current_user.id).all()
+            dataset_ids = [dp.dataset_id for dp in dataset_permission]
+            # query the dataset table to get the dataset information
+            query = Dataset.query.filter(
+                db.and_(Dataset.provider == provider, Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
+            ) \
+                .order_by(Dataset.created_at.desc())
+            datasets = query.paginate(
+                page=page,
+                per_page=per_page,
+                max_per_page=100,
+                error_out=False
+            )
+            return datasets.items, datasets.total
+
         if user:
             permission_filter = db.or_(Dataset.created_by == user.id,
-                                       Dataset.permission == 'all_team_members')
+                                       Dataset.permission == 'all_team_members',
+                                       Dataset.permission == 'partial_members'
+                                       )
         else:
             permission_filter = Dataset.permission == 'all_team_members'
         query = Dataset.query.filter(
@@ -1483,18 +1504,13 @@ class DatasetPermissionService:
     def get_dataset_partial_member_list(cls, dataset_id):
         user_list_query = db.session.query(
             DatasetPermission.account_id,
-            DatasetPermission.account_role,
-            Account.email
-        ).join(
-            Account, Account.id == DatasetPermission.account_id
         ).filter(
             DatasetPermission.dataset_id == dataset_id
         ).all()
 
-        user_list = [
-            {"account_id": account_id, "account_role": account_role, "email": email}
-            for account_id, account_role, email in user_list_query
-        ]
+        user_list = []
+        for user in user_list_query:
+            user_list.append(user.account_id)
 
         return user_list
 
@@ -1507,7 +1523,6 @@ class DatasetPermissionService:
                 permission = DatasetPermission(
                     dataset_id=dataset_id,
                     account_id=user['user_id'],
-                    account_role=user['role']
                 )
                 permissions.append(permission)
 
