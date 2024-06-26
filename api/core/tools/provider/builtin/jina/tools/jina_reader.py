@@ -1,3 +1,4 @@
+import json
 from typing import Any, Union
 
 from yarl import URL
@@ -26,6 +27,9 @@ class JinaReaderTool(BuiltinTool):
         if 'api_key' in self.runtime.credentials and self.runtime.credentials.get('api_key'):
             headers['Authorization'] = "Bearer " + self.runtime.credentials.get('api_key')
 
+        request_params = tool_parameters.get('request_params', None)
+        request_params = json.loads(request_params) if request_params is not None and request_params != '' else None
+
         target_selector = tool_parameters.get('target_selector', None)
         if target_selector is not None and target_selector != '':
             headers['X-Target-Selector'] = target_selector
@@ -53,7 +57,8 @@ class JinaReaderTool(BuiltinTool):
         response = ssrf_proxy.get(
             str(URL(self._jina_reader_endpoint + url)),
             headers=headers,
-            timeout=(10, 60)
+            params=request_params,
+            timeout=(10, 60),
         )
 
         if tool_parameters.get('summary', False):
