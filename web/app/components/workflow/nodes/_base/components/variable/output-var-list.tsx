@@ -69,7 +69,7 @@ const OutputVarList: FC<Props> = ({
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const oldKey = list[index].variable
       const newKey = e.target.value
-      if (list.map(item => item.variable?.trim()).includes(newKey.trim())) {
+      if (list.filter((_, i) => i !== index).map(item => item.variable?.trim()).includes(newKey.trim())) {
         Toast.notify({
           type: 'error',
           message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
