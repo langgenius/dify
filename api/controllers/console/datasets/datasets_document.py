@@ -21,7 +21,7 @@ from controllers.console.datasets.error import (
     DocumentAlreadyFinishedError,
     DocumentIndexingError,
     InvalidActionError,
-    InvalidMetadataError,
+    InvalidMetadataError, IndexingEstimateError,
 )
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
@@ -388,6 +388,8 @@ class DocumentIndexingEstimateApi(DocumentResource):
                         "in the Settings -> Model Provider.")
                 except ProviderTokenNotInitError as ex:
                     raise ProviderNotInitializeError(ex.description)
+                except Exception as e:
+                    raise IndexingEstimateError(str(e))
 
         return response
 
@@ -493,6 +495,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
+            except Exception as e:
+                raise IndexingEstimateError(str(e))
         return response
 
 
