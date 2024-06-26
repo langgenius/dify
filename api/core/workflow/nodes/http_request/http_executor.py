@@ -168,9 +168,9 @@ class HttpExecutor:
             if body_data:
                 body_data, body_data_variable_selectors = self._format_template(body_data, variable_pool, is_valid_json)
 
-            if node_data.body.type == 'json':
+            if node_data.body.type == 'json' and self.headers.get('Content-Type') is None:
                 self.headers['Content-Type'] = 'application/json'
-            elif node_data.body.type == 'x-www-form-urlencoded':
+            elif node_data.body.type == 'x-www-form-urlencoded' and self.headers.get('Content-Type') is None:
                 self.headers['Content-Type'] = 'application/x-www-form-urlencoded'
 
             if node_data.body.type in ['form-data', 'x-www-form-urlencoded']:
