@@ -1,4 +1,3 @@
-version: '3'
 services:
   # Qdrant vector store.
   pgvector:
