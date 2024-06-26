@@ -293,7 +293,7 @@ services:
       TENCENT_COS_SCHEME: 'your-scheme'
       # The Oracle OCI storage configurations, only available when STORAGE_TYPE is `oci-storage`.
       OCI_ENDPOINT: your-endpoint
-      OCI_BUCKET_NAME: oyour-bucket-name
+      OCI_BUCKET_NAME: your-bucket-name
       OCI_ACCESS_KEY: your-access-key
       OCI_SECRET_KEY: your-secret-key
       OCI_REGION: your-region
