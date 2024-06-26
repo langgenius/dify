@@ -2,6 +2,8 @@ import time
 from abc import abstractmethod
 from typing import Optional
 
+from pydantic import ConfigDict
+
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.model_providers.__base.ai_model import AIModel
@@ -12,6 +14,9 @@ class TextEmbeddingModel(AIModel):
     Model class for text embedding model.
     """
     model_type: ModelType = ModelType.TEXT_EMBEDDING
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
 
     def invoke(self, model: str, credentials: dict,
                texts: list[str], user: Optional[str] = None) \

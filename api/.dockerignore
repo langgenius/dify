@@ -9,3 +9,6 @@ logs
 
 # jetbrains
 .idea
+
+# venv
+.venv

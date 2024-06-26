@@ -8,6 +8,10 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: build-push-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 env:
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -15,19 +19,35 @@ env:
   DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME || 'langgenius/dify-api' }}
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+  build:
+    runs-on: ${{ matrix.platform == 'linux/arm64' && 'arm64_runner' || 'ubuntu-latest' }}
+    if: github.repository == 'langgenius/dify'
     strategy:
       matrix:
         include:
-          - service_name: "web"
-            image_name_env: "DIFY_WEB_IMAGE_NAME"
-            context: "web"
-          - service_name: "api"
+          - service_name: "build-api-amd64"
             image_name_env: "DIFY_API_IMAGE_NAME"
             context: "api"
+            platform: linux/amd64
+          - service_name: "build-api-arm64"
+            image_name_env: "DIFY_API_IMAGE_NAME"
+            context: "api"
+            platform: linux/arm64
+          - service_name: "build-web-amd64"
+            image_name_env: "DIFY_WEB_IMAGE_NAME"
+            context: "web"
+            platform: linux/amd64
+          - service_name: "build-web-arm64"
+            image_name_env: "DIFY_WEB_IMAGE_NAME"
+            context: "web"
+            platform: linux/arm64
+
     steps:
+      - name: Prepare
+        run: |
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -40,7 +60,66 @@ jobs:
           username: ${{ env.DOCKERHUB_USER }}
           password: ${{ env.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env[matrix.image_name_env] }}
+
+      - name: Build Docker image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: "{{defaultContext}}:${{ matrix.context }}"
+          platforms: ${{ matrix.platform }}
+          build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=${{ env[matrix.image_name_env] }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.service_name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service_name }}
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.context }}-${{ env.PLATFORM_PAIR }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  create-manifest:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.repository == 'langgenius/dify'
+    strategy:
+      matrix:
+        include:
+          - service_name: "merge-api-images"
+            image_name_env: "DIFY_API_IMAGE_NAME"
+            context: "api"
+          - service_name: "merge-web-images"
+            image_name_env: "DIFY_WEB_IMAGE_NAME"
+            context: "web"
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.context }}-*
+          merge-multiple: true
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -51,14 +130,12 @@ jobs:
             type=sha,enable=true,priority=100,prefix=,suffix=,format=long
             type=raw,value=${{ github.ref_name }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
 
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: "{{defaultContext}}:${{ matrix.context }}"
-          platforms: ${{ startsWith(github.ref, 'refs/tags/') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
-          build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env[matrix.image_name_env] }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env[matrix.image_name_env] }}:${{ steps.meta.outputs.version }}

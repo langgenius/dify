@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from json import JSONDecodeError
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from core.entities.provider_entities import (
@@ -53,6 +53,9 @@ class ProviderConfiguration(BaseModel):
     system_configuration: SystemConfiguration
     custom_configuration: CustomConfiguration
     model_settings: list[ModelSettings]
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -203,8 +206,8 @@ class ProviderConfiguration(BaseModel):
                         credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
 
         credentials = model_provider_factory.provider_credentials_validate(
-            self.provider.provider,
-            credentials
+            provider=self.provider.provider,
+            credentials=credentials
         )
 
         for key, value in credentials.items():
@@ -1019,7 +1022,6 @@ class ProviderModelBundle(BaseModel):
     provider_instance: ModelProvider
     model_type_instance: AIModel
 
-    class Config:
-        """Configuration for this pydantic object."""
-
-        arbitrary_types_allowed = True
+    # pydantic configs
+    model_config = ConfigDict(arbitrary_types_allowed=True,
+                              protected_namespaces=())

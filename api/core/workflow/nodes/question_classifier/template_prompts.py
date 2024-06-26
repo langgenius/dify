@@ -6,7 +6,7 @@ QUESTION_CLASSIFIER_SYSTEM_PROMPT = """
     ### Task
     Your task is to assign one categories ONLY to the input text and only one category may be assigned returned in the output.Additionally, you need to extract the key words from the text that are related to the classification.
     ### Format
-    The input text is in the variable text_field.Categories are specified as a category list with two filed category_id and category_name in the variable categories .Classification instructions may be included to improve the classification accuracy.
+    The input text is in the variable input_text.Categories are specified as a category list with two filed category_id and category_name in the variable categories .Classification instructions may be included to improve the classification accuracy.
     ### Constraint
     DO NOT include anything other than the JSON array in your response.
     ### Memory
@@ -56,7 +56,7 @@ You are a text classification engine that analyzes text data and assigns categor
 ### Task
 Your task is to assign one categories ONLY to the input text and only one category may be assigned returned in the output.  Additionally, you need to extract the key words from the text that are related to the classification.
 ### Format
-The input text is in the variable text_field. Categories are specified as a category list  with two filed category_id and category_name in the variable categories. Classification instructions may be included to improve the classification accuracy. 
+The input text is in the variable input_text. Categories are specified as a category list  with two filed category_id and category_name in the variable categories. Classification instructions may be included to improve the classification accuracy.
 ### Constraint 
 DO NOT include anything other than the JSON array in your response.
 ### Example

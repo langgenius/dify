@@ -2,21 +2,25 @@
 import { useTranslation } from 'react-i18next'
 import { Fragment } from 'react'
 import { useSWRConfig } from 'swr'
-import { EllipsisHorizontalIcon } from '@heroicons/react/24/solid'
+import {
+  RiDeleteBinLine,
+  RiLoopLeftLine,
+  RiMoreFill,
+  RiStickyNoteAddLine,
+} from '@remixicon/react'
 import { Menu, Transition } from '@headlessui/react'
 import { syncDataSourceNotion, updateDataSourceNotionAction } from '@/service/common'
 import Toast from '@/app/components/base/toast'
-import type { DataSourceNotion } from '@/models/common'
-import { FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
-import { RefreshCw05 } from '@/app/components/base/icons/src/vender/line/arrows'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 
 type OperateProps = {
-  workspace: DataSourceNotion
+  payload: {
+    id: string
+    total: number
+  }
   onAuthAgain: () => void
 }
 export default function Operate({
-  workspace,
+  payload,
   onAuthAgain,
 }: OperateProps) {
   const itemClassName = `
@@ -37,11 +41,11 @@ export default function Operate({
     mutate({ url: 'data-source/integrates' })
   }
   const handleSync = async () => {
-    await syncDataSourceNotion({ url: `/oauth/data-source/notion/${workspace.id}/sync` })
+    await syncDataSourceNotion({ url: `/oauth/data-source/notion/${payload.id}/sync` })
     updateIntegrates()
   }
   const handleRemove = async () => {
-    await updateDataSourceNotionAction({ url: `/data-source/integrates/${workspace.id}/disable` })
+    await updateDataSourceNotionAction({ url: `/data-source/integrates/${payload.id}/disable` })
     updateIntegrates()
   }
 
@@ -51,7 +55,7 @@ export default function Operate({
         ({ open }) => (
           <>
             <Menu.Button className={`flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100 ${open && 'bg-gray-100'}`}>
-              <EllipsisHorizontalIcon className='w-4 h-4' />
+              <RiMoreFill className='w-4 h-4' />
             </Menu.Button>
             <Transition
               as={Fragment}
@@ -75,18 +79,18 @@ export default function Operate({
                       className={itemClassName}
                       onClick={onAuthAgain}
                     >
-                      <FilePlus02 className={itemIconClassName} />
+                      <RiStickyNoteAddLine className={itemIconClassName} />
                       <div>
                         <div className='leading-5'>{t('common.dataSource.notion.changeAuthorizedPages')}</div>
                         <div className='leading-5 text-xs text-gray-500'>
-                          {workspace.source_info.total} {t('common.dataSource.notion.pagesAuthorized')}
+                          {payload.total} {t('common.dataSource.notion.pagesAuthorized')}
                         </div>
                       </div>
                     </div>
                   </Menu.Item>
                   <Menu.Item>
                     <div className={itemClassName} onClick={handleSync}>
-                      <RefreshCw05 className={itemIconClassName} />
+                      <RiLoopLeftLine className={itemIconClassName} />
                       <div className='leading-5'>{t('common.dataSource.notion.sync')}</div>
                     </div>
                   </Menu.Item>
@@ -94,7 +98,7 @@ export default function Operate({
                 <Menu.Item>
                   <div className='p-1'>
                     <div className={itemClassName} onClick={handleRemove}>
-                      <Trash03 className={itemIconClassName} />
+                      <RiDeleteBinLine className={itemIconClassName} />
                       <div className='leading-5'>{t('common.dataSource.notion.remove')}</div>
                     </div>
                   </div>

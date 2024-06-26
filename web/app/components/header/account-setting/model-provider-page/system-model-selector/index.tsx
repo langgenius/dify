@@ -1,6 +1,9 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import ModelSelector from '../model-selector'
 import {
   useModelList,
@@ -13,7 +16,7 @@ import type {
 } from '../declarations'
 import { ModelTypeEnum } from '../declarations'
 import Tooltip from '@/app/components/base/tooltip'
-import { HelpCircle, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
+import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -23,6 +26,7 @@ import Button from '@/app/components/base/button'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
+import { useAppContext } from '@/context/app-context'
 
 type SystemModelSelectorProps = {
   textGenerationDefaultModel: DefaultModelResponse | undefined
@@ -40,6 +44,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const { textGenerationModelList } = useProviderContext()
   const updateModelList = useUpdateModelList()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -146,7 +151,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.systemReasoningModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -166,7 +171,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.embeddingModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -186,7 +191,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.rerankModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -206,7 +211,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.speechToTextModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -226,7 +231,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                   <div className='w-[261px] text-gray-500'>{t('common.modelProvider.ttsModel.tip')}</div>
                 }
               >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <div>
@@ -239,15 +244,14 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           </div>
           <div className='flex items-center justify-end px-6 py-4'>
             <Button
-              className='mr-2 !h-8 !text-[13px]'
               onClick={() => setOpen(false)}
             >
               {t('common.operation.cancel')}
             </Button>
             <Button
-              type='primary'
-              className='!h-8 !text-[13px]'
+              variant='primary'
               onClick={handleSave}
+              disabled={!isCurrentWorkspaceManager}
             >
               {t('common.operation.save')}
             </Button>

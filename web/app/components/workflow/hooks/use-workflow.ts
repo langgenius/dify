@@ -34,8 +34,10 @@ import {
   useWorkflowStore,
 } from '../store'
 import {
+  CUSTOM_NODE,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useNodesExtraData } from './use-nodes-data'
 import { useWorkflowTemplate } from './use-workflow-template'
@@ -88,7 +90,7 @@ export const useWorkflow = () => {
     const rankMap = {} as Record<string, Node>
 
     nodes.forEach((node) => {
-      if (!node.parentId) {
+      if (!node.parentId && node.type === CUSTOM_NODE) {
         const rank = layout.node(node.id).rank!
 
         if (!rankMap[rank]) {
@@ -103,7 +105,7 @@ export const useWorkflow = () => {
 
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
-        if (!node.parentId) {
+        if (!node.parentId && node.type === CUSTOM_NODE) {
           const nodeWithPosition = layout.node(node.id)
 
           node.position = {
@@ -345,6 +347,9 @@ export const useWorkflow = () => {
     if (targetNode.data.isIterationStart)
       return false
 
+    if (sourceNode.type === CUSTOM_NOTE_NODE || targetNode.type === CUSTOM_NOTE_NODE)
+      return false
+
     if (sourceNode && targetNode) {
       const sourceNodeAvailableNextNodes = nodesExtraData[sourceNode.data.type].availableNextNodes
       const targetNodeAvailablePrevNodes = [...nodesExtraData[targetNode.data.type].availablePrevNodes, BlockEnum.Start]
@@ -480,7 +485,9 @@ export const useWorkflowInit = () => {
                   nodes: nodesTemplate,
                   edges: edgesTemplate,
                 },
-                features: {},
+                features: {
+                  retriever_resource: { enabled: true },
+                },
               },
             }).then((res) => {
               workflowStore.getState().setDraftUpdatedAt(res.updated_at)

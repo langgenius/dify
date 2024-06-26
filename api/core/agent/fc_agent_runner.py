@@ -84,9 +84,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             # invoke model
             chunks: Union[Generator[LLMResultChunk, None, None], LLMResult] = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
-                model_parameters=app_generate_entity.model_config.parameters,
+                model_parameters=app_generate_entity.model_conf.parameters,
                 tools=prompt_messages_tools,
-                stop=app_generate_entity.model_config.stop,
+                stop=app_generate_entity.model_conf.stop,
                 stream=self.stream_tool_call,
                 user=self.user_id,
                 callbacks=[],

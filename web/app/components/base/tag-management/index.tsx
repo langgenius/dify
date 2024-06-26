@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import { useStore as useTagStore } from './store'
 import TagItemEditor from './tag-item-editor'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import {
   createTag,
   fetchTagList,
@@ -60,14 +60,13 @@ const TagManagementModal = ({ show, type }: TagManagementModalProps) => {
 
   return (
     <Modal
-      wrapperClassName='!z-[1020]'
       className='px-8 py-6 !max-w-[600px] !w-[600px] rounded-xl'
       isShow={show}
       onClose={() => setShowTagManagementModal(false)}
     >
       <div className='relative pb-2 text-xl font-semibold leading-[30px] text-gray-900'>{t('common.tag.manageTags')}</div>
       <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={() => setShowTagManagementModal(false)}>
-        <XClose className='w-4 h-4 text-gray-500' />
+        <RiCloseLine className='w-4 h-4 text-gray-500' />
       </div>
       <div className='mt-3 flex flex-wrap gap-2'>
         <input

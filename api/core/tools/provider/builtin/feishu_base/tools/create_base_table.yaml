@@ -1,0 +1,106 @@
+identity:
+  name: create_base_table
+  author: Doug Lea
+  label:
+    en_US: Create Base Table
+    zh_Hans: 多维表格新增一个数据表
+description:
+  human:
+    en_US: Create base table
+    zh_Hans: |
+      多维表格新增一个数据表，详细请参考：https://open.larkoffice.com/document/server-docs/docs/bitable-v1/app-table/create
+  llm: A tool for add a new data table to the multidimensional table.
+parameters:
+  - name: Authorization
+    type: string
+    required: true
+    label:
+      en_US: token
+      zh_Hans: 凭证
+    human_description:
+      en_US: API access token parameter, tenant_access_token or user_access_token
+      zh_Hans: API 的访问凭证参数，tenant_access_token 或 user_access_token
+    llm_description: API access token parameter, tenant_access_token or user_access_token
+    form: llm
+
+  - name: app_token
+    type: string
+    required: true
+    label:
+      en_US: app_token
+      zh_Hans: 多维表格
+    human_description:
+      en_US: bitable app token
+      zh_Hans: 多维表格的唯一标识符 app_token
+    llm_description: bitable app token
+    form: llm
+
+  - name: name
+    type: string
+    required: false
+    label:
+      en_US: name
+      zh_Hans: name
+    human_description:
+      en_US: Multidimensional table data table name
+      zh_Hans: 多维表格数据表名称
+    llm_description: Multidimensional table data table name
+    form: llm
+
+  - name: fields
+    type: string
+    required: true
+    label:
+      en_US: fields
+      zh_Hans: fields
+    human_description:
+      en_US: Initial fields of the data table
+      zh_Hans: |
+        数据表的初始字段，格式为：[{"field_name":"多行文本","type":1},{"field_name":"数字","type":2},{"field_name":"单选","type":3},{"field_name":"多选","type":4},{"field_name":"日期","type":5}]。
+        field_name：字段名；
+        type: 字段类型；可选值有
+        1：多行文本
+        2：数字
+        3：单选
+        4：多选
+        5：日期
+        7：复选框
+        11：人员
+        13：电话号码
+        15：超链接
+        17：附件
+        18：单向关联
+        20：公式
+        21：双向关联
+        22：地理位置
+        23：群组
+        1001：创建时间
+        1002：最后更新时间
+        1003：创建人
+        1004：修改人
+        1005：自动编号
+    llm_description: |
+      数据表的初始字段，格式为：[{"field_name":"多行文本","type":1},{"field_name":"数字","type":2},{"field_name":"单选","type":3},{"field_name":"多选","type":4},{"field_name":"日期","type":5}]。
+      field_name：字段名；
+      type: 字段类型；可选值有
+      1：多行文本
+      2：数字
+      3：单选
+      4：多选
+      5：日期
+      7：复选框
+      11：人员
+      13：电话号码
+      15：超链接
+      17：附件
+      18：单向关联
+      20：公式
+      21：双向关联
+      22：地理位置
+      23：群组
+      1001：创建时间
+      1002：最后更新时间
+      1003：创建人
+      1004：修改人
+      1005：自动编号
+    form: llm

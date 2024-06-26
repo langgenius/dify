@@ -22,7 +22,8 @@ export const useNodeDataUpdate = () => {
     const newNodes = produce(getNodes(), (draft) => {
       const currentNode = draft.find(node => node.id === id)!
 
-      currentNode.data = { ...currentNode?.data, ...data }
+      if (currentNode)
+        currentNode.data = { ...currentNode.data, ...data }
     })
     setNodes(newNodes)
   }, [store])

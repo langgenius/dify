@@ -84,7 +84,6 @@ const ParamsConfig: FC = () => {
               setOpen(false)
             }}
             className='sm:min-w-[528px]'
-            wrapperClassName='z-50'
             title={t('appDebug.datasetConfig.settingTitle')}
           >
             <ConfigContent
@@ -96,7 +95,7 @@ const ParamsConfig: FC = () => {
               <Button className='mr-2 flex-shrink-0' onClick={() => {
                 setOpen(false)
               }}>{t('common.operation.cancel')}</Button>
-              <Button type='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
+              <Button variant='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
             </div>
           </Modal>
         )

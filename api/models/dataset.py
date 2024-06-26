@@ -13,6 +13,7 @@ from flask import current_app
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 
+from core.rag.retrieval.retrival_methods import RetrievalMethod
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import StringUUID
@@ -116,7 +117,7 @@ class Dataset(db.Model):
     @property
     def retrieval_model_dict(self):
         default_retrieval_model = {
-            'search_method': 'semantic_search',
+            'search_method': RetrievalMethod.SEMANTIC_SEARCH,
             'reranking_enable': False,
             'reranking_model': {
                 'reranking_provider_name': '',
@@ -270,7 +271,7 @@ class Document(db.Model):
         255), nullable=False, server_default=db.text("'text_model'::character varying"))
     doc_language = db.Column(db.String(255), nullable=True)
 
-    DATA_SOURCES = ['upload_file', 'notion_import']
+    DATA_SOURCES = ['upload_file', 'notion_import', 'website_crawl']
 
     @property
     def display_status(self):
@@ -322,7 +323,7 @@ class Document(db.Model):
                             'created_at': file_detail.created_at.timestamp()
                         }
                     }
-            elif self.data_source_type == 'notion_import':
+            elif self.data_source_type == 'notion_import' or self.data_source_type == 'website_crawl':
                 return json.loads(self.data_source_info)
         return {}
 
@@ -425,9 +426,9 @@ class DocumentSegment(db.Model):
     def get_sign_content(self):
         pattern = r"/files/([a-f0-9\-]+)/image-preview"
         text = self.content
-        match = re.search(pattern, text)
-
-        if match:
+        matches = re.finditer(pattern, text)
+        signed_urls = []
+        for match in matches:
             upload_file_id = match.group(1)
             nonce = os.urandom(16).hex()
             timestamp = str(int(time.time()))
@@ -437,8 +438,15 @@ class DocumentSegment(db.Model):
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
             params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-            replacement = r"\g<0>?{params}".format(params=params)
-            text = re.sub(pattern, replacement, text)
+            signed_url = f"{match.group(0)}?{params}"
+            signed_urls.append((match.start(), match.end(), signed_url))
+
+        # Reconstruct the text with signed URLs
+        offset = 0
+        for start, end, signed_url in signed_urls:
+            text = text[:start + offset] + signed_url + text[end + offset:]
+            offset += len(signed_url) - (end - start)
+
         return text
 
 

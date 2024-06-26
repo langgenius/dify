@@ -13,6 +13,7 @@ import Toast from '@/app/components/base/toast'
 import { createWorkflowToolProvider, fetchWorkflowToolDetailByAppID, saveWorkflowToolProvider } from '@/service/tools'
 import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
 import type { InputVar } from '@/app/components/workflow/types'
+import { useAppContext } from '@/context/app-context'
 
 type Props = {
   disabled: boolean
@@ -44,6 +45,7 @@ const WorkflowToolConfigureButton = ({
   const [showModal, setShowModal] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [detail, setDetail] = useState<WorkflowToolProviderResponse>()
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   const outdated = useMemo(() => {
     if (!detail)
@@ -175,28 +177,41 @@ const WorkflowToolConfigureButton = ({
             disabled ? 'shadow-xs opacity-30 cursor-not-allowed' : 'cursor-pointer',
             !published && 'hover:bg-primary-50',
           )}>
-            <div
-              className='flex justify-start items-center gap-2 px-2.5 py-2'
-              onClick={() => !published && setShowModal(true)}
-            >
-              <Tools className={cn('relative w-4 h-4', !published && 'group-hover:text-primary-600')}/>
-              <div title={t('workflow.common.workflowAsTool') || ''} className={cn('grow shrink basis-0 text-[13px] font-medium leading-[18px] truncate', !published && 'group-hover:text-primary-600')}>{t('workflow.common.workflowAsTool')}</div>
-              {!published && (
-                <span className='shrink-0 px-1 border border-black/8 rounded-[5px] bg-white text-[10px] font-medium leading-[18px] text-gray-500'>{t('workflow.common.configureRequired').toLocaleUpperCase()}</span>
+            {isCurrentWorkspaceManager
+              ? (
+                <div
+                  className='flex justify-start items-center gap-2 px-2.5 py-2'
+                  onClick={() => !published && setShowModal(true)}
+                >
+                  <Tools className={cn('relative w-4 h-4', !published && 'group-hover:text-primary-600')} />
+                  <div title={t('workflow.common.workflowAsTool') || ''} className={cn('grow shrink basis-0 text-[13px] font-medium leading-[18px] truncate', !published && 'group-hover:text-primary-600')}>{t('workflow.common.workflowAsTool')}</div>
+                  {!published && (
+                    <span className='shrink-0 px-1 border border-black/8 rounded-[5px] bg-white text-[10px] font-medium leading-[18px] text-gray-500'>{t('workflow.common.configureRequired').toLocaleUpperCase()}</span>
+                  )}
+                </div>)
+              : (
+                <div
+                  className='flex justify-start items-center gap-2 px-2.5 py-2'
+                >
+                  <Tools className='w-4 h-4 text-gray-500' />
+                  <div title={t('workflow.common.workflowAsTool') || ''} className='grow shrink basis-0 text-[13px] font-medium leading-[18px] truncate text-gray-500'>{t('workflow.common.workflowAsTool')}</div>
+                </div>
               )}
-            </div>
             {published && (
               <div className='px-2.5 py-2 border-t-[0.5px] border-black/5'>
                 <div className='flex justify-between'>
                   <Button
-                    className='px-2 w-[140px] py-0 h-6 shadow-xs rounded-md text-xs font-medium text-gray-700 border-[0.5px] bg-white border-gray-200'
+                    size='small'
+                    className='w-[140px]'
                     onClick={() => setShowModal(true)}
+                    disabled={!isCurrentWorkspaceManager}
                   >
                     {t('workflow.common.configure')}
                     {outdated && <Indicator className='ml-1' color={'yellow'} />}
                   </Button>
                   <Button
-                    className='px-2 w-[140px] py-0 h-6 shadow-xs rounded-md text-xs font-medium text-gray-700 border-[0.5px] bg-white border-gray-200'
+                    size='small'
+                    className='w-[140px]'
                     onClick={() => router.push('/tools?category=workflow')}
                   >
                     {t('workflow.common.manageInTools')}
@@ -208,7 +223,7 @@ const WorkflowToolConfigureButton = ({
             )}
           </div>
         )}
-        {published && isLoading && <div className='pt-2'><Loading type='app'/></div>}
+        {published && isLoading && <div className='pt-2'><Loading type='app' /></div>}
       </div>
       {showModal && (
         <WorkflowToolModal

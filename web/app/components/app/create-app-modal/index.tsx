@@ -3,6 +3,10 @@ import type { MouseEventHandler } from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiCloseLine,
+  RiQuestionLine,
+} from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
 import s from './style.module.css'
@@ -17,7 +21,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
-import { HelpCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -44,7 +47,7 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
 
   const isCreatingRef = useRef(false)
   const onCreate: MouseEventHandler = useCallback(async () => {
@@ -72,21 +75,20 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
       onClose()
       mutateApps()
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-      getRedirection(isCurrentWorkspaceManager, app, push)
+      getRedirection(isCurrentWorkspaceEditor, app, push)
     }
     catch (e) {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
     isCreatingRef.current = false
-  }, [name, notify, t, appMode, emoji.icon, emoji.icon_background, description, onSuccess, onClose, mutateApps, push, isCurrentWorkspaceManager])
+  }, [name, notify, t, appMode, emoji.icon, emoji.icon_background, description, onSuccess, onClose, mutateApps, push, isCurrentWorkspaceEditor])
 
   return (
     <Modal
       overflowVisible
-      wrapperClassName='z-20'
       className='!p-0 !max-w-[720px] !w-[720px] rounded-xl'
       isShow={show}
-      onClose={() => {}}
+      onClose={() => { }}
     >
       {/* Heading */}
       <div className='shrink-0 flex flex-col h-full bg-white rounded-t-xl'>
@@ -203,13 +205,13 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
               <div className='flex items-center justify-between'>
                 <div className='h-5 text-sm font-medium leading-5'>{t('app.newApp.basic')}</div>
                 <div className='group'>
-                  <HelpCircle className='w-[14px] h-[14px] text-gray-400 hover:text-gray-500' />
+                  <RiQuestionLine className='w-[14px] h-[14px] text-gray-400 hover:text-gray-500' />
                   <div
                     className={cn(
                       'hidden z-20 absolute left-[327px] top-[-158px] w-[376px] rounded-xl bg-white border-[0.5px] border-[rgba(0,0,0,0.05)] shadow-lg group-hover:block',
                     )}
                   >
-                    <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl', s.basicPic)}/>
+                    <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl', s.basicPic)} />
                     <div className='px-4 pb-2'>
                       <div className='flex items-center justify-between'>
                         <div className='text-gray-700 text-md leading-6 font-semibold'>{t('app.newApp.basic')}</div>
@@ -237,13 +239,13 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
                   <span className='px-1 rounded-[5px] bg-white border border-black/8 text-gray-500 text-[10px] leading-[18px] font-medium'>BETA</span>
                 </div>
                 <div className='group'>
-                  <HelpCircle className='w-[14px] h-[14px] text-gray-400 hover:text-gray-500' />
+                  <RiQuestionLine className='w-[14px] h-[14px] text-gray-400 hover:text-gray-500' />
                   <div
                     className={cn(
                       'hidden z-20 absolute right-[26px] top-[-158px] w-[376px] rounded-xl bg-white border-[0.5px] border-[rgba(0,0,0,0.05)] shadow-lg group-hover:block',
                     )}
                   >
-                    <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl', s.advancedPic)}/>
+                    <div className={cn('w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl', s.advancedPic)} />
                     <div className='px-4 pb-2'>
                       <div className='flex items-center justify-between'>
                         <div className='flex items-center'>
@@ -290,7 +292,7 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
       <div className='pt-2 px-8'>
         <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.newApp.captionDescription')}</div>
         <textarea
-          className='w-full h-10 px-3 py-2 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs h-[80px] resize-none'
+          className='w-full px-3 py-2 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs h-[80px] resize-none'
           placeholder={t('app.newApp.appDescriptionPlaceholder') || ''}
           value={description}
           onChange={e => setDescription(e.target.value)}
@@ -302,11 +304,11 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
         </div>
       )}
       <div className='px-8 py-6 flex justify-end'>
-        <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-        <Button className='text-sm font-medium' disabled={isAppsFull || !name} type="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
+        <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
+        <Button disabled={isAppsFull || !name} variant="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
       </div>
       <div className='absolute right-6 top-6 p-2 cursor-pointer z-20' onClick={onClose}>
-        <XClose className='w-4 h-4 text-gray-500' />
+        <RiCloseLine className='w-4 h-4 text-gray-500' />
       </div>
     </Modal>
   )

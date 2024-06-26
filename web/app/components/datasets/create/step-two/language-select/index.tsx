@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import cn from 'classnames'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
+import { RiArrowDownSLine } from '@remixicon/react'
 import Popover from '@/app/components/base/popover'
 import { languages } from '@/i18n/language'
 
@@ -33,7 +33,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
       btnElement={
         <div className='inline-flex items-center'>
           <span className='pr-[2px] text-xs leading-[18px] font-medium'>{currentLanguage}</span>
-          <ChevronDown className='w-3 h-3 opacity-60' />
+          <RiArrowDownSLine className='w-3 h-3 opacity-60' />
         </div>
       }
       btnClassName={open => cn('!border-0 !px-0 !py-0 !bg-inherit !hover:bg-inherit', open ? 'text-blue-600' : 'text-gray-500')}

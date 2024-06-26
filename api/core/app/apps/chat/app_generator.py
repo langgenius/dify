@@ -79,6 +79,11 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 config=args.get('model_config')
             )
 
+            # always enable retriever resource in debugger mode
+            override_model_config_dict["retriever_resource"] = {
+                "enabled": True
+            }
+
         # parse files
         files = args['files'] if args.get('files') else []
         message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
@@ -104,7 +109,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         application_generate_entity = ChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
-            model_config=ModelConfigConverter.convert(app_config),
+            model_conf=ModelConfigConverter.convert(app_config),
             conversation_id=conversation.id if conversation else None,
             inputs=conversation.inputs if conversation else self._get_cleaned_inputs(inputs, app_config),
             query=query,

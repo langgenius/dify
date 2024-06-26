@@ -85,7 +85,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
         :param stream: stream
         """
         super().__init__(application_generate_entity, queue_manager, user, stream)
-        self._model_config = application_generate_entity.model_config
+        self._model_config = application_generate_entity.model_conf
         self._conversation = conversation
         self._message = message
 

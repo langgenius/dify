@@ -179,11 +179,17 @@ export const useWorkflowRun = () => {
             setWorkflowRunningData,
           } = workflowStore.getState()
 
+          const isStringOutput = data.outputs && Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
+
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             draft.result = {
               ...draft.result,
               ...data,
             } as any
+            if (isStringOutput) {
+              draft.resultTabActive = true
+              draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+            }
           }))
 
           prevNodeId = ''

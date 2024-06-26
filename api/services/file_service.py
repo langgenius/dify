@@ -21,7 +21,7 @@ IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
 
 ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'xls', 'docx', 'csv']
-UNSTRUSTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'xls',
+UNSTRUCTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'xls',
                                    'docx', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml', 'epub']
 
 PREVIEW_WORDS_LIMIT = 3000
@@ -31,9 +31,12 @@ class FileService:
 
     @staticmethod
     def upload_file(file: FileStorage, user: Union[Account, EndUser], only_image: bool = False) -> UploadFile:
+        filename = file.filename
         extension = file.filename.split('.')[-1]
+        if len(filename) > 200:
+            filename = filename.split('.')[0][:200] + '.' + extension
         etl_type = current_app.config['ETL_TYPE']
-        allowed_extensions = UNSTRUSTURED_ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS if etl_type == 'Unstructured' \
+        allowed_extensions = UNSTRUCTURED_ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS if etl_type == 'Unstructured' \
             else ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS
         if extension.lower() not in allowed_extensions:
             raise UnsupportedFileTypeError()
@@ -75,7 +78,7 @@ class FileService:
             tenant_id=current_tenant_id,
             storage_type=config['STORAGE_TYPE'],
             key=file_key,
-            name=file.filename,
+            name=filename,
             size=file_size,
             extension=extension,
             mime_type=file.mimetype,
@@ -93,6 +96,8 @@ class FileService:
 
     @staticmethod
     def upload_text(text: str, text_name: str) -> UploadFile:
+        if len(text_name) > 200:
+            text_name = text_name[:200]
         # user uuid as file name
         file_uuid = str(uuid.uuid4())
         file_key = 'upload_files/' + current_user.current_tenant_id + '/' + file_uuid + '.txt'
@@ -134,7 +139,7 @@ class FileService:
         # extract text from file
         extension = upload_file.extension
         etl_type = current_app.config['ETL_TYPE']
-        allowed_extensions = UNSTRUSTURED_ALLOWED_EXTENSIONS if etl_type == 'Unstructured' else ALLOWED_EXTENSIONS
+        allowed_extensions = UNSTRUCTURED_ALLOWED_EXTENSIONS if etl_type == 'Unstructured' else ALLOWED_EXTENSIONS
         if extension.lower() not in allowed_extensions:
             raise UnsupportedFileTypeError()
 

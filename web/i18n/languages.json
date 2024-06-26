@@ -118,6 +118,13 @@
       "prompt_name": "Polish",
       "example": "Cześć, Dify!",
       "supported": true
+    },
+    {
+      "value": "hi-IN",
+      "name": "Hindi (India)",
+      "prompt_name": "Hindi",
+      "example": "नमस्ते, Dify!",
+      "supported": "true"
     }
   ]
 }
