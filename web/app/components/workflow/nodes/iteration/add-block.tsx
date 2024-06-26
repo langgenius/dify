@@ -13,8 +13,10 @@ import {
   generateNewNode,
 } from '../../utils'
 import {
+  WorkflowHistoryEvent,
   useAvailableBlocks,
   useNodesReadOnly,
+  useWorkflowHistory,
 } from '../../hooks'
 import { NODES_INITIAL_DATA } from '../../constants'
 import InsertBlock from './insert-block'
@@ -42,6 +44,7 @@ const AddBlock = ({
   const { nodesReadOnly } = useNodesReadOnly()
   const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, true)
   const { availablePrevBlocks } = useAvailableBlocks(iterationNodeData.startNodeType, true)
+  const { saveStateToHistory } = useWorkflowHistory()
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     const {
@@ -78,7 +81,8 @@ const AddBlock = ({
       draft.push(newNode)
     })
     setNodes(newNodes)
-  }, [store, t, iterationNodeId])
+    saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
+  }, [store, t, iterationNodeId, saveStateToHistory])
 
   const renderTriggerElement = useCallback((open: boolean) => {
     return (
