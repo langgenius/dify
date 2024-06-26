@@ -102,7 +102,7 @@ class ToolNode(BaseNode):
             parameter = fetch_parameter(parameter_name)
             if not parameter:
                 continue
-            if parameter.type == ToolParameter.ToolParameterType.FILE:
+            if (parameter_name == 'sys' or parameter_name == 'sys.files') and parameter.type == ToolParameter.ToolParameterType.FILE:
                 result[parameter_name] = [
                     v.to_dict() for v in self._fetch_files(variable_pool)
                 ]
@@ -111,7 +111,13 @@ class ToolNode(BaseNode):
                 if input.type == 'mixed':
                     result[parameter_name] = self._format_variable_template(input.value, variable_pool)
                 elif input.type == 'variable':
-                    result[parameter_name] = variable_pool.get_variable_value(input.value)
+                    variable_value = variable_pool.get_variable_value(input.value)
+                    if parameter.type == ToolParameter.ToolParameterType.FILE:
+                        result[parameter_name] = [
+                            v.to_dict() for v in variable_value
+                        ]
+                    else:
+                        result[parameter_name] = variable_value
                 elif input.type == 'constant':
                     result[parameter_name] = input.value
 

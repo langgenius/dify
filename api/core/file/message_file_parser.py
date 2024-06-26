@@ -65,8 +65,8 @@ class MessageFileParser:
 
                 for file_obj in file_objs:
                     # Validate transfer method
-                    if file_obj.transfer_method.value not in image_config['transfer_methods']:
-                        raise ValueError(f'Invalid transfer method: {file_obj.transfer_method.value}')
+                    # if file_obj.transfer_method.value not in image_config['transfer_methods']:
+                    #     raise ValueError(f'Invalid transfer method: {file_obj.transfer_method.value}')
 
                     # Validate file type
                     if file_obj.type != FileType.IMAGE:
