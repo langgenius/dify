@@ -15,6 +15,8 @@ import type {
 } from '../types'
 import { TransferMethod } from '../types'
 import { useChatWithHistoryContext } from '../chat-with-history/context'
+import type { Theme } from '../embedded-chatbot/theme/theme-context'
+import { CssTransform } from '../embedded-chatbot/theme/utils'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ToastContext } from '@/app/components/base/toast'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -30,8 +32,6 @@ import {
   useDraggableUploader,
   useImageFiles,
 } from '@/app/components/base/image-uploader/hooks'
-import { Theme } from '../embedded-chatbot/theme/theme-context'
-import { CssTransform } from '../embedded-chatbot/theme/utils'
 
 type ChatInputProps = {
   visionConfig?: VisionConfig

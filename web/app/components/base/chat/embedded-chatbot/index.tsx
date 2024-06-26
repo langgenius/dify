@@ -10,6 +10,7 @@ import {
 } from './context'
 import { useEmbeddedChatbot } from './hooks'
 import { isDify } from './utils'
+import { useThemeContext } from './theme/theme-context'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -18,7 +19,6 @@ import LogoHeader from '@/app/components/base/logo/logo-embeded-chat-header'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import ConfigPanel from '@/app/components/base/chat/embedded-chatbot/config-panel'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
-import { useThemeContext } from './theme/theme-context'
 
 const Chatbot = () => {
   const {

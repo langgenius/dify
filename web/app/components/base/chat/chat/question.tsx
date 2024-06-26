@@ -6,12 +6,12 @@ import {
   memo,
 } from 'react'
 import type { ChatItem } from '../types'
+import type { Theme } from '../embedded-chatbot/theme/theme-context'
+import { CssTransform } from '../embedded-chatbot/theme/utils'
 import { QuestionTriangle } from '@/app/components/base/icons/src/vender/solid/general'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import ImageGallery from '@/app/components/base/image-gallery'
-import { Theme } from '../embedded-chatbot/theme/theme-context'
-import { CssTransform } from '../embedded-chatbot/theme/utils'
 
 type QuestionProps = {
   item: ChatItem

@@ -61,7 +61,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     privacy_policy,
     custom_disclaimer,
     default_language,
-    show_workflow_steps
+    show_workflow_steps,
   } = appInfo.site
   const [inputInfo, setInputInfo] = useState({
     title,
@@ -71,7 +71,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     copyright,
     privacyPolicy: privacy_policy,
     customDisclaimer: custom_disclaimer,
-    show_workflow_steps
+    show_workflow_steps,
   })
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
@@ -89,7 +89,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       copyright,
       privacyPolicy: privacy_policy,
       customDisclaimer: custom_disclaimer,
-      show_workflow_steps
+      show_workflow_steps,
     })
     setLanguage(default_language)
     setEmoji({ icon, icon_background })

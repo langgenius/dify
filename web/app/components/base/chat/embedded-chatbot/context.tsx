@@ -7,13 +7,13 @@ import type {
   ChatItem,
   Feedback,
 } from '../types'
+import type { ThemeBuilder } from './theme/theme-context'
 import type {
   AppConversationData,
   AppData,
   AppMeta,
   ConversationItem,
 } from '@/models/share'
-import { ThemeBuilder } from './theme/theme-context'
 
 export type EmbeddedChatbotContextValue = {
   appInfoError?: any

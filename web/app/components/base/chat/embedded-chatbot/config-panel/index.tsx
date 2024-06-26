@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useEmbeddedChatbotContext } from '../context'
+import { useThemeContext } from '../theme/theme-context'
+import { CssTransform } from '../theme/utils'
 import Form from './form'
 import Button from '@/app/components/base/button'
 import AppIcon from '@/app/components/base/app-icon'
@@ -9,8 +11,6 @@ import { MessageDotsCircle } from '@/app/components/base/icons/src/vender/solid/
 import { Edit02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Star06 } from '@/app/components/base/icons/src/vender/solid/shapes'
 import LogoSite from '@/app/components/base/logo/logo-site'
-import { useThemeContext } from '../theme/theme-context'
-import { CssTransform } from '../theme/utils'
 
 const ConfigPanel = () => {
   const { t } = useTranslation()
