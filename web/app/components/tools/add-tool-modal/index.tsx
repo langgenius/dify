@@ -83,7 +83,9 @@ const AddToolModal: FC<Props> = ({
         return toolWithProvider.labels.includes(currentCategory)
     }).filter((toolWithProvider) => {
       return toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(keywords.toLowerCase())
+        return Object.values(tool.label).some((label) => {
+          return label.toLowerCase().includes(keywords.toLowerCase())
+        })
       })
     })
   }, [currentType, currentCategory, toolList, keywords, language])

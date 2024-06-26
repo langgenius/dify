@@ -2,7 +2,7 @@ import json
 from copy import deepcopy
 from datetime import datetime, timezone
 from mimetypes import guess_type
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from yarl import URL
 
@@ -255,7 +255,7 @@ class ToolEngine:
         agent_message: Message,
         invoke_from: InvokeFrom,
         user_id: str
-    ) -> list[tuple[MessageFile, bool]]:
+    ) -> list[tuple[Any, str]]:
         """
         Create message file
 
@@ -296,7 +296,7 @@ class ToolEngine:
             db.session.refresh(message_file)
 
             result.append((
-                message_file,
+                message_file.id,
                 message.save_as
             ))
 

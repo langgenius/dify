@@ -32,11 +32,10 @@ class CotAgentRunner(BaseAgentRunner, ABC):
     _query: str = None
     _prompt_messages_tools: list[PromptMessage] = None
 
-    def run(
-        self, message: Message,
-        query: str,
-        inputs: dict[str, str],
-    ) -> Union[Generator, LLMResult]:
+    def run(self, message: Message,
+            query: str,
+            inputs: dict[str, str],
+            ) -> Union[Generator, LLMResult]:
         """
         Run Cot agent application
         """
@@ -187,7 +186,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 messages_ids=[],
                 llm_usage=usage_dict['usage']
             )
-            
+
             if not scratchpad.is_final():
                 self.queue_manager.publish(QueueAgentThoughtEvent(
                     agent_thought_id=agent_thought.id
@@ -213,7 +212,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     function_call_state = True
                     # action is tool call, invoke tool
                     tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
-                        action=scratchpad.action, 
+                        action=scratchpad.action,
                         tool_instances=tool_instances,
                         message_file_ids=message_file_ids,
                         trace_manager=trace_manager,
@@ -261,12 +260,12 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         # save agent thought
         self.save_agent_thought(
-            agent_thought=agent_thought, 
+            agent_thought=agent_thought,
             tool_name='',
             tool_input={},
             tool_invoke_meta={},
             thought=final_answer,
-            observation={}, 
+            observation={},
             answer=final_answer,
             messages_ids=[]
         )
@@ -283,7 +282,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             system_fingerprint=''
         )), PublishFrom.APPLICATION_MANAGER)
 
-    def _handle_invoke_action(self, action: AgentScratchpadUnit.Action, 
+    def _handle_invoke_action(self, action: AgentScratchpadUnit.Action,
                               tool_instances: dict[str, Tool],
                               message_file_ids: list[str],
                               trace_manager: Optional[TraceQueueManager] = None
@@ -302,7 +301,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         if not tool_instance:
             answer = f"there is not a tool named {tool_call_name}"
             return answer, ToolInvokeMeta.error_instance(answer)
-        
+
         if isinstance(tool_call_args, str):
             try:
                 tool_call_args = json.loads(tool_call_args)
@@ -322,16 +321,17 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         )
 
         # publish files
-        for message_file, save_as in message_files:
+        for message_file_id, save_as in message_files:
             if save_as:
-                self.variables_pool.set_file(tool_name=tool_call_name, value=message_file.id, name=save_as)
+                self.variables_pool.set_file(
+                    tool_name=tool_call_name, value=message_file_id, name=save_as)
 
             # publish message file
             self.queue_manager.publish(QueueMessageFileEvent(
-                message_file_id=message_file.id
+                message_file_id=message_file_id
             ), PublishFrom.APPLICATION_MANAGER)
             # add message file ids
-            message_file_ids.append(message_file.id)
+            message_file_ids.append(message_file_id)
 
         return tool_invoke_response, tool_invoke_meta
 
@@ -355,7 +355,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 continue
 
         return instruction
-    
+
     def _init_react_state(self, query) -> None:
         """
         init agent scratchpad
@@ -363,7 +363,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self._query = query
         self._agent_scratchpad = []
         self._historic_prompt_messages = self._organize_historic_prompt_messages()
-    
+
     @abstractmethod
     def _organize_prompt_messages(self) -> list[PromptMessage]:
         """
