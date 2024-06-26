@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import type { OutputVar } from '../../../code/types'
@@ -26,6 +26,7 @@ const OutputVarList: FC<Props> = ({
   onRemove,
 }) => {
   const { t } = useTranslation()
+  const [editVar, setEditVar] = useState<{ variable: string; variable_type: VarType } | null>(null)
 
   const list = outputKeyOrders.map((key) => {
     return {
@@ -33,6 +34,40 @@ const OutputVarList: FC<Props> = ({
       variable_type: outputs[key]?.type,
     }
   })
+
+  const handleVarNameFocus = useCallback((index: number) => {
+    return () => {
+      const oldVar = list[index]
+      setEditVar(oldVar)
+    }
+  }, [list])
+
+  const handleVarNameBlur = useCallback((index: number) => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const oldKey = list[index].variable
+      const newKey = e.target.value
+      if (list.map(item => item.variable?.trim()).includes(newKey.trim())) {
+        Toast.notify({
+          type: 'error',
+          message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
+        })
+        // reset the var name
+        const key = editVar?.variable
+        if (key) {
+          const newOutputs = produce(outputs, (draft) => {
+            draft[key] = draft[oldKey]
+            delete draft[oldKey]
+          })
+          onChange(newOutputs, index, key)
+        }
+        else {
+          onRemove(index)
+        }
+      }
+      setEditVar(null)
+    }
+  }, [list, onChange, onRemove, outputs, editVar, t])
+
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       const oldKey = list[index].variable
@@ -43,14 +78,6 @@ const OutputVarList: FC<Props> = ({
         Toast.notify({
           type: 'error',
           message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
-        })
-        return
-      }
-
-      if (list.map(item => item.variable?.trim()).includes(newKey.trim())) {
-        Toast.notify({
-          type: 'error',
-          message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
         })
         return
       }
@@ -89,6 +116,8 @@ const OutputVarList: FC<Props> = ({
             readOnly={readonly}
             value={item.variable}
             onChange={handleVarNameChange(index)}
+            onFocus={handleVarNameFocus(index)}
+            onBlur={handleVarNameBlur(index)}
             className='w-0 grow h-8 leading-8 px-2.5 rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px] placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
             type='text' />
           <VarTypePicker
