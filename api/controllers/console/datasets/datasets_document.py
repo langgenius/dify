@@ -20,8 +20,9 @@ from controllers.console.datasets.error import (
     ArchivedDocumentImmutableError,
     DocumentAlreadyFinishedError,
     DocumentIndexingError,
+    IndexingEstimateError,
     InvalidActionError,
-    InvalidMetadataError, IndexingEstimateError,
+    InvalidMetadataError,
 )
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
