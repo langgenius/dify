@@ -16,7 +16,7 @@ class BarChartTool(BuiltinTool):
         data = data.split(';')
 
         # if all data is int, convert to int
-        if all([i.isdigit() for i in data]):
+        if all(i.isdigit() for i in data):
             data = [int(i) for i in data]
         else:
             data = [float(i) for i in data]

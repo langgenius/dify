@@ -14,9 +14,11 @@ line-length = 120
 preview = true
 select = [
     "B", # flake8-bugbear rules
+    "C4", # flake8-comprehensions
     "F", # pyflakes rules
     "I", # isort rules
     "UP", # pyupgrade rules
+    "B035", # static-key-dict-comprehension
     "E101", # mixed-spaces-and-tabs
     "E111", # indentation-with-invalid-multiple
     "E112", # no-indented-block
@@ -33,6 +35,8 @@ select = [
     "SIM910", # dict-get-with-none-default
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
+    "F601", # multi-value-repeated-key-literal
+    "F602", # multi-value-repeated-key-variable
 ]
 ignore = [
     "F403", # undefined-local-with-import-star

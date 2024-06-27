@@ -148,7 +148,7 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
         """
         Create payload for bedrock api call depending on model provider
         """
-        payload = dict()
+        payload = {}
 
         if model_prefix == "amazon":
             payload['inputText'] = texts

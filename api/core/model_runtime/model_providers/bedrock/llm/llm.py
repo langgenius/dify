@@ -576,7 +576,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         """
         Create payload for bedrock api call depending on model provider
         """
-        payload = dict()
+        payload = {}
         model_prefix = model.split('.')[0]
         model_name = model.split('.')[1]
 

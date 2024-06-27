@@ -197,7 +197,7 @@ class Jieba(BaseKeyword):
                 chunk_indices_count[node_id] += 1
 
         sorted_chunk_indices = sorted(
-            list(chunk_indices_count.keys()),
+            chunk_indices_count.keys(),
             key=lambda x: chunk_indices_count[x],
             reverse=True,
         )

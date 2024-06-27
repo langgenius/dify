@@ -55,7 +55,7 @@ class SerplyApi:
                         f"Employer: {job['employer']}",
                         f"Location: {job['location']}",
                         f"Link: {job['link']}",
-                        f"""Highest: {", ".join([h for h in job["highlights"]])}""",
+                        f"""Highest: {", ".join(list(job["highlights"]))}""",
                         "---",
                     ])
                 )

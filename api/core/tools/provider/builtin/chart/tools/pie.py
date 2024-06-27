@@ -19,7 +19,7 @@ class PieChartTool(BuiltinTool):
         categories = tool_parameters.get('categories') or None
 
         # if all data is int, convert to int
-        if all([i.isdigit() for i in data]):
+        if all(i.isdigit() for i in data):
             data = [int(i) for i in data]
         else:
             data = [float(i) for i in data]
