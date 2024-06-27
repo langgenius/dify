@@ -21,7 +21,7 @@ class BarChartTool(BuiltinTool):
         else:
             data = [float(i) for i in data]
 
-        axis = tool_parameters.get('x_axis', None) or None
+        axis = tool_parameters.get('x_axis') or None
         if axis:
             axis = axis.split(';')
             if len(axis) != len(data):

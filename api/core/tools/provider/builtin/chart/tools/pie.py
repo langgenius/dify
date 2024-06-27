@@ -16,7 +16,7 @@ class PieChartTool(BuiltinTool):
         if not data:
             return self.create_text_message('Please input data')
         data = data.split(';')
-        categories = tool_parameters.get('categories', None) or None
+        categories = tool_parameters.get('categories') or None
 
         # if all data is int, convert to int
         if all([i.isdigit() for i in data]):

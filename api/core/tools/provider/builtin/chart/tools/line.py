@@ -17,7 +17,7 @@ class LinearChartTool(BuiltinTool):
             return self.create_text_message('Please input data')
         data = data.split(';')
 
-        axis = tool_parameters.get('x_axis', None) or None
+        axis = tool_parameters.get('x_axis') or None
         if axis:
             axis = axis.split(';')
             if len(axis) != len(data):
