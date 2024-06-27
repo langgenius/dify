@@ -675,7 +675,6 @@ class TraceQueueManager:
         self.flask_app = current_app._get_current_object()
         if trace_manager_timer is None:
             self.start_timer()
-            logging.debug(f"TraceQueueManager started with interval: {trace_manager_interval}")
 
     def add_trace_task(self, trace_task: TraceTask):
         global trace_manager_timer

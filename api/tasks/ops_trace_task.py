@@ -20,11 +20,6 @@ def process_trace_tasks(tasks_data):
     """
     from core.ops.ops_trace_manager import OpsTraceManager
 
-    logging.info('Start processing trace tasks')
-    logging.error('Start processing trace tasks')
-    start_at = time.perf_counter()
-    logging.info("Ops trace tasks start")
-
     trace_info = tasks_data.get('trace_info')
     app_id = tasks_data.get('app_id')
     conversation_id = tasks_data.get('conversation_id')
@@ -47,6 +42,5 @@ def process_trace_tasks(tasks_data):
                     trace_info = trace_type(**trace_info)
                 trace_instance.trace(trace_info)
             end_at = time.perf_counter()
-            logging.info('Processing trace tasks succeeded: latency: {}'.format(end_at - start_at))
     except Exception:
         logging.exception("Processing trace tasks failed")
