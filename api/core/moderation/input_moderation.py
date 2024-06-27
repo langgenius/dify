@@ -57,7 +57,7 @@ class InputModeration:
                     timer=timer
                 )
             )
-        
+
         if not moderation_result.flagged:
             return False, inputs, query
 

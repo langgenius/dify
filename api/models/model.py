@@ -838,6 +838,49 @@ class Message(db.Model):
 
         return None
 
+    def to_dict(self) -> dict:
+        return {
+            'id': self.id,
+            'app_id': self.app_id,
+            'conversation_id': self.conversation_id,
+            'inputs': self.inputs,
+            'query': self.query,
+            'message': self.message,
+            'answer': self.answer,
+            'status': self.status,
+            'error': self.error,
+            'message_metadata': self.message_metadata_dict,
+            'from_source': self.from_source,
+            'from_end_user_id': self.from_end_user_id,
+            'from_account_id': self.from_account_id,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+            'agent_based': self.agent_based,
+            'workflow_run_id': self.workflow_run_id
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            id=data['id'],
+            app_id=data['app_id'],
+            conversation_id=data['conversation_id'],
+            inputs=data['inputs'],
+            query=data['query'],
+            message=data['message'],
+            answer=data['answer'],
+            status=data['status'],
+            error=data['error'],
+            message_metadata=json.dumps(data['message_metadata']),
+            from_source=data['from_source'],
+            from_end_user_id=data['from_end_user_id'],
+            from_account_id=data['from_account_id'],
+            created_at=data['created_at'],
+            updated_at=data['updated_at'],
+            agent_based=data['agent_based'],
+            workflow_run_id=data['workflow_run_id']
+        )
+
 
 class MessageFeedback(db.Model):
     __tablename__ = 'message_feedbacks'
