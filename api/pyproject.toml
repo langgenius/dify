@@ -192,6 +192,8 @@ langsmith = "^0.1.77"
 novita-client = "^0.5.6"
 opensearch-py = "2.4.0"
 oracledb = "~2.2.1"
+antlr4-python3-runtime = "4.11.0"
+antlr4-tools = "0.2.1"
 
 [tool.poetry.group.dev]
 optional = true
