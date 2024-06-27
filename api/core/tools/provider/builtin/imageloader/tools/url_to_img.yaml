@@ -1,0 +1,23 @@
+identity:
+  name: url_to_img
+  author: Scorpion
+  label:
+    en_US: Url To Image File
+    zh_Hans: Url To Image File
+description:
+  human:
+    en_US: Convert URL string to Image File.
+    zh_Hans: 将URL字符串转换为图片文件。
+  llm: Convert URL string to Image File.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: URL
+      zh_Hans: 图片链接
+    human_description:
+      en_US: The URL of the image.
+      zh_Hans: 图片的URL。
+    llm_description: The URL string to be converted to an Image File.
+    form: llm

@@ -175,7 +175,7 @@ class ToolNode(BaseNode):
                 filename = response.save_as or url.split('/')[-1]
 
                 # get tool file id
-                tool_file_id = url.split('/')[-1].split('.')[0]
+                tool_file_id = response.meta.get('tool_file_id', url.split('/')[-1].split('.')[0])
                 result.append(FileVar(
                     tenant_id=self.tenant_id,
                     type=FileType.IMAGE,

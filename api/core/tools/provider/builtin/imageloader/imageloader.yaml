@@ -1,0 +1,13 @@
+identity:
+  author: Scorpion
+  name: imageloader
+  label:
+    en_US: ImageLoader
+    zh_Hans: ImageLoader
+  description:
+    en_US: Convert URL string to Image File.
+    zh_Hans: 用于把图片转换为Dify Workflow能识别的File。
+  icon: icon.svg
+  tags:
+    - utilities
+    - productivity
