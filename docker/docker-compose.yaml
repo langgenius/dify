@@ -81,7 +81,7 @@ x-shared-env: &shared-api-worker-env
   # The configurations of redis connection.
   # It is consistent with the configuration in the 'redis' service below.
   REDIS_HOST: ${REDIS_HOST}
-  REDIS_PORT: ${REDIS_PORT}
+  REDIS_PORT: ${REDIS_PORT:-6379}
   REDIS_USERNAME: ${REDIS_USERNAME}
   REDIS_PASSWORD: ${REDIS_PASSWORD}
   REDIS_USE_SSL: ${REDIS_USE_SSL}
