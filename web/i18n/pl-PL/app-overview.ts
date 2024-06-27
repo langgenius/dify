@@ -53,6 +53,10 @@ const translation = {
           show: 'Pokaż',
           hide: 'Ukryj',
         },
+        chatColorTheme: 'Motyw kolorystyczny czatu',
+        chatColorThemeDesc: 'Ustaw motyw kolorystyczny czatu',
+        chatColorThemeInverted: 'Odwrócony',
+        invalidHexMessage: 'Nieprawidłowa wartość heksadecymalna',
         more: {
           entry: 'Pokaż więcej ustawień',
           copyright: 'Prawa autorskie',

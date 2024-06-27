@@ -33,7 +33,7 @@
 						"attributes": {
 							"d": "M6.96353 1.5547C7.40657 0.890144 6.93018 0 6.13148 0H0V12L6.96353 1.5547Z",
 							"fill": "currentColor",
-							"fill-opacity": "0.5"
+							"fill-opacity": "0"
 						},
 						"children": []
 					}

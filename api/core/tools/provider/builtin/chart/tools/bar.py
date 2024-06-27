@@ -16,12 +16,12 @@ class BarChartTool(BuiltinTool):
         data = data.split(';')
 
         # if all data is int, convert to int
-        if all([i.isdigit() for i in data]):
+        if all(i.isdigit() for i in data):
             data = [int(i) for i in data]
         else:
             data = [float(i) for i in data]
 
-        axis = tool_parameters.get('x_axis', None) or None
+        axis = tool_parameters.get('x_axis') or None
         if axis:
             axis = axis.split(';')
             if len(axis) != len(data):

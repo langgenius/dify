@@ -696,7 +696,7 @@ class DocumentService:
             elif document_data["data_source"]["type"] == "notion_import":
                 notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                 exist_page_ids = []
-                exist_document = dict()
+                exist_document = {}
                 documents = Document.query.filter_by(
                     dataset_id=dataset.id,
                     tenant_id=current_user.current_tenant_id,

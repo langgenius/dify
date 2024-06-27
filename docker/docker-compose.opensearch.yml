@@ -1,4 +1,3 @@
-version: '3'
 services:
   opensearch: # This is also the hostname of the container within the Docker network (i.e. https://opensearch/)
     image: opensearchproject/opensearch:latest # Specifying the latest available image - modify if you want a specific version
