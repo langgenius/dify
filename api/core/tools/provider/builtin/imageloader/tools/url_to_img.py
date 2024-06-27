@@ -34,7 +34,9 @@ class ImageLoaderConvertUrlTool(BuiltinTool):
 
         result = []
 
-        tenant_id = current_user.current_tenant_id or "tenant_id"
+        tenant_id = "tenant_id"
+        if current_user:
+            tenant_id = current_user.current_tenant_id or "tenant_id"
 
         image_ext = ""
         filename = url.split('/')[-1]
