@@ -19,6 +19,7 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser, Message
@@ -94,6 +95,9 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             override_config_dict=override_model_config_dict
         )
 
+        # get tracing instance
+        trace_manager = TraceQueueManager(app_model.id)
+
         # init application generate entity
         application_generate_entity = CompletionAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -105,7 +109,8 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
-            extras=extras
+            extras=extras,
+            trace_manager=trace_manager
         )
 
         # init generate records
@@ -141,7 +146,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream
+            stream=stream,
         )
 
         return CompletionAppGenerateResponseConverter.convert(
@@ -158,7 +163,6 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         :param flask_app: Flask app
         :param application_generate_entity: application generate entity
         :param queue_manager: queue manager
-        :param conversation_id: conversation ID
         :param message_id: message ID
         :return:
         """
@@ -300,7 +304,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream
+            stream=stream,
         )
 
         return CompletionAppGenerateResponseConverter.convert(

@@ -1,6 +1,7 @@
 import json
 import time
 from collections.abc import Generator
+from datetime import datetime, timezone
 from typing import Optional, Union
 
 from core.app.entities.queue_entities import (
@@ -131,7 +132,8 @@ class WorkflowIterationCycleManage(WorkflowCycleStateManager):
                 'started_run_index': node_run_index + 1,
                 'current_index': 0,
                 'steps_boundary': [],
-            })
+            }),
+            created_at=datetime.now(timezone.utc).replace(tzinfo=None)
         )
 
         db.session.add(workflow_node_execution)

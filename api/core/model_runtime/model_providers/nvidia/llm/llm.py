@@ -100,10 +100,10 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
 
-            endpoint_url = credentials['endpoint_url'] if 'endpoint_url' in credentials else None
+            endpoint_url = credentials.get('endpoint_url')
             if endpoint_url and not endpoint_url.endswith('/'):
                 endpoint_url += '/'
-            server_url = credentials['server_url'] if 'server_url' in credentials else None
+            server_url = credentials.get('server_url')
 
             # prepare the payload for a simple ping to the model
             data = {
@@ -182,10 +182,10 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
         if stream:
             headers['Accept'] = 'text/event-stream'
 
-        endpoint_url = credentials['endpoint_url'] if 'endpoint_url' in credentials else None
+        endpoint_url = credentials.get('endpoint_url')
         if endpoint_url and not endpoint_url.endswith('/'):
             endpoint_url += '/'
-        server_url = credentials['server_url'] if 'server_url' in credentials else None
+        server_url = credentials.get('server_url')
 
         data = {
             "model": model,

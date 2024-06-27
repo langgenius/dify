@@ -35,22 +35,23 @@ logger = logging.getLogger(__name__)
 
 class MessageBasedAppGenerator(BaseAppGenerator):
 
-    def _handle_response(self, application_generate_entity: Union[
-        ChatAppGenerateEntity,
-        CompletionAppGenerateEntity,
-        AgentChatAppGenerateEntity,
-        AdvancedChatAppGenerateEntity
-    ],
-                         queue_manager: AppQueueManager,
-                         conversation: Conversation,
-                         message: Message,
-                         user: Union[Account, EndUser],
-                         stream: bool = False) \
-            -> Union[
-                ChatbotAppBlockingResponse,
-                CompletionAppBlockingResponse,
-                Generator[Union[ChatbotAppStreamResponse, CompletionAppStreamResponse], None, None]
-            ]:
+    def _handle_response(
+        self, application_generate_entity: Union[
+            ChatAppGenerateEntity,
+            CompletionAppGenerateEntity,
+            AgentChatAppGenerateEntity,
+            AdvancedChatAppGenerateEntity
+        ],
+        queue_manager: AppQueueManager,
+        conversation: Conversation,
+        message: Message,
+        user: Union[Account, EndUser],
+        stream: bool = False,
+    ) -> Union[
+        ChatbotAppBlockingResponse,
+        CompletionAppBlockingResponse,
+        Generator[Union[ChatbotAppStreamResponse, CompletionAppStreamResponse], None, None]
+    ]:
         """
         Handle response.
         :param application_generate_entity: application generate entity
