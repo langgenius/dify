@@ -2,8 +2,8 @@
 
 if [ "${HTTPS_ENABLED}" = "true" ]; then
     # set the HTTPS_CONFIG environment variable to the content of the https.conf.template
-    export HTTPS_CONFIG=$(envsubst < /etc/nginx/https.conf.template)
-
+    HTTPS_CONFIG=$(envsubst < /etc/nginx/https.conf.template)
+    export HTTPS_CONFIG
     # Substitute the HTTPS_CONFIG in the default.conf.template with content from https.conf.template
     envsubst '${HTTPS_CONFIG}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
 fi
