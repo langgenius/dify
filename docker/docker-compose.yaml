@@ -443,8 +443,8 @@ services:
       AUTHORIZATION_ADMINLIST_ENABLED: ${AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
     # uncomment to expose weaviate port to host
-    # ports:
-    #  - "8080:8080"
+    ports:
+      - "8080:8080"
 
 
   # Qdrant vector store.
@@ -459,9 +459,9 @@ services:
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
     # uncomment to expose qdrant port to host
-    # ports:
-    #  - "6333:6333"
-    #  - "6334:6334"
+    ports:
+      - "6333:6333"
+      - "6334:6334"
 
   # The pgvector vector database.
   pgvector:
@@ -515,7 +515,7 @@ services:
 
   # Chroma vector database
   chroma:
-    image: ghcr.io/chroma-core/chroma:0.5.0
+    image: ghcr.io/chroma-core/chroma:0.5.1
     profiles:
       - chroma
     restart: always
@@ -665,7 +665,6 @@ networks:
     internal: true
   milvus:
     driver: bridge
-    internal: true
   opensearch-net:
     driver: bridge
     internal: true
