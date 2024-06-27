@@ -5,20 +5,19 @@ from botocore.client import Config
 from botocore.exceptions import ClientError
 from extensions.storage.base_storage import BaseStorage
 import boto3
-import os
 
 
 class OCIStorage(BaseStorage):
     def __init__(self, app: Flask):
         super().__init__(app)
         app_config = self.app.config
-        self.bucket_name = os.getenv('OCI_BUCKET_NAME')
+        self.bucket_name = app_config.get('OCI_BUCKET_NAME')
         self.client = boto3.client(
                     's3',
-                    aws_secret_access_key=os.getenv('OCI_SECRET_KEY'),
-                    aws_access_key_id=os.getenv('OCI_ACCESS_KEY'),
-                    endpoint_url=os.getenv('OCI_ENDPOINT'),
-                    region_name=os.getenv('OCI_REGION')
+                    aws_secret_access_key=app_config.get('OCI_SECRET_KEY'),
+                    aws_access_key_id=app_config.get('OCI_ACCESS_KEY'),
+                    endpoint_url=app_config.get('OCI_ENDPOINT'),
+                    region_name=app_config.get('OCI_REGION')
                 )
 
     def save(self, filename, data):
