@@ -697,9 +697,12 @@ class TraceQueueManager:
         return tasks
 
     def run(self):
-        tasks = self.collect_tasks()
-        if tasks:
-            self.send_to_celery(tasks)
+        try:
+            tasks = self.collect_tasks()
+            if tasks:
+                self.send_to_celery(tasks)
+        except Exception as e:
+            logging.debug(f"Error processing trace tasks: {e}")
 
     def start_timer(self):
         global trace_manager_timer
