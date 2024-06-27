@@ -17,14 +17,14 @@ class LinearChartTool(BuiltinTool):
             return self.create_text_message('Please input data')
         data = data.split(';')
 
-        axis = tool_parameters.get('x_axis', None) or None
+        axis = tool_parameters.get('x_axis') or None
         if axis:
             axis = axis.split(';')
             if len(axis) != len(data):
                 axis = None
 
         # if all data is int, convert to int
-        if all([i.isdigit() for i in data]):
+        if all(i.isdigit() for i in data):
             data = [int(i) for i in data]
         else:
             data = [float(i) for i in data]

@@ -33,7 +33,7 @@ class JinaSearchTool(BuiltinTool):
         if tool_parameters.get('gather_all_images_at_the_end', False):
             headers['X-With-Images-Summary'] = 'true'
 
-        proxy_server = tool_parameters.get('proxy_server', None)
+        proxy_server = tool_parameters.get('proxy_server')
         if proxy_server is not None and proxy_server != '':
             headers['X-Proxy-Url'] = proxy_server
 
