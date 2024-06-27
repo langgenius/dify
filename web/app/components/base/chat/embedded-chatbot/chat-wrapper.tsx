@@ -33,6 +33,7 @@ const ChatWrapper = () => {
     handleFeedback,
     currentChatInstanceRef,
     handleNewConversation,
+    themeBuilder,
   } = useEmbeddedChatbotContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -132,6 +133,7 @@ const ChatWrapper = () => {
       answerIcon={isDify() ? <LogoAvatar className='relative shrink-0' /> : null}
       hideProcessDetail
       onCreateNewChat={handleNewConversation}
+      themeBuilder={themeBuilder}
     />
   )
 }

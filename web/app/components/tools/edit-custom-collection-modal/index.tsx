@@ -302,7 +302,7 @@ const EditCustomCollectionModal: FC<Props> = ({
             <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 shrink-0 flex py-4 px-6 rounded-b-[10px] bg-gray-50 border-t border-black/5')} >
               {
                 isEdit && (
-                  <Button onClick={onRemove}>{t('common.operation.remove')}</Button>
+                  <Button onClick={onRemove} className='text-red-500 border-red-50 hover:border-red-500'>{t('common.operation.delete')}</Button>
                 )
               }
               <div className='flex space-x-2 '>

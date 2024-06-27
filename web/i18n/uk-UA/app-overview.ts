@@ -49,6 +49,10 @@ const translation = {
           show: 'Показати',
           hide: 'Приховати',
         },
+        chatColorTheme: 'Тема кольору чату',
+        chatColorThemeDesc: 'Встановіть тему кольору чат-бота',
+        chatColorThemeInverted: 'Інвертовано',
+        invalidHexMessage: 'Недійсне шістнадцяткове значення',
         more: {
           entry: 'Показати додаткові налаштування',
           copyright: 'Авторське право',

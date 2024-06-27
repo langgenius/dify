@@ -19,6 +19,7 @@ import type {
   Feedback,
   OnSend,
 } from '../types'
+import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import Question from './question'
 import Answer from './answer'
 import ChatInput from './chat-input'
@@ -59,8 +60,9 @@ export type ChatProps = {
   hideProcessDetail?: boolean
   hideLogModal?: boolean
   onCreateNewChat?: () => void
-
+  themeBuilder?: ThemeBuilder
 }
+
 const Chat: FC<ChatProps> = ({
   appData,
   config,
@@ -88,7 +90,7 @@ const Chat: FC<ChatProps> = ({
   hideProcessDetail,
   hideLogModal,
   onCreateNewChat,
-
+  themeBuilder,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -225,6 +227,7 @@ const Chat: FC<ChatProps> = ({
                     key={item.id}
                     item={item}
                     questionIcon={questionIcon}
+                    theme={themeBuilder?.theme}
                   />
                 )
               })
@@ -267,6 +270,7 @@ const Chat: FC<ChatProps> = ({
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
                   onCreateNewChat={onCreateNewChat}
+                  theme={themeBuilder?.theme}
                 />
               )
             }
