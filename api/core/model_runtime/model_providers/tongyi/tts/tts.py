@@ -1,9 +1,11 @@
-import concurrent.futures
+import _thread
 from functools import reduce
 from io import BytesIO
+from queue import Queue
 from typing import Optional
 
-import dashscope
+from dashscope.api_entities.dashscope_response import SpeechSynthesisResponse
+from dashscope.audio.tts import ResultCallback, SpeechSynthesisResult, SpeechSynthesizer
 from flask import Response, stream_with_context
 from pydub import AudioSegment
 
@@ -19,8 +21,16 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
     Model class for Tongyi Speech to text model.
     """
 
-    def _invoke(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, streaming: bool,
-                user: Optional[str] = None) -> any:
+    def _invoke(
+        self,
+        model: str,
+        tenant_id: str,
+        credentials: dict,
+        content_text: str,
+        voice: str,
+        streaming: bool,
+        user: Optional[str] = None,
+    ) -> any:
         """
         _invoke text2speech model
 
@@ -34,15 +44,24 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         :return: text translated to audio file
         """
         audio_type = self._get_model_audio_type(model, credentials)
-        if not voice or voice not in [d['value'] for d in self.get_tts_model_voices(model=model, credentials=credentials)]:
+        if not voice or voice not in [
+            d["value"] for d in self.get_tts_model_voices(model=model, credentials=credentials)
+        ]:
             voice = self._get_model_default_voice(model, credentials)
         if streaming:
-            return Response(stream_with_context(self._tts_invoke_streaming(model=model,
-                                                                           credentials=credentials,
-                                                                           content_text=content_text,
-                                                                           voice=voice,
-                                                                           tenant_id=tenant_id)),
-                            status=200, mimetype=f'audio/{audio_type}')
+            return Response(
+                stream_with_context(
+                    self._tts_invoke_streaming(
+                        model=model,
+                        credentials=credentials,
+                        content_text=content_text,
+                        voice=voice,
+                        tenant_id=tenant_id,
+                    )
+                ),
+                status=200,
+                mimetype=f"audio/{audio_type}",
+            )
         else:
             return self._tts_invoke(model=model, credentials=credentials, content_text=content_text, voice=voice)
 
@@ -59,11 +78,21 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
             self._tts_invoke(
                 model=model,
                 credentials=credentials,
-                content_text='Hello Dify!',
+                content_text="Hello Dify!",
                 voice=self._get_model_default_voice(model, credentials),
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
+        
+    
+    def _combine_audio_segment(self,audio_segments: list, audio_type: str) -> BytesIO:
+        if len(audio_segments)>0:
+            combined_segment = reduce(lambda x, y: x + y, audio_segments)
+            buffer: BytesIO = BytesIO()
+            combined_segment.export(buffer, format=audio_type)
+            buffer.seek(0)
+            return buffer
+
 
     def _tts_invoke(self, model: str, credentials: dict, content_text: str, voice: str) -> Response:
         """
@@ -77,37 +106,29 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         """
         audio_type = self._get_model_audio_type(model, credentials)
         word_limit = self._get_model_word_limit(model, credentials)
-        max_workers = self._get_model_workers_limit(model, credentials)
         try:
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
-            audio_bytes_list = list()
+            audio_segments = list()
+            for sentence in sentences:
+                audio_bytes = self._process_sentence(
+                        sentence=sentence,
+                        credentials=credentials,
+                        voice=voice,
+                        audio_type=audio_type,
+                    )
+                if audio_bytes is not None:
+                    audio_segments.append(AudioSegment.from_file(BytesIO(audio_bytes), format=audio_type))
 
-            # Create a thread pool and map the function to the list of sentences
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [executor.submit(self._process_sentence, sentence=sentence,
-                                           credentials=credentials, voice=voice, audio_type=audio_type) for sentence in
-                           sentences]
-                for future in futures:
-                    try:
-                        if future.result():
-                            audio_bytes_list.append(future.result())
-                    except Exception as ex:
-                        raise InvokeBadRequestError(str(ex))
-
-            if len(audio_bytes_list) > 0:
-                audio_segments = [AudioSegment.from_file(BytesIO(audio_bytes), format=audio_type) for audio_bytes in
-                                  audio_bytes_list if audio_bytes]
-                combined_segment = reduce(lambda x, y: x + y, audio_segments)
-                buffer: BytesIO = BytesIO()
-                combined_segment.export(buffer, format=audio_type)
-                buffer.seek(0)
+            buffer = self._combine_audio_segment(audio_segments,audio_type)
+            if buffer is not None:
                 return Response(buffer.read(), status=200, mimetype=f"audio/{audio_type}")
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
     # Todo: To improve the streaming function
-    def _tts_invoke_streaming(self, model: str, tenant_id: str, credentials: dict, content_text: str,
-                              voice: str) -> any:
+    def _tts_invoke_streaming(
+        self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str
+    ) -> any:
         """
         _tts_invoke_streaming text2speech model
 
@@ -121,22 +142,81 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         word_limit = self._get_model_word_limit(model, credentials)
         audio_type = self._get_model_audio_type(model, credentials)
         tts_file_id = self._get_file_name(content_text)
-        file_path = f'generate_files/audio/{tenant_id}/{tts_file_id}.{audio_type}'
+        file_path = f"generate_files/audio/{tenant_id}/{tts_file_id}.{audio_type}"
+       # The queue of audio binary data
+        queue = Queue()
+        job_done = CallbackStatus()
+        job_error = CallbackStatus()
+        job_completed = CallbackStatus()
+        # A callback that returns speech synthesis results.
+        callback = Callback(queue,job_done,job_error)
+
         try:
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
-            for sentence in sentences:
-                response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice, sample_rate=48000,
-                                                                      api_key=credentials.get('dashscope_api_key'),
-                                                                      text=sentence.strip(),
-                                                                      format=audio_type, word_timestamp_enabled=True,
-                                                                      phoneme_timestamp_enabled=True)
-                if isinstance(response.get_audio_data(), bytes):
-                    storage.save(file_path, response.get_audio_data())
+            _thread.start_new_thread(self._tts_invoke_streaming_call,(
+                                sentences,
+                                voice,
+                                audio_type,
+                                callback,
+                                credentials,
+                                file_path,
+                                queue,
+                                job_completed
+            ))
+            while True:
+                item = queue.get(True, 300)
+                if item is job_done:
+                    continue
+                if item is job_completed:
+                    break
+                elif item is job_error:
+                    raise InvokeBadRequestError(str(item.messages))
+                else:
+                    yield item
+
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
+    def _tts_invoke_streaming_call(
+        self, sentences: list[str], 
+        voice: str, 
+        audio_type: str, 
+        callback: any, 
+        credentials: dict, 
+        file_path: str,
+        queue: Queue,
+        job_completed: any
+    ):
+        results =  [
+                self._process_sentence(
+                    sentence=sentence.strip(),
+                    credentials=credentials,
+                    voice=voice,
+                    audio_type=audio_type,
+                    callback=callback,
+                    word_timestamp_enabled=True,
+                    phoneme_timestamp_enabled=True)
+                for sentence in sentences
+        ]
+        if len(results) > 0:
+            audio_segments = list()
+            for audio_bytes in results:
+                audio_segments.append(AudioSegment.from_file(BytesIO(audio_bytes), format=audio_type))
+
+            buffer = self._combine_audio_segment(audio_segments,audio_type)
+            if buffer is not None:
+                storage.save(file_path, buffer.getvalue())
+        queue.put(job_completed)
+       
     @staticmethod
-    def _process_sentence(sentence: str, credentials: dict, voice: str, audio_type: str):
+    def _process_sentence(sentence: str, 
+                          credentials: dict, 
+                          voice: str, 
+                          audio_type: str,
+                          callback: any = None,
+                          word_timestamp_enabled: bool = False,
+                          phoneme_timestamp_enabled: bool = False
+                          ):
         """
         _tts_invoke Tongyi text2speech model api
 
@@ -146,9 +226,58 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         :param audio_type: audio file type
         :return: text translated to audio file
         """
-        response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice, sample_rate=48000,
-                                                              api_key=credentials.get('dashscope_api_key'),
-                                                              text=sentence.strip(),
-                                                              format=audio_type)
+        
+        """
+        Calling the `SpeechSynthesizer.call` method in multithreading will throw a RuntimeError,
+        `RuntimeError: Cannot run the event loop while another loop is running` 
+        because the asyncio.run_until_complete method is called internally, 
+        and the event loop will check whether there is already a thread holding the same ID.
+        """
+        response = SpeechSynthesizer.call(
+            model=voice,
+            sample_rate=48000,
+            api_key=credentials.get("dashscope_api_key"),
+            text=sentence.strip(),
+            format=audio_type,
+            callback=callback,
+            word_timestamp_enabled=word_timestamp_enabled,
+            phoneme_timestamp_enabled=phoneme_timestamp_enabled
+        )
         if isinstance(response.get_audio_data(), bytes):
             return response.get_audio_data()
+
+
+class CallbackStatus:
+    def __init__(self, messages=None) -> None:
+        if messages is not None:
+            self._messages = messages
+        else:
+            self._messages = ""
+
+    @property
+    def messages(self) -> str:
+        return self._messages
+
+    @messages.setter
+    def messages(self, value: str):
+        self._messages = value
+
+
+class Callback(ResultCallback):
+    def __init__(self, queue: Queue, job_done: CallbackStatus, job_error: CallbackStatus) -> None:
+        super().__init__()
+        self._queue = queue
+        self._job_done = job_done
+        self._job_error = job_error
+
+    def on_complete(self):
+        self._queue.put(self._job_done)
+
+    def on_error(self, response: SpeechSynthesisResponse):
+        self._job_error.messages = str(response)
+        self._queue.put(self._job_error)
+
+    def on_event(self, result: SpeechSynthesisResult):
+        
+        if result.get_audio_frame() is not None:
+            self._queue.put(result.get_audio_frame())
