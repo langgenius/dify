@@ -147,7 +147,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             return self._get_num_tokens_by_gpt2(text)
 
         if is_completion_model:
-            return sum([tokens(str(message.content)) for message in messages])
+            return sum(tokens(str(message.content)) for message in messages)
 
         tokens_per_message = 3
         tokens_per_name = 1

@@ -175,8 +175,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         # - https://docs.anthropic.com/claude/reference/claude-on-amazon-bedrock
         # - https://github.com/anthropics/anthropic-sdk-python
         client = AnthropicBedrock(
-            aws_access_key=credentials.get("aws_access_key_id", None),
-            aws_secret_key=credentials.get("aws_secret_access_key", None),
+            aws_access_key=credentials.get("aws_access_key_id"),
+            aws_secret_key=credentials.get("aws_secret_access_key"),
             aws_region=credentials["aws_region"],
         )
 
@@ -576,7 +576,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         """
         Create payload for bedrock api call depending on model provider
         """
-        payload = dict()
+        payload = {}
         model_prefix = model.split('.')[0]
         model_name = model.split('.')[1]
 
@@ -648,8 +648,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         runtime_client = boto3.client(
             service_name='bedrock-runtime',
             config=client_config,
-            aws_access_key_id=credentials.get("aws_access_key_id", None),
-            aws_secret_access_key=credentials.get("aws_secret_access_key", None)
+            aws_access_key_id=credentials.get("aws_access_key_id"),
+            aws_secret_access_key=credentials.get("aws_secret_access_key")
         )
 
         model_prefix = model.split('.')[0]

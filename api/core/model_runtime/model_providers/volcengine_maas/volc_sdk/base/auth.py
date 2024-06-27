@@ -102,7 +102,7 @@ class Signer:
         body_hash = Util.sha256(request.body)
         request.headers['X-Content-Sha256'] = body_hash
 
-        signed_headers = dict()
+        signed_headers = {}
         for key in request.headers:
             if key in ['Content-Type', 'Content-Md5', 'Host'] or key.startswith('X-'):
                 signed_headers[key.lower()] = request.headers[key]
