@@ -17,7 +17,7 @@ language_timezone_mapping = {
     'hi-IN': 'Asia/Kolkata'
 }
 
-languages = language_timezone_mapping.keys()
+languages = list(language_timezone_mapping.keys())
 
 
 def supported_language(lang):
