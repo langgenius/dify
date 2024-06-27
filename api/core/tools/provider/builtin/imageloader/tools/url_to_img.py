@@ -34,16 +34,14 @@ class ImageLoaderConvertUrlTool(BuiltinTool):
 
         result = []
 
-        tenant_id = "tenant_id"
-        if current_user:
-            tenant_id = current_user.current_tenant_id or "tenant_id"
+        tenant_id = self.generate_fixed_uuid4("image_files_local_storage")
 
         image_ext = ""
         filename = url.split('/')[-1]
         if '.' in filename:
             filename, image_ext = path.splitext(filename)
 
-        filename = self.generate_fixed_uuid4(filename)
+        filename = self.generate_fixed_uuid4(url)
 
         file_key = f"tools/{tenant_id}/{filename}{image_ext}"
         mime_type, _ = guess_type(file_key)
