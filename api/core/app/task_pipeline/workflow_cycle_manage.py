@@ -133,6 +133,7 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
                     conversation_id=conversation_id,
                 )
             )
+            trace_manager.run()
 
         return workflow_run
 
@@ -174,6 +175,7 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
                 conversation_id=conversation_id,
             )
         )
+        trace_manager.run()
 
         return workflow_run
 

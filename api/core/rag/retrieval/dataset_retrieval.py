@@ -367,6 +367,7 @@ class DatasetRetrieval:
                     timer=timer
                 )
             )
+            trace_manager.run()
 
     def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str) -> None:
         """

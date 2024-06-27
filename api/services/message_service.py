@@ -280,5 +280,6 @@ class MessageService:
                 timer=timer
             )
         )
+        trace_manager.run()
 
         return questions

@@ -96,3 +96,13 @@ class ToolTraceInfo(BaseTraceInfo):
 class GenerateNameTraceInfo(BaseTraceInfo):
     conversation_id: Optional[str] = None
     tenant_id: str
+
+trace_info_info_map = {
+    'WorkflowTraceInfo': WorkflowTraceInfo,
+    'MessageTraceInfo': MessageTraceInfo,
+    'ModerationTraceInfo': ModerationTraceInfo,
+    'SuggestedQuestionTraceInfo': SuggestedQuestionTraceInfo,
+    'DatasetRetrievalTraceInfo': DatasetRetrievalTraceInfo,
+    'ToolTraceInfo': ToolTraceInfo,
+    'GenerateNameTraceInfo': GenerateNameTraceInfo,
+}

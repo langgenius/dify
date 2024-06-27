@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import queue
 import threading
@@ -7,10 +8,7 @@ from enum import Enum
 from typing import Any, Optional, Union
 from uuid import UUID
 
-from flask import Flask, current_app
-
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
-from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import (
     LangfuseConfig,
     LangSmithConfig,
@@ -31,6 +29,7 @@ from core.ops.utils import get_message_data
 from extensions.ext_database import db
 from models.model import App, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowRun
+from tasks.ops_trace_task import process_trace_tasks
 
 provider_config_map = {
     TracingProviderEnum.LANGFUSE.value: {
@@ -295,11 +294,9 @@ class TraceTask:
         self.kwargs = kwargs
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
-    def execute(self, trace_instance: BaseTraceInstance):
+    def execute(self):
         method_name, trace_info = self.preprocess()
-        if trace_instance:
-            method = trace_instance.trace
-            method(trace_info)
+        return trace_info
 
     def preprocess(self):
         if self.trace_type == TraceTaskName.CONVERSATION_TRACE:
@@ -372,7 +369,7 @@ class TraceTask:
         }
 
         workflow_trace_info = WorkflowTraceInfo(
-            workflow_data=workflow_run,
+            workflow_data=workflow_run.to_dict(),
             conversation_id=conversation_id,
             workflow_id=workflow_id,
             tenant_id=tenant_id,
@@ -427,7 +424,8 @@ class TraceTask:
         message_tokens = message_data.message_tokens
 
         message_trace_info = MessageTraceInfo(
-            message_data=message_data,
+            message_id=message_id,
+            message_data=message_data.to_dict(),
             conversation_model=conversation_mode,
             message_tokens=message_tokens,
             answer_tokens=message_data.answer_tokens,
@@ -469,7 +467,7 @@ class TraceTask:
         moderation_trace_info = ModerationTraceInfo(
             message_id=workflow_app_log_id if workflow_app_log_id else message_id,
             inputs=inputs,
-            message_data=message_data,
+            message_data=message_data.to_dict(),
             flagged=moderation_result.flagged,
             action=moderation_result.action,
             preset_response=moderation_result.preset_response,
@@ -508,7 +506,7 @@ class TraceTask:
 
         suggested_question_trace_info = SuggestedQuestionTraceInfo(
             message_id=workflow_app_log_id if workflow_app_log_id else message_id,
-            message_data=message_data,
+            message_data=message_data.to_dict(),
             inputs=message_data.message,
             outputs=message_data.answer,
             start_time=timer.get("start"),
@@ -550,11 +548,11 @@ class TraceTask:
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
             message_id=message_id,
             inputs=message_data.query if message_data.query else message_data.inputs,
-            documents=documents,
+            documents=[doc.model_dump() for doc in documents],
             start_time=timer.get("start"),
             end_time=timer.get("end"),
             metadata=metadata,
-            message_data=message_data,
+            message_data=message_data.to_dict(),
         )
 
         return dataset_retrieval_trace_info
@@ -613,7 +611,7 @@ class TraceTask:
 
         tool_trace_info = ToolTraceInfo(
             message_id=message_id,
-            message_data=message_data,
+            message_data=message_data.to_dict(),
             tool_name=tool_name,
             start_time=timer.get("start") if timer else created_time,
             end_time=timer.get("end") if timer else end_time,
@@ -658,30 +656,50 @@ class TraceTask:
 
 
 class TraceQueueManager:
+    _queue = queue.Queue()
+
     def __init__(self, app_id=None, conversation_id=None, message_id=None):
-        tracing_instance = OpsTraceManager.get_ops_trace_instance(app_id, conversation_id, message_id)
-        self.queue = queue.Queue()
-        self.is_running = True
-        self.thread = threading.Thread(
-            target=self.process_queue, kwargs={
-                'flask_app': current_app._get_current_object(),
-                'trace_instance': tracing_instance
-            }
-        )
-        self.thread.start()
+        self.app_id = app_id
+        self.conversation_id = conversation_id
+        self.message_id = message_id
+        self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id, conversation_id, message_id)
 
-    def stop(self):
-        self.is_running = False
+    @classmethod
+    def add_trace_task(cls, trace_task: TraceTask):
+        cls._queue.put(trace_task)
 
-    def process_queue(self, flask_app: Flask, trace_instance: BaseTraceInstance):
-        with flask_app.app_context():
-            while self.is_running:
-                try:
-                    task = self.queue.get(timeout=60)
-                    task.execute(trace_instance)
-                    self.queue.task_done()
-                except queue.Empty:
-                    self.stop()
+    @classmethod
+    def collect_tasks(cls, batch_size=10):
+        tasks = []
+        for _ in range(batch_size):
+            try:
+                task = cls._queue.get_nowait()
+                tasks.append(task)
+                cls._queue.task_done()
+            except queue.Empty:
+                break
+        return tasks
 
-    def add_trace_task(self, trace_task: TraceTask):
-        self.queue.put(trace_task)
+    def send_to_celery(self, tasks: list[TraceTask]):
+        if tasks and self.trace_instance:
+            logging.info(f"Sending {len(tasks)} tasks to Celery")
+            for task in tasks:
+                trace_info = task.execute()
+                task_data = {
+                    "app_id": self.app_id,
+                    "conversation_id": self.conversation_id,
+                    "message_id": self.message_id,
+                    "trace_info_type": type(trace_info).__name__,
+                    "trace_info": trace_info.model_dump() if trace_info else {},
+                }
+                process_trace_tasks.delay(task_data)
+
+    def run(self, batch_size=10):
+        tasks = self.collect_tasks(batch_size)
+        self.send_to_celery(tasks)
+        self.start_timer(batch_size)
+
+    def start_timer(self, batch_size, interval=1):
+        timer = threading.Timer(interval, self.run, args=(batch_size,))
+        timer.daemon = True
+        timer.start()
