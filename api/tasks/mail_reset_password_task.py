@@ -28,7 +28,7 @@ def send_reset_password_mail_task(language: str, to: str, token: str):
 
     # send invite member mail using different languages
     try:
-        url = f'{current_app.config.get("CONSOLE_WEB_URL")}/activate?token={token}'
+        url = f'{current_app.config.get("CONSOLE_WEB_URL")}/forgot-password?token={token}'
         if language == 'zh-Hans':
             html_content = render_template('reset_password_mail_template_zh-CN.html',
                                            to=to,

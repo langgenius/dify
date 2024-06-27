@@ -250,7 +250,6 @@ class AccountIntegrateApi(Resource):
 class AccountForgotPasswordApi(Resource):
 
     @setup_required
-    @account_initialization_required
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('email', type=str, required=True, location='json')
