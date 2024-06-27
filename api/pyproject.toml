@@ -199,6 +199,7 @@ langsmith = "^0.1.77"
 novita-client = "^0.5.6"
 opensearch-py = "2.4.0"
 oracledb = "~2.2.1"
+jsonpath-ng = "1.6.1"
 
 [tool.poetry.group.dev]
 optional = true
