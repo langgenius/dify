@@ -19,6 +19,7 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser
@@ -56,7 +57,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         inputs = args['inputs']
 
         extras = {
-            "auto_generate_conversation_name": args['auto_generate_name'] if 'auto_generate_name' in args else True
+            "auto_generate_conversation_name": args.get('auto_generate_name', True)
         }
 
         # get conversation
@@ -108,6 +109,9 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             override_config_dict=override_model_config_dict
         )
 
+        # get tracing instance
+        trace_manager = TraceQueueManager(app_model.id)
+
         # init application generate entity
         application_generate_entity = AgentChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -121,7 +125,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             stream=stream,
             invoke_from=invoke_from,
             extras=extras,
-            call_depth=0
+            call_depth=0,
+            trace_manager=trace_manager
         )
 
         # init generate records
@@ -158,7 +163,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream
+            stream=stream,
         )
 
         return AgentChatAppGenerateResponseConverter.convert(
@@ -166,11 +171,13 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=invoke_from
         )
 
-    def _generate_worker(self, flask_app: Flask,
-                         application_generate_entity: AgentChatAppGenerateEntity,
-                         queue_manager: AppQueueManager,
-                         conversation_id: str,
-                         message_id: str) -> None:
+    def _generate_worker(
+        self, flask_app: Flask,
+        application_generate_entity: AgentChatAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        conversation_id: str,
+        message_id: str,
+    ) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -192,7 +199,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     conversation=conversation,
-                    message=message
+                    message=message,
                 )
             except GenerateTaskStoppedException:
                 pass

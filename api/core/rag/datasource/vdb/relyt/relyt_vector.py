@@ -151,11 +151,6 @@ class RelytVector(BaseVector):
 
         return ids
 
-    def delete_by_document_id(self, document_id: str):
-        ids = self.get_ids_by_metadata_field('document_id', document_id)
-        if ids:
-            self.delete_by_uuids(ids)
-
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None
         with Session(self.client) as session:

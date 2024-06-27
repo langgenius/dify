@@ -49,6 +49,10 @@ const translation = {
           show: '展示',
           hide: '隱藏',
         },
+        chatColorTheme: '聊天顏色主題',
+        chatColorThemeDesc: '設定聊天機器人的顏色主題',
+        chatColorThemeInverted: '反轉',
+        invalidHexMessage: '無效的十六進制值',
         more: {
           entry: '展示更多設定',
           copyright: '版權',

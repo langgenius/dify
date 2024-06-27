@@ -105,6 +105,8 @@ const translation = {
     customDisclaimerPlaceholder: '请输入自定义免责声明',
     confirmTitle: '确认保存？',
     confirmTip: '发布新的工具版本可能会影响该工具已关联的应用',
+    deleteToolConfirmTitle: '删除这个工具？',
+    deleteToolConfirmContent: '删除工具是不可逆的。用户将无法再访问您的工具。',
   },
   test: {
     title: '测试',

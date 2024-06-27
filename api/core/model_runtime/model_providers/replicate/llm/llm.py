@@ -275,14 +275,13 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
 
     @classmethod
     def _get_parameter_type(cls, param_type: str) -> str:
-        if param_type == 'integer':
-            return 'int'
-        elif param_type == 'number':
-            return 'float'
-        elif param_type == 'boolean':
-            return 'boolean'
-        elif param_type == 'string':
-            return 'string'
+        type_mapping = {
+            'integer': 'int',
+            'number': 'float',
+            'boolean': 'boolean',
+            'string': 'string'
+        }
+        return type_mapping.get(param_type)
 
     def _convert_messages_to_prompt(self, messages: list[PromptMessage]) -> str:
         messages = messages.copy()  # don't mutate the original list

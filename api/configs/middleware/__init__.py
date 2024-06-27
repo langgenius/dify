@@ -2,7 +2,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt, computed_field
 
-from configs.middleware.redis_config import RedisConfig
+from configs.middleware.cache.redis_config import RedisConfig
 from configs.middleware.storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from configs.middleware.storage.amazon_s3_storage_config import S3StorageConfig
 from configs.middleware.storage.azure_blob_storage_config import AzureBlobStorageConfig

@@ -1,5 +1,4 @@
-
-x-shared-env: &shared-env
+x-shared-env: &shared-api-worker-env
   # The log level for the application. Supported values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   # Debug mode, default is false. It is recommended to turn on this configuration for local development to prevent some problems caused by monkey patch.
@@ -264,7 +263,7 @@ services:
     restart: always
     environment:
       # Use the shared environment variables.
-      <<: *shared-env
+      <<: *shared-api-worker-env
       # Startup mode, 'api' starts the API server.
       MODE: api
     depends_on:
@@ -287,7 +286,7 @@ services:
     restart: always
     environment:
       # Use the shared environment variables.
-      <<: *shared-env
+      <<: *shared-api-worker-env
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
       MODE: worker
     depends_on:
@@ -538,7 +537,7 @@ services:
       - 1521:1521
     volumes:
       - type: volume
-        source: oradata_vector
+        source: oradata
         target: /opt/oracle/oradata
       - ./startupscripts:/opt/oracle/scripts/startup
     environment:
@@ -672,4 +671,4 @@ networks:
     internal: true
 
 volumes:
-  oradata_vector:
+  oradata:

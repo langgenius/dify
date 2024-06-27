@@ -49,6 +49,10 @@ const translation = {
           show: '表示',
           hide: '非表示',
         },
+        chatColorTheme: 'チャットボットのカラーテーマ',
+        chatColorThemeDesc: 'チャットボットのカラーテーマを設定します',
+        chatColorThemeInverted: '反転',
+        invalidHexMessage: '無効な16進数値',
         more: {
           entry: 'その他の設定を表示',
           copyright: '著作権',
