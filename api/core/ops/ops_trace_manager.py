@@ -700,7 +700,6 @@ class TraceQueueManager:
         tasks = self.collect_tasks()
         if tasks:
             self.send_to_celery(tasks)
-        self.start_timer()
 
     def start_timer(self):
         global trace_manager_timer
