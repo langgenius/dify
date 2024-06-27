@@ -330,7 +330,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             start_time=trace_info.start_time,
             end_time=trace_info.end_time,
             metadata=trace_info.metadata,
-            level=LevelEnum.DEFAULT if trace_info.error == "" or None else LevelEnum.ERROR,
+            level=LevelEnum.DEFAULT if trace_info.error == "" or trace_info.error is None else LevelEnum.ERROR,
             status_message=trace_info.error,
         )
 
