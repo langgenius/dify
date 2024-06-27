@@ -136,7 +136,7 @@ class FeishuWikiExtractor(BaseExtractor):
                     if "text_run" in element:
                         block_content_list.append(element["text_run"]["content"])
                         return "\n".join(block_content_list)
-
+        return ""
     def read_table_rows(self, block) -> str:
         block_type = block["block_type"]
         parent_id = block["parent_id"]
@@ -159,7 +159,8 @@ class FeishuWikiExtractor(BaseExtractor):
 
             result_lines = "\n".join(result_lines_arr)
             return result_lines
-
+        else:
+            return ""
     def update_last_edited_time(self, document_model: DocumentModel):
         if not document_model:
             return
