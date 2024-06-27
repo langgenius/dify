@@ -30,6 +30,7 @@ select = [
     "S506", # unsafe-yaml-load
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
+    "SIM116", # if-else-block-instead-of-dict-lookup
 ]
 ignore = [
     "F403", # undefined-local-with-import-star
