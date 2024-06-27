@@ -5,6 +5,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from core.tools.errors import ToolInvokeError
 from models.tools import BuiltinToolProvider
 from mimetypes import guess_extension, guess_type
 from flask_login import current_user
@@ -35,44 +36,44 @@ class ImageLoaderConvertUrlTool(BuiltinTool):
 
         tenant_id = current_user.current_tenant_id or "tenant_id"
 
-        response = requests.get(url, stream=True)
-        if response.status_code == 200:
-            image_ext = guess_extension(response.headers['Content-Type'])
-            filename = url.split('/')[-1]
-            if '.' in filename:
-                filename, _ = path.splitext(filename)
+        image_ext = ""
+        filename = url.split('/')[-1]
+        if '.' in filename:
+            filename, image_ext = path.splitext(filename)
 
-            filename = self.generate_fixed_uuid4(filename)
+        filename = self.generate_fixed_uuid4(filename)
 
-            print("ImageLoaderConvertUrlTool")
-            print(filename)
-
-            file_key = f"tools/{tenant_id}/{filename}{image_ext}"
-            mime_type, _ = guess_type(file_key)
-            if not storage.exists(file_key):
+        file_key = f"tools/{tenant_id}/{filename}{image_ext}"
+        mime_type, _ = guess_type(file_key)
+        if not storage.exists(file_key):
+            response = requests.get(url, stream=True)
+            if response.status_code == 200:
                 storage.save(file_key, response.content)
-
-            file = ToolFileManager.create_file_by_key(
-                id=filename,
-                user_id=user_id, 
-                tenant_id=tenant_id,
-                conversation_id=None,
-                file_key=file_key,
-                mimetype=mime_type
-            )
+            else:
+                raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
 
             # sign_url = ToolFileManager.sign_file(file.file_key, image_ext)
 
-            meta = { 
-                "url": url,
-                "tool_file_id": filename
-            }
-            msg = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE_LINK,
-                                    message=url,
-                                    save_as=filename,
-                                    meta=meta)
-            
-            result.append(msg)
+        _ = ToolFileManager.create_file_by_key(
+            id=filename,
+            user_id=user_id, 
+            tenant_id=tenant_id,
+            conversation_id=None,
+            file_key=file_key,
+            mimetype=mime_type
+        )
+
+        meta = { 
+            "url": url,
+            "tool_file_id": filename
+        }
+
+        msg = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE_LINK,
+                                message=url,
+                                save_as=filename,
+                                meta=meta)
+        
+        result.append(msg)
 
 
         # result = []
