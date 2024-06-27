@@ -67,7 +67,6 @@ class LLMGenerator:
                 tenant_id=tenant_id,
             )
         )
-        trace_manager.run()
 
         return name
 

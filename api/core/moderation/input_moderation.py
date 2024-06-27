@@ -57,8 +57,7 @@ class InputModeration:
                     timer=timer
                 )
             )
-            trace_manager.run()
-        
+
         if not moderation_result.flagged:
             return False, inputs, query
 

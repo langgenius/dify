@@ -317,7 +317,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                     message_id=self._message.id
                 )
             )
-            trace_manager.run()
 
         message_was_created.send(
             self._message,

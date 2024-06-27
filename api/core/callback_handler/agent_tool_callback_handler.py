@@ -75,7 +75,6 @@ class DifyAgentCallbackHandler(BaseModel):
                     timer=timer,
                 )
             )
-            trace_manager.run()
 
     def on_tool_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any

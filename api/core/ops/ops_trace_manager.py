@@ -3,10 +3,13 @@ import logging
 import os
 import queue
 import threading
+import time
 from datetime import timedelta
 from enum import Enum
 from typing import Any, Optional, Union
 from uuid import UUID
+
+from flask import current_app
 
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
@@ -104,7 +107,7 @@ class OpsTraceManager:
         return config_class(**new_config).model_dump()
 
     @classmethod
-    def obfuscated_decrypt_token(cls, tracing_provider: str, decrypt_tracing_config:dict):
+    def obfuscated_decrypt_token(cls, tracing_provider: str, decrypt_tracing_config: dict):
         """
         Decrypt tracing config
         :param tracing_provider: tracing provider
@@ -655,34 +658,63 @@ class TraceTask:
         return generate_name_trace_info
 
 
-class TraceQueueManager:
-    _queue = queue.Queue()
+trace_manager_timer = None
+trace_manager_queue = queue.Queue()
+trace_manager_interval = int(os.getenv("TRACE_QUEUE_MANAGER_INTERVAL", 1))
+trace_manager_batch_size = int(os.getenv("TRACE_QUEUE_MANAGER_BATCH_SIZE", 100))
 
+
+class TraceQueueManager:
     def __init__(self, app_id=None, conversation_id=None, message_id=None):
+        global trace_manager_timer
+
         self.app_id = app_id
         self.conversation_id = conversation_id
         self.message_id = message_id
         self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id, conversation_id, message_id)
+        self.flask_app = current_app._get_current_object()
+        if trace_manager_timer is None:
+            self.start_timer()
+            logging.debug(f"TraceQueueManager started with interval: {trace_manager_interval}")
 
-    @classmethod
-    def add_trace_task(cls, trace_task: TraceTask):
-        cls._queue.put(trace_task)
+    def add_trace_task(self, trace_task: TraceTask):
+        global trace_manager_timer
+        global trace_manager_queue
+        try:
+            if self.trace_instance:
+                trace_manager_queue.put(trace_task)
+        except Exception as e:
+            logging.debug(f"Error adding trace task: {e}")
+        finally:
+            self.start_timer()
 
-    @classmethod
-    def collect_tasks(cls, batch_size=10):
+    def collect_tasks(self):
+        global trace_manager_queue
         tasks = []
-        for _ in range(batch_size):
-            try:
-                task = cls._queue.get_nowait()
-                tasks.append(task)
-                cls._queue.task_done()
-            except queue.Empty:
-                break
+        while len(tasks) < trace_manager_batch_size and not trace_manager_queue.empty():
+            task = trace_manager_queue.get_nowait()
+            tasks.append(task)
+            trace_manager_queue.task_done()
         return tasks
 
+    def run(self):
+        tasks = self.collect_tasks()
+        if tasks:
+            self.send_to_celery(tasks)
+        self.start_timer()
+
+    def start_timer(self):
+        global trace_manager_timer
+        if trace_manager_timer is None or not trace_manager_timer.is_alive():
+            trace_manager_timer = threading.Timer(
+                trace_manager_interval, self.run
+            )
+            trace_manager_timer.name = f"trace_manager_timer_{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}"
+            trace_manager_timer.daemon = False
+            trace_manager_timer.start()
+
     def send_to_celery(self, tasks: list[TraceTask]):
-        if tasks and self.trace_instance:
-            logging.info(f"Sending {len(tasks)} tasks to Celery")
+        with self.flask_app.app_context():
             for task in tasks:
                 trace_info = task.execute()
                 task_data = {
@@ -693,13 +725,3 @@ class TraceQueueManager:
                     "trace_info": trace_info.model_dump() if trace_info else {},
                 }
                 process_trace_tasks.delay(task_data)
-
-    def run(self, batch_size=10):
-        tasks = self.collect_tasks(batch_size)
-        self.send_to_celery(tasks)
-        self.start_timer(batch_size)
-
-    def start_timer(self, batch_size, interval=1):
-        timer = threading.Timer(interval, self.run, args=(batch_size,))
-        timer.daemon = True
-        timer.start()

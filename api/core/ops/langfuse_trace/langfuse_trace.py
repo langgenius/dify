@@ -212,7 +212,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         if message_data.from_end_user_id:
             end_user_data: EndUser = db.session.query(EndUser).filter(
                 EndUser.id == message_data.from_end_user_id
-            ).first().session_id
+            ).first()
             user_id = end_user_data.session_id
 
         trace_data = LangfuseTrace(
@@ -246,6 +246,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             output=trace_info.answer_tokens,
             total=trace_info.total_tokens,
             unit=UnitEnum.TOKENS,
+            totalCost=message_data.total_price,
         )
 
         langfuse_generation_data = LangfuseGeneration(
