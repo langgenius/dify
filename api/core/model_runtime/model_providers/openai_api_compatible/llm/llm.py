@@ -88,7 +88,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         :param tools: tools for tool calling
         :return:
         """
-        return self._num_tokens_from_messages(model, prompt_messages, tools)
+        return self._num_tokens_from_messages(model, prompt_messages, tools, credentials)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -675,7 +675,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         return num_tokens
 
     def _num_tokens_from_messages(self, model: str, messages: list[PromptMessage],
-                                  tools: Optional[list[PromptMessageTool]] = None) -> int:
+                                  tools: Optional[list[PromptMessageTool]] = None, credentials: dict = None) -> int:
         """
         Approximate num tokens with GPT2 tokenizer.
         """
@@ -684,7 +684,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         tokens_per_name = 1
 
         num_tokens = 0
-        messages_dict = [self._convert_prompt_message_to_dict(m) for m in messages]
+        messages_dict = [self._convert_prompt_message_to_dict(m, credentials) for m in messages]
         for message in messages_dict:
             num_tokens += tokens_per_message
             for key, value in message.items():
