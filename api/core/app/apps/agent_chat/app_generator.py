@@ -57,7 +57,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         inputs = args['inputs']
 
         extras = {
-            "auto_generate_conversation_name": args['auto_generate_name'] if 'auto_generate_name' in args else True
+            "auto_generate_conversation_name": args.get('auto_generate_name', True)
         }
 
         # get conversation
