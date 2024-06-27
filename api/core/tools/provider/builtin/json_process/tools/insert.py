@@ -31,7 +31,7 @@ class JSONParseTool(BuiltinTool):
             return self.create_text_message('Invalid parameter new_value')
         
         # get insert position
-        index = tool_parameters.get('index', None)
+        index = tool_parameters.get('index')
         
         # get create path
         create_path = tool_parameters.get('create_path', False)
