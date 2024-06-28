@@ -110,6 +110,11 @@ class Account(UserMixin, db.Model):
     def is_editor(self):
         return TenantAccountRole.is_editing_role(self._current_tenant.current_role)
 
+    @property
+    def is_dataset_editing(self):
+        return TenantAccountRole.is_dataset_editing_role(self._current_tenant.current_role)
+
+
 class TenantStatus(str, enum.Enum):
     NORMAL = 'normal'
     ARCHIVE = 'archive'
@@ -120,10 +125,12 @@ class TenantAccountRole(str, enum.Enum):
     ADMIN = 'admin'
     EDITOR = 'editor'
     NORMAL = 'normal'
+    DATASET_OPERATOR = 'dataset_operator'
 
     @staticmethod
     def is_valid_role(role: str) -> bool:
-        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.NORMAL}
+        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR,
+                                 TenantAccountRole.NORMAL, TenantAccountRole.DATASET_OPERATOR}
 
     @staticmethod
     def is_privileged_role(role: str) -> bool:
@@ -131,12 +138,17 @@ class TenantAccountRole(str, enum.Enum):
     
     @staticmethod
     def is_non_owner_role(role: str) -> bool:
-        return role and role in {TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.NORMAL}
+        return role and role in {TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.NORMAL,
+                                 TenantAccountRole.DATASET_OPERATOR}
     
     @staticmethod
     def is_editing_role(role: str) -> bool:
         return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
 
+    @staticmethod
+    def is_dataset_editing_role(role: str) -> bool:
+        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR,
+                                 TenantAccountRole.DATASET_OPERATOR}
 
 class Tenant(db.Model):
     __tablename__ = 'tenants'
@@ -173,6 +185,7 @@ class TenantAccountJoinRole(enum.Enum):
     OWNER = 'owner'
     ADMIN = 'admin'
     NORMAL = 'normal'
+    DATASET_OPERATOR = 'dataset_operator'
 
 
 class TenantAccountJoin(db.Model):

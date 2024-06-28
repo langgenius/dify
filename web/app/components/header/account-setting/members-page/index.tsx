@@ -29,6 +29,7 @@ const MembersPage = () => {
     owner: t('common.members.owner'),
     admin: t('common.members.admin'),
     editor: t('common.members.editor'),
+    dataset_operator: t('common.members.datasetOperator'),
     normal: t('common.members.normal'),
   }
   const { locale } = useContext(I18n)

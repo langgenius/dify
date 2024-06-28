@@ -8,13 +8,15 @@ export enum DataSourceType {
   WEB = 'website_crawl',
 }
 
+export type DatasetPermission = 'only_me' | 'all_team_members' | 'partial_members'
+
 export type DataSet = {
   id: string
   name: string
   icon: string
   icon_background: string
   description: string
-  permission: 'only_me' | 'all_team_members'
+  permission: DatasetPermission
   data_source_type: DataSourceType
   indexing_technique: 'high_quality' | 'economy'
   created_by: string
@@ -29,6 +31,7 @@ export type DataSet = {
   retrieval_model_dict: RetrievalConfig
   retrieval_model: RetrievalConfig
   tags: Tag[]
+  partial_member_list?: any[]
 }
 
 export type CustomFile = File & {

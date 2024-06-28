@@ -675,7 +675,6 @@ class TraceQueueManager:
         self.flask_app = current_app._get_current_object()
         if trace_manager_timer is None:
             self.start_timer()
-            logging.debug(f"TraceQueueManager started with interval: {trace_manager_interval}")
 
     def add_trace_task(self, trace_task: TraceTask):
         global trace_manager_timer
@@ -698,10 +697,12 @@ class TraceQueueManager:
         return tasks
 
     def run(self):
-        tasks = self.collect_tasks()
-        if tasks:
-            self.send_to_celery(tasks)
-        self.start_timer()
+        try:
+            tasks = self.collect_tasks()
+            if tasks:
+                self.send_to_celery(tasks)
+        except Exception as e:
+            logging.debug(f"Error processing trace tasks: {e}")
 
     def start_timer(self):
         global trace_manager_timer

@@ -10,13 +10,14 @@ import Button from '@/app/components/base/button'
 import type { DataSet } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
+import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import type { RetrievalConfig } from '@/types/app'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import PermissionsRadio from '@/app/components/datasets/settings/permissions-radio'
+import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
   useModelList,
@@ -55,6 +56,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   const { setShowAccountSettingModal } = useModalContext()
   const [loading, setLoading] = useState(false)
+  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
   const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(localeCurrentDataset?.retrieval_model_dict as RetrievalConfig)
@@ -180,11 +182,14 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div>{t('datasetSettings.form.permissions')}</div>
           </div>
           <div className='w-full'>
-            <PermissionsRadio
-              disable={!localeCurrentDataset?.embedding_available}
-              value={localeCurrentDataset.permission}
+            {/* TODO */}
+            <PermissionSelector
+              disabled={!localeCurrentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
+              permission={localeCurrentDataset.permission}
+              value={[]}
               onChange={v => handleValueChange('permission', v!)}
-              itemClassName='sm:!w-[280px]'
+              onMemberSelect={() => {}}
+              // itemClassName='sm:!w-[280px]'
             />
           </div>
         </div>

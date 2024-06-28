@@ -25,7 +25,7 @@ from fields.document_fields import document_status_fields
 from libs.login import login_required
 from models.dataset import Dataset, Document, DocumentSegment
 from models.model import ApiToken, UploadFile
-from services.dataset_service import DatasetService, DocumentService
+from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
 
 def _validate_name(name):
@@ -163,6 +163,11 @@ class DatasetApi(Resource):
                 data['embedding_available'] = False
         else:
             data['embedding_available'] = True
+
+        if data.get('permission') == 'partial_members':
+            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
+            data.update({'partial_member_list': part_users_list})
+
         return data, 200
 
     @setup_required
@@ -188,16 +193,18 @@ class DatasetApi(Resource):
                             nullable=True,
                             help='Invalid indexing technique.')
         parser.add_argument('permission', type=str, location='json', choices=(
-            'only_me', 'all_team_members'), help='Invalid permission.')
+            'only_me', 'all_team_members', 'partial_members'), help='Invalid permission.'
+                            )
         parser.add_argument('embedding_model', type=str,
                             location='json', help='Invalid embedding model.')
         parser.add_argument('embedding_model_provider', type=str,
                             location='json', help='Invalid embedding model provider.')
         parser.add_argument('retrieval_model', type=dict, location='json', help='Invalid retrieval model.')
+        parser.add_argument('partial_member_list', type=list, location='json', help='Invalid parent user list.')
         args = parser.parse_args()
-
+        data = request.get_json()
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        if not current_user.is_dataset_editing_role:
             raise Forbidden()
 
         dataset = DatasetService.update_dataset(
@@ -206,7 +213,14 @@ class DatasetApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        return marshal(dataset, dataset_detail_fields), 200
+        result_data = marshal(dataset, dataset_detail_fields)
+
+        if data.get('partial_member_list') and data.get('permission') == 'partial_members':
+            DatasetPermissionService.update_partial_member_list(dataset_id_str, data.get('partial_member_list'))
+            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
+            result_data.update({'partial_member_list': part_users_list})
+
+        return result_data, 200
 
     @setup_required
     @login_required
@@ -560,6 +574,27 @@ class DatasetErrorDocs(Resource):
         }, 200
 
 
+class DatasetPermissionUserListApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id):
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        partial_members_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
+
+        return {
+            'data': partial_members_list,
+        }, 200
+
+
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
@@ -572,3 +607,4 @@ api.add_resource(DatasetApiDeleteApi, '/datasets/api-keys/<uuid:api_key_id>')
 api.add_resource(DatasetApiBaseUrlApi, '/datasets/api-base-info')
 api.add_resource(DatasetRetrievalSettingApi, '/datasets/retrieval-setting')
 api.add_resource(DatasetRetrievalSettingMockApi, '/datasets/retrieval-setting/<string:vector_type>')
+api.add_resource(DatasetPermissionUserListApi, '/datasets/<uuid:dataset_id>/permission-part-users')
