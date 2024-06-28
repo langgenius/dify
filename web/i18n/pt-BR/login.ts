@@ -40,6 +40,13 @@ const translation = {
   backToSignIn: 'Voltar para login',
   forgotPasswordDesc: 'Por favor, insira seu endereço de e-mail para redefinir sua senha. Enviaremos um e-mail com instruções sobre como redefinir sua senha.',
   checkEmailForResetLink: 'Verifique seu e-mail para um link para redefinir sua senha. Se não aparecer dentro de alguns minutos, verifique sua pasta de spam.',
+  passwordChanged: 'Entre agora',
+  changePassword: 'Mudar a senha',
+  changePasswordTip: 'Por favor, insira uma nova senha para sua conta',
+  invalidToken: 'Token inválido ou expirado',
+  confirmPassword: 'Confirme a Senha',
+  confirmPasswordPlaceholder: 'Confirme sua nova senha',
+  passwordChangedTip: 'Sua senha foi alterada com sucesso',
   error: {
     emailEmpty: 'O endereço de e-mail é obrigatório',
     emailInValid: 'Digite um endereço de e-mail válido',

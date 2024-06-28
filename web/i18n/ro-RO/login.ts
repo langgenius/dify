@@ -41,6 +41,13 @@ const translation = {
   backToSignIn: 'Înapoi la autentificare',
   forgotPasswordDesc: 'Vă rugăm să introduceți adresa de e-mail pentru a reseta parola. Vă vom trimite un e-mail cu instrucțiuni despre cum să resetați parola.',
   checkEmailForResetLink: 'Vă rugăm să verificați e-mailul pentru un link de resetare a parolei. Dacă nu apare în câteva minute, verificați folderul de spam.',
+  passwordChanged: 'Conectează-te acum',
+  changePassword: 'Schimbă parola',
+  changePasswordTip: 'Vă rugăm să introduceți o nouă parolă pentru contul dvs',
+  invalidToken: 'Token invalid sau expirat',
+  confirmPassword: 'Confirmă parola',
+  confirmPasswordPlaceholder: 'Confirmați noua parolă',
+  passwordChangedTip: 'Parola dvs. a fost schimbată cu succes',
   error: {
     emailEmpty: 'Adresa de email este obligatorie',
     emailInValid: 'Te rugăm să introduci o adresă de email validă',

@@ -41,6 +41,13 @@ const translation = {
   backToSignIn: 'Return to sign in',
   forgotPasswordDesc: 'Please enter your email address to reset your password. We will send you an email with instructions on how to reset your password.',
   checkEmailForResetLink: 'Please check your email for a link to reset your password. If it doesn\'t appear within a few minutes, make sure to check your spam folder.',
+  passwordChanged: 'Sign in now',
+  changePassword: 'Change Password',
+  changePasswordTip: 'Please enter a new password for your account',
+  invalidToken: 'Invalid or expired token',
+  confirmPassword: 'Confirm Password',
+  confirmPasswordPlaceholder: 'Confirm your new password',
+  passwordChangedTip: 'Your password has been successfully changed',
   error: {
     emailEmpty: 'Email address is required',
     emailInValid: 'Please enter a valid email address',

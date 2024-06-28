@@ -40,6 +40,13 @@ const translation = {
   backToSignIn: '로그인으로 돌아가기',
   forgotPasswordDesc: '비밀번호를 재설정하려면 이메일 주소를 입력하세요. 비밀번호 재설정 방법에 대한 이메일을 보내드리겠습니다.',
   checkEmailForResetLink: '비밀번호 재설정 링크를 확인하려면 이메일을 확인하세요. 몇 분 내에 나타나지 않으면 스팸 폴더를 확인하세요.',
+  passwordChanged: '지금 로그인',
+  changePassword: '비밀번호 변경',
+  changePasswordTip: '계정의 새 비밀번호를 입력하세요',
+  invalidToken: '유효하지 않거나 만료된 토큰',
+  confirmPassword: '비밀번호 확인',
+  confirmPasswordPlaceholder: '새 비밀번호를 확인하세요',
+  passwordChangedTip: '비밀번호가 성공적으로 변경되었습니다',
   error: {
     emailEmpty: '이메일 주소를 입력하세요.',
     emailInValid: '유효한 이메일 주소를 입력하세요.',

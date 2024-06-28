@@ -4,14 +4,17 @@ import { useTranslation } from 'react-i18next'
 
 import { useRouter } from 'next/navigation'
 
-import type { SubmitHandler } from 'react-hook-form'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Loading from '../components/base/loading'
 import Button from '@/app/components/base/button'
 
-import { fetchInitValidateStatus, fetchSetupStatus, forgotPassword, setup } from '@/service/common'
+import {
+  fetchInitValidateStatus,
+  fetchSetupStatus,
+  sendForgotPasswordEmail,
+} from '@/service/common'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
 
 const accountFormSchema = z.object({
@@ -33,19 +36,10 @@ const ForgotPasswordForm = () => {
     defaultValues: { email: '' },
   })
 
-  const onSubmit: SubmitHandler<AccountFormValues> = async (data) => {
-    await setup({
-      body: {
-        ...data,
-      },
-    })
-    setIsEmailSent(true)
-  }
-
-  const handleVerifyEmail = async (email: string) => {
+  const handleSendResetPasswordEmail = async (email: string) => {
     try {
-      const res = await forgotPassword({
-        url: 'account/forgot-password',
+      const res = await sendForgotPasswordEmail({
+        url: '/forgot-password',
         body: { email },
       })
       if (res.result === 'success')
@@ -58,7 +52,7 @@ const ForgotPasswordForm = () => {
     }
   }
 
-  const handleButtonClick = async () => {
+  const handleSendResetPasswordClick = async () => {
     if (isEmailSent) {
       router.push('/signin')
     }
@@ -66,7 +60,7 @@ const ForgotPasswordForm = () => {
       const isValid = await trigger('email')
       if (isValid) {
         const email = getValues('email')
-        await handleVerifyEmail(email)
+        await handleSendResetPasswordEmail(email)
       }
     }
   }
@@ -114,7 +108,7 @@ const ForgotPasswordForm = () => {
                 </div>
               )}
               <div>
-                <Button variant='primary' className='w-full' onClick={handleButtonClick}>
+                <Button variant='primary' className='w-full' onClick={handleSendResetPasswordClick}>
                   {isEmailSent ? t('login.backToSignIn') : t('login.sendResetLink')}
                 </Button>
               </div>

@@ -40,6 +40,13 @@ const translation = {
   backToSignIn: 'サインインに戻る',
   forgotPasswordDesc: 'パスワードをリセットするためにメールアドレスを入力してください。パスワードのリセット方法に関する指示が記載されたメールを送信します。',
   checkEmailForResetLink: 'パスワードリセットリンクを確認するためにメールを確認してください。数分以内に表示されない場合は、スパムフォルダーを確認してください。',
+  passwordChanged: '今すぐサインイン',
+  changePassword: 'パスワードを変更する',
+  changePasswordTip: 'アカウントの新しいパスワードを入力してください',
+  invalidToken: '無効または期限切れのトークン',
+  confirmPassword: 'パスワードを確認',
+  confirmPasswordPlaceholder: '新しいパスワードを確認してください',
+  passwordChangedTip: 'パスワードが正常に変更されました',
   error: {
     emailEmpty: 'メールアドレスは必須です',
     emailInValid: '有効なメールアドレスを入力してください',

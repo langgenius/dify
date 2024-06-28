@@ -40,6 +40,13 @@ const translation = {
   backToSignIn: 'Zurück zur Anmeldung',
   forgotPasswordDesc: 'Bitte geben Sie Ihre E-Mail-Adresse ein, um Ihr Passwort zurückzusetzen. Wir senden Ihnen eine E-Mail mit Anweisungen zum Zurücksetzen Ihres Passworts.',
   checkEmailForResetLink: 'Bitte überprüfen Sie Ihre E-Mails auf einen Link zum Zurücksetzen Ihres Passworts. Wenn er nicht innerhalb weniger Minuten erscheint, überprüfen Sie bitte Ihren Spam-Ordner.',
+  passwordChanged: 'Jetzt anmelden',
+  changePassword: 'Passwort ändern',
+  changePasswordTip: 'Bitte geben Sie ein neues Passwort für Ihr Konto ein',
+  invalidToken: 'Ungültiges oder abgelaufenes Token',
+  confirmPassword: 'Passwort bestätigen',
+  confirmPasswordPlaceholder: 'Bestätigen Sie Ihr neues Passwort',
+  passwordChangedTip: 'Ihr Passwort wurde erfolgreich geändert',
   error: {
     emailEmpty: 'E-Mail-Adresse wird benötigt',
     emailInValid: 'Bitte gib eine gültige E-Mail-Adresse ein',

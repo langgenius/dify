@@ -1,131 +1,177 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import { useRouter, useSearchParams } from 'next/navigation'
-
-import type { SubmitHandler } from 'react-hook-form'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import Loading from '../components/base/loading'
+import useSWR from 'swr'
+import { useSearchParams } from 'next/navigation'
+import cn from 'classnames'
+import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import Button from '@/app/components/base/button'
+import { changePasswordWithToken, verifyForgotPasswordToken } from '@/service/common'
+import Toast from '@/app/components/base/toast'
+import Loading from '@/app/components/base/loading'
 
-import { fetchInitValidateStatus, fetchSetupStatus, forgotPassword, setup } from '@/service/common'
-import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
-
-const accountFormSchema = z.object({
-  email: z
-    .string()
-    .min(1, { message: 'login.error.emailInValid' })
-    .email('login.error.emailInValid'),
-})
-
-type AccountFormValues = z.infer<typeof accountFormSchema>
+const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
-
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
-  const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [isEmailSent, setIsEmailSent] = useState(false)
-  const { register, trigger, getValues, formState: { errors } } = useForm<AccountFormValues>({
-    resolver: zodResolver(accountFormSchema),
-    defaultValues: { email: '' },
+
+  const verifyTokenParams = {
+    url: '/forgot-password/validity',
+    body: { token },
+  }
+  const { data: verifyTokenRes, mutate: revalidateToken } = useSWR(verifyTokenParams, verifyForgotPasswordToken, {
+    revalidateOnFocus: false,
   })
 
-  const onSubmit: SubmitHandler<AccountFormValues> = async (data) => {
-    await setup({
-      body: {
-        ...data,
-      },
-    })
-    setIsEmailSent(true)
-  }
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showSuccess, setShowSuccess] = useState(false)
 
-  const handleVerifyEmail = async (email: string) => {
-    try {
-      const res = await forgotPassword({
-        url: 'account/forgot-password',
-        body: { email },
-      })
-      if (res.result === 'success')
-        setIsEmailSent(true)
-
-      else console.error('Email verification failed')
-    }
-    catch (error) {
-      console.error('Request failed:', error)
-    }
-  }
-
-  const handleButtonClick = async () => {
-    if (isEmailSent) {
-      router.push('/signin')
-    }
-    else {
-      const isValid = await trigger('email')
-      if (isValid) {
-        const email = getValues('email')
-        await handleVerifyEmail(email)
-      }
-    }
-  }
-
-  useEffect(() => {
-    fetchSetupStatus().then((res: SetupStatusResponse) => {
-      fetchInitValidateStatus().then((res: InitValidateStatusResponse) => {
-        if (res.status === 'not_started')
-          window.location.href = '/init'
-      })
-
-      setLoading(false)
+  const showErrorMessage = useCallback((message: string) => {
+    Toast.notify({
+      type: 'error',
+      message,
     })
   }, [])
 
+  const valid = useCallback(() => {
+    if (!password.trim()) {
+      showErrorMessage(t('login.error.passwordEmpty'))
+      return false
+    }
+    if (!validPassword.test(password)) {
+      showErrorMessage(t('login.error.passwordInvalid'))
+      return false
+    }
+    if (password !== confirmPassword) {
+      showErrorMessage(t('common.account.notEqual'))
+      return false
+    }
+    return true
+  }, [password, confirmPassword, showErrorMessage, t])
+
+  const handleChangePassword = useCallback(async () => {
+    const token = searchParams.get('token') || ''
+
+    if (!valid())
+      return
+    try {
+      await changePasswordWithToken({
+        url: '/forgot-password/resets',
+        body: {
+          token,
+          new_password: password,
+          password_confirm: confirmPassword,
+        },
+      })
+      setShowSuccess(true)
+    }
+    catch {
+      await revalidateToken()
+    }
+  }, [password, revalidateToken, token, valid])
+
   return (
-    loading
-      ? <Loading/>
-      : <>
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2 className="text-[32px] font-bold text-gray-900">
-            这里是修改密码
-            {isEmailSent ? t('login.resetLinkSent') : t('login.forgotPassword')}
-          </h2>
-          <p className='mt-1 text-sm text-gray-600'>
-            {isEmailSent ? t('login.checkEmailForResetLink') : t('login.forgotPasswordDesc')}
-          </p>
-        </div>
-        <div className="grow mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-white ">
-            <form>
-              {!isEmailSent && (
-                <div className='mb-5'>
-                  <label htmlFor="email"
-                    className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
-                    {t('login.email')}
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      {...register('email')}
-                      placeholder={t('login.emailPlaceholder') || ''}
-                      className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
-                    />
-                    {errors.email && <span className='text-red-400 text-sm'>{t(`${errors.email?.message}`)}</span>}
-                  </div>
-                </div>
-              )}
-              <div>
-                <Button variant='primary' className='w-full' onClick={handleButtonClick}>
-                  {isEmailSent ? t('login.backToSignIn') : t('login.sendResetLink')}
-                </Button>
-              </div>
-            </form>
+    <div className={
+      cn(
+        'flex flex-col items-center w-full grow justify-center',
+        'px-6',
+        'md:px-[108px]',
+      )
+    }>
+      {!verifyTokenRes && <Loading />}
+      {verifyTokenRes && !verifyTokenRes.is_valid && (
+        <div className="flex flex-col md:w-[400px]">
+          <div className="w-full mx-auto">
+            <div className="mb-3 flex justify-center items-center w-20 h-20 p-5 rounded-[20px] border border-gray-100 shadow-lg text-[40px] font-bold">🤷‍♂️</div>
+            <h2 className="text-[32px] font-bold text-gray-900">{t('login.invalid')}</h2>
+          </div>
+          <div className="w-full mx-auto mt-6">
+            <Button variant='primary' className='w-full !text-sm'>
+              <a href="https://dify.ai">{t('login.explore')}</a>
+            </Button>
           </div>
         </div>
-      </>
+      )}
+      {verifyTokenRes && verifyTokenRes.is_valid && !showSuccess && (
+        <div className='flex flex-col md:w-[400px]'>
+          <div className="w-full mx-auto">
+            <h2 className="text-[32px] font-bold text-gray-900">
+              {t('login.changePassword')}
+            </h2>
+            <p className='mt-1 text-sm text-gray-600'>
+              {t('login.changePasswordTip')}
+            </p>
+          </div>
+
+          <div className="w-full mx-auto mt-6">
+            <div className="bg-white">
+              {/* Password */}
+              <div className='mb-5'>
+                <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+                  {t('common.account.newPassword')}
+                </label>
+                <div className="mt-1 relative rounded-md shadow-sm">
+                  <input
+                    id="password"
+                    type='password'
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder={t('login.passwordPlaceholder') || ''}
+                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
+                  />
+                </div>
+                <div className='mt-1 text-xs text-gray-500'>{t('login.error.passwordInvalid')}</div>
+              </div>
+              {/* Confirm Password */}
+              <div className='mb-5'>
+                <label htmlFor="confirmPassword" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+                  {t('common.account.confirmPassword')}
+                </label>
+                <div className="mt-1 relative rounded-md shadow-sm">
+                  <input
+                    id="confirmPassword"
+                    type='password'
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder={t('login.confirmPasswordPlaceholder') || ''}
+                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
+                  />
+                </div>
+              </div>
+              <div>
+                <Button
+                  variant='primary'
+                  className='w-full !text-sm'
+                  onClick={handleChangePassword}
+                >
+                  {t('common.operation.reset')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {verifyTokenRes && verifyTokenRes.is_valid && showSuccess && (
+        <div className="flex flex-col md:w-[400px]">
+          <div className="w-full mx-auto">
+            <div className="mb-3 flex justify-center items-center w-20 h-20 p-5 rounded-[20px] border border-gray-100 shadow-lg text-[40px] font-bold">
+              <CheckCircleIcon className='w-10 h-10 text-[#039855]' />
+            </div>
+            <h2 className="text-[32px] font-bold text-gray-900">
+              {t('login.passwordChangedTip')}
+            </h2>
+          </div>
+          <div className="w-full mx-auto mt-6">
+            <Button variant='primary' className='w-full !text-sm'>
+              <a href="/signin">{t('login.passwordChanged')}</a>
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 

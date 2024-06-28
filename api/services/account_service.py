@@ -251,6 +251,19 @@ class AccountService:
     def _get_reset_token_key(cls, token: str) -> str:
         return f'reset_password:token:{token}'
 
+    @classmethod
+    def revoke_reset_token(cls, token: str):
+        redis_client.delete(cls._get_reset_token_key(token))
+
+    @classmethod
+    def get_reset_data(cls, token: str) -> Optional[dict[str, Any]]:
+        key = cls._get_reset_token_key(token)
+        reset_data_json = redis_client.get(key)
+        if reset_data_json is None:
+            return None
+        reset_data = json.loads(reset_data_json)
+        return reset_data
+
 def _get_login_cache_key(*, account_id: str, token: str):
     return f"account_login:{account_id}:{token}"
 

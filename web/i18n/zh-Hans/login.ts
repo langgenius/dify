@@ -40,6 +40,13 @@ const translation = {
   backToSignIn: '返回登录',
   forgotPasswordDesc: '请输入您的电子邮件地址以重置密码。我们将向您发送一封电子邮件，包含如何重置密码的说明。',
   checkEmailForResetLink: '请检查您的电子邮件以获取重置密码的链接。如果几分钟内没有收到，请检查您的垃圾邮件文件夹。',
+  passwordChanged: '立即登录',
+  changePassword: '更改密码',
+  changePasswordTip: '请输入您的新密码',
+  invalidToken: '无效或已过期的令牌',
+  confirmPassword: '确认密码',
+  confirmPasswordPlaceholder: '确认您的新密码',
+  passwordChangedTip: '您的密码已成功更改',
   error: {
     emailEmpty: '邮箱不能为空',
     emailInValid: '请输入有效的邮箱地址',
