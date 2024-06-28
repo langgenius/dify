@@ -94,7 +94,6 @@ class DatasetService:
             max_per_page=100,
             error_out=False
         )
-        print("================第一次", datasets.items, datasets.total)
         # check datasets permission, assuming this function exists
         if user and user.current_role != TenantAccountRole.DATASET_OPERATOR:
             datasets.items, datasets.total = DatasetService.filter_datasets_by_permission(
