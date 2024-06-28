@@ -1,4 +1,3 @@
-version: '3'
 services:
   # oracle 23 ai vector store.
   oracle:

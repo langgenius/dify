@@ -39,9 +39,6 @@ class Keyword:
     def delete_by_ids(self, ids: list[str]) -> None:
         self._keyword_processor.delete_by_ids(ids)
 
-    def delete_by_document_id(self, document_id: str) -> None:
-        self._keyword_processor.delete_by_document_id(document_id)
-
     def delete(self) -> None:
         self._keyword_processor.delete()
 

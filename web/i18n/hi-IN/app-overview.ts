@@ -53,6 +53,10 @@ const translation = {
           show: 'दिखाएं',
           hide: 'छुपाएं',
         },
+        chatColorTheme: 'चैटबॉट का रंग थीम',
+        chatColorThemeDesc: 'चैटबॉट का रंग थीम निर्धारित करें',
+        chatColorThemeInverted: 'उल्टा',
+        invalidHexMessage: 'अमान्य हेक्स मान',
         more: {
           entry: 'अधिक सेटिंग्स दिखाएं',
           copyright: 'कॉपीराइट',

@@ -109,6 +109,34 @@ class DraftWorkflowApi(Resource):
         }
 
 
+class DraftWorkflowImportApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @marshal_with(workflow_fields)
+    def post(self, app_model: App):
+        """
+        Import draft workflow
+        """
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('data', type=str, required=True, nullable=False, location='json')
+        args = parser.parse_args()
+
+        workflow_service = WorkflowService()
+        workflow = workflow_service.import_draft_workflow(
+            app_model=app_model,
+            data=args['data'],
+            account=current_user
+        )
+
+        return workflow
+
+
 class AdvancedChatDraftWorkflowRunApi(Resource):
     @setup_required
     @login_required
@@ -439,6 +467,7 @@ class ConvertToWorkflowApi(Resource):
 
 
 api.add_resource(DraftWorkflowApi, '/apps/<uuid:app_id>/workflows/draft')
+api.add_resource(DraftWorkflowImportApi, '/apps/<uuid:app_id>/workflows/draft/import')
 api.add_resource(AdvancedChatDraftWorkflowRunApi, '/apps/<uuid:app_id>/advanced-chat/workflows/draft/run')
 api.add_resource(DraftWorkflowRunApi, '/apps/<uuid:app_id>/workflows/draft/run')
 api.add_resource(WorkflowTaskStopApi, '/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop')

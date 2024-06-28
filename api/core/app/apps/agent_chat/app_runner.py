@@ -28,10 +28,13 @@ class AgentChatAppRunner(AppRunner):
     """
     Agent Application Runner
     """
-    def run(self, application_generate_entity: AgentChatAppGenerateEntity,
-            queue_manager: AppQueueManager,
-            conversation: Conversation,
-            message: Message) -> None:
+
+    def run(
+        self, application_generate_entity: AgentChatAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        conversation: Conversation,
+        message: Message,
+    ) -> None:
         """
         Run assistant application
         :param application_generate_entity: application generate entity
@@ -100,6 +103,7 @@ class AgentChatAppRunner(AppRunner):
                 app_generate_entity=application_generate_entity,
                 inputs=inputs,
                 query=query,
+                message_id=message.id
             )
         except ModerationException as e:
             self.direct_output(
@@ -199,7 +203,7 @@ class AgentChatAppRunner(AppRunner):
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
 
-        if set([ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL]).intersection(model_schema.features or []):
+        if {ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL}.intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
 
         conversation = db.session.query(Conversation).filter(Conversation.id == conversation.id).first()
@@ -219,7 +223,7 @@ class AgentChatAppRunner(AppRunner):
             runner_cls = FunctionCallAgentRunner
         else:
             raise ValueError(f"Invalid agent strategy: {agent_entity.strategy}")
-        
+
         runner = runner_cls(
             tenant_id=app_config.tenant_id,
             application_generate_entity=application_generate_entity,

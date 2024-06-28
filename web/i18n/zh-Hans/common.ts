@@ -12,6 +12,7 @@ const translation = {
     cancel: '取消',
     clear: '清空',
     save: '保存',
+    saveAndEnable: '保存并启用',
     edit: '编辑',
     add: '添加',
     added: '已添加',
@@ -435,7 +436,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} 已是最新版本。',
   },
   appMenus: {
-    overview: '概览',
+    overview: '监测',
     promptEng: '编排',
     apiAccess: '访问 API',
     logAndAnn: '日志与标注',

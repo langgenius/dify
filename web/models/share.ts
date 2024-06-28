@@ -11,6 +11,8 @@ export type ConversationItem = {
 
 export type SiteInfo = {
   title: string
+  chat_color_theme?: string
+  chat_color_theme_inverted?: boolean
   icon?: string
   icon_background?: string
   description?: string

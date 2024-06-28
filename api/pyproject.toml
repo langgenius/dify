@@ -14,9 +14,11 @@ line-length = 120
 preview = true
 select = [
     "B", # flake8-bugbear rules
+    "C4", # flake8-comprehensions
     "F", # pyflakes rules
     "I", # isort rules
-    "UP",   # pyupgrade rules
+    "UP", # pyupgrade rules
+    "B035", # static-key-dict-comprehension
     "E101", # mixed-spaces-and-tabs
     "E111", # indentation-with-invalid-multiple
     "E112", # no-indented-block
@@ -28,8 +30,13 @@ select = [
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
     "S506", # unsafe-yaml-load
+    "SIM116", # if-else-block-instead-of-dict-lookup
+    "SIM401", # if-else-block-instead-of-dict-get
+    "SIM910", # dict-get-with-none-default
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
+    "F601", # multi-value-repeated-key-literal
+    "F602", # multi-value-repeated-key-variable
 ]
 ignore = [
     "F403", # undefined-local-with-import-star
@@ -61,6 +68,8 @@ ignore = [
     "F811", # redefined-while-unused
 ]
 
+[tool.ruff.format]
+quote-style = "single"
 
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii"
@@ -80,114 +89,143 @@ HUGGINGFACE_TEXT2TEXT_GEN_ENDPOINT_URL = "b"
 HUGGINGFACE_EMBEDDINGS_ENDPOINT_URL = "c"
 MOCK_SWITCH = "true"
 CODE_MAX_STRING_LENGTH = "80000"
-CODE_EXECUTION_ENDPOINT="http://127.0.0.1:8194"
-CODE_EXECUTION_API_KEY="dify-sandbox"
+CODE_EXECUTION_ENDPOINT = "http://127.0.0.1:8194"
+CODE_EXECUTION_API_KEY = "dify-sandbox"
 FIRECRAWL_API_KEY = "fc-"
 
 [tool.poetry]
 name = "dify-api"
 package-mode = false
 
+############################################################
+# Main dependencies
+############################################################
+
 [tool.poetry.dependencies]
-python = "^3.10"
+anthropic = "~0.23.1"
+authlib = "1.3.1"
+azure-identity = "1.16.1"
+azure-storage-blob = "12.13.0"
 beautifulsoup4 = "4.12.2"
+boto3 = "1.28.17"
+bs4 = "~0.0.1"
+cachetools = "~5.3.0"
+celery = "~5.3.6"
+chardet = "~5.1.0"
+cohere = "~5.2.4"
+cos-python-sdk-v5 = "1.9.30"
+dashscope = { version = "~1.17.0", extras = ["tokenizer"] }
+firecrawl-py = "0.0.5"
 flask = "~3.0.1"
-flask-sqlalchemy = "~3.0.5"
-sqlalchemy = "~2.0.29"
 flask-compress = "~1.14"
+flask-cors = "~4.0.0"
 flask-login = "~0.6.3"
 flask-migrate = "~4.0.5"
 flask-restful = "~0.3.10"
-flask-cors = "~4.0.0"
-gunicorn = "~22.0.0"
+flask-sqlalchemy = "~3.0.5"
 gevent = "~23.9.1"
-openai = "~1.29.0"
-tiktoken = "~0.7.0"
-psycopg2-binary = "~2.9.6"
-pycryptodome = "3.19.1"
-python-dotenv = "1.0.0"
-authlib = "1.3.1"
-boto3 = "1.28.17"
-cachetools = "~5.3.0"
-weaviate-client = "~3.21.0"
-mailchimp-transactional = "~1.0.50"
-scikit-learn = "1.2.2"
-sentry-sdk = {version = "~1.39.2", extras = ["flask"]}
-sympy = "1.12"
-jieba = "0.42.1"
-celery = "~5.3.6"
-redis = {version = "~5.0.3", extras = ["hiredis"]}
-chardet = "~5.1.0"
-python-docx = "~1.1.0"
-pypdfium2 = "~4.17.0"
-resend = "~0.7.0"
-pyjwt = "~2.8.0"
-anthropic = "~0.23.1"
-newspaper3k = "0.2.8"
-wikipedia = "1.4.0"
-readabilipy = "0.2.0"
+gmpy2 = "~2.1.5"
 google-ai-generativelanguage = "0.6.1"
 google-api-core = "2.18.0"
 google-api-python-client = "2.90.0"
 google-auth = "2.29.0"
 google-auth-httplib2 = "0.2.0"
+google-cloud-aiplatform = "1.49.0"
+google-cloud-storage = "2.16.0"
 google-generativeai = "0.5.0"
 googleapis-common-protos = "1.63.0"
-google-cloud-storage = "2.16.0"
-replicate = "~0.22.0"
-websocket-client = "~1.7.0"
-dashscope = {version = "~1.17.0", extras = ["tokenizer"]}
+gunicorn = "~22.0.0"
+httpx = { version = "~0.27.0", extras = ["socks"] }
 huggingface-hub = "~0.16.4"
-transformers = "~4.35.0"
-tokenizers = "~0.15.0"
-pandas = { version = "~2.2.2", extras = ["performance", "excel"] }
-xinference-client = "0.9.4"
-safetensors = "~0.4.3"
-zhipuai = "1.0.7"
-werkzeug = "~3.0.1"
-pymilvus = "2.3.1"
-qdrant-client = "1.7.3"
-cohere = "~5.2.4"
-pyyaml = "~6.0.1"
-numpy = "~1.26.4"
-unstructured = {version = "~0.10.27", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"]}
-bs4 = "~0.0.1"
+jieba = "0.42.1"
+langfuse = "^2.36.1"
+langsmith = "^0.1.77"
+mailchimp-transactional = "~1.0.50"
 markdown = "~3.5.1"
-httpx = {version = "~0.27.0", extras = ["socks"]}
-matplotlib = "~3.8.2"
-yfinance = "~0.2.40"
-pydub = "~0.25.1"
-gmpy2 = "~2.1.5"
-numexpr = "~2.9.0"
-duckduckgo-search = "~6.1.5"
-arxiv = "2.1.0"
-yarl = "~1.9.4"
-twilio = "~9.0.4"
-qrcode = "~7.4.2"
-azure-storage-blob = "12.13.0"
-azure-identity = "1.16.1"
-lxml = "5.1.0"
-xlrd = "~2.0.1"
-pydantic = "~2.7.4"
-pydantic_extra_types = "~2.8.1"
-pydantic-settings = "~2.3.3"
-pgvecto-rs = "0.1.4"
-firecrawl-py = "0.0.5"
-oss2 = "2.18.5"
-pgvector = "0.2.5"
-pymysql = "1.1.1"
-tidb-vector = "0.0.9"
-google-cloud-aiplatform = "1.49.0"
-vanna = {version = "0.5.5", extras = ["postgres", "mysql", "clickhouse", "duckdb"]}
-kaleido = "0.2.1"
-tencentcloud-sdk-python-hunyuan = "~3.0.1158"
-tcvectordb = "1.3.2"
-chromadb = "~0.5.1"
-tenacity = "~8.3.0"
-cos-python-sdk-v5 = "1.9.30"
 novita-client = "^0.5.6"
+numpy = "~1.26.4"
+openai = "~1.29.0"
+oss2 = "2.18.5"
+pandas = { version = "~2.2.2", extras = ["performance", "excel"] }
+psycopg2-binary = "~2.9.6"
+pycryptodome = "3.19.1"
+pydantic = "~2.7.4"
+pydantic-settings = "~2.3.3"
+pydantic_extra_types = "~2.8.1"
+pydub = "~0.25.1"
+pyjwt = "~2.8.0"
+pypdfium2 = "~4.17.0"
+python = "^3.10"
+python-docx = "~1.1.0"
+python-dotenv = "1.0.0"
+pyyaml = "~6.0.1"
+readabilipy = "0.2.0"
+redis = { version = "~5.0.3", extras = ["hiredis"] }
+replicate = "~0.22.0"
+resend = "~0.7.0"
+safetensors = "~0.4.3"
+scikit-learn = "1.2.2"
+sentry-sdk = { version = "~1.39.2", extras = ["flask"] }
+sqlalchemy = "~2.0.29"
+tencentcloud-sdk-python-hunyuan = "~3.0.1158"
+tiktoken = "~0.7.0"
+tokenizers = "~0.15.0"
+transformers = "~4.35.0"
+unstructured = { version = "~0.10.27", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
+websocket-client = "~1.7.0"
+werkzeug = "~3.0.1"
+xinference-client = "0.9.4"
+yarl = "~1.9.4"
+zhipuai = "1.0.7"
+
+############################################################
+# Tool dependencies required by tool implementations
+############################################################
+
+[tool.poetry.group.tool.dependencies]
+arxiv = "2.1.0"
+matplotlib = "~3.8.2"
+newspaper3k = "0.2.8"
+duckduckgo-search = "~6.1.5"
+numexpr = "~2.9.0"
 opensearch-py = "2.4.0"
+qrcode = "~7.4.2"
+twilio = "~9.0.4"
+vanna = { version = "0.5.5", extras = ["postgres", "mysql", "clickhouse", "duckdb"] }
+wikipedia = "1.4.0"
+yfinance = "~0.2.40"
+
+############################################################
+# VDB dependencies required by vector store clients
+############################################################
+
+[tool.poetry.group.vdb.dependencies]
+chromadb = "~0.5.1"
 oracledb = "~2.2.1"
+pgvecto-rs = "0.1.4"
+pgvector = "0.2.5"
+pymilvus = "2.3.1"
+pymysql = "1.1.1"
+tcvectordb = "1.3.2"
+tidb-vector = "0.0.9"
+qdrant-client = "1.7.3"
+weaviate-client = "~3.21.0"
+
+############################################################
+# Transparent dependencies required by main dependencies
+# for pinning versions
+############################################################
+
+[tool.poetry.group.transparent.dependencies]
+kaleido = "0.2.1"
+lxml = "5.1.0"
+sympy = "1.12"
+tenacity = "~8.3.0"
+xlrd = "~2.0.1"
+
+############################################################
+# Dev dependencies for running tests
+############################################################
 
 [tool.poetry.group.dev]
 optional = true
@@ -198,6 +236,10 @@ pytest = "~8.1.1"
 pytest-benchmark = "~4.0.0"
 pytest-env = "~1.1.3"
 pytest-mock = "~3.14.0"
+
+############################################################
+# Lint dependencies for code style linting
+############################################################
 
 [tool.poetry.group.lint]
 optional = true

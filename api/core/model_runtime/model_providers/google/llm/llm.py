@@ -277,10 +277,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                             type='function',
                             function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                                 name=part.function_call.name,
-                                arguments=json.dumps({
-                                    key: value 
-                                    for key, value in part.function_call.args.items()
-                                })
+                                arguments=json.dumps(dict(part.function_call.args.items()))
                             )
                         )
                     ]

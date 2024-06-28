@@ -1,4 +1,3 @@
-version: '3'
 services:
   # The postgres database.
   db:
