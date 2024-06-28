@@ -67,6 +67,9 @@ class Spider:
         response = self._post_request(
             f"https://api.spider.cloud/v1/{endpoint}", data, headers, stream
         )
+
+        # print("THIS IS A RESPONSE FROM SPIDERAPP:PY", response.content)
+
         if stream:
             return response
         elif response.status_code == 200:
@@ -114,8 +117,16 @@ class Spider:
         :param params: Optional dictionary of additional parameters for the scrape request.
         :return: JSON response containing the scraping results.
         """
+
+        # Add { "return_format": "markdown" } to the params if not already present
+        if "return_format" not in params:
+            params["return_format"] = "markdown"    
+
+        # Set limit to 1
+        params["limit"] = 1
+
         return self.api_post(
-            "crawl", {"url": url, "limit": 1, **(params or {})}, stream, content_type
+            "crawl", {"url": url, **(params or {})}, stream, content_type
         )
 
     def crawl_url(
@@ -133,6 +144,11 @@ class Spider:
         :param stream: Boolean indicating if the response should be streamed. Defaults to False.
         :return: JSON response or the raw response stream if streaming enabled.
         """
+
+        # Add { "return_format": "markdown" } to the params if not already present
+        if "return_format" not in params:
+            params["return_format"] = "markdown"
+
         return self.api_post(
             "crawl", {"url": url, **(params or {})}, stream, content_type
         )

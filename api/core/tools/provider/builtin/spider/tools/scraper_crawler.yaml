@@ -87,3 +87,14 @@ parameters:
       zh_Hans: 指定一组要爬取的路径，忽略所有不匹配模式的其他路由。您可以使用正则表达式模式来帮助定义列表。
     placeholder: /blog/*, /about
     form: form
+  - name: readability
+    type: boolean
+    required: false
+    label:
+      en_US: Pre-process the content for LLM usage
+      zh_Hans: 仅返回页面的主要内容
+    human_description:
+      en_US: Use Mozilla's readability to pre-process the content for reading. This may drastically improve the content for LLM usage.
+      zh_Hans: 如果启用，爬虫将仅返回页面的主要内容，不包括标题、导航、页脚等。
+    form: form
+    default: false
