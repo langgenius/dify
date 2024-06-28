@@ -70,8 +70,6 @@ class Spider:
             f"https://api.spider.cloud/v1/{endpoint}", data, headers, stream
         )
 
-        # print("THIS IS A RESPONSE FROM SPIDERAPP:PY", response.content)
-
         if stream:
             return response
         elif response.status_code == 200:
