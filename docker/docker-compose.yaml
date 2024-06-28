@@ -375,7 +375,7 @@ services:
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
       - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint.sh
-    entrypoint: /docker-entrypoint.sh
+    entrypoint: ["sh", "-c", "chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh"]
     environment:
       # pls clearly modify the squid env vars to fit your network environment.
       HTTP_PORT: ${HTTP_PORT:-3128}
@@ -398,7 +398,7 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./nginx/docker-entrypoint.sh:/docker-entrypoint.sh
       - ./nginx/ssl:/etc/ssl
-    entrypoint: /docker-entrypoint.sh
+    entrypoint: ["sh", "-c", "chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh"]
     environment:
       NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
       HTTPS_ENABLED: ${HTTPS_ENABLED:-false}
