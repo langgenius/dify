@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useRef, useState } from 'react'
+import { useMount } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { isEqual } from 'lodash-es'
 import cn from 'classnames'
@@ -24,6 +25,8 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { fetchMembers } from '@/service/common'
+import type { Member } from '@/models/common'
 
 type SettingsModalProps = {
   currentDataset: DataSet
@@ -58,6 +61,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const [loading, setLoading] = useState(false)
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
+  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset.partial_member_list || [])
+  const [memberList, setMemberList] = useState<Member[]>([])
+
   const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(localeCurrentDataset?.retrieval_model_dict as RetrievalConfig)
 
@@ -94,7 +100,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
     try {
       setLoading(true)
       const { id, name, description, permission } = localeCurrentDataset
-      await updateDatasetSetting({
+      const requestParams = {
         datasetId: id,
         body: {
           name,
@@ -108,7 +114,16 @@ const SettingsModal: FC<SettingsModalProps> = ({
           embedding_model: localeCurrentDataset.embedding_model,
           embedding_model_provider: localeCurrentDataset.embedding_model_provider,
         },
-      })
+      } as any
+      if (permission === 'partial_members') {
+        requestParams.body.partial_member_list = selectedMemberIDs.map((id) => {
+          return {
+            user_id: id,
+            role: memberList.find(member => member.id === id)?.role,
+          }
+        })
+      }
+      await updateDatasetSetting(requestParams)
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       onSave({
         ...localeCurrentDataset,
@@ -123,6 +138,18 @@ const SettingsModal: FC<SettingsModalProps> = ({
       setLoading(false)
     }
   }
+
+  const getMembers = async () => {
+    const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
+    if (!accounts)
+      setMemberList([])
+    else
+      setMemberList(accounts)
+  }
+
+  useMount(() => {
+    getMembers()
+  })
 
   return (
     <div
@@ -182,14 +209,13 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div>{t('datasetSettings.form.permissions')}</div>
           </div>
           <div className='w-full'>
-            {/* TODO */}
             <PermissionSelector
               disabled={!localeCurrentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
               permission={localeCurrentDataset.permission}
-              value={[]}
+              value={selectedMemberIDs}
               onChange={v => handleValueChange('permission', v!)}
-              onMemberSelect={() => {}}
-              // itemClassName='sm:!w-[280px]'
+              onMemberSelect={setSelectedMemberIDs}
+              memberList={memberList}
             />
           </div>
         </div>
