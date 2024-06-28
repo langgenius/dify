@@ -7,9 +7,10 @@ from extensions.storage.aliyun_storage import AliyunStorage
 from extensions.storage.azure_storage import AzureStorage
 from extensions.storage.google_storage import GoogleStorage
 from extensions.storage.local_storage import LocalStorage
+from extensions.storage.oci_storage import OCIStorage
 from extensions.storage.s3_storage import S3Storage
 from extensions.storage.tencent_storage import TencentStorage
-from extensions.storage.oci_storage import OCIStorage
+
 
 class Storage:
     def __init__(self):
