@@ -75,7 +75,7 @@ services:
       # If you want to enable cross-origin support,
       # you must use the HTTPS protocol and set the configuration to `SameSite=None, Secure=true, HttpOnly=true`.
       #
-      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage` and `oci-storage`, Default: `local`
+      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage`, Default: `local`
       STORAGE_TYPE: local
       # The path to the local storage directory, the directory relative the root path of API service codes or absolute path. Default: `storage` or `/home/john/storage`.
       # only available when STORAGE_TYPE is `local`.
