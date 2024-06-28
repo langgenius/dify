@@ -93,7 +93,7 @@ class MoonshotLargeLanguageModel(OAIAPICompatLargeLanguageModel):
         }.intersection(model_schema.features or []):
             credentials['function_calling_type'] = 'tool_call'
 
-    def _convert_prompt_message_to_dict(self, message: PromptMessage) -> dict:
+    def _convert_prompt_message_to_dict(self, message: PromptMessage, credentials: Optional[dict] = None) -> dict:
         """
         Convert PromptMessage to dict for OpenAI API format
         """
