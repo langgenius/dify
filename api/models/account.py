@@ -80,6 +80,10 @@ class Account(UserMixin, db.Model):
 
         self._current_tenant = tenant
 
+    @property
+    def current_role(self):
+        return self._current_tenant.current_role
+
     def get_status(self) -> AccountStatus:
         status_str = self.status
         return AccountStatus(status_str)

@@ -57,35 +57,25 @@ class DatasetService:
 
     @staticmethod
     def get_datasets(page, per_page, provider="vendor", tenant_id=None, user=None, search=None, tag_ids=None):
-        # current user identity is the database manager, and the knowledge base permissions are all
-        current_user_role = current_user._current_tenant.current_role
-        if current_user_role == TenantAccountRole.DATASET_OPERATOR:
-            # through the dataset_permission table to find the dataset_id that the current user has permission to
-            dataset_permission = DatasetPermission.query.filter_by(account_id=current_user.id).all()
-            dataset_ids = [dp.dataset_id for dp in dataset_permission]
-            # query the dataset table to get the dataset information
-            query = Dataset.query.filter(
-                db.and_(Dataset.provider == provider, Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
-            ) \
-                .order_by(Dataset.created_at.desc())
-            datasets = query.paginate(
-                page=page,
-                per_page=per_page,
-                max_per_page=100,
-                error_out=False
-            )
-            return datasets.items, datasets.total
-
         if user:
-            permission_filter = db.or_(Dataset.created_by == user.id,
-                                       Dataset.permission == 'all_team_members',
-                                       Dataset.permission == 'partial_members'
-                                       )
+            if user.current_role == TenantAccountRole.DATASET_OPERATOR:
+                dataset_permission = DatasetPermission.query.filter_by(account_id=user.id).all()
+                if dataset_permission:
+                    dataset_ids = [dp.dataset_id for dp in dataset_permission]
+
+                    return DatasetService.get_datasets_by_ids(dataset_ids, tenant_id)
+                permission_filter = db.false()
+            else:
+                permission_filter = db.or_(
+                    Dataset.created_by == user.id,
+                    Dataset.permission == 'all_team_members',
+                )
         else:
             permission_filter = Dataset.permission == 'all_team_members'
         query = Dataset.query.filter(
             db.and_(Dataset.provider == provider, Dataset.tenant_id == tenant_id, permission_filter)) \
             .order_by(Dataset.created_at.desc())
+
         if search:
             query = query.filter(db.and_(Dataset.name.ilike(f'%{search}%')))
         if tag_ids:
@@ -99,6 +89,11 @@ class DatasetService:
             per_page=per_page,
             max_per_page=100,
             error_out=False
+        )
+
+        # check datasets permission
+        datasets.items, datasets.total = DatasetService.filter_datasets_by_permission(
+            user, datasets.items
         )
 
         return datasets.items, datasets.total
@@ -312,6 +307,15 @@ class DatasetService:
         return AppDatasetJoin.query.filter(AppDatasetJoin.dataset_id == dataset_id) \
             .order_by(db.desc(AppDatasetJoin.created_at)).all()
 
+    @staticmethod
+    def filter_datasets_by_permission(user, datasets):
+        # 检查datasets 如果为部分成员可见，检查是否有权限
+        dataset_permission = DatasetPermission.query.filter_by(account_id=user.id).all()
+        if dataset_permission:
+            dataset_ids = [dp.dataset_id for dp in dataset_permission]
+            if dataset_ids:
+                return DatasetService.get_datasets_by_ids(dataset_ids, user.current_tenant_id)
+        return [], 0
 
 class DocumentService:
     DEFAULT_RULES = {
