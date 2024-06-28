@@ -9,7 +9,6 @@ class SpiderProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             app = Spider(api_key=credentials["spider_api_key"])
-            response = app.scrape_url(url="https://spider.cloud")
-            print(response)
+            app.scrape_url(url="https://spider.cloud")
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
