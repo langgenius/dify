@@ -1,6 +1,6 @@
-model: qwen-max-1201
+model: qwen-max-0428
 label:
-  en_US: qwen-max-1201
+  en_US: qwen-max-0428
 model_type: llm
 features:
   - multi-tool-call

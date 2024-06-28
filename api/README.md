@@ -11,7 +11,7 @@
 
    ```bash
    cd ../docker
-   docker-compose -f docker-compose.middleware.yaml -p dify up -d
+   docker compose -f docker-compose.middleware.yaml -p dify up -d
    cd ../api
    ```
 
