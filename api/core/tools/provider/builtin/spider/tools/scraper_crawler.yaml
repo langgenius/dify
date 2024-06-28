@@ -1,0 +1,43 @@
+identity: # Basic information of the tool
+  name: scraper_crawler # Tool name, unique, no duplication with other tools
+  author: William Espegren # Author
+  label: # Label for frontend display
+    en_US: Scraper & Crawler # English label
+    zh_Hans: 谷歌搜索 # Chinese label
+description: # Description for frontend display
+  human: # Introduction for frontend display, supports multiple languages
+    en_US: A tool for scraping & crawling webpages.Input should be a url.
+    zh_Hans: 一个用于执行 Google SERP 搜索并提取片段和网页的工具。输入应该是一个搜索查询。
+  llm: A tool for scraping & crawling webpages.Input should be a url. # Introduction passed to LLM, in order to make LLM better understand this tool, we suggest to write as detailed information about this tool as possible here, so that LLM can understand and use this tool
+parameters: # Parameter list
+  - name: url # Parameter name
+    type: string # Parameter type
+    required: true # Required or not
+    label: # Parameter label
+      en_US: URL # English label
+      zh_Hans: 查询语句 # Chinese label
+    human_description: # Introduction for frontend display, supports multiple languages
+      en_US: url to be scraped or crawled
+      zh_Hans: 用于搜索网页内容
+    llm_description: url to either be searched or crawled # Introduction passed to LLM, similarly, in order to make LLM better understand this parameter, we suggest to write as detailed information about this parameter as possible here, so that LLM can understand this parameter
+    form: llm # Form type, llm means this parameter needs to be inferred by Agent, the frontend will not display this parameter
+  - name: mode
+    type: select # Parameter type
+    required: true
+    options: # Drop-down box options
+      - value: scrape
+        label:
+          en_US: scrape
+          zh_Hans: 文本
+      - value: crawl
+        label:
+          en_US: crawl
+          zh_Hans: 链接
+    default: crawl
+    label:
+      en_US: Mode
+      zh_Hans: 结果类型
+    human_description:
+      en_US: used for selecting to scrape the website or crawl the entire website following subpages
+      zh_Hans: 用于选择结果类型，使用文本还是链接进行展示
+    form: form # Form type, form means this parameter needs to be filled in by the user on the frontend before the conversation starts
