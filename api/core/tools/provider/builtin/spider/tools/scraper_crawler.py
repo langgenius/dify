@@ -1,7 +1,7 @@
 from typing import Any, Union
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from api.core.tools.provider.builtin.spider.spiderApp import Spider
+from core.tools.provider.builtin.spider.spiderApp import Spider
 from core.tools.tool.builtin_tool import BuiltinTool
 
 

@@ -2,7 +2,7 @@ identity: # Basic information of the tool
   name: scraper_crawler # Tool name, unique, no duplication with other tools
   author: William Espegren # Author
   label: # Label for frontend display
-    en_US: Scraper & Crawler # English label
+    en_US: Web Scraper & Crawler # English label
     zh_Hans: 谷歌搜索 # Chinese label
 description: # Description for frontend display
   human: # Introduction for frontend display, supports multiple languages

@@ -1,7 +1,7 @@
 from typing import Any
 
 from core.tools.errors import ToolProviderCredentialValidationError
-from api.core.tools.provider.builtin.spider.spiderApp import Spider
+from core.tools.provider.builtin.spider.spiderApp import Spider
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
