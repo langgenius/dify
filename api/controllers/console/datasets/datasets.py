@@ -85,6 +85,12 @@ class DatasetListApi(Resource):
             else:
                 item['embedding_available'] = True
 
+            if item.get('permission') == 'partial_members':
+                part_users_list = DatasetPermissionService.get_dataset_partial_member_list(item['id'])
+                item.update({'partial_member_list': part_users_list})
+            else:
+                item.update({'partial_member_list': []})
+
         response = {
             'data': data,
             'has_more': len(datasets) == limit,
@@ -108,8 +114,8 @@ class DatasetListApi(Resource):
                             help='Invalid indexing technique.')
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
+        if not current_user.is_dataset_editing:
             raise Forbidden()
 
         try:
@@ -140,6 +146,10 @@ class DatasetApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         data = marshal(dataset, dataset_detail_fields)
+        if data.get('permission') == 'partial_members':
+            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
+            data.update({'partial_member_list': part_users_list})
+
         # check embedding setting
         provider_manager = ProviderManager()
         configurations = provider_manager.get_configurations(
@@ -204,7 +214,7 @@ class DatasetApi(Resource):
         args = parser.parse_args()
         data = request.get_json()
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_dataset_editing_role:
+        if not current_user.is_dataset_editing:
             raise Forbidden()
 
         dataset = DatasetService.update_dataset(
