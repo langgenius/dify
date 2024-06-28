@@ -165,6 +165,7 @@ docker/volumes/milvus/*
 docker/volumes/chroma/*
 
 docker/nginx/conf.d/default.conf
+docker/middleware.env
 
 sdks/python-client/build
 sdks/python-client/dist
