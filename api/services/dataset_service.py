@@ -57,44 +57,49 @@ class DatasetService:
 
     @staticmethod
     def get_datasets(page, per_page, provider="vendor", tenant_id=None, user=None, search=None, tag_ids=None):
+        query = Dataset.query.filter(Dataset.provider == provider, Dataset.tenant_id == tenant_id)
+
         if user:
             if user.current_role == TenantAccountRole.DATASET_OPERATOR:
                 dataset_permission = DatasetPermission.query.filter_by(account_id=user.id).all()
                 if dataset_permission:
                     dataset_ids = [dp.dataset_id for dp in dataset_permission]
-
-                    return DatasetService.get_datasets_by_ids(dataset_ids, tenant_id)
-                permission_filter = db.false()
+                    query = query.filter(Dataset.id.in_(dataset_ids))
+                else:
+                    query = query.filter(db.false())
             else:
                 permission_filter = db.or_(
                     Dataset.created_by == user.id,
                     Dataset.permission == 'all_team_members',
+                    Dataset.permission == 'partial_members'
                 )
+                query = query.filter(permission_filter)
         else:
             permission_filter = Dataset.permission == 'all_team_members'
-        query = Dataset.query.filter(
-            db.and_(Dataset.provider == provider, Dataset.tenant_id == tenant_id, permission_filter)) \
-            .order_by(Dataset.created_at.desc())
+            query = query.filter(permission_filter)
 
         if search:
-            query = query.filter(db.and_(Dataset.name.ilike(f'%{search}%')))
+            query = query.filter(Dataset.name.ilike(f'%{search}%'))
+
         if tag_ids:
             target_ids = TagService.get_target_ids_by_tag_ids('knowledge', tenant_id, tag_ids)
             if target_ids:
-                query = query.filter(db.and_(Dataset.id.in_(target_ids)))
+                query = query.filter(Dataset.id.in_(target_ids))
             else:
                 return [], 0
+
         datasets = query.paginate(
             page=page,
             per_page=per_page,
             max_per_page=100,
             error_out=False
         )
-
-        # check datasets permission
-        datasets.items, datasets.total = DatasetService.filter_datasets_by_permission(
-            user, datasets.items
-        )
+        print("================第一次", datasets.items, datasets.total)
+        # check datasets permission, assuming this function exists
+        if user and user.current_role != TenantAccountRole.DATASET_OPERATOR:
+            datasets.items, datasets.total = DatasetService.filter_datasets_by_permission(
+                user, datasets
+            )
 
         return datasets.items, datasets.total
 
@@ -119,9 +124,12 @@ class DatasetService:
 
     @staticmethod
     def get_datasets_by_ids(ids, tenant_id):
-        datasets = Dataset.query.filter(Dataset.id.in_(ids),
-                                        Dataset.tenant_id == tenant_id).paginate(
-            page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
+        datasets = Dataset.query.filter(
+            Dataset.id.in_(ids),
+            Dataset.tenant_id == tenant_id
+        ).paginate(
+            page=1, per_page=len(ids), max_per_page=len(ids), error_out=False
+        )
         return datasets.items, datasets.total
 
     @staticmethod
@@ -129,7 +137,8 @@ class DatasetService:
         # check if dataset name already exists
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(
-                f'Dataset with name {name} already exists.')
+                f'Dataset with name {name} already exists.'
+            )
         embedding_model = None
         if indexing_technique == 'high_quality':
             model_manager = ModelManager()
@@ -168,10 +177,13 @@ class DatasetService:
             except LLMBadRequestError:
                 raise ValueError(
                     "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider.")
+                    "in the Settings -> Model Provider."
+                )
             except ProviderTokenNotInitError as ex:
-                raise ValueError(f"The dataset in unavailable, due to: "
-                                 f"{ex.description}")
+                raise ValueError(
+                    f"The dataset in unavailable, due to: "
+                    f"{ex.description}"
+                )
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
@@ -208,12 +220,13 @@ class DatasetService:
                 except LLMBadRequestError:
                     raise ValueError(
                         "No Embedding Model available. Please configure a valid provider "
-                        "in the Settings -> Model Provider.")
+                        "in the Settings -> Model Provider."
+                    )
                 except ProviderTokenNotInitError as ex:
                     raise ValueError(ex.description)
         else:
             if data['embedding_model_provider'] != dataset.embedding_model_provider or \
-                    data['embedding_model'] != dataset.embedding_model:
+                data['embedding_model'] != dataset.embedding_model:
                 action = 'update'
                 try:
                     model_manager = ModelManager()
@@ -233,7 +246,8 @@ class DatasetService:
                 except LLMBadRequestError:
                     raise ValueError(
                         "No Embedding Model available. Please configure a valid provider "
-                        "in the Settings -> Model Provider.")
+                        "in the Settings -> Model Provider."
+                    )
                 except ProviderTokenNotInitError as ex:
                     raise ValueError(ex.description)
 
@@ -273,14 +287,18 @@ class DatasetService:
     def check_dataset_permission(dataset, user):
         if dataset.tenant_id != user.current_tenant_id:
             logging.debug(
-                f'User {user.id} does not have permission to access dataset {dataset.id}')
+                f'User {user.id} does not have permission to access dataset {dataset.id}'
+            )
             raise NoPermissionError(
-                'You do not have permission to access this dataset.')
+                'You do not have permission to access this dataset.'
+            )
         if dataset.permission == 'only_me' and dataset.created_by != user.id:
             logging.debug(
-                f'User {user.id} does not have permission to access dataset {dataset.id}')
+                f'User {user.id} does not have permission to access dataset {dataset.id}'
+            )
             raise NoPermissionError(
-                'You do not have permission to access this dataset.')
+                'You do not have permission to access this dataset.'
+            )
         if dataset.permission == 'partial_members':
             user_permission = DatasetPermission.query.filter_by(
                 dataset_id=dataset.id, account_id=user.id
@@ -309,13 +327,19 @@ class DatasetService:
 
     @staticmethod
     def filter_datasets_by_permission(user, datasets):
-        # 检查datasets 如果为部分成员可见，检查是否有权限
         dataset_permission = DatasetPermission.query.filter_by(account_id=user.id).all()
         if dataset_permission:
-            dataset_ids = [dp.dataset_id for dp in dataset_permission]
-            if dataset_ids:
-                return DatasetService.get_datasets_by_ids(dataset_ids, user.current_tenant_id)
+            permitted_dataset_ids = {dp.dataset_id for dp in dataset_permission}
+            filtered_datasets = [dataset for dataset in datasets if
+                                 dataset.permission == 'all_team_members' or dataset.permission == 'only_me' or dataset.id in permitted_dataset_ids]
+            if filtered_datasets:
+                return filtered_datasets, len(filtered_datasets)
+        else:
+            all_members_visible_datasets = [dataset for dataset in datasets if dataset.permission == 'all_team_members']
+            return all_members_visible_datasets, len(all_members_visible_datasets)
+
         return [], 0
+
 
 class DocumentService:
     DEFAULT_RULES = {
@@ -581,6 +605,7 @@ class DocumentService:
         redis_client.setex(sync_indexing_cache_key, 600, 1)
 
         sync_website_document_indexing_task.delay(dataset_id, document.id)
+
     @staticmethod
     def get_documents_position(dataset_id):
         document = Document.query.filter_by(dataset_id=dataset_id).order_by(Document.position.desc()).first()
@@ -590,9 +615,11 @@ class DocumentService:
             return 1
 
     @staticmethod
-    def save_document_with_dataset_id(dataset: Dataset, document_data: dict,
-                                      account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
-                                      created_from: str = 'web'):
+    def save_document_with_dataset_id(
+        dataset: Dataset, document_data: dict,
+        account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
+        created_from: str = 'web'
+    ):
 
         # check document limit
         features = FeatureService.get_features(current_user.current_tenant_id)
@@ -622,7 +649,7 @@ class DocumentService:
 
         if not dataset.indexing_technique:
             if 'indexing_technique' not in document_data \
-                    or document_data['indexing_technique'] not in Dataset.INDEXING_TECHNIQUE_LIST:
+                or document_data['indexing_technique'] not in Dataset.INDEXING_TECHNIQUE_LIST:
                 raise ValueError("Indexing technique is required")
 
             dataset.indexing_technique = document_data["indexing_technique"]
@@ -652,7 +679,8 @@ class DocumentService:
                     }
 
                     dataset.retrieval_model = document_data.get('retrieval_model') if document_data.get(
-                        'retrieval_model') else default_retrieval_model
+                        'retrieval_model'
+                    ) else default_retrieval_model
 
         documents = []
         batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
@@ -720,12 +748,14 @@ class DocumentService:
                             documents.append(document)
                             duplicate_document_ids.append(document.id)
                             continue
-                    document = DocumentService.build_document(dataset, dataset_process_rule.id,
-                                                              document_data["data_source"]["type"],
-                                                              document_data["doc_form"],
-                                                              document_data["doc_language"],
-                                                              data_source_info, created_from, position,
-                                                              account, file_name, batch)
+                    document = DocumentService.build_document(
+                        dataset, dataset_process_rule.id,
+                        document_data["data_source"]["type"],
+                        document_data["doc_form"],
+                        document_data["doc_language"],
+                        data_source_info, created_from, position,
+                        account, file_name, batch
+                    )
                     db.session.add(document)
                     db.session.flush()
                     document_ids.append(document.id)
@@ -766,12 +796,14 @@ class DocumentService:
                                 "notion_page_icon": page['page_icon'],
                                 "type": page['type']
                             }
-                            document = DocumentService.build_document(dataset, dataset_process_rule.id,
-                                                                      document_data["data_source"]["type"],
-                                                                      document_data["doc_form"],
-                                                                      document_data["doc_language"],
-                                                                      data_source_info, created_from, position,
-                                                                      account, page['page_name'], batch)
+                            document = DocumentService.build_document(
+                                dataset, dataset_process_rule.id,
+                                document_data["data_source"]["type"],
+                                document_data["doc_form"],
+                                document_data["doc_language"],
+                                data_source_info, created_from, position,
+                                account, page['page_name'], batch
+                            )
                             db.session.add(document)
                             db.session.flush()
                             document_ids.append(document.id)
@@ -793,12 +825,14 @@ class DocumentService:
                         'only_main_content': website_info.get('only_main_content', False),
                         'mode': 'crawl',
                     }
-                    document = DocumentService.build_document(dataset, dataset_process_rule.id,
-                                                              document_data["data_source"]["type"],
-                                                              document_data["doc_form"],
-                                                              document_data["doc_language"],
-                                                              data_source_info, created_from, position,
-                                                              account, url, batch)
+                    document = DocumentService.build_document(
+                        dataset, dataset_process_rule.id,
+                        document_data["data_source"]["type"],
+                        document_data["doc_form"],
+                        document_data["doc_language"],
+                        data_source_info, created_from, position,
+                        account, url, batch
+                    )
                     db.session.add(document)
                     db.session.flush()
                     document_ids.append(document.id)
@@ -819,13 +853,16 @@ class DocumentService:
         can_upload_size = features.documents_upload_quota.limit - features.documents_upload_quota.size
         if count > can_upload_size:
             raise ValueError(
-                f'You have reached the limit of your subscription. Only {can_upload_size} documents can be uploaded.')
+                f'You have reached the limit of your subscription. Only {can_upload_size} documents can be uploaded.'
+            )
 
     @staticmethod
-    def build_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
-                       document_language: str, data_source_info: dict, created_from: str, position: int,
-                       account: Account,
-                       name: str, batch: str):
+    def build_document(
+        dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
+        document_language: str, data_source_info: dict, created_from: str, position: int,
+        account: Account,
+        name: str, batch: str
+    ):
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
@@ -844,16 +881,20 @@ class DocumentService:
 
     @staticmethod
     def get_tenant_documents_count():
-        documents_count = Document.query.filter(Document.completed_at.isnot(None),
-                                                Document.enabled == True,
-                                                Document.archived == False,
-                                                Document.tenant_id == current_user.current_tenant_id).count()
+        documents_count = Document.query.filter(
+            Document.completed_at.isnot(None),
+            Document.enabled == True,
+            Document.archived == False,
+            Document.tenant_id == current_user.current_tenant_id
+        ).count()
         return documents_count
 
     @staticmethod
-    def update_document_with_dataset_id(dataset: Dataset, document_data: dict,
-                                        account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
-                                        created_from: str = 'web'):
+    def update_document_with_dataset_id(
+        dataset: Dataset, document_data: dict,
+        account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
+        created_from: str = 'web'
+    ):
         DatasetService.check_dataset_model_setting(dataset)
         document = DocumentService.get_document(dataset.id, document_data["original_document_id"])
         if document.display_status != 'available':
@@ -1041,7 +1082,7 @@ class DocumentService:
             DocumentService.process_rule_args_validate(args)
         else:
             if ('data_source' not in args and not args['data_source']) \
-                    and ('process_rule' not in args and not args['process_rule']):
+                and ('process_rule' not in args and not args['process_rule']):
                 raise ValueError("Data source or Process rule is required")
             else:
                 if args.get('data_source'):
@@ -1103,7 +1144,7 @@ class DocumentService:
                 raise ValueError("Process rule rules is invalid")
 
             if 'pre_processing_rules' not in args['process_rule']['rules'] \
-                    or args['process_rule']['rules']['pre_processing_rules'] is None:
+                or args['process_rule']['rules']['pre_processing_rules'] is None:
                 raise ValueError("Process rule pre_processing_rules is required")
 
             if not isinstance(args['process_rule']['rules']['pre_processing_rules'], list):
@@ -1128,21 +1169,21 @@ class DocumentService:
             args['process_rule']['rules']['pre_processing_rules'] = list(unique_pre_processing_rule_dicts.values())
 
             if 'segmentation' not in args['process_rule']['rules'] \
-                    or args['process_rule']['rules']['segmentation'] is None:
+                or args['process_rule']['rules']['segmentation'] is None:
                 raise ValueError("Process rule segmentation is required")
 
             if not isinstance(args['process_rule']['rules']['segmentation'], dict):
                 raise ValueError("Process rule segmentation is invalid")
 
             if 'separator' not in args['process_rule']['rules']['segmentation'] \
-                    or not args['process_rule']['rules']['segmentation']['separator']:
+                or not args['process_rule']['rules']['segmentation']['separator']:
                 raise ValueError("Process rule segmentation separator is required")
 
             if not isinstance(args['process_rule']['rules']['segmentation']['separator'], str):
                 raise ValueError("Process rule segmentation separator is invalid")
 
             if 'max_tokens' not in args['process_rule']['rules']['segmentation'] \
-                    or not args['process_rule']['rules']['segmentation']['max_tokens']:
+                or not args['process_rule']['rules']['segmentation']['max_tokens']:
                 raise ValueError("Process rule segmentation max_tokens is required")
 
             if not isinstance(args['process_rule']['rules']['segmentation']['max_tokens'], int):
@@ -1178,7 +1219,7 @@ class DocumentService:
                 raise ValueError("Process rule rules is invalid")
 
             if 'pre_processing_rules' not in args['process_rule']['rules'] \
-                    or args['process_rule']['rules']['pre_processing_rules'] is None:
+                or args['process_rule']['rules']['pre_processing_rules'] is None:
                 raise ValueError("Process rule pre_processing_rules is required")
 
             if not isinstance(args['process_rule']['rules']['pre_processing_rules'], list):
@@ -1203,21 +1244,21 @@ class DocumentService:
             args['process_rule']['rules']['pre_processing_rules'] = list(unique_pre_processing_rule_dicts.values())
 
             if 'segmentation' not in args['process_rule']['rules'] \
-                    or args['process_rule']['rules']['segmentation'] is None:
+                or args['process_rule']['rules']['segmentation'] is None:
                 raise ValueError("Process rule segmentation is required")
 
             if not isinstance(args['process_rule']['rules']['segmentation'], dict):
                 raise ValueError("Process rule segmentation is invalid")
 
             if 'separator' not in args['process_rule']['rules']['segmentation'] \
-                    or not args['process_rule']['rules']['segmentation']['separator']:
+                or not args['process_rule']['rules']['segmentation']['separator']:
                 raise ValueError("Process rule segmentation separator is required")
 
             if not isinstance(args['process_rule']['rules']['segmentation']['separator'], str):
                 raise ValueError("Process rule segmentation separator is invalid")
 
             if 'max_tokens' not in args['process_rule']['rules']['segmentation'] \
-                    or not args['process_rule']['rules']['segmentation']['max_tokens']:
+                or not args['process_rule']['rules']['segmentation']['max_tokens']:
                 raise ValueError("Process rule segmentation max_tokens is required")
 
             if not isinstance(args['process_rule']['rules']['segmentation']['max_tokens'], int):
@@ -1471,12 +1512,16 @@ class SegmentService:
 
 class DatasetCollectionBindingService:
     @classmethod
-    def get_dataset_collection_binding(cls, provider_name: str, model_name: str,
-                                       collection_type: str = 'dataset') -> DatasetCollectionBinding:
+    def get_dataset_collection_binding(
+        cls, provider_name: str, model_name: str,
+        collection_type: str = 'dataset'
+    ) -> DatasetCollectionBinding:
         dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
-            filter(DatasetCollectionBinding.provider_name == provider_name,
-                   DatasetCollectionBinding.model_name == model_name,
-                   DatasetCollectionBinding.type == collection_type). \
+            filter(
+            DatasetCollectionBinding.provider_name == provider_name,
+            DatasetCollectionBinding.model_name == model_name,
+            DatasetCollectionBinding.type == collection_type
+        ). \
             order_by(DatasetCollectionBinding.created_at). \
             first()
 
@@ -1492,11 +1537,15 @@ class DatasetCollectionBindingService:
         return dataset_collection_binding
 
     @classmethod
-    def get_dataset_collection_binding_by_id_and_type(cls, collection_binding_id: str,
-                                                      collection_type: str = 'dataset') -> DatasetCollectionBinding:
+    def get_dataset_collection_binding_by_id_and_type(
+        cls, collection_binding_id: str,
+        collection_type: str = 'dataset'
+    ) -> DatasetCollectionBinding:
         dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
-            filter(DatasetCollectionBinding.id == collection_binding_id,
-                   DatasetCollectionBinding.type == collection_type). \
+            filter(
+            DatasetCollectionBinding.id == collection_binding_id,
+            DatasetCollectionBinding.type == collection_type
+        ). \
             order_by(DatasetCollectionBinding.created_at). \
             first()
 
