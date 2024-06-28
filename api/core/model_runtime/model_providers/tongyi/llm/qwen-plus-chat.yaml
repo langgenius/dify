@@ -75,7 +75,7 @@ parameter_rules:
   - name: response_format
     use_template: response_format
 pricing:
-  input: '0.02'
-  output: '0.02'
+  input: '0.004'
+  output: '0.012'
   unit: '0.001'
   currency: RMB

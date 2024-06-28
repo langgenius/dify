@@ -38,7 +38,7 @@ class BuiltinToolProviderController(ToolProviderController):
 
         super().__init__(**{
             'identity': provider_yaml['identity'],
-            'credentials_schema': provider_yaml['credentials_for_provider'] if 'credentials_for_provider' in provider_yaml else None,
+            'credentials_schema': provider_yaml.get('credentials_for_provider', None),
         })
 
     def _get_builtin_tools(self) -> list[Tool]:

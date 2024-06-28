@@ -24,6 +24,6 @@ class AzureBlobStorageConfig(BaseModel):
     )
 
     AZURE_BLOB_ACCOUNT_URL: Optional[str] = Field(
-        description='Azure Blob account url',
+        description='Azure Blob account URL',
         default=None,
     )

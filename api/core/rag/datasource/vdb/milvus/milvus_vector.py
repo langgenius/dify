@@ -100,12 +100,6 @@ class MilvusVector(BaseVector):
                 raise e
         return pks
 
-    def delete_by_document_id(self, document_id: str):
-
-        ids = self.get_ids_by_metadata_field('document_id', document_id)
-        if ids:
-            self._client.delete(collection_name=self._collection_name, pks=ids)
-
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = self._client.query(collection_name=self._collection_name,
                                     filter=f'metadata["{key}"] == "{value}"',

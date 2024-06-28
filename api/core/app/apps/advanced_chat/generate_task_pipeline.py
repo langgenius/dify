@@ -42,6 +42,7 @@ from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.file.file_obj import FileVar
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.entities.node_entities import NodeType, SystemVariable
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.answer.entities import TextGenerateRouteChunk, VarGenerateRouteChunk
@@ -69,13 +70,15 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
     _workflow_system_variables: dict[SystemVariable, Any]
     _iteration_nested_relations: dict[str, list[str]]
 
-    def __init__(self, application_generate_entity: AdvancedChatAppGenerateEntity,
-                 workflow: Workflow,
-                 queue_manager: AppQueueManager,
-                 conversation: Conversation,
-                 message: Message,
-                 user: Union[Account, EndUser],
-                 stream: bool) -> None:
+    def __init__(
+        self, application_generate_entity: AdvancedChatAppGenerateEntity,
+        workflow: Workflow,
+        queue_manager: AppQueueManager,
+        conversation: Conversation,
+        message: Message,
+        user: Union[Account, EndUser],
+        stream: bool
+    ) -> None:
         """
         Initialize AdvancedChatAppGenerateTaskPipeline.
         :param application_generate_entity: application generate entity
@@ -126,14 +129,16 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             self._application_generate_entity.query
         )
 
-        generator = self._process_stream_response()
+        generator = self._process_stream_response(
+            trace_manager=self._application_generate_entity.trace_manager
+        )
         if self._stream:
             return self._to_stream_response(generator)
         else:
             return self._to_blocking_response(generator)
 
     def _to_blocking_response(self, generator: Generator[StreamResponse, None, None]) \
-            -> ChatbotAppBlockingResponse:
+        -> ChatbotAppBlockingResponse:
         """
         Process blocking response.
         :return:
@@ -164,7 +169,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         raise Exception('Queue listening stopped unexpectedly.')
 
     def _to_stream_response(self, generator: Generator[StreamResponse, None, None]) \
-            -> Generator[ChatbotAppStreamResponse, None, None]:
+        -> Generator[ChatbotAppStreamResponse, None, None]:
         """
         To stream response.
         :return:
@@ -177,7 +182,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 stream_response=stream_response
             )
 
-    def _process_stream_response(self) -> Generator[StreamResponse, None, None]:
+    def _process_stream_response(
+        self, trace_manager: Optional[TraceQueueManager] = None
+    ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
         :return:
@@ -249,7 +256,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 yield self._handle_iteration_to_stream_response(self._application_generate_entity.task_id, event)
                 self._handle_iteration_operation(event)
             elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
-                workflow_run = self._handle_workflow_finished(event)
+                workflow_run = self._handle_workflow_finished(
+                    event, conversation_id=self._conversation.id, trace_manager=trace_manager
+                )
                 if workflow_run:
                     yield self._workflow_finish_to_stream_response(
                         task_id=self._application_generate_entity.task_id,
@@ -292,7 +301,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     continue
 
                 if not self._is_stream_out_support(
-                        event=event
+                    event=event
                 ):
                     continue
 
@@ -361,7 +370,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             id=self._message.id,
             **extras
         )
-    
+
     def _get_stream_generate_routes(self) -> dict[str, ChatflowStreamGenerateRoute]:
         """
         Get stream generate routes.
@@ -391,9 +400,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 )
 
         return stream_generate_routes
-    
+
     def _get_answer_start_at_node_ids(self, graph: dict, target_node_id: str) \
-            -> list[str]:
+        -> list[str]:
         """
         Get answer start at node id.
         :param graph: graph
@@ -414,14 +423,14 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             target_node = next((node for node in nodes if node.get('id') == target_node_id), None)
             if not target_node:
                 return []
-            
+
             node_iteration_id = target_node.get('data', {}).get('iteration_id')
             # get iteration start node id
             for node in nodes:
                 if node.get('id') == node_iteration_id:
                     if node.get('data', {}).get('start_node_id') == target_node_id:
                         return [target_node_id]
-                    
+
             return []
 
         start_node_ids = []
@@ -457,7 +466,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     start_node_ids.extend(sub_start_node_ids)
 
         return start_node_ids
-    
+
     def _get_iteration_nested_relations(self, graph: dict) -> dict[str, list[str]]:
         """
         Get iteration nested relations.
@@ -466,18 +475,18 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         """
         nodes = graph.get('nodes')
 
-        iteration_ids = [node.get('id') for node in nodes 
+        iteration_ids = [node.get('id') for node in nodes
                          if node.get('data', {}).get('type') in [
                              NodeType.ITERATION.value,
                              NodeType.LOOP.value,
-                        ]]
+                         ]]
 
         return {
             iteration_id: [
                 node.get('id') for node in nodes if node.get('data', {}).get('iteration_id') == iteration_id
             ] for iteration_id in iteration_ids
         }
-    
+
     def _generate_stream_outputs_when_node_started(self) -> Generator:
         """
         Generate stream outputs.
@@ -485,8 +494,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         """
         if self._task_state.current_stream_generate_state:
             route_chunks = self._task_state.current_stream_generate_state.generate_route[
-                self._task_state.current_stream_generate_state.current_route_position:
-            ]
+                           self._task_state.current_stream_generate_state.current_route_position:
+                           ]
 
             for route_chunk in route_chunks:
                 if route_chunk.type == 'text':
@@ -506,7 +515,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
             # all route chunks are generated
             if self._task_state.current_stream_generate_state.current_route_position == len(
-                    self._task_state.current_stream_generate_state.generate_route):
+                self._task_state.current_stream_generate_state.generate_route
+            ):
                 self._task_state.current_stream_generate_state = None
 
     def _generate_stream_outputs_when_node_finished(self) -> Optional[Generator]:
@@ -519,7 +529,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
         route_chunks = self._task_state.current_stream_generate_state.generate_route[
                        self._task_state.current_stream_generate_state.current_route_position:]
-        
+
         for route_chunk in route_chunks:
             if route_chunk.type == 'text':
                 route_chunk = cast(TextGenerateRouteChunk, route_chunk)
@@ -551,7 +561,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                         value = iteration_state.current_index
                     elif value_selector[1] == 'item':
                         value = iterator_selector[iteration_state.current_index] if iteration_state.current_index < len(
-                            iterator_selector) else None
+                            iterator_selector
+                        ) else None
                 else:
                     # check chunk node id is before current node id or equal to current node id
                     if route_chunk_node_id not in self._task_state.ran_node_execution_infos:
@@ -562,14 +573,15 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     # get route chunk node execution info
                     route_chunk_node_execution_info = self._task_state.ran_node_execution_infos[route_chunk_node_id]
                     if (route_chunk_node_execution_info.node_type == NodeType.LLM
-                            and latest_node_execution_info.node_type == NodeType.LLM):
+                        and latest_node_execution_info.node_type == NodeType.LLM):
                         # only LLM support chunk stream output
                         self._task_state.current_stream_generate_state.current_route_position += 1
                         continue
 
                     # get route chunk node execution
                     route_chunk_node_execution = db.session.query(WorkflowNodeExecution).filter(
-                        WorkflowNodeExecution.id == route_chunk_node_execution_info.workflow_node_execution_id).first()
+                        WorkflowNodeExecution.id == route_chunk_node_execution_info.workflow_node_execution_id
+                    ).first()
 
                     outputs = route_chunk_node_execution.outputs_dict
 
@@ -631,7 +643,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
         # all route chunks are generated
         if self._task_state.current_stream_generate_state.current_route_position == len(
-                self._task_state.current_stream_generate_state.generate_route):
+            self._task_state.current_stream_generate_state.generate_route
+        ):
             self._task_state.current_stream_generate_state = None
 
     def _is_stream_out_support(self, event: QueueTextChunkEvent) -> bool:

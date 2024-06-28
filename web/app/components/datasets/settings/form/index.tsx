@@ -122,7 +122,10 @@ const Form = () => {
           description,
           permission,
           indexing_technique: indexMethod,
-          retrieval_model: postRetrievalConfig,
+          retrieval_model: {
+            ...postRetrievalConfig,
+            score_threshold: postRetrievalConfig.score_threshold_enabled ? postRetrievalConfig.score_threshold : 0,
+          },
           embedding_model: embeddingModel.model,
           embedding_model_provider: embeddingModel.provider,
         },

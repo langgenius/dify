@@ -15,11 +15,13 @@ import Button from '@/app/components/base/button'
 export type Props = {
   file: File | undefined
   updateFile: (file?: File) => void
+  className?: string
 }
 
 const Uploader: FC<Props> = ({
   file,
   updateFile,
+  className,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -83,7 +85,7 @@ const Uploader: FC<Props> = ({
   }, [])
 
   return (
-    <div className='mt-6'>
+    <div className={cn('mt-6', className)}>
       <input
         ref={fileUploader}
         style={{ display: 'none' }}

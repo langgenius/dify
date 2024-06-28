@@ -1,4 +1,3 @@
-import json
 import uuid
 
 from flask_login import current_user
@@ -9,17 +8,14 @@ from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
-from core.tools.tool_manager import ToolManager
-from core.tools.utils.configuration import ToolParameterConfigurationManager
+from core.ops.ops_trace_manager import OpsTraceManager
 from fields.app_fields import (
     app_detail_fields,
     app_detail_fields_with_site,
     app_pagination_fields,
 )
 from libs.login import login_required
-from models.model import App, AppMode, AppModelConfig
 from services.app_service import AppService
-from services.tag_service import TagService
 
 ALLOW_CREATE_APP_MODES = ['chat', 'agent-chat', 'advanced-chat', 'workflow', 'completion']
 
@@ -286,6 +282,39 @@ class AppApiStatus(Resource):
         return app_model
 
 
+class AppTraceApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, app_id):
+        """Get app trace"""
+        app_trace_config = OpsTraceManager.get_app_tracing_config(
+            app_id=app_id
+        )
+
+        return app_trace_config
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, app_id):
+        # add app trace
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+        parser = reqparse.RequestParser()
+        parser.add_argument('enabled', type=bool, required=True, location='json')
+        parser.add_argument('tracing_provider', type=str, required=True, location='json')
+        args = parser.parse_args()
+
+        OpsTraceManager.update_app_tracing_config(
+            app_id=app_id,
+            enabled=args['enabled'],
+            tracing_provider=args['tracing_provider'],
+        )
+
+        return {"result": "success"}
+
+
 api.add_resource(AppListApi, '/apps')
 api.add_resource(AppImportApi, '/apps/import')
 api.add_resource(AppApi, '/apps/<uuid:app_id>')
@@ -295,3 +324,4 @@ api.add_resource(AppNameApi, '/apps/<uuid:app_id>/name')
 api.add_resource(AppIconApi, '/apps/<uuid:app_id>/icon')
 api.add_resource(AppSiteStatus, '/apps/<uuid:app_id>/site-enable')
 api.add_resource(AppApiStatus, '/apps/<uuid:app_id>/api-enable')
+api.add_resource(AppTraceApi, '/apps/<uuid:app_id>/trace')

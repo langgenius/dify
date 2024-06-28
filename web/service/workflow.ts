@@ -54,3 +54,7 @@ export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}
     params: { q: JSON.stringify(query) },
   })
 }
+
+export const updateWorkflowDraftFromDSL = (appId: string, data: string) => {
+  return post<FetchWorkflowDraftResponse>(`apps/${appId}/workflows/draft/import`, { body: { data } })
+}

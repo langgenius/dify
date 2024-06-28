@@ -90,7 +90,7 @@ class DatasetRetrieverTool(Tool):
         """
         invoke dataset retriever tool
         """
-        query = tool_parameters.get('query', None)
+        query = tool_parameters.get('query')
         if not query:
             return self.create_text_message(text='please input query')
 

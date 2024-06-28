@@ -49,6 +49,10 @@ const translation = {
           show: 'Show',
           hide: 'Hide',
         },
+        chatColorTheme: 'Chat color theme',
+        chatColorThemeDesc: 'Set the color theme of the chatbot',
+        chatColorThemeInverted: 'Inverted',
+        invalidHexMessage: 'Invalid hex value',
         more: {
           entry: 'Show more settings',
           copyright: 'Copyright',
