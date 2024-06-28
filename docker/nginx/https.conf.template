@@ -1,0 +1,9 @@
+# Please do not directly edit this file. Instead, modify the .env variables related to NGINX configuration.
+
+listen ${NGINX_SSL_PORT} ssl;
+ssl_certificate ./../ssl/${NGINX_SSL_CERT_FILENAME};
+ssl_certificate_key ./../ssl/${NGINX_SSL_CERT_KEY_FILENAME};
+ssl_protocols ${NGINX_SSL_PROTOCOLS};
+ssl_prefer_server_ciphers on;
+ssl_session_cache shared:SSL:10m;
+ssl_session_timeout 10m;
