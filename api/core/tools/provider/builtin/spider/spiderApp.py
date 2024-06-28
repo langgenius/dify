@@ -1,5 +1,7 @@
-import os, requests
-from typing import TypedDict, Optional, Dict, List, Literal
+import os
+from typing import Literal, Optional, TypedDict
+
+import requests
 
 
 class RequestParamsDict(TypedDict, total=False):
@@ -10,19 +12,19 @@ class RequestParamsDict(TypedDict, total=False):
     tld: Optional[bool]
     depth: Optional[int]
     cache: Optional[bool]
-    budget: Optional[Dict[str, int]]
+    budget: Optional[dict[str, int]]
     locale: Optional[str]
     cookies: Optional[str]
     stealth: Optional[bool]
-    headers: Optional[Dict[str, str]]
+    headers: Optional[dict[str, str]]
     anti_bot: Optional[bool]
     metadata: Optional[bool]
-    viewport: Optional[Dict[str, int]]
+    viewport: Optional[dict[str, int]]
     encoding: Optional[str]
     subdomains: Optional[bool]
     user_agent: Optional[str]
     store_data: Optional[bool]
-    gpt_config: Optional[List[str]]
+    gpt_config: Optional[list[str]]
     fingerprint: Optional[bool]
     storageless: Optional[bool]
     readability: Optional[bool]
@@ -214,7 +216,7 @@ class Spider:
         return {
             "Content-Type": content_type,
             "Authorization": f"Bearer {self.api_key}",
-            "User-Agent": f"Spider-Client/0.0.27",
+            "User-Agent": "Spider-Client/0.0.27",
         }
 
     def _post_request(self, url: str, data, headers, stream=False):
