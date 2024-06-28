@@ -46,6 +46,15 @@ jobs:
       - name: Install dependencies
         run: poetry install -C api --with dev
 
+      - name: Set up Sandbox
+        uses: hoverkraft-tech/compose-action@v2.0.0
+        with:
+          compose-file: |
+            docker/docker-compose.middleware.yaml
+          services: |
+            sandbox
+            ssrf_proxy
+
       - name: Run Unit tests
         run: poetry run -C api bash dev/pytest/pytest_unit_tests.sh
 
@@ -59,15 +68,6 @@ jobs:
         run: |
           cp docker/.env.example docker/.env
           cp docker/middleware.env.example docker/middleware.env
-
-      - name: Set up Sandbox
-        uses: hoverkraft-tech/compose-action@v2.0.0
-        with:
-          compose-file: |
-            docker/docker-compose.middleware.yaml
-          services: |
-            sandbox
-            ssrf_proxy
 
       - name: Run Workflow
         run: poetry run -C api bash dev/pytest/pytest_workflow.sh
