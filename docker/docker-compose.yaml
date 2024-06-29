@@ -232,7 +232,7 @@ x-shared-env: &shared-api-worker-env
   # default send from email address, if not specified
   MAIL_DEFAULT_SEND_FROM: ${MAIL_DEFAULT_SEND_FROM}
   SMTP_SERVER: ${SMTP_SERVER}
-  SMTP_PORT: ${SMTP_PORT}
+  SMTP_PORT: ${SMTP_PORT:-465}
   SMTP_USERNAME: ${SMTP_USERNAME}
   SMTP_PASSWORD: ${SMTP_PASSWORD}
   SMTP_USE_TLS: ${SMTP_USE_TLS}
