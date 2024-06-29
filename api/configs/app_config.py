@@ -36,7 +36,6 @@ class DifyConfig(
         # read from dotenv format config file
         env_file='.env',
         env_file_encoding='utf-8',
-        env_ignore_empty=True,
 
         # ignore extra attributes
         extra='ignore',
