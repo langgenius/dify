@@ -5,6 +5,7 @@ from typing import Any, Union
 from httpx import post, get
 import json
 import time
+import io
 
 
 class Doc2xImgOCRTool(BuiltinTool):
@@ -17,11 +18,10 @@ class Doc2xImgOCRTool(BuiltinTool):
         if not api_key:
             raise ToolProviderCredentialValidationError('Please input API key')
 
-        input_list = [i.name for i in self.list_default_image_variables()]
-        if input_list == []:
+        input_list = tool_parameters.get('image_file', '')
+        if input_list == '':
             return self.create_text_message('')
-
-        img_correction = tool_parameters.get('img_correction', False)
+        img_correction = tool_parameters.get('correction', False)
         formula = tool_parameters.get('formula', False)
         get_limit = tool_parameters.get('get_limit', 1)
 
@@ -56,18 +56,28 @@ class Doc2xImgOCRTool(BuiltinTool):
             url = 'https://api.doc2x.noedgeai.com/api/v1/async/img'
         else:
             url = 'https://api.doc2x.noedgeai.com/api/platform/async/img'
-        
-        final_result = ""
+
+        final_result = ''
         for image_name in input_list:
             try:
-                image_binary = self.get_variable_file(image_name)
+                if image_name['type'] != 'image':
+                    raise Exception('The input is not an image')
+                # Get the image binary from local URL
+                image_response = get(image_name['url'])
+                image_response.raise_for_status()
+                content_type = image_response.headers['Content-Type']
+                if content_type.startswith('image/'):
+                    image_binary = io.BytesIO(image_response.content)
+                else:
+                    raise Exception('The input is not an image')
+                files = {'file': ('image', image_binary, content_type)}
                 # As the RPM of Doc2X is low, we need to try more times when reaching the limit
                 uuid = None
                 for _ in range(3):
                     response = post(
                         url,
                         headers={'Authorization': f'Bearer {real_api_key}'},
-                        files=image_binary,
+                        files=files,
                         data={'img_correction': img_correction, 'equation': formula},
                         timeout=30,
                     )

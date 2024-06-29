@@ -10,7 +10,17 @@ description:
     zh_Hans: 使用 Doc2X 从图像中识别文本，以LaTeX格式输出。
   llm: A tool for recognizing text from images using Doc2X, output in LaTeX format. You should input the image id as the input of this tool, the image id can be got from parameters.
 parameters:
-  - name: img_correction
+  - name: image_file
+    type: file
+    label:
+      en_US: Image File
+      zh_Hans: 图像文件
+    human_description:
+      en_US: The image file to be recognized.
+      zh_Hans: 要识别的图像文件。
+    llm_description: The image file to be recognized.
+    form: llm
+  - name: correction
     type: boolean
     default: false
     label:
