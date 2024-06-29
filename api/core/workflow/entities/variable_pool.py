@@ -1,6 +1,8 @@
 from enum import Enum
 from typing import Any, Optional, Union
 
+from pydantic import BaseModel, Field
+
 from core.file.file_obj import FileVar
 from core.workflow.entities.node_entities import SystemVariable
 
@@ -21,20 +23,23 @@ class ValueType(Enum):
     FILE = "file"
 
 
-class VariablePool:
+class VariablePool(BaseModel):
 
-    def __init__(self, system_variables: dict[SystemVariable, Any],
-                 user_inputs: dict) -> None:
-        # system variables
-        # for example:
-        # {
-        #     'query': 'abc',
-        #     'files': []
-        # }
-        self.variables_mapping = {}
-        self.user_inputs = user_inputs
-        self.system_variables = system_variables
-        for system_variable, value in system_variables.items():
+    variables_mapping: dict[str, dict[int, VariableValue]] = Field(
+        description='Variables mapping',
+        default={},
+    )
+
+    user_inputs: dict = Field(
+        description='User inputs',
+    )
+
+    system_variables: dict[SystemVariable, Any] = Field(
+        description='System variables',
+    )
+
+    def __post_init__(self):
+        for system_variable, value in self.system_variables.items():
             self.append_variable('sys', [system_variable.value], value)
 
     def append_variable(self, node_id: str, variable_key_list: list[str], value: VariableValue) -> None:

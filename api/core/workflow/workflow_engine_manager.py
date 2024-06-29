@@ -1,5 +1,4 @@
 import logging
-import threading
 import time
 from typing import Any, Optional, cast
 
@@ -129,17 +128,171 @@ class WorkflowEngineManager:
             callbacks=callbacks
         )
 
-        # run workflow
-        self._run_workflow(
-            graph_config=graph_config,
-            workflow_runtime_state=workflow_runtime_state,
-            callbacks=callbacks,
-        )
+        try:
+            # run workflow
+            self._run_workflow(
+                graph_config=graph_config,
+                workflow_runtime_state=workflow_runtime_state,
+                callbacks=callbacks,
+            )
+        except WorkflowRunFailedError as e:
+            self._workflow_run_failed(
+                error=e.error,
+                callbacks=callbacks
+            )
+        except Exception as e:
+            self._workflow_run_failed(
+                error=str(e),
+                callbacks=callbacks
+            )
 
         # workflow run success
         self._workflow_run_success(
             callbacks=callbacks
         )
+
+    def _init_graph(self, graph_config: dict, root_node_id: Optional[str] = None) -> Optional[Graph]:
+        """
+        Initialize graph
+
+        :param graph_config: graph config
+        :param root_node_id: root node id if needed
+        :return: graph
+        """
+        # edge configs
+        edge_configs = graph_config.get('edges')
+        if not edge_configs:
+            return None
+
+        edge_configs = cast(list, edge_configs)
+
+        # reorganize edges mapping
+        source_edges_mapping: dict[str, list[dict]] = {}
+        target_edge_ids = set()
+        for edge_config in edge_configs:
+            source_node_id = edge_config.get('source')
+            if not source_node_id:
+                continue
+
+            if source_node_id not in source_edges_mapping:
+                source_edges_mapping[source_node_id] = []
+
+            source_edges_mapping[source_node_id].append(edge_config)
+
+            target_node_id = edge_config.get('target')
+            if target_node_id:
+                target_edge_ids.add(target_node_id)
+
+        # node configs
+        node_configs = graph_config.get('nodes')
+        if not node_configs:
+            return None
+
+        node_configs = cast(list, node_configs)
+
+        # fetch nodes that have no predecessor node
+        root_node_configs = []
+        nodes_mapping: dict[str, dict] = {}
+        for node_config in node_configs:
+            node_id = node_config.get('id')
+            if not node_id:
+                continue
+
+            if node_id not in target_edge_ids:
+                root_node_configs.append(node_config)
+
+            nodes_mapping[node_id] = node_config
+
+        # fetch root node
+        if root_node_id:
+            root_node_config = next((node_config for node_config in root_node_configs
+                                     if node_config.get('id') == root_node_id), None)
+        else:
+            # if no root node id, use the START type node as root node
+            root_node_config = next((node_config for node_config in root_node_configs
+                                     if node_config.get('data', {}).get('type', '') == NodeType.START.value), None)
+
+        if not root_node_config:
+            return None
+
+        # init graph
+        graph = Graph.init(
+            root_node_config=root_node_config
+        )
+
+        # add edge from root node
+        self._recursively_add_edges(
+            graph=graph,
+            source_node_config=root_node_config,
+            edges_mapping=source_edges_mapping,
+            nodes_mapping=nodes_mapping,
+            root_node_configs=root_node_configs
+        )
+
+        return graph
+
+    def _recursively_add_edges(self, graph: Graph,
+                               source_node_config: dict,
+                               edges_mapping: dict,
+                               nodes_mapping: dict,
+                               root_node_configs: list[dict]) -> None:
+        """
+        Add edges
+
+        :param source_node_config: source node config
+        :param edges_mapping: edges mapping
+        :param nodes_mapping: nodes mapping
+        :param root_node_configs: root node configs
+        """
+        source_node_id = source_node_config.get('id')
+        if not source_node_id:
+            return
+
+        for edge_config in edges_mapping.get(source_node_id, []):
+            target_node_id = edge_config.get('target')
+            if not target_node_id:
+                continue
+
+            target_node_config = nodes_mapping.get(target_node_id)
+            if not target_node_config:
+                continue
+
+            sub_graph: Optional[Graph] = None
+            target_node_type: NodeType = NodeType.value_of(target_node_config.get('data', {}).get('type'))
+            if target_node_type and target_node_type in [IterationNode.node_type, NodeType.LOOP]:
+                # find iteration/loop sub nodes that have no predecessor node
+                for root_node_config in root_node_configs:
+                    if root_node_config.get('parentId') == target_node_id:
+                        # create sub graph
+                        sub_graph = Graph.init(
+                            root_node_config=root_node_config
+                        )
+
+                        self._recursively_add_edges(
+                            graph=sub_graph,
+                            source_node_config=root_node_config,
+                            edges_mapping=edges_mapping,
+                            nodes_mapping=nodes_mapping,
+                            root_node_configs=root_node_configs
+                        )
+                        break
+
+            # add edge
+            graph.add_edge(
+                edge_config=edge_config,
+                source_node_config=source_node_config,
+                target_node_config=target_node_config,
+                target_node_sub_graph=sub_graph,
+            )
+
+            # recursively add edges
+            self._recursively_add_edges(
+                graph=graph,
+                source_node_config=target_node_config,
+                edges_mapping=edges_mapping,
+                nodes_mapping=nodes_mapping,
+                root_node_configs=root_node_configs
+            )
 
     def _run_workflow(self, graph_config: dict,
                       workflow_runtime_state: WorkflowRuntimeState,
@@ -157,9 +310,14 @@ class WorkflowEngineManager:
         """
         try:
             # init graph
-            graph = Graph(
+            graph = self._init_graph(
                 graph_config=graph_config
             )
+
+            if not graph:
+                raise WorkflowRunFailedError(
+                    error='Start node not found in workflow graph.'
+                )
 
             predecessor_node: Optional[BaseNode] = None
             current_iteration_node: Optional[BaseIterationNode] = None
@@ -231,11 +389,11 @@ class WorkflowEngineManager:
 
                 # max steps reached
                 if workflow_run_state.workflow_node_steps > max_execution_steps:
-                    raise ValueError('Max steps {} reached.'.format(max_execution_steps))
+                    raise WorkflowRunFailedError('Max steps {} reached.'.format(max_execution_steps))
 
                 # or max execution time reached
                 if self._is_timed_out(start_at=workflow_run_state.start_at, max_execution_time=max_execution_time):
-                    raise ValueError('Max execution time {}s reached.'.format(max_execution_time))
+                    raise WorkflowRunFailedError('Max execution time {}s reached.'.format(max_execution_time))
 
                 if len(next_nodes) == 1:
                     next_node = next_nodes[0]
@@ -256,63 +414,59 @@ class WorkflowEngineManager:
                 else:
                     result_dict = {}
 
-                    # new thread
-                    worker_thread = threading.Thread(target=self._async_run_nodes, kwargs={
-                        'flask_app': current_app._get_current_object(),
-                        'graph': graph,
-                        'workflow_run_state': workflow_run_state,
-                        'predecessor_node': predecessor_node,
-                        'next_nodes': next_nodes,
-                        'callbacks': callbacks,
-                        'result': result_dict
-                    })
-
-                    worker_thread.start()
-                    worker_thread.join()
+                    # # new thread
+                    # worker_thread = threading.Thread(target=self._async_run_nodes, kwargs={
+                    #     'flask_app': current_app._get_current_object(),
+                    #     'graph': graph,
+                    #     'workflow_run_state': workflow_run_state,
+                    #     'predecessor_node': predecessor_node,
+                    #     'next_nodes': next_nodes,
+                    #     'callbacks': callbacks,
+                    #     'result': result_dict
+                    # })
+                    #
+                    # worker_thread.start()
+                    # worker_thread.join()
 
             if not workflow_run_state.workflow_node_runs:
-                self._workflow_run_failed(
-                    error='Start node not found in workflow graph.',
-                    callbacks=callbacks
+                raise WorkflowRunFailedError(
+                    error='Start node not found in workflow graph.'
                 )
-                return
         except GenerateTaskStoppedException as e:
             return
         except Exception as e:
-            self._workflow_run_failed(
-                error=str(e),
-                callbacks=callbacks
+            raise WorkflowRunFailedError(
+                error=str(e)
             )
-            return
 
-    def _async_run_nodes(self, flask_app: Flask,
-                         graph: dict,
-                         workflow_run_state: WorkflowRunState,
-                         predecessor_node: Optional[BaseNode],
-                         next_nodes: list[BaseNode],
-                         callbacks: list[BaseWorkflowCallback],
-                         result: dict):
-        with flask_app.app_context():
-            try:
-                for next_node in next_nodes:
-                    # TODO run sub workflows
-                    # run node
-                    is_continue = self._run_node(
-                        graph=graph,
-                        workflow_run_state=workflow_run_state,
-                        predecessor_node=predecessor_node,
-                        current_node=next_node,
-                        callbacks=callbacks
-                    )
-
-                    if not is_continue:
-                        break
-
-                    predecessor_node = next_node
-            except Exception as e:
-                logger.exception("Unknown Error when generating")
-            finally:
-                db.session.remove()
+    # def _async_run_nodes(self, flask_app: Flask,
+    #                      graph: dict,
+    #                      workflow_run_state: WorkflowRunState,
+    #                      predecessor_node: Optional[BaseNode],
+    #                      next_nodes: list[BaseNode],
+    #                      callbacks: list[BaseWorkflowCallback],
+    #                      result: dict):
+    #     with flask_app.app_context():
+    #         try:
+    #             for next_node in next_nodes:
+    #                 # TODO run sub workflows
+    #                 # run node
+    #                 is_continue = self._run_node(
+    #                     graph=graph,
+    #                     workflow_run_state=workflow_run_state,
+    #                     predecessor_node=predecessor_node,
+    #                     current_node=next_node,
+    #                     callbacks=callbacks
+    #                 )
+    #
+    #                 if not is_continue:
+    #                     break
+    #
+    #                 predecessor_node = next_node
+    #         except Exception as e:
+    #             logger.exception("Unknown Error when generating")
+    #         finally:
+    #             db.session.remove()
 
     def _run_node(self, graph: dict,
                   workflow_run_state: WorkflowRunState,
@@ -584,14 +738,25 @@ class WorkflowEngineManager:
             workflow_call_depth=0
         )
 
-        # run workflow
-        self._run_workflow(
-            graph=workflow.graph,
-            workflow_run_state=workflow_run_state,
-            callbacks=callbacks,
-            start_node=node_id,
-            end_node=end_node_id
-        )
+        try:
+            # run workflow
+            self._run_workflow(
+                graph_config=workflow.graph,
+                workflow_runtime_state=workflow_runtime_state,
+                callbacks=callbacks,
+                start_node=node_id,
+                end_node=end_node_id
+            )
+        except WorkflowRunFailedError as e:
+            self._workflow_run_failed(
+                error=e.error,
+                callbacks=callbacks
+            )
+        except Exception as e:
+            self._workflow_run_failed(
+                error=str(e),
+                callbacks=callbacks
+            )
 
         # workflow run success
         self._workflow_run_success(
@@ -1072,3 +1237,8 @@ class WorkflowEngineManager:
                 variable_key_list=variable_key_list,
                 value=value
             )
+
+
+class WorkflowRunFailedError(Exception):
+    def __init__(self, error: str):
+        self.error = error
