@@ -28,7 +28,13 @@ class JinaReaderTool(BuiltinTool):
             headers['Authorization'] = "Bearer " + self.runtime.credentials.get('api_key')
 
         request_params = tool_parameters.get('request_params', None)
-        request_params = json.loads(request_params) if request_params is not None and request_params != '' else None
+        if request_params is not None and request_params != '':
+            try:
+                request_params = json.loads(request_params)
+                if not isinstance(request_params, dict):
+                    raise ValueError("request_params must be a JSON object")
+            except (json.JSONDecodeError, ValueError) as e:
+                raise ValueError(f"Invalid request_params: {e}")
 
         target_selector = tool_parameters.get('target_selector', None)
         if target_selector is not None and target_selector != '':
