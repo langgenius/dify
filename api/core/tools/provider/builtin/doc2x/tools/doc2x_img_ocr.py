@@ -1,7 +1,7 @@
 from core.tools.tool.builtin_tool import BuiltinTool  # noqa: I001
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
-from typing import Any, dict, list, Union
+from typing import Any, Union
 from httpx import post, get
 import json
 import time
@@ -36,7 +36,7 @@ class Doc2xImgOCRTool(BuiltinTool):
                 raise Exception(response.text)
             real_api_key = json.loads(response.content.decode('utf-8'))['data']['token']
         else:
-            real_api_key = api_key
+            real_api_key = str(api_key)
 
         # Get limit of the API key if set
         if get_limit:
@@ -44,10 +44,10 @@ class Doc2xImgOCRTool(BuiltinTool):
                 url = 'https://api.doc2x.noedgeai.com/api/v1/limit'
             else:
                 url = 'https://api.doc2x.noedgeai.com/api/platform/limit'
-            response = post(url, headers={'Authorization': f'Bearer {real_api_key}'}, timeout=30)
+            response = get(url, headers={'Authorization': f'Bearer {real_api_key}'}, timeout=30)
             if response.status_code != 200:
                 raise Exception(response.text)
-            return self.create_text_message(int(response.json()['data']['remain']))
+            return self.create_text_message(str(response.json()['data']['remain']))
 
         img_correction = 1 if img_correction else 0
         formula = 1 if formula else 0

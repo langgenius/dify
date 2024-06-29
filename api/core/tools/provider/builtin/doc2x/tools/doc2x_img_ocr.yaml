@@ -39,3 +39,4 @@ parameters:
     human_description:
       en_US: Get the remaining OCR times without parsing the image.
       zh_Hans: 不解析图片，获取剩余OCR次数。
+    form: form
