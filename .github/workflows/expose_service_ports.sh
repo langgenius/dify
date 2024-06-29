@@ -1,5 +1,6 @@
 #!/bin/bash
 
+yq eval '.services.sandbox.ports += ["8194:8194"]' -i docker/docker-compose.yaml
 yq eval '.services.weaviate.ports += ["8080:8080"]' -i docker/docker-compose.yaml
 yq eval '.services.qdrant.ports += ["6333:6333"]' -i docker/docker-compose.yaml
 yq eval '.services.chroma.ports += ["8000:8000"]' -i docker/docker-compose.yaml
