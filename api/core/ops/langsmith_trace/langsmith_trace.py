@@ -186,7 +186,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         if message_data.from_end_user_id:
             end_user_data: EndUser = db.session.query(EndUser).filter(
                 EndUser.id == message_data.from_end_user_id
-            ).first().session_id
+            ).first()
             end_user_id = end_user_data.session_id
             metadata["end_user_id"] = end_user_id
             metadata["user_id"] = user_id
