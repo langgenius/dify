@@ -215,7 +215,9 @@ class LangFuseDataTrace(BaseTraceInstance):
             end_user_data: EndUser = db.session.query(EndUser).filter(
                 EndUser.id == message_data.from_end_user_id
             ).first()
-            user_id = end_user_data.session_id
+            if end_user_data is not None:
+                user_id = end_user_data.session_id
+                metadata["user_id"] = user_id
 
         trace_data = LangfuseTrace(
             id=message_id,
