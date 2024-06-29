@@ -153,8 +153,7 @@ class Tenant(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
-    def get_accounts(self) -> list[db.Model]:
-        Account = db.Model
+    def get_accounts(self) -> list[Account]:
         return db.session.query(Account).filter(
             Account.id == TenantAccountJoin.account_id,
             TenantAccountJoin.tenant_id == self.id

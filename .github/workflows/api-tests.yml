@@ -55,6 +55,11 @@ jobs:
       - name: Run Tool
         run: poetry run -C api bash dev/pytest/pytest_tools.sh
 
+      - name: Set up dotenvs
+        run: |
+          cp docker/.env.example docker/.env
+          cp docker/middleware.env.example docker/middleware.env
+
       - name: Set up Sandbox
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
@@ -71,12 +76,7 @@ jobs:
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
           compose-file: |
-            docker/docker-compose.middleware.yaml
-            docker/docker-compose.qdrant.yaml
-            docker/docker-compose.milvus.yaml
-            docker/docker-compose.pgvecto-rs.yaml
-            docker/docker-compose.pgvector.yaml
-            docker/docker-compose.chroma.yaml
+            docker/docker-compose.yaml
           services: |
             weaviate
             qdrant
@@ -86,6 +86,5 @@ jobs:
             pgvecto-rs
             pgvector
             chroma
-
       - name: Test Vector Stores
         run: poetry run -C api bash dev/pytest/pytest_vdb.sh
