@@ -160,6 +160,10 @@ const CodeEditor: FC<Props> = ({
           // lineNumbers: (num) => {
           //   return <div>{num}</div>
           // }
+          // hide ambiguousCharacters warning
+          unicodeHighlight: {
+            ambiguousCharacters: false,
+          },
         }}
         onMount={handleEditorDidMount}
       />

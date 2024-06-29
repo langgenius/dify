@@ -1073,12 +1073,10 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 en_US=model
             ),
             model_type=ModelType.LLM,
-            features=[feature for feature in base_model_schema_features],
+            features=list(base_model_schema_features),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_properties={
-                key: property for key, property in base_model_schema_model_properties.items()
-            },
-            parameter_rules=[rule for rule in base_model_schema_parameters_rules],
+            model_properties=dict(base_model_schema_model_properties.items()),
+            parameter_rules=list(base_model_schema_parameters_rules),
             pricing=base_model_schema.pricing    
         )
 

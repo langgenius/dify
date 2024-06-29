@@ -65,6 +65,7 @@ class FileVar(BaseModel):
             'type': self.type.value,
             'transfer_method': self.transfer_method.value,
             'url': self.preview_url,
+            'remote_url': self.url,
             'related_id': self.related_id,
             'filename': self.filename,
             'extension': self.extension,

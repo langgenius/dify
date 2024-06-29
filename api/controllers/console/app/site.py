@@ -20,6 +20,8 @@ def parse_app_site_args():
     parser.add_argument('icon_background', type=str, required=False, location='json')
     parser.add_argument('description', type=str, required=False, location='json')
     parser.add_argument('default_language', type=supported_language, required=False, location='json')
+    parser.add_argument('chat_color_theme', type=str, required=False, location='json')
+    parser.add_argument('chat_color_theme_inverted', type=bool, required=False, location='json')
     parser.add_argument('customize_domain', type=str, required=False, location='json')
     parser.add_argument('copyright', type=str, required=False, location='json')
     parser.add_argument('privacy_policy', type=str, required=False, location='json')
@@ -55,6 +57,8 @@ class AppSite(Resource):
             'icon_background',
             'description',
             'default_language',
+            'chat_color_theme',
+            'chat_color_theme_inverted',
             'customize_domain',
             'copyright',
             'privacy_policy',

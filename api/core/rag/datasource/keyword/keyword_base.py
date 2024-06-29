@@ -28,10 +28,6 @@ class BaseKeyword(ABC):
     def delete_by_ids(self, ids: list[str]) -> None:
         raise NotImplementedError
 
-    @abstractmethod
-    def delete_by_document_id(self, document_id: str) -> None:
-        raise NotImplementedError
-
     def delete(self) -> None:
         raise NotImplementedError
 

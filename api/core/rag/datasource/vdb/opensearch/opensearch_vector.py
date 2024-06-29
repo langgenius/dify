@@ -87,11 +87,6 @@ class OpenSearchVector(BaseVector):
 
         helpers.bulk(self._client, actions)
 
-    def delete_by_document_id(self, document_id: str):
-        ids = self.get_ids_by_metadata_field('document_id', document_id)
-        if ids:
-            self.delete_by_ids(ids)
-
     def get_ids_by_metadata_field(self, key: str, value: str):
         query = {"query": {"term": {f"{Field.METADATA_KEY.value}.{key}": value}}}
         response = self._client.search(index=self._collection_name.lower(), body=query)
