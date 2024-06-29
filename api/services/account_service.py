@@ -120,10 +120,11 @@ class AccountService:
         return account
 
     @staticmethod
-    def create_account(email: str, name: str, interface_language: str,
-                       password: str = None,
-                       interface_theme: str = 'light',
-                       timezone: str = 'America/New_York', ) -> Account:
+    def create_account(email: str,
+                       name: str,
+                       interface_language: str,
+                       password: Optional[str] = None,
+                       interface_theme: str = 'light') -> Account:
         """create account"""
         account = Account()
         account.email = email
@@ -201,7 +202,6 @@ class AccountService:
         account.last_login_ip = ip_address
         db.session.add(account)
         db.session.commit()
-        logging.info(f'Account {account.id} logged in successfully.')
 
     @staticmethod
     def login(account: Account, *, ip_address: Optional[str] = None):
@@ -454,14 +454,17 @@ class RegisterService:
         :param password: password
         :param ip_address: ip address
         """
-        db.session.begin_nested()
         try:
             # Register
-            account = cls.register(
+            account = AccountService.create_account(
                 email=email,
                 name=name,
-                password=password
+                interface_language=languages[0],
+                password=password,
             )
+
+            account.last_login_ip = ip_address
+            account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
             TenantService.create_owner_tenant_if_not_exist(account)
 
@@ -469,10 +472,14 @@ class RegisterService:
                 version=current_app.config['CURRENT_VERSION']
             )
             db.session.add(dify_setup)
-
-            AccountService.update_last_login(account, ip_address=ip_address)
+            db.session.commit()
         except Exception as e:
-            db.session.rollback()
+            db.session.query(DifySetup).delete()
+            db.session.query(TenantAccountJoin).delete()
+            db.session.query(Account).delete()
+            db.session.query(Tenant).delete()
+            db.session.commit()
+
             logging.exception(f'Setup failed: {e}')
             raise ValueError(f'Setup failed: {e}')
 
