@@ -4,6 +4,10 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 
 ### What's Updated
 - **Persistent Environment Variables**: Environment variables are now managed through a `.env` file, ensuring that your configurations persist across deployments.
+
+   > What is `.env`? </br> </br>
+   > The `.env` file is a crucial component in Docker and Docker Compose environments, serving as a centralized configuration file where you can define environment variables that are accessible to the containers at runtime. This file simplifies the management of environment settings across different stages of development, testing, and production, providing consistency and ease of configuration to deployments.
+
 - **Unified Vector Database Services**: All vector database services are now managed from a single Docker Compose file `docker-compose.yaml`. You can switch between different vector databases by setting the `VECTOR_STORE` environment variable in your `.env` file.
 - **Mandatory .env File**: A `.env` file is now required to run `docker compose up`. This file is crucial for configuring your deployment and for any custom settings to persist through upgrades.
 - **Legacy Support**: Previous deployment files are now located in the `docker-legacy` directory and will no longer be maintained.
@@ -33,6 +37,49 @@ For users migrating from the `docker-legacy` setup:
    - If you have customized configurations such as `docker-compose.yaml`, `ssrf_proxy/squid.conf`, or `nginx/conf.d/default.conf`, you will need to reflect these changes in the `.env` file you create.
 3. **Data Migration**:
    - Ensure that data from services like databases and caches is backed up and migrated appropriately to the new structure if necessary.
+
+### Overview of `.env` 
+
+#### Key Modules and Customization
+
+- **Vector Database Services**: Depending on the type of vector database used (`VECTOR_STORE`), users can set specific endpoints, ports, and authentication details.
+- **Storage Services**: Depending on the storage type (`STORAGE_TYPE`), users can configure specific settings for S3, Azure Blob, Google Storage, etc.
+- **API and Web Services**: Users can define URLs and other settings that affect how the API and web frontends operate.
+
+#### Other notable variables
+The `.env.example` file provided in the Docker setup is extensive and covers a wide range of configuration options. It is structured into several sections, each pertaining to different aspects of the application and its services. Here are some of the key sections and variables:
+
+1. **Common Variables**:
+   - `CONSOLE_API_URL`, `SERVICE_API_URL`: URLs for different API services.
+   - `APP_WEB_URL`: Frontend application URL.
+   - `FILES_URL`: Base URL for file downloads and previews.
+
+2. **Server Configuration**:
+   - `LOG_LEVEL`, `DEBUG`, `FLASK_DEBUG`: Logging and debug settings.
+   - `SECRET_KEY`: A key for encrypting session cookies and other sensitive data.
+
+3. **Database Configuration**:
+   - `DB_USERNAME`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`: PostgreSQL database credentials and connection details.
+
+4. **Redis Configuration**:
+   - `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`: Redis server connection settings.
+
+5. **Celery Configuration**:
+   - `CELERY_BROKER_URL`: Configuration for Celery message broker.
+
+6. **Storage Configuration**:
+   - `STORAGE_TYPE`, `S3_BUCKET_NAME`, `AZURE_BLOB_ACCOUNT_NAME`: Settings for file storage options like local, S3, Azure Blob, etc.
+
+7. **Vector Database Configuration**:
+   - `VECTOR_STORE`: Type of vector database (e.g., `weaviate`, `milvus`).
+   - Specific settings for each vector store like `WEAVIATE_ENDPOINT`, `MILVUS_HOST`.
+
+8. **CORS Configuration**:
+   - `WEB_API_CORS_ALLOW_ORIGINS`, `CONSOLE_CORS_ALLOW_ORIGINS`: Settings for cross-origin resource sharing.
+
+9. **Other Service-Specific Environment Variables**:
+   - Each service like `nginx`, `redis`, `db`, and vector databases have specific environment variables that are directly referenced in the `docker-compose.yaml`.
+
 
 ### Additional Information
 - **Continuous Improvement Phase**: We are actively seeking feedback from the community to refine and enhance the deployment process. As more users adopt this new method, we will continue to make improvements based on your experiences and suggestions.
