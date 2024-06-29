@@ -1,0 +1,32 @@
+identity:
+  name: doc2x_img_ocr
+  author: Menghuan1918
+  label:
+    en_US: Doc2X Image OCR
+    zh_Hans: Doc2X图形识别
+description:
+  human:
+    en_US: Recognize text from images using Doc2X, output in LaTeX format.
+    zh_Hans: 使用 Doc2X 从图像中识别文本，以LaTeX格式输出。
+  llm: A tool for recognizing text from images using Doc2X, output in LaTeX format. You should input the image id as the input of this tool.
+parameters:
+  - name: img_correction
+    type: boolean
+    default: false
+    label:
+      en_US: Image Correction
+      zh_Hans: 是否校正图像
+    human_description:
+      en_US: Correct the image before OCR.
+      zh_Hans: 在OCR之前校正图像。
+    form: form
+  - name: formula
+    type: boolean
+    default: false
+    label:
+      en_US: Only formula Mode
+      zh_Hans: 纯公式模式
+    human_description:
+      en_US: Only recognize formula in the image.
+      zh_Hans: 仅识别图像中的公式。
+    form: form
