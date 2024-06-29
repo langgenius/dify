@@ -44,7 +44,8 @@ const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
     return content
   return content.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
-    .replace(/\\\((.*?)\\\)/gs, (_, equation) => `$${equation}$`)
+    .replace(/\\\((.*?)\\\)/gs, (_, equation) => `$$${equation}$$`)
+    .replace(/(^|[^\\])\$(.+?)\$/gs, (_, prefix, equation) => `${prefix}$${equation}$`)
 }
 
 export function PreCode(props: { children: any }) {
