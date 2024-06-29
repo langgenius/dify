@@ -17,6 +17,7 @@ from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
 from models.account import *
+from models.model import DifySetup
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -444,8 +445,44 @@ class RegisterService:
         return f'member_invite:token:{token}'
 
     @classmethod
-    def register(cls, email, name, password: str = None, open_id: str = None, provider: str = None,
-                 language: str = None, status: AccountStatus = None) -> Account:
+    def setup(cls, email: str, name: str, password: str, ip_address: str) -> None:
+        """
+        Setup dify
+
+        :param email: email
+        :param name: username
+        :param password: password
+        :param ip_address: ip address
+        """
+        db.session.begin_nested()
+        try:
+            # Register
+            account = cls.register(
+                email=email,
+                name=name,
+                password=password
+            )
+
+            TenantService.create_owner_tenant_if_not_exist(account)
+
+            dify_setup = DifySetup(
+                version=current_app.config['CURRENT_VERSION']
+            )
+            db.session.add(dify_setup)
+
+            AccountService.update_last_login(account, ip_address=ip_address)
+        except Exception as e:
+            db.session.rollback()
+            logging.exception(f'Setup failed: {e}')
+            raise ValueError(f'Setup failed: {e}')
+
+    @classmethod
+    def register(cls, email, name,
+                 password: Optional[str] = None,
+                 open_id: Optional[str] = None,
+                 provider: Optional[str] = None,
+                 language: Optional[str] = None,
+                 status: Optional[AccountStatus] = None) -> Account:
         db.session.begin_nested()
         """Register account"""
         try:
