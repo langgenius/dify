@@ -8,4 +8,4 @@ yq eval '.services["milvus-standalone"].ports += ["19530:19530"]' -i docker/dock
 yq eval '.services.pgvector.ports += ["5432:5432"]' -i docker/docker-compose.yaml
 yq eval '.services["pgvecto-rs"].ports += ["5433:5433"]' -i docker/docker-compose.yaml
 
-echo "Ports exposed for weaviate, qdrant, chroma, milvus, pgvector, pgvecto-rs."
+echo "Ports exposed for sandbox, weaviate, qdrant, chroma, milvus, pgvector, pgvecto-rs."
