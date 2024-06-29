@@ -144,6 +144,16 @@ api/.idea
 api/.env
 api/storage/*
 
+docker-legacy/volumes/app/storage/*
+docker-legacy/volumes/db/data/*
+docker-legacy/volumes/redis/data/*
+docker-legacy/volumes/weaviate/*
+docker-legacy/volumes/qdrant/*
+docker-legacy/volumes/etcd/*
+docker-legacy/volumes/minio/*
+docker-legacy/volumes/milvus/*
+docker-legacy/volumes/chroma/*
+
 docker/volumes/app/storage/*
 docker/volumes/db/data/*
 docker/volumes/redis/data/*
@@ -153,6 +163,9 @@ docker/volumes/etcd/*
 docker/volumes/minio/*
 docker/volumes/milvus/*
 docker/volumes/chroma/*
+
+docker/nginx/conf.d/default.conf
+docker/middleware.env
 
 sdks/python-client/build
 sdks/python-client/dist

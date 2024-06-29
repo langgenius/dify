@@ -200,7 +200,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 endpoint_url = str(URL(endpoint_url) / 'chat' / 'completions')
             elif 'server_url' in credentials:
                 endpoint_url = server_url
-            data['messages'] = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
+            data['messages'] = [self._convert_prompt_message_to_dict(m, credentials) for m in prompt_messages]
         elif completion_type is LLMMode.COMPLETION:
             data['prompt'] = 'ping'
             if 'endpoint_url' in credentials:
