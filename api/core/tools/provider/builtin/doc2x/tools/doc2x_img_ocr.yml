@@ -8,7 +8,7 @@ description:
   human:
     en_US: Recognize text from images using Doc2X, output in LaTeX format.
     zh_Hans: 使用 Doc2X 从图像中识别文本，以LaTeX格式输出。
-  llm: A tool for recognizing text from images using Doc2X, output in LaTeX format. You should input the image id as the input of this tool.
+  llm: A tool for recognizing text from images using Doc2X, output in LaTeX format. You should input the image id as the input of this tool, the image id can be got from parameters.
 parameters:
   - name: img_correction
     type: boolean
@@ -30,3 +30,12 @@ parameters:
       en_US: Only recognize formula in the image.
       zh_Hans: 仅识别图像中的公式。
     form: form
+  - name: get_limit
+    type: boolean
+    default: false
+    label:
+      en_US: Get Limit Only
+      zh_Hans: 不解析图片，获取剩余次数
+    human_description:
+      en_US: Get the remaining OCR times without parsing the image.
+      zh_Hans: 不解析图片，获取剩余OCR次数。

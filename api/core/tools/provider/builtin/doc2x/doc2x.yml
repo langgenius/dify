@@ -11,7 +11,7 @@ identity:
   tags:
     - image
 credentials_for_provider:
-  serpapi_api_key:
+  doc2x_api_key:
     type: secret-input
     required: true
     label:
@@ -21,6 +21,6 @@ credentials_for_provider:
       en_US: Please input your Doc2X API key
       zh_Hans: 请输入您的 Doc2X API密匙
     help:
-      en_US: Get your SerpApi API key from SerpApi
+      en_US: Get your Doc2X API key from the Doc2X personal center
       zh_Hans: 从 Doc2X 个人中心获取您的 Doc2X API密匙
     url: https://doc2x.noedgeai.com
