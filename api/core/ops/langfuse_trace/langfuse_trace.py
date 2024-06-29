@@ -121,7 +121,9 @@ class LangFuseDataTrace(BaseTraceInstance):
             node_type = node_execution.node_type
             status = node_execution.status
             if node_type == "llm":
-                inputs = json.loads(node_execution.process_data).get("prompts", {})
+                inputs = json.loads(node_execution.process_data).get(
+                    "prompts", {}
+                    ) if node_execution.process_data else {}
             else:
                 inputs = json.loads(node_execution.inputs) if node_execution.inputs else {}
             outputs = (
