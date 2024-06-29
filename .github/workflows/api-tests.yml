@@ -72,6 +72,9 @@ jobs:
       - name: Run Workflow
         run: poetry run -C api bash dev/pytest/pytest_workflow.sh
 
+      - name: Expose Vector Stores Ports
+        run: sh .github/workflows/expose_vdb_ports.sh
+
       - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma)
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
