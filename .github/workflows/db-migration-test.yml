@@ -40,7 +40,7 @@ jobs:
 
       - name: Prepare middleware env
         run: |
-          cdd docker
+          cd docker
           cp middleware.env.example middleware.env
 
       - name: Set up Middlewares
