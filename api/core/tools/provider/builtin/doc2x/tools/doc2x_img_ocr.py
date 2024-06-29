@@ -1,6 +1,6 @@
 from core.tools.tool.builtin_tool import BuiltinTool  # noqa: I001
 from core.tools.errors import ToolProviderCredentialValidationError
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
+from core.tools.entities.tool_entities import ToolInvokeMessage
 from typing import Any, Union
 from httpx import post, get
 import json
@@ -17,9 +17,9 @@ class Doc2xImgOCRTool(BuiltinTool):
         if not api_key:
             raise ToolProviderCredentialValidationError('Please input API key')
 
-        input_list = tool_parameters.get('image_id', '')
-        if not input_list:
-            return self.create_text_message('Please input image id')
+        input_list = [i.name for i in self.list_default_image_variables()]
+        if input_list == []:
+            return self.create_text_message('')
 
         img_correction = tool_parameters.get('img_correction', False)
         formula = tool_parameters.get('formula', False)
@@ -56,66 +56,56 @@ class Doc2xImgOCRTool(BuiltinTool):
             url = 'https://api.doc2x.noedgeai.com/api/v1/async/img'
         else:
             url = 'https://api.doc2x.noedgeai.com/api/platform/async/img'
-        image_binary = self.get_variable_file(self.VARIABLE_KEY.IMAGE)
+        
+        final_result = ""
+        for image_name in input_list:
+            try:
+                image_binary = self.get_variable_file(image_name)
+                # As the RPM of Doc2X is low, we need to try more times when reaching the limit
+                uuid = None
+                for _ in range(3):
+                    response = post(
+                        url,
+                        headers={'Authorization': f'Bearer {real_api_key}'},
+                        files=image_binary,
+                        data={'img_correction': img_correction, 'equation': formula},
+                        timeout=30,
+                    )
+                    if response.status_code == 429:
+                        time.sleep(10)
+                        continue
+                    elif response.status_code != 200:
+                        raise Exception(response.text)
+                    else:
+                        uuid = json.loads(response.content.decode('utf-8'))['data']['uuid']
+                        break
 
-        # As the RPM of Doc2X is low, we need to try more times when reaching the limit
-        uuid = None
-        for _ in range(3):
-            response = post(
-                url,
-                headers={'Authorization': f'Bearer {real_api_key}'},
-                files=image_binary,
-                data={'img_correction': img_correction, 'equation': formula},
-                timeout=30,
-            )
-            if response.status_code == 429:
-                time.sleep(10)
-                continue
-            elif response.status_code != 200:
-                raise Exception(response.text)
-            else:
-                uuid = json.loads(response.content.decode('utf-8'))['data']['uuid']
-                break
+                if not uuid:
+                    raise Exception('Failed to upload the image to Doc2X')
 
-        if not uuid:
-            raise Exception('Failed to upload the image to Doc2X')
-
-        # Try to get the result
-        result = None
-        if real_api_key.startswith('sk-'):
-            url = f'https://api.doc2x.noedgeai.com/api/v1/async/status?uuid={uuid}'
-        else:
-            url = f'https://api.doc2x.noedgeai.com/api/platform/async/status?uuid={uuid}'
-        while True:
-            response = get(url, headers={'Authorization': f'Bearer {real_api_key}'}, timeout=30)
-            if response.status_code != 200:
-                raise Exception(response.text)
-            status = json.loads(response.content.decode('utf-8'))['data']['status']
-            if status == 'ready' or status == 'processing':
-                time.sleep(1)
-                continue
-            if status == 'pages limit exceeded':
-                raise Exception('Doc2X Pages limit exceeded')
-            if status == 'success':
-                result = json.loads(response.content.decode('utf-8'))['data']['result']['pages'][0]['md']
-                break
-        if not result:
-            raise Exception('Failed to get the result from Doc2X')
-
-        return self.create_text_message(result)
-
-    def get_runtime_parameters(self) -> list[ToolParameter]:
-        """
-        override the runtime parameters
-        """
-        return [
-            ToolParameter.get_simple_instance(
-                name='image_id',
-                llm_description=f'the image id that you want to do OCR, \
-                    and the image id should be specified in \
-                        {[i.name for i in self.list_default_image_variables()]}',
-                type=ToolParameter.ToolParameterType.SELECT,
-                required=True,
-                options=[i.name for i in self.list_default_image_variables()],
-            )
-        ]
+                # Try to get the result
+                result = None
+                if real_api_key.startswith('sk-'):
+                    url = f'https://api.doc2x.noedgeai.com/api/v1/async/status?uuid={uuid}'
+                else:
+                    url = f'https://api.doc2x.noedgeai.com/api/platform/async/status?uuid={uuid}'
+                while True:
+                    response = get(url, headers={'Authorization': f'Bearer {real_api_key}'}, timeout=30)
+                    if response.status_code != 200:
+                        raise Exception(response.text)
+                    status = json.loads(response.content.decode('utf-8'))['data']['status']
+                    if status == 'ready' or status == 'processing':
+                        time.sleep(1)
+                        continue
+                    if status == 'pages limit exceeded':
+                        raise Exception('Doc2X Pages limit exceeded')
+                    if status == 'success':
+                        result = json.loads(response.content.decode('utf-8'))['data']['result']['pages'][0]['md']
+                        break
+                if not result:
+                    raise Exception('Failed to get the result from Doc2X')
+                final_result += result
+                final_result += '\n'
+            except Exception as e:
+                pass
+        return self.create_text_message(final_result)
