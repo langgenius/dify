@@ -43,8 +43,6 @@ services:
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
-    ports:
-      - "${EXPOSE_SANDBOX_PORT:-8194}:${SANDBOX_PORT:-8194}"
     networks:
       - ssrf_proxy_network
 
@@ -67,6 +65,7 @@ services:
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     ports:
       - "${EXPOSE_SSRF_PROXY_PORT:-3128}:${SSRF_HTTP_PORT:-3128}"
+      - "${EXPOSE_SANDBOX_PORT:-8194}:${SANDBOX_PORT:-8194}"
     networks:
       - ssrf_proxy_network
       - default
