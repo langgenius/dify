@@ -12,7 +12,7 @@ services:
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${EXPOSE_POSTGRES_PORT:-5432}:5432"
 
   # The redis cache.
   redis:
@@ -24,11 +24,58 @@ services:
     # Set the redis password when startup redis server.
     command: redis-server --requirepass difyai123456
     ports:
-      - "6379:6379"
+      - "${EXPOSE_REDIS_PORT:-6379}:6379"
+
+  # The DifySandbox
+  sandbox:
+    image: langgenius/dify-sandbox:0.2.1
+    restart: always
+    environment:
+      # The DifySandbox configurations
+      # Make sure you are changing this key for your deployment with a strong key.
+      # You can generate a strong key using `openssl rand -base64 42`.
+      API_KEY: ${API_KEY:-dify-sandbox}
+      GIN_MODE: ${GIN_MODE:-release}
+      WORKER_TIMEOUT: ${WORKER_TIMEOUT:-15}
+      ENABLE_NETWORK: ${ENABLE_NETWORK:-true}
+      HTTP_PROXY: ${HTTP_PROXY:-http://ssrf_proxy:3128}
+      HTTPS_PROXY: ${HTTPS_PROXY:-http://ssrf_proxy:3128}
+      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
+    volumes:
+      - ./volumes/sandbox/dependencies:/dependencies
+    ports:
+      - "${EXPOSE_SANDBOX_PORT:-8194}:${SANDBOX_PORT:-8194}"
+    networks:
+      - ssrf_proxy_network
+
+  # ssrf_proxy server
+  # for more information, please refer to
+  # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-ssrf_proxy-needed
+  ssrf_proxy:
+    image: ubuntu/squid:latest
+    restart: always
+    volumes:
+      - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
+      - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint.sh
+    entrypoint: /docker-entrypoint.sh
+    environment:
+      # pls clearly modify the squid env vars to fit your network environment.
+      HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
+      COREDUMP_DIR: ${COREDUMP_DIR:-/var/spool/squid}
+      REVERSE_PROXY_PORT: ${REVERSE_PROXY_PORT:-8194}
+      SANDBOX_HOST: ${SANDBOX_HOST:-sandbox}
+      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
+    ports:
+      - "${EXPOSE_SSRF_PROXY_PORT:-3128}:${SSRF_HTTP_PORT:-3128}"
+    networks:
+      - ssrf_proxy_network
+      - default
 
   # The Weaviate vector store.
   weaviate:
     image: semitechnologies/weaviate:1.19.0
+    profiles:
+      - weaviate
     restart: always
     volumes:
       # Mount the Weaviate data directory to the container.
@@ -49,51 +96,7 @@ services:
       AUTHORIZATION_ADMINLIST_ENABLED: ${AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
     ports:
-      - "8080:8080"
-
-  # The DifySandbox
-  sandbox:
-    image: langgenius/dify-sandbox:0.2.1
-    restart: always
-    environment:
-      # The DifySandbox configurations
-      # Make sure you are changing this key for your deployment with a strong key.
-      # You can generate a strong key using `openssl rand -base64 42`.
-      API_KEY: ${API_KEY:-dify-sandbox}
-      GIN_MODE: ${GIN_MODE:-release}
-      WORKER_TIMEOUT: ${WORKER_TIMEOUT:-15}
-      ENABLE_NETWORK: ${ENABLE_NETWORK:-true}
-      HTTP_PROXY: ${HTTP_PROXY:-http://ssrf_proxy:3128}
-      HTTPS_PROXY: ${HTTPS_PROXY:-http://ssrf_proxy:3128}
-      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
-    volumes:
-      - ./volumes/sandbox/dependencies:/dependencies
-    networks:
-      - ssrf_proxy_network
-
-  # ssrf_proxy server
-  # for more information, please refer to
-  # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-ssrf_proxy-needed
-  ssrf_proxy:
-    image: ubuntu/squid:latest
-    restart: always
-    volumes:
-      - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
-      - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint.sh
-    entrypoint: /docker-entrypoint.sh
-    ports:
-      - "3128:3128"
-      - "8194:8194"
-    environment:
-      # pls clearly modify the squid env vars to fit your network environment.
-      HTTP_PORT: ${HTTP_PORT:-3128}
-      COREDUMP_DIR: ${COREDUMP_DIR:-/var/spool/squid}
-      REVERSE_PROXY_PORT: ${REVERSE_PROXY_PORT:-8194}
-      SANDBOX_HOST: ${SANDBOX_HOST:-sandbox}
-      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
-    networks:
-      - ssrf_proxy_network
-      - default
+      - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
