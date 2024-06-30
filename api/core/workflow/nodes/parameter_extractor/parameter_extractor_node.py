@@ -131,7 +131,7 @@ class ParameterExtractorNode(LLMNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=inputs,
-                process_data={},
+                process_data=process_data,
                 outputs={
                     '__is_success': 0,
                     '__reason': str(e)

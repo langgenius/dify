@@ -676,6 +676,5 @@ class DatasetPermission(db.Model):
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'), primary_key=True)
     dataset_id = db.Column(StringUUID, nullable=False)
     account_id = db.Column(StringUUID, nullable=False)
-    account_role = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     has_permission = db.Column(db.Boolean, nullable=False, server_default=db.text('true'))
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))

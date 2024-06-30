@@ -114,7 +114,9 @@ class LangSmithDataTrace(BaseTraceInstance):
             node_type = node_execution.node_type
             status = node_execution.status
             if node_type == "llm":
-                inputs = json.loads(node_execution.process_data).get("prompts", {})
+                inputs = json.loads(node_execution.process_data).get(
+                    "prompts", {}
+                    ) if node_execution.process_data else {}
             else:
                 inputs = json.loads(node_execution.inputs) if node_execution.inputs else {}
             outputs = (
@@ -181,13 +183,15 @@ class LangSmithDataTrace(BaseTraceInstance):
         message_id = message_data.id
 
         user_id = message_data.from_account_id
+        metadata["user_id"] = user_id
+
         if message_data.from_end_user_id:
             end_user_data: EndUser = db.session.query(EndUser).filter(
                 EndUser.id == message_data.from_end_user_id
-            ).first().session_id
-            end_user_id = end_user_data.session_id
-            metadata["end_user_id"] = end_user_id
-            metadata["user_id"] = user_id
+            ).first()
+            if end_user_data is not None:
+                end_user_id = end_user_data.session_id
+                metadata["end_user_id"] = end_user_id
 
         message_run = LangSmithRunModel(
             input_tokens=trace_info.message_tokens,

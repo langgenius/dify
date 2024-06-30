@@ -115,7 +115,7 @@ class DatasetListApi(Resource):
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editing:
+        if not current_user.is_editor:
             raise Forbidden()
 
         try:
@@ -213,8 +213,9 @@ class DatasetApi(Resource):
         parser.add_argument('partial_member_list', type=list, location='json', help='Invalid parent user list.')
         args = parser.parse_args()
         data = request.get_json()
+
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_dataset_editing:
+        if not current_user.is_editor or current_user.is_dataset_operator:
             raise Forbidden()
 
         dataset = DatasetService.update_dataset(
@@ -229,6 +230,10 @@ class DatasetApi(Resource):
             DatasetPermissionService.update_partial_member_list(dataset_id_str, data.get('partial_member_list'))
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             result_data.update({'partial_member_list': part_users_list})
+        else:
+            partial_member_list = []
+            DatasetPermissionService.update_partial_member_list(dataset_id_str, partial_member_list)
+            result_data.update({'partial_member_list': partial_member_list})
 
         return result_data, 200
 
@@ -239,7 +244,7 @@ class DatasetApi(Resource):
         dataset_id_str = str(dataset_id)
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        if not current_user.is_editor or current_user.is_dataset_operator:
             raise Forbidden()
 
         try:
