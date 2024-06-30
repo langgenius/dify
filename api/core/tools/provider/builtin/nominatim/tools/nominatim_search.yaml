@@ -12,7 +12,8 @@ description:
     zh_Hans: 使用Nominatim搜索位置
     de_DE: Suche nach Orten mit Nominatim
     ja_JP: Nominatimを使用して場所を検索
-  llm: A tool for geocoding using Nominatim, which can search for locations based on addresses or place names.
+  llm: A tool for geocoding using Nominatim, which can search for locations based
+    on addresses or place names.
 parameters:
   - name: query
     type: string
@@ -41,9 +42,10 @@ parameters:
       de_DE: Ergebnislimit
       ja_JP: 結果の制限
     human_description:
-      en_US: 'Maximum number of results to return (default: 10, max: 40)'
+      en_US: "Maximum number of results to return (default: 10, max: 40)"
       zh_Hans: 要返回的最大结果数（默认：10，最大：40）
-      de_DE: 'Maximale Anzahl der zurückzugebenden Ergebnisse (Standard: 10, max: 40)'
+      de_DE: "Maximale Anzahl der zurückzugebenden Ergebnisse (Standard: 10, max: 40)"
       ja_JP: 返す結果の最大数（デフォルト：10、最大：40）
-    llm_description: Limit the number of returned results. The default is 10, and the maximum is 40.
+    llm_description: Limit the number of returned results. The default is 10, and
+      the maximum is 40.
     form: form

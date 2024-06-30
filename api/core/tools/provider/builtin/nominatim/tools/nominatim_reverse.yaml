@@ -12,7 +12,8 @@ description:
     zh_Hans: 使用Nominatim将坐标转换为地址
     de_DE: Konvertieren Sie Koordinaten in Adressen mit Nominatim
     ja_JP: Nominatimを使用して座標を住所に変換
-  llm: A tool for reverse geocoding using Nominatim, which can convert latitude and longitude coordinates to an address.
+  llm: A tool for reverse geocoding using Nominatim, which can convert latitude
+    and longitude coordinates to an address.
 parameters:
   - name: lat
     type: number
