@@ -1,4 +1,5 @@
 # standard import
+# standard import
 import base64
 import json
 import logging
@@ -6,6 +7,7 @@ import mimetypes
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
+# 3rd import
 # 3rd import
 import boto3
 import requests
@@ -19,6 +21,8 @@ from botocore.exceptions import (
 )
 from cohere import ChatMessage
 
+# local import
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 # local import
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
@@ -65,8 +69,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        # TODO: consolidate different invocation methods for models based on base model capabilities
-        # invoke anthropic models via boto3 client
+        # invoke anthropic models via anthropic official SDK
         if "anthropic" in model:
             return self._generate_anthropic(model, credentials, prompt_messages, model_parameters, stop, stream, user)
         # invoke Cohere models via boto3 client
