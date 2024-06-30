@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: '公開URL',
       preview: 'プレビュー',
       regenerate: '再生成',
+      regenerateNotice: '公開URLを再生成しますか？',
       preUseReminder: '続行する前にWebAppを有効にしてください。',
       settings: {
         entry: '設定',
@@ -43,6 +44,15 @@ const translation = {
         webDescTip: 'このテキストはクライアント側に表示され、アプリケーションの使用方法の基本的なガイダンスを提供します。',
         webDescPlaceholder: 'WebAppの説明を入力してください',
         language: '言語',
+        workflow: {
+          title: 'ワークフローステップ',
+          show: '表示',
+          hide: '非表示',
+        },
+        chatColorTheme: 'チャットボットのカラーテーマ',
+        chatColorThemeDesc: 'チャットボットのカラーテーマを設定します',
+        chatColorThemeInverted: '反転',
+        invalidHexMessage: '無効な16進数値',
         more: {
           entry: 'その他の設定を表示',
           copyright: '著作権',

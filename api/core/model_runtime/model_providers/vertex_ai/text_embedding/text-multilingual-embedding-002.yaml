@@ -1,0 +1,8 @@
+model: text-multilingual-embedding-002
+model_type: text-embedding
+model_properties:
+  context_size: 2048
+pricing:
+  input: '0.00013'
+  unit: '0.001'
+  currency: USD

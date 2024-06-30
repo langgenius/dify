@@ -1,0 +1,41 @@
+identity:
+  name: ddgo_ai
+  author: hjlarry
+  label:
+    en_US: DuckDuckGo AI Chat
+    zh_Hans: DuckDuckGo AI聊天
+description:
+  human:
+    en_US: Use the anonymous private chat provided by DuckDuckGo.
+    zh_Hans: 使用DuckDuckGo提供的匿名私密聊天。
+  llm: Use the anonymous private chat provided by DuckDuckGo.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Chat Content
+      zh_Hans: 聊天内容
+    human_description:
+      en_US: The chat content.
+      zh_Hans: 要聊天的内容。
+    llm_description: Key words for chat
+    form: llm
+  - name: model
+    type: select
+    required: true
+    options:
+      - value: gpt-3.5
+        label:
+          en_US: GPT-3.5
+      - value: claude-3-haiku
+        label:
+          en_US: Claude 3
+    default: gpt-3.5
+    label:
+      en_US: Choose Model
+      zh_Hans: 选择模型
+    human_description:
+      en_US: used to select the model for AI chat.
+      zh_Hans: 用于选择使用AI聊天的模型
+    form: form

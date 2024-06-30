@@ -124,7 +124,7 @@ class TogetherAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
                     default=float(credentials.get('presence_penalty', 0)),
                     min=-2,
                     max=2
-                )
+                ),
             ],
             pricing=PriceConfig(
                 input=Decimal(cred_with_endpoint.get('input_price', 0)),

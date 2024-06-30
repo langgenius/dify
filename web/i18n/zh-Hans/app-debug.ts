@@ -281,6 +281,7 @@ const translation = {
     'inputPlaceholder': '请输入',
     'labelName': '显示名称',
     'required': '必填',
+    'content': '内容',
     'errorMsg': {
       varNameRequired: '变量名称必填',
       labelNameRequired: '显示名称必填',

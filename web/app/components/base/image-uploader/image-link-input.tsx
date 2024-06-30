@@ -42,8 +42,8 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({
         placeholder={t('common.imageUploader.pasteImageLinkInputPlaceholder') || ''}
       />
       <Button
-        type='primary'
-        className='!h-6 text-xs font-medium'
+        variant='primary'
+        size='small'
         disabled={!imageLink || disabled}
         onClick={handleClick}
       >

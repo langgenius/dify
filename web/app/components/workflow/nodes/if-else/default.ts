@@ -27,7 +27,7 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
   },
   getAvailableNextNodes(isChatMode: boolean) {
     const nodes = isChatMode ? ALL_CHAT_AVAILABLE_BLOCKS : ALL_COMPLETION_AVAILABLE_BLOCKS
-    return nodes.filter(type => type !== BlockEnum.VariableAssigner)
+    return nodes
   },
   checkValid(payload: IfElseNodeType, t: any) {
     let errorMessages = ''

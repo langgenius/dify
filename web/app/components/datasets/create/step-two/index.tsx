@@ -6,13 +6,17 @@ import { useBoolean } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import { RocketLaunchIcon } from '@heroicons/react/24/outline'
 import cn from 'classnames'
+import {
+  RiCloseLine,
+  RiQuestionLine,
+} from '@remixicon/react'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
 import RetrievalMethodInfo from '../../common/retrieval-method-info'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
-import type { CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, IndexingEstimateResponse, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, IndexingEstimateResponse, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
   createDocument,
   createFirstDocument,
@@ -33,7 +37,6 @@ import { DataSourceType, DocForm } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Switch from '@/app/components/base/switch'
 import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
-import { HelpCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
@@ -44,18 +47,22 @@ import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { LanguagesSupported } from '@/i18n/language'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 
 type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
   isSetting?: boolean
   documentDetail?: FullDocumentDetail
-  hasSetAPIKEY: boolean
+  isAPIKeySet: boolean
   onSetting: () => void
   datasetId?: string
   indexingType?: ValueOf<IndexingType>
   dataSourceType: DataSourceType
   files: CustomFile[]
   notionPages?: NotionPage[]
+  websitePages?: CrawlResultItem[]
+  crawlOptions?: CrawlOptions
+  fireCrawlJobId?: string
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
   updateResultCache?: (res: createDocumentResponse) => void
@@ -75,13 +82,16 @@ enum IndexingType {
 const StepTwo = ({
   isSetting,
   documentDetail,
-  hasSetAPIKEY,
+  isAPIKeySet,
   onSetting,
   datasetId,
   indexingType,
-  dataSourceType,
+  dataSourceType: inCreatePageDataSourceType,
   files,
   notionPages = [],
+  websitePages = [],
+  crawlOptions,
+  fireCrawlJobId = '',
   onStepChange,
   updateIndexingTypeCache,
   updateResultCache,
@@ -94,6 +104,8 @@ const StepTwo = ({
   const isMobile = media === MediaType.mobile
 
   const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
+  const isInCreatePage = !datasetId || (datasetId && !currentDataset?.data_source_type)
+  const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : currentDataset?.data_source_type
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
   const previewScrollRef = useRef<HTMLDivElement>(null)
@@ -107,7 +119,7 @@ const StepTwo = ({
   const hasSetIndexType = !!indexingType
   const [indexType, setIndexType] = useState<ValueOf<IndexingType>>(
     (indexingType
-      || hasSetAPIKEY)
+      || isAPIKeySet)
       ? IndexingType.QUALIFIED
       : IndexingType.ECONOMICAL,
   )
@@ -242,6 +254,15 @@ const StepTwo = ({
     }) as NotionInfo[]
   }
 
+  const getWebsiteInfo = () => {
+    return {
+      provider: 'firecrawl',
+      job_id: fireCrawlJobId,
+      urls: websitePages.map(page => page.source_url),
+      only_main_content: crawlOptions?.only_main_content,
+    }
+  }
+
   const getFileIndexingEstimateParams = (docForm: DocForm): IndexingEstimateParams | undefined => {
     if (dataSourceType === DataSourceType.FILE) {
       return {
@@ -263,6 +284,19 @@ const StepTwo = ({
         info_list: {
           data_source_type: dataSourceType,
           notion_info_list: getNotionInfo(),
+        },
+        indexing_technique: getIndexing_technique() as string,
+        process_rule: getProcessRule(),
+        doc_form: docForm,
+        doc_language: docLanguage,
+        dataset_id: datasetId as string,
+      }
+    }
+    if (dataSourceType === DataSourceType.WEB) {
+      return {
+        info_list: {
+          data_source_type: dataSourceType,
+          website_info_list: getWebsiteInfo(),
         },
         indexing_technique: getIndexing_technique() as string,
         process_rule: getProcessRule(),
@@ -335,6 +369,9 @@ const StepTwo = ({
       }
       if (dataSourceType === DataSourceType.NOTION)
         params.data_source.info_list.notion_info_list = getNotionInfo()
+
+      if (dataSourceType === DataSourceType.WEB)
+        params.data_source.info_list.website_info_list = getWebsiteInfo()
     }
     return params
   }
@@ -480,8 +517,8 @@ const StepTwo = ({
       setIndexType(indexingType as IndexingType)
 
     else
-      setIndexType(hasSetAPIKEY ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
-  }, [hasSetAPIKEY, indexingType, datasetId])
+      setIndexType(isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
+  }, [isAPIKeySet, indexingType, datasetId])
 
   useEffect(() => {
     if (segmentationType === SegmentType.AUTO) {
@@ -596,7 +633,7 @@ const StepTwo = ({
                             {t('datasetCreation.stepTwo.overlapTip')}
                           </div>
                         }>
-                          <HelpCircle className='ml-1 w-3.5 h-3.5 text-gray-400' />
+                          <RiQuestionLine className='ml-1 w-3.5 h-3.5 text-gray-400' />
                         </TooltipPlus>
                       </div>
                       <input
@@ -621,8 +658,8 @@ const StepTwo = ({
                     </div>
                   </div>
                   <div className={s.formFooter}>
-                    <Button type="primary" className={cn(s.button, '!h-8')} onClick={confirmChangeCustomConfig}>{t('datasetCreation.stepTwo.preview')}</Button>
-                    <Button className={cn(s.button, 'ml-2 !h-8')} onClick={resetRules}>{t('datasetCreation.stepTwo.reset')}</Button>
+                    <Button variant="primary" className={cn(s.button)} onClick={confirmChangeCustomConfig}>{t('datasetCreation.stepTwo.preview')}</Button>
+                    <Button className={cn(s.button, 'ml-2')} onClick={resetRules}>{t('datasetCreation.stepTwo.reset')}</Button>
                   </div>
                 </div>
               )}
@@ -636,13 +673,13 @@ const StepTwo = ({
                   className={cn(
                     s.radioItem,
                     s.indexItem,
-                    !hasSetAPIKEY && s.disabled,
+                    !isAPIKeySet && s.disabled,
                     !hasSetIndexType && indexType === IndexingType.QUALIFIED && s.active,
                     hasSetIndexType && s.disabled,
                     hasSetIndexType && '!w-full',
                   )}
                   onClick={() => {
-                    if (hasSetAPIKEY)
+                    if (isAPIKeySet)
                       setIndexType(IndexingType.QUALIFIED)
                   }}
                 >
@@ -665,7 +702,7 @@ const StepTwo = ({
                         )
                     }
                   </div>
-                  {!hasSetAPIKEY && (
+                  {!isAPIKeySet && (
                     <div className={s.warningTip}>
                       <span>{t('datasetCreation.stepTwo.warning')}&nbsp;</span>
                       <span className={s.click} onClick={onSetting}>{t('datasetCreation.stepTwo.click')}</span>
@@ -726,7 +763,7 @@ const StepTwo = ({
                 {docForm === DocForm.QA && !QATipHide && (
                   <div className='flex justify-between items-center px-5 py-2 bg-orange-50 border-t border-amber-100 rounded-b-xl text-[13px] leading-[18px] text-medium text-amber-500'>
                     {t('datasetCreation.stepTwo.QATip')}
-                    <XClose className='w-4 h-4 text-gray-500 cursor-pointer' onClick={() => setQATipHide(true)} />
+                    <RiCloseLine className='w-4 h-4 text-gray-500 cursor-pointer' onClick={() => setQATipHide(true)} />
                   </div>
                 )}
               </div>
@@ -819,6 +856,22 @@ const StepTwo = ({
                     </div>
                   </>
                 )}
+                {dataSourceType === DataSourceType.WEB && (
+                  <>
+                    <div className='mb-2 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.websiteSource')}</div>
+                    <div className='flex items-center text-sm leading-6 font-medium text-gray-800'>
+                      <Globe01 className='shrink-0 mr-1' />
+                      <span className='grow w-0 truncate'>{websitePages[0].source_url}</span>
+                      {websitePages.length > 1 && (
+                        <span className={s.sourceCount}>
+                          <span>{t('datasetCreation.stepTwo.other')}</span>
+                          <span>{websitePages.length - 1}</span>
+                          <span>{t('datasetCreation.stepTwo.webpageUnit')}</span>
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
               <div className={s.divider} />
               <div className={s.segmentCount}>
@@ -841,12 +894,12 @@ const StepTwo = ({
                 <div className='flex items-center mt-8 py-2'>
                   <Button onClick={() => onStepChange && onStepChange(-1)}>{t('datasetCreation.stepTwo.previousStep')}</Button>
                   <div className={s.divider} />
-                  <Button loading={isCreating} type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
+                  <Button loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
                 </div>
               )
               : (
                 <div className='flex items-center mt-8 py-2'>
-                  <Button loading={isCreating} type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
+                  <Button loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
                   <Button className='ml-2' onClick={onCancel}>{t('datasetCreation.stepTwo.cancel')}</Button>
                 </div>
               )}
@@ -860,7 +913,7 @@ const StepTwo = ({
               <div className='grow flex items-center'>
                 <div>{t('datasetCreation.stepTwo.previewTitle')}</div>
                 {docForm === DocForm.QA && !previewSwitched && (
-                  <Button className='ml-2 !h-[26px] !py-[3px] !px-2 !text-xs !font-medium !text-primary-600' onClick={previewSwitch}>{t('datasetCreation.stepTwo.previewButton')}</Button>
+                  <Button className='ml-2' variant='secondary-accent' onClick={previewSwitch}>{t('datasetCreation.stepTwo.previewButton')}</Button>
                 )}
               </div>
               <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>

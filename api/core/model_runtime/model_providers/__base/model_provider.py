@@ -1,16 +1,16 @@
 import os
 from abc import ABC, abstractmethod
+from typing import Optional
 
-import yaml
-
+from core.helper.module_import_helper import get_subclasses_from_module, import_module_from_source
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-from core.utils.module_import_helper import get_subclasses_from_module, import_module_from_source
+from core.tools.utils.yaml_utils import load_yaml_file
 
 
 class ModelProvider(ABC):
-    provider_schema: ProviderEntity = None
+    provider_schema: Optional[ProviderEntity] = None
     model_instance_map: dict[str, AIModel] = {}
 
     @abstractmethod
@@ -29,26 +29,23 @@ class ModelProvider(ABC):
     def get_provider_schema(self) -> ProviderEntity:
         """
         Get provider schema
-
+    
         :return: provider schema
         """
         if self.provider_schema:
             return self.provider_schema
-
+    
         # get dirname of the current path
         provider_name = self.__class__.__module__.split('.')[-1]
 
         # get the path of the model_provider classes
         base_path = os.path.abspath(__file__)
         current_path = os.path.join(os.path.dirname(os.path.dirname(base_path)), provider_name)
-
+    
         # read provider schema from yaml file
         yaml_path = os.path.join(current_path, f'{provider_name}.yaml')
-        yaml_data = {}
-        if os.path.exists(yaml_path):
-            with open(yaml_path, encoding='utf-8') as f:
-                yaml_data = yaml.safe_load(f)
-
+        yaml_data = load_yaml_file(yaml_path, ignore_error=True)
+    
         try:
             # yaml_data to entity
             provider_schema = ProviderEntity(**yaml_data)
@@ -57,7 +54,7 @@ class ModelProvider(ABC):
 
         # cache schema
         self.provider_schema = provider_schema
-
+    
         return provider_schema
 
     def models(self, model_type: ModelType) -> list[AIModelEntity]:
@@ -88,7 +85,7 @@ class ModelProvider(ABC):
         :return:
         """
         # get dirname of the current path
-        provider_name = self.__class__.__module__.split('.')[-1]
+        provider_name = self.__class__.__module__.split(".")[-1]
 
         if f"{provider_name}.{model_type.value}" in self.model_instance_map:
             return self.model_instance_map[f"{provider_name}.{model_type.value}"]
@@ -105,11 +102,17 @@ class ModelProvider(ABC):
         # Dynamic loading {model_type_name}.py file and find the subclass of AIModel
         parent_module = '.'.join(self.__class__.__module__.split('.')[:-1])
         mod = import_module_from_source(
-            f'{parent_module}.{model_type_name}.{model_type_name}', model_type_py_path)
-        model_class = next(filter(lambda x: x.__module__ == mod.__name__ and not x.__abstractmethods__,
-                                  get_subclasses_from_module(mod, AIModel)), None)
+            module_name=f"{parent_module}.{model_type_name}.{model_type_name}", py_file_path=model_type_py_path
+        )
+        model_class = next(
+            filter(
+                lambda x: x.__module__ == mod.__name__ and not x.__abstractmethods__,
+                get_subclasses_from_module(mod, AIModel),
+            ),
+            None,
+        )
         if not model_class:
-            raise Exception(f'Missing AIModel Class for model type {model_type} in {model_type_py_path}')
+            raise Exception(f"Missing AIModel Class for model type {model_type} in {model_type_py_path}")
 
         model_instance_map = model_class()
         self.model_instance_map[f"{provider_name}.{model_type.value}"] = model_instance_map

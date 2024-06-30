@@ -9,7 +9,7 @@ class Judge0CEProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             ExecuteCodeTool().fork_tool_runtime(
-                meta={
+                runtime={
                     "credentials": credentials,
                 }
             ).invoke(
@@ -21,3 +21,4 @@ class Judge0CEProvider(BuiltinToolProviderController):
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
+        

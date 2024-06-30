@@ -8,7 +8,7 @@ import StepOne from './step-one'
 import StepTwo from './step-two'
 import StepThree from './step-three'
 import { DataSourceType } from '@/models/datasets'
-import type { DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
 import { fetchDatasetDetail } from '@/service/datasets'
 import type { NotionPage } from '@/models/common'
@@ -17,6 +17,15 @@ import { useDefaultModel } from '@/app/components/header/account-setting/model-p
 
 type DatasetUpdateFormProps = {
   datasetId?: string
+}
+
+const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
+  crawl_sub_pages: true,
+  only_main_content: true,
+  includes: '',
+  excludes: '',
+  limit: 10,
+  max_depth: '',
 }
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
@@ -36,9 +45,13 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setNotionPages(value)
   }
 
+  const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
+  const [crawlOptions, setCrawlOptions] = useState<CrawlOptions>(DEFAULT_CRAWL_OPTIONS)
+
   const updateFileList = (preparedFiles: FileItem[]) => {
     setFiles(preparedFiles)
   }
+  const [fireCrawlJobId, setFireCrawlJobId] = useState('')
 
   const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
     const targetIndex = list.findIndex(file => file.fileID === fileItem.fileID)
@@ -108,31 +121,41 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
         <StepsNavBar step={step} datasetId={datasetId} />
       </div>
       <div className="grow bg-white">
-        {step === 1 && <StepOne
-          hasConnection={hasConnection}
-          onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
-          datasetId={datasetId}
-          dataSourceType={dataSourceType}
-          dataSourceTypeDisable={!!detail?.data_source_type}
-          changeType={setDataSourceType}
-          files={fileList}
-          updateFile={updateFile}
-          updateFileList={updateFileList}
-          notionPages={notionPages}
-          updateNotionPages={updateNotionPages}
-          onStepChange={nextStep}
-        />}
+        <div className={step === 1 ? 'block h-full' : 'hidden'}>
+          <StepOne
+            hasConnection={hasConnection}
+            onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
+            datasetId={datasetId}
+            dataSourceType={dataSourceType}
+            dataSourceTypeDisable={!!detail?.data_source_type}
+            changeType={setDataSourceType}
+            files={fileList}
+            updateFile={updateFile}
+            updateFileList={updateFileList}
+            notionPages={notionPages}
+            updateNotionPages={updateNotionPages}
+            onStepChange={nextStep}
+            websitePages={websitePages}
+            updateWebsitePages={setWebsitePages}
+            onFireCrawlJobIdChange={setFireCrawlJobId}
+            crawlOptions={crawlOptions}
+            onCrawlOptionsChange={setCrawlOptions}
+          />
+        </div>
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
-          hasSetAPIKEY={!!embeddingsDefaultModel}
+          isAPIKeySet={!!embeddingsDefaultModel}
           onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
           indexingType={detail?.indexing_technique}
           datasetId={datasetId}
           dataSourceType={dataSourceType}
           files={fileList.map(file => file.file)}
           notionPages={notionPages}
+          websitePages={websitePages}
+          fireCrawlJobId={fireCrawlJobId}
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
           updateResultCache={updateResultCache}
+          crawlOptions={crawlOptions}
         />}
         {step === 3 && <StepThree
           datasetId={datasetId}

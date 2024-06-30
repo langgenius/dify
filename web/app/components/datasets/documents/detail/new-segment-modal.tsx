@@ -3,10 +3,11 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useParams } from 'next/navigation'
+import { RiCloseLine } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
-import { Hash02, XClose } from '@/app/components/base/icons/src/vender/line/general'
+import { Hash02 } from '@/app/components/base/icons/src/vender/line/general'
 import { ToastContext } from '@/app/components/base/toast'
 import type { SegmentUpdator } from '@/models/datasets'
 import { addSegment } from '@/service/datasets'
@@ -110,11 +111,11 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   }
 
   return (
-    <Modal isShow={isShow} onClose={() => {}} className='pt-8 px-8 pb-6 !max-w-[640px] !rounded-xl'>
+    <Modal isShow={isShow} onClose={() => { }} className='pt-8 px-8 pb-6 !max-w-[640px] !rounded-xl'>
       <div className={'flex flex-col relative'}>
         <div className='absolute right-0 -top-0.5 flex items-center h-6'>
           <div className='flex justify-center items-center w-6 h-6 cursor-pointer' onClick={handleCancel}>
-            <XClose className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='w-4 h-4 text-gray-500' />
           </div>
         </div>
         <div className='mb-[14px]'>
@@ -136,13 +137,11 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         </div>
         <div className='flex justify-end'>
           <Button
-            className='mr-2 !h-9 !px-4 !py-2 text-sm font-medium text-gray-700 !rounded-lg'
             onClick={handleCancel}>
             {t('common.operation.cancel')}
           </Button>
           <Button
-            type='primary'
-            className='!h-9 !px-4 !py-2 text-sm font-medium !rounded-lg'
+            variant='primary'
             onClick={handleSave}
             disabled={loading}
           >

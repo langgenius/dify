@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: '공개 URL',
       preview: '미리보기',
       regenerate: '재생성',
+      regenerateNotice: '공개 URL을 재생성하시겠습니까?',
       preUseReminder: '계속하기 전에 웹앱을 활성화하세요.',
       settings: {
         entry: '설정',
@@ -43,6 +44,15 @@ const translation = {
         webDescTip: '이 텍스트는 클라이언트 측에서 표시되며, 애플리케이션의 사용 방법에 대한 기본적인 안내를 제공합니다.',
         webDescPlaceholder: '웹앱 설명을 입력하세요',
         language: '언어',
+        workflow: {
+          title: '워크플로 단계',
+          show: '표시',
+          hide: '숨기기',
+        },
+        chatColorTheme: '챗봇 색상 테마',
+        chatColorThemeDesc: '챗봇의 색상 테마를 설정하세요',
+        chatColorThemeInverted: '반전',
+        invalidHexMessage: '잘못된 16진수 값',
         more: {
           entry: '추가 설정 보기',
           copyright: '저작권',

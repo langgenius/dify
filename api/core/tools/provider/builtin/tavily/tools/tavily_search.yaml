@@ -62,17 +62,17 @@ parameters:
       pt_BR: Include images in the search results
     form: form
     options:
-      - value: true
+      - value: 'true'
         label:
-          en_US: Yes
+          en_US: 'Yes'
           zh_Hans: 是
-          pt_BR: Yes
-      - value: false
+          pt_BR: 'Yes'
+      - value: 'false'
         label:
-          en_US: No
+          en_US: 'No'
           zh_Hans: 否
-          pt_BR: No
-    default: false
+          pt_BR: 'No'
+    default: 'false'
   - name: include_answer
     type: boolean
     required: false
@@ -86,17 +86,17 @@ parameters:
       pt_BR: Include answers in the search results
     form: form
     options:
-      - value: true
+      - value: 'true'
         label:
-          en_US: Yes
+          en_US: 'Yes'
           zh_Hans: 是
-          pt_BR: Yes
-      - value: false
+          pt_BR: 'Yes'
+      - value: 'false'
         label:
-          en_US: No
+          en_US: 'No'
           zh_Hans: 否
-          pt_BR: No
-    default: false
+          pt_BR: 'No'
+    default: 'false'
   - name: include_raw_content
     type: boolean
     required: false
@@ -110,17 +110,17 @@ parameters:
       pt_BR: Include raw content in the search results
     form: form
     options:
-      - value: true
+      - value: 'true'
         label:
-          en_US: Yes
+          en_US: 'Yes'
           zh_Hans: 是
-          pt_BR: Yes
-      - value: false
+          pt_BR: 'Yes'
+      - value: 'false'
         label:
-          en_US: No
+          en_US: 'No'
           zh_Hans: 否
-          pt_BR: No
-    default: false
+          pt_BR: 'No'
+    default: 'false'
   - name: max_results
     type: number
     required: false

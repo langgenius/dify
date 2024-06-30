@@ -26,6 +26,15 @@ parameter_rules:
     default: 6144
     min: 1
     max: 16384
+  - name: mask_sensitive_info
+    type: boolean
+    default: true
+    label:
+      zh_Hans: 隐私保护
+      en_US: Moderate
+    help:
+      zh_Hans: 对输出中易涉及隐私问题的文本信息进行打码，目前包括但不限于邮箱、域名、链接、证件号、家庭住址等，默认true，即开启打码
+      en_US: Mask the sensitive info of the generated content, such as email/domain/link/address/phone/id..
   - name: presence_penalty
     use_template: presence_penalty
   - name: frequency_penalty

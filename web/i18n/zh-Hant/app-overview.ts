@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: '公開訪問 URL',
       preview: '預覽',
       regenerate: '重新生成',
+      regenerateNotice: '您是否要重新生成公開訪問 URL？',
       preUseReminder: '使用前請先開啟開關',
       settings: {
         entry: '設定',
@@ -43,6 +44,15 @@ const translation = {
         webDescTip: '以下文字將展示在客戶端中，對應用進行說明和使用上的基本引導',
         webDescPlaceholder: '請輸入 WebApp 的描述',
         language: '語言',
+        workflow: {
+          title: '工作流程步驟',
+          show: '展示',
+          hide: '隱藏',
+        },
+        chatColorTheme: '聊天顏色主題',
+        chatColorThemeDesc: '設定聊天機器人的顏色主題',
+        chatColorThemeInverted: '反轉',
+        invalidHexMessage: '無效的十六進制值',
         more: {
           entry: '展示更多設定',
           copyright: '版權',

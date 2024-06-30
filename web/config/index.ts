@@ -33,6 +33,8 @@ export const PUBLIC_API_PREFIX: string = publicApiPrefix
 const EDITION = process.env.NEXT_PUBLIC_EDITION || globalThis.document?.body?.getAttribute('data-public-edition') || 'SELF_HOSTED'
 export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
 
+export const SUPPORT_MAIL_LOGIN = !!(process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN || globalThis.document?.body?.getAttribute('data-public-support-mail-login'))
+
 export const TONE_LIST = [
   {
     id: 1,
@@ -100,7 +102,7 @@ export const DEFAULT_PARAGRAPH_VALUE_MAX_LEN = 1000
 
 export const zhRegex = /^[\u4E00-\u9FA5]$/m
 export const emojiRegex = /^[\uD800-\uDBFF][\uDC00-\uDFFF]$/m
-export const emailRegex = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/m
+export const emailRegex = /^[\w.!#$%&'*+\-/=?^{|}~]+@([\w-]+\.)+[\w-]{2,}$/m
 const MAX_ZN_VAR_NAME_LENGHT = 8
 const MAX_EN_VAR_VALUE_LENGHT = 30
 export const getMaxVarNameLength = (value: string) => {

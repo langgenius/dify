@@ -35,8 +35,8 @@ class TagListApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -67,8 +67,8 @@ class TagUpdateDeleteApi(Resource):
     @account_initialization_required
     def patch(self, tag_id):
         tag_id = str(tag_id)
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -94,8 +94,8 @@ class TagUpdateDeleteApi(Resource):
     @account_initialization_required
     def delete(self, tag_id):
         tag_id = str(tag_id)
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         TagService.delete_tag(tag_id)
@@ -109,8 +109,8 @@ class TagBindingCreateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -134,8 +134,8 @@ class TagBindingDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()

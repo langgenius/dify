@@ -93,6 +93,13 @@ class AudioService:
             raise ProviderNotSupportTextToSpeechServiceError()
 
         try:
+            if not voice:
+                voices = model_instance.get_tts_voices()
+                if voices:
+                    voice = voices[0].get('value')
+                else:
+                    raise ValueError("Sorry, no voice available.")
+
             return model_instance.invoke_tts(
                 content_text=text.strip(),
                 user=end_user,

@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: '公开访问 URL',
       preview: '预览',
       regenerate: '重新生成',
+      regenerateNotice: '您是否要重新生成公开访问 URL？',
       preUseReminder: '使用前请先打开开关',
       settings: {
         entry: '设置',
@@ -43,6 +44,15 @@ const translation = {
         webDescTip: '以下文字将展示在客户端中，对应用进行说明和使用上的基本引导',
         webDescPlaceholder: '请输入 WebApp 的描述',
         language: '语言',
+        workflow: {
+          title: '工作流详情',
+          show: '显示',
+          hide: '隐藏',
+        },
+        chatColorTheme: '聊天颜色主题',
+        chatColorThemeDesc: '设置聊天机器人的颜色主题',
+        chatColorThemeInverted: '反转',
+        invalidHexMessage: '无效的十六进制值',
         more: {
           entry: '展示更多设置',
           copyright: '版权',

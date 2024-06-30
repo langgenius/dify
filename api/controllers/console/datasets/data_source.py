@@ -16,7 +16,7 @@ from extensions.ext_database import db
 from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
 from libs.login import login_required
 from models.dataset import Document
-from models.source import DataSourceBinding
+from models.source import DataSourceOauthBinding
 from services.dataset_service import DatasetService, DocumentService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 
@@ -29,9 +29,9 @@ class DataSourceApi(Resource):
     @marshal_with(integrate_list_fields)
     def get(self):
         # get workspace data source integrates
-        data_source_integrates = db.session.query(DataSourceBinding).filter(
-            DataSourceBinding.tenant_id == current_user.current_tenant_id,
-            DataSourceBinding.disabled == False
+        data_source_integrates = db.session.query(DataSourceOauthBinding).filter(
+            DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+            DataSourceOauthBinding.disabled == False
         ).all()
 
         base_url = request.url_root.rstrip('/')
@@ -71,7 +71,7 @@ class DataSourceApi(Resource):
     def patch(self, binding_id, action):
         binding_id = str(binding_id)
         action = str(action)
-        data_source_binding = DataSourceBinding.query.filter_by(
+        data_source_binding = DataSourceOauthBinding.query.filter_by(
             id=binding_id
         ).first()
         if data_source_binding is None:
@@ -124,7 +124,7 @@ class DataSourceNotionListApi(Resource):
                     data_source_info = json.loads(document.data_source_info)
                     exist_page_ids.append(data_source_info['notion_page_id'])
         # get all authorized pages
-        data_source_bindings = DataSourceBinding.query.filter_by(
+        data_source_bindings = DataSourceOauthBinding.query.filter_by(
             tenant_id=current_user.current_tenant_id,
             provider='notion',
             disabled=False
@@ -163,12 +163,12 @@ class DataSourceNotionApi(Resource):
     def get(self, workspace_id, page_id, page_type):
         workspace_id = str(workspace_id)
         page_id = str(page_id)
-        data_source_binding = DataSourceBinding.query.filter(
+        data_source_binding = DataSourceOauthBinding.query.filter(
             db.and_(
-                DataSourceBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceBinding.provider == 'notion',
-                DataSourceBinding.disabled == False,
-                DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.provider == 'notion',
+                DataSourceOauthBinding.disabled == False,
+                DataSourceOauthBinding.source_info['workspace_id'] == f'"{workspace_id}"'
             )
         ).first()
         if not data_source_binding:

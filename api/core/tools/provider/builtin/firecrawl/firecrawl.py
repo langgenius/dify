@@ -8,7 +8,7 @@ class FirecrawlProvider(BuiltinToolProviderController):
         try:
             # Example validation using the Crawl tool
             CrawlTool().fork_tool_runtime(
-                meta={"credentials": credentials}
+                runtime={"credentials": credentials}
             ).invoke(
                 user_id='',
                 tool_parameters={
@@ -21,3 +21,4 @@ class FirecrawlProvider(BuiltinToolProviderController):
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
+        

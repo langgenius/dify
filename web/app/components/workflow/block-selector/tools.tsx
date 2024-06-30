@@ -1,41 +1,28 @@
 import {
   memo,
   useCallback,
-  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import type { ToolWithProvider } from '../types'
-import { useStore } from '../store'
 import type { ToolDefaultValue } from './types'
 import Tooltip from '@/app/components/base/tooltip'
+import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { useGetLanguage } from '@/context/i18n'
 
 type ToolsProps = {
-  isCustom?: boolean
+  showWorkflowEmpty: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
-  searchText: string
+  tools: ToolWithProvider[]
 }
 const Blocks = ({
-  isCustom,
-  searchText,
+  showWorkflowEmpty,
   onSelect,
+  tools,
 }: ToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-
-  const tools = useMemo(() => {
-    const currentTools = isCustom ? customTools : buildInTools
-
-    return currentTools.filter((toolWithProvider) => {
-      return toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(searchText.toLowerCase())
-      })
-    })
-  }, [isCustom, customTools, buildInTools, searchText, language])
 
   const renderGroup = useCallback((toolWithProvider: ToolWithProvider) => {
     const list = toolWithProvider.tools
@@ -97,10 +84,15 @@ const Blocks = ({
   return (
     <div className='p-1 max-w-[320px] max-h-[464px] overflow-y-auto'>
       {
-        !tools.length && (
+        !tools.length && !showWorkflowEmpty && (
           <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>{t('workflow.tabs.noResult')}</div>
         )
       }
+      {!tools.length && showWorkflowEmpty && (
+        <div className='py-10'>
+          <Empty/>
+        </div>
+      )}
       {
         !!tools.length && tools.map(renderGroup)
       }

@@ -1,3 +1,4 @@
+export { default as D } from './D'
 export { default as DiagonalDividingLine } from './DiagonalDividingLine'
 export { default as Dify } from './Dify'
 export { default as Github } from './Github'

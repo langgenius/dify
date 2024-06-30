@@ -10,6 +10,8 @@ identity:
     zh_Hans: GitHub是一个在线软件源代码托管服务平台。
     pt_BR: GitHub é uma plataforma online para serviços de hospedagem de código fonte de software.
   icon: icon.svg
+  tags:
+    - utilities
 credentials_for_provider:
   access_tokens:
     type: secret-input

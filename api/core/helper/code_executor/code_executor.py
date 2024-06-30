@@ -1,4 +1,5 @@
 import logging
+import os
 import time
 from enum import Enum
 from threading import Lock
@@ -8,18 +9,17 @@ from httpx import get, post
 from pydantic import BaseModel
 from yarl import URL
 
-from config import get_env
 from core.helper.code_executor.entities import CodeDependency
 from core.helper.code_executor.javascript.javascript_transformer import NodeJsTemplateTransformer
 from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTransformer
-from core.helper.code_executor.python3.python3_transformer import PYTHON_STANDARD_PACKAGES, Python3TemplateTransformer
+from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
 from core.helper.code_executor.template_transformer import TemplateTransformer
 
 logger = logging.getLogger(__name__)
 
 # Code Executor
-CODE_EXECUTION_ENDPOINT = get_env('CODE_EXECUTION_ENDPOINT')
-CODE_EXECUTION_API_KEY = get_env('CODE_EXECUTION_API_KEY')
+CODE_EXECUTION_ENDPOINT = os.environ.get('CODE_EXECUTION_ENDPOINT', 'http://sandbox:8194')
+CODE_EXECUTION_API_KEY = os.environ.get('CODE_EXECUTION_API_KEY', 'dify-sandbox')
 
 CODE_EXECUTION_TIMEOUT= (10, 60)
 
@@ -28,8 +28,8 @@ class CodeExecutionException(Exception):
 
 class CodeExecutionResponse(BaseModel):
     class Data(BaseModel):
-        stdout: Optional[str]
-        error: Optional[str]
+        stdout: Optional[str] = None
+        error: Optional[str] = None
 
     code: int
     message: str
@@ -88,7 +88,7 @@ class CodeExecutor:
         }
 
         if dependencies:
-            data['dependencies'] = [dependency.dict() for dependency in dependencies]
+            data['dependencies'] = [dependency.model_dump() for dependency in dependencies]
 
         try:
             response = post(str(url), json=data, headers=headers, timeout=CODE_EXECUTION_TIMEOUT)
@@ -99,7 +99,9 @@ class CodeExecutor:
         except CodeExecutionException as e:
             raise e
         except Exception as e:
-            raise CodeExecutionException('Failed to execute code, this is likely a network issue, please check if the sandbox service is running')
+            raise CodeExecutionException('Failed to execute code, which is likely a network issue,'
+                                         ' please check if the sandbox service is running.'
+                                         f' ( Error: {str(e)} )')
         
         try:
             response = response.json()
@@ -187,7 +189,8 @@ class CodeExecutor:
             response = response.json()
             dependencies = response.get('data', {}).get('dependencies', [])
             return [
-                CodeDependency(**dependency) for dependency in dependencies if dependency.get('name') not in PYTHON_STANDARD_PACKAGES
+                CodeDependency(**dependency) for dependency in dependencies
+                if dependency.get('name') not in Python3TemplateTransformer.get_standard_packages()
             ]
         except Exception as e:
             logger.exception(f'Failed to list dependencies: {e}')

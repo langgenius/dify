@@ -128,7 +128,7 @@ const TextAreaWithButton = ({
             <div>
               <Button
                 onClick={onSubmit}
-                type="primary"
+                variant="primary"
                 loading={loading}
                 disabled={(!text?.length || text?.length > 200)}
               >

@@ -3,12 +3,12 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { uniqueId } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
+import { RiQuestionLine } from '@remixicon/react'
 import type { PromptItem, Variable } from '../../../types'
 import { EditionType } from '../../../types'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { PromptRole } from '@/models/debug'
 
 const i18nPrefix = 'workflow.nodes.llm'
@@ -111,7 +111,7 @@ const ConfigPromptItem: FC<Props> = ({
               <div className='max-w-[180px]'>{t(`${i18nPrefix}.roleDescription.${payload.role}`)}</div>
             }
           >
-            <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
+            <RiQuestionLine className='w-3.5 h-3.5 text-gray-400' />
           </TooltipPlus>
         </div>
       }

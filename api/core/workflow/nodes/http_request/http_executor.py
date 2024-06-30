@@ -6,7 +6,6 @@ from typing import Any, Optional, Union
 from urllib.parse import urlencode
 
 import httpx
-import requests
 
 import core.helper.ssrf_proxy as ssrf_proxy
 from core.workflow.entities.variable_entities import VariableSelector
@@ -22,14 +21,11 @@ READABLE_MAX_TEXT_SIZE = f'{MAX_TEXT_SIZE / 1024 / 1024:.2f}MB'
 
 class HttpExecutorResponse:
     headers: dict[str, str]
-    response: Union[httpx.Response, requests.Response]
+    response: httpx.Response
 
-    def __init__(self, response: Union[httpx.Response, requests.Response] = None):
-        self.headers = {}
-        if isinstance(response, httpx.Response | requests.Response):
-            for k, v in response.headers.items():
-                self.headers[k] = v
+    def __init__(self, response: httpx.Response = None):
         self.response = response
+        self.headers = dict(response.headers) if isinstance(self.response, httpx.Response) else {}
 
     @property
     def is_file(self) -> bool:
@@ -42,7 +38,8 @@ class HttpExecutorResponse:
         return any(v in content_type for v in file_content_types)
 
     def get_content_type(self) -> str:
-        return self.headers.get('content-type')
+        return self.headers.get('content-type', '')
+
 
     def extract_file(self) -> tuple[str, bytes]:
         """
@@ -55,46 +52,31 @@ class HttpExecutorResponse:
 
     @property
     def content(self) -> str:
-        """
-        get content
-        """
-        if isinstance(self.response, httpx.Response | requests.Response):
+        if isinstance(self.response, httpx.Response):
             return self.response.text
         else:
             raise ValueError(f'Invalid response type {type(self.response)}')
 
     @property
     def body(self) -> bytes:
-        """
-        get body
-        """
-        if isinstance(self.response, httpx.Response | requests.Response):
+        if isinstance(self.response, httpx.Response):
             return self.response.content
         else:
             raise ValueError(f'Invalid response type {type(self.response)}')
 
     @property
     def status_code(self) -> int:
-        """
-        get status code
-        """
-        if isinstance(self.response, httpx.Response | requests.Response):
+        if isinstance(self.response, httpx.Response):
             return self.response.status_code
         else:
             raise ValueError(f'Invalid response type {type(self.response)}')
 
     @property
     def size(self) -> int:
-        """
-        get size
-        """
         return len(self.body)
 
     @property
     def readable_size(self) -> str:
-        """
-        get readable size
-        """
         if self.size < 1024:
             return f'{self.size} bytes'
         elif self.size < 1024 * 1024:
@@ -145,13 +127,9 @@ class HttpExecutor:
         return False
 
     @staticmethod
-    def _to_dict(convert_item: str, convert_text: str, maxsplit: int = -1):
+    def _to_dict(convert_text: str):
         """
         Convert the string like `aa:bb\n cc:dd` to dict `{aa:bb, cc:dd}`
-        :param convert_item: A label for what item to be converted, params, headers or body.
-        :param convert_text: The string containing key-value pairs separated by '\n'.
-        :param maxsplit: The maximum number of splits allowed for the ':' character in each key-value pair. Default is -1 (no limit).
-        :return: A dictionary containing the key-value pairs from the input string.
         """
         kv_paris = convert_text.split('\n')
         result = {}
@@ -159,13 +137,11 @@ class HttpExecutor:
             if not kv.strip():
                 continue
 
-            kv = kv.split(':', maxsplit=maxsplit)
-            if len(kv) == 2:
-                k, v = kv
-            elif len(kv) == 1:
+            kv = kv.split(':', maxsplit=1)
+            if len(kv) == 1:
                 k, v = kv[0], ''
             else:
-                raise ValueError(f'Invalid {convert_item} {kv}')
+                k, v = kv
             result[k.strip()] = v
         return result
 
@@ -176,11 +152,11 @@ class HttpExecutor:
 
         # extract all template in params
         params, params_variable_selectors = self._format_template(node_data.params, variable_pool)
-        self.params = self._to_dict("params", params)
+        self.params = self._to_dict(params)
 
         # extract all template in headers
         headers, headers_variable_selectors = self._format_template(node_data.headers, variable_pool)
-        self.headers = self._to_dict("headers", headers)
+        self.headers = self._to_dict(headers)
 
         # extract all template in body
         body_data_variable_selectors = []
@@ -192,13 +168,14 @@ class HttpExecutor:
             if body_data:
                 body_data, body_data_variable_selectors = self._format_template(body_data, variable_pool, is_valid_json)
 
-            if node_data.body.type == 'json':
+            content_type_is_set = any(key.lower() == 'content-type' for key in self.headers)
+            if node_data.body.type == 'json' and not content_type_is_set:
                 self.headers['Content-Type'] = 'application/json'
-            elif node_data.body.type == 'x-www-form-urlencoded':
+            elif node_data.body.type == 'x-www-form-urlencoded' and not content_type_is_set:
                 self.headers['Content-Type'] = 'application/x-www-form-urlencoded'
 
             if node_data.body.type in ['form-data', 'x-www-form-urlencoded']:
-                body = self._to_dict("body", body_data, 1)
+                body = self._to_dict(body_data)
 
                 if node_data.body.type == 'form-data':
                     self.files = {
@@ -237,11 +214,11 @@ class HttpExecutor:
 
         return headers
 
-    def _validate_and_parse_response(self, response: Union[httpx.Response, requests.Response]) -> HttpExecutorResponse:
+    def _validate_and_parse_response(self, response: httpx.Response) -> HttpExecutorResponse:
         """
             validate the response
         """
-        if isinstance(response, httpx.Response | requests.Response):
+        if isinstance(response, httpx.Response):
             executor_response = HttpExecutorResponse(response)
         else:
             raise ValueError(f'Invalid response type {type(response)}')
@@ -269,9 +246,7 @@ class HttpExecutor:
             'follow_redirects': True
         }
 
-        if self.method in ('get', 'head', 'options'):
-            response = getattr(ssrf_proxy, self.method)(**kwargs)
-        elif self.method in ('post', 'put', 'delete', 'patch'):
+        if self.method in ('get', 'head', 'post', 'put', 'delete', 'patch'):
             response = getattr(ssrf_proxy, self.method)(data=self.body, files=self.files, **kwargs)
         else:
             raise ValueError(f'Invalid http method {self.method}')

@@ -10,6 +10,9 @@ identity:
     zh_Hans: Judge0 CE 是一个开源的代码执行系统。支持多种语言，包括 C、C++、Java、Python、Ruby 等。
     pt_BR: Judge0 CE é um sistema de execução de código de código aberto. Suporta várias linguagens, incluindo C, C++, Java, Python, Ruby, etc.
   icon: icon.svg
+  tags:
+    - utilities
+    - other
 credentials_for_provider:
   X-RapidAPI-Key:
     type: secret-input

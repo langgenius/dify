@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ModelProvider } from '../declarations'
 import {
-  ConfigurateMethodEnum,
+  ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
   PreferredProviderTypeEnum,
 } from '../declarations'
@@ -51,7 +51,7 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
       updateModelProviders()
 
       configurateMethods.forEach((method) => {
-        if (method === ConfigurateMethodEnum.predefinedModel)
+        if (method === ConfigurationMethodEnum.predefinedModel)
           provider.supported_model_types.forEach(modelType => updateModelList(modelType))
       })
 
@@ -73,7 +73,8 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
             </div>
             <div className='flex items-center gap-0.5'>
               <Button
-                className='grow px-0 h-6 bg-white text-xs font-medium rounded-md'
+                className='grow'
+                size='small'
                 onClick={onSetup}
               >
                 <Settings01 className='mr-1 w-3 h-3' />

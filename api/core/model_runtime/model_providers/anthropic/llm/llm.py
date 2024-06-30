@@ -146,7 +146,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         """
         Code block mode wrapper for invoking large language model
         """
-        if 'response_format' in model_parameters and model_parameters['response_format']:
+        if model_parameters.get('response_format'):
             stop = stop or []
             # chat model
             self._transform_chat_json_prompts(
@@ -408,7 +408,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
             "max_retries": 1,
         }
 
-        if 'anthropic_api_url' in credentials and credentials['anthropic_api_url']:
+        if credentials.get('anthropic_api_url'):
             credentials['anthropic_api_url'] = credentials['anthropic_api_url'].rstrip('/')
             credentials_kwargs['base_url'] = credentials['anthropic_api_url']
 

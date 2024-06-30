@@ -72,5 +72,3 @@ class VectorizerTool(BuiltinTool):
             )
         ]
     
-    def is_tool_available(self) -> bool:
-        return len(self.list_default_image_variables()) > 0

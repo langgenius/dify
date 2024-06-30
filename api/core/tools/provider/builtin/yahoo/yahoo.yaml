@@ -10,4 +10,7 @@ identity:
     zh_Hans: 雅虎财经，获取并整理出最新的新闻、股票报价等一切你想要的财经信息。
     pt_BR: Finance, and Yahoo! get the latest news, stock quotes, and interactive chart with Yahoo!
   icon: icon.png
+  tags:
+    - business
+    - finance
 credentials_for_provider:

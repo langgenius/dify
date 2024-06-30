@@ -42,7 +42,6 @@ describe('Send Requests', () => {
     expect(axios).toHaveBeenCalledWith({
       method,
       url: `${BASE_URL}${endpoint}`,
-      data: null,
       params: null,
       headers: {
         Authorization: `Bearer ${difyClient.apiKey}`,

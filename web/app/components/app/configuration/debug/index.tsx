@@ -5,6 +5,9 @@ import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { setAutoFreeze } from 'immer'
 import { useBoolean } from 'ahooks'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
@@ -34,14 +37,14 @@ import { fetchFileUploadConfig } from '@/service/common'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
+import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 type IDebug = {
-  hasSetAPIKEY: boolean
+  isAPIKeySet: boolean
   onSetting: () => void
   inputs: Inputs
   modelParameterParams: Pick<ModelParameterModalProps, 'setModel' | 'onCompletionParamsChange'>
@@ -51,7 +54,7 @@ type IDebug = {
 }
 
 const Debug: FC<IDebug> = ({
-  hasSetAPIKEY = true,
+  isAPIKeySet = true,
   onSetting,
   inputs,
   modelParameterParams,
@@ -368,11 +371,13 @@ const Debug: FC<IDebug> = ({
     handleVisionConfigInMultipleModel()
   }, [multipleModelConfigs, mode])
 
-  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal } = useAppStore(useShallow(state => ({
+  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showPromptLogModal: state.showPromptLogModal,
     setShowPromptLogModal: state.setShowPromptLogModal,
+    showAgentLogModal: state.showAgentLogModal,
+    setShowAgentLogModal: state.setShowAgentLogModal,
   })))
   const [width, setWidth] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
@@ -397,14 +402,11 @@ const Debug: FC<IDebug> = ({
                 ? (
                   <>
                     <Button
-                      className={`
-                        h-8 px-2.5 text-[13px] font-medium text-primary-600 bg-white
-                        ${multipleModelConfigs.length >= 4 && 'opacity-30'}
-                      `}
+                      variant='secondary-accent'
                       onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
                       disabled={multipleModelConfigs.length >= 4}
                     >
-                      <Plus className='mr-1 w-3.5 h-3.5' />
+                      <RiAddLine className='mr-1 w-3.5 h-3.5' />
                       {t('common.modelProvider.addModel')}({multipleModelConfigs.length}/4)
                     </Button>
                     <div className='mx-2 w-[1px] h-[14px] bg-gray-200' />
@@ -413,7 +415,7 @@ const Debug: FC<IDebug> = ({
                 : null
             }
             {mode !== AppType.completion && (
-              <Button className='flex items-center gap-1 !h-8 !bg-white' onClick={clearConversation}>
+              <Button variant='secondary-accent' className='gap-1' onClick={clearConversation}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M2.66663 2.66629V5.99963H3.05463M3.05463 5.99963C3.49719 4.90505 4.29041 3.98823 5.30998 3.39287C6.32954 2.7975 7.51783 2.55724 8.68861 2.70972C9.85938 2.8622 10.9465 3.39882 11.7795 4.23548C12.6126 5.07213 13.1445 6.16154 13.292 7.33296M3.05463 5.99963H5.99996M13.3333 13.333V9.99963H12.946M12.946 9.99963C12.5028 11.0936 11.7093 12.0097 10.6898 12.6045C9.67038 13.1993 8.48245 13.4393 7.31203 13.2869C6.1416 13.1344 5.05476 12.5982 4.22165 11.7621C3.38854 10.926 2.8562 9.83726 2.70796 8.66629M12.946 9.99963H9.99996" stroke="#1C64F2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -435,13 +437,33 @@ const Debug: FC<IDebug> = ({
       </div>
       {
         debugWithMultipleModel && (
-          <div className='grow mt-3 overflow-hidden'>
+          <div className='grow mt-3 overflow-hidden' ref={ref}>
             <DebugWithMultipleModel
               multipleModelConfigs={multipleModelConfigs}
               onMultipleModelConfigsChange={onMultipleModelConfigsChange}
               onDebugWithMultipleModelChange={handleChangeToSingleModel}
               checkCanSend={checkCanSend}
             />
+            {showPromptLogModal && (
+              <PromptLogModal
+                width={width}
+                currentLogItem={currentLogItem}
+                onCancel={() => {
+                  setCurrentLogItem()
+                  setShowPromptLogModal(false)
+                }}
+              />
+            )}
+            {showAgentLogModal && (
+              <AgentLogModal
+                width={width}
+                currentLogItem={currentLogItem}
+                onCancel={() => {
+                  setCurrentLogItem()
+                  setShowAgentLogModal(false)
+                }}
+              />
+            )}
           </div>
         )
       }
@@ -475,6 +497,7 @@ const Debug: FC<IDebug> = ({
                     supportAnnotation
                     appId={appId}
                     varList={varList}
+                    siteInfo={null}
                   />
                 )}
               </div>
@@ -503,7 +526,7 @@ const Debug: FC<IDebug> = ({
           onCancel={handleCancel}
         />
       )}
-      {!hasSetAPIKEY && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
+      {!isAPIKeySet && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
     </>
   )
 }

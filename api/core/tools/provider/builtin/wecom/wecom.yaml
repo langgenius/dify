@@ -10,4 +10,6 @@ identity:
     zh_Hans: 企业微信群机器人
     pt_BR: Wecom group bot
   icon: icon.png
+  tags:
+    - social
 credentials_for_provider:

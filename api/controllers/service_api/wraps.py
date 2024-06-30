@@ -8,7 +8,7 @@ from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restful import Resource
 from pydantic import BaseModel
-from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
+from werkzeug.exceptions import Forbidden, Unauthorized
 
 from extensions.ext_database import db
 from libs.login import _get_user
@@ -39,17 +39,17 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
 
             app_model = db.session.query(App).filter(App.id == api_token.app_id).first()
             if not app_model:
-                raise NotFound()
+                raise Forbidden("The app no longer exists.")
 
             if app_model.status != 'normal':
-                raise NotFound()
+                raise Forbidden("The app's status is abnormal.")
 
             if not app_model.enable_api:
-                raise NotFound()
+                raise Forbidden("The app's API service has been disabled.")
 
             tenant = db.session.query(Tenant).filter(Tenant.id == app_model.tenant_id).first()
             if tenant.status == TenantStatus.ARCHIVE:
-                raise NotFound()
+                raise Forbidden("The workspace's status is archived.")
 
             kwargs['app_model'] = app_model
 

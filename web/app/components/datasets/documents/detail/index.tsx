@@ -150,6 +150,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               scene='detail'
               embeddingAvailable={embeddingAvailable}
               detail={{
+                name: documentDetail?.name || '',
                 enabled: documentDetail?.enabled || false,
                 archived: documentDetail?.archived || false,
                 id: documentId,

@@ -10,6 +10,8 @@ identity:
     zh_Hans: Tavily
     pt_BR: Tavily
   icon: icon.png
+  tags:
+    - search
 credentials_for_provider:
   tavily_api_key:
     type: secret-input

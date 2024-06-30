@@ -9,9 +9,9 @@ import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs
 import type { RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
-import CopyBtn from '@/app/components/app/chat/copy-btn'
-import SVGBtn from '@/app/components/app/chat/svg'
-import Flowchart from '@/app/components/app/chat/mermaid'
+import CopyBtn from '@/app/components/base/copy-btn'
+import SVGBtn from '@/app/components/base/svg'
+import Flowchart from '@/app/components/base/mermaid'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -39,6 +39,15 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 
   return language.charAt(0).toUpperCase() + language.substring(1)
 }
+
+const preprocessLaTeX = (content: string) => {
+  if (typeof content !== 'string')
+    return content
+  return content.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
+    .replace(/\\\((.*?)\\\)/gs, (_, equation) => `$$${equation}$$`)
+    .replace(/(^|[^\\])\$(.+?)\$/gs, (_, prefix, equation) => `${prefix}$${equation}$`)
+}
+
 export function PreCode(props: { children: any }) {
   const ref = useRef<HTMLPreElement>(null)
 
@@ -82,12 +91,13 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
 
 export function Markdown(props: { content: string; className?: string }) {
   const [isSVG, setIsSVG] = useState(false)
+  const latexContent = preprocessLaTeX(props.content)
   return (
     <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown
         remarkPlugins={[[RemarkMath, { singleDollarTextMath: false }], RemarkGfm, RemarkBreaks]}
         rehypePlugins={[
-          RehypeKatex,
+          RehypeKatex as any,
         ]}
         components={{
           code({ inline, className, children, ...props }) {
@@ -179,7 +189,7 @@ export function Markdown(props: { content: string; className?: string }) {
         linkTarget='_blank'
       >
         {/* Markdown detect has problem. */}
-        {props.content}
+        {latexContent}
       </ReactMarkdown>
     </div>
   )

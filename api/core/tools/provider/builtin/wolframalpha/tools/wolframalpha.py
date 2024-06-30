@@ -48,7 +48,7 @@ class WolframAlphaTool(BuiltinTool):
             
             if 'success' not in response_data['queryresult'] or response_data['queryresult']['success'] != True:
                 query_result = response_data.get('queryresult', {})
-                if 'error' in query_result and query_result['error']:
+                if query_result.get('error'):
                     if 'msg' in query_result['error']:
                         if query_result['error']['msg'] == 'Invalid appid':
                             raise ToolProviderCredentialValidationError('Invalid appid')

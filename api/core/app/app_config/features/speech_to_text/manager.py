@@ -9,7 +9,7 @@ class SpeechToTextConfigManager:
         speech_to_text = False
         speech_to_text_dict = config.get('speech_to_text')
         if speech_to_text_dict:
-            if 'enabled' in speech_to_text_dict and speech_to_text_dict['enabled']:
+            if speech_to_text_dict.get('enabled'):
                 speech_to_text = True
 
         return speech_to_text

@@ -10,4 +10,6 @@ identity:
     zh_Hans: 一个用于抓取网页的工具。
     pt_BR: Web Scrapper tool kit is used to scrape web
   icon: icon.svg
+  tags:
+    - productivity
 credentials_for_provider:

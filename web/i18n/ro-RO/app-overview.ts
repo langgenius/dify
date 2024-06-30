@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: 'URL public',
       preview: 'Previzualizare',
       regenerate: 'Regenerare',
+      regenerateNotice: 'Doriți să regenerați URL-ul public?',
       preUseReminder: 'Activați aplicația web înainte de a continua.',
       settings: {
         entry: 'Setări',
@@ -43,6 +44,15 @@ const translation = {
         webDescTip: 'Acest text va fi afișat pe partea clientului, oferind îndrumare de bază privind modul de utilizare a aplicației',
         webDescPlaceholder: 'Introduceți descrierea aplicației web',
         language: 'Limbă',
+        workflow: {
+          title: 'Pași flux de lucru',
+          show: 'Afișați',
+          hide: 'Ascundeți',
+        },
+        chatColorTheme: 'Tema de culoare a chatului',
+        chatColorThemeDesc: 'Setați tema de culoare a chatbotului',
+        chatColorThemeInverted: 'Inversat',
+        invalidHexMessage: 'Valoare hex nevalidă',
         more: {
           entry: 'Afișați mai multe setări',
           copyright: 'Drepturi de autor',

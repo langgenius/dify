@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { RiCloseLine } from '@remixicon/react'
 import s from './style.module.css'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
@@ -15,7 +16,6 @@ import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import EmojiPicker from '@/app/components/base/emoji-picker'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import type { App } from '@/types/app'
@@ -37,7 +37,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const { notify } = useContext(ToastContext)
   const setAppDetail = useAppStore(s => s.setAppDetail)
 
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
@@ -66,7 +66,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         await deleteApp(appDetail.id)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       getRedirection(
-        isCurrentWorkspaceManager,
+        isCurrentWorkspaceEditor,
         {
           id: newAppID,
           mode: appDetail.mode === 'completion' ? 'workflow' : 'advanced-chat',
@@ -87,13 +87,12 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   return (
     <>
       <Modal
-        wrapperClassName='z-20'
         className={cn('p-8 max-w-[600px] w-[600px]', s.bg)}
         isShow={show}
-        onClose={() => {}}
+        onClose={() => { }}
       >
         <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
-          <XClose className='w-4 h-4 text-gray-500' />
+          <RiCloseLine className='w-4 h-4 text-gray-500' />
         </div>
         <div className='w-12 h-12 p-3 bg-white rounded-xl border-[0.5px] border-gray-100 shadow-xl'>
           <AlertTriangle className='w-6 h-6 text-[rgb(247,144,9)]' />
@@ -133,8 +132,8 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
             <label htmlFor="removeOriginal" className="ml-2 text-sm leading-5 text-gray-700 cursor-pointer">{t('app.removeOriginal')}</label>
           </div>
           <div className='flex items-center'>
-            <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-            <Button className='text-sm font-medium border-red-700 border-[0.5px]' disabled={isAppsFull || !name} type="warning" onClick={goStart}>{t('app.switchStart')}</Button>
+            <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
+            <Button className='border-red-700' disabled={isAppsFull || !name} variant="warning" onClick={goStart}>{t('app.switchStart')}</Button>
           </div>
         </div>
       </Modal>

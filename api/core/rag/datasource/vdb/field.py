@@ -8,3 +8,4 @@ class Field(Enum):
     VECTOR = "vector"
     TEXT_KEY = "text"
     PRIMARY_KEY = "id"
+    DOC_ID = "metadata.doc_id"

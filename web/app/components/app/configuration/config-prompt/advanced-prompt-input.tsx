@@ -7,19 +7,25 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
 import produce from 'immer'
+import {
+  RiDeleteBinLine,
+  RiErrorWarningFill,
+  RiQuestionLine,
+} from '@remixicon/react'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import type { PromptRole, PromptVariable } from '@/models/debug'
-import { HelpCircle, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
-import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
+import {
+  Clipboard,
+  ClipboardCheck,
+} from '@/app/components/base/icons/src/vender/line/files'
 import Tooltip from '@/app/components/base/tooltip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
 import { getNewVar, getVars } from '@/utils/var'
 import { AppType } from '@/types/app'
-import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { useModalContext } from '@/context/modal-context'
 import type { ExternalDataTool } from '@/models/common'
 import { useToastContext } from '@/app/components/base/toast'
@@ -140,7 +146,7 @@ const AdvancedPromptInput: FC<Props> = ({
       }}
     >
       <div className='flex items-center pr-2' >
-        <AlertCircle className='mr-1 w-4 h-4 text-[#F79009]' />
+        <RiErrorWarningFill className='mr-1 w-4 h-4 text-[#F79009]' />
         <div className='leading-[18px] text-[13px] font-medium text-[#DC6803]'>{t('appDebug.promptMode.contextMissing')}</div>
       </div>
       <div
@@ -170,12 +176,12 @@ const AdvancedPromptInput: FC<Props> = ({
                         {t('appDebug.promptTip')}
                       </div>}
                       selector='config-prompt-tooltip'>
-                      <HelpCircle className='w-[14px] h-[14px] text-indigo-400' />
+                      <RiQuestionLine className='w-[14px] h-[14px] text-indigo-400' />
                     </Tooltip>
                   </div>)}
               <div className={cn(s.optionWrap, 'items-center space-x-1')}>
                 {canDelete && (
-                  <Trash03 onClick={onDelete} className='h-6 w-6 p-1 text-gray-500 cursor-pointer' />
+                  <RiDeleteBinLine onClick={onDelete} className='h-6 w-6 p-1 text-gray-500 cursor-pointer' />
                 )}
                 {!isCopied
                   ? (

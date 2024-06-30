@@ -1,0 +1,93 @@
+identity:
+  name: jina_search
+  author: Dify
+  label:
+    en_US: JinaSearch
+    zh_Hans: JinaSearch
+    pt_BR: JinaSearch
+description:
+  human:
+    en_US: Search on the web and get the top 5 results. Useful for grounding using information from the web.
+    zh_Hans: 在网络上搜索返回前 5 个结果。
+  llm: A tool for searching results on the web for grounding. Input should be a simple question.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Question (Query)
+      zh_Hans: 信息查询
+    human_description:
+      en_US: used to find information on the web
+      zh_Hans: 在网络上搜索信息
+    llm_description: simple question to ask on the web
+    form: llm
+  - name: image_caption
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Image caption
+      zh_Hans: 图片说明
+      pt_BR: Legenda da imagem
+    human_description:
+      en_US: "Captions all images at the specified URL, adding 'Image [idx]: [caption]' as an alt tag for those without one. This allows downstream LLMs to interact with the images in activities such as reasoning and summarizing."
+      zh_Hans: "为指定 URL 上的所有图像添加标题，为没有标题的图像添加“Image [idx]: [caption]”作为 alt 标签。这允许下游 LLM 在推理和总结等活动中与图像进行交互。"
+      pt_BR: "Captions all images at the specified URL, adding 'Image [idx]: [caption]' as an alt tag for those without one. This allows downstream LLMs to interact with the images in activities such as reasoning and summarizing."
+    llm_description: Captions all images at the specified URL
+    form: form
+  - name: gather_all_links_at_the_end
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Gather all links at the end
+      zh_Hans: 将所有链接集中到最后
+      pt_BR: Coletar todos os links ao final
+    human_description:
+      en_US: A "Buttons & Links" section will be created at the end. This helps the downstream LLMs or web agents navigating the page or take further actions.
+      zh_Hans: 最后会创建一个“按钮和链接”部分。这可以帮助下游 LLM 或 Web 代理浏览页面或采取进一步的行动。
+      pt_BR: A "Buttons & Links" section will be created at the end. This helps the downstream LLMs or web agents navigating the page or take further actions.
+    llm_description: Gather all links at the end
+    form: form
+  - name: gather_all_images_at_the_end
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Gather all images at the end
+      zh_Hans: 将所有图片集中到最后
+      pt_BR: Coletar todas as imagens ao final
+    human_description:
+      en_US: An "Images" section will be created at the end. This gives the downstream LLMs an overview of all visuals on the page, which may improve reasoning.
+      zh_Hans: 最后会创建一个“图像”部分。这可以让下游的 LLM 概览页面上的所有视觉效果，从而提高推理能力。
+      pt_BR: An "Images" section will be created at the end. This gives the downstream LLMs an overview of all visuals on the page, which may improve reasoning.
+    llm_description: Gather all images at the end
+    form: form
+  - name: proxy_server
+    type: string
+    required: false
+    label:
+      en_US: Proxy server
+      zh_Hans: 代理服务器
+      pt_BR: Servidor de proxy
+    human_description:
+      en_US: Use proxy to access URLs
+      zh_Hans: 利用代理访问 URL
+      pt_BR: Use proxy to access URLs
+    llm_description: Use proxy to access URLs
+    form: form
+  - name: no_cache
+    type: boolean
+    required: false
+    default: false
+    label:
+      en_US: Bypass the Cache
+      zh_Hans: 绕过缓存
+      pt_BR: Ignorar o cache
+    human_description:
+      en_US: Bypass the Cache
+      zh_Hans: 是否绕过缓存
+      pt_BR: Ignorar o cache
+    llm_description: bypass the cache
+    form: form

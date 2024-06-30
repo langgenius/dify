@@ -85,6 +85,42 @@ const translation = {
     workflow: 'Workflow',
     completion: 'Completion',
   },
+  tracing: {
+    title: 'Tracing app performance',
+    description: 'Configuring a Third-Party LLMOps provider and tracing app performance.',
+    config: 'Config',
+    collapse: 'Collapse',
+    expand: 'Expand',
+    tracing: 'Tracing',
+    disabled: 'Disabled',
+    disabledTip: 'Please config provider first',
+    enabled: 'In Service',
+    tracingDescription: 'Capture the full context of app execution, including LLM calls, context, prompts, HTTP requests, and more, to a third-party tracing platform.',
+    configProviderTitle: {
+      configured: 'Configured',
+      notConfigured: 'Config provider to enable tracing',
+      moreProvider: 'More Provider',
+    },
+    langsmith: {
+      title: 'LangSmith',
+      description: 'An all-in-one developer platform for every step of the LLM-powered application lifecycle.',
+    },
+    langfuse: {
+      title: 'Langfuse',
+      description: 'Traces, evals, prompt management and metrics to debug and improve your LLM application.',
+    },
+    inUse: 'In use',
+    configProvider: {
+      title: 'Config ',
+      placeholder: 'Enter your {{key}}',
+      project: 'Project',
+      publicKey: 'Public Key',
+      secretKey: 'Secret Key',
+      viewDocsLink: 'View {{key}} docs',
+      removeConfirmTitle: 'Remove {{key}} configuration?',
+      removeConfirmContent: 'The current configuration is in use, removing it will turn off the Tracing feature.',
+    },
+  },
 }
 
 export default translation

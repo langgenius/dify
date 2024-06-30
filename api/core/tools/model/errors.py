@@ -1,2 +1,0 @@
-class InvokeModelError(Exception):
-    pass

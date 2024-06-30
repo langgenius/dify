@@ -1,9 +1,9 @@
-import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnNodeFinished, IOnNodeStarted, IOnTextChunk, IOnTextReplace, IOnThought, IOnWorkflowFinished, IOnWorkflowStarted } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnIterationFinished, IOnIterationNexted, IOnIterationStarted, IOnMessageEnd, IOnMessageReplace, IOnNodeFinished, IOnNodeStarted, IOnTextChunk, IOnTextReplace, IOnThought, IOnWorkflowFinished, IOnWorkflowStarted } from './base'
 import {
   del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
 } from './base'
-import type { Feedbacktype } from '@/app/components/app/chat/type'
+import type { Feedbacktype } from '@/app/components/base/chat/chat/type'
 import type {
   AppConversationData,
   AppData,
@@ -73,6 +73,9 @@ export const sendWorkflowMessage = async (
     onNodeStarted,
     onNodeFinished,
     onWorkflowFinished,
+    onIterationStart,
+    onIterationNext,
+    onIterationFinish,
     onTextChunk,
     onTextReplace,
   }: {
@@ -80,6 +83,9 @@ export const sendWorkflowMessage = async (
     onNodeStarted: IOnNodeStarted
     onNodeFinished: IOnNodeFinished
     onWorkflowFinished: IOnWorkflowFinished
+    onIterationStart: IOnIterationStarted
+    onIterationNext: IOnIterationNexted
+    onIterationFinish: IOnIterationFinished
     onTextChunk: IOnTextChunk
     onTextReplace: IOnTextReplace
   },
@@ -91,7 +97,7 @@ export const sendWorkflowMessage = async (
       ...body,
       response_mode: 'streaming',
     },
-  }, { onNodeStarted, onWorkflowStarted, onWorkflowFinished, isPublicAPI: !isInstalledApp, onNodeFinished, onTextChunk, onTextReplace })
+  }, { onNodeStarted, onWorkflowStarted, onWorkflowFinished, isPublicAPI: !isInstalledApp, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onTextChunk, onTextReplace })
 }
 
 export const fetchAppInfo = async () => {
@@ -156,6 +162,15 @@ export const fetchWebOIDCSSOUrl = async (appCode: string, redirectUrl: string) =
       redirect_url: redirectUrl,
     },
 
+  }) as Promise<{ url: string }>
+}
+
+export const fetchWebOAuth2SSOUrl = async (appCode: string, redirectUrl: string) => {
+  return (getAction('get', false))(getUrl('/enterprise/sso/oauth2/login', false, ''), {
+    params: {
+      app_code: appCode,
+      redirect_url: redirectUrl,
+    },
   }) as Promise<{ url: string }>
 }
 

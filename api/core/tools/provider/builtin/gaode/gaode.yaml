@@ -10,6 +10,11 @@ identity:
     zh_Hans: 高德开放平台服务工具包。
     pt_BR: Kit de ferramentas de serviço Autonavi Open Platform.
   icon: icon.svg
+  tags:
+    - utilities
+    - productivity
+    - travel
+    - weather
 credentials_for_provider:
   api_key:
     type: secret-input

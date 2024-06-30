@@ -337,7 +337,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   const {
     availableVars,
-    availableNodes,
+    availableNodesWithParent,
   } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
     filterVar,
@@ -437,7 +437,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     filterInputVar,
     filterVar,
     availableVars,
-    availableNodes,
+    availableNodesWithParent,
     handlePromptChange,
     handleMemoryChange,
     handleSyeQueryChange,

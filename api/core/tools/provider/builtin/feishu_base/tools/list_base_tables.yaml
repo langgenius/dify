@@ -1,0 +1,65 @@
+identity:
+  name: list_base_tables
+  author: Doug Lea
+  label:
+    en_US: List Base Tables
+    zh_Hans: 根据 app_token 获取多维表格下的所有数据表
+description:
+  human:
+    en_US: List base tables
+    zh_Hans: |
+      根据 app_token 获取多维表格下的所有数据表
+  llm: A tool for getting all data tables under a multidimensional table based on app_token.
+parameters:
+  - name: Authorization
+    type: string
+    required: true
+    label:
+      en_US: token
+      zh_Hans: 凭证
+    human_description:
+      en_US: API access token parameter, tenant_access_token or user_access_token
+      zh_Hans: API 的访问凭证参数，tenant_access_token 或 user_access_token
+    llm_description: API access token parameter, tenant_access_token or user_access_token
+    form: llm
+
+  - name: app_token
+    type: string
+    required: true
+    label:
+      en_US: app_token
+      zh_Hans: 多维表格
+    human_description:
+      en_US: bitable app token
+      zh_Hans: 多维表格的唯一标识符 app_token
+    llm_description: bitable app token
+    form: llm
+
+  - name: page_token
+    type: string
+    required: false
+    label:
+      en_US: page_token
+      zh_Hans: 分页标记
+    human_description:
+      en_US: Pagination mark. If it is not filled in the first request, it means to traverse from the beginning.
+      zh_Hans: 分页标记，第一次请求不填，表示从头开始遍历。
+    llm_description: |
+      Pagination token. If it is not filled in the first request, it means to start traversal from the beginning.
+      If there are more items in the pagination query result, a new page_token will be returned at the same time.
+      The page_token can be used to obtain the query result in the next traversal.
+      分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
+    form: llm
+
+  - name: page_size
+    type: number
+    required: false
+    default: 20
+    label:
+      en_US: page_size
+      zh_Hans: 分页大小
+    human_description:
+      en_US: paging size
+      zh_Hans: 分页大小，默认值为 20，最大值为 100。
+    llm_description: The default value of paging size is 20 and the maximum value is 100.
+    form: llm

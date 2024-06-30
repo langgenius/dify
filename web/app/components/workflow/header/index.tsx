@@ -2,13 +2,20 @@ import type { FC } from 'react'
 import {
   memo,
   useCallback,
+  useMemo,
 } from 'react'
+import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
   useStore,
   useWorkflowStore,
 } from '../store'
+import {
+  BlockEnum,
+  InputVarType,
+} from '../types'
+import type { StartNodeType } from '../nodes/start/types'
 import {
   useChecklistBeforePublish,
   useNodesReadOnly,
@@ -29,6 +36,7 @@ import Button from '@/app/components/base/button'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { publishWorkflow } from '@/service/workflow'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import { useFeatures } from '@/app/components/base/features/hooks'
 
 const Header: FC = () => {
   const { t } = useTranslation()
@@ -42,6 +50,28 @@ const Header: FC = () => {
   } = useNodesReadOnly()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
+  const toolPublished = useStore(s => s.toolPublished)
+  const nodes = useNodes<StartNodeType>()
+  const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const startVariables = startNode?.data.variables
+  const fileSettings = useFeatures(s => s.features.file)
+  const variables = useMemo(() => {
+    const data = startVariables || []
+    if (fileSettings?.image?.enabled) {
+      return [
+        ...data,
+        {
+          type: InputVarType.files,
+          variable: '__image',
+          required: false,
+          label: 'files',
+        },
+      ]
+    }
+
+    return data
+  }, [fileSettings?.image?.enabled, startVariables])
+
   const {
     handleLoadBackupDraft,
     handleBackupDraft,
@@ -58,13 +88,13 @@ const Header: FC = () => {
 
   const handleShowFeatures = useCallback(() => {
     const {
+      showFeaturesPanel,
       isRestoring,
       setShowFeaturesPanel,
     } = workflowStore.getState()
     if (getNodesReadOnly() && !isRestoring)
       return
-
-    setShowFeaturesPanel(true)
+    setShowFeaturesPanel(!showFeaturesPanel)
   }, [workflowStore, getNodesReadOnly])
 
   const handleCancelRestore = useCallback(() => {
@@ -108,6 +138,10 @@ const Header: FC = () => {
     workflowStore.setState({ historyWorkflowData: undefined })
   }, [workflowStore, handleLoadBackupDraft])
 
+  const handleToolConfigureUpdate = useCallback(() => {
+    workflowStore.setState({ toolPublished: true })
+  }, [workflowStore])
+
   return (
     <div
       className='absolute top-0 left-0 z-10 flex items-center justify-between w-full px-3 h-14'
@@ -137,11 +171,7 @@ const Header: FC = () => {
             <RunAndHistory />
             <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
             <Button
-              className={`
-                mr-2 px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
-                border-[0.5px] border-gray-200 shadow-xs
-                ${nodesReadOnly && 'opacity-50 !cursor-not-allowed'}
-              `}
+              className='mr-2'
               onClick={handleShowFeatures}
             >
               <Grid01 className='w-4 h-4 mr-1 text-gray-500' />
@@ -152,6 +182,9 @@ const Header: FC = () => {
                 publishedAt,
                 draftUpdatedAt,
                 disabled: Boolean(getNodesReadOnly()),
+                toolPublished,
+                inputs: variables,
+                onRefreshData: handleToolConfigureUpdate,
                 onPublish,
                 onRestore: onStartRestoring,
                 onToggle: onPublisherToggle,
@@ -169,11 +202,8 @@ const Header: FC = () => {
             <ViewHistory withText />
             <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
             <Button
-              type='primary'
-              className={`
-                mr-2 px-3 py-0 h-8 text-[13px] font-medium
-                border-[0.5px] border-gray-200 shadow-xs
-              `}
+              variant='primary'
+              className='mr-2'
               onClick={handleGoBackToEdit}
             >
               <ArrowNarrowLeft className='w-4 h-4 mr-1' />
@@ -186,10 +216,6 @@ const Header: FC = () => {
         restoring && (
           <div className='flex items-center'>
             <Button
-              className={`
-                px-3 py-0 h-8 bg-white text-[13px] font-medium text-gray-700
-                border-[0.5px] border-gray-200 shadow-xs
-              `}
               onClick={handleShowFeatures}
             >
               <Grid01 className='w-4 h-4 mr-1 text-gray-500' />
@@ -197,15 +223,14 @@ const Header: FC = () => {
             </Button>
             <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
             <Button
-              className='mr-2 px-3 py-0 h-8 bg-white text-[13px] text-gray-700 font-medium border-[0.5px] border-gray-200 shadow-xs'
+              className='mr-2'
               onClick={handleCancelRestore}
             >
               {t('common.operation.cancel')}
             </Button>
             <Button
-              className='px-3 py-0 h-8 text-[13px] font-medium shadow-xs'
               onClick={handleRestore}
-              type='primary'
+              variant='primary'
             >
               {t('workflow.common.restore')}
             </Button>

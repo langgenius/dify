@@ -8,6 +8,9 @@ identity:
     en_US: AI-generated PPT with one click, input your content topic, and let AI serve you one-stop
     zh_Hans: AI一键生成PPT，输入你的内容主题，让AI为你一站式服务到底
   icon: icon.png
+  tags:
+    - productivity
+    - design
 credentials_for_provider:
   aippt_access_key:
     type: secret-input

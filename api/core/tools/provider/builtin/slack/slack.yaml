@@ -10,4 +10,7 @@ identity:
     zh_Hans: Slack Webhook
     pt_BR: Slack Webhook
   icon: icon.svg
+  tags:
+    - social
+    - productivity
 credentials_for_provider:

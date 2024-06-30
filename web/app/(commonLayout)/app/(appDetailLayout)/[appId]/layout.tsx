@@ -4,6 +4,16 @@ import { useUnmount } from 'ahooks'
 import React, { useCallback, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import cn from 'classnames'
+import {
+  RiDashboard2Fill,
+  RiDashboard2Line,
+  RiFileList3Fill,
+  RiFileList3Line,
+  RiTerminalBoxFill,
+  RiTerminalBoxLine,
+  RiTerminalWindowFill,
+  RiTerminalWindowLine,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import s from './style.module.css'
@@ -13,8 +23,6 @@ import type { NavIcon } from '@/app/components/app-sidebar/navLink'
 import { fetchAppDetail } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
-import { BarChartSquare02, FileHeart02, PromptEngineering, TerminalSquare } from '@/app/components/base/icons/src/vender/line/development'
-import { BarChartSquare02 as BarChartSquare02Solid, FileHeart02 as FileHeart02Solid, PromptEngineering as PromptEngineeringSolid, TerminalSquare as TerminalSquareSolid } from '@/app/components/base/icons/src/vender/solid/development'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 export type IAppDetailLayoutProps = {
@@ -32,7 +40,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
   const { appDetail, setAppDetail, setAppSiderbarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
@@ -45,36 +53,39 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     selectedIcon: NavIcon
   }>>([])
 
-  const getNavigations = useCallback((appId: string, isCurrentWorkspaceManager: boolean, mode: string) => {
+  const getNavigations = useCallback((appId: string, isCurrentWorkspaceManager: boolean, isCurrentWorkspaceEditor: boolean, mode: string) => {
     const navs = [
-      ...(isCurrentWorkspaceManager
+      ...(isCurrentWorkspaceEditor
         ? [{
           name: t('common.appMenus.promptEng'),
           href: `/app/${appId}/${(mode === 'workflow' || mode === 'advanced-chat') ? 'workflow' : 'configuration'}`,
-          icon: PromptEngineering,
-          selectedIcon: PromptEngineeringSolid,
+          icon: RiTerminalWindowLine,
+          selectedIcon: RiTerminalWindowFill,
         }]
         : []
       ),
       {
         name: t('common.appMenus.apiAccess'),
         href: `/app/${appId}/develop`,
-        icon: TerminalSquare,
-        selectedIcon: TerminalSquareSolid,
+        icon: RiTerminalBoxLine,
+        selectedIcon: RiTerminalBoxFill,
       },
-      {
-        name: mode !== 'workflow'
-          ? t('common.appMenus.logAndAnn')
-          : t('common.appMenus.logs'),
-        href: `/app/${appId}/logs`,
-        icon: FileHeart02,
-        selectedIcon: FileHeart02Solid,
-      },
+      ...(isCurrentWorkspaceManager
+        ? [{
+          name: mode !== 'workflow'
+            ? t('common.appMenus.logAndAnn')
+            : t('common.appMenus.logs'),
+          href: `/app/${appId}/logs`,
+          icon: RiFileList3Line,
+          selectedIcon: RiFileList3Fill,
+        }]
+        : []
+      ),
       {
         name: t('common.appMenus.overview'),
         href: `/app/${appId}/overview`,
-        icon: BarChartSquare02,
-        selectedIcon: BarChartSquare02Solid,
+        icon: RiDashboard2Line,
+        selectedIcon: RiDashboard2Fill,
       },
     ]
     return navs
@@ -104,10 +115,13 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       }
       else {
         setAppDetail(res)
-        setNavigation(getNavigations(appId, isCurrentWorkspaceManager, res.mode))
+        setNavigation(getNavigations(appId, isCurrentWorkspaceManager, isCurrentWorkspaceEditor, res.mode))
       }
+    }).catch((e: any) => {
+      if (e.status === 404)
+        router.replace('/apps')
     })
-  }, [appId, isCurrentWorkspaceManager])
+  }, [appId, isCurrentWorkspaceManager, isCurrentWorkspaceEditor])
 
   useUnmount(() => {
     setAppDetail()

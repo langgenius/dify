@@ -25,7 +25,7 @@ class TimestampField(fields.Raw):
 
 def email(email):
     # Define a regex pattern for email addresses
-    pattern = r"^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$"
+    pattern = r"^[\w\.!#$%&'*+\-/=?^_`{|}~]+@([\w-]+\.)+[\w-]{2,}$"
     # Check if the email matches the pattern
     if re.match(pattern, email) is not None:
         return email
@@ -46,7 +46,13 @@ def uuid_value(value):
         error = ('{value} is not a valid uuid.'
                  .format(value=value))
         raise ValueError(error)
-
+    
+def alphanumeric(value: str):
+    # check if the value is alphanumeric and underlined
+    if re.match(r'^[a-zA-Z0-9_]+$', value):
+        return value
+    
+    raise ValueError(f'{value} is not a valid alphanumeric value')
 
 def timestamp_value(timestamp):
     try:
@@ -134,7 +140,7 @@ def generate_string(n):
     return result
 
 
-def get_remote_ip(request):
+def get_remote_ip(request) -> str:
     if request.headers.get('CF-Connecting-IP'):
         return request.headers.get('Cf-Connecting-Ip')
     elif request.headers.getlist("X-Forwarded-For"):

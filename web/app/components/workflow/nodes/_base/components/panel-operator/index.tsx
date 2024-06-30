@@ -3,9 +3,9 @@ import {
   useCallback,
   useState,
 } from 'react'
+import { RiMoreFill } from '@remixicon/react'
 import type { OffsetOptions } from '@floating-ui/react'
 import PanelOperatorPopup from './panel-operator-popup'
-import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -20,6 +20,7 @@ type PanelOperatorProps = {
   offset?: OffsetOptions
   onOpenChange?: (open: boolean) => void
   inNode?: boolean
+  showHelpLink?: boolean
 }
 const PanelOperator = ({
   id,
@@ -31,6 +32,7 @@ const PanelOperator = ({
   },
   onOpenChange,
   inNode,
+  showHelpLink = true,
 }: PanelOperatorProps) => {
   const [open, setOpen] = useState(false)
 
@@ -57,7 +59,7 @@ const PanelOperator = ({
             ${triggerClassName}
           `}
         >
-          <DotsHorizontal className={`w-4 h-4 ${inNode ? 'text-gray-500' : 'text-gray-700'}`} />
+          <RiMoreFill className={`w-4 h-4 ${inNode ? 'text-gray-500' : 'text-gray-700'}`} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
@@ -65,6 +67,7 @@ const PanelOperator = ({
           id={id}
           data={data}
           onClosePopup={() => setOpen(false)}
+          showHelpLink={showHelpLink}
         />
       </PortalToFollowElemContent>
     </PortalToFollowElem>

@@ -1,13 +1,14 @@
 from os import path
-from typing import cast
+from typing import Optional, cast
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
+from core.tools.tool.tool import Tool
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.tool.entities import ToolNodeData
@@ -35,21 +36,23 @@ class ToolNode(BaseNode):
             'provider_id': node_data.provider_id
         }
 
-        # get parameters
-        parameters = self._generate_parameters(variable_pool, node_data)
         # get tool runtime
         try:
-            self.app_id
-            tool_runtime = ToolManager.get_workflow_tool_runtime(self.tenant_id, self.app_id, self.node_id, node_data)
+            tool_runtime = ToolManager.get_workflow_tool_runtime(
+                self.tenant_id, self.app_id, self.node_id, node_data, self.invoke_from
+            )
         except Exception as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
-                inputs=parameters,
+                inputs={},
                 metadata={
                     NodeRunMetadataKey.TOOL_INFO: tool_info
                 },
                 error=f'Failed to get tool runtime: {str(e)}'
             )
+        
+        # get parameters
+        parameters = self._generate_parameters(variable_pool, node_data, tool_runtime)
 
         try:
             messages = ToolEngine.workflow_invoke(
@@ -57,7 +60,8 @@ class ToolNode(BaseNode):
                 tool_parameters=parameters,
                 user_id=self.user_id,
                 workflow_id=self.workflow_id, 
-                workflow_tool_callback=DifyWorkflowCallbackHandler()
+                workflow_tool_callback=DifyWorkflowCallbackHandler(),
+                workflow_call_depth=self.workflow_call_depth,
             )
         except Exception as e:
             return NodeRunResult(
@@ -70,13 +74,14 @@ class ToolNode(BaseNode):
             )
 
         # convert tool messages
-        plain_text, files = self._convert_tool_messages(messages)
+        plain_text, files, json = self._convert_tool_messages(messages)
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             outputs={
                 'text': plain_text,
-                'files': files
+                'files': files,
+                'json': json
             },
             metadata={
                 NodeRunMetadataKey.TOOL_INFO: tool_info
@@ -84,19 +89,32 @@ class ToolNode(BaseNode):
             inputs=parameters
         )
 
-    def _generate_parameters(self, variable_pool: VariablePool, node_data: ToolNodeData) -> dict:
+    def _generate_parameters(self, variable_pool: VariablePool, node_data: ToolNodeData, tool_runtime: Tool) -> dict:
         """
             Generate parameters
         """
+        tool_parameters = tool_runtime.get_all_runtime_parameters()
+
+        def fetch_parameter(name: str) -> Optional[ToolParameter]:
+            return next((parameter for parameter in tool_parameters if parameter.name == name), None)
+
         result = {}
         for parameter_name in node_data.tool_parameters:
-            input = node_data.tool_parameters[parameter_name]
-            if input.type == 'mixed':
-                result[parameter_name] = self._format_variable_template(input.value, variable_pool)
-            elif input.type == 'variable':
-                result[parameter_name] = variable_pool.get_variable_value(input.value)
-            elif input.type == 'constant':
-                result[parameter_name] = input.value
+            parameter = fetch_parameter(parameter_name)
+            if not parameter:
+                continue
+            if parameter.type == ToolParameter.ToolParameterType.FILE:
+                result[parameter_name] = [
+                    v.to_dict() for v in self._fetch_files(variable_pool)
+                ]
+            else:
+                input = node_data.tool_parameters[parameter_name]
+                if input.type == 'mixed':
+                    result[parameter_name] = self._format_variable_template(input.value, variable_pool)
+                elif input.type == 'variable':
+                    result[parameter_name] = variable_pool.get_variable_value(input.value)
+                elif input.type == 'constant':
+                    result[parameter_name] = input.value
 
         return result
     
@@ -110,6 +128,13 @@ class ToolNode(BaseNode):
             inputs[selector.variable] = variable_pool.get_variable_value(selector.value_selector)
         
         return template_parser.format(inputs)
+    
+    def _fetch_files(self, variable_pool: VariablePool) -> list[FileVar]:
+        files = variable_pool.get_variable_value(['sys', SystemVariable.FILES.value])
+        if not files:
+            return []
+        
+        return files
 
     def _convert_tool_messages(self, messages: list[ToolInvokeMessage]) -> tuple[str, list[FileVar]]:
         """
@@ -125,8 +150,9 @@ class ToolNode(BaseNode):
         # extract plain text and files
         files = self._extract_tool_response_binary(messages)
         plain_text = self._extract_tool_response_text(messages)
+        json = self._extract_tool_response_json(messages)
 
-        return plain_text, files
+        return plain_text, files, json
 
     def _extract_tool_response_binary(self, tool_response: list[ToolInvokeMessage]) -> list[FileVar]:
         """
@@ -148,6 +174,7 @@ class ToolNode(BaseNode):
                     tenant_id=self.tenant_id,
                     type=FileType.IMAGE,
                     transfer_method=FileTransferMethod.TOOL_FILE,
+                    url=url,
                     related_id=tool_file_id,
                     filename=filename,
                     extension=ext,
@@ -174,11 +201,14 @@ class ToolNode(BaseNode):
         """
         Extract tool response text
         """
-        return ''.join([
-            f'{message.message}\n' if message.type == ToolInvokeMessage.MessageType.TEXT else
-            f'Link: {message.message}\n' if message.type == ToolInvokeMessage.MessageType.LINK else ''
+        return '\n'.join([
+            f'{message.message}' if message.type == ToolInvokeMessage.MessageType.TEXT else
+            f'Link: {message.message}' if message.type == ToolInvokeMessage.MessageType.LINK else ''
             for message in tool_response
         ])
+
+    def _extract_tool_response_json(self, tool_response: list[ToolInvokeMessage]) -> list[dict]:
+        return [message.message for message in tool_response if message.type == ToolInvokeMessage.MessageType.JSON]
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(cls, node_data: ToolNodeData) -> dict[str, list[str]]:

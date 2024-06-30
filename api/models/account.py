@@ -106,6 +106,9 @@ class Account(UserMixin, db.Model):
     def is_admin_or_owner(self):
         return TenantAccountRole.is_privileged_role(self._current_tenant.current_role)
 
+    @property
+    def is_editor(self):
+        return TenantAccountRole.is_editing_role(self._current_tenant.current_role)
 
 class TenantStatus(str, enum.Enum):
     NORMAL = 'normal'
@@ -115,11 +118,24 @@ class TenantStatus(str, enum.Enum):
 class TenantAccountRole(str, enum.Enum):
     OWNER = 'owner'
     ADMIN = 'admin'
+    EDITOR = 'editor'
     NORMAL = 'normal'
 
     @staticmethod
+    def is_valid_role(role: str) -> bool:
+        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.NORMAL}
+
+    @staticmethod
     def is_privileged_role(role: str) -> bool:
-        return role and role in {TenantAccountRole.ADMIN, TenantAccountRole.OWNER}
+        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
+    
+    @staticmethod
+    def is_non_owner_role(role: str) -> bool:
+        return role and role in {TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.NORMAL}
+    
+    @staticmethod
+    def is_editing_role(role: str) -> bool:
+        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
 
 
 class Tenant(db.Model):
@@ -137,8 +153,7 @@ class Tenant(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
-    def get_accounts(self) -> list[db.Model]:
-        Account = db.Model
+    def get_accounts(self) -> list[Account]:
         return db.session.query(Account).filter(
             Account.id == TenantAccountJoin.account_id,
             TenantAccountJoin.tenant_id == self.id

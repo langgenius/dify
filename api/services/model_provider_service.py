@@ -6,7 +6,7 @@ from typing import Optional, cast
 import requests
 from flask import current_app
 
-from core.entities.model_entities import ModelStatus
+from core.entities.model_entities import ModelStatus, ProviderModelWithStatusEntity
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
 from core.model_runtime.model_providers import model_provider_factory
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -16,7 +16,6 @@ from services.entities.model_provider_entities import (
     CustomConfigurationResponse,
     CustomConfigurationStatus,
     DefaultModelResponse,
-    ModelResponse,
     ModelWithProviderEntityResponse,
     ProviderResponse,
     ProviderWithModelsResponse,
@@ -303,6 +302,9 @@ class ModelProviderService:
             if model.deprecated:
                 continue
 
+            if model.status != ModelStatus.ACTIVE:
+                continue
+
             provider_models[model.provider.provider].append(model)
 
         # convert to ProviderWithModelsResponse list
@@ -313,24 +315,22 @@ class ModelProviderService:
 
             first_model = models[0]
 
-            has_active_models = any([model.status == ModelStatus.ACTIVE for model in models])
-
             providers_with_models.append(
                 ProviderWithModelsResponse(
                     provider=provider,
                     label=first_model.provider.label,
                     icon_small=first_model.provider.icon_small,
                     icon_large=first_model.provider.icon_large,
-                    status=CustomConfigurationStatus.ACTIVE
-                    if has_active_models else CustomConfigurationStatus.NO_CONFIGURE,
-                    models=[ModelResponse(
+                    status=CustomConfigurationStatus.ACTIVE,
+                    models=[ProviderModelWithStatusEntity(
                         model=model.model,
                         label=model.label,
                         model_type=model.model_type,
                         features=model.features,
                         fetch_from=model.fetch_from,
                         model_properties=model.model_properties,
-                        status=model.status
+                        status=model.status,
+                        load_balancing_enabled=model.load_balancing_enabled
                     ) for model in models]
                 )
             )
@@ -485,6 +485,54 @@ class ModelProviderService:
 
         # Switch preferred provider type
         provider_configuration.switch_preferred_provider_type(preferred_provider_type_enum)
+
+    def enable_model(self, tenant_id: str, provider: str, model: str, model_type: str) -> None:
+        """
+        enable model.
+
+        :param tenant_id: workspace id
+        :param provider: provider name
+        :param model: model name
+        :param model_type: model type
+        :return:
+        """
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
+
+        # Enable model
+        provider_configuration.enable_model(
+            model=model,
+            model_type=ModelType.value_of(model_type)
+        )
+
+    def disable_model(self, tenant_id: str, provider: str, model: str, model_type: str) -> None:
+        """
+        disable model.
+
+        :param tenant_id: workspace id
+        :param provider: provider name
+        :param model: model name
+        :param model_type: model type
+        :return:
+        """
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
+
+        # Enable model
+        provider_configuration.disable_model(
+            model=model,
+            model_type=ModelType.value_of(model_type)
+        )
 
     def free_quota_submit(self, tenant_id: str, provider: str):
         api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")

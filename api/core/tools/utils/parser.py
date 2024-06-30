@@ -9,22 +9,19 @@ from requests import get
 from yaml import YAMLError, safe_load
 
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_bundle import ApiBasedToolBundle
+from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolParameter
 from core.tools.errors import ToolApiSchemaError, ToolNotSupportedError, ToolProviderNotFoundError
 
 
 class ApiBasedToolSchemaParser:
     @staticmethod
-    def parse_openapi_to_tool_bundle(openapi: dict, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
+    def parse_openapi_to_tool_bundle(openapi: dict, extra_info: dict = None, warning: dict = None) -> list[ApiToolBundle]:
         warning = warning if warning is not None else {}
         extra_info = extra_info if extra_info is not None else {}
 
         # set description to extra_info
-        if 'description' in openapi['info']:
-            extra_info['description'] = openapi['info']['description']
-        else:
-            extra_info['description'] = ''
+        extra_info['description'] = openapi['info'].get('description', '')
 
         if len(openapi['servers']) == 0:
             raise ToolProviderNotFoundError('No server found in the openapi yaml.')
@@ -95,8 +92,8 @@ class ApiBasedToolSchemaParser:
                     # parse body parameters
                     if 'schema' in interface['operation']['requestBody']['content'][content_type]:
                         body_schema = interface['operation']['requestBody']['content'][content_type]['schema']
-                        required = body_schema['required'] if 'required' in body_schema else []
-                        properties = body_schema['properties'] if 'properties' in body_schema else {}
+                        required = body_schema.get('required', [])
+                        properties = body_schema.get('properties', {})
                         for name, property in properties.items():
                             tool = ToolParameter(
                                 name=name,
@@ -105,14 +102,14 @@ class ApiBasedToolSchemaParser:
                                     zh_Hans=name
                                 ),
                                 human_description=I18nObject(
-                                    en_US=property['description'] if 'description' in property else '',
-                                    zh_Hans=property['description'] if 'description' in property else ''
+                                    en_US=property.get('description', ''),
+                                    zh_Hans=property.get('description', '')
                                 ),
                                 type=ToolParameter.ToolParameterType.STRING,
                                 required=name in required,
                                 form=ToolParameter.ToolParameterForm.LLM,
-                                llm_description=property['description'] if 'description' in property else '',
-                                default=property['default'] if 'default' in property else None,
+                                llm_description=property.get('description', ''),
+                                default=property.get('default', None),
                             )
 
                             # check if there is a type
@@ -145,11 +142,11 @@ class ApiBasedToolSchemaParser:
                     
                 interface['operation']['operationId'] = f'{path}_{interface["method"]}'
 
-            bundles.append(ApiBasedToolBundle(
+            bundles.append(ApiToolBundle(
                 server_url=server_url + interface['path'],
                 method=interface['method'],
                 summary=interface['operation']['description'] if 'description' in interface['operation'] else 
-                        interface['operation']['summary'] if 'summary' in interface['operation'] else None,
+                        interface['operation'].get('summary', None),
                 operation_id=interface['operation']['operationId'],
                 parameters=parameters,
                 author='',
@@ -176,7 +173,7 @@ class ApiBasedToolSchemaParser:
             return ToolParameter.ToolParameterType.STRING
 
     @staticmethod
-    def parse_openapi_yaml_to_tool_bundle(yaml: str, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
+    def parse_openapi_yaml_to_tool_bundle(yaml: str, extra_info: dict = None, warning: dict = None) -> list[ApiToolBundle]:
         """
             parse openapi yaml to tool bundle
 
@@ -258,7 +255,7 @@ class ApiBasedToolSchemaParser:
         return openapi
 
     @staticmethod
-    def parse_openai_plugin_json_to_tool_bundle(json: str, extra_info: dict = None, warning: dict = None) -> list[ApiBasedToolBundle]:
+    def parse_openai_plugin_json_to_tool_bundle(json: str, extra_info: dict = None, warning: dict = None) -> list[ApiToolBundle]:
         """
             parse openapi plugin yaml to tool bundle
 
@@ -290,7 +287,7 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(response.text, extra_info=extra_info, warning=warning)
     
     @staticmethod
-    def auto_parse_to_tool_bundle(content: str, extra_info: dict = None, warning: dict = None) -> tuple[list[ApiBasedToolBundle], str]:
+    def auto_parse_to_tool_bundle(content: str, extra_info: dict = None, warning: dict = None) -> tuple[list[ApiToolBundle], str]:
         """
             auto parse to tool bundle
 

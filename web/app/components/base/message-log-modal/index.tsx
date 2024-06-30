@@ -1,20 +1,24 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { useEffect, useRef, useState } from 'react'
-import { useClickAway } from 'ahooks'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-import type { IChatItem } from '@/app/components/app/chat/type'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useBoolean, useClickAway } from 'ahooks'
+import { RiCloseLine } from '@remixicon/react'
+import IterationResultPanel from '../../workflow/run/iteration-result-panel'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import Run from '@/app/components/workflow/run'
+import type { NodeTracing } from '@/types/workflow'
 
 type MessageLogModalProps = {
   currentLogItem?: IChatItem
+  defaultTab?: string
   width: number
   fixedWidth?: boolean
   onCancel: () => void
 }
 const MessageLogModal: FC<MessageLogModalProps> = ({
   currentLogItem,
+  defaultTab = 'DETAIL',
   width,
   fixedWidth,
   onCancel,
@@ -31,6 +35,17 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[][]>([])
+  const [isShowIterationDetail, {
+    setTrue: doShowIterationDetail,
+    setFalse: doHideIterationDetail,
+  }] = useBoolean(false)
+
+  const handleShowIterationDetail = useCallback((detail: NodeTracing[][]) => {
+    setIterationRunResult(detail)
+    doShowIterationDetail()
+  }, [doShowIterationDetail])
 
   if (!currentLogItem || !currentLogItem.workflow_run_id)
     return null
@@ -53,11 +68,28 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
       }}
       ref={ref}
     >
-      <h1 className='shrink-0 px-4 py-1 text-md font-semibold text-gray-900'>{t('appLog.runDetail.title')}</h1>
-      <span className='absolute right-3 top-4 p-1 cursor-pointer z-20' onClick={onCancel}>
-        <XClose className='w-4 h-4 text-gray-500' />
-      </span>
-      <Run hideResult activeTab='DETAIL' runID={currentLogItem.workflow_run_id}/>
+      {isShowIterationDetail
+        ? (
+          <IterationResultPanel
+            list={iterationRunResult}
+            onHide={doHideIterationDetail}
+            onBack={doHideIterationDetail}
+          />
+        )
+        : (
+          <>
+            <h1 className='shrink-0 px-4 py-1 text-md font-semibold text-gray-900'>{t('appLog.runDetail.title')}</h1>
+            <span className='absolute right-3 top-4 p-1 cursor-pointer z-20' onClick={onCancel}>
+              <RiCloseLine className='w-4 h-4 text-gray-500' />
+            </span>
+            <Run
+              hideResult activeTab={defaultTab as any}
+              runID={currentLogItem.workflow_run_id}
+              onShowIterationDetail={handleShowIterationDetail}
+            />
+          </>
+        )}
+
     </div>
   )
 }

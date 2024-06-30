@@ -12,7 +12,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class QRCodeGeneratorTool(BuiltinTool):
-    error_correction_levels = {
+    error_correction_levels: dict[str, int] = {
         'L': ERROR_CORRECT_L,  # <=7%
         'M': ERROR_CORRECT_M,  # <=15%
         'Q': ERROR_CORRECT_Q,  # <=25%

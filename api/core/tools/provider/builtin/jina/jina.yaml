@@ -2,12 +2,31 @@ identity:
   author: Dify
   name: jina
   label:
-    en_US: JinaReader
-    zh_Hans: JinaReader
-    pt_BR: JinaReader
+    en_US: Jina
+    zh_Hans: Jina
+    pt_BR: Jina
   description:
-    en_US: Convert any URL to an LLM-friendly input. Experience improved output for your agent and RAG systems at no cost.
-    zh_Hans: 将任何 URL 转换为 LLM 友好的输入。无需付费即可体验为您的 Agent 和 RAG 系统提供的改进输出。
-    pt_BR: Converta qualquer URL em uma entrada amigável ao LLM. Experimente uma saída aprimorada para seus sistemas de agente e RAG sem custo.
+    en_US: Convert any URL to an LLM-friendly input or perform searches on the web for grounding information. Experience improved output for your agent and RAG systems at no cost.
+    zh_Hans: 将任何URL转换为LLM易读的输入或在网页上搜索引擎上搜索引擎。
+    pt_BR: Converte qualquer URL em uma entrada LLm-fácil de ler ou realize pesquisas na web para obter informação de grounding. Tenha uma experiência melhor para seu agente e sistemas RAG sem custo.
   icon: icon.svg
+  tags:
+    - search
+    - productivity
 credentials_for_provider:
+  api_key:
+    type: secret-input
+    required: false
+    label:
+      en_US: API Key (leave empty if you don't have one)
+      zh_Hans: API 密钥（可留空）
+      pt_BR: Chave API (deixe vazio se você não tiver uma)
+    placeholder:
+      en_US: Please enter your Jina API key
+      zh_Hans: 请输入你的 Jina API 密钥
+      pt_BR: Por favor, insira sua chave de API do Jina
+    help:
+      en_US: Get your Jina API key from Jina (optional, but you can get a higher rate)
+      zh_Hans: 从 Jina 获取您的 Jina API 密钥（非必须，能得到更高的速率）
+      pt_BR: Obtenha sua chave de API do Jina na Jina (opcional, mas você pode obter uma taxa mais alta)
+    url: https://jina.ai

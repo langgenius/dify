@@ -156,11 +156,6 @@ def test_invoke_chat_model(setup_openai_mock):
     assert isinstance(result, LLMResult)
     assert len(result.message.content) > 0
 
-    for chunk in model._llm_result_to_stream(result):
-        assert isinstance(chunk, LLMResultChunk)
-        assert isinstance(chunk.delta, LLMResultChunkDelta)
-        assert isinstance(chunk.delta.message, AssistantPromptMessage)
-        assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
 @pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
 def test_invoke_stream_chat_model(setup_openai_mock):

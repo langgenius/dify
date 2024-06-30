@@ -14,7 +14,7 @@ class FileUploadConfigManager:
         """
         file_upload_dict = config.get('file_upload')
         if file_upload_dict:
-            if 'image' in file_upload_dict and file_upload_dict['image']:
+            if file_upload_dict.get('image'):
                 if 'enabled' in file_upload_dict['image'] and file_upload_dict['image']['enabled']:
                     image_config = {
                         'number_limits': file_upload_dict['image']['number_limits'],

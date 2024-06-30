@@ -39,7 +39,7 @@ class HttpRequestNode(BaseNode):
                     "type": "none"
                 },
                 "timeout": {
-                    **HTTP_REQUEST_DEFAULT_TIMEOUT.dict(),
+                    **HTTP_REQUEST_DEFAULT_TIMEOUT.model_dump(),
                     "max_connect_timeout": MAX_CONNECT_TIMEOUT,
                     "max_read_timeout": MAX_READ_TIMEOUT,
                     "max_write_timeout": MAX_WRITE_TIMEOUT,

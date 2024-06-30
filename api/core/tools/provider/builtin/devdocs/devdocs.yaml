@@ -8,3 +8,6 @@ identity:
     en_US: Get official developer documentations on DevDocs.
     zh_Hans: 从DevDocs获取官方开发者文档。
   icon: icon.svg
+  tags:
+    - search
+    - productivity

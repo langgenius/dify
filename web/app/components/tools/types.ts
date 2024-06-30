@@ -27,6 +27,7 @@ export enum CollectionType {
   builtIn = 'builtin',
   custom = 'api',
   model = 'model',
+  workflow = 'workflow',
 }
 
 export type Emoji = {
@@ -45,6 +46,7 @@ export type Collection = {
   team_credentials: Record<string, any>
   is_team_authorization: boolean
   allow_delete: boolean
+  labels: string[]
 }
 
 export type ToolParameter = {
@@ -52,19 +54,25 @@ export type ToolParameter = {
   label: TypeWithI18N
   human_description: TypeWithI18N
   type: string
+  form: string
+  llm_description: string
   required: boolean
   default: string
   options?: {
     label: TypeWithI18N
     value: string
   }[]
+  min?: number
+  max?: number
 }
 
 export type Tool = {
   name: string
+  author: string
   label: TypeWithI18N
   description: any
   parameters: ToolParameter[]
+  labels: string[]
 }
 
 export type ToolCredential = {
@@ -91,13 +99,17 @@ export type CustomCollectionBackend = {
   privacy_policy: string
   custom_disclaimer: string
   tools?: ParamItem[]
+  id: string
+  labels: string[]
 }
 
 export type ParamItem = {
   name: string
   label: TypeWithI18N
   human_description: TypeWithI18N
+  llm_description: string
   type: string
+  form: string
   required: boolean
   default: string
   min?: number
@@ -114,4 +126,40 @@ export type CustomParamSchema = {
   server_url: string
   method: string
   parameters: ParamItem[]
+}
+
+export type WorkflowToolProviderParameter = {
+  name: string
+  form: string
+  description: string
+  required?: boolean
+  type?: string
+}
+
+export type WorkflowToolProviderRequest = {
+  name: string
+  icon: Emoji
+  description: string
+  parameters: WorkflowToolProviderParameter[]
+  labels: string[]
+  privacy_policy: string
+}
+
+export type WorkflowToolProviderResponse = {
+  workflow_app_id: string
+  workflow_tool_id: string
+  label: string
+  name: string
+  icon: Emoji
+  description: string
+  synced: boolean
+  tool: {
+    author: string
+    name: string
+    label: TypeWithI18N
+    description: TypeWithI18N
+    labels: string[]
+    parameters: ParamItem[]
+  }
+  privacy_policy: string
 }

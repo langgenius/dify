@@ -2,10 +2,10 @@
 
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { RiCloseLine } from '@remixicon/react'
 import s from './style.module.css'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 
@@ -21,13 +21,12 @@ const TagRemoveModal = ({ show, tag, onConfirm, onClose }: TagRemoveModalProps) 
 
   return (
     <Modal
-      wrapperClassName='!z-[1020]'
       className={cn('p-8 max-w-[480px] w-[480px]', s.bg)}
       isShow={show}
-      onClose={() => {}}
+      onClose={() => { }}
     >
       <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
-        <XClose className='w-4 h-4 text-gray-500' />
+        <RiCloseLine className='w-4 h-4 text-gray-500' />
       </div>
       <div className='w-12 h-12 p-3 bg-white rounded-xl border-[0.5px] border-gray-100 shadow-xl'>
         <AlertTriangle className='w-6 h-6 text-[rgb(247,144,9)]' />
@@ -40,8 +39,8 @@ const TagRemoveModal = ({ show, tag, onConfirm, onClose }: TagRemoveModalProps) 
         {t('common.tag.deleteTip')}
       </div>
       <div className='pt-6 flex items-center justify-end'>
-        <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onClose}>{t('common.operation.cancel')}</Button>
-        <Button className='text-sm font-medium border-red-700 border-[0.5px]' type="warning" onClick={onConfirm}>{t('common.operation.delete')}</Button>
+        <Button className='mr-2' onClick={onClose}>{t('common.operation.cancel')}</Button>
+        <Button className='border-red-700' variant="warning" onClick={onConfirm}>{t('common.operation.delete')}</Button>
       </div>
     </Modal>
   )
