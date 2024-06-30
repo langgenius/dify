@@ -115,9 +115,12 @@ class Account(UserMixin, db.Model):
         return TenantAccountRole.is_editing_role(self._current_tenant.current_role)
 
     @property
-    def is_dataset_editing(self):
-        return TenantAccountRole.is_dataset_editing_role(self._current_tenant.current_role)
+    def is_dataset_editor(self):
+        return TenantAccountRole.is_dataset_edit_role(self._current_tenant.current_role)
 
+    @property
+    def is_dataset_operator(self):
+        return self._current_tenant.current_role == TenantAccountRole.DATASET_OPERATOR
 
 class TenantStatus(str, enum.Enum):
     NORMAL = 'normal'
@@ -150,7 +153,7 @@ class TenantAccountRole(str, enum.Enum):
         return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
 
     @staticmethod
-    def is_dataset_editing_role(role: str) -> bool:
+    def is_dataset_edit_role(role: str) -> bool:
         return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR,
                                  TenantAccountRole.DATASET_OPERATOR}
 

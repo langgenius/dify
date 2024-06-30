@@ -71,7 +71,8 @@ class DatasetService:
                 permission_filter = db.or_(
                     Dataset.created_by == user.id,
                     Dataset.permission == 'all_team_members',
-                    Dataset.permission == 'partial_members'
+                    Dataset.permission == 'partial_members',
+                    Dataset.permission == 'only_me'
                 )
                 query = query.filter(permission_filter)
         else:
@@ -94,6 +95,7 @@ class DatasetService:
             max_per_page=100,
             error_out=False
         )
+
         # check datasets permission,
         if user and user.current_role != TenantAccountRole.DATASET_OPERATOR:
             datasets.items, datasets.total = DatasetService.filter_datasets_by_permission(
@@ -311,6 +313,18 @@ class DatasetService:
                 )
 
     @staticmethod
+    def check_dataset_operator_permission(user: Account = None, dataset: Dataset = None):
+        if dataset.permission == 'only_me' or dataset.permission == 'all_team_members':
+            if dataset.created_by != user.id:
+                raise NoPermissionError('You do not have permission to access this dataset.')
+
+        elif dataset.permission == 'partial_members':
+            if not any(
+                dp.dataset_id == dataset.id for dp in DatasetPermission.query.filter_by(account_id=user.id).all()
+            ):
+                raise NoPermissionError('You do not have permission to access this dataset.')
+
+    @staticmethod
     def get_dataset_queries(dataset_id: str, page: int, per_page: int):
         dataset_queries = DatasetQuery.query.filter_by(dataset_id=dataset_id) \
             .order_by(db.desc(DatasetQuery.created_at)) \
@@ -327,17 +341,18 @@ class DatasetService:
     @staticmethod
     def filter_datasets_by_permission(user, datasets):
         dataset_permission = DatasetPermission.query.filter_by(account_id=user.id).all()
-        if dataset_permission:
-            permitted_dataset_ids = {dp.dataset_id for dp in dataset_permission}
-            filtered_datasets = [dataset for dataset in datasets if
-                                 dataset.permission == 'all_team_members' or dataset.permission == 'only_me' or dataset.id in permitted_dataset_ids]
-            if filtered_datasets:
-                return filtered_datasets, len(filtered_datasets)
-        else:
-            all_members_visible_datasets = [dataset for dataset in datasets if dataset.permission == 'all_team_members']
-            return all_members_visible_datasets, len(all_members_visible_datasets)
+        permitted_dataset_ids = {dp.dataset_id for dp in dataset_permission} if dataset_permission else set()
 
-        return [], 0
+        filtered_datasets = [
+            dataset for dataset in datasets if
+            (dataset.permission == 'all_team_members') or
+            (dataset.permission == 'only_me' and dataset.created_by == user.id) or
+            (dataset.id in permitted_dataset_ids)
+        ]
+
+        filtered_count = len(filtered_datasets)
+
+        return filtered_datasets, filtered_count
 
 
 class DocumentService:

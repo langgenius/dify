@@ -228,7 +228,7 @@ class DatasetDocumentListApi(Resource):
             raise NotFound('Dataset not found.')
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        if not current_user.is_dataset_editor:
             raise Forbidden()
 
         try:
@@ -294,6 +294,11 @@ class DatasetInitApi(Resource):
         parser.add_argument('retrieval_model', type=dict, required=False, nullable=False,
                             location='json')
         args = parser.parse_args()
+
+        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
         if args['indexing_technique'] == 'high_quality':
             try:
                 model_manager = ModelManager()
