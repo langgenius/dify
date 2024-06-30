@@ -1,199 +1,113 @@
 x-shared-env: &shared-api-worker-env
-  # The log level for the application. Supported values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
-  # Debug mode, default is false. It is recommended to turn on this configuration for local development to prevent some problems caused by monkey patch.
   DEBUG: ${DEBUG:-false}
-  # Flask debug mode, it can output trace information at the interface when turned on, which is convenient for debugging.
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
-  # A secretkey that is used for securely signing the session cookie and encrypting sensitive information on the database. You can generate a strong key using `openssl rand -base64 42`.
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
-  # Password for admin user initialization.
-  # If left unset, admin user will not be prompted for a password when creating the initial admin account.
   INIT_PASSWORD: ${INIT_PASSWORD:-}
-  # The base URL of console application web frontend, refers to the Console base URL of WEB service if console domain is
-  # different from api or web app domain.
-  # example: http://cloud.dify.ai
   CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-}
-  # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
-  # different from api or web app domain.
-  # example: http://cloud.dify.ai
   CONSOLE_API_URL: ${CONSOLE_API_URL:-}
-  # The URL prefix for Service API endpoints, refers to the base URL of the current API service if api domain is
-  # different from console domain.
-  # example: http://api.dify.ai
   SERVICE_API_URL: ${SERVICE_API_URL:-}
-  # The URL prefix for Web APP frontend, refers to the Web App base URL of WEB service if web app domain is different from
-  # console or api domain.
-  # example: http://udify.app
   APP_WEB_URL: ${APP_WEB_URL:-}
-  # Whether to enable the version check policy. If set to false, https://updates.dify.ai will not be called for version check.
   CHECK_UPDATE_URL: ${CHECK_UPDATE_URL:-true}
-  # Used to change the OpenAI base address, default is https://api.openai.com/v1.
-  # When OpenAI cannot be accessed in China, replace it with a domestic mirror address,
-  # or when a local model provides OpenAI compatible API, it can be replaced.
   OPENAI_API_BASE: ${OPENAI_API_BASE:-}
-  # File preview or download Url prefix.
-  # used to display File preview or download Url to the front-end or as Multi-model inputs;
-  # Url is signed and has expiration time.
   FILES_URL: ${FILES_URL:-}
-  # File Access Time specifies a time interval in seconds for the file to be accessed.
-  # The default value is 300 seconds.
   FILES_ACCESS_TIMEOUT: ${FILES_ACCESS_TIMEOUT:-300}
-  # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
   MIGRATION_ENABLED: ${MIGRATION_ENABLED:-true}
-  # Deployment environment.
-  # Supported values are `PRODUCTION`, `TESTING`. Default is `PRODUCTION`.
-  # Testing environment. There will be a distinct color label on the front-end page,
-  # indicating that this environment is a testing environment.
   DEPLOY_ENV: ${DEPLOY_ENV:-PRODUCTION}
-  # API service binding address, default: 0.0.0.0, i.e., all addresses can be accessed.
   DIFY_BIND_ADDRESS: ${DIFY_BIND_ADDRESS:-0.0.0.0}
-  # API service binding port number, default 5001.
   DIFY_PORT: ${DIFY_PORT:-5001}
-  # The number of API server workers, i.e., the number of gevent workers.
-  # Formula: number of cpu cores x 2 + 1
-  # Reference: https://docs.gunicorn.org/en/stable/design.html#how-many-workers
   SERVER_WORKER_AMOUNT: ${SERVER_WORKER_AMOUNT:-}
-  # Defaults to gevent. If using windows, it can be switched to sync or solo.
   SERVER_WORKER_CLASS: ${SERVER_WORKER_CLASS:-}
-  # Similar to SERVER_WORKER_CLASS. Default is gevent.
-  # If using windows, it can be switched to sync or solo.
   CELERY_WORKER_CLASS: ${CELERY_WORKER_CLASS:-}
-  # Request handling timeout. The default is 200,
-  # it is recommended to set it to 360 to support a longer sse connection time.
   GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-360}
-  # The number of Celery workers. The default is 1, and can be set as needed.
   CELERY_WORKER_AMOUNT: ${CELERY_WORKER_AMOUNT:-}
-  # The configurations of postgres database connection.
-  # It is consistent with the configuration in the 'db' service below.
   DB_USERNAME: ${DB_USERNAME:-postgres}
   DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
   DB_HOST: ${DB_HOST:-db}
   DB_PORT: ${DB_PORT:-5432}
   DB_DATABASE: ${DB_DATABASE:-dify}
-  # The size of the database connection pool.
-  # The default is 30 connections, which can be appropriately increased.
   SQLALCHEMY_POOL_SIZE: ${SQLALCHEMY_POOL_SIZE:-30}
-  # Database connection pool recycling time, the default is 3600 seconds.
   SQLALCHEMY_POOL_RECYCLE: ${SQLALCHEMY_POOL_RECYCLE:-3600}
-  # Whether to print SQL, default is false.
   SQLALCHEMY_ECHO: ${SQLALCHEMY_ECHO:-false}
-  # The configurations of redis connection.
-  # It is consistent with the configuration in the 'redis' service below.
   REDIS_HOST: ${REDIS_HOST:-redis}
   REDIS_PORT: ${REDIS_PORT:-6379}
   REDIS_USERNAME: ${REDIS_USERNAME:-}
   REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
   REDIS_USE_SSL: ${REDIS_USE_SSL:-false}
-  # Redis Database, default is 0. Please use a different Database from Session Redis and Celery Broker.
   REDIS_DB: 0
-  # The configurations of celery broker.
-  # Use redis as the broker, and redis db 1 for celery broker.
   CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
   BROKER_USE_SSL: ${BROKER_USE_SSL:-false}
-  # Specifies the allowed origins for cross-origin requests to the Web API, e.g. https://dify.app or * for all origins.
   WEB_API_CORS_ALLOW_ORIGINS: ${WEB_API_CORS_ALLOW_ORIGINS:-*}
-  # Specifies the allowed origins for cross-origin requests to the console API, e.g. https://cloud.dify.ai or * for all origins.
   CONSOLE_CORS_ALLOW_ORIGINS: ${CONSOLE_CORS_ALLOW_ORIGINS:-*}
-  # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage`, Default: `local`
   STORAGE_TYPE: ${STORAGE_TYPE:-local}
-  # The path to the local storage directory, the directory relative the root path of API service codes or absolute path. Default: `storage` or `/home/john/storage`.
-  # only available when STORAGE_TYPE is `local`.
   STORAGE_LOCAL_PATH: storage
-  # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
   S3_USE_AWS_MANAGED_IAM: ${S3_USE_AWS_MANAGED_IAM:-false}
   S3_ENDPOINT: ${S3_ENDPOINT:-}
   S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
   S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
   S3_SECRET_KEY: ${S3_SECRET_KEY:-}
   S3_REGION: ${S3_REGION:-us-east-1}
-  # The Azure Blob storage configurations, only available when STORAGE_TYPE is `azure-blob`.
   AZURE_BLOB_ACCOUNT_NAME: ${AZURE_BLOB_ACCOUNT_NAME:-}
   AZURE_BLOB_ACCOUNT_KEY: ${AZURE_BLOB_ACCOUNT_KEY:-}
   AZURE_BLOB_CONTAINER_NAME: ${AZURE_BLOB_CONTAINER_NAME:-}
   AZURE_BLOB_ACCOUNT_URL: ${AZURE_BLOB_ACCOUNT_URL:-}
-  # The Google storage configurations, only available when STORAGE_TYPE is `google-storage`.
   GOOGLE_STORAGE_BUCKET_NAME: ${GOOGLE_STORAGE_BUCKET_NAME:-}
-  # if you want to use Application Default Credentials, you can leave GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 empty.
   GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: ${GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64:-}
-  # The Alibaba Cloud OSS configurations, only available when STORAGE_TYPE is `aliyun-oss`
   ALIYUN_OSS_BUCKET_NAME: ${ALIYUN_OSS_BUCKET_NAME:-}
   ALIYUN_OSS_ACCESS_KEY: ${ALIYUN_OSS_ACCESS_KEY:-}
   ALIYUN_OSS_SECRET_KEY: ${ALIYUN_OSS_SECRET_KEY:-}
   ALIYUN_OSS_ENDPOINT: ${ALIYUN_OSS_ENDPOINT:-}
   ALIYUN_OSS_REGION: ${ALIYUN_OSS_REGION:-}
   ALIYUN_OSS_AUTH_VERSION: ${ALIYUN_OSS_AUTH_VERSION:-v4}
-  # The Tencent COS storage configurations, only available when STORAGE_TYPE is `tencent-cos`.
   TENCENT_COS_BUCKET_NAME: ${TENCENT_COS_BUCKET_NAME:-}
   TENCENT_COS_SECRET_KEY: ${TENCENT_COS_SECRET_KEY:-}
   TENCENT_COS_SECRET_ID: ${TENCENT_COS_SECRET_ID:-}
   TENCENT_COS_REGION: ${TENCENT_COS_REGION:-}
   TENCENT_COS_SCHEME: ${TENCENT_COS_SCHEME:-}
-  # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`, `pgvector`, `chroma`, 'opensearch', 'tidb_vector'.
   VECTOR_STORE: ${VECTOR_STORE:-weaviate}
-  # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
   WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
-  # The Weaviate API key.
   WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
-  # The Qdrant endpoint URL. Only available when VECTOR_STORE is `qdrant`.
   QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
-  # The Qdrant API key.
   QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
-  # The Qdrant client timeout setting.
   QDRANT_CLIENT_TIMEOUT: ${QDRANT_CLIENT_TIMEOUT:-20}
-  # The Qdrant client enable gRPC mode.
   QDRANT_GRPC_ENABLED: ${QDRANT_GRPC_ENABLED:-false}
-  # The Qdrant server gRPC mode PORT.
   QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
-  # Milvus configuration Only available when VECTOR_STORE is `milvus`.
-  # The milvus host.
   MILVUS_HOST: ${MILVUS_HOST:-127.0.0.1}
-  # The milvus host.
   MILVUS_PORT: ${MILVUS_PORT:-19530}
-  # The milvus username.
   MILVUS_USER: ${MILVUS_USER:-root}
-  # The milvus password.
   MILVUS_PASSWORD: ${MILVUS_PASSWORD:-Milvus}
-  # The milvus tls switch.
   MILVUS_SECURE: ${MILVUS_SECURE:-false}
-  # relyt configurations
   RELYT_HOST: ${RELYT_HOST:-db}
   RELYT_PORT: ${RELYT_PORT:-5432}
   RELYT_USER: ${RELYT_USER:-postgres}
   RELYT_PASSWORD: ${RELYT_PASSWORD:-difyai123456}
   RELYT_DATABASE: ${RELYT_DATABASE:-postgres}
-  # pgvector configurations
   PGVECTOR_HOST: ${PGVECTOR_HOST:-pgvector}
   PGVECTOR_PORT: ${PGVECTOR_PORT:-5432}
   PGVECTOR_USER: ${PGVECTOR_USER:-postgres}
   PGVECTOR_PASSWORD: ${PGVECTOR_PASSWORD:-difyai123456}
   PGVECTOR_DATABASE: ${PGVECTOR_DATABASE:-dify}
-  # tidb vector configurations
   TIDB_VECTOR_HOST: ${TIDB_VECTOR_HOST:-tidb}
   TIDB_VECTOR_PORT: ${TIDB_VECTOR_PORT:-4000}
   TIDB_VECTOR_USER: ${TIDB_VECTOR_USER:-}
   TIDB_VECTOR_PASSWORD: ${TIDB_VECTOR_PASSWORD:-}
   TIDB_VECTOR_DATABASE: ${TIDB_VECTOR_DATABASE:-dify}
-  # oracle configurations
   ORACLE_HOST: ${ORACLE_HOST:-oracle}
   ORACLE_PORT: ${ORACLE_PORT:-1521}
   ORACLE_USER: ${ORACLE_USER:-dify}
   ORACLE_PASSWORD: ${ORACLE_PASSWORD:-dify}
   ORACLE_DATABASE: ${ORACLE_DATABASE:-FREEPDB1}
-  # Chroma configuration
   CHROMA_HOST: ${CHROMA_HOST:-127.0.0.1}
   CHROMA_PORT: ${CHROMA_PORT:-8000}
   CHROMA_TENANT: ${CHROMA_TENANT:-default_tenant}
   CHROMA_DATABASE: ${CHROMA_DATABASE:-default_database}
   CHROMA_AUTH_PROVIDER: ${CHROMA_AUTH_PROVIDER:-chromadb.auth.token_authn.TokenAuthClientProvider}
   CHROMA_AUTH_CREDENTIALS: ${CHROMA_AUTH_CREDENTIALS:-}
-  # OpenSearch configuration
   OPENSEARCH_HOST: ${OPENSEARCH_HOST:-opensearch}
   OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
   OPENSEARCH_USER: ${OPENSEARCH_USER:-admin}
   OPENSEARCH_PASSWORD: ${OPENSEARCH_PASSWORD:-admin}
   OPENSEARCH_SECURE: ${OPENSEARCH_SECURE:-true}
-  # tencent configurations
   TENCENT_VECTOR_DB_URL: ${TENCENT_VECTOR_DB_URL:-http://127.0.0.1}
   TENCENT_VECTOR_DB_API_KEY: ${TENCENT_VECTOR_DB_API_KEY:-dify}
   TENCENT_VECTOR_DB_TIMEOUT: ${TENCENT_VECTOR_DB_TIMEOUT:-30}
@@ -201,35 +115,20 @@ x-shared-env: &shared-api-worker-env
   TENCENT_VECTOR_DB_DATABASE: ${TENCENT_VECTOR_DB_DATABASE:-dify}
   TENCENT_VECTOR_DB_SHARD: ${TENCENT_VECTOR_DB_SHARD:-1}
   TENCENT_VECTOR_DB_REPLICAS: ${TENCENT_VECTOR_DB_REPLICAS:-2}
-  # Knowledge Configuration
-  # Upload file size limit, default 15M.
   UPLOAD_FILE_SIZE_LIMIT: ${UPLOAD_FILE_SIZE_LIMIT:-15}
-  # The maximum number of files that can be uploaded at a time, default 5.
   UPLOAD_FILE_BATCH_LIMIT: ${UPLOAD_FILE_BATCH_LIMIT:-5}
-  # `dify` Dify's proprietary file extraction scheme
-  # `Unstructured` Unstructured.io file extraction scheme
   ETL_TYPE: ${ETL_TYPE:-dify}
-  # Unstructured API path, needs to be configured when ETL_TYPE is Unstructured.
   UNSTRUCTURED_API_URL: ${UNSTRUCTURED_API_URL:-}
-  # Multi-modal Configuration
-  # The format of the image sent when the multi-modal model is input, the default is base64, optional url.
   MULTIMODAL_SEND_IMAGE_FORMAT: ${MULTIMODAL_SEND_IMAGE_FORMAT:-base64}
-  # Upload image file size limit, default 10M.
   UPLOAD_IMAGE_FILE_SIZE_LIMIT: ${UPLOAD_IMAGE_FILE_SIZE_LIMIT:-10}
-  # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
   SENTRY_DSN: ${API_SENTRY_DSN:-}
-  # The sample rate for Sentry events. Default: `1.0`
   SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
-  # The sample rate for Sentry profiles. Default: `1.0`
   SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
-  # Notion import configuration, support public and internal
   NOTION_INTEGRATION_TYPE: ${NOTION_INTEGRATION_TYPE:-public}
   NOTION_CLIENT_SECRET: ${NOTION_CLIENT_SECRET:-}
   NOTION_CLIENT_ID: ${NOTION_CLIENT_ID:-}
   NOTION_INTERNAL_SECRET: ${NOTION_INTERNAL_SECRET:-}
-  # Mail configuration, support: resend, smtp
   MAIL_TYPE: ${MAIL_TYPE:-resend}
-  # default send from email address, if not specified
   MAIL_DEFAULT_SEND_FROM: ${MAIL_DEFAULT_SEND_FROM:-}
   SMTP_SERVER: ${SMTP_SERVER:-}
   SMTP_PORT: ${SMTP_PORT:-465}
@@ -237,12 +136,9 @@ x-shared-env: &shared-api-worker-env
   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
   SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
   SMTP_OPPORTUNISTIC_TLS: ${SMTP_OPPORTUNISTIC_TLS:-false}
-  # the api-key for resend (https://resend.com)
   RESEND_API_KEY: ${RESEND_API_KEY:-your-resend-api-key}
   RESEND_API_URL: https://api.resend.com
-  # Indexing configuration
   INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-1000}
-  # Other configurations
   INVITE_EXPIRY_HOURS: ${INVITE_EXPIRY_HOURS:-72}
   CODE_EXECUTION_ENDPOINT: ${CODE_EXECUTION_ENDPOINT:-http://sandbox:8194}
   CODE_EXECUTION_API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
@@ -253,8 +149,8 @@ x-shared-env: &shared-api-worker-env
   CODE_MAX_STRING_ARRAY_LENGTH: ${CODE_MAX_STRING_ARRAY_LENGTH:-30}
   CODE_MAX_OBJECT_ARRAY_LENGTH: ${CODE_MAX_OBJECT_ARRAY_LENGTH:-30}
   CODE_MAX_NUMBER_ARRAY_LENGTH: ${CODE_MAX_NUMBER_ARRAY_LENGTH:-1000}
-  SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-'http://ssrf_proxy:3128'}
-  SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-'http://ssrf_proxy:3128'}
+  SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-http://ssrf_proxy:3128}
+  SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
 
 services:
   # API service
@@ -389,8 +285,9 @@ services:
     entrypoint: [ "sh", "-c", "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
     environment:
       NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
-      HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
+      NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
       NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
+      NGINX_PORT: ${NGINX_PORT:-80}
       # You're required to add your own SSL certificates/keys to the `./nginx/ssl` directory
       # and modify the env vars below in .env if HTTPS_ENABLED is true.
       NGINX_SSL_CERT_FILENAME: ${NGINX_SSL_CERT_FILENAME:-dify.crt}
@@ -405,13 +302,14 @@ services:
       - api
       - web
     ports:
-      - "${EXPOSE_NGINX_PORT:-80}:80"
-      - "${EXPOSE_NGINX_SSL_PORT:-443}:443"
+      - "${NGINX_PORT:-80}:${EXPOSE_NGINX_PORT:-80}"
+      - "${NGINX_SSL_PORT:-443}:${EXPOSE_NGINX_SSL_PORT:-443}"
 
   # The Weaviate vector store.
   weaviate:
     image: semitechnologies/weaviate:1.19.0
     profiles:
+      - ''
       - weaviate
     restart: always
     volumes:
@@ -500,6 +398,7 @@ services:
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
 
+  # Oracle vector database
   oracle:
     image: container-registry.oracle.com/database/free:latest
     profiles:
@@ -579,6 +478,7 @@ services:
     networks:
       - milvus
 
+  # Opensearch vector database
   opensearch:
     container_name: opensearch
     image: opensearchproject/opensearch:latest
