@@ -65,7 +65,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        # invoke anthropic models via anthropic official SDK
+        # TODO: consolidate different invocation methods for models based on base model capabilities
+        # invoke anthropic models via boto3 client
         if "anthropic" in model:
             return self._generate_anthropic(model, credentials, prompt_messages, model_parameters, stop, stream, user)
         # invoke Cohere models via boto3 client
