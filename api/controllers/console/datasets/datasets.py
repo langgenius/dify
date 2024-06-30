@@ -229,6 +229,10 @@ class DatasetApi(Resource):
             DatasetPermissionService.update_partial_member_list(dataset_id_str, data.get('partial_member_list'))
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             result_data.update({'partial_member_list': part_users_list})
+        else:
+            partial_member_list = []
+            DatasetPermissionService.update_partial_member_list(dataset_id_str, partial_member_list)
+            result_data.update({'partial_member_list': partial_member_list})
 
         return result_data, 200
 
