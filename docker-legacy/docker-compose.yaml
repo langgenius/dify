@@ -1,0 +1,588 @@
+version: '3'
+services:
+  # API service
+  api:
+    image: langgenius/dify-api:0.6.12-fix1
+    restart: always
+    environment:
+      # Startup mode, 'api' starts the API server.
+      MODE: api
+      # The log level for the application. Supported values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
+      LOG_LEVEL: INFO
+      # enable DEBUG mode to output more logs
+      # DEBUG : true
+      # A secret key that is used for securely signing the session cookie and encrypting sensitive information on the database. You can generate a strong key using `openssl rand -base64 42`.
+      SECRET_KEY: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
+      # The base URL of console application web frontend, refers to the Console base URL of WEB service if console domain is
+      # different from api or web app domain.
+      # example: http://cloud.dify.ai
+      CONSOLE_WEB_URL: ''
+      # Password for admin user initialization.
+      # If left unset, admin user will not be prompted for a password when creating the initial admin account.
+      INIT_PASSWORD: ''
+      # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
+      # different from api or web app domain.
+      # example: http://cloud.dify.ai
+      CONSOLE_API_URL: ''
+      # The URL prefix for Service API endpoints, refers to the base URL of the current API service if api domain is
+      # different from console domain.
+      # example: http://api.dify.ai
+      SERVICE_API_URL: ''
+      # The URL prefix for Web APP frontend, refers to the Web App base URL of WEB service if web app domain is different from
+      # console or api domain.
+      # example: http://udify.app
+      APP_WEB_URL: ''
+      # File preview or download Url prefix.
+      # used to display File preview or download Url to the front-end or as Multi-model inputs;
+      # Url is signed and has expiration time.
+      FILES_URL: ''
+      # File Access Time specifies a time interval in seconds for the file to be accessed.
+      # The default value is 300 seconds.
+      FILES_ACCESS_TIMEOUT: 300
+      # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
+      MIGRATION_ENABLED: 'true'
+      # The configurations of postgres database connection.
+      # It is consistent with the configuration in the 'db' service below.
+      DB_USERNAME: postgres
+      DB_PASSWORD: difyai123456
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: dify
+      # The configurations of redis connection.
+      # It is consistent with the configuration in the 'redis' service below.
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_USERNAME: ''
+      REDIS_PASSWORD: difyai123456
+      REDIS_USE_SSL: 'false'
+      # use redis db 0 for redis cache
+      REDIS_DB: 0
+      # The configurations of celery broker.
+      # Use redis as the broker, and redis db 1 for celery broker.
+      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      # Specifies the allowed origins for cross-origin requests to the Web API, e.g. https://dify.app or * for all origins.
+      WEB_API_CORS_ALLOW_ORIGINS: '*'
+      # Specifies the allowed origins for cross-origin requests to the console API, e.g. https://cloud.dify.ai or * for all origins.
+      CONSOLE_CORS_ALLOW_ORIGINS: '*'
+      # CSRF Cookie settings
+      # Controls whether a cookie is sent with cross-site requests,
+      # providing some protection against cross-site request forgery attacks
+      #
+      # Default: `SameSite=Lax, Secure=false, HttpOnly=true`
+      # This default configuration supports same-origin requests using either HTTP or HTTPS,
+      # but does not support cross-origin requests. It is suitable for local debugging purposes.
+      #
+      # If you want to enable cross-origin support,
+      # you must use the HTTPS protocol and set the configuration to `SameSite=None, Secure=true, HttpOnly=true`.
+      #
+      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage`, Default: `local`
+      STORAGE_TYPE: local
+      # The path to the local storage directory, the directory relative the root path of API service codes or absolute path. Default: `storage` or `/home/john/storage`.
+      # only available when STORAGE_TYPE is `local`.
+      STORAGE_LOCAL_PATH: storage
+      # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
+      S3_USE_AWS_MANAGED_IAM: 'false'
+      S3_ENDPOINT: 'https://xxx.r2.cloudflarestorage.com'
+      S3_BUCKET_NAME: 'difyai'
+      S3_ACCESS_KEY: 'ak-difyai'
+      S3_SECRET_KEY: 'sk-difyai'
+      S3_REGION: 'us-east-1'
+      # The Azure Blob storage configurations, only available when STORAGE_TYPE is `azure-blob`.
+      AZURE_BLOB_ACCOUNT_NAME: 'difyai'
+      AZURE_BLOB_ACCOUNT_KEY: 'difyai'
+      AZURE_BLOB_CONTAINER_NAME: 'difyai-container'
+      AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
+      # The Google storage configurations, only available when STORAGE_TYPE is `google-storage`.
+      GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
+      # if you want to use Application Default Credentials, you can leave GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 empty.
+      GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
+      # The Alibaba Cloud OSS configurations, only available when STORAGE_TYPE is `aliyun-oss`
+      ALIYUN_OSS_BUCKET_NAME: 'your-bucket-name'
+      ALIYUN_OSS_ACCESS_KEY: 'your-access-key'
+      ALIYUN_OSS_SECRET_KEY: 'your-secret-key'
+      ALIYUN_OSS_ENDPOINT: 'https://oss-ap-southeast-1-internal.aliyuncs.com'
+      ALIYUN_OSS_REGION: 'ap-southeast-1'
+      ALIYUN_OSS_AUTH_VERSION: 'v4'
+      # The Tencent COS storage configurations, only available when STORAGE_TYPE is `tencent-cos`.
+      TENCENT_COS_BUCKET_NAME: 'your-bucket-name'
+      TENCENT_COS_SECRET_KEY: 'your-secret-key'
+      TENCENT_COS_SECRET_ID: 'your-secret-id'
+      TENCENT_COS_REGION: 'your-region'
+      TENCENT_COS_SCHEME: 'your-scheme'
+      # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`,`pgvector`, `chroma`, 'opensearch', 'tidb_vector'.
+      VECTOR_STORE: weaviate
+      # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      # The Weaviate API key.
+      WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      # The Qdrant endpoint URL. Only available when VECTOR_STORE is `qdrant`.
+      QDRANT_URL: http://qdrant:6333
+      # The Qdrant API key.
+      QDRANT_API_KEY: difyai123456
+      # The Qdrant client timeout setting.
+      QDRANT_CLIENT_TIMEOUT: 20
+      # The Qdrant client enable gRPC mode.
+      QDRANT_GRPC_ENABLED: 'false'
+      # The Qdrant server gRPC mode PORT.
+      QDRANT_GRPC_PORT: 6334
+      # Milvus configuration Only available when VECTOR_STORE is `milvus`.
+      # The milvus host.
+      MILVUS_HOST: 127.0.0.1
+      # The milvus host.
+      MILVUS_PORT: 19530
+      # The milvus username.
+      MILVUS_USER: root
+      # The milvus password.
+      MILVUS_PASSWORD: Milvus
+      # The milvus tls switch.
+      MILVUS_SECURE: 'false'
+      # relyt configurations
+      RELYT_HOST: db
+      RELYT_PORT: 5432
+      RELYT_USER: postgres
+      RELYT_PASSWORD: difyai123456
+      RELYT_DATABASE: postgres
+      # pgvector configurations
+      PGVECTOR_HOST: pgvector
+      PGVECTOR_PORT: 5432
+      PGVECTOR_USER: postgres
+      PGVECTOR_PASSWORD: difyai123456
+      PGVECTOR_DATABASE: dify
+      # tidb vector configurations
+      TIDB_VECTOR_HOST: tidb
+      TIDB_VECTOR_PORT: 4000
+      TIDB_VECTOR_USER: xxx.root
+      TIDB_VECTOR_PASSWORD: xxxxxx
+      TIDB_VECTOR_DATABASE: dify
+      # oracle configurations
+      ORACLE_HOST: oracle
+      ORACLE_PORT: 1521
+      ORACLE_USER: dify
+      ORACLE_PASSWORD: dify
+      ORACLE_DATABASE: FREEPDB1
+      # Chroma configuration
+      CHROMA_HOST: 127.0.0.1
+      CHROMA_PORT: 8000
+      CHROMA_TENANT: default_tenant
+      CHROMA_DATABASE: default_database
+      CHROMA_AUTH_PROVIDER: chromadb.auth.token_authn.TokenAuthClientProvider
+      CHROMA_AUTH_CREDENTIALS: xxxxxx
+      # Mail configuration, support: resend, smtp
+      MAIL_TYPE: ''
+      # default send from email address, if not specified
+      MAIL_DEFAULT_SEND_FROM: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
+      SMTP_SERVER: ''
+      SMTP_PORT: 465
+      SMTP_USERNAME: ''
+      SMTP_PASSWORD: ''
+      SMTP_USE_TLS: 'true'
+      SMTP_OPPORTUNISTIC_TLS: 'false'
+      # the api-key for resend (https://resend.com)
+      RESEND_API_KEY: ''
+      RESEND_API_URL: https://api.resend.com
+      # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
+      SENTRY_DSN: ''
+      # The sample rate for Sentry events. Default: `1.0`
+      SENTRY_TRACES_SAMPLE_RATE: 1.0
+      # The sample rate for Sentry profiles. Default: `1.0`
+      SENTRY_PROFILES_SAMPLE_RATE: 1.0
+      # Notion import configuration, support public and internal
+      NOTION_INTEGRATION_TYPE: public
+      NOTION_CLIENT_SECRET: you-client-secret
+      NOTION_CLIENT_ID: you-client-id
+      NOTION_INTERNAL_SECRET: you-internal-secret
+      # The sandbox service endpoint.
+      CODE_EXECUTION_ENDPOINT: "http://sandbox:8194"
+      CODE_EXECUTION_API_KEY: dify-sandbox
+      CODE_MAX_NUMBER: 9223372036854775807
+      CODE_MIN_NUMBER: -9223372036854775808
+      CODE_MAX_STRING_LENGTH: 80000
+      TEMPLATE_TRANSFORM_MAX_LENGTH: 80000
+      CODE_MAX_STRING_ARRAY_LENGTH: 30
+      CODE_MAX_OBJECT_ARRAY_LENGTH: 30
+      CODE_MAX_NUMBER_ARRAY_LENGTH: 1000
+      # SSRF Proxy server
+      SSRF_PROXY_HTTP_URL: 'http://ssrf_proxy:3128'
+      SSRF_PROXY_HTTPS_URL: 'http://ssrf_proxy:3128'
+      # Indexing configuration
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: 1000
+    depends_on:
+      - db
+      - redis
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+    # uncomment to expose dify-api port to host
+    # ports:
+    #   - "5001:5001"
+    networks:
+      - ssrf_proxy_network
+      - default
+
+  # worker service
+  # The Celery worker for processing the queue.
+  worker:
+    image: langgenius/dify-api:0.6.12-fix1
+    restart: always
+    environment:
+      CONSOLE_WEB_URL: ''
+      # Startup mode, 'worker' starts the Celery worker for processing the queue.
+      MODE: worker
+
+      # --- All the configurations below are the same as those in the 'api' service. ---
+
+      # The log level for the application. Supported values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
+      LOG_LEVEL: INFO
+      # A secret key that is used for securely signing the session cookie and encrypting sensitive information on the database. You can generate a strong key using `openssl rand -base64 42`.
+      # same as the API service
+      SECRET_KEY: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
+      # The configurations of postgres database connection.
+      # It is consistent with the configuration in the 'db' service below.
+      DB_USERNAME: postgres
+      DB_PASSWORD: difyai123456
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: dify
+      # The configurations of redis cache connection.
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_USERNAME: ''
+      REDIS_PASSWORD: difyai123456
+      REDIS_DB: 0
+      REDIS_USE_SSL: 'false'
+      # The configurations of celery broker.
+      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      # The type of storage to use for storing user files. Supported values are `local` and `s3` and `azure-blob` and `google-storage`, Default: `local`
+      STORAGE_TYPE: local
+      STORAGE_LOCAL_PATH: storage
+      # The S3 storage configurations, only available when STORAGE_TYPE is `s3`.
+      S3_USE_AWS_MANAGED_IAM: 'false'
+      S3_ENDPOINT: 'https://xxx.r2.cloudflarestorage.com'
+      S3_BUCKET_NAME: 'difyai'
+      S3_ACCESS_KEY: 'ak-difyai'
+      S3_SECRET_KEY: 'sk-difyai'
+      S3_REGION: 'us-east-1'
+      # The Azure Blob storage configurations, only available when STORAGE_TYPE is `azure-blob`.
+      AZURE_BLOB_ACCOUNT_NAME: 'difyai'
+      AZURE_BLOB_ACCOUNT_KEY: 'difyai'
+      AZURE_BLOB_CONTAINER_NAME: 'difyai-container'
+      AZURE_BLOB_ACCOUNT_URL: 'https://<your_account_name>.blob.core.windows.net'
+      # The Google storage configurations, only available when STORAGE_TYPE is `google-storage`.
+      GOOGLE_STORAGE_BUCKET_NAME: 'yout-bucket-name'
+      # if you want to use Application Default Credentials, you can leave GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64 empty.
+      GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: 'your-google-service-account-json-base64-string'
+      # The Alibaba Cloud OSS configurations, only available when STORAGE_TYPE is `aliyun-oss`
+      ALIYUN_OSS_BUCKET_NAME: 'your-bucket-name'
+      ALIYUN_OSS_ACCESS_KEY: 'your-access-key'
+      ALIYUN_OSS_SECRET_KEY: 'your-secret-key'
+      ALIYUN_OSS_ENDPOINT: 'https://oss-ap-southeast-1-internal.aliyuncs.com'
+      ALIYUN_OSS_REGION: 'ap-southeast-1'
+      ALIYUN_OSS_AUTH_VERSION: 'v4'
+      # The Tencent COS storage configurations, only available when STORAGE_TYPE is `tencent-cos`.
+      TENCENT_COS_BUCKET_NAME: 'your-bucket-name'
+      TENCENT_COS_SECRET_KEY: 'your-secret-key'
+      TENCENT_COS_SECRET_ID: 'your-secret-id'
+      TENCENT_COS_REGION: 'your-region'
+      TENCENT_COS_SCHEME: 'your-scheme'
+      # The type of vector store to use. Supported values are `weaviate`, `qdrant`, `milvus`, `relyt`, `pgvector`, `chroma`, 'opensearch', 'tidb_vector'.
+      VECTOR_STORE: weaviate
+      # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
+      WEAVIATE_ENDPOINT: http://weaviate:8080
+      # The Weaviate API key.
+      WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      # The Qdrant endpoint URL. Only available when VECTOR_STORE is `qdrant`.
+      QDRANT_URL: http://qdrant:6333
+      # The Qdrant API key.
+      QDRANT_API_KEY: difyai123456
+      # The Qdrant client timeout setting.
+      QDRANT_CLIENT_TIMEOUT: 20
+      # The Qdrant client enable gRPC mode.
+      QDRANT_GRPC_ENABLED: 'false'
+      # The Qdrant server gRPC mode PORT.
+      QDRANT_GRPC_PORT: 6334
+      # Milvus configuration Only available when VECTOR_STORE is `milvus`.
+      # The milvus host.
+      MILVUS_HOST: 127.0.0.1
+      # The milvus host.
+      MILVUS_PORT: 19530
+      # The milvus username.
+      MILVUS_USER: root
+      # The milvus password.
+      MILVUS_PASSWORD: Milvus
+      # The milvus tls switch.
+      MILVUS_SECURE: 'false'
+      # Mail configuration, support: resend
+      MAIL_TYPE: ''
+      # default send from email address, if not specified
+      MAIL_DEFAULT_SEND_FROM: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
+      SMTP_SERVER: ''
+      SMTP_PORT: 465
+      SMTP_USERNAME: ''
+      SMTP_PASSWORD: ''
+      SMTP_USE_TLS: 'true'
+      SMTP_OPPORTUNISTIC_TLS: 'false'
+      # the api-key for resend (https://resend.com)
+      RESEND_API_KEY: ''
+      RESEND_API_URL: https://api.resend.com
+      # relyt configurations
+      RELYT_HOST: db
+      RELYT_PORT: 5432
+      RELYT_USER: postgres
+      RELYT_PASSWORD: difyai123456
+      RELYT_DATABASE: postgres
+      # tencent configurations
+      TENCENT_VECTOR_DB_URL: http://127.0.0.1
+      TENCENT_VECTOR_DB_API_KEY: dify
+      TENCENT_VECTOR_DB_TIMEOUT: 30
+      TENCENT_VECTOR_DB_USERNAME: dify
+      TENCENT_VECTOR_DB_DATABASE: dify
+      TENCENT_VECTOR_DB_SHARD: 1
+      TENCENT_VECTOR_DB_REPLICAS: 2
+      # OpenSearch configuration
+      OPENSEARCH_HOST: 127.0.0.1
+      OPENSEARCH_PORT: 9200
+      OPENSEARCH_USER: admin
+      OPENSEARCH_PASSWORD: admin
+      OPENSEARCH_SECURE: 'true'
+      # pgvector configurations
+      PGVECTOR_HOST: pgvector
+      PGVECTOR_PORT: 5432
+      PGVECTOR_USER: postgres
+      PGVECTOR_PASSWORD: difyai123456
+      PGVECTOR_DATABASE: dify
+      # tidb vector configurations
+      TIDB_VECTOR_HOST: tidb
+      TIDB_VECTOR_PORT: 4000
+      TIDB_VECTOR_USER: xxx.root
+      TIDB_VECTOR_PASSWORD: xxxxxx
+      TIDB_VECTOR_DATABASE: dify
+      # oracle configurations
+      ORACLE_HOST: oracle
+      ORACLE_PORT: 1521
+      ORACLE_USER: dify
+      ORACLE_PASSWORD: dify
+      ORACLE_DATABASE: FREEPDB1
+      # Chroma configuration
+      CHROMA_HOST: 127.0.0.1
+      CHROMA_PORT: 8000
+      CHROMA_TENANT: default_tenant
+      CHROMA_DATABASE: default_database
+      CHROMA_AUTH_PROVIDER: chromadb.auth.token_authn.TokenAuthClientProvider
+      CHROMA_AUTH_CREDENTIALS: xxxxxx
+      # Notion import configuration, support public and internal
+      NOTION_INTEGRATION_TYPE: public
+      NOTION_CLIENT_SECRET: you-client-secret
+      NOTION_CLIENT_ID: you-client-id
+      NOTION_INTERNAL_SECRET: you-internal-secret
+      # Indexing configuration
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: 1000
+    depends_on:
+      - db
+      - redis
+    volumes:
+      # Mount the storage directory to the container, for storing user files.
+      - ./volumes/app/storage:/app/api/storage
+    networks:
+      - ssrf_proxy_network
+      - default
+
+  # Frontend web application.
+  web:
+    image: langgenius/dify-web:0.6.12-fix1
+    restart: always
+    environment:
+      # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
+      # different from api or web app domain.
+      # example: http://cloud.dify.ai
+      CONSOLE_API_URL: ''
+      # The URL for Web APP api server, refers to the Web App base URL of WEB service if web app domain is different from
+      # console or api domain.
+      # example: http://udify.app
+      APP_API_URL: ''
+      # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
+      SENTRY_DSN: ''
+    # uncomment to expose dify-web port to host
+    # ports:
+    #   - "3000:3000"
+
+  # The postgres database.
+  db:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      PGUSER: postgres
+      # The password for the default postgres user.
+      POSTGRES_PASSWORD: difyai123456
+      # The name of the default postgres database.
+      POSTGRES_DB: dify
+      # postgres data directory
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - ./volumes/db/data:/var/lib/postgresql/data
+      # notice!: if you use windows-wsl2, postgres may not work properly due to the ntfs issue.you can use volumes to mount the data directory to the host.
+      # if you use the following config, you need to uncomment the volumes configuration below at the end of the file.
+      # - postgres:/var/lib/postgresql/data
+    # uncomment to expose db(postgresql) port to host
+    # ports:
+    #   - "5432:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # The redis cache.
+  redis:
+    image: redis:6-alpine
+    restart: always
+    volumes:
+      # Mount the redis data directory to the container.
+      - ./volumes/redis/data:/data
+    # Set the redis password when startup redis server.
+    command: redis-server --requirepass difyai123456
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+    # uncomment to expose redis port to host
+    # ports:
+    #   - "6379:6379"
+
+  # The Weaviate vector store.
+  weaviate:
+    image: semitechnologies/weaviate:1.19.0
+    restart: always
+    volumes:
+      # Mount the Weaviate data directory to the container.
+      - ./volumes/weaviate:/var/lib/weaviate
+    environment:
+      # The Weaviate configurations
+      # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'false'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      CLUSTER_HOSTNAME: 'node1'
+      AUTHENTICATION_APIKEY_ENABLED: 'true'
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih'
+      AUTHENTICATION_APIKEY_USERS: 'hello@dify.ai'
+      AUTHORIZATION_ADMINLIST_ENABLED: 'true'
+      AUTHORIZATION_ADMINLIST_USERS: 'hello@dify.ai'
+    # uncomment to expose weaviate port to host
+    # ports:
+    #  - "8080:8080"
+
+  # The DifySandbox
+  sandbox:
+    image: langgenius/dify-sandbox:0.2.1
+    restart: always
+    environment:
+      # The DifySandbox configurations
+      # Make sure you are changing this key for your deployment with a strong key.
+      # You can generate a strong key using `openssl rand -base64 42`.
+      API_KEY: dify-sandbox
+      GIN_MODE: 'release'
+      WORKER_TIMEOUT: 15
+      ENABLE_NETWORK: 'true'
+      HTTP_PROXY: 'http://ssrf_proxy:3128'
+      HTTPS_PROXY: 'http://ssrf_proxy:3128'
+      SANDBOX_PORT: 8194
+    volumes:
+      - ./volumes/sandbox/dependencies:/dependencies
+    networks:
+      - ssrf_proxy_network
+
+  # ssrf_proxy server
+  # for more information, please refer to
+  # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-ssrf_proxy-needed
+  ssrf_proxy:
+    image: ubuntu/squid:latest
+    restart: always
+    volumes:
+      # pls clearly modify the squid.conf file to fit your network environment.
+      - ./volumes/ssrf_proxy/squid.conf:/etc/squid/squid.conf
+    networks:
+      - ssrf_proxy_network
+      - default
+  # Qdrant vector store.
+  # uncomment to use qdrant as vector store.
+  # (if uncommented, you need to comment out the weaviate service above,
+  # and set VECTOR_STORE to qdrant in the api & worker service.)
+  # qdrant:
+  #   image: langgenius/qdrant:v1.7.3
+  #   restart: always
+  #   volumes:
+  #     - ./volumes/qdrant:/qdrant/storage
+  #   environment:
+  #     QDRANT_API_KEY: 'difyai123456'
+  #   # uncomment to expose qdrant port to host
+  #   # ports:
+  #   #  - "6333:6333"
+  #   #  - "6334:6334"
+
+  # The pgvector vector database.
+  # Uncomment to use qdrant as vector store.
+  # pgvector:
+  #   image: pgvector/pgvector:pg16
+  #   restart: always
+  #   environment:
+  #     PGUSER: postgres
+  #     # The password for the default postgres user.
+  #     POSTGRES_PASSWORD: difyai123456
+  #     # The name of the default postgres database.
+  #     POSTGRES_DB: dify
+  #     # postgres data directory
+  #     PGDATA: /var/lib/postgresql/data/pgdata
+  #   volumes:
+  #     - ./volumes/pgvector/data:/var/lib/postgresql/data
+  #   # uncomment to expose db(postgresql) port to host
+  #   # ports:
+  #   #   - "5433:5432"
+  #   healthcheck:
+  #     test: [ "CMD", "pg_isready" ]
+  #     interval: 1s
+  #     timeout: 3s
+  #     retries: 30
+
+  # The oracle vector database.
+  # Uncomment to use oracle23ai as vector store. Also need to Uncomment volumes block
+  # oracle:
+  #   image: container-registry.oracle.com/database/free:latest
+  #   restart: always
+  #   ports:
+  #     - 1521:1521
+  #   volumes:
+  #     - type: volume
+  #       source: oradata
+  #       target: /opt/oracle/oradata
+  #     - ./startupscripts:/opt/oracle/scripts/startup
+  #   environment:
+  #     - ORACLE_PWD=Dify123456
+  #     - ORACLE_CHARACTERSET=AL32UTF8
+
+
+  # The nginx reverse proxy.
+  # used for reverse proxying the API service and Web service.
+  nginx:
+    image: nginx:latest
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/proxy.conf:/etc/nginx/proxy.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      #- ./nginx/ssl:/etc/ssl
+    depends_on:
+      - api
+      - web
+    ports:
+      - "80:80"
+      #- "443:443"
+# notice: if you use windows-wsl2, postgres may not work properly due to the ntfs issue.you can use volumes to mount the data directory to the host.
+# volumes:
+#   postgres:
+networks:
+  # create a network between sandbox, api and ssrf_proxy, and can not access outside.
+  ssrf_proxy_network:
+    driver: bridge
+    internal: true
+
+#volumes:
+#  oradata:
