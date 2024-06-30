@@ -287,6 +287,7 @@ services:
       NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
       HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
       NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
+      NGINX_PORT: ${NGINX_PORT:-80}
       # You're required to add your own SSL certificates/keys to the `./nginx/ssl` directory
       # and modify the env vars below in .env if HTTPS_ENABLED is true.
       NGINX_SSL_CERT_FILENAME: ${NGINX_SSL_CERT_FILENAME:-dify.crt}
@@ -301,8 +302,8 @@ services:
       - api
       - web
     ports:
-      - "${EXPOSE_NGINX_PORT:-80}:80"
-      - "${EXPOSE_NGINX_SSL_PORT:-443}:443"
+      - "${NGINX_PORT:-80}:${EXPOSE_NGINX_PORT:-80}"
+      - "${NGINX_SSL_PORT:-443}:${EXPOSE_NGINX_SSL_PORT:-443}"
 
   # The Weaviate vector store.
   weaviate:
@@ -527,3 +528,4 @@ networks:
 
 volumes:
   oradata:
+

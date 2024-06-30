@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "${HTTPS_ENABLED}" = "true" ]; then
+if [ "${NGINX_HTTPS_ENABLED}" = "true" ]; then
     # set the HTTPS_CONFIG environment variable to the content of the https.conf.template
     HTTPS_CONFIG=$(envsubst < /etc/nginx/https.conf.template)
     export HTTPS_CONFIG
@@ -15,5 +15,7 @@ envsubst "$env_vars" < /etc/nginx/proxy.conf.template > /etc/nginx/proxy.conf
 
 envsubst < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
 
+echo "[ENTRYPOINT] default.conf"
+cat /etc/nginx/conf.d/default.conf
 # Start Nginx using the default entrypoint
 exec nginx -g 'daemon off;'
