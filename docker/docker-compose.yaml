@@ -272,9 +272,6 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
-    # uncomment to expose dify-api port to host
-    # ports:
-    #   - "5001:5001"
     networks:
       - ssrf_proxy_network
       - default
@@ -307,9 +304,6 @@ services:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
       SENTRY_DSN: ${SENTRY_DSN:-}
-    # uncomment to expose dify-web port to host
-    # ports:
-    #   - "3000:3000"
 
   # The postgres database.
   db:
@@ -322,9 +316,6 @@ services:
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
-    # uncomment to expose db(postgresql) port to host
-    # ports:
-    #   - "5432:5432"
     healthcheck:
       test: [ "CMD", "pg_isready" ]
       interval: 1s
@@ -342,9 +333,6 @@ services:
     command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
-    # uncomment to expose redis port to host
-    # ports:
-    #   - "6379:6379"
 
   # The DifySandbox
   sandbox:
@@ -378,7 +366,7 @@ services:
     entrypoint: ["sh", "-c", "chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh"]
     environment:
       # pls clearly modify the squid env vars to fit your network environment.
-      HTTP_PORT: ${HTTP_PORT:-3128}
+      HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
       COREDUMP_DIR: ${COREDUMP_DIR:-/var/spool/squid}
       REVERSE_PROXY_PORT: ${REVERSE_PROXY_PORT:-8194}
       SANDBOX_HOST: ${SANDBOX_HOST:-sandbox}
@@ -417,8 +405,8 @@ services:
       - api
       - web
     ports:
-      - "${NGINX_PORT:-80}:80"
-      - "${NGINX_SSL_PORT:-443}:443"
+      - "${EXPOSE_NGINX_PORT:-80}:80"
+      - "${EXPOSE_NGINX_SSL_PORT:-443}:443"
 
   # The Weaviate vector store.
   weaviate:
@@ -442,10 +430,6 @@ services:
       AUTHENTICATION_APIKEY_USERS: ${AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
       AUTHORIZATION_ADMINLIST_ENABLED: ${AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
-    # uncomment to expose weaviate port to host
-    ports:
-      - "8080:8080"
-
 
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
@@ -458,10 +442,6 @@ services:
       - ./volumes/qdrant:/qdrant/storage
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
-    # uncomment to expose qdrant port to host
-    ports:
-      - "6333:6333"
-      - "6334:6334"
 
   # The pgvector vector database.
   pgvector:
@@ -479,9 +459,6 @@ services:
       PGDATA: ${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
     volumes:
       - ./volumes/pgvector/data:/var/lib/postgresql/data
-    # uncomment to expose db(postgresql) port to host
-    ports:
-      - "5433:5432"
     healthcheck:
       test: [ "CMD", "pg_isready" ]
       interval: 1s
@@ -504,9 +481,6 @@ services:
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     volumes:
       - ./volumes/pgvecto_rs/data:/var/lib/postgresql/data
-    # uncomment to expose db(postgresql) port to host
-    ports:
-      - "5431:5432"
     healthcheck:
       test: [ "CMD", "pg_isready" ]
       interval: 1s
@@ -525,16 +499,12 @@ services:
       CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${IS_PERSISTENT:-TRUE}
-    ports:
-      - "8000:8000"
 
   oracle:
     image: container-registry.oracle.com/database/free:latest
     profiles:
       - oracle
     restart: always
-    ports:
-      - 1521:1521
     volumes:
       - type: volume
         source: oradata
@@ -574,9 +544,6 @@ services:
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
-    ports:
-      - "9001:9001"
-      - "9000:9000"
     volumes:
       - ./volumes/milvus/minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
@@ -606,9 +573,6 @@ services:
       start_period: 90s
       timeout: 20s
       retries: 3
-    ports:
-      - "19530:19530"
-      - "9091:9091"
     depends_on:
       - "etcd"
       - "minio"
@@ -634,9 +598,6 @@ services:
         hard: ${OPENSEARCH_NOFILE_HARD:-65536}
     volumes:
       - ./volumes/opensearch/data:/usr/share/opensearch/data
-    ports:
-      - "9200:9200"
-      - "9600:9600"
     networks:
       - opensearch-net
 
@@ -645,10 +606,6 @@ services:
     image: opensearchproject/opensearch-dashboards:latest
     profiles:
       - opensearch
-    ports:
-      - "5601:5601"
-    expose:
-      - "5601"
     environment:
       OPENSEARCH_HOSTS: '["https://opensearch:9200"]'
     volumes:
