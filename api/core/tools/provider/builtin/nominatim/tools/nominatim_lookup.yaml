@@ -1,0 +1,31 @@
+identity:
+  name: nominatim_lookup
+  author: Charles Zhou
+  label:
+    en_US: Nominatim OSM Lookup
+    zh_Hans: Nominatim OSM 对象查找
+    de_DE: Nominatim OSM-Objektsuche
+    ja_JP: Nominatim OSM ルックアップ
+description:
+  human:
+    en_US: Look up OSM objects using their IDs with Nominatim
+    zh_Hans: 使用Nominatim通过ID查找OSM对象
+    de_DE: Suchen Sie OSM-Objekte anhand ihrer IDs mit Nominatim
+    ja_JP: Nominatimを使用してIDでOSMオブジェクトを検索
+  llm: A tool for looking up OpenStreetMap objects using their IDs with Nominatim.
+parameters:
+  - name: osm_ids
+    type: string
+    required: true
+    label:
+      en_US: OSM IDs
+      zh_Hans: OSM ID
+      de_DE: OSM-IDs
+      ja_JP: OSM ID
+    human_description:
+      en_US: Comma-separated list of OSM IDs to lookup (e.g., N123,W456,R789)
+      zh_Hans: 要查找的OSM ID的逗号分隔列表（例如：N123,W456,R789）
+      de_DE: Kommagetrennte Liste von OSM-IDs für die Suche (z.B. N123,W456,R789)
+      ja_JP: 検索するOSM IDのカンマ区切りリスト（例：N123,W456,R789）
+    llm_description: A comma-separated list of OSM IDs (prefixed with N, W, or R) for lookup.
+    form: llm
