@@ -238,7 +238,7 @@ x-shared-env: &shared-api-worker-env
   SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
   SMTP_OPPORTUNISTIC_TLS: ${SMTP_OPPORTUNISTIC_TLS:-false}
   # the api-key for resend (https://resend.com)
-  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  RESEND_API_KEY: ${RESEND_API_KEY:-your-resend-api-key}
   RESEND_API_URL: https://api.resend.com
   # Indexing configuration
   INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-1000}
