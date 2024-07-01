@@ -50,7 +50,6 @@ const DebugAndPreview = () => {
         {t('workflow.common.debugAndPreview').toLocaleUpperCase()}
         <div className='flex items-center'>
           <Button
-            className='px-2 h-8 bg-white border-[0.5px] border-gray-200 shadow-xs rounded-lg text-xs text-gray-700 font-medium'
             onClick={() => handleRestartChat()}
           >
             <RefreshCcw01 className='shrink-0 mr-1 w-3 h-3 text-gray-500' />

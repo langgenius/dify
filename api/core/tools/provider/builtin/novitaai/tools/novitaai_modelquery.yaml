@@ -19,7 +19,8 @@ parameters:
     human_description:
       en_US: Seaching the content of sd_name, name, tags.
       zh_Hans: 搜索 sd_name、name、tags 中的内容
-    form: form
+    llm_description: Enter the content to search
+    form: llm
   - name: result_type
     type: select
     default: "first sd_name"

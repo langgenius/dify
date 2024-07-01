@@ -99,7 +99,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
           description,
           permission,
           indexing_technique: indexMethod,
-          retrieval_model: postRetrievalConfig,
+          retrieval_model: {
+            ...postRetrievalConfig,
+            score_threshold: postRetrievalConfig.score_threshold_enabled ? postRetrievalConfig.score_threshold : 0,
+          },
           embedding_model: localeCurrentDataset.embedding_model,
           embedding_model_provider: localeCurrentDataset.embedding_model_provider,
         },
@@ -275,13 +278,12 @@ const SettingsModal: FC<SettingsModalProps> = ({
       >
         <Button
           onClick={onCancel}
-          className='mr-2 text-sm font-medium'
+          className='mr-2'
         >
           {t('common.operation.cancel')}
         </Button>
         <Button
           variant='primary'
-          className='text-sm font-medium'
           disabled={loading}
           onClick={handleSave}
         >

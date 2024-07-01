@@ -58,7 +58,8 @@ const GetSchema: FC<Props> = ({
     <div className='flex space-x-1 justify-end relative w-[224px]'>
       <div ref={importURLRef}>
         <Button
-          className='flex items-center !h-6 !px-2 space-x-1 '
+          size='small'
+          className='space-x-1 '
           onClick={() => { setShowImportFromUrl(!showImportFromUrl) }}
         >
           <RiAddLine className='w-3 h-3' />
@@ -75,7 +76,8 @@ const GetSchema: FC<Props> = ({
                 onChange={e => setImportUrl(e.target.value)}
               />
               <Button
-                className='absolute top-1 right-1 !h-6 !px-2 text-xs font-medium'
+                className='absolute top-1 right-1'
+                size='small'
                 variant='primary'
                 disabled={!importUrl}
                 onClick={handleImportFromUrl}
@@ -89,7 +91,8 @@ const GetSchema: FC<Props> = ({
       </div>
       <div className='relative' ref={showExamplesRef}>
         <Button
-          className='flex items-center !h-6 !px-2 space-x-1'
+          size='small'
+          className='space-x-1'
           onClick={() => { setShowExamples(!showExamples) }}
         >
           <div className='text-xs font-medium text-gray-700'>{t('tools.createTool.examples')}</div>

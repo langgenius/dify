@@ -3,11 +3,10 @@ from functools import wraps
 from flask import current_app, request
 from flask_restful import Resource, reqparse
 
-from extensions.ext_database import db
-from libs.helper import email, str_len
+from libs.helper import email, get_remote_ip, str_len
 from libs.password import valid_password
 from models.model import DifySetup
-from services.account_service import AccountService, RegisterService, TenantService
+from services.account_service import RegisterService, TenantService
 
 from . import api
 from .error import AlreadySetupError, NotInitValidateError, NotSetupError
@@ -51,26 +50,15 @@ class SetupApi(Resource):
                             required=True, location='json')
         args = parser.parse_args()
 
-        # Register
-        account = RegisterService.register(
+        # setup
+        RegisterService.setup(
             email=args['email'],
             name=args['name'],
-            password=args['password']
+            password=args['password'],
+            ip_address=get_remote_ip(request)
         )
 
-        TenantService.create_owner_tenant_if_not_exist(account)
-
-        setup()
-        AccountService.update_last_login(account, request)
-
         return {'result': 'success'}, 201
-
-
-def setup():
-    dify_setup = DifySetup(
-        version=current_app.config['CURRENT_VERSION']
-    )
-    db.session.add(dify_setup)
 
 
 def setup_required(view):

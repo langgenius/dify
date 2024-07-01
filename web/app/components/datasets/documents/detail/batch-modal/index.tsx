@@ -52,10 +52,10 @@ const BatchModal: FC<IBatchModalProps> = ({
         docForm={docForm}
       />
       <div className='mt-[28px] pt-6 flex justify-end'>
-        <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onCancel}>
+        <Button className='mr-2' onClick={onCancel}>
           {t('datasetDocuments.list.batchModal.cancel')}
         </Button>
-        <Button className='text-sm font-medium' variant="primary" onClick={handleSend} disabled={!currentCSV}>
+        <Button variant="primary" onClick={handleSend} disabled={!currentCSV}>
           {t('datasetDocuments.list.batchModal.run')}
         </Button>
       </div>

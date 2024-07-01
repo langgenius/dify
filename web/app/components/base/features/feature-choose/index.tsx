@@ -24,8 +24,7 @@ const ChooseFeature = ({
     <>
       <Button
         className={`
-          px-3 py-0 h-8 rounded-lg border border-primary-100 bg-primary-25 shadow-xs text-xs font-semibold text-primary-600
-          ${disabled && 'cursor-not-allowed opacity-50'}
+          border-primary-100 bg-primary-25 text-xs font-semibold text-primary-600
         `}
         onClick={() => !disabled && setShowFeaturesModal(true)}
       >

@@ -51,9 +51,6 @@ const ConfigFirecrawlModal: FC<Props> = ({
           field: 'API Key',
         })
       }
-      else if (!config.api_key.startsWith('fc-')) {
-        errorMsg = t(`${I18N_PREFIX}.apiKeyFormatError`)
-      }
     }
 
     if (errorMsg) {
@@ -123,14 +120,15 @@ const ConfigFirecrawlModal: FC<Props> = ({
                 </a>
                 <div className='flex'>
                   <Button
-                    className='mr-2 h-9 text-sm font-medium text-gray-700'
+                    size='large'
+                    className='mr-2'
                     onClick={onCancel}
                   >
                     {t('common.operation.cancel')}
                   </Button>
                   <Button
-                    className='h-9 text-sm font-medium'
                     variant='primary'
+                    size='large'
                     onClick={handleSave}
                     loading={isSaving}
                   >

@@ -66,8 +66,8 @@ class ProviderConfiguration(BaseModel):
                 original_provider_configurate_methods[self.provider.provider].append(configurate_method)
 
         if original_provider_configurate_methods[self.provider.provider] == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
-            if (any([len(quota_configuration.restrict_models) > 0
-                     for quota_configuration in self.system_configuration.quota_configurations])
+            if (any(len(quota_configuration.restrict_models) > 0
+                     for quota_configuration in self.system_configuration.quota_configurations)
                     and ConfigurateMethod.PREDEFINED_MODEL not in self.provider.configurate_methods):
                 self.provider.configurate_methods.append(ConfigurateMethod.PREDEFINED_MODEL)
 
@@ -206,8 +206,8 @@ class ProviderConfiguration(BaseModel):
                         credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
 
         credentials = model_provider_factory.provider_credentials_validate(
-            self.provider.provider,
-            credentials
+            provider=self.provider.provider,
+            credentials=credentials
         )
 
         for key, value in credentials.items():

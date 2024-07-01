@@ -65,7 +65,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
                 return (
                   <Button
                     key={method}
-                    className={'h-7 bg-white text-xs text-gray-700 shrink-0'}
+                    className={'h-7 text-xs shrink-0'}
                     onClick={() => onOpenModal(method)}
                   >
                     <Settings01 className={`mr-[5px] w-3.5 h-3.5 ${s.icon}`} />
@@ -76,7 +76,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
               return (
                 <Button
                   key={method}
-                  className='px-0 h-7 bg-white text-xs text-gray-700'
+                  className='px-0 h-7 text-xs'
                   onClick={() => onOpenModal(method)}
                 >
                   <RiAddLine className='mr-[5px] w-3.5 h-3.5' />

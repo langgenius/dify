@@ -201,7 +201,7 @@ class ReactMultiDatasetRouter:
             tool_strings.append(
                 f"{tool.name}: {tool.description}, args: {{'query': {{'title': 'Query', 'description': 'Query for the dataset to be used to retrieve the dataset.', 'type': 'string'}}}}")
         formatted_tools = "\n".join(tool_strings)
-        unique_tool_names = set(tool.name for tool in tools)
+        unique_tool_names = {tool.name for tool in tools}
         tool_names = ", ".join('"' + name + '"' for name in unique_tool_names)
         format_instructions = format_instructions.format(tool_names=tool_names)
         template = "\n\n".join([prefix, formatted_tools, format_instructions, suffix])

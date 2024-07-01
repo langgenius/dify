@@ -210,7 +210,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           <div className='flex gap-2 justify-center items-center !h-8'>
             <RetryButton datasetId={datasetId} />
             {embeddingAvailable && (
-              <Button variant='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px] !shrink-0'>
+              <Button variant='primary' onClick={routeToDocCreate} className='shrink-0'>
                 <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
                 {isDataSourceNotion && t('datasetDocuments.list.addPages')}
                 {isDataSourceWeb && t('datasetDocuments.list.addUrl')}

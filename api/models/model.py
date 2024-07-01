@@ -6,7 +6,7 @@ from typing import Optional
 
 from flask import current_app, request
 from flask_login import UserMixin
-from sqlalchemy import Float, text
+from sqlalchemy import Float, func, text
 
 from core.file.tool_file_parser import ToolFileParser
 from core.file.upload_file_parser import UploadFileParser
@@ -73,6 +73,7 @@ class App(db.Model):
     is_demo = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     is_public = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     is_universal = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
+    tracing = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
@@ -265,7 +266,7 @@ class AppModelConfig(db.Model):
     @property
     def retriever_resource_dict(self) -> dict:
         return json.loads(self.retriever_resource) if self.retriever_resource \
-            else {"enabled": False}
+            else {"enabled": True}
 
     @property
     def annotation_reply_dict(self) -> dict:
@@ -625,6 +626,7 @@ class Message(db.Model):
         db.Index('message_conversation_id_idx', 'conversation_id'),
         db.Index('message_end_user_idx', 'app_id', 'from_source', 'from_end_user_id'),
         db.Index('message_account_idx', 'app_id', 'from_source', 'from_account_id'),
+        db.Index('message_workflow_run_id_idx', 'conversation_id', 'workflow_run_id')
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
@@ -837,6 +839,49 @@ class Message(db.Model):
 
         return None
 
+    def to_dict(self) -> dict:
+        return {
+            'id': self.id,
+            'app_id': self.app_id,
+            'conversation_id': self.conversation_id,
+            'inputs': self.inputs,
+            'query': self.query,
+            'message': self.message,
+            'answer': self.answer,
+            'status': self.status,
+            'error': self.error,
+            'message_metadata': self.message_metadata_dict,
+            'from_source': self.from_source,
+            'from_end_user_id': self.from_end_user_id,
+            'from_account_id': self.from_account_id,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+            'agent_based': self.agent_based,
+            'workflow_run_id': self.workflow_run_id
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            id=data['id'],
+            app_id=data['app_id'],
+            conversation_id=data['conversation_id'],
+            inputs=data['inputs'],
+            query=data['query'],
+            message=data['message'],
+            answer=data['answer'],
+            status=data['status'],
+            error=data['error'],
+            message_metadata=json.dumps(data['message_metadata']),
+            from_source=data['from_source'],
+            from_end_user_id=data['from_end_user_id'],
+            from_account_id=data['from_account_id'],
+            created_at=data['created_at'],
+            updated_at=data['updated_at'],
+            agent_based=data['agent_based'],
+            workflow_run_id=data['workflow_run_id']
+        )
+
 
 class MessageFeedback(db.Model):
     __tablename__ = 'message_feedbacks'
@@ -1041,8 +1086,11 @@ class Site(db.Model):
     icon_background = db.Column(db.String(255))
     description = db.Column(db.Text)
     default_language = db.Column(db.String(255), nullable=False)
+    chat_color_theme = db.Column(db.String(255))
+    chat_color_theme_inverted = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     copyright = db.Column(db.String(255))
     privacy_policy = db.Column(db.String(255))
+    show_workflow_steps = db.Column(db.Boolean, nullable=False, server_default=db.text('true'))
     custom_disclaimer = db.Column(db.String(255), nullable=True)
     customize_domain = db.Column(db.String(255))
     customize_token_strategy = db.Column(db.String(255), nullable=False)
@@ -1327,3 +1375,38 @@ class TagBinding(db.Model):
     target_id = db.Column(StringUUID, nullable=True)
     created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+
+class TraceAppConfig(db.Model):
+    __tablename__ = 'trace_app_config'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='tracing_app_config_pkey'),
+        db.Index('tracing_app_config_app_id_idx', 'app_id'),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(StringUUID, nullable=False)
+    tracing_provider = db.Column(db.String(255), nullable=True)
+    tracing_config = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    is_active = db.Column(db.Boolean, nullable=False, server_default=db.text('true'))
+
+    @property
+    def tracing_config_dict(self):
+        return self.tracing_config if self.tracing_config else {}
+
+    @property
+    def tracing_config_str(self):
+        return json.dumps(self.tracing_config_dict)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'app_id': self.app_id,
+            'tracing_provider': self.tracing_provider,
+            'tracing_config': self.tracing_config_dict,
+            "is_active": self.is_active,
+            "created_at": self.created_at.__str__() if self.created_at else None,
+            'updated_at': self.updated_at.__str__() if self.updated_at else None,
+        }

@@ -338,11 +338,14 @@ class AppRunner:
             ), PublishFrom.APPLICATION_MANAGER
         )
 
-    def moderation_for_inputs(self, app_id: str,
-                              tenant_id: str,
-                              app_generate_entity: AppGenerateEntity,
-                              inputs: dict,
-                              query: str) -> tuple[bool, dict, str]:
+    def moderation_for_inputs(
+            self, app_id: str,
+            tenant_id: str,
+            app_generate_entity: AppGenerateEntity,
+            inputs: dict,
+            query: str,
+            message_id: str,
+    ) -> tuple[bool, dict, str]:
         """
         Process sensitive_word_avoidance.
         :param app_id: app id
@@ -350,6 +353,7 @@ class AppRunner:
         :param app_generate_entity: app generate entity
         :param inputs: inputs
         :param query: query
+        :param message_id: message id
         :return:
         """
         moderation_feature = InputModeration()
@@ -358,7 +362,9 @@ class AppRunner:
             tenant_id=tenant_id,
             app_config=app_generate_entity.app_config,
             inputs=inputs,
-            query=query if query else ''
+            query=query if query else '',
+            message_id=message_id,
+            trace_manager=app_generate_entity.trace_manager
         )
     
     def check_hosting_moderation(self, application_generate_entity: EasyUIBasedAppGenerateEntity,

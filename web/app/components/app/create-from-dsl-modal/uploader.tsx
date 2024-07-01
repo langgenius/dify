@@ -15,11 +15,13 @@ import Button from '@/app/components/base/button'
 export type Props = {
   file: File | undefined
   updateFile: (file?: File) => void
+  className?: string
 }
 
 const Uploader: FC<Props> = ({
   file,
   updateFile,
+  className,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -83,7 +85,7 @@ const Uploader: FC<Props> = ({
   }, [])
 
   return (
-    <div className='mt-6'>
+    <div className={cn('mt-6', className)}>
       <input
         ref={fileUploader}
         style={{ display: 'none' }}
@@ -113,7 +115,7 @@ const Uploader: FC<Props> = ({
               <span className='shrink-0 text-gray-500'>.yml</span>
             </div>
             <div className='hidden group-hover:flex items-center'>
-              <Button className='!h-8 !px-3 !py-[6px] bg-white !text-[13px] !leading-[18px] text-gray-700' onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
+              <Button onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
               <div className='mx-2 w-px h-4 bg-gray-200' />
               <div className='p-2 cursor-pointer' onClick={removeFile}>
                 <RiDeleteBinLine className='w-4 h-4 text-gray-500' />

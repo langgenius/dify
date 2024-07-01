@@ -96,6 +96,7 @@ class ChatAppRunner(AppRunner):
                 app_generate_entity=application_generate_entity,
                 inputs=inputs,
                 query=query,
+                message_id=message.id
             )
         except ModerationException as e:
             self.direct_output(
@@ -154,7 +155,7 @@ class ChatAppRunner(AppRunner):
                 application_generate_entity.invoke_from
             )
 
-            dataset_retrieval = DatasetRetrieval()
+            dataset_retrieval = DatasetRetrieval(application_generate_entity)
             context = dataset_retrieval.retrieve(
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,
@@ -165,7 +166,8 @@ class ChatAppRunner(AppRunner):
                 invoke_from=application_generate_entity.invoke_from,
                 show_retrieve_source=app_config.additional_features.show_retrieve_source,
                 hit_callback=hit_callback,
-                memory=memory
+                memory=memory,
+                message_id=message.id,
             )
 
         # reorganize all inputs and template to prompt messages
