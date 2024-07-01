@@ -7,7 +7,6 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from models.dataset import AppDatasetJoin
 from models.model import (
     ApiToken,
@@ -41,8 +40,6 @@ def remove_app_and_related_data_task(self, app_id: str):
     deletion_cache_key = f'app_{app_id}_deletion'
 
     try:
-        redis_client.set(deletion_cache_key, 'processing', ex=3600)  # Set expiry to 1 hour
-
         # Use a transaction to ensure all deletions succeed or none do
         with db.session.begin_nested():
             app = db.session.query(App).filter(App.id == app_id).first()
@@ -74,17 +71,14 @@ def remove_app_and_related_data_task(self, app_id: str):
 
         end_at = time.perf_counter()
         logging.info(click.style(f'App and related data deleted: {app_id} latency: {end_at - start_at}', fg='green'))
-        redis_client.set(deletion_cache_key, 'completed', ex=3600)
 
     except SQLAlchemyError as e:
         db.session.rollback()
         logging.exception(click.style(f"Database error occurred while deleting app {app_id} and related data", fg='red'))
-        redis_client.set(deletion_cache_key, 'failed', ex=3600)
         raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
 
     except Exception as e:
         logging.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg='red'))
-        redis_client.set(deletion_cache_key, 'failed', ex=3600)
         raise self.retry(exc=e, countdown=60)  # Retry after 60 seconds
 
 
