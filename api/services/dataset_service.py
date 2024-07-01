@@ -234,7 +234,7 @@ class DatasetService:
 
     @staticmethod
     def delete_dataset(dataset_id, delete_confirm, user):
-        if not delete_confirm:
+        if delete_confirm.lower() == 'false':
             count = AppDatasetJoin.query.filter_by(dataset_id=dataset_id).count()
             if count > 0:
                 raise DatasetInUseError()
