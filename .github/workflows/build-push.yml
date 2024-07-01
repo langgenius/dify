@@ -24,7 +24,8 @@ jobs:
       registry_org: ethanlmm
       tag: latest
       platforms: "linux/amd64"
-      build_context: "api"
+      build_context: "./api"
+      dockerfile_path: api/Dockerfile
 
 
   web-container-push-latest:
@@ -38,4 +39,6 @@ jobs:
       registry_org: ethanlmm
       tag: latest
       platforms: "linux/amd64"
-      build_context: "web"
+      build_context: "./web"
+      dockerfile_path: web/Dockerfile
+
