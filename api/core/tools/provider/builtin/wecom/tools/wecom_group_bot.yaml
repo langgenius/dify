@@ -38,3 +38,27 @@ parameters:
       pt_BR: Content to sent to the group.
     llm_description: Content of the message
     form: llm
+  - name: message_type
+    type: select
+    default: text
+    required: true
+    label:
+      en_US: Wecom Group bot message type
+      zh_Hans: 群机器人webhook的消息类型
+      pt_BR: Wecom Group bot message type
+    human_description:
+      en_US: Wecom Group bot message type
+      zh_Hans: 群机器人webhook的消息类型
+      pt_BR: Wecom Group bot message type
+    options:
+      - value: text
+        label:
+          en_US: Text
+          zh_Hans: 文本
+          pt_BR: Text
+      - value: markdown
+        label:
+          en_US: Markdown
+          zh_Hans: Markdown
+          pt_BR: Markdown
+    form: form
