@@ -48,7 +48,7 @@
                 "--loglevel",
                 "info",
                 "-Q",
-                "dataset,generation,mail,ops_trace"
+                "dataset,generation,mail,ops_trace,app_deletion"
             ]
         },
     ]
