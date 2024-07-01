@@ -393,7 +393,7 @@ class DataSetConfig(BaseModel):
 
     DATASET_OPERATOR_ENABLED: bool = Field(
         description='whether to enable dataset operator',
-        default=True,
+        default=False,
     )
 
 
