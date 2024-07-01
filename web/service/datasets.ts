@@ -72,8 +72,14 @@ export const createEmptyDataset: Fetcher<DataSet, { name: string }> = ({ name })
   return post<DataSet>('/datasets', { body: { name } })
 }
 
-export const deleteDataset: Fetcher<DataSet, Record<string, any>> = ({ id: datasetID, isDeleteConfirm }) => {
-  return del<DataSet>(`/datasets/${datasetID}?delete_confirm=${isDeleteConfirm ? 'true' : 'false'}`, {}, {
+export const checkIsUsedInApp: Fetcher<{ is_using: boolean }, string> = (id) => {
+  return get<{ is_using: boolean }>(`/datasets/${id}/use-check`, {}, {
+    silent: true,
+  })
+}
+
+export const deleteDataset: Fetcher<DataSet, string> = (datasetID) => {
+  return del<DataSet>(`/datasets/${datasetID}?delete_confirm=true`, {}, {
     silent: true,
   })
 }

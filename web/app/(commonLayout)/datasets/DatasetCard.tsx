@@ -10,7 +10,7 @@ import {
 } from '@remixicon/react'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
-import { deleteDataset } from '@/service/datasets'
+import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import type { DataSet } from '@/models/datasets'
 import Tooltip from '@/app/components/base/tooltip'
 import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
@@ -38,30 +38,20 @@ const DatasetCard = ({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
   const detectIsUsedByApp = useCallback(async () => {
-    let isUsedByApp = false
     try {
-      await deleteDataset({
-        id: dataset.id,
-        isDeleteConfirm: false,
-      })
+      const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
+      setConfirmMessage(isUsedByApp ? t('dataset.datasetUsedByApp')! : t('dataset.deleteDatasetConfirmContent')!)
     }
     catch (e: any) {
       const res = await e.json()
-      if (res?.code === 'dataset_in_use')
-        isUsedByApp = true
-      else
-        notify({ type: 'error', message: res?.message || 'Unknown error' })
+      notify({ type: 'error', message: res?.message || 'Unknown error' })
     }
 
-    setConfirmMessage(isUsedByApp ? t('dataset.datasetUsedByApp')! : t('dataset.deleteDatasetConfirmContent')!)
     setShowConfirmDelete(true)
   }, [dataset.id, notify, t])
   const onConfirmDelete = useCallback(async () => {
     try {
-      await deleteDataset({
-        id: dataset.id,
-        isDeleteConfirm: true,
-      })
+      await deleteDataset(dataset.id)
       notify({ type: 'success', message: t('dataset.datasetDeleted') })
       if (onSuccess)
         onSuccess()
