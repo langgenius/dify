@@ -528,7 +528,7 @@ services:
       - cluster.name=elasticsearch
       - discovery.type=single-node
     ports:
-      - "9200:9200"
+      - "0.0.0.0:9200:9200"
     networks:
       - es-net
   kibana:
@@ -554,6 +554,7 @@ networks:
     driver: bridge
     internal: true
   es-net:
+    ho
     driver: bridge
     internal: true
 
