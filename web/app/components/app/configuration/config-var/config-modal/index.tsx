@@ -17,7 +17,7 @@ import Switch from '@/app/components/base/switch'
 import { ChangeType, InputVarType } from '@/app/components/workflow/types'
 
 const TEXT_MAX_LENGTH = 256
-const PARAGRAPH_MAX_LENGTH = 1032 * 32
+const PARAGRAPH_MAX_LENGTH = 50 * 1000 * 1000
 
 export type IConfigModalProps = {
   isCreate?: boolean
