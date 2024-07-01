@@ -20,6 +20,7 @@ from .app import (
     generator,
     message,
     model_config,
+    ops_trace,
     site,
     statistic,
     workflow,

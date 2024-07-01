@@ -20,6 +20,7 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
   useOnViewportChange,
+  useReactFlow,
 } from 'reactflow'
 import type {
   Viewport,
@@ -32,6 +33,7 @@ import type {
 } from './types'
 import { WorkflowContextProvider } from './context'
 import {
+  useDSL,
   useEdgesInteractions,
   useNodesInteractions,
   useNodesReadOnly,
@@ -58,6 +60,7 @@ import CandidateNode from './candidate-node'
 import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
+import UpdateDSLModal from './update-dsl-modal'
 import {
   useStore,
   useWorkflowStore,
@@ -73,9 +76,11 @@ import {
   ITERATION_CHILDREN_Z_INDEX,
   WORKFLOW_DATA_UPDATE,
 } from './constants'
+import { WorkflowHistoryProvider, useWorkflowHistoryStore } from './workflow-history-store'
 import Loading from '@/app/components/base/loading'
 import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Confirm from '@/app/components/base/confirm/common'
 
@@ -99,15 +104,20 @@ const Workflow: FC<WorkflowProps> = memo(({
 }) => {
   const workflowContainerRef = useRef<HTMLDivElement>(null)
   const workflowStore = useWorkflowStore()
+  const reactflow = useReactFlow()
+  const featuresStore = useFeaturesStore()
   const [nodes, setNodes] = useNodesState(originalNodes)
   const [edges, setEdges] = useEdgesState(originalEdges)
   const showFeaturesPanel = useStore(state => state.showFeaturesPanel)
   const controlMode = useStore(s => s.controlMode)
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const showConfirm = useStore(s => s.showConfirm)
+  const showImportDSLModal = useStore(s => s.showImportDSLModal)
   const {
     setShowConfirm,
     setControlPromptEditorRerenderKey,
+    setShowImportDSLModal,
+    setSyncWorkflowDraftHash,
   } = workflowStore.getState()
   const {
     handleSyncWorkflowDraft,
@@ -122,6 +132,19 @@ const Workflow: FC<WorkflowProps> = memo(({
     if (v.type === WORKFLOW_DATA_UPDATE) {
       setNodes(v.payload.nodes)
       setEdges(v.payload.edges)
+
+      if (v.payload.viewport)
+        reactflow.setViewport(v.payload.viewport)
+
+      if (v.payload.features && featuresStore) {
+        const { setFeatures } = featuresStore.getState()
+
+        setFeatures(v.payload.features)
+      }
+
+      if (v.payload.hash)
+        setSyncWorkflowDraftHash(v.payload.hash)
+
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     }
   })
@@ -159,6 +182,8 @@ const Workflow: FC<WorkflowProps> = memo(({
   useEventListener('keydown', (e) => {
     if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey))
       e.preventDefault()
+    if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey))
+      e.preventDefault()
   })
   useEventListener('mousemove', (e) => {
     const containerClientRect = workflowContainerRef.current?.getBoundingClientRect()
@@ -190,6 +215,8 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleNodesPaste,
     handleNodesDuplicate,
     handleNodesDelete,
+    handleHistoryBack,
+    handleHistoryForward,
   } = useNodesInteractions()
   const {
     handleEdgeEnter,
@@ -204,17 +231,23 @@ const Workflow: FC<WorkflowProps> = memo(({
   } = useSelectionInteractions()
   const {
     handlePaneContextMenu,
+    handlePaneContextmenuCancel,
   } = usePanelInteractions()
   const {
     isValidConnection,
   } = useWorkflow()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
+  const {
+    handleExportDSL,
+  } = useDSL()
 
   useOnViewportChange({
     onEnd: () => {
       handleSyncWorkflowDraft()
     },
   })
+
+  const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
 
   useKeyPress('delete', handleNodesDelete)
   useKeyPress(['delete', 'backspace'], handleEdgeDelete)
@@ -232,6 +265,18 @@ const Workflow: FC<WorkflowProps> = memo(({
   }, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, handleNodesDuplicate, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, handleStartWorkflowRun, { exactMatch: true, useCapture: true })
+  useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, handleStartWorkflowRun, { exactMatch: true, useCapture: true })
+  useKeyPress(
+    `${getKeyboardKeyCodeBySystem('ctrl')}.z`,
+    () => workflowHistoryShortcutsEnabled && handleHistoryBack(),
+    { exactMatch: true, useCapture: true },
+  )
+
+  useKeyPress(
+    [`${getKeyboardKeyCodeBySystem('ctrl')}.y`, `${getKeyboardKeyCodeBySystem('ctrl')}.shift.z`],
+    () => workflowHistoryShortcutsEnabled && handleHistoryForward(),
+    { exactMatch: true, useCapture: true },
+  )
 
   return (
     <div
@@ -245,9 +290,9 @@ const Workflow: FC<WorkflowProps> = memo(({
     >
       <SyncingDataModal />
       <CandidateNode />
-      <Header />
+      <Header/>
       <Panel />
-      <Operator />
+      <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       {
         showFeaturesPanel && <Features />
       }
@@ -263,6 +308,15 @@ const Workflow: FC<WorkflowProps> = memo(({
             title={showConfirm.title}
             desc={showConfirm.desc}
             confirmWrapperClassName='!z-[11]'
+          />
+        )
+      }
+      {
+        showImportDSLModal && (
+          <UpdateDSLModal
+            onCancel={() => setShowImportDSLModal(false)}
+            onBackup={handleExportDSL}
+            onImport={handlePaneContextmenuCancel}
           />
         )
       }
@@ -368,13 +422,17 @@ const WorkflowWrap = memo(() => {
 
   return (
     <ReactFlowProvider>
-      <FeaturesProvider features={initialFeatures}>
-        <Workflow
-          nodes={nodesData}
-          edges={edgesData}
-          viewport={data?.graph.viewport}
-        />
-      </FeaturesProvider>
+      <WorkflowHistoryProvider
+        nodes={nodesData}
+        edges={edgesData} >
+        <FeaturesProvider features={initialFeatures}>
+          <Workflow
+            nodes={nodesData}
+            edges={edgesData}
+            viewport={data?.graph.viewport}
+          />
+        </FeaturesProvider>
+      </WorkflowHistoryProvider>
     </ReactFlowProvider>
   )
 })

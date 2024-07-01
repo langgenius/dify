@@ -8,7 +8,7 @@ import services
 from controllers.console import api
 from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
-from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError
+from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -346,6 +346,8 @@ class DatasetIndexingEstimateApi(Resource):
                 "in the Settings -> Model Provider.")
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
+        except Exception as e:
+            raise IndexingEstimateError(str(e))
 
         return response, 200
 

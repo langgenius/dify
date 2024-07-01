@@ -11,7 +11,7 @@
 
    ```bash
    cd ../docker
-   docker-compose -f docker-compose.middleware.yaml -p dify up -d
+   docker compose -f docker-compose.middleware.yaml -p dify up -d
    cd ../api
    ```
 
@@ -66,7 +66,7 @@
 10. If you need to debug local async processing, please start the worker service.
 
    ```bash
-   poetry run python -m celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail
+   poetry run python -m celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace
    ```
 
    The started celery app handles the async tasks, e.g. dataset importing and documents indexing.
