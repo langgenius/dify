@@ -226,6 +226,15 @@ class DatasetApi(Resource):
         except services.errors.dataset.DatasetInUseError:
             raise DatasetInUseError()
 
+class DatasetUseCheckApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id):
+        dataset_id_str = str(dataset_id)
+
+        dataset_is_using = DatasetService.dataset_use_check(dataset_id_str)
+        return {'is_using': dataset_is_using}, 200
 
 class DatasetQueryApi(Resource):
 
@@ -562,6 +571,7 @@ class DatasetErrorDocs(Resource):
 
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
+api.add_resource(DatasetUseCheckApi, '/datasets/<uuid:dataset_id>/use-check')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
 api.add_resource(DatasetErrorDocs, '/datasets/<uuid:dataset_id>/error-docs')
 api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
