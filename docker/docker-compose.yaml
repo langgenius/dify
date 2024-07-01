@@ -553,8 +553,9 @@ networks:
   opensearch-net:
     driver: bridge
     internal: true
-  networks:
-    es-net: { }
+  es-net:
+    driver: bridge
+    internal: true
 
 volumes:
   oradata:
