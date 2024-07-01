@@ -10,7 +10,6 @@ from extensions.ext_database import db
 from models.dataset import AppDatasetJoin
 from models.model import (
     ApiToken,
-    App,
     AppAnnotationHitHistory,
     AppAnnotationSetting,
     AppModelConfig,
