@@ -253,6 +253,13 @@ class DatasetService:
         return True
 
     @staticmethod
+    def dataset_use_check(dataset_id) -> bool:
+        count = AppDatasetJoin.query.filter_by(dataset_id=dataset_id).count()
+        if count > 0:
+            return True
+        return False
+
+    @staticmethod
     def check_dataset_permission(dataset, user):
         if dataset.tenant_id != user.current_tenant_id:
             logging.debug(
