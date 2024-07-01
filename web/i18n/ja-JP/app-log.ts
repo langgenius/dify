@@ -44,7 +44,7 @@ const translation = {
     loading: '読み込み中',
     operation: {
       like: 'いいね',
-      dislike: 'いいね解除',
+      dislike: 'よくない',
       addAnnotation: '改善を追加',
       editAnnotation: '改善を編集',
       annotationPlaceholder: '将来のモデルの微調整やテキスト生成品質の継続的改善のためにAIが返信することを期待する答えを入力してください。',

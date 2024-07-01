@@ -25,7 +25,7 @@ const translation = {
     callTimes: 'コール回数',
     usedToken: '使用済みトークン',
     setAPIBtn: 'モデルプロバイダの設定へ',
-    tryCloud: 'またはDifyのクラウドバージョンを無料見積もりでお試しください',
+    tryCloud: 'またはDifyのクラウドバージョンを無料でお試しください',
   },
   overview: {
     title: '概要',
