@@ -22,19 +22,27 @@ class WecomGroupBotTool(BuiltinTool):
             return self.create_text_message(
                 f'Invalid parameter hook_key ${hook_key}, not a valid UUID')
 
-        msgtype = 'text'
+        message_type = tool_parameters.get('message_type', 'text')
+        if message_type == 'markdown':
+            payload = {
+                "msgtype": 'markdown',
+                "markdown": {
+                    "content": content,
+                }
+            }
+        else:
+            payload = {
+                "msgtype": 'text',
+                "text": {
+                    "content": content,
+                }
+            }
         api_url = 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send'
         headers = {
             'Content-Type': 'application/json',
         }
         params = {
             'key': hook_key,
-        }
-        payload = {
-            "msgtype": msgtype,
-            "text": {
-                "content": content,
-            }
         }
 
         try:
