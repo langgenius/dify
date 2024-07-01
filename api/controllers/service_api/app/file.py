@@ -1,5 +1,6 @@
 from flask import request
 from flask_restful import Resource, marshal_with
+from werkzeug.exceptions import Forbidden
 
 import services
 from controllers.service_api import api
@@ -39,6 +40,8 @@ class FileApi(Resource):
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
+        except services.errors.file.FileUploadedError as file_is_uploaded_error:
+            raise Forbidden(file_is_uploaded_error.description)
 
         return upload_file, 201
 
