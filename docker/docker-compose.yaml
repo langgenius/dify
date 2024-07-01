@@ -527,4 +527,4 @@ networks:
     internal: true
 
 volumes:
-  oradata1:
+  oradata:
