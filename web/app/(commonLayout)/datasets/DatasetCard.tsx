@@ -36,18 +36,40 @@ const DatasetCard = ({
 
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [confirmMessage, setConfirmMessage] = useState<string>('')
+  const detectIsUsedByApp = useCallback(async () => {
+    let isUsedByApp = false
+    try {
+      await deleteDataset({
+        id: dataset.id,
+        isDeleteConfirm: false,
+      })
+    }
+    catch (e: any) {
+      const res = await e.json()
+      if (res?.code === 'dataset_in_use')
+        isUsedByApp = true
+      else
+        notify({ type: 'error', message: res?.message || 'Unknown error' })
+    }
+
+    setConfirmMessage(isUsedByApp ? t('dataset.datasetUsedByApp')! : t('dataset.deleteDatasetConfirmContent')!)
+    setShowConfirmDelete(true)
+  }, [dataset.id, notify, t])
   const onConfirmDelete = useCallback(async () => {
     try {
-      await deleteDataset(dataset.id)
+      await deleteDataset({
+        id: dataset.id,
+        isDeleteConfirm: true,
+      })
       notify({ type: 'success', message: t('dataset.datasetDeleted') })
       if (onSuccess)
         onSuccess()
     }
     catch (e: any) {
-      notify({ type: 'error', message: `${t('dataset.datasetDeleteFailed')}${'message' in e ? `: ${e.message}` : ''}` })
     }
     setShowConfirmDelete(false)
-  }, [dataset.id])
+  }, [dataset.id, notify, onSuccess, t])
 
   const Operations = (props: HtmlContentProps) => {
     const onMouseLeave = async () => {
@@ -63,7 +85,7 @@ const DatasetCard = ({
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
-      setShowConfirmDelete(true)
+      detectIsUsedByApp()
     }
     return (
       <div className="relative w-full py-1" onMouseLeave={onMouseLeave}>
@@ -159,7 +181,7 @@ const DatasetCard = ({
               />
             </div>
           </div>
-          <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200'/>
+          <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200' />
           <div className='!hidden group-hover:!flex shrink-0'>
             <CustomPopover
               htmlContent={<Operations />}
@@ -194,7 +216,7 @@ const DatasetCard = ({
       {showConfirmDelete && (
         <Confirm
           title={t('dataset.deleteDatasetConfirmTitle')}
-          content={t('dataset.deleteDatasetConfirmContent')}
+          content={confirmMessage}
           isShow={showConfirmDelete}
           onClose={() => setShowConfirmDelete(false)}
           onConfirm={onConfirmDelete}
