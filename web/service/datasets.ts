@@ -79,9 +79,7 @@ export const checkIsUsedInApp: Fetcher<{ is_using: boolean }, string> = (id) => 
 }
 
 export const deleteDataset: Fetcher<DataSet, string> = (datasetID) => {
-  return del<DataSet>(`/datasets/${datasetID}?delete_confirm=true`, {}, {
-    silent: true,
-  })
+  return del<DataSet>(`/datasets/${datasetID}?delete_confirm=true`)
 }
 
 export const fetchDefaultProcessRule: Fetcher<ProcessRuleResponse, { url: string }> = ({ url }) => {
