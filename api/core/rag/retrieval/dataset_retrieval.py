@@ -26,7 +26,7 @@ from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetr
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
-
+import re
 default_retrieval_model = {
     'search_method': RetrievalMethod.SEMANTIC_SEARCH,
     'reranking_enable': False,
