@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "${HTTPS_ENABLED}" = "true" ]; then
+if [ "${NGINX_HTTPS_ENABLED}" = "true" ]; then
     # set the HTTPS_CONFIG environment variable to the content of the https.conf.template
     HTTPS_CONFIG=$(envsubst < /etc/nginx/https.conf.template)
     export HTTPS_CONFIG
