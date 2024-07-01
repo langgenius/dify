@@ -34,7 +34,7 @@ from models.dataset import (
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
 from services.errors.account import NoPermissionError
-from services.errors.dataset import DatasetInUseError, DatasetNameDuplicateError
+from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
 from services.feature_service import FeatureModel, FeatureService
