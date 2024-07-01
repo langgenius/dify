@@ -107,7 +107,7 @@ class SearXNGSearchTool(BuiltinTool):
         if not host:
             raise Exception('SearXNG api is required')
                 
-        query = tool_parameters.get('query', None)
+        query = tool_parameters.get('query')
         if not query:
             return self.create_text_message('Please input query')
                 

@@ -1,5 +1,7 @@
 import json
 import logging
+import re
+from typing import Optional
 
 from core.llm_generator.output_parser.errors import OutputParserException
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
@@ -9,12 +11,16 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 
 
 class LLMGenerator:
     @classmethod
-    def generate_conversation_name(cls, tenant_id: str, query):
+    def generate_conversation_name(
+        cls, tenant_id: str, query, conversation_id: Optional[str] = None, app_id: Optional[str] = None
+    ):
         prompt = CONVERSATION_TITLE_PROMPT
 
         if len(query) > 2000:
@@ -29,24 +35,38 @@ class LLMGenerator:
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
         )
-
         prompts = [UserPromptMessage(content=prompt)]
-        response = model_instance.invoke_llm(
-            prompt_messages=prompts,
-            model_parameters={
-                "max_tokens": 100,
-                "temperature": 1
-            },
-            stream=False
-        )
-        answer = response.message.content
 
-        result_dict = json.loads(answer)
+        with measure_time() as timer:
+            response = model_instance.invoke_llm(
+                prompt_messages=prompts,
+                model_parameters={
+                    "max_tokens": 100,
+                    "temperature": 1
+                },
+                stream=False
+            )
+        answer = response.message.content
+        cleaned_answer = re.sub(r'^.*(\{.*\}).*$', r'\1', answer, flags=re.DOTALL)
+        result_dict = json.loads(cleaned_answer)
         answer = result_dict['Your Output']
         name = answer.strip()
 
         if len(name) > 75:
             name = name[:75] + '...'
+
+        # get tracing instance
+        trace_manager = TraceQueueManager(app_id=app_id)
+        trace_manager.add_trace_task(
+            TraceTask(
+                TraceTaskName.GENERATE_NAME_TRACE,
+                conversation_id=conversation_id,
+                generate_conversation_name=name,
+                inputs=prompt,
+                timer=timer,
+                tenant_id=tenant_id,
+            )
+        )
 
         return name
 

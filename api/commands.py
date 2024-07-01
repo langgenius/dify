@@ -12,6 +12,7 @@ from constants.languages import languages
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
+from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import email as email_validate
@@ -585,6 +586,53 @@ def upgrade_db():
         click.echo('Database migration skipped')
 
 
+@click.command('fix-app-site-missing', help='Fix app related site missing issue.')
+def fix_app_site_missing():
+    """
+    Fix app related site missing issue.
+    """
+    click.echo(click.style('Start fix app related site missing issue.', fg='green'))
+
+    failed_app_ids = []
+    while True:
+        sql = """select apps.id as id from apps left join sites on sites.app_id=apps.id
+where sites.id is null limit 1000"""
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql))
+
+            processed_count = 0
+            for i in rs:
+                processed_count += 1
+                app_id = str(i.id)
+
+                if app_id in failed_app_ids:
+                    continue
+
+                try:
+                    app = db.session.query(App).filter(App.id == app_id).first()
+                    tenant = app.tenant
+                    if tenant:
+                        accounts = tenant.get_accounts()
+                        if not accounts:
+                            print("Fix app {} failed.".format(app.id))
+                            continue
+
+                        account = accounts[0]
+                        print("Fix app {} related site missing issue.".format(app.id))
+                        app_was_created.send(app, account=account)
+                except Exception as e:
+                    failed_app_ids.append(app_id)
+                    click.echo(click.style('Fix app {} related site missing issue failed!'.format(app_id), fg='red'))
+                    logging.exception(f'Fix app related site missing issue failed, error: {e}')
+                    continue
+
+            if not processed_count:
+                break
+
+
+    click.echo(click.style('Congratulations! Fix app related site missing issue successful!', fg='green'))
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
@@ -594,3 +642,4 @@ def register_commands(app):
     app.cli.add_command(add_qdrant_doc_id_index)
     app.cli.add_command(create_tenant)
     app.cli.add_command(upgrade_db)
+    app.cli.add_command(fix_app_site_missing)

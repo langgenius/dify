@@ -50,6 +50,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         }
         final_answer = ''
 
+        # get tracing instance
+        trace_manager = app_generate_entity.trace_manager
+        
         def increase_usage(final_llm_usage_dict: dict[str, LLMUsage], usage: LLMUsage):
             if not final_llm_usage_dict['usage']:
                 final_llm_usage_dict['usage'] = usage
@@ -243,6 +246,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         message=self.message,
                         invoke_from=self.application_generate_entity.invoke_from,
                         agent_tool_callback=self.agent_callback,
+                        trace_manager=trace_manager,
                     )
                     # publish files
                     for message_file_id, save_as in message_files:

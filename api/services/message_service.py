@@ -7,6 +7,8 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.utils import measure_time
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.account import Account
@@ -262,9 +264,21 @@ class MessageService:
             message_limit=3,
         )
 
-        questions = LLMGenerator.generate_suggested_questions_after_answer(
-            tenant_id=app_model.tenant_id,
-            histories=histories
+        with measure_time() as timer:
+            questions = LLMGenerator.generate_suggested_questions_after_answer(
+                tenant_id=app_model.tenant_id,
+                histories=histories
+            )
+
+        # get tracing instance
+        trace_manager = TraceQueueManager(app_id=app_model.id)
+        trace_manager.add_trace_task(
+            TraceTask(
+                TraceTaskName.SUGGESTED_QUESTION_TRACE,
+                message_id=message_id,
+                suggested_question=questions,
+                timer=timer
+            )
         )
 
         return questions

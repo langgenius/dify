@@ -1,0 +1,4 @@
+model: jina-reranker-v2-base-multilingual
+model_type: rerank
+model_properties:
+  context_size: 8192
