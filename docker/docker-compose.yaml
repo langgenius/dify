@@ -554,7 +554,6 @@ networks:
     driver: bridge
     internal: true
   es-net:
-    ho
     driver: bridge
     internal: true
 
