@@ -241,15 +241,18 @@ class DatasetRetrieval:
         elif planning_strategy == PlanningStrategy.ROUTER:
             function_call_router = FunctionCallMultiDatasetRouter()
             dataset_id = function_call_router.invoke(query, tools, model_config, model_instance)
+        print(dataset_id,'   ',type(dataset_id),'   ',query)
         result=re.match(r'[^<]*<dataset_id>(?P<dataset_id>[^<]+)</dataset_id>', query)
         if result is not None:
             dataset_id=result.groupdict()['dataset_id']
             query=query.replace('<dataset_id>'+dataset_id+'</dataset_id>','')
         if dataset_id:
+            
             # get retrieval model config
             dataset = db.session.query(Dataset).filter(
                 Dataset.id == dataset_id
             ).first()
+            print('matched dataset',dataset)
             if dataset:
                 retrieval_model_config = dataset.retrieval_model \
                     if dataset.retrieval_model else default_retrieval_model
