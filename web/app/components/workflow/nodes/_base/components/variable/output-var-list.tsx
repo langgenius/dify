@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import type { OutputVar } from '../../../code/types'
@@ -14,6 +14,7 @@ type Props = {
   readonly: boolean
   outputs: OutputVar
   outputKeyOrders: string[]
+  onOutputKeyOrdersChange?: (newOutputKeyOrders: string[]) => void
   onChange: (payload: OutputVar, changedIndex?: number, newKey?: string) => void
   onRemove: (index: number) => void
 }
@@ -26,19 +27,35 @@ const OutputVarList: FC<Props> = ({
   onRemove,
 }) => {
   const { t } = useTranslation()
-  const [editVar, setEditVar] = useState<{ variable: string; variable_type: VarType } | null>(null)
+  const [list, setList] = useState<{ variable: string; variable_type: VarType }[]>([])
 
-  const list = outputKeyOrders.map((key) => {
-    return {
-      variable: key,
-      variable_type: outputs[key]?.type,
-    }
-  })
+  useEffect(() => {
+    const l = outputKeyOrders.map((key) => {
+      return {
+        variable: key,
+        variable_type: outputs[key]?.type,
+      }
+    })
+    setList(l)
+  }, [outputKeyOrders, outputs])
 
   const handleVarNameChange = useCallback((index: number) => {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const oldKey = list[index].variable
       const newKey = e.target.value
+      const newList = list.map((o, i) => {
+        return i === index ? { ...o, variable: newKey } : o
+      })
+      setList(newList)
+    }
+  }, [list])
+
+  const handleVarNameBlur = useCallback((index: number) => {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const oldKey = outputKeyOrders[index]
+      const newKey = e.target.value
+
+      if (oldKey === newKey)
+        return
 
       const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
       if (!isValid) {
@@ -49,58 +66,38 @@ const OutputVarList: FC<Props> = ({
         return
       }
 
+      if (list.filter((_, i) => i !== index).map(item => item.variable?.trim()).includes(newKey.trim())) {
+        Toast.notify({
+          type: 'error',
+          message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
+        })
+        // reset list, when keyAlreadyExists
+        const l = list.map((o, i) => {
+          return i === index
+            ? { ...o, variable: oldKey }
+            : o
+        })
+        setList(l)
+        return
+      }
+
       const newOutputs = produce(outputs, (draft) => {
         draft[newKey] = draft[oldKey]
         delete draft[oldKey]
       })
       onChange(newOutputs, index, newKey)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [list, onChange, outputs, outputKeyOrders])
-
-  const handleVarNameFocus = useCallback((index: number) => {
-    return () => {
-      const oldVar = list[index]
-      setEditVar(oldVar)
-    }
-  }, [list])
-
-  const handleVarNameBlur = useCallback((index: number) => {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const oldKey = list[index].variable
-      const newKey = e.target.value
-      if (list.filter((_, i) => i !== index).map(item => item.variable?.trim()).includes(newKey.trim())) {
-        Toast.notify({
-          type: 'error',
-          message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
-        })
-        // reset the var name
-        const key = editVar?.variable
-        if (key) {
-          const newOutputs = produce(outputs, (draft) => {
-            draft[key] = draft[oldKey]
-            delete draft[oldKey]
-          })
-          onChange(newOutputs, index, key)
-        }
-        else {
-          onRemove(index)
-        }
-      }
-      setEditVar(null)
-    }
-  }, [list, onChange, onRemove, outputs, editVar, t])
+  }, [onChange, outputs, outputKeyOrders, list, t])
 
   const handleVarTypeChange = useCallback((index: number) => {
     return (value: string) => {
-      const key = list[index].variable
+      const key = outputKeyOrders[index]
       const newOutputs = produce(outputs, (draft) => {
         draft[key].type = value as VarType
       })
       onChange(newOutputs)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [list, onChange, outputs, outputKeyOrders])
+  }, [onChange, outputs, outputKeyOrders])
 
   const handleVarRemove = useCallback((index: number) => {
     return () => {
@@ -116,7 +113,6 @@ const OutputVarList: FC<Props> = ({
             readOnly={readonly}
             value={item.variable}
             onChange={handleVarNameChange(index)}
-            onFocus={handleVarNameFocus(index)}
             onBlur={handleVarNameBlur(index)}
             className='w-0 grow h-8 leading-8 px-2.5 rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px] placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
             type='text' />
