@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions.ext_database import db
@@ -132,7 +133,7 @@ def _delete_app_conversations(app_id: str):
     db.session.query(Conversation).filter(Conversation.app_id == app_id).delete()
 
 def _delete_app_messages(app_id: str):
-    message_ids = db.session.query(Message.id).filter(Message.app_id == app_id).subquery()
+    message_ids = select(Message.id).filter(Message.app_id == app_id).scalar_subquery()
     db.session.query(MessageFeedback).filter(MessageFeedback.message_id.in_(message_ids)).delete(synchronize_session=False)
     db.session.query(MessageAnnotation).filter(MessageAnnotation.message_id.in_(message_ids)).delete(synchronize_session=False)
     db.session.query(MessageChain).filter(MessageChain.message_id.in_(message_ids)).delete(synchronize_session=False)
