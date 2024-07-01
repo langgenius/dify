@@ -1,4 +1,5 @@
 """Abstract interface for document loader implementations."""
+import os
 from typing import Optional
 
 import pandas as pd
@@ -29,8 +30,15 @@ class ExcelExtractor(BaseExtractor):
     def extract(self) -> list[Document]:
         """ Load from Excel file in xls or xlsx format using Pandas."""
         documents = []
+        # Determine the file extension
+        file_extension = os.path.splitext(self._file_path)[-1].lower()
         # Read each worksheet of an Excel file using Pandas
-        excel_file = pd.ExcelFile(self._file_path)
+        if file_extension == '.xlsx':
+            excel_file = pd.ExcelFile(self._file_path, engine='openpyxl')
+        elif file_extension == '.xls':
+            excel_file = pd.ExcelFile(self._file_path, engine='xlrd')
+        else:
+            raise ValueError(f"Unsupported file extension: {file_extension}")
         for sheet_name in excel_file.sheet_names:
             df: pd.DataFrame = excel_file.parse(sheet_name=sheet_name)
 

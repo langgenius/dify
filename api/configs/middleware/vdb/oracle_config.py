@@ -15,7 +15,7 @@ class OracleConfig(BaseModel):
 
     ORACLE_PORT: Optional[PositiveInt] = Field(
         description='ORACLE port',
-        default=None,
+        default=1521,
     )
 
     ORACLE_USER: Optional[str] = Field(

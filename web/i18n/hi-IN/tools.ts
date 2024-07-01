@@ -108,6 +108,8 @@ const translation = {
     customDisclaimerPlaceholder: 'कस्टम अस्वीकरण दर्ज करें',
     confirmTitle: 'सहेजने की पुष्टि करें ?',
     confirmTip: 'इस उपकरण का उपयोग करने वाले ऐप्स प्रभावित होंगे',
+    deleteToolConfirmTitle: 'इस उपकरण को हटाएं?',
+    deleteToolConfirmContent: 'इस उपकरण को हटाने से वापस नहीं आ सकता है। उपयोगकर्ता अब तक आपके उपकरण पर अन्तराल नहीं कर सकेंगे।',
   },
   test: {
     title: 'परीक्षण',

@@ -331,7 +331,7 @@ class MailConfig(BaseModel):
 
     SMTP_PORT: Optional[int] = Field(
         description='smtp server port',
-        default=None,
+        default=465,
     )
 
     SMTP_USERNAME: Optional[str] = Field(

@@ -80,7 +80,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
         max_workers = self._get_model_workers_limit(model, credentials)
         try:
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
-            audio_bytes_list = list()
+            audio_bytes_list = []
 
             # Create a thread pool and map the function to the list of sentences
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:

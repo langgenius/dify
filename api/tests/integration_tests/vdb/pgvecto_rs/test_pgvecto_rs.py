@@ -26,9 +26,6 @@ class PGVectoRSVectorTest(AbstractVectorTest):
         hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) == 0
 
-    def delete_by_document_id(self):
-        self.vector.delete_by_document_id(document_id=self.example_doc_id)
-
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key='document_id', value=self.example_doc_id)
         assert len(ids) == 1
