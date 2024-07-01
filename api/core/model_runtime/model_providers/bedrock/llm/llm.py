@@ -1,5 +1,4 @@
 # standard import
-# standard import
 import base64
 import json
 import logging
@@ -7,7 +6,6 @@ import mimetypes
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
-# 3rd import
 # 3rd import
 import boto3
 import requests
@@ -21,8 +19,6 @@ from botocore.exceptions import (
 )
 from cohere import ChatMessage
 
-# local import
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 # local import
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
