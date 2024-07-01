@@ -136,7 +136,7 @@ class HttpConfig(BaseModel):
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(',')
 
-    inner_WEB_API_CORS_ALLOW_ORIGINS: Optional[str] = Field(
+    inner_WEB_API_CORS_ALLOW_ORIGINS: str = Field(
         description='',
         validation_alias=AliasChoices('WEB_API_CORS_ALLOW_ORIGINS'),
         default='*',
