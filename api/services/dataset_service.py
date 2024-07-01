@@ -233,10 +233,11 @@ class DatasetService:
         return dataset
 
     @staticmethod
-    def delete_dataset(dataset_id, user):
-        count = AppDatasetJoin.query.filter_by(dataset_id=dataset_id).count()
-        if count > 0:
-            raise DatasetInUseError()
+    def delete_dataset(dataset_id, delete_confirm, user):
+        if not delete_confirm:
+            count = AppDatasetJoin.query.filter_by(dataset_id=dataset_id).count()
+            if count > 0:
+                raise DatasetInUseError()
 
         dataset = DatasetService.get_dataset(dataset_id)
 
