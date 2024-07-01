@@ -520,6 +520,29 @@ services:
     depends_on:
       - opensearch
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.21
+    container_name: elasticsearch
+    hostname: elasticsearch
+    environment:
+      - cluster.name=elasticsearch
+      - discovery.type=single-node
+    ports:
+      - "9222:9200"
+    networks:
+      - es-net
+  kibana:
+    container_name: kb-container
+    image: docker.elastic.co/kibana/kibana:7.17.21
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9222
+    networks:
+      - es-net
+    depends_on:
+      - elasticsearch
+    ports:
+      - "5601:5601"
+
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
@@ -530,6 +553,8 @@ networks:
   opensearch-net:
     driver: bridge
     internal: true
+  networks:
+    es-net: { }
 
 volumes:
   oradata:
