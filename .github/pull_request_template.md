@@ -1,12 +1,20 @@
+# Checklist:
+
+> [!IMPORTANT]  
+> Please review the checklist below before submitting your pull request.
+
+- [ ] Please open an issue before creating a PR or link to an existing issue
+- [ ] I have performed a self-review of my own code
+- [ ] I have commented my code, particularly in hard-to-understand areas
+- [ ] I ran `dev/reformat`(backend) and `cd web && npx lint-staged`(frontend) to appease the lint gods
+
 # Description
 
-Please include a summary of the change and which issue is fixed. Please also include relevant motivation and context. List any dependencies that are required for this change.
+Describe the big picture of your changes here to communicate to the maintainers why we should accept this pull request. If it fixes a bug or resolves a feature request, be sure to link to that issue. Close issue syntax: `Fixes #<issue number>`, see [documentation](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword) for more details.
 
-Fixes # (issue)
+Fixes 
 
 ## Type of Change
-
-Please delete options that are not relevant.
 
 - [ ] Bug fix (non-breaking change which fixes an issue)
 - [ ] New feature (non-breaking change which adds functionality)
@@ -15,18 +23,12 @@ Please delete options that are not relevant.
 - [ ] Improvement, including but not limited to code refactoring, performance optimization, and UI/UX improvement
 - [ ] Dependency upgrade
 
-# How Has This Been Tested?
+# Testing Instructions
 
 Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce. Please also list any relevant details for your test configuration
 
-- [ ] TODO
+- [ ] Test A
+- [ ] Test B
 
-# Suggested Checklist:
 
-- [ ] I have performed a self-review of my own code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] My changes generate no new warnings
-- [ ] I ran `dev/reformat`(backend) and `cd web && npx lint-staged`(frontend) to appease the lint gods
-- [ ] `optional` I have made corresponding changes to the documentation 
-- [ ] `optional` I have added tests that prove my fix is effective or that my feature works
-- [ ] `optional` New and existing unit tests pass locally with my changes
+
