@@ -33,6 +33,7 @@ from services.errors.account import (
     TenantNotFound,
 )
 from tasks.mail_invite_member_task import send_invite_member_mail_task
+from tasks.mail_reset_password_task import send_reset_password_mail_task
 
 
 class AccountService:
@@ -221,6 +222,48 @@ class AccountService:
         if not redis_client.get(_get_login_cache_key(account_id=account_id, token=token)):
             return None
         return AccountService.load_user(account_id)
+
+    @classmethod
+    def send_reset_password_email(cls, account: Account):
+        token = cls.generate_reset_token(account)
+        send_reset_password_mail_task.delay(
+            language=account.interface_language,
+            to=account.email,
+            token=token
+        )
+        return token
+
+    @classmethod
+    def generate_reset_token(cls, account: Account) -> str:
+        token = str(uuid.uuid4())
+        reset_data = {
+            'account_id': account.id,
+            'email': account.email,
+        }
+        expiryHours = current_app.config['RESET_TOKEN_EXPIRY_HOURS']
+        redis_client.setex(
+            cls._get_reset_token_key(token),
+            expiryHours * 60 * 60,
+            json.dumps(reset_data)
+        )
+        return token
+
+    @classmethod
+    def _get_reset_token_key(cls, token: str) -> str:
+        return f'reset_password:token:{token}'
+
+    @classmethod
+    def revoke_reset_token(cls, token: str):
+        redis_client.delete(cls._get_reset_token_key(token))
+
+    @classmethod
+    def get_reset_data(cls, token: str) -> Optional[dict[str, Any]]:
+        key = cls._get_reset_token_key(token)
+        reset_data_json = redis_client.get(key)
+        if reset_data_json is None:
+            return None
+        reset_data = json.loads(reset_data_json)
+        return reset_data
 
 def _get_login_cache_key(*, account_id: str, token: str):
     return f"account_login:{account_id}:{token}"

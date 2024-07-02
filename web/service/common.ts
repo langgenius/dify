@@ -298,3 +298,13 @@ export const enableModel = (url: string, body: { model: string; model_type: Mode
 
 export const disableModel = (url: string, body: { model: string; model_type: ModelTypeEnum }) =>
   patch<CommonResponse>(url, { body })
+
+export const sendForgotPasswordEmail: Fetcher<CommonResponse, { url: string; body: { email: string } }> = ({ url, body }) =>
+  post<CommonResponse>(url, { body })
+
+export const verifyForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boolean; email: string }, { url: string; body: { token: string } }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse & { is_valid: boolean; email: string }>
+}
+
+export const changePasswordWithToken: Fetcher<CommonResponse, { url: string; body: { token: string; new_password: string; password_confirm: string } }> = ({ url, body }) =>
+  post<CommonResponse>(url, { body })
