@@ -199,9 +199,9 @@ const translation = {
       },
     },
   },
-  automatic: {
-    title: '自动编排',
-    description: '描述您的场景，Dify 将为您编排一个应用。',
+  generate: {
+    title: '提示生成器',
+    description: '提示生成器可以将输入的任务指令转换为高质量、结构化的提示。请尽可能详细地编写清晰、具体的指令。生成的提示的质量取决于您选择的推理模型。',
     intendedAudience: '目标用户是谁？',
     intendedAudiencePlaceHolder: '例如：学生',
     solveProblem: '希望 AI 为他们解决什么问题？',

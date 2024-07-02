@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
+import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
@@ -14,9 +15,11 @@ import OpeningStatement from '@/app/components/app/configuration/features/chat-g
 import GroupName from '@/app/components/app/configuration/base/group-name'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
+
 // type
 import type { AutomaticRes } from '@/service/debug'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { Generator } from '@/app/components/base/icons/src/vender/other'
 
 const noDataIcon = (
   <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -57,14 +60,14 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     if (audiences.trim() === '') {
       Toast.notify({
         type: 'error',
-        message: t('appDebug.automatic.audiencesRequired'),
+        message: t('appDebug.generate.audiencesRequired'),
       })
       return false
     }
     if (hopingToSolve.trim() === '') {
       Toast.notify({
         type: 'error',
-        message: t('appDebug.automatic.problemRequired'),
+        message: t('appDebug.generate.problemRequired'),
       })
       return false
     }
@@ -76,14 +79,14 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   const renderLoading = (
     <div className='w-0 grow flex flex-col items-center justify-center h-full space-y-3'>
       <Loading />
-      <div className='text-[13px] text-gray-400'>{t('appDebug.automatic.loading')}</div>
+      <div className='text-[13px] text-gray-400'>{t('appDebug.generate.loading')}</div>
     </div>
   )
 
   const renderNoData = (
     <div className='w-0 grow flex flex-col items-center px-8 justify-center h-full space-y-3'>
       {noDataIcon}
-      <div className='text-[13px] text-gray-400'>{t('appDebug.automatic.noData')}</div>
+      <div className='text-[13px] text-gray-400'>{t('appDebug.generate.noData')}</div>
     </div>
   )
 
@@ -132,24 +135,21 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className='!p-0 sm:min-w-[768px] xl:min-w-[1120px]'
+      className='!p-0 min-w-[1140px]'
       closable
     >
-      <div className='flex h-[680px] flex-wrap gap-y-4 overflow-y-auto'>
-        {isShowAutoPromptInput() && <div className='w-full sm:w-[360px] xl:w-[480px] shrink-0 px-8 py-6 h-full overflow-y-auto border-r border-gray-100'>
+      <div className='flex h-[680px] flex-wrap space-y-4 overflow-y-auto'>
+        {isShowAutoPromptInput() && <div className='w-[570px] shrink-0 p-6 h-full overflow-y-auto border-r border-gray-100'>
           <div>
-            <div className='mb-1 text-xl font-semibold text-primary-600'>{t('appDebug.automatic.title')}</div>
-            <div className='text-[13px] font-normal text-gray-500'>{t('appDebug.automatic.description')}</div>
+            <div className={`mb-1 text-xl font-semibold ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
+            <div className='text-[13px] font-normal text-gray-500'>{t('appDebug.generate.description')}</div>
           </div>
+          Try it
           {/* inputs */}
           <div className='mt-2 space-y-5'>
             <div className='space-y-2'>
-              <div className='text-[13px] font-medium text-gray-900'>{t('appDebug.automatic.intendedAudience')}</div>
-              <input className="w-full h-8 px-3 text-[13px] font-normal bg-gray-50 rounded-lg" placeholder={t('appDebug.automatic.intendedAudiencePlaceHolder') as string} value={audiences} onChange={e => setAudiences(e.target.value)} />
-            </div>
-            <div className='space-y-2'>
-              <div className='text-[13px] font-medium text-gray-900'>{t('appDebug.automatic.solveProblem')}</div>
-              <textarea className="w-full h-[200px] overflow-y-auto p-3 text-[13px] font-normal bg-gray-50 rounded-lg" placeholder={t('appDebug.automatic.solveProblemPlaceHolder') as string} value={hopingToSolve} onChange={e => setHopingToSolve(e.target.value)} />
+              <div className='text-[13px] font-medium text-gray-900'>{t('appDebug.generate.solveProblem')}</div>
+              <textarea className="w-full h-[200px] overflow-y-auto p-3 text-[13px] font-normal bg-gray-50 rounded-lg" placeholder={t('appDebug.generate.solveProblemPlaceHolder') as string} value={hopingToSolve} onChange={e => setHopingToSolve(e.target.value)} />
             </div>
 
             <div className='mt-6 flex justify-end'>
@@ -159,16 +159,16 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 onClick={onGenerate}
                 disabled={isLoading}
               >
-                {genIcon}
-                <span className='text-xs font-semibold text-white uppercase'>{t('appDebug.automatic.generate')}</span>
+                <Generator className='w-4 h-4 text-white' />
+                <span className='text-xs font-semibold text-white'>{t('appDebug.generate.generate')}</span>
               </Button>
             </div>
           </div>
         </div>}
 
         {(!isLoading && res) && (
-          <div className='w-0 grow px-8 pt-6 h-full overflow-y-auto'>
-            <div className='mb-4 text-lg font-medium text-gray-900'>{t('appDebug.automatic.resTitle')}</div>
+          <div className='w-0 grow p-6 h-full overflow-y-auto'>
+            <div className='mb-4 text-lg font-medium text-gray-900'>{t('appDebug.generate.resTitle')}</div>
 
             <ConfigPrompt
               mode={mode}
@@ -200,7 +200,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
               <Button variant='primary' className='ml-2' onClick={() => {
                 setShowConfirmOverwrite(true)
-              }}>{t('appDebug.automatic.apply')}</Button>
+              }}>{t('appDebug.generate.apply')}</Button>
             </div>
           </div>
         )}
@@ -208,8 +208,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         {isShowAutoPromptResPlaceholder() && renderNoData}
         {showConfirmOverwrite && (
           <Confirm
-            title={t('appDebug.automatic.overwriteTitle')}
-            content={t('appDebug.automatic.overwriteMessage')}
+            title={t('appDebug.generate.overwriteTitle')}
+            content={t('appDebug.generate.overwriteMessage')}
             isShow={showConfirmOverwrite}
             onClose={() => setShowConfirmOverwrite(false)}
             onConfirm={() => {

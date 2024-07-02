@@ -114,7 +114,7 @@ const Prompt: FC<ISimplePromptInput> = ({
     }
   }
 
-  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
+  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(true)
   const handleAutomaticRes = (res: AutomaticRes) => {
     const newModelConfig = produce(modelConfig, (draft) => {
       draft.configs.prompt_template = res.prompt

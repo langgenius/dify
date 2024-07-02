@@ -199,23 +199,6 @@ const translation = {
       },
     },
   },
-  automatic: {
-    title: 'Automatisierte Anwendungsorchestrierung',
-    description: 'Beschreiben Sie Ihr Szenario, Dify wird eine Anwendung für Sie orchestrieren.',
-    intendedAudience: 'Wer ist die Zielgruppe?',
-    intendedAudiencePlaceHolder: 'z.B. Student',
-    solveProblem: 'Welche Probleme hoffen sie, dass KI für sie lösen kann?',
-    solveProblemPlaceHolder: 'z.B. Erkenntnisse extrahieren und Informationen aus langen Berichten und Artikeln zusammenfassen',
-    generate: 'Generieren',
-    audiencesRequired: 'Zielgruppe erforderlich',
-    problemRequired: 'Problem erforderlich',
-    resTitle: 'Wir haben die folgende Anwendung für Sie orchestriert.',
-    apply: 'Diese Orchestrierung anwenden',
-    noData: 'Beschreiben Sie Ihren Anwendungsfall links, die Orchestrierungsvorschau wird hier angezeigt.',
-    loading: 'Orchestrieren der Anwendung für Sie...',
-    overwriteTitle: 'Bestehende Konfiguration überschreiben?',
-    overwriteMessage: 'Das Anwenden dieser Orchestrierung wird die bestehende Konfiguration überschreiben.',
-  },
   resetConfig: {
     title: 'Zurücksetzen bestätigen?',
     message:
