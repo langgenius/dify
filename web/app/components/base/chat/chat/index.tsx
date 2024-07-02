@@ -59,6 +59,7 @@ export type ChatProps = {
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   hideLogModal?: boolean
+  onCreateNewChat?: () => void
   themeBuilder?: ThemeBuilder
 }
 
@@ -88,6 +89,7 @@ const Chat: FC<ChatProps> = ({
   chatAnswerContainerInner,
   hideProcessDetail,
   hideLogModal,
+  onCreateNewChat,
   themeBuilder,
 }) => {
   const { t } = useTranslation()
@@ -267,6 +269,7 @@ const Chat: FC<ChatProps> = ({
                   visionConfig={config?.file_upload?.image}
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
+                  onCreateNewChat={onCreateNewChat}
                   theme={themeBuilder?.theme}
                 />
               )
