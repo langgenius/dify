@@ -42,3 +42,8 @@ class TencentVectorDBConfig(BaseModel):
         description='Tencent Vector replicas',
         default=2,
     )
+
+    TENCENT_VECTOR_DB_DATABASE: Optional[str] = Field(
+        description='Tencent Vector Database',
+        default=None,
+    )
