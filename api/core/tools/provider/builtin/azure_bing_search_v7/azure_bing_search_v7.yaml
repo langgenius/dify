@@ -1,0 +1,21 @@
+identity:
+  author: keita69
+  name: azure_bing_search_v7
+  label:
+    en_US: Azure Being Search v7
+  description:
+    en_US: Azure Being Search v7
+  icon: icon.svg
+  tags:
+    - search
+credentials_for_provider:
+  bing_search_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Azure Being Search v7 API key
+    placeholder:
+      en_US: Please input your Azure Being Search v7 API key
+    help:
+      en_US: Get your Azure Being Search v7 API key from Azure Being Search
+    url: https://learn.microsoft.com/en-us/azure/search/search-security-api-keys?tabs=rest-use%2Cportal-find%2Cportal-query#find-existing-keys
