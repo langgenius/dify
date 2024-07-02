@@ -1,5 +1,7 @@
 const translation = {
   createApp: 'Створити додаток',
+  installingApp: 'Встановлення додатка',
+  installingAppFailed: 'Не вдалося встановити додаток',
   types: {
     all: 'Усе',
     chatbot: 'Чатбот',

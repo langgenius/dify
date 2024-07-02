@@ -1,5 +1,7 @@
 const translation = {
   createApp: '创建应用',
+  installingApp: '正在安装应用',
+  installingAppFailed: '安装应用失败',
   types: {
     all: '全部',
     chatbot: '聊天助手',

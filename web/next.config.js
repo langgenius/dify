@@ -18,6 +18,13 @@ const nextConfig = {
     config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
     return config
   },
+  serverRuntimeConfig: {
+    apps: {
+      importFromRemote: {
+        allowedHosts: [...String(process.env.APP_IMPORT_FROM_REMOTE_ALLOWED_HOSTS).split(' ')],
+      },
+    },
+  },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],

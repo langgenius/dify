@@ -1,5 +1,7 @@
 const translation = {
   createApp: 'UTWÓRZ APLIKACJĘ',
+  installingApp: 'Instalowanie aplikacji',
+  installingAppFailed: 'Instalacja aplikacji nie powiodła się',
   types: {
     all: 'Wszystkie',
     chatbot: 'Chatbot',

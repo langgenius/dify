@@ -1,5 +1,7 @@
 const translation = {
   createApp: 'Neue App erstellen',
+  installingApp: 'App wird installiert',
+  installingAppFailed: 'App-Installation fehlgeschlagen',
   types: {
     all: 'Alle',
     assistant: 'Assistent',
