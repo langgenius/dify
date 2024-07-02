@@ -49,6 +49,10 @@ const translation = {
           show: 'Afișați',
           hide: 'Ascundeți',
         },
+        chatColorTheme: 'Tema de culoare a chatului',
+        chatColorThemeDesc: 'Setați tema de culoare a chatbotului',
+        chatColorThemeInverted: 'Inversat',
+        invalidHexMessage: 'Valoare hex nevalidă',
         more: {
           entry: 'Afișați mai multe setări',
           copyright: 'Drepturi de autor',

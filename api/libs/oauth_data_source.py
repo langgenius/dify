@@ -255,10 +255,7 @@ class NotionOAuth(OAuthDataSource):
         }
         response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
         response_json = response.json()
-        if 'results' in response_json:
-            results = response_json['results']
-        else:
-            results = []
+        results = response_json.get('results', [])
         return results
 
     def notion_block_parent_page_id(self, access_token: str, block_id: str):
@@ -302,10 +299,7 @@ class NotionOAuth(OAuthDataSource):
         }
         response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
         response_json = response.json()
-        if 'results' in response_json:
-            results = response_json['results']
-        else:
-            results = []
+        results = response_json.get('results', [])
         return results
 
 

@@ -179,6 +179,7 @@ La forma más fácil de iniciar el servidor de Dify es ejecutar nuestro archivo 
 
 ```bash
 cd docker
+cp .env.example .env
 docker compose up -d
 ```
 
@@ -188,7 +189,7 @@ Después de ejecutarlo, puedes acceder al panel de control de Dify en tu navegad
 
 ## Próximos pasos
 
-Si necesitas personalizar la configuración, consulta los comentarios en nuestro archivo [docker-compose.yml](docker/docker-compose.yaml) y configura manualmente la configuración del entorno
+Si necesita personalizar la configuración, consulte los comentarios en nuestro archivo [.env.example](docker/.env.example) y actualice los valores correspondientes en su archivo `.env`. Además, es posible que deba realizar ajustes en el propio archivo `docker-compose.yaml`, como cambiar las versiones de las imágenes, las asignaciones de puertos o los montajes de volúmenes, según su entorno de implementación y requisitos específicos. Después de realizar cualquier cambio, vuelva a ejecutar `docker-compose up -d`. Puede encontrar la lista completa de variables de entorno disponibles [aquí](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
 . Después de realizar los cambios, ejecuta `docker-compose up -d` nuevamente. Puedes ver la lista completa de variables de entorno [aquí](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
@@ -197,6 +198,12 @@ Si desea configurar una configuración de alta disponibilidad, la comunidad prop
 - [Gráfico Helm por @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Gráfico Helm por @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [Ficheros YAML por @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+
+#### Uso de Terraform para el despliegue
+
+##### Azure Global
+Utiliza [terraform](https://www.terraform.io/) para desplegar Dify en Azure con un solo clic.
+- [Azure Terraform por @nikawang](https://github.com/nikawang/dify-azure-terraform)
 
 
 ## Contribuir

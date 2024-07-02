@@ -324,6 +324,55 @@ class WorkflowRun(db.Model):
     def workflow(self):
         return db.session.query(Workflow).filter(Workflow.id == self.workflow_id).first()
 
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tenant_id': self.tenant_id,
+            'app_id': self.app_id,
+            'sequence_number': self.sequence_number,
+            'workflow_id': self.workflow_id,
+            'type': self.type,
+            'triggered_from': self.triggered_from,
+            'version': self.version,
+            'graph': self.graph_dict,
+            'inputs': self.inputs_dict,
+            'status': self.status,
+            'outputs': self.outputs_dict,
+            'error': self.error,
+            'elapsed_time': self.elapsed_time,
+            'total_tokens': self.total_tokens,
+            'total_steps': self.total_steps,
+            'created_by_role': self.created_by_role,
+            'created_by': self.created_by,
+            'created_at': self.created_at,
+            'finished_at': self.finished_at,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'WorkflowRun':
+        return cls(
+            id=data.get('id'),
+            tenant_id=data.get('tenant_id'),
+            app_id=data.get('app_id'),
+            sequence_number=data.get('sequence_number'),
+            workflow_id=data.get('workflow_id'),
+            type=data.get('type'),
+            triggered_from=data.get('triggered_from'),
+            version=data.get('version'),
+            graph=json.dumps(data.get('graph')),
+            inputs=json.dumps(data.get('inputs')),
+            status=data.get('status'),
+            outputs=json.dumps(data.get('outputs')),
+            error=data.get('error'),
+            elapsed_time=data.get('elapsed_time'),
+            total_tokens=data.get('total_tokens'),
+            total_steps=data.get('total_steps'),
+            created_by_role=data.get('created_by_role'),
+            created_by=data.get('created_by'),
+            created_at=data.get('created_at'),
+            finished_at=data.get('finished_at'),
+        )
+
 
 class WorkflowNodeExecutionTriggeredFrom(Enum):
     """

@@ -159,8 +159,8 @@ class ApiTool(Tool):
                 for content_type in self.api_bundle.openapi['requestBody']['content']:
                     headers['Content-Type'] = content_type
                     body_schema = self.api_bundle.openapi['requestBody']['content'][content_type]['schema']
-                    required = body_schema['required'] if 'required' in body_schema else []
-                    properties = body_schema['properties'] if 'properties' in body_schema else {}
+                    required = body_schema.get('required', [])
+                    properties = body_schema.get('properties', {})
                     for name, property in properties.items():
                         if name in parameters:
                             # convert type

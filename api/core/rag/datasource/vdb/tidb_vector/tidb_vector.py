@@ -161,11 +161,6 @@ class TiDBVector(BaseVector):
             print("Delete operation failed:", str(e))
             return False
 
-    def delete_by_document_id(self, document_id: str):
-        ids = self.get_ids_by_metadata_field('document_id', document_id)
-        if ids:
-            self._delete_by_ids(ids)
-
     def get_ids_by_metadata_field(self, key: str, value: str):
         with Session(self._engine) as session:
             select_statement = sql_text(

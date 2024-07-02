@@ -283,7 +283,7 @@ def strip_control_characters(text):
     #   [Cn]: Other, Not Assigned
     #   [Co]: Other, Private Use
     #   [Cs]: Other, Surrogate
-    control_chars = set(['Cc', 'Cf', 'Cn', 'Co', 'Cs'])
+    control_chars = {'Cc', 'Cf', 'Cn', 'Co', 'Cs'}
     retained_chars = ['\t', '\n', '\r', '\f']
 
     # Remove non-printing control characters

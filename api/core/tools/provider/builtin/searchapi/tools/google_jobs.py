@@ -72,11 +72,11 @@ class GoogleJobsTool(BuiltinTool):
         """
         query = tool_parameters['query']
         result_type = tool_parameters['result_type']
-        is_remote = tool_parameters.get("is_remote", None)
+        is_remote = tool_parameters.get("is_remote")
         google_domain = tool_parameters.get("google_domain", "google.com")
         gl = tool_parameters.get("gl", "us")
         hl = tool_parameters.get("hl", "en")
-        location = tool_parameters.get("location", None)
+        location = tool_parameters.get("location")
 
         ltype = 1 if is_remote else None
 

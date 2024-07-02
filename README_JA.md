@@ -178,6 +178,7 @@ Difyサーバーを起動する最も簡単な方法は、[docker-compose.yml](d
 
 ```bash
 cd docker
+cp .env.example .env
 docker compose up -d
 ```
 
@@ -187,13 +188,19 @@ docker compose up -d
 
 ## 次のステップ
 
-環境設定をカスタマイズする場合は、[docker-compose.yml](docker/docker-compose.yaml)ファイル内のコメントを参照して、環境設定を手動で設定してください。変更を加えた後は、再び `docker-compose up -d` を実行してください。環境変数の完全なリストは[こちら](https://docs.dify.ai/getting-started/install-self-hosted/environments)をご覧ください。
+設定をカスタマイズする必要がある場合は、[.env.example](docker/.env.example) ファイルのコメントを参照し、`.env` ファイルの対応する値を更新してください。さらに、デプロイ環境や要件に応じて、`docker-compose.yaml` ファイル自体を調整する必要がある場合があります。たとえば、イメージのバージョン、ポートのマッピング、ボリュームのマウントなどを変更します。変更を加えた後は、`docker-compose up -d` を再実行してください。利用可能な環境変数の全一覧は、[こちら](https://docs.dify.ai/getting-started/install-self-hosted/environments)で確認できます。
 
 高可用性設定を設定する必要がある場合、コミュニティは[Helm Charts](https://helm.sh/)とYAMLファイルにより、DifyをKubernetesにデプロイすることができます。
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+
+#### Terraformを使用したデプロイ
+
+##### Azure Global
+[terraform](https://www.terraform.io/) を使用して、AzureにDifyをワンクリックでデプロイします。
+- [nikawangのAzure Terraform](https://github.com/nikawang/dify-azure-terraform)
 
 
 ## 貢献
