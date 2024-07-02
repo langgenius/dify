@@ -51,7 +51,7 @@ const DatasetCard = ({
     setShowConfirmDelete(false)
   }, [dataset.id])
 
-  const Operations = (props: HtmlContentProps) => {
+  const Operations = (props: HtmlContentProps & { showDelete: boolean }) => {
     const onMouseLeave = async () => {
       props.onClose?.()
     }
@@ -72,7 +72,7 @@ const DatasetCard = ({
         <div className='h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer' onClick={onClickRename}>
           <span className='text-gray-700 text-sm'>{t('common.operation.settings')}</span>
         </div>
-        {!isCurrentWorkspaceDatasetOperator && (
+        {props.showDelete && (
           <>
             <Divider className="!my-1" />
             <div
@@ -168,7 +168,7 @@ const DatasetCard = ({
           <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200'/>
           <div className='!hidden group-hover:!flex shrink-0'>
             <CustomPopover
-              htmlContent={<Operations />}
+              htmlContent={<Operations showDelete={!isCurrentWorkspaceDatasetOperator} />}
               position="br"
               trigger="click"
               btnElement={
