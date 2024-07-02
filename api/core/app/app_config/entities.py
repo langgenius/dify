@@ -114,6 +114,10 @@ class VariableEntity(BaseModel):
     default: Optional[str] = None
     hint: Optional[str] = None
 
+    @property
+    def name(self) -> str:
+        return self.variable
+
 
 class ExternalDataVariableEntity(BaseModel):
     """
