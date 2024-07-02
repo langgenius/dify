@@ -10,6 +10,8 @@ identity:
     zh_Hans: GoogleSearch
     pt_BR: Google
   icon: icon.svg
+  tags:
+    - search
 credentials_for_provider:
   serpapi_api_key:
     type: secret-input

@@ -24,10 +24,32 @@ identity: # Basic information of the tool provider
     en_US: Google # English description
     zh_Hans: Google # Chinese description
   icon: icon.svg # Icon, needs to be placed in the _assets folder of the current module
+  tags:
+    - search
 
 ```
  - The `identity` field is mandatory, it contains the basic information of the tool provider, including author, name, label, description, icon, etc.
     - The icon needs to be placed in the `_assets` folder of the current module, you can refer to [here](../../provider/builtin/google/_assets/icon.svg).
+    - The `tags` field is optional, it is used to classify the provider, and the frontend can filter the provider according to the tag, for all tags, they have been listed below:
+    ```python
+    class ToolLabelEnum(Enum):
+      SEARCH = 'search'
+      IMAGE = 'image'
+      VIDEOS = 'videos'
+      WEATHER = 'weather'
+      FINANCE = 'finance'
+      DESIGN = 'design'
+      TRAVEL = 'travel'
+      SOCIAL = 'social'
+      NEWS = 'news'
+      MEDICAL = 'medical'
+      PRODUCTIVITY = 'productivity'
+      EDUCATION = 'education'
+      BUSINESS = 'business'
+      ENTERTAINMENT = 'entertainment'
+      UTILITIES = 'utilities'
+      OTHER = 'other'
+    ```
 
 ## 2. Prepare Provider Credentials
 

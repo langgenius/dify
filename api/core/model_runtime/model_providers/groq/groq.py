@@ -19,7 +19,7 @@ class GroqProvider(ModelProvider):
             model_instance = self.get_model_instance(ModelType.LLM)
 
             model_instance.validate_credentials(
-                model='llama2-70b-4096',
+                model='llama3-8b-8192',
                 credentials=credentials
             )
         except CredentialsValidateFailedError as ex:

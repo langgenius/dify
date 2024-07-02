@@ -14,7 +14,7 @@ from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
-from models.model import App
+from models.model import App, EndUser
 from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
@@ -35,6 +35,14 @@ class WorkflowAppRunner:
         """
         app_config = application_generate_entity.app_config
         app_config = cast(WorkflowAppConfig, app_config)
+
+        user_id = None
+        if application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
+            end_user = db.session.query(EndUser).filter(EndUser.id == application_generate_entity.user_id).first()
+            if end_user:
+                user_id = end_user.session_id
+        else:
+            user_id = application_generate_entity.user_id
 
         app_record = db.session.query(App).filter(App.id == app_config.app_id).first()
         if not app_record:
@@ -65,10 +73,44 @@ class WorkflowAppRunner:
             user_from=UserFrom.ACCOUNT
             if application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
             else UserFrom.END_USER,
+            invoke_from=application_generate_entity.invoke_from,
             user_inputs=inputs,
             system_inputs={
-                SystemVariable.FILES: files
+                SystemVariable.FILES: files,
+                SystemVariable.USER_ID: user_id
             },
+            callbacks=workflow_callbacks,
+            call_depth=application_generate_entity.call_depth
+        )
+
+    def single_iteration_run(self, app_id: str, workflow_id: str,
+                             queue_manager: AppQueueManager,
+                             inputs: dict, node_id: str, user_id: str) -> None:
+        """
+        Single iteration run
+        """
+        app_record: App = db.session.query(App).filter(App.id == app_id).first()
+        if not app_record:
+            raise ValueError("App not found")
+        
+        if not app_record.workflow_id:
+            raise ValueError("Workflow not initialized")
+
+        workflow = self.get_workflow(app_model=app_record, workflow_id=workflow_id)
+        if not workflow:
+            raise ValueError("Workflow not initialized")
+        
+        workflow_callbacks = [WorkflowEventTriggerCallback(
+            queue_manager=queue_manager,
+            workflow=workflow
+        )]
+
+        workflow_engine_manager = WorkflowEngineManager()
+        workflow_engine_manager.single_step_run_iteration_workflow_node(
+            workflow=workflow,
+            node_id=node_id,
+            user_id=user_id,
+            user_inputs=inputs,
             callbacks=workflow_callbacks
         )
 

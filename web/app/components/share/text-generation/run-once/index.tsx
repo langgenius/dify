@@ -65,6 +65,12 @@ const RunOnce: FC<IRunOnceProps> = ({
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                     value={inputs[item.key]}
                     onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        onSend()
+                      }
+                    }}
                     maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
                   />
                 )}
@@ -112,15 +118,13 @@ const RunOnce: FC<IRunOnceProps> = ({
           <div className='w-full mt-4'>
             <div className="flex items-center justify-between">
               <Button
-                className='!h-8 !p-3'
                 onClick={onClear}
                 disabled={false}
               >
                 <span className='text-[13px]'>{t('common.operation.clear')}</span>
               </Button>
               <Button
-                type="primary"
-                className='!h-8 !pl-3 !pr-4'
+                variant="primary"
                 onClick={onSend}
                 disabled={false}
               >

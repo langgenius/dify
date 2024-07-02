@@ -50,6 +50,7 @@ app_detail_fields = {
     'enable_site': fields.Boolean,
     'enable_api': fields.Boolean,
     'model_config': fields.Nested(model_config_fields, attribute='app_model_config', allow_null=True),
+    'tracing': fields.Raw,
     'created_at': TimestampField
 }
 
@@ -62,6 +63,12 @@ model_config_partial_fields = {
     'pre_prompt': fields.String,
 }
 
+tag_fields = {
+    'id': fields.String,
+    'name': fields.String,
+    'type': fields.String
+}
+
 app_partial_fields = {
     'id': fields.String,
     'name': fields.String,
@@ -70,8 +77,10 @@ app_partial_fields = {
     'icon': fields.String,
     'icon_background': fields.String,
     'model_config': fields.Nested(model_config_partial_fields, attribute='app_model_config', allow_null=True),
-    'created_at': TimestampField
+    'created_at': TimestampField,
+    'tags': fields.List(fields.Nested(tag_fields))
 }
+
 
 app_pagination_fields = {
     'page': fields.Integer,
@@ -102,12 +111,16 @@ site_fields = {
     'icon_background': fields.String,
     'description': fields.String,
     'default_language': fields.String,
+    'chat_color_theme': fields.String,
+    'chat_color_theme_inverted': fields.Boolean,
     'customize_domain': fields.String,
     'copyright': fields.String,
     'privacy_policy': fields.String,
+    'custom_disclaimer': fields.String,
     'customize_token_strategy': fields.String,
     'prompt_public': fields.Boolean,
     'app_base_url': fields.String,
+    'show_workflow_steps': fields.Boolean,
 }
 
 app_detail_fields_with_site = {
@@ -138,6 +151,8 @@ app_site_fields = {
     'customize_domain': fields.String,
     'copyright': fields.String,
     'privacy_policy': fields.String,
+    'custom_disclaimer': fields.String,
     'customize_token_strategy': fields.String,
-    'prompt_public': fields.Boolean
+    'prompt_public': fields.Boolean,
+    'show_workflow_steps': fields.Boolean,
 }

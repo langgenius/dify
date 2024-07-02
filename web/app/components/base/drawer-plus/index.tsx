@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React, { useRef } from 'react'
 import cn from 'classnames'
+import { RiCloseLine } from '@remixicon/react'
 import Drawer from '@/app/components/base/drawer'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 type Props = {
@@ -20,6 +20,7 @@ type Props = {
   foot?: JSX.Element
   isShowMask?: boolean
   clickOutsideNotOpen?: boolean
+  positionCenter?: boolean
 }
 
 const DrawerPlus: FC<Props> = ({
@@ -36,6 +37,7 @@ const DrawerPlus: FC<Props> = ({
   foot,
   isShowMask,
   clickOutsideNotOpen = true,
+  positionCenter,
 }) => {
   const ref = useRef(null)
   const media = useBreakpoints()
@@ -46,7 +48,15 @@ const DrawerPlus: FC<Props> = ({
 
   return (
     // clickOutsideNotOpen to fix confirm modal click cause drawer close
-    <Drawer isOpen={isShow} clickOutsideNotOpen={clickOutsideNotOpen} onClose={onHide} footer={null} mask={isMobile || isShowMask} panelClassname={`mt-16 mx-2 sm:mr-2 mb-3 !p-0 ${panelClassName} ${maxWidthClassName} rounded-xl`}>
+    <Drawer
+      isOpen={isShow}
+      clickOutsideNotOpen={clickOutsideNotOpen}
+      onClose={onHide}
+      footer={null}
+      mask={isMobile || isShowMask}
+      positionCenter={positionCenter}
+      panelClassname={cn('mt-16 mx-2 sm:mr-2 mb-3 !p-0 rounded-xl', panelClassName, maxWidthClassName)}
+    >
       <div
         className={cn(contentClassName, 'w-full flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl')}
         style={{
@@ -64,7 +74,7 @@ const DrawerPlus: FC<Props> = ({
                 onClick={onHide}
                 className='flex justify-center items-center w-6 h-6 cursor-pointer'
               >
-                <XClose className='w-4 h-4 text-gray-500' />
+                <RiCloseLine className='w-4 h-4 text-gray-500' />
               </div>
             </div>
           </div>

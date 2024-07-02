@@ -39,7 +39,7 @@ const Input: FC<InputProps> = ({
   return (
     <div className='relative'>
       <input
-        tabIndex={-1}
+        tabIndex={0}
         className={`
           block px-3 w-full h-9 bg-gray-100 text-sm rounded-lg border border-transparent
           appearance-none outline-none caret-primary-600

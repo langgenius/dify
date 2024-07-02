@@ -3,6 +3,9 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useBoolean, useHover } from 'ahooks'
 import cn from 'classnames'
+import {
+  RiSearchLine,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { type NodeOutPutVar, type ValueSelector, type Var, VarType } from '@/app/components/workflow/types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -12,9 +15,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import {
-  SearchLg,
-} from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { checkKeys } from '@/utils/var'
 
@@ -208,18 +208,24 @@ const VarReferenceVars: FC<Props> = ({
   const filteredVars = vars.filter((v) => {
     const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.'))
     return children.length > 0
-  }).filter((v) => {
+  }).filter((node) => {
     if (!searchText)
-      return v
-    const children = v.vars.filter(v => v.variable.toLowerCase().includes(searchText.toLowerCase()))
+      return node
+    const children = node.vars.filter((v) => {
+      const searchTextLower = searchText.toLowerCase()
+      return v.variable.toLowerCase().includes(searchTextLower) || node.title.toLowerCase().includes(searchTextLower)
+    })
     return children.length > 0
-  }).map((v) => {
-    let vars = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.'))
-    if (searchText)
-      vars = vars.filter(v => v.variable.toLowerCase().includes(searchText.toLowerCase()))
+  }).map((node) => {
+    let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.'))
+    if (searchText) {
+      const searchTextLower = searchText.toLowerCase()
+      if (!node.title.toLowerCase().includes(searchTextLower))
+        vars = vars.filter(v => v.variable.toLowerCase().includes(searchText.toLowerCase()))
+    }
 
     return {
-      ...v,
+      ...node,
       vars,
     }
   })
@@ -237,7 +243,7 @@ const VarReferenceVars: FC<Props> = ({
               onClick={e => e.stopPropagation()}
             >
 
-              <SearchLg className='shrink-0 ml-[1px] mr-[5px] w-3.5 h-3.5 text-gray-400' />
+              <RiSearchLine className='shrink-0 ml-[1px] mr-[5px] w-3.5 h-3.5 text-gray-400' />
               <input
                 value={searchText}
                 className='grow px-0.5 py-[7px] text-[13px] text-gray-700 bg-transparent appearance-none outline-none caret-primary-600 placeholder:text-gray-400'
@@ -266,7 +272,7 @@ const VarReferenceVars: FC<Props> = ({
       }
 
       {filteredVars.length > 0
-        ? <div>
+        ? <div className='max-h-[85vh] overflow-y-auto'>
 
           {
             filteredVars.map((item, i) => (

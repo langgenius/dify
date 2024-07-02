@@ -3,8 +3,9 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { RiCloseLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
-import { LinkExternal02, XClose } from '@/app/components/base/icons/src/vender/line/general'
+import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
@@ -12,14 +13,14 @@ import { useModalContext } from '@/context/modal-context'
 const APIKeyInfoPanel: FC = () => {
   const isCloud = !IS_CE_EDITION
 
-  const { hasSettedApiKey } = useProviderContext()
+  const { isAPIKeySet } = useProviderContext()
   const { setShowAccountSettingModal } = useModalContext()
 
   const { t } = useTranslation()
 
   const [isShow, setIsShow] = useState(true)
 
-  if (hasSettedApiKey)
+  if (isAPIKeySet)
     return null
 
   if (!(isShow))
@@ -44,7 +45,7 @@ const APIKeyInfoPanel: FC = () => {
         <div className='mt-1 text-sm text-gray-600 font-normal'>{t(`appOverview.apiKeyInfo.cloud.${'trial'}.description`)}</div>
       )}
       <Button
-        type='primary'
+        variant='primary'
         className='space-x-2'
         onClick={() => setShowAccountSettingModal({ payload: 'provider' })}
       >
@@ -64,7 +65,7 @@ const APIKeyInfoPanel: FC = () => {
       <div
         onClick={() => setIsShow(false)}
         className='absolute right-4 top-4 flex items-center justify-center w-8 h-8 cursor-pointer '>
-        <XClose className='w-4 h-4 text-gray-500' />
+        <RiCloseLine className='w-4 h-4 text-gray-500' />
       </div>
     </div>
   )

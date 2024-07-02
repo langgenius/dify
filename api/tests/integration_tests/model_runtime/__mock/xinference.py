@@ -1,19 +1,24 @@
 import os
 import re
-from typing import List, Union
+from typing import Union
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from requests import Response
 from requests.exceptions import ConnectionError
 from requests.sessions import Session
-from xinference_client.client.restful.restful_client import (Client, RESTfulChatglmCppChatModelHandle,
-                                                             RESTfulChatModelHandle, RESTfulEmbeddingModelHandle,
-                                                             RESTfulGenerateModelHandle, RESTfulRerankModelHandle)
+from xinference_client.client.restful.restful_client import (
+    Client,
+    RESTfulChatglmCppChatModelHandle,
+    RESTfulChatModelHandle,
+    RESTfulEmbeddingModelHandle,
+    RESTfulGenerateModelHandle,
+    RESTfulRerankModelHandle,
+)
 from xinference_client.types import Embedding, EmbeddingData, EmbeddingUsage
 
 
-class MockXinferenceClass(object):
+class MockXinferenceClass:
     def get_chat_model(self: Client, model_uid: str) -> Union[RESTfulChatglmCppChatModelHandle, RESTfulGenerateModelHandle, RESTfulChatModelHandle]:
         if not re.match(r'https?:\/\/[^\s\/$.?#].[^\s]*$', self.base_url):
             raise RuntimeError('404 Not Found')
@@ -101,7 +106,7 @@ class MockXinferenceClass(object):
     def _check_cluster_authenticated(self):
         self._cluster_authed = True
         
-    def rerank(self: RESTfulRerankModelHandle, documents: List[str], query: str, top_n: int) -> dict:
+    def rerank(self: RESTfulRerankModelHandle, documents: list[str], query: str, top_n: int) -> dict:
         # check if self._model_uid is a valid uuid
         if not re.match(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', self._model_uid) and \
             self._model_uid != 'rerank':
@@ -126,7 +131,7 @@ class MockXinferenceClass(object):
         
     def create_embedding(
         self: RESTfulGenerateModelHandle,
-        input: Union[str, List[str]],
+        input: Union[str, list[str]],
         **kwargs
     ) -> dict:
         # check if self._model_uid is a valid uuid

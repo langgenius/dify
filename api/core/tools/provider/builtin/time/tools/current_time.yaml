@@ -12,6 +12,19 @@ description:
     pt_BR: A tool for getting the current time.
   llm: A tool for getting the current time.
 parameters:
+  - name: format
+    type: string
+    required: false
+    label:
+      en_US: Format
+      zh_Hans: 格式
+      pt_BR: Format
+    human_description:
+      en_US: Time format in strftime standard.
+      zh_Hans: strftime 标准的时间格式。
+      pt_BR: Time format in strftime standard.
+    form: form
+    default: "%Y-%m-%d %H:%M:%S"
   - name: timezone
     type: select
     required: false
@@ -46,11 +59,21 @@ parameters:
           en_US: America/Chicago
           zh_Hans: 美洲/芝加哥
           pt_BR: America/Chicago
+      - value: America/Sao_Paulo
+        label:
+          en_US: America/Sao_Paulo
+          zh_Hans: 美洲/圣保罗
+          pt_BR: América/São Paulo
       - value: Asia/Shanghai
         label:
           en_US: Asia/Shanghai
           zh_Hans: 亚洲/上海
           pt_BR: Asia/Shanghai
+      - value: Asia/Ho_Chi_Minh
+        label:
+          en_US: Asia/Ho_Chi_Minh
+          zh_Hans: 亚洲/胡志明市
+          pt_BR: Ásia/Ho Chi Minh
       - value: Asia/Tokyo
         label:
           en_US: Asia/Tokyo

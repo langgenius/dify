@@ -13,6 +13,7 @@ import { testAPIAvailable } from '@/service/tools'
 import { getLanguage } from '@/i18n/language'
 
 type Props = {
+  positionCenter?: boolean
   customCollection: CustomCollectionBackend
   tool: CustomParamSchema
   onHide: () => void
@@ -21,6 +22,7 @@ type Props = {
 const keyClassNames = 'py-2 leading-5 text-sm font-medium text-gray-900'
 
 const TestApi: FC<Props> = ({
+  positionCenter,
   customCollection,
   tool,
   onHide,
@@ -57,6 +59,7 @@ const TestApi: FC<Props> = ({
     <>
       <Drawer
         isShow
+        positionCenter={positionCenter}
         onHide={onHide}
         title={`${t('tools.test.title')}  ${toolName}`}
         panelClassName='mt-2 !w-[600px]'
@@ -104,7 +107,7 @@ const TestApi: FC<Props> = ({
               </div>
 
             </div>
-            <Button type='primary' className=' mt-4 w-full h-10 !text-[13px] leading-[18px] font-medium' onClick={handleTest}>{t('tools.test.title')}</Button>
+            <Button variant='primary' className=' mt-4 w-full h-10' onClick={handleTest}>{t('tools.test.title')}</Button>
             <div className='mt-6'>
               <div className='flex items-center space-x-3'>
                 <div className='leading-[18px] text-xs font-semibold text-gray-500'>{t('tools.test.testResult')}</div>
@@ -119,6 +122,7 @@ const TestApi: FC<Props> = ({
       />
       {credentialsModalShow && (
         <ConfigCredentials
+          positionCenter={positionCenter}
           credential={tempCredential}
           onChange={setTempCredential}
           onHide={() => setCredentialsModalShow(false)}

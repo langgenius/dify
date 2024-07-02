@@ -2,8 +2,9 @@
 import type { FC } from 'react'
 import React from 'react'
 import cn from 'classnames'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
+import { RiArrowDownSLine } from '@remixicon/react'
 import Popover from '@/app/components/base/popover'
+import { languages } from '@/i18n/language'
 
 export type ILanguageSelectProps = {
   currentLanguage: string
@@ -20,14 +21,19 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
       trigger='click'
       htmlContent={
         <div className='w-full py-1'>
-          <div className='py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer text-gray-700 text-sm' onClick={() => onSelect('English')}>English</div>
-          <div className='py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer text-gray-700 text-sm' onClick={() => onSelect('Chinese')}>简体中文</div>
+          {languages.filter(language => language.supported).map(({ prompt_name, name }) => (
+            <div
+              key={prompt_name}
+              className='py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer text-gray-700 text-sm'
+              onClick={() => onSelect(prompt_name)}>{prompt_name}
+            </div>
+          ))}
         </div>
       }
       btnElement={
         <div className='inline-flex items-center'>
-          <span className='pr-[2px] text-xs leading-[18px] font-medium'>{currentLanguage === 'English' ? 'English' : '简体中文'}</span>
-          <ChevronDown className='w-3 h-3 opacity-60' />
+          <span className='pr-[2px] text-xs leading-[18px] font-medium'>{currentLanguage}</span>
+          <RiArrowDownSLine className='w-3 h-3 opacity-60' />
         </div>
       }
       btnClassName={open => cn('!border-0 !px-0 !py-0 !bg-inherit !hover:bg-inherit', open ? 'text-blue-600' : 'text-gray-500')}

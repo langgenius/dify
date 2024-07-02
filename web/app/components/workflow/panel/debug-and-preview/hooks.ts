@@ -7,7 +7,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
 import { useWorkflowRun } from '../../hooks'
-import { WorkflowRunningStatus } from '../../types'
+import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 import type {
   ChatItem,
   Inputs,
@@ -173,12 +173,14 @@ export const useChat = (
 
     // answer
     const responseItem: ChatItem = {
-      id: `${Date.now()}`,
+      id: placeholderAnswerId,
       content: '',
       agent_thoughts: [],
       message_files: [],
       isAnswer: true,
     }
+
+    let isInIteration = false
 
     handleResponding(true)
 
@@ -297,31 +299,104 @@ export const useChat = (
             }
           }))
         },
-        onNodeStarted: ({ data }) => {
-          responseItem.workflowProcess!.tracing!.push(data as any)
+        onIterationStart: ({ data }) => {
+          responseItem.workflowProcess!.tracing!.push({
+            ...data,
+            status: NodeRunningStatus.Running,
+            details: [],
+          } as any)
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
             const currentIndex = draft.findIndex(item => item.id === responseItem.id)
             draft[currentIndex] = {
               ...draft[currentIndex],
               ...responseItem,
             }
+          }))
+          isInIteration = true
+        },
+        onIterationNext: () => {
+          const tracing = responseItem.workflowProcess!.tracing!
+          const iterations = tracing[tracing.length - 1]
+          iterations.details!.push([])
+
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.length - 1
+            draft[currentIndex] = responseItem
           }))
         },
-        onNodeFinished: ({ data }) => {
-          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
-          responseItem.workflowProcess!.tracing[currentIndex] = {
-            ...(responseItem.workflowProcess!.tracing[currentIndex].extras
-              ? { extras: responseItem.workflowProcess!.tracing[currentIndex].extras }
-              : {}),
+        onIterationFinish: ({ data }) => {
+          const tracing = responseItem.workflowProcess!.tracing!
+          const iterations = tracing[tracing.length - 1]
+          tracing[tracing.length - 1] = {
+            ...iterations,
             ...data,
+            status: NodeRunningStatus.Succeeded,
           } as any
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
-            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-            draft[currentIndex] = {
-              ...draft[currentIndex],
-              ...responseItem,
-            }
+            const currentIndex = draft.length - 1
+            draft[currentIndex] = responseItem
           }))
+
+          isInIteration = false
+        },
+        onNodeStarted: ({ data }) => {
+          if (isInIteration) {
+            const tracing = responseItem.workflowProcess!.tracing!
+            const iterations = tracing[tracing.length - 1]
+            const currIteration = iterations.details![iterations.details!.length - 1]
+            currIteration.push({
+              ...data,
+              status: NodeRunningStatus.Running,
+            } as any)
+            handleUpdateChatList(produce(chatListRef.current, (draft) => {
+              const currentIndex = draft.length - 1
+              draft[currentIndex] = responseItem
+            }))
+          }
+          else {
+            responseItem.workflowProcess!.tracing!.push({
+              ...data,
+              status: NodeRunningStatus.Running,
+            } as any)
+            handleUpdateChatList(produce(chatListRef.current, (draft) => {
+              const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+              draft[currentIndex] = {
+                ...draft[currentIndex],
+                ...responseItem,
+              }
+            }))
+          }
+        },
+        onNodeFinished: ({ data }) => {
+          if (isInIteration) {
+            const tracing = responseItem.workflowProcess!.tracing!
+            const iterations = tracing[tracing.length - 1]
+            const currIteration = iterations.details![iterations.details!.length - 1]
+            currIteration[currIteration.length - 1] = {
+              ...data,
+              status: NodeRunningStatus.Succeeded,
+            } as any
+            handleUpdateChatList(produce(chatListRef.current, (draft) => {
+              const currentIndex = draft.length - 1
+              draft[currentIndex] = responseItem
+            }))
+          }
+          else {
+            const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+            responseItem.workflowProcess!.tracing[currentIndex] = {
+              ...(responseItem.workflowProcess!.tracing[currentIndex].extras
+                ? { extras: responseItem.workflowProcess!.tracing[currentIndex].extras }
+                : {}),
+              ...data,
+            } as any
+            handleUpdateChatList(produce(chatListRef.current, (draft) => {
+              const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+              draft[currentIndex] = {
+                ...draft[currentIndex],
+                ...responseItem,
+              }
+            }))
+          }
         },
       },
     )

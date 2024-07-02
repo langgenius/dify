@@ -31,7 +31,7 @@ if $api_modified; then
         pip install ruff
     fi
 
-    ruff check ./api || status=$?
+    ruff check --preview ./api || status=$?
 
     status=${status:-0}
 

@@ -4,49 +4,90 @@ on:
   pull_request:
     branches:
       - main
+    paths:
+      - api/**
+      - docker/**
+
+concurrency:
+  group: api-tests-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   test:
+    name: API Tests
     runs-on: ubuntu-latest
-
-    env:
-      OPENAI_API_KEY: sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii
-      AZURE_OPENAI_API_BASE: https://difyai-openai.openai.azure.com
-      AZURE_OPENAI_API_KEY: xxxxb1707exxxxxxxxxxaaxxxxxf94
-      ANTHROPIC_API_KEY: sk-ant-api11-IamNotARealKeyJustForMockTestKawaiiiiiiiiii-NotBaka-ASkksz
-      CHATGLM_API_BASE: http://a.abc.com:11451
-      XINFERENCE_SERVER_URL: http://a.abc.com:11451
-      XINFERENCE_GENERATION_MODEL_UID: generate
-      XINFERENCE_CHAT_MODEL_UID: chat
-      XINFERENCE_EMBEDDINGS_MODEL_UID: embedding
-      XINFERENCE_RERANK_MODEL_UID: rerank
-      GOOGLE_API_KEY: abcdefghijklmnopqrstuvwxyz
-      HUGGINGFACE_API_KEY: hf-awuwuwuwuwuwuwuwuwuwuwuwuwuwuwuwuwu
-      HUGGINGFACE_TEXT_GEN_ENDPOINT_URL: a
-      HUGGINGFACE_TEXT2TEXT_GEN_ENDPOINT_URL: b
-      HUGGINGFACE_EMBEDDINGS_ENDPOINT_URL: c
-      MOCK_SWITCH: true
-      CODE_MAX_STRING_LENGTH: 80000
+    strategy:
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-          cache: 'pip'
-          cache-dependency-path: ./api/requirements.txt
+          python-version: ${{ matrix.python-version }}
+          cache: 'poetry'
+          cache-dependency-path: |
+            api/pyproject.toml
+            api/poetry.lock
+
+      - name: Poetry check
+        run: |
+          poetry check -C api --lock
+          poetry show -C api
 
       - name: Install dependencies
-        run: pip install -r ./api/requirements.txt
+        run: poetry install -C api --with dev
+
+      - name: Run Unit tests
+        run: poetry run -C api bash dev/pytest/pytest_unit_tests.sh
 
       - name: Run ModelRuntime
-        run: pytest api/tests/integration_tests/model_runtime/anthropic api/tests/integration_tests/model_runtime/azure_openai api/tests/integration_tests/model_runtime/openai api/tests/integration_tests/model_runtime/chatglm api/tests/integration_tests/model_runtime/google api/tests/integration_tests/model_runtime/xinference api/tests/integration_tests/model_runtime/huggingface_hub/test_llm.py
+        run: poetry run -C api bash dev/pytest/pytest_model_runtime.sh
 
       - name: Run Tool
-        run: pytest api/tests/integration_tests/tools/test_all_provider.py
+        run: poetry run -C api bash dev/pytest/pytest_tools.sh
+
+      - name: Set up dotenvs
+        run: |
+          cp docker/.env.example docker/.env
+          cp docker/middleware.env.example docker/middleware.env
+
+      - name: Expose Service Ports
+        run: sh .github/workflows/expose_service_ports.sh
+
+      - name: Set up Sandbox
+        uses: hoverkraft-tech/compose-action@v2.0.0
+        with:
+          compose-file: |
+            docker/docker-compose.middleware.yaml
+          services: |
+            sandbox
+            ssrf_proxy
 
       - name: Run Workflow
-        run: pytest api/tests/integration_tests/workflow
+        run: poetry run -C api bash dev/pytest/pytest_workflow.sh
+
+      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma)
+        uses: hoverkraft-tech/compose-action@v2.0.0
+        with:
+          compose-file: |
+            docker/docker-compose.yaml
+          services: |
+            weaviate
+            qdrant
+            etcd
+            minio
+            milvus-standalone
+            pgvecto-rs
+            pgvector
+            chroma
+      - name: Test Vector Stores
+        run: poetry run -C api bash dev/pytest/pytest_vdb.sh

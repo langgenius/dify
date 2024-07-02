@@ -37,6 +37,17 @@ const Form = () => {
         />
       )
     }
+    if (form.type === 'number') {
+      return (
+        <input
+          className="grow h-9 rounded-lg bg-gray-100 px-2.5 outline-none appearance-none"
+          type="number"
+          value={newConversationInputs[variable] || ''}
+          onChange={e => handleFormChange(variable, e.target.value)}
+          placeholder={`${label}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+        />
+      )
+    }
 
     return (
       <PortalSelect

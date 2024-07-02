@@ -34,6 +34,8 @@ const translation = {
     log: 'Protokoll',
     learnMore: 'Mehr erfahren',
     params: 'Parameter',
+    duplicate: 'Duplikat',
+    rename: 'Umbenennen',
   },
   placeholder: {
     input: 'Bitte eingeben',
@@ -42,6 +44,7 @@ const translation = {
   voice: {
     language: {
       zhHans: 'Chinesisch',
+      zhHant: 'Chinesisch (traditionell)',
       enUS: 'Englisch',
       deDE: 'Deutsch',
       frFR: 'Französisch',
@@ -54,6 +57,8 @@ const translation = {
       ptBR: 'Portugiesisch',
       ruRU: 'Russisch',
       ukUA: 'Ukrainisch',
+      viVN: 'Vietnamesisch',
+      plPL: 'Polnisch',
     },
   },
   unit: {
@@ -151,6 +156,9 @@ const translation = {
     langGeniusAccountTip: 'Ihr Dify-Konto und zugehörige Benutzerdaten.',
     editName: 'Namen bearbeiten',
     showAppLength: '{{length}} Apps anzeigen',
+    delete: 'Konto löschen',
+    deleteTip: 'Wenn Sie Ihr Konto löschen, werden alle Ihre Daten dauerhaft gelöscht und können nicht wiederhergestellt werden.',
+    deleteConfirmTip: 'Zur Bestätigung senden Sie bitte Folgendes von Ihrer registrierten E-Mail-Adresse an ',
   },
   members: {
     team: 'Team',
@@ -164,6 +172,8 @@ const translation = {
     adminTip: 'Kann Apps erstellen & Team-Einstellungen verwalten',
     normal: 'Normal',
     normalTip: 'Kann nur Apps verwenden, kann keine Apps erstellen',
+    editor: 'Editor',
+    editorTip: 'Kann Apps erstellen & bearbeiten',
     inviteTeamMember: 'Teammitglied hinzufügen',
     inviteTeamMemberTip: 'Sie können direkt nach der Anmeldung auf Ihre Teamdaten zugreifen.',
     email: 'E-Mail',
@@ -180,6 +190,7 @@ const translation = {
     removeFromTeamTip: 'Wird den Teamzugang entfernen',
     setAdmin: 'Als Administrator einstellen',
     setMember: 'Als normales Mitglied einstellen',
+    setEditor: 'Als Editor einstellen',
     disinvite: 'Einladung widerrufen',
     deleteMember: 'Mitglied löschen',
     you: '(Du)',
@@ -499,6 +510,21 @@ const translation = {
     pasteImageLinkInputPlaceholder: 'Bildlink hier einfügen',
     pasteImageLinkInvalid: 'Ungültiger Bildlink',
     imageUpload: 'Bild-Upload',
+  },
+  tag: {
+    placeholder: 'Alle Tags',
+    addNew: 'Neues Tag hinzufügen',
+    noTag: 'Keine Tags',
+    noTagYet: 'Noch keine Tags',
+    addTag: 'Tags hinzufügen',
+    editTag: 'Tags bearbeiten',
+    manageTags: 'Tags verwalten',
+    selectorPlaceholder: 'Typ zum Suchen oder Erstellen',
+    create: 'Erstellen',
+    delete: 'Tag löschen',
+    deleteTip: 'Das Tag wird verwendet, löschen?',
+    created: 'Tag erfolgreich erstellt',
+    failed: 'Tag-Erstellung fehlgeschlagen',
   },
 }
 

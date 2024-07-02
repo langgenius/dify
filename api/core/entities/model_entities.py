@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType, ProviderModel
@@ -16,6 +16,7 @@ class ModelStatus(Enum):
     NO_CONFIGURE = "no-configure"
     QUOTA_EXCEEDED = "quota-exceeded"
     NO_PERMISSION = "no-permission"
+    DISABLED = "disabled"
 
 
 class SimpleModelProviderEntity(BaseModel):
@@ -43,12 +44,19 @@ class SimpleModelProviderEntity(BaseModel):
         )
 
 
-class ModelWithProviderEntity(ProviderModel):
+class ProviderModelWithStatusEntity(ProviderModel):
+    """
+    Model class for model response.
+    """
+    status: ModelStatus
+    load_balancing_enabled: bool = False
+
+
+class ModelWithProviderEntity(ProviderModelWithStatusEntity):
     """
     Model with provider entity.
     """
     provider: SimpleModelProviderEntity
-    status: ModelStatus
 
 
 class DefaultModelProviderEntity(BaseModel):
@@ -69,3 +77,6 @@ class DefaultModelEntity(BaseModel):
     model: str
     model_type: ModelType
     provider: DefaultModelProviderEntity
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())

@@ -8,14 +8,44 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.http_request.entities import HttpRequestNodeData
+from core.workflow.nodes.http_request.entities import (
+    MAX_CONNECT_TIMEOUT,
+    MAX_READ_TIMEOUT,
+    MAX_WRITE_TIMEOUT,
+    HttpRequestNodeData,
+)
 from core.workflow.nodes.http_request.http_executor import HttpExecutor, HttpExecutorResponse
 from models.workflow import WorkflowNodeExecutionStatus
+
+HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeData.Timeout(connect=min(10, MAX_CONNECT_TIMEOUT),
+                                                           read=min(60, MAX_READ_TIMEOUT),
+                                                           write=min(20, MAX_WRITE_TIMEOUT))
 
 
 class HttpRequestNode(BaseNode):
     _node_data_cls = HttpRequestNodeData
     node_type = NodeType.HTTP_REQUEST
+
+    @classmethod
+    def get_default_config(cls) -> dict:
+        return {
+            "type": "http-request",
+            "config": {
+                "method": "get",
+                "authorization": {
+                    "type": "no-auth",
+                },
+                "body": {
+                    "type": "none"
+                },
+                "timeout": {
+                    **HTTP_REQUEST_DEFAULT_TIMEOUT.model_dump(),
+                    "max_connect_timeout": MAX_CONNECT_TIMEOUT,
+                    "max_read_timeout": MAX_READ_TIMEOUT,
+                    "max_write_timeout": MAX_WRITE_TIMEOUT,
+                }
+            },
+        }
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         node_data: HttpRequestNodeData = cast(self._node_data_cls, self.node_data)
@@ -23,7 +53,9 @@ class HttpRequestNode(BaseNode):
         # init http executor
         http_executor = None
         try:
-            http_executor = HttpExecutor(node_data=node_data, variable_pool=variable_pool)
+            http_executor = HttpExecutor(node_data=node_data,
+                                         timeout=self._get_request_timeout(node_data),
+                                         variable_pool=variable_pool)
 
             # invoke http executor
             response = http_executor.invoke()
@@ -31,14 +63,16 @@ class HttpRequestNode(BaseNode):
             process_data = {}
             if http_executor:
                 process_data = {
-                    'request': http_executor.to_raw_request(),
+                    'request': http_executor.to_raw_request(
+                        mask_authorization_header=node_data.mask_authorization_header
+                    ),
                 }
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),
                 process_data=process_data
             )
-        
+
         files = self.extract_files(http_executor.server_url, response)
 
         return NodeRunResult(
@@ -50,9 +84,27 @@ class HttpRequestNode(BaseNode):
                 'files': files,
             },
             process_data={
-                'request': http_executor.to_raw_request(),
+                'request': http_executor.to_raw_request(
+                    mask_authorization_header=node_data.mask_authorization_header
+                ),
             }
         )
+
+    def _get_request_timeout(self, node_data: HttpRequestNodeData) -> HttpRequestNodeData.Timeout:
+        timeout = node_data.timeout
+        if timeout is None:
+            return HTTP_REQUEST_DEFAULT_TIMEOUT
+
+        if timeout.connect is None:
+            timeout.connect = HTTP_REQUEST_DEFAULT_TIMEOUT.connect
+        timeout.connect = min(timeout.connect, MAX_CONNECT_TIMEOUT)
+        if timeout.read is None:
+            timeout.read = HTTP_REQUEST_DEFAULT_TIMEOUT.read
+        timeout.read = min(timeout.read, MAX_READ_TIMEOUT)
+        if timeout.write is None:
+            timeout.write = HTTP_REQUEST_DEFAULT_TIMEOUT.write
+        timeout.write = min(timeout.write, MAX_WRITE_TIMEOUT)
+        return timeout
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(cls, node_data: HttpRequestNodeData) -> dict[str, list[str]]:
@@ -62,7 +114,7 @@ class HttpRequestNode(BaseNode):
         :return:
         """
         try:
-            http_executor = HttpExecutor(node_data=node_data)
+            http_executor = HttpExecutor(node_data=node_data, timeout=HTTP_REQUEST_DEFAULT_TIMEOUT)
 
             variable_selectors = http_executor.variable_selectors
 
@@ -84,7 +136,7 @@ class HttpRequestNode(BaseNode):
         # if not image, return directly
         if 'image' not in mimetype:
             return files
-        
+
         if mimetype:
             # extract filename from url
             filename = path.basename(url)

@@ -2,12 +2,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.app.app_config.entities import ModelConfigEntity, FileExtraConfig
-from core.file.file_obj import FileVar, FileType, FileTransferMethod
+from core.app.app_config.entities import FileExtraConfig, ModelConfigEntity
+from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import UserPromptMessage, AssistantPromptMessage, PromptMessageRole
+from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessageRole, UserPromptMessage
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
-from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig, ChatModelMessage
+from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from models.model import Conversation
 

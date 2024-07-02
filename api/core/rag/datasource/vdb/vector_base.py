@@ -12,6 +12,10 @@ class BaseVector(ABC):
         self._collection_name = collection_name
 
     @abstractmethod
+    def get_type(self) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         raise NotImplementedError
 
@@ -25,6 +29,9 @@ class BaseVector(ABC):
 
     @abstractmethod
     def delete_by_ids(self, ids: list[str]) -> None:
+        raise NotImplementedError
+
+    def get_ids_by_metadata_field(self, key: str, value: str):
         raise NotImplementedError
 
     @abstractmethod

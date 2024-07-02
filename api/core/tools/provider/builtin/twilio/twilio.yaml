@@ -10,6 +10,8 @@ identity:
     zh_Hans: 通过SMS或Twilio消息通道发送消息。
     pt_BR: Send messages through SMS or Twilio Messaging Channels.
   icon: icon.svg
+  tags:
+    - social
 credentials_for_provider:
   account_sid:
     type: secret-input

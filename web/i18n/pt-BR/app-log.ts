@@ -77,7 +77,15 @@ const translation = {
     workflowTitle: 'Detalhes do Registro',
   },
   promptLog: 'Registro de Prompt',
+  agentLog: 'Registro do agente',
   viewLog: 'Ver Registro',
+  agenteLogDetail: {
+    agentMode: 'Modo Agente',
+    toolUsed: 'Ferramenta usada',
+    iterações: 'Iterações',
+    iteração: 'Iteração',
+    finalProcessing: 'Processamento Final',
+  },
 }
 
 export default translation

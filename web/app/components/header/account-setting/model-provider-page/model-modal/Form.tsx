@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import type { FC } from 'react'
 import cn from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import type {
   CredentialFormSchema,
@@ -16,7 +19,6 @@ import { useLanguage } from '../hooks'
 import Input from './Input'
 import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip-plus'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Radio from '@/app/components/base/radio'
 type FormProps = {
   className?: string
@@ -78,7 +80,7 @@ const Form: FC<FormProps> = ({
             {tooltip[language] || tooltip.en_US}
           </div>
         } >
-          <HelpCircle className='w-3 h-3  text-gray-500' />
+          <RiQuestionLine className='w-3 h-3  text-gray-500' />
         </Tooltip>
       </span>))
     if (formSchema.type === FormTypeEnum.textInput || formSchema.type === FormTypeEnum.secretInput || formSchema.type === FormTypeEnum.textNumber) {
@@ -236,7 +238,7 @@ const Form: FC<FormProps> = ({
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className='flex items-center justify-between py-2 text-sm text-gray-900'>
             <div className='flex items-center space-x-2'>
-              <span>{label[language] || label.en_US}</span>
+              <span className={cn(fieldLabelClassName, 'py-2 text-sm text-gray-900')}>{label[language] || label.en_US}</span>
               {tooltipContent}
             </div>
             <Radio.Group

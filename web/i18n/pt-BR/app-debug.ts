@@ -327,7 +327,7 @@ const translation = {
   openingStatement: {
     title: 'Abertura da Conversa',
     add: 'Adicionar',
-    writeOpner: 'Escrever abertura',
+    writeOpener: 'Escrever abertura',
     placeholder: 'Escreva sua mensagem de abertura aqui, você pode usar variáveis, tente digitar {{variável}}.',
     openingQuestion: 'Perguntas de Abertura',
     noDataPlaceHolder:

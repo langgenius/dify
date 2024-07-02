@@ -1,0 +1,64 @@
+identity:
+  name: ddgo_search
+  author: Yash Parmar
+  label:
+    en_US: DuckDuckGo Search
+    zh_Hans: DuckDuckGo 搜索
+description:
+  human:
+    en_US: Perform searches on DuckDuckGo and get results.
+    zh_Hans: 在 DuckDuckGo 上进行搜索并获取结果。
+  llm: Perform searches on DuckDuckGo and get results.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+    human_description:
+      en_US: The search query.
+      zh_Hans: 搜索查询语句。
+    llm_description: Key words for searching
+    form: llm
+  - name: max_results
+    type: number
+    required: true
+    default: 5
+    label:
+      en_US: Max results
+      zh_Hans: 最大结果数量
+    human_description:
+      en_US: The max results.
+      zh_Hans: 最大结果数量
+    form: form
+  - name: result_type
+    type: select
+    required: true
+    options:
+      - value: text
+        label:
+          en_US: text
+          zh_Hans: 文本
+      - value: link
+        label:
+          en_US: link
+          zh_Hans: 链接
+    default: text
+    label:
+      en_US: Result type
+      zh_Hans: 结果类型
+    human_description:
+      en_US: used for selecting the result type, text or link
+      zh_Hans: 用于选择结果类型，使用文本还是链接进行展示
+    form: form
+  - name: require_summary
+    type: boolean
+    default: false
+    label:
+      en_US: Require Summary
+      zh_Hans: 是否总结
+    human_description:
+      en_US: Whether to pass the search results to llm for summarization.
+      zh_Hans: 是否需要将搜索结果传给大模型总结
+    form: form

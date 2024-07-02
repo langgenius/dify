@@ -22,7 +22,7 @@ export type IChartViewProps = {
 
 export default function ChartView({ appId }: IChartViewProps) {
   const { t } = useTranslation()
-  const { appDetail } = useAppStore()
+  const appDetail = useAppStore(state => state.appDetail)
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
   const [period, setPeriod] = useState<PeriodParams>({ name: t('appLog.filter.period.last7days'), query: { start: today.subtract(7, 'day').format(queryDateFormat), end: today.format(queryDateFormat) } })

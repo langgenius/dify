@@ -65,7 +65,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 
     ### CompletionResponse
     Returns the App result, `Content-Type` is `application/json`.
-    - `log_id` (string) Unique log ID
+    - `workflow_run_id` (string) Unique ID of workflow execution
     - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
     - `data` (object) detail of result
       - `id` (string) ID of workflow execution
@@ -178,7 +178,7 @@ Workflow applications offers non-session support and is ideal for translation, a
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-        "log_id": "djflajgkldjgd",
+        "workflow_run_id": "djflajgkldjgd",
         "task_id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "data": {
             "id": "fdlsjfjejkghjda",

@@ -1,6 +1,8 @@
 import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 import type { CollectionType } from '@/app/components/tools/types'
 import type { LanguagesSupported } from '@/i18n/language'
+import type { Tag } from '@/app/components/base/tag-management/constant'
+
 export enum ProviderType {
   openai = 'openai',
   anthropic = 'anthropic',
@@ -33,6 +35,7 @@ export enum RETRIEVE_METHOD {
   fullText = 'full_text_search',
   hybrid = 'hybrid_search',
   invertedIndex = 'invertedIndex',
+  keywordSearch = 'keyword_search',
 }
 
 export type VariableInput = {
@@ -243,6 +246,12 @@ export type SiteConfig = {
   title: string
   /** Application Description will be shown in the Client  */
   description: string
+  /** Define the color in hex for different elements of the chatbot, such as:
+   * The header, the button , etc.
+    */
+  chat_color_theme: string
+  /** Invert the color of the theme set in chat_color_theme */
+  chat_color_theme_inverted: boolean
   /** Author */
   author: string
   /** User Support Email Address */
@@ -266,9 +275,13 @@ export type SiteConfig = {
   copyright: string
   /** Privacy Policy */
   privacy_policy: string
+  /** Custom Disclaimer */
+  custom_disclaimer: string
 
   icon: string
   icon_background: string
+
+  show_workflow_steps: boolean
 }
 
 /**
@@ -308,6 +321,7 @@ export type App = {
   site: SiteConfig
   /** api site url */
   api_base_url: string
+  tags: Tag[]
 }
 
 /**

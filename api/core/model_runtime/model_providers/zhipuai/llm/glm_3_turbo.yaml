@@ -32,3 +32,8 @@ parameter_rules:
       zh_Hans: SSE接口调用时，用于控制每次返回内容方式是增量还是全量，不提供此参数时默认为增量返回，true 为增量返回，false 为全量返回。
       en_US: When the SSE interface is called, it is used to control whether the content is returned incrementally or in full. If this parameter is not provided, the default is incremental return. true means incremental return, false means full return.
     required: false
+  - name: max_tokens
+    use_template: max_tokens
+    default: 1024
+    min: 1
+    max: 8192

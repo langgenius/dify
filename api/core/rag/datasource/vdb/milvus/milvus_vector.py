@@ -1,14 +1,20 @@
+import json
 import logging
 from typing import Any, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, root_validator
+from flask import current_app
+from pydantic import BaseModel, model_validator
 from pymilvus import MilvusClient, MilvusException, connections
 
+from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
+from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +28,7 @@ class MilvusConfig(BaseModel):
     batch_size: int = 100
     database: str = "default"
 
-    @root_validator()
+    @model_validator(mode='before')
     def validate_config(cls, values: dict) -> dict:
         if not values.get('host'):
             raise ValueError("config MILVUS_HOST is required")
@@ -55,7 +61,7 @@ class MilvusVector(BaseVector):
         self._fields = []
 
     def get_type(self) -> str:
-        return 'milvus'
+        return VectorType.MILVUS
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         index_params = {
@@ -94,12 +100,6 @@ class MilvusVector(BaseVector):
                 raise e
         return pks
 
-    def delete_by_document_id(self, document_id: str):
-
-        ids = self.get_ids_by_metadata_field('document_id', document_id)
-        if ids:
-            self._client.delete(collection_name=self._collection_name, pks=ids)
-
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = self._client.query(collection_name=self._collection_name,
                                     filter=f'metadata["{key}"] == "{value}"',
@@ -110,19 +110,37 @@ class MilvusVector(BaseVector):
             return None
 
     def delete_by_metadata_field(self, key: str, value: str):
+        alias = uuid4().hex
+        if self._client_config.secure:
+            uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        else:
+            uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
 
-        ids = self.get_ids_by_metadata_field(key, value)
-        if ids:
-            self._client.delete(collection_name=self._collection_name, pks=ids)
+        from pymilvus import utility
+        if utility.has_collection(self._collection_name, using=alias):
 
-    def delete_by_ids(self, doc_ids: list[str]) -> None:
+            ids = self.get_ids_by_metadata_field(key, value)
+            if ids:
+                self._client.delete(collection_name=self._collection_name, pks=ids)
 
-        result = self._client.query(collection_name=self._collection_name,
-                                    filter=f'metadata["doc_id"] in {doc_ids}',
-                                    output_fields=["id"])
-        if result:
-            ids = [item["id"] for item in result]
-            self._client.delete(collection_name=self._collection_name, pks=ids)
+    def delete_by_ids(self, ids: list[str]) -> None:
+        alias = uuid4().hex
+        if self._client_config.secure:
+            uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        else:
+            uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
+
+        from pymilvus import utility
+        if utility.has_collection(self._collection_name, using=alias):
+
+            result = self._client.query(collection_name=self._collection_name,
+                                        filter=f'metadata["doc_id"] in {ids}',
+                                        output_fields=["id"])
+            if result:
+                ids = [item["id"] for item in result]
+                self._client.delete(collection_name=self._collection_name, pks=ids)
 
     def delete(self) -> None:
         alias = uuid4().hex
@@ -236,10 +254,36 @@ class MilvusVector(BaseVector):
                                                            schema=schema, index_param=index_params,
                                                            consistency_level=self._consistency_level)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
+
     def _init_client(self, config) -> MilvusClient:
         if config.secure:
             uri = "https://" + str(config.host) + ":" + str(config.port)
         else:
             uri = "http://" + str(config.host) + ":" + str(config.port)
-        client = MilvusClient(uri=uri, user=config.user, password=config.password)
+        client = MilvusClient(uri=uri, user=config.user, password=config.password, db_name=config.database)
         return client
+
+
+class MilvusVectorFactory(AbstractVectorFactory):
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> MilvusVector:
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
+            collection_name = class_prefix
+        else:
+            dataset_id = dataset.id
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+            dataset.index_struct = json.dumps(
+                self.gen_index_struct_dict(VectorType.MILVUS, collection_name))
+
+        config = current_app.config
+        return MilvusVector(
+            collection_name=collection_name,
+            config=MilvusConfig(
+                host=config.get('MILVUS_HOST'),
+                port=config.get('MILVUS_PORT'),
+                user=config.get('MILVUS_USER'),
+                password=config.get('MILVUS_PASSWORD'),
+                secure=config.get('MILVUS_SECURE'),
+                database=config.get('MILVUS_DATABASE'),
+            )
+        )

@@ -14,15 +14,6 @@ interface HeaderParams {
 interface User {
 }
 
-interface ChatMessageConfig {
-  inputs: any;
-  query: string;
-  user: User;
-  stream?: boolean;
-  conversation_id?: string | null;
-  files?: File[] | null;
-}
-
 export declare class DifyClient {
   constructor(apiKey: string, baseUrl?: string);
 
@@ -54,7 +45,14 @@ export declare class CompletionClient extends DifyClient {
 }
 
 export declare class ChatClient extends DifyClient {
-  createChatMessage(config: ChatMessageConfig): Promise<any>;
+  createChatMessage(
+    inputs: any,
+    query: string,
+    user: User,
+    stream?: boolean,
+    conversation_id?: string | null,
+    files?: File[] | null
+  ): Promise<any>;
 
   getConversationMessages(
     user: User,

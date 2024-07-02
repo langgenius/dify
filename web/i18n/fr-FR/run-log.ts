@@ -18,6 +18,12 @@ const translation = {
     tokens: 'Total des jetons',
     steps: 'Étapes d\'exécution',
   },
+  resultEmpty: {
+    title: 'Cela exécute uniquement le format de sortie JSON,',
+    tipLeft: 'veuillez aller à ',
+    link: 'panneau de détail',
+    tipRight: ' visualisez-le.',
+  },
 }
 
 export default translation

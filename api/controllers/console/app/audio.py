@@ -85,7 +85,7 @@ class ChatMessageTextApi(Resource):
             response = AudioService.transcript_tts(
                 app_model=app_model,
                 text=request.form['text'],
-                voice=request.form.get('voice'),
+                voice=request.form['voice'],
                 streaming=False
             )
 

@@ -21,16 +21,16 @@ configurate_methods:
 provider_credential_schema:
   credential_form_schemas:
     - variable: aws_access_key_id
-      required: true
+      required: false
       label:
-        en_US: Access Key
+        en_US: Access Key (If not provided, credentials are obtained from the running environment.)
         zh_Hans: Access Key
       type: secret-input
       placeholder:
         en_US: Enter your Access Key
         zh_Hans: 在此输入您的 Access Key
     - variable: aws_secret_access_key
-      required: true
+      required: false
       label:
         en_US: Secret Access Key
         zh_Hans: Secret Access Key
@@ -70,6 +70,10 @@ provider_credential_schema:
           label:
             en_US: AWS GovCloud (US-West)
             zh_Hans: AWS GovCloud (US-West)
+        - value: ap-southeast-2
+          label:
+            en_US: Asia Pacific (Sydney)
+            zh_Hans: 亚太地区 (悉尼)
     - variable: model_for_validation
       required: false
       label:

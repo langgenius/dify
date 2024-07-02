@@ -22,10 +22,17 @@ from core.model_runtime.utils import helper
 class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
     MODEL_SUFFIX_MAP = {
         'fuyu-8b': 'vlm/adept/fuyu-8b',
+        'mistralai/mistral-large': '',
         'mistralai/mixtral-8x7b-instruct-v0.1': '',
+        'mistralai/mixtral-8x22b-instruct-v0.1': '',
         'google/gemma-7b': '',
         'google/codegemma-7b': '',
-        'meta/llama2-70b': ''
+        'snowflake/arctic':'',
+        'meta/llama2-70b': '',
+        'meta/llama3-8b-instruct': '',
+        'meta/llama3-70b-instruct': '',
+        'google/recurrentgemma-2b': ''
+        
     }
 
     def _invoke(self, model: str, credentials: dict,
@@ -93,10 +100,10 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
 
-            endpoint_url = credentials['endpoint_url'] if 'endpoint_url' in credentials else None
+            endpoint_url = credentials.get('endpoint_url')
             if endpoint_url and not endpoint_url.endswith('/'):
                 endpoint_url += '/'
-            server_url = credentials['server_url'] if 'server_url' in credentials else None
+            server_url = credentials.get('server_url')
 
             # prepare the payload for a simple ping to the model
             data = {
@@ -131,7 +138,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 endpoint_url,
                 headers=headers,
                 json=data,
-                timeout=(10, 60)
+                timeout=(10, 300)
             )
 
             if response.status_code != 200:
@@ -175,10 +182,10 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
         if stream:
             headers['Accept'] = 'text/event-stream'
 
-        endpoint_url = credentials['endpoint_url'] if 'endpoint_url' in credentials else None
+        endpoint_url = credentials.get('endpoint_url')
         if endpoint_url and not endpoint_url.endswith('/'):
             endpoint_url += '/'
-        server_url = credentials['server_url'] if 'server_url' in credentials else None
+        server_url = credentials.get('server_url')
 
         data = {
             "model": model,
@@ -193,7 +200,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 endpoint_url = str(URL(endpoint_url) / 'chat' / 'completions')
             elif 'server_url' in credentials:
                 endpoint_url = server_url
-            data['messages'] = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
+            data['messages'] = [self._convert_prompt_message_to_dict(m, credentials) for m in prompt_messages]
         elif completion_type is LLMMode.COMPLETION:
             data['prompt'] = 'ping'
             if 'endpoint_url' in credentials:
@@ -232,7 +239,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
             endpoint_url,
             headers=headers,
             json=data,
-            timeout=(10, 60),
+            timeout=(10, 300),
             stream=stream
         )
 

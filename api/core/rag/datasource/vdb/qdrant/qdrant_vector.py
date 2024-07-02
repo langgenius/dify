@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 from collections.abc import Generator, Iterable, Sequence
@@ -5,6 +6,7 @@ from itertools import islice
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 import qdrant_client
+from flask import current_app
 from pydantic import BaseModel
 from qdrant_client.http import models as rest
 from qdrant_client.http.models import (
@@ -17,10 +19,15 @@ from qdrant_client.http.models import (
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
 
+from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.dataset import Dataset, DatasetCollectionBinding
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -33,9 +40,11 @@ if TYPE_CHECKING:
 
 class QdrantConfig(BaseModel):
     endpoint: str
-    api_key: Optional[str]
+    api_key: Optional[str] = None
     timeout: float = 20
-    root_path: Optional[str]
+    root_path: Optional[str] = None
+    grpc_port: int = 6334
+    prefer_grpc: bool = False
 
     def to_qdrant_params(self):
         if self.endpoint and self.endpoint.startswith('path:'):
@@ -50,7 +59,10 @@ class QdrantConfig(BaseModel):
             return {
                 'url': self.endpoint,
                 'api_key': self.api_key,
-                'timeout': self.timeout
+                'timeout': self.timeout,
+                'verify': self.endpoint.startswith('https'),
+                'grpc_port': self.grpc_port,
+                'prefer_grpc': self.prefer_grpc
             }
 
 
@@ -64,7 +76,7 @@ class QdrantVector(BaseVector):
         self._group_id = group_id
 
     def get_type(self) -> str:
-        return 'qdrant'
+        return VectorType.QDRANT
 
     def to_index_struct(self) -> dict:
         return {
@@ -110,11 +122,13 @@ class QdrantVector(BaseVector):
                     timeout=int(self._client_config.timeout),
                 )
 
-                # create payload index
+                # create group_id payload index
                 self._client.create_payload_index(collection_name, Field.GROUP_KEY.value,
-                                                  field_schema=PayloadSchemaType.KEYWORD,
-                                                  field_type=PayloadSchemaType.KEYWORD)
-                # creat full text index
+                                                  field_schema=PayloadSchemaType.KEYWORD)
+                # create doc_id payload index
+                self._client.create_payload_index(collection_name, Field.DOC_ID.value,
+                                                  field_schema=PayloadSchemaType.KEYWORD)
+                # create full text index
                 text_index_params = TextIndexParams(
                     type=TextIndexType.TEXT,
                     tokenizer=TokenizerType.MULTILINGUAL,
@@ -217,29 +231,38 @@ class QdrantVector(BaseVector):
     def delete_by_metadata_field(self, key: str, value: str):
 
         from qdrant_client.http import models
+        from qdrant_client.http.exceptions import UnexpectedResponse
 
-        filter = models.Filter(
-            must=[
-                models.FieldCondition(
-                    key=f"metadata.{key}",
-                    match=models.MatchValue(value=value),
+        try:
+            filter = models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key=f"metadata.{key}",
+                        match=models.MatchValue(value=value),
+                    ),
+                ],
+            )
+
+            self._reload_if_needed()
+
+            self._client.delete(
+                collection_name=self._collection_name,
+                points_selector=FilterSelector(
+                    filter=filter
                 ),
-            ],
-        )
-
-        self._reload_if_needed()
-
-        self._client.delete(
-            collection_name=self._collection_name,
-            points_selector=FilterSelector(
-                filter=filter
-            ),
-        )
+            )
+        except UnexpectedResponse as e:
+            # Collection does not exist, so return
+            if e.status_code == 404:
+                return
+            # Some other error occurred, so re-raise the exception
+            else:
+                raise e
 
     def delete(self):
         from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
-        
+
         try:
             filter = models.Filter(
                 must=[
@@ -257,29 +280,40 @@ class QdrantVector(BaseVector):
             )
         except UnexpectedResponse as e:
             # Collection does not exist, so return
-            if e.status_code == 404:                
+            if e.status_code == 404:
                 return
             # Some other error occurred, so re-raise the exception
             else:
                 raise e
+
     def delete_by_ids(self, ids: list[str]) -> None:
 
         from qdrant_client.http import models
+        from qdrant_client.http.exceptions import UnexpectedResponse
+
         for node_id in ids:
-            filter = models.Filter(
-                must=[
-                    models.FieldCondition(
-                        key="metadata.doc_id",
-                        match=models.MatchValue(value=node_id),
+            try:
+                filter = models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="metadata.doc_id",
+                            match=models.MatchValue(value=node_id),
+                        ),
+                    ],
+                )
+                self._client.delete(
+                    collection_name=self._collection_name,
+                    points_selector=FilterSelector(
+                        filter=filter
                     ),
-                ],
-            )
-            self._client.delete(
-                collection_name=self._collection_name,
-                points_selector=FilterSelector(
-                    filter=filter
-                ),
-            )
+                )
+            except UnexpectedResponse as e:
+                # Collection does not exist, so return
+                if e.status_code == 404:
+                    return
+                # Some other error occurred, so re-raise the exception
+                else:
+                    raise e
 
     def text_exists(self, id: str) -> bool:
         all_collection_name = []
@@ -380,4 +414,41 @@ class QdrantVector(BaseVector):
         return Document(
             page_content=scored_point.payload.get(content_payload_key),
             metadata=scored_point.payload.get(metadata_payload_key) or {},
+        )
+
+
+class QdrantVectorFactory(AbstractVectorFactory):
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> QdrantVector:
+        if dataset.collection_binding_id:
+            dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
+                filter(DatasetCollectionBinding.id == dataset.collection_binding_id). \
+                one_or_none()
+            if dataset_collection_binding:
+                collection_name = dataset_collection_binding.collection_name
+            else:
+                raise ValueError('Dataset Collection Bindings is not exist!')
+        else:
+            if dataset.index_struct_dict:
+                class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
+                collection_name = class_prefix
+            else:
+                dataset_id = dataset.id
+                collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+
+        if not dataset.index_struct_dict:
+            dataset.index_struct = json.dumps(
+                self.gen_index_struct_dict(VectorType.QDRANT, collection_name))
+
+        config = current_app.config
+        return QdrantVector(
+            collection_name=collection_name,
+            group_id=dataset.id,
+            config=QdrantConfig(
+                endpoint=config.get('QDRANT_URL'),
+                api_key=config.get('QDRANT_API_KEY'),
+                root_path=config.root_path,
+                timeout=config.get('QDRANT_CLIENT_TIMEOUT'),
+                grpc_port=config.get('QDRANT_GRPC_PORT'),
+                prefer_grpc=config.get('QDRANT_GRPC_ENABLED')
+            )
         )

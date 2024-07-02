@@ -30,6 +30,7 @@ const translation = {
   tos: 'Termos de Serviço',
   pp: 'Política de Privacidade',
   tosDesc: 'Ao se inscrever, você concorda com nossos',
+  goToInit: 'Se você não inicializou a conta, vá para a página de inicialização',
   donthave: 'Não tem?',
   invalidInvitationCode: 'Código de convite inválido',
   accountAlreadyInited: 'Conta já iniciada',

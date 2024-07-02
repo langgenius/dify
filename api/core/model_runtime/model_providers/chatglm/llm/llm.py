@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Generator
-from os.path import join
 from typing import Optional, cast
 
 from httpx import Timeout
@@ -19,6 +18,7 @@ from openai import (
 )
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from openai.types.chat.chat_completion_message import FunctionCall
+from yarl import URL
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
@@ -265,7 +265,7 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
         client_kwargs = {
             "timeout": Timeout(315.0, read=300.0, write=10.0, connect=5.0),
             "api_key": "1",
-            "base_url": join(credentials['api_base'], 'v1')
+            "base_url": str(URL(credentials['api_base']) / 'v1')
         }
 
         return client_kwargs

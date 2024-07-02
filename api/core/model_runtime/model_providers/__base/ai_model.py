@@ -1,10 +1,12 @@
 import decimal
 import os
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from typing import Optional
 
-import yaml
+from pydantic import ConfigDict
 
+from core.helper.position_helper import get_position_map, sort_by_position_map
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from core.model_runtime.entities.model_entities import (
@@ -18,19 +20,23 @@ from core.model_runtime.entities.model_entities import (
 )
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
-from core.utils.position_helper import get_position_map, sort_by_position_map
+from core.tools.utils.yaml_utils import load_yaml_file
 
 
 class AIModel(ABC):
     """
     Base class for all models.
     """
+
     model_type: ModelType
-    model_schemas: list[AIModelEntity] = None
+    model_schemas: Optional[list[AIModelEntity]] = None
     started_at: float = 0
 
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
     @abstractmethod
-    def validate_credentials(self, model: str, credentials: dict) -> None:
+    def validate_credentials(self, model: str, credentials: Mapping) -> None:
         """
         Validate model credentials
 
@@ -86,8 +92,8 @@ class AIModel(ABC):
 
         # get price info from predefined model schema
         price_config: Optional[PriceConfig] = None
-        if model_schema:
-            price_config: PriceConfig = model_schema.pricing
+        if model_schema and model_schema.pricing:
+            price_config = model_schema.pricing
 
         # get unit price
         unit_price = None
@@ -99,13 +105,15 @@ class AIModel(ABC):
 
         if unit_price is None:
             return PriceInfo(
-                unit_price=decimal.Decimal('0.0'),
-                unit=decimal.Decimal('0.0'),
-                total_amount=decimal.Decimal('0.0'),
+                unit_price=decimal.Decimal("0.0"),
+                unit=decimal.Decimal("0.0"),
+                total_amount=decimal.Decimal("0.0"),
                 currency="USD",
             )
 
         # calculate total amount
+        if not price_config:
+            raise ValueError(f"Price config not found for model {model}")
         total_amount = tokens * unit_price * price_config.unit
         total_amount = total_amount.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
 
@@ -154,8 +162,7 @@ class AIModel(ABC):
         # traverse all model_schema_yaml_paths
         for model_schema_yaml_path in model_schema_yaml_paths:
             # read yaml data from yaml file
-            with open(model_schema_yaml_path, encoding='utf-8') as f:
-                yaml_data = yaml.safe_load(f)
+            yaml_data = load_yaml_file(model_schema_yaml_path, ignore_error=True)
 
             new_parameter_rules = []
             for parameter_rule in yaml_data.get('parameter_rules', []):
@@ -206,7 +213,7 @@ class AIModel(ABC):
 
         return model_schemas
 
-    def get_model_schema(self, model: str, credentials: Optional[dict] = None) -> Optional[AIModelEntity]:
+    def get_model_schema(self, model: str, credentials: Optional[Mapping] = None) -> Optional[AIModelEntity]:
         """
         Get model schema by model name and credentials
 
@@ -228,7 +235,7 @@ class AIModel(ABC):
 
         return None
 
-    def get_customizable_model_schema_from_credentials(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+    def get_customizable_model_schema_from_credentials(self, model: str, credentials: Mapping) -> Optional[AIModelEntity]:
         """
         Get customizable model schema from credentials
 
@@ -237,8 +244,8 @@ class AIModel(ABC):
         :return: model schema
         """
         return self._get_customizable_model_schema(model, credentials)
-    
-    def _get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+
+    def _get_customizable_model_schema(self, model: str, credentials: Mapping) -> Optional[AIModelEntity]:
         """
         Get customizable model schema and fill in the template
         """
@@ -246,7 +253,7 @@ class AIModel(ABC):
 
         if not schema:
             return None
-        
+
         # fill in the template
         new_parameter_rules = []
         for parameter_rule in schema.parameter_rules:
@@ -268,10 +275,20 @@ class AIModel(ABC):
                         parameter_rule.help = I18nObject(
                             en_US=default_parameter_rule['help']['en_US'],
                         )
-                    if not parameter_rule.help.en_US and ('help' in default_parameter_rule and 'en_US' in default_parameter_rule['help']):
-                        parameter_rule.help.en_US = default_parameter_rule['help']['en_US']
-                    if not parameter_rule.help.zh_Hans and ('help' in default_parameter_rule and 'zh_Hans' in default_parameter_rule['help']):
-                        parameter_rule.help.zh_Hans = default_parameter_rule['help'].get('zh_Hans', default_parameter_rule['help']['en_US'])
+                    if (
+                        parameter_rule.help
+                        and not parameter_rule.help.en_US
+                        and ("help" in default_parameter_rule and "en_US" in default_parameter_rule["help"])
+                    ):
+                        parameter_rule.help.en_US = default_parameter_rule["help"]["en_US"]
+                    if (
+                        parameter_rule.help
+                        and not parameter_rule.help.zh_Hans
+                        and ("help" in default_parameter_rule and "zh_Hans" in default_parameter_rule["help"])
+                    ):
+                        parameter_rule.help.zh_Hans = default_parameter_rule["help"].get(
+                            "zh_Hans", default_parameter_rule["help"]["en_US"]
+                        )
                 except ValueError:
                     pass
 
@@ -281,7 +298,7 @@ class AIModel(ABC):
 
         return schema
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+    def get_customizable_model_schema(self, model: str, credentials: Mapping) -> Optional[AIModelEntity]:
         """
         Get customizable model schema
 
@@ -301,7 +318,7 @@ class AIModel(ABC):
         default_parameter_rule = PARAMETER_RULE_TEMPLATE.get(name)
 
         if not default_parameter_rule:
-            raise Exception(f'Invalid model parameter rule name {name}')
+            raise Exception(f"Invalid model parameter rule name {name}")
 
         return default_parameter_rule
 

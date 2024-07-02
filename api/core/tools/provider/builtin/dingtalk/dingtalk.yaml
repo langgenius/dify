@@ -10,4 +10,7 @@ identity:
     zh_Hans: 钉钉群机器人
     pt_BR: DingTalk group robot
   icon: icon.svg
+  tags:
+    - social
+    - productivity
 credentials_for_provider:

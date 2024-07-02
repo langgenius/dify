@@ -181,12 +181,12 @@ const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
   installedAppInfo,
   className,
 }) => {
-  const [inited, setInited] = useState(false)
+  const [initialized, setInitialized] = useState(false)
   const [appUnavailable, setAppUnavailable] = useState<boolean>(false)
-  const [isUnknwonReason, setIsUnknwonReason] = useState<boolean>(false)
+  const [isUnknownReason, setIsUnknownReason] = useState<boolean>(false)
 
   useAsyncEffect(async () => {
-    if (!inited) {
+    if (!initialized) {
       if (!installedAppInfo) {
         try {
           await checkOrSetAccessToken()
@@ -196,20 +196,20 @@ const ChatWithHistoryWrapWithCheckToken: FC<ChatWithHistoryWrapProps> = ({
             setAppUnavailable(true)
           }
           else {
-            setIsUnknwonReason(true)
+            setIsUnknownReason(true)
             setAppUnavailable(true)
           }
         }
       }
-      setInited(true)
+      setInitialized(true)
     }
   }, [])
 
-  if (appUnavailable)
-    return <AppUnavailable isUnknwonReason={isUnknwonReason} />
-
-  if (!inited)
+  if (!initialized)
     return null
+
+  if (appUnavailable)
+    return <AppUnavailable isUnknownReason={isUnknownReason} />
 
   return (
     <ChatWithHistoryWrap

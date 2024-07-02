@@ -1,6 +1,8 @@
 import type { Fetcher } from 'swr'
 import { get, post } from './base'
 import type {
+  AgentLogDetailRequest,
+  AgentLogDetailResponse,
   AnnotationsCountResponse,
   ChatConversationFullDetailResponse,
   ChatConversationsRequest,
@@ -72,4 +74,8 @@ export const fetchRunDetail = ({ appID, runID }: { appID: string; runID: string 
 
 export const fetchTracingList: Fetcher<NodeTracingListResponse, { url: string }> = ({ url }) => {
   return get<NodeTracingListResponse>(url)
+}
+
+export const fetchAgentLogDetail = ({ appID, params }: { appID: string; params: AgentLogDetailRequest }) => {
+  return get<AgentLogDetailResponse>(`/apps/${appID}/agent/logs`, { params })
 }

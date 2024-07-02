@@ -1,14 +1,15 @@
 import { useContext } from 'react'
 import {
-  create,
   useStore as useZustandStore,
 } from 'zustand'
+import { createStore } from 'zustand/vanilla'
 import { debounce } from 'lodash-es'
 import type { Viewport } from 'reactflow'
 import type {
   HelpLineHorizontalPosition,
   HelpLineVerticalPosition,
 } from './help-line/types'
+import type { VariableAssignerNodeType } from './nodes/variable-assigner/types'
 import type {
   Edge,
   HistoryWorkflowData,
@@ -19,12 +20,20 @@ import type {
 } from './types'
 import { WorkflowContext } from './context'
 
+type PreviewRunningData = WorkflowRunningData & {
+  resultTabActive?: boolean
+  resultText?: string
+}
+
 type Shape = {
   appId: string
-  workflowRunningData?: WorkflowRunningData
-  setWorkflowRunningData: (workflowData: WorkflowRunningData) => void
+  panelWidth: number
+  showSingleRunPanel: boolean
+  setShowSingleRunPanel: (showSingleRunPanel: boolean) => void
+  workflowRunningData?: PreviewRunningData
+  setWorkflowRunningData: (workflowData: PreviewRunningData) => void
   historyWorkflowData?: HistoryWorkflowData
-  setHistoryWorkflowData: (historyWorkflowData: HistoryWorkflowData) => void
+  setHistoryWorkflowData: (historyWorkflowData?: HistoryWorkflowData) => void
   showRunHistory: boolean
   setShowRunHistory: (showRunHistory: boolean) => void
   showFeaturesPanel: boolean
@@ -41,6 +50,8 @@ type Shape = {
   setShowInputsPanel: (showInputsPanel: boolean) => void
   inputs: Record<string, string>
   setInputs: (inputs: Record<string, string>) => void
+  toolPublished: boolean
+  setToolPublished: (toolPublished: boolean) => void
   files: RunFile[]
   setFiles: (files: RunFile[]) => void
   backupDraft?: {
@@ -63,16 +74,74 @@ type Shape = {
   setBuildInTools: (tools: ToolWithProvider[]) => void
   customTools: ToolWithProvider[]
   setCustomTools: (tools: ToolWithProvider[]) => void
+  workflowTools: ToolWithProvider[]
+  setWorkflowTools: (tools: ToolWithProvider[]) => void
   clipboardElements: Node[]
   setClipboardElements: (clipboardElements: Node[]) => void
   shortcutsDisabled: boolean
   setShortcutsDisabled: (shortcutsDisabled: boolean) => void
+  showDebugAndPreviewPanel: boolean
+  setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
+  selection: null | { x1: number; y1: number; x2: number; y2: number }
+  setSelection: (selection: Shape['selection']) => void
+  bundleNodeSize: { width: number; height: number } | null
+  setBundleNodeSize: (bundleNodeSize: Shape['bundleNodeSize']) => void
+  controlMode: 'pointer' | 'hand'
+  setControlMode: (controlMode: Shape['controlMode']) => void
+  candidateNode?: Node
+  setCandidateNode: (candidateNode?: Node) => void
+  panelMenu?: {
+    top: number
+    left: number
+  }
+  setPanelMenu: (panelMenu: Shape['panelMenu']) => void
+  nodeMenu?: {
+    top: number
+    left: number
+    nodeId: string
+  }
+  setNodeMenu: (nodeMenu: Shape['nodeMenu']) => void
+  mousePosition: { pageX: number; pageY: number; elementX: number; elementY: number }
+  setMousePosition: (mousePosition: Shape['mousePosition']) => void
+  syncWorkflowDraftHash: string
+  setSyncWorkflowDraftHash: (hash: string) => void
+  showConfirm?: { title: string; desc?: string; onConfirm: () => void }
+  setShowConfirm: (showConfirm: Shape['showConfirm']) => void
+  showAssignVariablePopup?: {
+    nodeId: string
+    nodeData: Node['data']
+    variableAssignerNodeId: string
+    variableAssignerNodeData: VariableAssignerNodeType
+    variableAssignerNodeHandleId: string
+    parentNode?: Node
+    x: number
+    y: number
+  }
+  setShowAssignVariablePopup: (showAssignVariablePopup: Shape['showAssignVariablePopup']) => void
+  hoveringAssignVariableGroupId?: string
+  setHoveringAssignVariableGroupId: (hoveringAssignVariableGroupId?: string) => void
+  connectingNodePayload?: { nodeId: string; nodeType: string; handleType: string; handleId: string | null }
+  setConnectingNodePayload: (startConnectingPayload?: Shape['connectingNodePayload']) => void
+  enteringNodePayload?: {
+    nodeId: string
+    nodeData: VariableAssignerNodeType
+  }
+  setEnteringNodePayload: (enteringNodePayload?: Shape['enteringNodePayload']) => void
+  isSyncingWorkflowDraft: boolean
+  setIsSyncingWorkflowDraft: (isSyncingWorkflowDraft: boolean) => void
+  controlPromptEditorRerenderKey: number
+  setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
+  showImportDSLModal: boolean
+  setShowImportDSLModal: (showImportDSLModal: boolean) => void
 }
 
 export const createWorkflowStore = () => {
-  return create<Shape>(set => ({
+  return createStore<Shape>(set => ({
     appId: '',
-    workflowData: undefined,
+    panelWidth: localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
+    showSingleRunPanel: false,
+    setShowSingleRunPanel: showSingleRunPanel => set(() => ({ showSingleRunPanel })),
+    workflowRunningData: undefined,
     setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
     historyWorkflowData: undefined,
     setHistoryWorkflowData: historyWorkflowData => set(() => ({ historyWorkflowData })),
@@ -92,6 +161,8 @@ export const createWorkflowStore = () => {
     setShowInputsPanel: showInputsPanel => set(() => ({ showInputsPanel })),
     inputs: {},
     setInputs: inputs => set(() => ({ inputs })),
+    toolPublished: false,
+    setToolPublished: toolPublished => set(() => ({ toolPublished })),
     files: [],
     setFiles: files => set(() => ({ files })),
     backupDraft: undefined,
@@ -111,10 +182,49 @@ export const createWorkflowStore = () => {
     setBuildInTools: buildInTools => set(() => ({ buildInTools })),
     customTools: [],
     setCustomTools: customTools => set(() => ({ customTools })),
+    workflowTools: [],
+    setWorkflowTools: workflowTools => set(() => ({ workflowTools })),
     clipboardElements: [],
     setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
     shortcutsDisabled: false,
     setShortcutsDisabled: shortcutsDisabled => set(() => ({ shortcutsDisabled })),
+    showDebugAndPreviewPanel: false,
+    setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
+    selection: null,
+    setSelection: selection => set(() => ({ selection })),
+    bundleNodeSize: null,
+    setBundleNodeSize: bundleNodeSize => set(() => ({ bundleNodeSize })),
+    controlMode: localStorage.getItem('workflow-operation-mode') === 'pointer' ? 'pointer' : 'hand',
+    setControlMode: (controlMode) => {
+      set(() => ({ controlMode }))
+      localStorage.setItem('workflow-operation-mode', controlMode)
+    },
+    candidateNode: undefined,
+    setCandidateNode: candidateNode => set(() => ({ candidateNode })),
+    panelMenu: undefined,
+    setPanelMenu: panelMenu => set(() => ({ panelMenu })),
+    nodeMenu: undefined,
+    setNodeMenu: nodeMenu => set(() => ({ nodeMenu })),
+    mousePosition: { pageX: 0, pageY: 0, elementX: 0, elementY: 0 },
+    setMousePosition: mousePosition => set(() => ({ mousePosition })),
+    syncWorkflowDraftHash: '',
+    setSyncWorkflowDraftHash: syncWorkflowDraftHash => set(() => ({ syncWorkflowDraftHash })),
+    showConfirm: undefined,
+    setShowConfirm: showConfirm => set(() => ({ showConfirm })),
+    showAssignVariablePopup: undefined,
+    setShowAssignVariablePopup: showAssignVariablePopup => set(() => ({ showAssignVariablePopup })),
+    hoveringAssignVariableGroupId: undefined,
+    setHoveringAssignVariableGroupId: hoveringAssignVariableGroupId => set(() => ({ hoveringAssignVariableGroupId })),
+    connectingNodePayload: undefined,
+    setConnectingNodePayload: connectingNodePayload => set(() => ({ connectingNodePayload })),
+    enteringNodePayload: undefined,
+    setEnteringNodePayload: enteringNodePayload => set(() => ({ enteringNodePayload })),
+    isSyncingWorkflowDraft: false,
+    setIsSyncingWorkflowDraft: isSyncingWorkflowDraft => set(() => ({ isSyncingWorkflowDraft })),
+    controlPromptEditorRerenderKey: 0,
+    setControlPromptEditorRerenderKey: controlPromptEditorRerenderKey => set(() => ({ controlPromptEditorRerenderKey })),
+    showImportDSLModal: false,
+    setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
   }))
 }
 

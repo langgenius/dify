@@ -1,8 +1,9 @@
 from core.app.entities.app_invoke_entities import InvokeFrom
-
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.nodes.base_node import UserFrom
 from core.workflow.nodes.tool.tool_node import ToolNode
 from models.workflow import WorkflowNodeExecutionStatus
+
 
 def test_tool_variable_invoke():
     pool = VariablePool(system_variables={}, user_inputs={})
@@ -13,7 +14,8 @@ def test_tool_variable_invoke():
         app_id='1',
         workflow_id='1',
         user_id='1',
-        user_from=InvokeFrom.WEB_APP,
+        invoke_from=InvokeFrom.WEB_APP,
+        user_from=UserFrom.ACCOUNT,
         config={
             'id': '1',
             'data': {
@@ -51,7 +53,8 @@ def test_tool_mixed_invoke():
         app_id='1',
         workflow_id='1',
         user_id='1',
-        user_from=InvokeFrom.WEB_APP,
+        invoke_from=InvokeFrom.WEB_APP,
+        user_from=UserFrom.ACCOUNT,
         config={
             'id': '1',
             'data': {

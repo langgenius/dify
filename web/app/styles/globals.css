@@ -1,6 +1,6 @@
+@import "preflight.css";
 @tailwind base;
 @tailwind components;
-@tailwind utilities;
 
 :root {
   --max-width: 1100px;
@@ -76,7 +76,7 @@
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 body {
@@ -148,3 +148,6 @@ button:focus-within {
 }
 
 @import '../components/base/button/index.css';
+@import '../components/base/modal/index.css';
+
+@tailwind utilities;

@@ -1,13 +1,14 @@
 const translation = {
   knowledge: 'Kiến thức',
   documentCount: ' tài liệu',
-  wordCount: 'k từ',
+  wordCount: ' k từ',
   appCount: ' ứng dụng liên kết',
   createDataset: 'Tạo Kiến thức',
   createDatasetIntro: 'Nhập dữ liệu văn bản của bạn hoặc viết dữ liệu theo thời gian thực qua Webhook để tăng cường ngữ cảnh LLM.',
   deleteDatasetConfirmTitle: 'Xóa Kiến thức này?',
   deleteDatasetConfirmContent:
     'Xóa Kiến thức là không thể đảo ngược. Người dùng sẽ không còn có khả năng truy cập Kiến thức của bạn nữa, và tất cả các cấu hình và nhật ký nhắc nhở sẽ bị xóa vĩnh viễn.',
+  datasetUsedByApp: 'Kiến thức này đang được sử dụng bởi một số ứng dụng. Các ứng dụng sẽ không thể sử dụng Kiến thức này nữa, và tất cả cấu hình lời nhắc và nhật ký sẽ bị xóa vĩnh viễn.',
   datasetDeleted: 'Kiến thức đã bị xóa',
   datasetDeleteFailed: 'Xóa Kiến thức không thành công',
   didYouKnow: 'Bạn đã biết chưa?',
@@ -42,6 +43,8 @@ const translation = {
     change: 'Thay đổi',
     changeRetrievalMethod: 'Thay đổi phương pháp truy xuất',
   },
+  docsFailedNotice: 'tài liệu không được lập chỉ mục',
+  retry: 'Thử lại',
 }
 
 export default translation

@@ -150,8 +150,10 @@ React.HTMLProps<HTMLDivElement>
   if (!context.open)
     return null
 
+  const body = document.body
+
   return (
-    <FloatingPortal>
+    <FloatingPortal root={body}>
       <div
         ref={ref}
         style={{

@@ -173,7 +173,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = cohere.Client(credentials.get('api_key'), base_url=credentials.get('base_url'))
 
         if stop:
             model_parameters['end_sequences'] = stop
@@ -233,7 +233,8 @@ class CohereLargeLanguageModel(LargeLanguageModel):
 
         return response
 
-    def _handle_generate_stream_response(self, model: str, credentials: dict, response: Iterator[GenerateStreamedResponse],
+    def _handle_generate_stream_response(self, model: str, credentials: dict,
+                                         response: Iterator[GenerateStreamedResponse],
                                          prompt_messages: list[PromptMessage]) -> Generator:
         """
         Handle llm stream response
@@ -317,7 +318,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = cohere.Client(credentials.get('api_key'), base_url=credentials.get('base_url'))
 
         if stop:
             model_parameters['stop_sequences'] = stop
@@ -602,7 +603,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
             parameter_definitions = {}
             for p_key, p_val in properties.items():
                 required = False
-                if property in required_properties:
+                if p_key in required_properties:
                     required = True
 
                 desc = p_val['description']
@@ -636,7 +637,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
         :return: number of tokens
         """
         # initialize client
-        client = cohere.Client(credentials.get('api_key'))
+        client = cohere.Client(credentials.get('api_key'), base_url=credentials.get('base_url'))
 
         response = client.tokenize(
             text=text,
@@ -695,12 +696,10 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                 en_US=model
             ),
             model_type=ModelType.LLM,
-            features=[feature for feature in base_model_schema_features],
+            features=list(base_model_schema_features),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_properties={
-                key: property for key, property in base_model_schema_model_properties.items()
-            },
-            parameter_rules=[rule for rule in base_model_schema_parameters_rules],
+            model_properties=dict(base_model_schema_model_properties.items()),
+            parameter_rules=list(base_model_schema_parameters_rules),
             pricing=base_model_schema.pricing
         )
 

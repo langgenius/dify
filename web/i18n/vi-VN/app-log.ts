@@ -77,7 +77,15 @@ const translation = {
     workflowTitle: 'Chi Tiết Nhật Ký',
   },
   promptLog: 'Nhật Ký Nhắc Nhở',
-  viewLog: 'Xem Nhật Ký',
+  AgentLog: 'Nhật ký đại lý',
+  viewLog: 'Xem nhật ký',
+  agentLogDetail: {
+    AgentMode: 'Chế độ đại lý',
+    toolUsed: 'Công cụ được sử dụng',
+    iterations: 'Lặp lại',
+    iteration: 'Lặp lại',
+    finalProcessing: 'Xử lý cuối cùng',
+  },
 }
 
 export default translation

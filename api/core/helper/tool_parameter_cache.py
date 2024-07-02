@@ -11,12 +11,13 @@ class ToolParameterCacheType(Enum):
 
 class ToolParameterCache:
     def __init__(self, 
-                 tenant_id: str, 
-                 provider: str, 
-                 tool_name: str, 
-                 cache_type: ToolParameterCacheType
+            tenant_id: str, 
+            provider: str, 
+            tool_name: str, 
+            cache_type: ToolParameterCacheType,
+            identity_id: str
         ):
-        self.cache_key = f"{cache_type.value}_secret:tenant_id:{tenant_id}:provider:{provider}:tool_name:{tool_name}"
+        self.cache_key = f"{cache_type.value}_secret:tenant_id:{tenant_id}:provider:{provider}:tool_name:{tool_name}:identity_id:{identity_id}"
 
     def get(self) -> Optional[dict]:
         """

@@ -1,10 +1,10 @@
 import type { FC } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useClickAway } from 'ahooks'
+import { RiCloseLine } from '@remixicon/react'
 import Card from './card'
 import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-import type { IChatItem } from '@/app/components/app/chat/type'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 
 type PromptLogModalProps = {
   currentLogItem?: IChatItem
@@ -33,8 +33,14 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
 
   return (
     <div
-      className='fixed top-16 left-2 bottom-2 flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl z-10'
-      style={{ width }}
+      className='relative flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl z-10'
+      style={{
+        width: 480,
+        position: 'fixed',
+        top: 56 + 8,
+        left: 8 + (width - 480),
+        bottom: 16,
+      }}
       ref={ref}
     >
       <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-b-gray-100'>
@@ -52,7 +58,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
             onClick={onCancel}
             className='flex justify-center items-center w-6 h-6 cursor-pointer'
           >
-            <XClose className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='w-4 h-4 text-gray-500' />
           </div>
         </div>
       </div>

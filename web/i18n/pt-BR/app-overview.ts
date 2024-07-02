@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: 'URL Pública',
       preview: 'Visualização',
       regenerate: 'Regenerar',
+      regenerateNotice: 'Você deseja regenerar a URL pública?',
       preUseReminder: 'Por favor, ative o WebApp antes de continuar.',
       settings: {
         entry: 'Configurações',
@@ -43,6 +44,15 @@ const translation = {
         webDescTip: 'Este texto será exibido no lado do cliente, fornecendo orientações básicas sobre como usar o aplicativo',
         webDescPlaceholder: 'Insira a descrição do WebApp',
         language: 'Idioma',
+        workflow: {
+          title: 'Etapas do fluxo de trabalho',
+          show: 'Mostrar',
+          hide: 'Ocultar',
+        },
+        chatColorTheme: 'Tema de cor do chatbot',
+        chatColorThemeDesc: 'Defina o tema de cor do chatbot',
+        chatColorThemeInverted: 'Inve',
+        invalidHexMessage: 'Valor hex inválido',
         more: {
           entry: 'Mostrar mais configurações',
           copyright: 'Direitos autorais',
@@ -50,6 +60,9 @@ const translation = {
           privacyPolicy: 'Política de Privacidade',
           privacyPolicyPlaceholder: 'Insira o link da política de privacidade',
           privacyPolicyTip: 'Ajuda os visitantes a entender os dados coletados pelo aplicativo, consulte a <privacyPolicyLink>Política de Privacidade</privacyPolicyLink> do Dify.',
+          customDisclaimer: 'Aviso Legal Personalizado',
+          customDisclaimerPlaceholder: 'Insira o texto do aviso legal',
+          customDisclaimerTip: 'O texto do aviso legal personalizado será exibido no lado do cliente, fornecendo informações adicionais sobre o aplicativo',
         },
       },
       embedded: {

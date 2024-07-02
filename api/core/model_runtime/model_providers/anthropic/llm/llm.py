@@ -146,7 +146,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         """
         Code block mode wrapper for invoking large language model
         """
-        if 'response_format' in model_parameters and model_parameters['response_format']:
+        if model_parameters.get('response_format'):
             stop = stop or []
             # chat model
             self._transform_chat_json_prompts(
@@ -324,10 +324,32 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         output_tokens = 0
         finish_reason = None
         index = 0
+
+        tool_calls: list[AssistantPromptMessage.ToolCall] = []
+
         for chunk in response:
             if isinstance(chunk, MessageStartEvent):
-                return_model = chunk.message.model
-                input_tokens = chunk.message.usage.input_tokens
+                if hasattr(chunk, 'content_block'):
+                    content_block = chunk.content_block
+                    if isinstance(content_block, dict):
+                        if content_block.get('type') == 'tool_use':
+                            tool_call = AssistantPromptMessage.ToolCall(
+                                id=content_block.get('id'),
+                                type='function',
+                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                    name=content_block.get('name'),
+                                    arguments=''
+                                )
+                            )
+                            tool_calls.append(tool_call)
+                elif hasattr(chunk, 'delta'):
+                    delta = chunk.delta
+                    if isinstance(delta, dict) and len(tool_calls) > 0:
+                        if delta.get('type') == 'input_json_delta':
+                            tool_calls[-1].function.arguments += delta.get('partial_json', '')
+                elif chunk.message:
+                    return_model = chunk.message.model
+                    input_tokens = chunk.message.usage.input_tokens
             elif isinstance(chunk, MessageDeltaEvent):
                 output_tokens = chunk.usage.output_tokens
                 finish_reason = chunk.delta.stop_reason
@@ -335,13 +357,19 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 # transform usage
                 usage = self._calc_response_usage(model, credentials, input_tokens, output_tokens)
 
+                # transform empty tool call arguments to {}
+                for tool_call in tool_calls:
+                    if not tool_call.function.arguments:
+                        tool_call.function.arguments = '{}'
+
                 yield LLMResultChunk(
                     model=return_model,
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=index + 1,
                         message=AssistantPromptMessage(
-                            content=''
+                            content='',
+                            tool_calls=tool_calls
                         ),
                         finish_reason=finish_reason,
                         usage=usage
@@ -380,7 +408,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
             "max_retries": 1,
         }
 
-        if 'anthropic_api_url' in credentials and credentials['anthropic_api_url']:
+        if credentials.get('anthropic_api_url'):
             credentials['anthropic_api_url'] = credentials['anthropic_api_url'].rstrip('/')
             credentials_kwargs['base_url'] = credentials['anthropic_api_url']
 

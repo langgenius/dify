@@ -2,8 +2,26 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
-import { GoldCoin } from '../../base/icons/src/vender/solid/FinanceAndECommerce'
-import { GoldCoin as GoldCoinOutLine } from '../../base/icons/src/vender/line/financeAndECommerce'
+import {
+  RiAccountCircleFill,
+  RiAccountCircleLine,
+  RiApps2AddFill,
+  RiApps2AddLine,
+  RiBox3Fill,
+  RiBox3Line,
+  RiCloseLine,
+  RiColorFilterFill,
+  RiColorFilterLine,
+  RiDatabase2Fill,
+  RiDatabase2Line,
+  RiGroup2Fill,
+  RiGroup2Line,
+  RiMoneyDollarCircleFill,
+  RiMoneyDollarCircleLine,
+  RiPuzzle2Fill,
+  RiPuzzle2Line,
+  RiTranslate2,
+} from '@remixicon/react'
 import AccountPage from './account-page'
 import MembersPage from './members-page'
 import IntegrationsPage from './Integrations-page'
@@ -15,18 +33,6 @@ import s from './index.module.css'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import Modal from '@/app/components/base/modal'
-import {
-  Database03,
-  Webhooks,
-} from '@/app/components/base/icons/src/vender/line/development'
-import { Database03 as Database03Solid } from '@/app/components/base/icons/src/vender/solid/development'
-import { User01, Users01 } from '@/app/components/base/icons/src/vender/line/users'
-import { User01 as User01Solid, Users01 as Users01Solid } from '@/app/components/base/icons/src/vender/solid/users'
-import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
-import { AtSign, XClose } from '@/app/components/base/icons/src/vender/line/general'
-import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
-import { Colors } from '@/app/components/base/icons/src/vender/line/editor'
-import { Colors as ColorsSolid } from '@/app/components/base/icons/src/vender/solid/editor'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useProviderContext } from '@/context/provider-context'
 
@@ -64,40 +70,40 @@ export default function AccountSetting({
       {
         key: 'provider',
         name: t('common.settings.provider'),
-        icon: <CubeOutline className={iconClassName} />,
-        activeIcon: <CubeOutline className={iconClassName} />,
+        icon: <RiBox3Line className={iconClassName} />,
+        activeIcon: <RiBox3Fill className={iconClassName} />,
       },
       {
         key: 'members',
         name: t('common.settings.members'),
-        icon: <Users01 className={iconClassName} />,
-        activeIcon: <Users01Solid className={iconClassName} />,
+        icon: <RiGroup2Line className={iconClassName} />,
+        activeIcon: <RiGroup2Fill className={iconClassName} />,
       },
       {
         // Use key false to hide this item
         key: enableBilling ? 'billing' : false,
         name: t('common.settings.billing'),
         description: t('billing.plansCommon.receiptInfo'),
-        icon: <GoldCoinOutLine className={iconClassName} />,
-        activeIcon: <GoldCoin className={iconClassName} />,
+        icon: <RiMoneyDollarCircleLine className={iconClassName} />,
+        activeIcon: <RiMoneyDollarCircleFill className={iconClassName} />,
       },
       {
         key: 'data-source',
         name: t('common.settings.dataSource'),
-        icon: <Database03 className={iconClassName} />,
-        activeIcon: <Database03Solid className={iconClassName} />,
+        icon: <RiDatabase2Line className={iconClassName} />,
+        activeIcon: <RiDatabase2Fill className={iconClassName} />,
       },
       {
         key: 'api-based-extension',
         name: t('common.settings.apiBasedExtension'),
-        icon: <Webhooks className={iconClassName} />,
-        activeIcon: <Webhooks className={iconClassName} />,
+        icon: <RiPuzzle2Line className={iconClassName} />,
+        activeIcon: <RiPuzzle2Fill className={iconClassName} />,
       },
       {
         key: (enableReplaceWebAppLogo || enableBilling) ? 'custom' : false,
         name: t('custom.custom'),
-        icon: <Colors className={iconClassName} />,
-        activeIcon: <ColorsSolid className={iconClassName} />,
+        icon: <RiColorFilterLine className={iconClassName} />,
+        activeIcon: <RiColorFilterFill className={iconClassName} />,
       },
     ].filter(item => !!item.key) as GroupItem[]
   })()
@@ -118,20 +124,20 @@ export default function AccountSetting({
         {
           key: 'account',
           name: t('common.settings.account'),
-          icon: <User01 className={iconClassName} />,
-          activeIcon: <User01Solid className={iconClassName} />,
+          icon: <RiAccountCircleLine className={iconClassName} />,
+          activeIcon: <RiAccountCircleFill className={iconClassName} />,
         },
         {
           key: 'integrations',
           name: t('common.settings.integrations'),
-          icon: <AtSign className={iconClassName} />,
-          activeIcon: <AtSign className={iconClassName} />,
+          icon: <RiApps2AddLine className={iconClassName} />,
+          activeIcon: <RiApps2AddFill className={iconClassName} />,
         },
         {
           key: 'language',
           name: t('common.settings.language'),
-          icon: <Globe01 className={iconClassName} />,
-          activeIcon: <Globe01 className={iconClassName} />,
+          icon: <RiTranslate2 className={iconClassName} />,
+          activeIcon: <RiTranslate2 className={iconClassName} />,
         },
       ],
     },
@@ -157,7 +163,7 @@ export default function AccountSetting({
       isShow
       onClose={() => { }}
       className={s.modal}
-      wrapperClassName='!z-20 pt-[60px]'
+      wrapperClassName='pt-[60px]'
     >
       <div className='flex'>
         <div className='w-[44px] sm:w-[200px] px-[1px] py-4 sm:p-4 border border-gray-100 shrink-0 sm:shrink-1 flex flex-col items-center sm:items-start'>
@@ -200,7 +206,7 @@ export default function AccountSetting({
             }
             <div className='grow flex justify-end'>
               <div className='flex items-center justify-center -mr-4 w-6 h-6 cursor-pointer' onClick={onCancel}>
-                <XClose className='w-4 h-4 text-gray-400' />
+                <RiCloseLine className='w-4 h-4 text-gray-400' />
               </div>
             </div>
           </div>

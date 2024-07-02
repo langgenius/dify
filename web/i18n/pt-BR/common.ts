@@ -34,6 +34,8 @@ const translation = {
     log: 'Log',
     learnMore: 'Saiba Mais',
     params: 'Parâmetros',
+    duplicate: 'Duplicada',
+    rename: 'Renomear',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -42,6 +44,7 @@ const translation = {
   voice: {
     language: {
       zhHans: 'Chinês',
+      zhHant: 'Chinês Tradicional',
       enUS: 'Inglês',
       deDE: 'Alemão',
       frFR: 'Francês',
@@ -54,6 +57,8 @@ const translation = {
       ptBR: 'Português',
       ruRU: 'Russo',
       ukUA: 'Ucraniano',
+      viVN: 'Vietnamita',
+      plPL: 'Polonês',
     },
   },
   unit: {
@@ -151,6 +156,9 @@ const translation = {
     langGeniusAccountTip: 'Sua conta Dify e dados de usuário associados.',
     editName: 'Editar Nome',
     showAppLength: 'Mostrar {{length}} apps',
+    delete: 'Excluir conta',
+    deleteTip: 'Excluir sua conta apagará permanentemente todos os seus dados e eles não poderão ser recuperados.',
+    deleteConfirmTip: 'Para confirmar, envie o seguinte do seu e-mail registrado para ',
   },
   members: {
     team: 'Equipe',
@@ -164,6 +172,8 @@ const translation = {
     adminTip: 'Pode criar aplicativos e gerenciar configurações da equipe',
     normal: 'Normal',
     normalTip: 'Só pode usar aplicativos, não pode criar aplicativos',
+    editor: 'Editor',
+    editorTip: 'Pode editar aplicativos, mas não pode gerenciar configurações da equipe',
     inviteTeamMember: 'Adicionar membro da equipe',
     inviteTeamMemberTip: 'Eles podem acessar os dados da sua equipe diretamente após fazer login.',
     email: 'E-mail',
@@ -180,6 +190,7 @@ const translation = {
     removeFromTeamTip: 'Removerá o acesso da equipe',
     setAdmin: 'Definir como administrador',
     setMember: 'Definir como membro comum',
+    setEditor: 'Definir como editor',
     disinvite: 'Cancelar o convite',
     deleteMember: 'Excluir Membro',
     you: '(Você)',
@@ -504,6 +515,21 @@ const translation = {
     pasteImageLinkInputPlaceholder: 'Cole o link da imagem aqui',
     pasteImageLinkInvalid: 'Link da imagem inválido',
     imageUpload: 'Enviar Imagem',
+  },
+  tag: {
+    placeholder: 'Todas as tags',
+    addNew: 'Adicionar nova tag',
+    noTag: 'Sem tags',
+    noTagYet: 'Nenhuma tag ainda',
+    addTag: 'adicionar etiqueta',
+    editTag: 'Editar tags',
+    manageTags: 'Gerenciar tags',
+    selectorPlaceholder: 'Digite para pesquisar ou criar',
+    create: 'Criar',
+    delete: 'Excluir etiqueta',
+    deleteTip: 'A tag está sendo usada, excluí-la?',
+    created: 'Tag criada com sucesso',
+    failed: 'Falha na criação da tag',
   },
 }
 

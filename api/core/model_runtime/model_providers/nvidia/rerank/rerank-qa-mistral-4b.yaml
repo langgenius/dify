@@ -1,4 +1,4 @@
 model: nv-rerank-qa-mistral-4b:1
 model_type: rerank
 model_properties:
-  context_size: 8192
+  context_size: 512

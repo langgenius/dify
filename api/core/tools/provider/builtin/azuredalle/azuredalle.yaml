@@ -10,6 +10,9 @@ identity:
     zh_Hans: Azure DALL-E 绘画
     pt_BR: Azure DALL-E art
   icon: icon.png
+  tags:
+    - image
+    - productivity
 credentials_for_provider:
   azure_openai_api_key:
     type: secret-input

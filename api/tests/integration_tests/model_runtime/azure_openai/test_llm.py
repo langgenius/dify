@@ -1,11 +1,17 @@
 import os
-from typing import Generator
+from collections.abc import Generator
 
 import pytest
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (AssistantPromptMessage, ImagePromptMessageContent,
-                                                          PromptMessageTool, SystemPromptMessage,
-                                                          TextPromptMessageContent, UserPromptMessage)
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessageTool,
+    SystemPromptMessage,
+    TextPromptMessageContent,
+    UserPromptMessage,
+)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.azure_openai.llm.llm import AzureOpenAILargeLanguageModel
 from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
@@ -150,11 +156,6 @@ def test_invoke_chat_model(setup_openai_mock):
     assert isinstance(result, LLMResult)
     assert len(result.message.content) > 0
 
-    for chunk in model._llm_result_to_stream(result):
-        assert isinstance(chunk, LLMResultChunk)
-        assert isinstance(chunk.delta, LLMResultChunkDelta)
-        assert isinstance(chunk.delta.message, AssistantPromptMessage)
-        assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
 @pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
 def test_invoke_stream_chat_model(setup_openai_mock):

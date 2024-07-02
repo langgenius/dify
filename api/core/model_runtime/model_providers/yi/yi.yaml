@@ -33,7 +33,7 @@ provider_credential_schema:
     - variable: endpoint_url
       label:
         zh_Hans: 自定义 API endpoint 地址
-        en_US: CUstom API endpoint URL
+        en_US: Custom API endpoint URL
       type: text-input
       required: false
       placeholder:

@@ -71,6 +71,10 @@ const translation = {
     },
     privacyPolicy: 'Chính sách bảo mật',
     privacyPolicyPlaceholder: 'Vui lòng nhập chính sách bảo mật',
+    customDisclaimer: 'Tuyên bố Tùy chỉnh',
+    customDisclaimerPlaceholder: 'Vui lòng nhập tuyên bố tùy chỉnh',
+    deleteToolConfirmTitle: 'Xóa công cụ này?',
+    deleteToolConfirmContent: 'Xóa công cụ là không thể hồi tơi. Người dùng sẽ không thể truy cập lại công cụ của bạn.',
   },
   test: {
     title: 'Kiểm tra',

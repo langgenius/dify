@@ -327,7 +327,7 @@ const translation = {
   openingStatement: {
     title: 'Mở đầu Trò chuyện',
     add: 'Thêm',
-    writeOpner: 'Viết câu mở đầu',
+    writeOpener: 'Viết câu mở đầu',
     placeholder: 'Viết thông điệp mở đầu của bạn ở đây, bạn có thể sử dụng biến, hãy thử nhập {{biến}}.',
     openingQuestion: 'Câu Hỏi Mở đầu',
     noDataPlaceHolder:

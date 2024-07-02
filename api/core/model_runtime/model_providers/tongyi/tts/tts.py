@@ -80,7 +80,7 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         max_workers = self._get_model_workers_limit(model, credentials)
         try:
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
-            audio_bytes_list = list()
+            audio_bytes_list = []
 
             # Create a thread pool and map the function to the list of sentences
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -118,7 +118,6 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         :param content_text: text content to be translated
         :return: text translated to audio file
         """
-        dashscope.api_key = credentials.get('dashscope_api_key')
         word_limit = self._get_model_word_limit(model, credentials)
         audio_type = self._get_model_audio_type(model, credentials)
         tts_file_id = self._get_file_name(content_text)
@@ -127,6 +126,7 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
             sentences = list(self._split_text_into_sentences(text=content_text, limit=word_limit))
             for sentence in sentences:
                 response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice, sample_rate=48000,
+                                                                      api_key=credentials.get('dashscope_api_key'),
                                                                       text=sentence.strip(),
                                                                       format=audio_type, word_timestamp_enabled=True,
                                                                       phoneme_timestamp_enabled=True)
@@ -146,8 +146,8 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         :param audio_type: audio file type
         :return: text translated to audio file
         """
-        dashscope.api_key = credentials.get('dashscope_api_key')
         response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice, sample_rate=48000,
+                                                              api_key=credentials.get('dashscope_api_key'),
                                                               text=sentence.strip(),
                                                               format=audio_type)
         if isinstance(response.get_audio_data(), bytes):

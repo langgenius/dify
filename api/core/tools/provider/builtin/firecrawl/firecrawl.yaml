@@ -1,0 +1,36 @@
+identity:
+  author: Richards Tu
+  name: firecrawl
+  label:
+    en_US: Firecrawl
+    zh_CN: Firecrawl
+  description:
+    en_US: Firecrawl API integration for web crawling and scraping.
+    zh_CN: Firecrawl API 集成，用于网页爬取和数据抓取。
+  icon: icon.svg
+  tags:
+    - search
+    - utilities
+credentials_for_provider:
+  firecrawl_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Firecrawl API Key
+      zh_CN: Firecrawl API 密钥
+    placeholder:
+      en_US: Please input your Firecrawl API key
+      zh_CN: 请输入您的 Firecrawl API 密钥
+    help:
+      en_US: Get your Firecrawl API key from your Firecrawl account settings.
+      zh_CN: 从您的 Firecrawl 账户设置中获取 Firecrawl API 密钥。
+    url: https://www.firecrawl.dev/account
+  base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: Firecrawl server's Base URL
+      pt_BR: Firecrawl server's Base URL
+    placeholder:
+      en_US: https://www.firecrawl.dev
+      pt_BR: https://www.firecrawl.dev

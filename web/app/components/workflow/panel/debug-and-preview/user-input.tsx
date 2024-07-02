@@ -4,6 +4,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
+import { RiArrowDownSLine } from '@remixicon/react'
 import FormItem from '../../nodes/_base/components/before-run-form/form-item'
 import { BlockEnum } from '../../types'
 import {
@@ -11,7 +12,6 @@ import {
   useWorkflowStore,
 } from '../../store'
 import type { StartNodeType } from '../../nodes/start/types'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const UserInput = () => {
   const { t } = useTranslation()
@@ -46,7 +46,7 @@ const UserInput = () => {
         `}
         onClick={() => setExpanded(!expanded)}
       >
-        <ChevronDown
+        <RiArrowDownSLine
           className={`mr-1 w-3 h-3 ${!expanded ? '-rotate-90 text-indigo-600' : 'text-gray-300'}`}
         />
         {t('workflow.panel.userInputField').toLocaleUpperCase()}
@@ -56,12 +56,13 @@ const UserInput = () => {
           expanded && (
             <div className='py-2 text-[13px] text-gray-900'>
               {
-                variables.map(variable => (
+                variables.map((variable, index) => (
                   <div
                     key={variable.variable}
                     className='mb-2 last-of-type:mb-0'
                   >
                     <FormItem
+                      autoFocus={index === 0}
                       payload={variable}
                       value={inputs[variable.variable]}
                       onChange={v => handleValueChange(variable.variable, v)}

@@ -11,22 +11,28 @@ import type { QuestionClassifierNodeType } from '../../../question-classifier/ty
 import type { HttpNodeType } from '../../../http/types'
 import { VarType as ToolVarType } from '../../../tool/types'
 import type { ToolNodeType } from '../../../tool/types'
+import type { ParameterExtractorNodeType } from '../../../parameter-extractor/types'
+import type { IterationNodeType } from '../../../iteration/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import {
-  CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
-  COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT,
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
+  PARAMETER_EXTRACTOR_COMMON_STRUCT,
+  QUESTION_CLASSIFIER_OUTPUT_STRUCT,
   SUPPORT_OUTPUT_VARS_NODE,
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
 import type { PromptItem } from '@/models/debug'
 import { VAR_REGEX } from '@/config'
+
+export const isSystemVar = (valueSelector: ValueSelector) => {
+  return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
+}
 
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
   if (type === InputVarType.number)
@@ -55,6 +61,7 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
 
 const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, selector: ValueSelector) => boolean): NodeOutPutVar => {
   const { id, data } = item
+
   const res: NodeOutPutVar = {
     nodeId: id,
     title: data.title,
@@ -80,7 +87,15 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
           variable: 'sys.query',
           type: VarType.string,
         })
+        res.vars.push({
+          variable: 'sys.conversation_id',
+          type: VarType.string,
+        })
       }
+      res.vars.push({
+        variable: 'sys.user_id',
+        type: VarType.string,
+      })
       res.vars.push({
         variable: 'sys.files',
         type: VarType.arrayFile,
@@ -117,7 +132,7 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
     }
 
     case BlockEnum.QuestionClassifier: {
-      res.vars = isChatMode ? CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT : COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT
+      res.vars = QUESTION_CLASSIFIER_OUTPUT_STRUCT
       break
     }
 
@@ -129,18 +144,86 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
     case BlockEnum.VariableAssigner: {
       const {
         output_type,
+        advanced_settings,
       } = data as VariableAssignerNodeType
-      res.vars = [
-        {
-          variable: 'output',
-          type: output_type,
-        },
-      ]
+      const isGroup = !!advanced_settings?.group_enabled
+      if (!isGroup) {
+        res.vars = [
+          {
+            variable: 'output',
+            type: output_type,
+          },
+        ]
+      }
+      else {
+        res.vars = advanced_settings?.groups.map((group) => {
+          return {
+            variable: group.group_name,
+            type: VarType.object,
+            children: [{
+              variable: 'output',
+              type: group.output_type,
+            }],
+          }
+        })
+      }
+      break
+    }
+
+    case BlockEnum.VariableAggregator: {
+      const {
+        output_type,
+        advanced_settings,
+      } = data as VariableAssignerNodeType
+      const isGroup = !!advanced_settings?.group_enabled
+      if (!isGroup) {
+        res.vars = [
+          {
+            variable: 'output',
+            type: output_type,
+          },
+        ]
+      }
+      else {
+        res.vars = advanced_settings?.groups.map((group) => {
+          return {
+            variable: group.group_name,
+            type: VarType.object,
+            children: [{
+              variable: 'output',
+              type: group.output_type,
+            }],
+          }
+        })
+      }
       break
     }
 
     case BlockEnum.Tool: {
       res.vars = TOOL_OUTPUT_STRUCT
+      break
+    }
+
+    case BlockEnum.ParameterExtractor: {
+      res.vars = [
+        ...((data as ParameterExtractorNodeType).parameters || []).map((p) => {
+          return {
+            variable: p.name,
+            type: p.type as unknown as VarType,
+          }
+        }),
+        ...PARAMETER_EXTRACTOR_COMMON_STRUCT,
+      ]
+      break
+    }
+
+    case BlockEnum.Iteration: {
+      res.vars = [
+        {
+          variable: 'output',
+          type: (data as IterationNodeType).output_type || VarType.arrayString,
+        },
+      ]
       break
     }
   }
@@ -176,37 +259,111 @@ export const toNodeOutputVars = (nodes: any[], isChatMode: boolean, filterVar = 
   return res
 }
 
-export const isSystemVar = (valueSelector: ValueSelector) => {
-  return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
+const getIterationItemType = ({
+  valueSelector,
+  beforeNodesOutputVars,
+}: {
+  valueSelector: ValueSelector
+  beforeNodesOutputVars: NodeOutPutVar[]
+}): VarType => {
+  const outputVarNodeId = valueSelector[0]
+  const targetVar = beforeNodesOutputVars.find(v => v.nodeId === outputVarNodeId)
+  if (!targetVar)
+    return VarType.string
+
+  let arrayType: VarType = VarType.string
+
+  const isSystem = isSystemVar(valueSelector)
+  let curr: any = targetVar.vars
+
+  if (isSystem)
+    return curr.find((v: any) => v.variable === (valueSelector).join('.'))?.type;
+
+  (valueSelector).slice(1).forEach((key, i) => {
+    const isLast = i === valueSelector.length - 2
+    curr = curr?.find((v: any) => v.variable === key)
+    if (isLast) {
+      arrayType = curr?.type
+    }
+    else {
+      if (curr?.type === VarType.object)
+        curr = curr.children
+    }
+  })
+  switch (arrayType as VarType) {
+    case VarType.arrayString:
+      return VarType.string
+    case VarType.arrayNumber:
+      return VarType.number
+    case VarType.arrayObject:
+      return VarType.object
+    case VarType.array:
+      return VarType.any
+    case VarType.arrayFile:
+      return VarType.object
+    default:
+      return VarType.string
+  }
 }
 
-export const getNodeInfoById = (nodes: any, id: string) => {
-  if (!isArray(nodes))
-    return
-  return nodes.find((node: any) => node.id === id)
-}
+export const getVarType = ({
+  parentNode,
+  valueSelector,
+  isIterationItem,
+  availableNodes,
+  isChatMode,
+  isConstant,
+}:
+{
+  valueSelector: ValueSelector
+  parentNode?: Node | null
+  isIterationItem?: boolean
+  availableNodes: any[]
+  isChatMode: boolean
+  isConstant?: boolean
+}): VarType => {
+  if (isConstant)
+    return VarType.string
 
-export const getVarType = (value: ValueSelector, availableNodes: any[], isChatMode: boolean): VarType | undefined => {
-  const isSystem = isSystemVar(value)
+  const beforeNodesOutputVars = toNodeOutputVars(availableNodes, isChatMode)
+
+  const isIterationInnerVar = parentNode?.data.type === BlockEnum.Iteration
+  if (isIterationItem) {
+    return getIterationItemType({
+      valueSelector,
+      beforeNodesOutputVars,
+    })
+  }
+  if (isIterationInnerVar) {
+    if (valueSelector[1] === 'item') {
+      const itemType = getIterationItemType({
+        valueSelector: (parentNode?.data as any).iterator_selector || [],
+        beforeNodesOutputVars,
+      })
+      return itemType
+    }
+    if (valueSelector[1] === 'index')
+      return VarType.number
+  }
+  const isSystem = isSystemVar(valueSelector)
   const startNode = availableNodes.find((node: any) => {
     return node.data.type === BlockEnum.Start
   })
-  const allOutputVars = toNodeOutputVars(availableNodes, isChatMode)
 
-  const targetVarNodeId = isSystem ? startNode?.id : value[0]
-  const targetVar = allOutputVars.find(v => v.nodeId === targetVarNodeId)
+  const targetVarNodeId = isSystem ? startNode?.id : valueSelector[0]
+  const targetVar = beforeNodesOutputVars.find(v => v.nodeId === targetVarNodeId)
 
   if (!targetVar)
-    return undefined
+    return VarType.string
 
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
   if (isSystem) {
-    return curr.find((v: any) => v.variable === (value as ValueSelector).join('.'))?.type
+    return curr.find((v: any) => v.variable === (valueSelector as ValueSelector).join('.'))?.type
   }
   else {
-    (value as ValueSelector).slice(1).forEach((key, i) => {
-      const isLast = i === value.length - 2
+    (valueSelector as ValueSelector).slice(1).forEach((key, i) => {
+      const isLast = i === valueSelector.length - 2
       curr = curr.find((v: any) => v.variable === key)
       if (isLast) {
         type = curr?.type
@@ -220,6 +377,57 @@ export const getVarType = (value: ValueSelector, availableNodes: any[], isChatMo
   }
 }
 
+// node output vars + parent inner vars(if in iteration or other wrap node)
+export const toNodeAvailableVars = ({
+  parentNode,
+  t,
+  beforeNodes,
+  isChatMode,
+  filterVar,
+}: {
+  parentNode?: Node | null
+  t?: any
+  // to get those nodes output vars
+  beforeNodes: Node[]
+  isChatMode: boolean
+  filterVar: (payload: Var, selector: ValueSelector) => boolean
+}): NodeOutPutVar[] => {
+  const beforeNodesOutputVars = toNodeOutputVars(beforeNodes, isChatMode, filterVar)
+  const isInIteration = parentNode?.data.type === BlockEnum.Iteration
+  if (isInIteration) {
+    const iterationNode: any = parentNode
+    const itemType = getVarType({
+      parentNode: iterationNode,
+      isIterationItem: true,
+      valueSelector: iterationNode?.data.iterator_selector || [],
+      availableNodes: beforeNodes,
+      isChatMode,
+    })
+    const iterationVar = {
+      nodeId: iterationNode?.id,
+      title: t('workflow.nodes.iteration.currentIteration'),
+      vars: [
+        {
+          variable: 'item',
+          type: itemType,
+        },
+        {
+          variable: 'index',
+          type: VarType.number,
+        },
+      ],
+    }
+    beforeNodesOutputVars.unshift(iterationVar)
+  }
+  return beforeNodesOutputVars
+}
+
+export const getNodeInfoById = (nodes: any, id: string) => {
+  if (!isArray(nodes))
+    return
+  return nodes.find((node: any) => node.id === id)
+}
+
 const matchNotSystemVars = (prompts: string[]) => {
   if (!prompts)
     return []
@@ -227,10 +435,22 @@ const matchNotSystemVars = (prompts: string[]) => {
   const allVars: string[] = []
   prompts.forEach((prompt) => {
     VAR_REGEX.lastIndex = 0
+    if (typeof prompt !== 'string')
+      return
     allVars.push(...(prompt.match(VAR_REGEX) || []))
   })
   const uniqVars = uniq(allVars).map(v => v.replaceAll('{{#', '').replace('#}}', '').split('.'))
   return uniqVars
+}
+
+const replaceOldVarInText = (text: string, oldVar: ValueSelector, newVar: ValueSelector) => {
+  if (!text || typeof text !== 'string')
+    return text
+
+  if (!newVar || newVar.length === 0)
+    return text
+
+  return text.replaceAll(`{{#${oldVar.join('.')}#}}`, `{{#${newVar.join('.')}#}}`)
 }
 
 export const getNodeUsedVars = (node: Node): ValueSelector[] => {
@@ -254,10 +474,12 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       const payload = (data as LLMNodeType)
       const isChatModel = payload.model?.mode === 'chat'
       let prompts: string[] = []
-      if (isChatModel)
+      if (isChatModel) {
         prompts = (payload.prompt_template as PromptItem[])?.map(p => p.text) || []
-      else
-        prompts = [(payload.prompt_template as PromptItem).text]
+        if (payload.memory?.query_prompt_template)
+          prompts.push(payload.memory.query_prompt_template)
+      }
+      else { prompts = [(payload.prompt_template as PromptItem).text] }
 
       const inputVars: ValueSelector[] = matchNotSystemVars(prompts)
       const contextVar = (data as LLMNodeType).context?.variable_selector ? [(data as LLMNodeType).context?.variable_selector] : []
@@ -287,7 +509,10 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.QuestionClassifier: {
-      res = [(data as QuestionClassifierNodeType).query_variable_selector]
+      const payload = (data as QuestionClassifierNodeType)
+      res = [payload.query_variable_selector]
+      const varInInstructions = matchNotSystemVars([payload.instruction || ''])
+      res.push(...varInInstructions)
       break
     }
     case BlockEnum.HttpRequest: {
@@ -305,9 +530,96 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
 
     case BlockEnum.VariableAssigner: {
       res = (data as VariableAssignerNodeType)?.variables
+      break
+    }
+
+    case BlockEnum.VariableAggregator: {
+      res = (data as VariableAssignerNodeType)?.variables
+      break
+    }
+
+    case BlockEnum.ParameterExtractor: {
+      const payload = (data as ParameterExtractorNodeType)
+      res = [payload.query]
+      const varInInstructions = matchNotSystemVars([payload.instruction || ''])
+      res.push(...varInInstructions)
+      break
+    }
+
+    case BlockEnum.Iteration: {
+      res = [(data as IterationNodeType).iterator_selector]
+      break
     }
   }
   return res || []
+}
+
+// used can be used in iteration node
+export const getNodeUsedVarPassToServerKey = (node: Node, valueSelector: ValueSelector): string | string[] => {
+  const { data } = node
+  const { type } = data
+  let res: string | string[] = ''
+  switch (type) {
+    case BlockEnum.LLM: {
+      const payload = (data as LLMNodeType)
+      res = [`#${valueSelector.join('.')}#`]
+      if (payload.context?.variable_selector.join('.') === valueSelector.join('.'))
+        res.push('#context#')
+
+      break
+    }
+    case BlockEnum.KnowledgeRetrieval: {
+      res = 'query'
+      break
+    }
+    case BlockEnum.IfElse: {
+      const targetVar = (data as IfElseNodeType).conditions?.find(c => c.variable_selector.join('.') === valueSelector.join('.'))
+      if (targetVar)
+        res = `#${valueSelector.join('.')}#`
+      break
+    }
+    case BlockEnum.Code: {
+      const targetVar = (data as CodeNodeType).variables?.find(v => v.value_selector.join('.') === valueSelector.join('.'))
+      if (targetVar)
+        res = targetVar.variable
+      break
+    }
+    case BlockEnum.TemplateTransform: {
+      const targetVar = (data as TemplateTransformNodeType).variables?.find(v => v.value_selector.join('.') === valueSelector.join('.'))
+      if (targetVar)
+        res = targetVar.variable
+      break
+    }
+    case BlockEnum.QuestionClassifier: {
+      res = 'query'
+      break
+    }
+    case BlockEnum.HttpRequest: {
+      res = `#${valueSelector.join('.')}#`
+      break
+    }
+
+    case BlockEnum.Tool: {
+      res = `#${valueSelector.join('.')}#`
+      break
+    }
+
+    case BlockEnum.VariableAssigner: {
+      res = `#${valueSelector.join('.')}#`
+      break
+    }
+
+    case BlockEnum.VariableAggregator: {
+      res = `#${valueSelector.join('.')}#`
+      break
+    }
+
+    case BlockEnum.ParameterExtractor: {
+      res = 'query'
+      break
+    }
+  }
+  return res
 }
 
 export const findUsedVarNodes = (varSelector: ValueSelector, availableNodes: Node[]): Node[] => {
@@ -324,6 +636,7 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
   const newNode = produce(oldNode, (draft: any) => {
     const { data } = draft
     const { type } = data
+
     switch (type) {
       case BlockEnum.End: {
         const payload = data as EndNodeType
@@ -349,14 +662,23 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
       }
       case BlockEnum.LLM: {
         const payload = data as LLMNodeType
-        // TODO: update in inputs
-        // if (payload.variables) {
-        //   payload.variables = payload.variables.map((v) => {
-        //     if (v.value_selector.join('.') === oldVarSelector.join('.'))
-        //       v.value_selector = newVarSelector
-        //     return v
-        //   })
-        // }
+        const isChatModel = payload.model?.mode === 'chat'
+        if (isChatModel) {
+          payload.prompt_template = (payload.prompt_template as PromptItem[]).map((prompt) => {
+            return {
+              ...prompt,
+              text: replaceOldVarInText(prompt.text, oldVarSelector, newVarSelector),
+            }
+          })
+          if (payload.memory?.query_prompt_template)
+            payload.memory.query_prompt_template = replaceOldVarInText(payload.memory.query_prompt_template, oldVarSelector, newVarSelector)
+        }
+        else {
+          payload.prompt_template = {
+            ...payload.prompt_template,
+            text: replaceOldVarInText((payload.prompt_template as PromptItem).text, oldVarSelector, newVarSelector),
+          }
+        }
         if (payload.context?.variable_selector?.join('.') === oldVarSelector.join('.'))
           payload.context.variable_selector = newVarSelector
 
@@ -405,33 +727,39 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
         const payload = data as QuestionClassifierNodeType
         if (payload.query_variable_selector.join('.') === oldVarSelector.join('.'))
           payload.query_variable_selector = newVarSelector
+        payload.instruction = replaceOldVarInText(payload.instruction, oldVarSelector, newVarSelector)
         break
       }
       case BlockEnum.HttpRequest: {
-        // TODO: update in inputs
-        // const payload = data as HttpNodeType
-        // if (payload.variables) {
-        //   payload.variables = payload.variables.map((v) => {
-        //     if (v.value_selector.join('.') === oldVarSelector.join('.'))
-        //       v.value_selector = newVarSelector
-        //     return v
-        //   })
-        // }
+        const payload = data as HttpNodeType
+        payload.url = replaceOldVarInText(payload.url, oldVarSelector, newVarSelector)
+        payload.headers = replaceOldVarInText(payload.headers, oldVarSelector, newVarSelector)
+        payload.params = replaceOldVarInText(payload.params, oldVarSelector, newVarSelector)
+        payload.body.data = replaceOldVarInText(payload.body.data, oldVarSelector, newVarSelector)
         break
       }
       case BlockEnum.Tool: {
-        // TODO: update in inputs
-        // const payload = data as ToolNodeType
-        // if (payload.tool_parameters) {
-        //   payload.tool_parameters = payload.tool_parameters.map((v) => {
-        //     if (v.type === VarKindType.static)
-        //       return v
+        const payload = data as ToolNodeType
+        const hasShouldRenameVar = Object.keys(payload.tool_parameters)?.filter(key => payload.tool_parameters[key].type !== ToolVarType.constant)
+        if (hasShouldRenameVar) {
+          Object.keys(payload.tool_parameters).forEach((key) => {
+            const value = payload.tool_parameters[key]
+            const { type } = value
+            if (type === ToolVarType.variable) {
+              payload.tool_parameters[key] = {
+                ...value,
+                value: newVarSelector,
+              }
+            }
 
-        //     if (v.value_selector?.join('.') === oldVarSelector.join('.'))
-        //       v.value_selector = newVarSelector
-        //     return v
-        //   })
-        // }
+            if (type === ToolVarType.mixed) {
+              payload.tool_parameters[key] = {
+                ...value,
+                value: replaceOldVarInText(payload.tool_parameters[key].value as string, oldVarSelector, newVarSelector),
+              }
+            }
+          })
+        }
         break
       }
       case BlockEnum.VariableAssigner: {
@@ -443,6 +771,31 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
             return v
           })
         }
+        break
+      }
+      case BlockEnum.VariableAggregator: {
+        const payload = data as VariableAssignerNodeType
+        if (payload.variables) {
+          payload.variables = payload.variables.map((v) => {
+            if (v.join('.') === oldVarSelector.join('.'))
+              v = newVarSelector
+            return v
+          })
+        }
+        break
+      }
+      case BlockEnum.ParameterExtractor: {
+        const payload = data as ParameterExtractorNodeType
+        if (payload.query.join('.') === oldVarSelector.join('.'))
+          payload.query = newVarSelector
+        payload.instruction = replaceOldVarInText(payload.instruction, oldVarSelector, newVarSelector)
+        break
+      }
+      case BlockEnum.Iteration: {
+        const payload = data as IterationNodeType
+        if (payload.iterator_selector.join('.') === oldVarSelector.join('.'))
+          payload.iterator_selector = newVarSelector
+
         break
       }
     }
@@ -518,7 +871,7 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
     }
 
     case BlockEnum.QuestionClassifier: {
-      varsToValueSelectorList(isChatMode ? CHAT_QUESTION_CLASSIFIER_OUTPUT_STRUCT : COMPLETION_QUESTION_CLASSIFIER_OUTPUT_STRUCT, [id], res)
+      varsToValueSelectorList(QUESTION_CLASSIFIER_OUTPUT_STRUCT, [id], res)
       break
     }
 
@@ -532,8 +885,31 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
       break
     }
 
+    case BlockEnum.VariableAggregator: {
+      res.push([id, 'output'])
+      break
+    }
+
     case BlockEnum.Tool: {
       varsToValueSelectorList(TOOL_OUTPUT_STRUCT, [id], res)
+      break
+    }
+
+    case BlockEnum.ParameterExtractor: {
+      const {
+        parameters,
+      } = data as ParameterExtractorNodeType
+      if (parameters?.length > 0) {
+        parameters.forEach((p) => {
+          res.push([id, p.name])
+        })
+      }
+
+      break
+    }
+
+    case BlockEnum.Iteration: {
+      res.push([id, 'output'])
       break
     }
   }

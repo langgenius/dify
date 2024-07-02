@@ -1,6 +1,6 @@
 provider: openrouter
 label:
-  en_US: openrouter.ai
+  en_US: OpenRouter
 icon_small:
   en_US: openrouter_square.svg
 icon_large:
@@ -15,6 +15,7 @@ help:
 supported_model_types:
   - llm
 configurate_methods:
+  - predefined-model
   - customizable-model
 model_credential_schema:
   model:
@@ -73,3 +74,32 @@ model_credential_schema:
           value: llm
       default: "4096"
       type: text-input
+    - variable: vision_support
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        zh_Hans: 是否支持 Vision
+        en_US: Vision Support
+      type: radio
+      required: false
+      default: "no_support"
+      options:
+        - value: "support"
+          label:
+            en_US: "Yes"
+            zh_Hans: 是
+        - value: "no_support"
+          label:
+            en_US: "No"
+            zh_Hans: 否
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_key
+      required: true
+      label:
+        en_US: API Key
+      type: secret-input
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key

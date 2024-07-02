@@ -28,11 +28,13 @@ const useConfig = (id: string, payload: StartNodeType) => {
     setFalse: hideRemoveVarConfirm,
   }] = useBoolean(false)
   const [removedVar, setRemovedVar] = useState<ValueSelector>([])
+  const [removedIndex, setRemoveIndex] = useState(0)
   const handleVarListChange = useCallback((newList: InputVar[], moreInfo?: { index: number; payload: MoreInfo }) => {
     if (moreInfo?.payload?.type === ChangeType.remove) {
       if (isVarUsedInNodes([id, moreInfo?.payload?.payload?.beforeKey || ''])) {
         showRemoveVarConfirm()
         setRemovedVar([id, moreInfo?.payload?.payload?.beforeKey || ''])
+        setRemoveIndex(moreInfo?.index as number)
         return
       }
     }
@@ -48,9 +50,13 @@ const useConfig = (id: string, payload: StartNodeType) => {
   }, [handleOutVarRenameChange, id, inputs, isVarUsedInNodes, setInputs, showRemoveVarConfirm])
 
   const removeVarInNode = useCallback(() => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.variables.splice(removedIndex, 1)
+    })
+    setInputs(newInputs)
     removeUsedVarInNodes(removedVar)
     hideRemoveVarConfirm()
-  }, [hideRemoveVarConfirm, removeUsedVarInNodes, removedVar])
+  }, [hideRemoveVarConfirm, inputs, removeUsedVarInNodes, removedIndex, removedVar, setInputs])
 
   const handleAddVariable = useCallback((payload: InputVar) => {
     const newInputs = produce(inputs, (draft: StartNodeType) => {

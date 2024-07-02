@@ -1,6 +1,8 @@
+import re
 import tempfile
 from pathlib import Path
 from typing import Union
+from urllib.parse import unquote
 
 import requests
 from flask import current_app
@@ -9,12 +11,12 @@ from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.excel_extractor import ExcelExtractor
+from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
 from core.rag.extractor.html_extractor import HtmlExtractor
 from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
 from core.rag.extractor.text_extractor import TextExtractor
-from core.rag.extractor.unstructured.unstructured_doc_extractor import UnstructuredWordExtractor
 from core.rag.extractor.unstructured.unstructured_eml_extractor import UnstructuredEmailExtractor
 from core.rag.extractor.unstructured.unstructured_epub_extractor import UnstructuredEpubExtractor
 from core.rag.extractor.unstructured.unstructured_markdown_extractor import UnstructuredMarkdownExtractor
@@ -28,7 +30,7 @@ from core.rag.models.document import Document
 from extensions.ext_storage import storage
 from models.model import UploadFile
 
-SUPPORT_URL_CONTENT_TYPES = ['application/pdf', 'text/plain']
+SUPPORT_URL_CONTENT_TYPES = ['application/pdf', 'text/plain', 'application/json']
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 
 
@@ -55,6 +57,17 @@ class ExtractProcessor:
 
         with tempfile.TemporaryDirectory() as temp_dir:
             suffix = Path(url).suffix
+            if not suffix and suffix != '.':
+                # get content-type
+                if response.headers.get('Content-Type'):
+                    suffix = '.' + response.headers.get('Content-Type').split('/')[-1]
+                else:
+                    content_disposition = response.headers.get('Content-Disposition')
+                    filename_match = re.search(r'filename="([^"]+)"', content_disposition)
+                    if filename_match:
+                        filename = unquote(filename_match.group(1))
+                        suffix = '.' + re.search(r'\.(\w+)$', filename).group(1)
+
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
             with open(file_path, 'wb') as file:
                 file.write(response.content)
@@ -83,6 +96,7 @@ class ExtractProcessor:
                 file_extension = input_file.suffix.lower()
                 etl_type = current_app.config['ETL_TYPE']
                 unstructured_api_url = current_app.config['UNSTRUCTURED_API_URL']
+                unstructured_api_key = current_app.config['UNSTRUCTURED_API_KEY']
                 if etl_type == 'Unstructured':
                     if file_extension == '.xlsx' or file_extension == '.xls':
                         extractor = ExcelExtractor(file_path)
@@ -94,7 +108,7 @@ class ExtractProcessor:
                     elif file_extension in ['.htm', '.html']:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension in ['.docx']:
-                        extractor = UnstructuredWordExtractor(file_path, unstructured_api_url)
+                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == '.csv':
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == '.msg':
@@ -102,7 +116,7 @@ class ExtractProcessor:
                     elif file_extension == '.eml':
                         extractor = UnstructuredEmailExtractor(file_path, unstructured_api_url)
                     elif file_extension == '.ppt':
-                        extractor = UnstructuredPPTExtractor(file_path, unstructured_api_url)
+                        extractor = UnstructuredPPTExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == '.pptx':
                         extractor = UnstructuredPPTXExtractor(file_path, unstructured_api_url)
                     elif file_extension == '.xml':
@@ -123,7 +137,7 @@ class ExtractProcessor:
                     elif file_extension in ['.htm', '.html']:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension in ['.docx']:
-                        extractor = WordExtractor(file_path)
+                        extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == '.csv':
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == 'epub':
@@ -141,5 +155,17 @@ class ExtractProcessor:
                 tenant_id=extract_setting.notion_info.tenant_id,
             )
             return extractor.extract()
+        elif extract_setting.datasource_type == DatasourceType.WEBSITE.value:
+            if extract_setting.website_info.provider == 'firecrawl':
+                extractor = FirecrawlWebExtractor(
+                    url=extract_setting.website_info.url,
+                    job_id=extract_setting.website_info.job_id,
+                    tenant_id=extract_setting.website_info.tenant_id,
+                    mode=extract_setting.website_info.mode,
+                    only_main_content=extract_setting.website_info.only_main_content
+                )
+                return extractor.extract()
+            else:
+                raise ValueError(f"Unsupported website provider: {extract_setting.website_info.provider}")
         else:
             raise ValueError(f"Unsupported datasource type: {extract_setting.datasource_type}")

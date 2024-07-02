@@ -336,7 +336,7 @@ Inherit the `__base.text2speech_model.Text2SpeechModel` base class and implement
 - Invoke Invocation
 
   ```python
-  def _invoke(elf, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None):
+  def _invoke(self, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None):
       """
       Invoke large language model
   

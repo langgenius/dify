@@ -85,13 +85,13 @@
   background-image: url("./apps/assets/add.svg");
 }
 
-.newItemIconChat {
+/* .newItemIconChat {
   background-image: url("~@/app/components/base/icons/assets/public/header-nav/studio/Robot.svg");
 }
 
 .selected .newItemIconChat {
   background-image: url("~@/app/components/base/icons/assets/public/header-nav/studio/Robot-Active.svg");
-}
+} */
 
 .newItemIconComplete {
   background-image: url("./apps/assets/completion.svg");
@@ -157,18 +157,6 @@
 
 .solidCompletionIcon {
   background-image: url("./apps/assets/completion-solid.svg");
-}
-
-.docIcon {
-  background-image: url("./datasets/assets/doc.svg");
-}
-
-.textIcon {
-  background-image: url("./datasets/assets/text.svg");
-}
-
-.applicationIcon {
-  background-image: url("./datasets/assets/application.svg");
 }
 
 .newItemCardHeading {

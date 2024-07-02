@@ -208,7 +208,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
             })}
           </Radio.Group>
           {!doc_type && !documentType && (
-            <Button type='primary'
+            <Button variant='primary'
               onClick={confirmDocType}
               disabled={!tempDocType}
             >
@@ -216,7 +216,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
             </Button>
           )}
           {documentType && <div className={s.opBtnWrapper}>
-            <Button onClick={confirmDocType} className={`${s.opBtn} ${s.opSaveBtn}`} type='primary' >{t('common.operation.save')}</Button>
+            <Button onClick={confirmDocType} className={`${s.opBtn} ${s.opSaveBtn}`} variant='primary' >{t('common.operation.save')}</Button>
             <Button onClick={cancelDocType} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('common.operation.cancel')}</Button>
           </div>}
         </div >
@@ -324,7 +324,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
                     <Button onClick={onCancel} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('common.operation.cancel')}</Button>
                     <Button onClick={onSave}
                       className={`${s.opBtn} ${s.opSaveBtn}`}
-                      type='primary'
+                      variant='primary'
                       loading={saveLoading}
                     >
                       {t('common.operation.save')}
@@ -344,7 +344,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
                     <TypeIcon iconName={metadataMap[metadataParams.documentType || 'book'].iconName || ''} className={s.iconShow} />
                     {metadataMap[metadataParams.documentType || 'book'].text}
                     {editStatus && <div className='inline-flex items-center gap-1 ml-1'>
-                    ·
+                      ·
                       <div
                         onClick={() => { setShowDocTypes(true) }}
                         className='cursor-pointer hover:text-[#155EEF]'

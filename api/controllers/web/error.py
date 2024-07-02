@@ -115,3 +115,9 @@ class UnsupportedFileTypeError(BaseHTTPException):
     error_code = 'unsupported_file_type'
     description = "File type not allowed."
     code = 415
+
+
+class WebSSOAuthRequiredError(BaseHTTPException):
+    error_code = 'web_sso_auth_required'
+    description = "Web SSO authentication required."
+    code = 401

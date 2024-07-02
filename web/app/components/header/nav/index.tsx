@@ -31,7 +31,7 @@ const Nav = ({
   onLoadmore,
   isApp,
 }: INavProps) => {
-  const { setAppDetail } = useAppStore()
+  const setAppDetail = useAppStore(state => state.setAppDetail)
   const [hovered, setHovered] = useState(false)
   const segment = useSelectedLayoutSegment()
   const isActived = Array.isArray(activeSegment) ? activeSegment.includes(segment!) : segment === activeSegment

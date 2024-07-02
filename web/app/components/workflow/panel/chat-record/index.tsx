@@ -5,11 +5,16 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { useStore } from '../../store'
+import { RiCloseLine } from '@remixicon/react'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../../store'
+import { useWorkflowRun } from '../../hooks'
 import UserInput from './user-input'
 import Chat from '@/app/components/base/chat/chat'
 import type { ChatItem } from '@/app/components/base/chat/types'
-import { fetchConvesationMessages } from '@/service/debug'
+import { fetchConversationMessages } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 
@@ -17,6 +22,8 @@ const ChatRecord = () => {
   const [fetched, setFetched] = useState(false)
   const [chatList, setChatList] = useState([])
   const appDetail = useAppStore(s => s.appDetail)
+  const workflowStore = useWorkflowStore()
+  const { handleLoadBackupDraft } = useWorkflowRun()
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const currentConversationID = historyWorkflowData?.conversation_id
 
@@ -44,11 +51,11 @@ const ChatRecord = () => {
     return res
   }, [chatList])
 
-  const handleFetchConvesationMessages = useCallback(async () => {
+  const handleFetchConversationMessages = useCallback(async () => {
     if (appDetail && currentConversationID) {
       try {
         setFetched(false)
-        const res = await fetchConvesationMessages(appDetail.id, currentConversationID)
+        const res = await fetchConversationMessages(appDetail.id, currentConversationID)
         setFetched(true)
         setChatList((res as any).data)
       }
@@ -58,13 +65,13 @@ const ChatRecord = () => {
     }
   }, [appDetail, currentConversationID])
   useEffect(() => {
-    handleFetchConvesationMessages()
-  }, [currentConversationID, appDetail, handleFetchConvesationMessages])
+    handleFetchConversationMessages()
+  }, [currentConversationID, appDetail, handleFetchConversationMessages])
 
   return (
     <div
       className={`
-        flex flex-col w-[400px] rounded-l-2xl h-full border border-black/[0.02] shadow-xl
+        flex flex-col w-[400px] rounded-l-2xl h-full border border-black/2 shadow-xl
       `}
       style={{
         background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',
@@ -79,6 +86,15 @@ const ChatRecord = () => {
         <>
           <div className='shrink-0 flex items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
             {`TEST CHAT#${historyWorkflowData?.sequence_number}`}
+            <div
+              className='flex justify-center items-center w-6 h-6 cursor-pointer'
+              onClick={() => {
+                handleLoadBackupDraft()
+                workflowStore.setState({ historyWorkflowData: undefined })
+              }}
+            >
+              <RiCloseLine className='w-4 h-4 text-gray-500' />
+            </div>
           </div>
           <div className='grow h-0'>
             <Chat

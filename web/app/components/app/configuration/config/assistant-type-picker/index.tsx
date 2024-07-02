@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { RiArrowDownSLine } from '@remixicon/react'
 import AgentSetting from '../agent/agent-setting'
 import {
   PortalToFollowElem,
@@ -11,7 +12,6 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { BubbleText } from '@/app/components/base/icons/src/vender/solid/education'
 import Radio from '@/app/components/base/radio/ui'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/solid/arrows'
 import { CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -119,11 +119,11 @@ const AssistantTypePicker: FC<Props> = ({
           <div className={cn(open && 'bg-gray-50', 'flex items-center h-8 px-3 border border-black/5 rounded-lg cursor-pointer select-none space-x-1 text-indigo-600')}>
             {isAgent ? <BubbleText className='w-3 h-3' /> : <CuteRobote className='w-3 h-3' />}
             <div className='text-xs font-medium'>{t(`appDebug.assistantType.${isAgent ? 'agentAssistant' : 'chatAssistant'}.name`)}</div>
-            <ChevronDown className='w-3 h-3' />
+            <RiArrowDownSLine className='w-3 h-3' />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{ zIndex: 1000 }}>
-          <div className='relative left-0.5 p-6 bg-white border border-black/[0.08] shadow-lg rounded-xl w-[480px]'>
+          <div className='relative left-0.5 p-6 bg-white border border-black/8 shadow-lg rounded-xl w-[480px]'>
             <div className='mb-2 leading-5 text-sm font-semibold text-gray-900'>{t('appDebug.assistantType.name')}</div>
             <SelectItem
               Icon={BubbleText}

@@ -77,7 +77,15 @@ const translation = {
     workflowTitle: 'ログの詳細',
   },
   promptLog: 'プロンプトログ',
+  agentLog: 'エージェントログ',
   viewLog: 'ログを表示',
+  agentLogDetail: {
+    agentMode: 'エージェントモード',
+    toolUsed: '使用したツール',
+    iterations: '反復',
+    iteration: '反復',
+    finalProcessing: '最終処理',
+  },
 }
 
 export default translation

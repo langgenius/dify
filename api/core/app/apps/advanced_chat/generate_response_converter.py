@@ -8,6 +8,8 @@ from core.app.entities.task_entities import (
     ChatbotAppStreamResponse,
     ErrorStreamResponse,
     MessageEndStreamResponse,
+    NodeFinishStreamResponse,
+    NodeStartStreamResponse,
     PingStreamResponse,
 )
 
@@ -111,6 +113,8 @@ class AdvancedChatAppGenerateResponseConverter(AppGenerateResponseConverter):
             if isinstance(sub_stream_response, ErrorStreamResponse):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
+            elif isinstance(sub_stream_response, NodeStartStreamResponse | NodeFinishStreamResponse):
+                response_chunk.update(sub_stream_response.to_ignore_detail_dict())
             else:
                 response_chunk.update(sub_stream_response.to_dict())
 

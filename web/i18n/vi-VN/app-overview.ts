@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: 'Địa chỉ công cộng',
       preview: 'Xem trước',
       regenerate: 'Tạo lại',
+      regenerateNotice: 'Bạn có muốn tạo lại địa chỉ công cộng không?',
       preUseReminder: 'Vui lòng kích hoạt ứng dụng web trước khi tiếp tục.',
       settings: {
         entry: 'Cài đặt',
@@ -43,6 +44,15 @@ const translation = {
         webDescTip: 'Văn bản này sẽ được hiển thị ở phía máy khách, cung cấp hướng dẫn cơ bản về cách sử dụng ứng dụng',
         webDescPlaceholder: 'Nhập mô tả của ứng dụng web',
         language: 'Ngôn ngữ',
+        workflow: {
+          title: 'Các Bước Quy trình',
+          show: 'Hiển thị',
+          hide: 'Ẩn',
+        },
+        chatColorTheme: 'Chủ đề màu sắc trò chuyện',
+        chatColorThemeDesc: 'Thiết lập chủ đề màu sắc của chatbot',
+        chatColorThemeInverted: 'Đảo ngược',
+        invalidHexMessage: 'Giá trị không hợp lệ của hệ màu hex',
         more: {
           entry: 'Hiển thị thêm cài đặt',
           copyright: 'Bản quyền',
@@ -50,6 +60,9 @@ const translation = {
           privacyPolicy: 'Chính sách bảo mật',
           privacyPolicyPlaceholder: 'Nhập liên kết chính sách bảo mật',
           privacyPolicyTip: 'Giúp khách truy cập hiểu được dữ liệu mà ứng dụng thu thập, xem <privacyPolicyLink>Chính sách bảo mật</privacyPolicyLink> của Dify.',
+          customDisclaimer: 'Tùy chỉnh từ chối trách nhiệm',
+          customDisclaimerPlaceholder: 'Nhập liên kết từ chối trách nhiệm',
+          customDisclaimerTip: 'Liên kết này sẽ được hiển thị ở phía máy khách, cung cấp thông tin về trách nhiệm của ứng dụng',
         },
       },
       embedded: {

@@ -28,7 +28,10 @@ from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    ImagePromptMessageContent,
     PromptMessage,
+    PromptMessageContent,
+    PromptMessageContentType,
     PromptMessageTool,
     SystemPromptMessage,
     ToolPromptMessage,
@@ -36,6 +39,7 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
+    DefaultParameterName,
     FetchFrom,
     ModelFeature,
     ModelPropertyKey,
@@ -61,10 +65,10 @@ from core.model_runtime.utils import helper
 
 
 class XinferenceAILargeLanguageModel(LargeLanguageModel):
-    def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
-                model_parameters: dict, tools: list[PromptMessageTool] | None = None, 
+    def _invoke(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                model_parameters: dict, tools: list[PromptMessageTool] | None = None,
                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
-        -> LLMResult | Generator:
+            -> LLMResult | Generator:
         """
             invoke LLM
 
@@ -99,7 +103,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         try:
             if "/" in credentials['model_uid'] or "?" in credentials['model_uid'] or "#" in credentials['model_uid']:
                 raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
-            
+
             extra_param = XinferenceHelper.get_xinference_extra_parameter(
                 server_url=credentials['server_url'],
                 model_uid=credentials['model_uid']
@@ -110,10 +114,14 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 elif 'generate' in extra_param.model_ability:
                     credentials['completion_type'] = 'completion'
                 else:
-                    raise ValueError(f'xinference model ability {extra_param.model_ability} is not supported, check if you have the right model type')
-                
+                    raise ValueError(
+                        f'xinference model ability {extra_param.model_ability} is not supported, check if you have the right model type')
+
             if extra_param.support_function_call:
                 credentials['support_function_call'] = True
+
+            if extra_param.support_vision:
+                credentials['support_vision'] = True
 
             if extra_param.context_length:
                 credentials['context_length'] = extra_param.context_length
@@ -135,13 +143,13 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         """
         return self._num_tokens_from_messages(prompt_messages, tools)
 
-    def _num_tokens_from_messages(self, messages: list[PromptMessage], tools: list[PromptMessageTool], 
+    def _num_tokens_from_messages(self, messages: list[PromptMessage], tools: list[PromptMessageTool],
                                   is_completion_model: bool = False) -> int:
         def tokens(text: str):
             return self._get_num_tokens_by_gpt2(text)
 
         if is_completion_model:
-            return sum([tokens(str(message.content)) for message in messages])
+            return sum(tokens(str(message.content)) for message in messages)
 
         tokens_per_message = 3
         tokens_per_name = 1
@@ -155,7 +163,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                     text = ''
                     for item in value:
                         if isinstance(item, dict) and item['type'] == 'text':
-                            text += item.text
+                            text += item['text']
 
                     value = text
 
@@ -191,7 +199,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             num_tokens += self._num_tokens_for_tools(tools)
 
         return num_tokens
-    
+
     def _num_tokens_for_tools(self, tools: list[PromptMessageTool]) -> int:
         """
         Calculate num tokens for tool calling
@@ -200,6 +208,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         :param tools: tools for tool calling
         :return: number of tokens
         """
+
         def tokens(text: str):
             return self._get_num_tokens_by_gpt2(text)
 
@@ -234,7 +243,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                     num_tokens += tokens(required_field)
 
         return num_tokens
-    
+
     def _convert_prompt_message_to_text(self, message: list[PromptMessage]) -> str:
         """
             convert prompt message to text
@@ -260,7 +269,26 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             if isinstance(message.content, str):
                 message_dict = {"role": "user", "content": message.content}
             else:
-                raise ValueError("User message content must be str")
+                sub_messages = []
+                for message_content in message.content:
+                    if message_content.type == PromptMessageContentType.TEXT:
+                        message_content = cast(PromptMessageContent, message_content)
+                        sub_message_dict = {
+                            "type": "text",
+                            "text": message_content.data
+                        }
+                        sub_messages.append(sub_message_dict)
+                    elif message_content.type == PromptMessageContentType.IMAGE:
+                        message_content = cast(ImagePromptMessageContent, message_content)
+                        sub_message_dict = {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": message_content.data,
+                                "detail": message_content.detail.value
+                            }
+                        }
+                        sub_messages.append(sub_message_dict)
+                message_dict = {"role": "user", "content": sub_messages}
         elif isinstance(message, AssistantPromptMessage):
             message = cast(AssistantPromptMessage, message)
             message_dict = {"role": "assistant", "content": message.content}
@@ -277,7 +305,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             message_dict = {"tool_call_id": message.tool_call_id, "role": "tool", "content": message.content}
         else:
             raise ValueError(f"Unknown message type {type(message)}")
-        
+
         return message_dict
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
@@ -314,6 +342,45 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                     zh_Hans='最大生成长度',
                     en_US='Max Tokens'
                 )
+            ),
+            ParameterRule(
+                name=DefaultParameterName.PRESENCE_PENALTY,
+                use_template=DefaultParameterName.PRESENCE_PENALTY,
+                type=ParameterType.FLOAT,
+                label=I18nObject(
+                    en_US='Presence Penalty',
+                    zh_Hans='存在惩罚',
+                ),
+                required=False,
+                help=I18nObject(
+                    en_US='Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they '
+                          'appear in the text so far, increasing the model\'s likelihood to talk about new topics.',
+                    zh_Hans='介于 -2.0 和 2.0 之间的数字。正值会根据新词是否已出现在文本中对其进行惩罚，从而增加模型谈论新话题的可能性。'
+                ),
+                default=0.0,
+                min=-2.0,
+                max=2.0,
+                precision=2
+            ),
+            ParameterRule(
+                name=DefaultParameterName.FREQUENCY_PENALTY,
+                use_template=DefaultParameterName.FREQUENCY_PENALTY,
+                type=ParameterType.FLOAT,
+                label=I18nObject(
+                    en_US='Frequency Penalty',
+                    zh_Hans='频率惩罚',
+                ),
+                required=False,
+                help=I18nObject(
+                    en_US='Number between -2.0 and 2.0. Positive values penalize new tokens based on their '
+                          'existing frequency in the text so far, decreasing the model\'s likelihood to repeat the '
+                          'same line verbatim.',
+                    zh_Hans='介于 -2.0 和 2.0 之间的数字。正值会根据新词在文本中的现有频率对其进行惩罚，从而降低模型逐字重复相同内容的可能性。'
+                ),
+                default=0.0,
+                min=-2.0,
+                max=2.0,
+                precision=2
             )
         ]
 
@@ -338,8 +405,17 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 completion_type = LLMMode.COMPLETION.value
             else:
                 raise ValueError(f'xinference model ability {extra_args.model_ability} is not supported')
-            
+
+        features = []
+
         support_function_call = credentials.get('support_function_call', False)
+        if support_function_call:
+            features.append(ModelFeature.TOOL_CALL)
+
+        support_vision = credentials.get('support_vision', False)
+        if support_vision:
+            features.append(ModelFeature.VISION)
+
         context_length = credentials.get('context_length', 2048)
 
         entity = AIModelEntity(
@@ -349,10 +425,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.LLM,
-            features=[
-                ModelFeature.TOOL_CALL
-            ] if support_function_call else [],
-            model_properties={ 
+            features=features,
+            model_properties={
                 ModelPropertyKey.MODE: completion_type,
                 ModelPropertyKey.CONTEXT_SIZE: context_length
             },
@@ -360,22 +434,22 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         )
 
         return entity
-    
-    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], 
-                 model_parameters: dict, extra_model_kwargs: XinferenceModelExtraParameter,
-                 tools: list[PromptMessageTool] | None = None, 
-                 stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
+
+    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                  model_parameters: dict, extra_model_kwargs: XinferenceModelExtraParameter,
+                  tools: list[PromptMessageTool] | None = None,
+                  stop: list[str] | None = None, stream: bool = True, user: str | None = None) \
             -> LLMResult | Generator:
         """
             generate text from LLM
 
             see `core.model_runtime.model_providers.__base.large_language_model.LargeLanguageModel._generate`
-            
+
             extra_model_kwargs can be got by `XinferenceHelper.get_xinference_extra_parameter`
         """
         if 'server_url' not in credentials:
             raise CredentialsValidateFailedError('server_url is required in credentials')
-        
+
         if credentials['server_url'].endswith('/'):
             credentials['server_url'] = credentials['server_url'][:-1]
 
@@ -396,6 +470,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             'temperature': model_parameters.get('temperature', 1.0),
             'top_p': model_parameters.get('top_p', 0.7),
             'max_tokens': model_parameters.get('max_tokens', 512),
+            'presence_penalty': model_parameters.get('presence_penalty', 0.0),
+            'frequency_penalty': model_parameters.get('frequency_penalty', 0.0),
         }
 
         if stop:
@@ -408,11 +484,11 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                     'function': helper.dump_model(tool)
                 } for tool in tools
             ]
-
+        vision = credentials.get('support_vision', False)
         if isinstance(xinference_model, RESTfulChatModelHandle | RESTfulChatglmCppChatModelHandle):
             resp = client.chat.completions.create(
                 model=credentials['model_uid'],
-                messages=[self._convert_prompt_message_to_dict(message) for message in prompt_messages], 
+                messages=[self._convert_prompt_message_to_dict(message) for message in prompt_messages],
                 stream=stream,
                 user=user,
                 **generate_config,
@@ -420,10 +496,12 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             if stream:
                 if tools and len(tools) > 0:
                     raise InvokeBadRequestError('xinference tool calls does not support stream mode')
-                return self._handle_chat_stream_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
-                                                        tools=tools, resp=resp)
-            return self._handle_chat_generate_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
-                                                        tools=tools, resp=resp)
+                return self._handle_chat_stream_response(model=model, credentials=credentials,
+                                                         prompt_messages=prompt_messages,
+                                                         tools=tools, resp=resp)
+            return self._handle_chat_generate_response(model=model, credentials=credentials,
+                                                       prompt_messages=prompt_messages,
+                                                       tools=tools, resp=resp)
         elif isinstance(xinference_model, RESTfulGenerateModelHandle):
             resp = client.completions.create(
                 model=credentials['model_uid'],
@@ -433,10 +511,12 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 **generate_config,
             )
             if stream:
-                return self._handle_completion_stream_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
-                                                        tools=tools, resp=resp)
-            return self._handle_completion_generate_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
-                                                        tools=tools, resp=resp)
+                return self._handle_completion_stream_response(model=model, credentials=credentials,
+                                                               prompt_messages=prompt_messages,
+                                                               tools=tools, resp=resp)
+            return self._handle_completion_generate_response(model=model, credentials=credentials,
+                                                             prompt_messages=prompt_messages,
+                                                             tools=tools, resp=resp)
         else:
             raise NotImplementedError(f'xinference model handle type {type(xinference_model)} is not supported')
 
@@ -490,14 +570,14 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         return tool_call
 
     def _handle_chat_generate_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
-                                        tools: list[PromptMessageTool],
-                                        resp: ChatCompletion) -> LLMResult:
+                                       tools: list[PromptMessageTool],
+                                       resp: ChatCompletion) -> LLMResult:
         """
             handle normal chat generate response
         """
         if len(resp.choices) == 0:
             raise InvokeServerUnavailableError("Empty response")
-        
+
         assistant_message = resp.choices[0].message
 
         # convert tool call to assistant message tool call
@@ -516,7 +596,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         prompt_tokens = self._num_tokens_from_messages(messages=prompt_messages, tools=tools)
         completion_tokens = self._num_tokens_from_messages(messages=[assistant_prompt_message], tools=tools)
 
-        usage = self._calc_response_usage(model=model, credentials=credentials, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
+        usage = self._calc_response_usage(model=model, credentials=credentials, prompt_tokens=prompt_tokens,
+                                          completion_tokens=completion_tokens)
 
         response = LLMResult(
             model=model,
@@ -529,8 +610,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         return response
 
     def _handle_chat_stream_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
-                                        tools: list[PromptMessageTool],
-                                        resp: Iterator[ChatCompletionChunk]) -> Generator:
+                                     tools: list[PromptMessageTool],
+                                     resp: Iterator[ChatCompletionChunk]) -> Generator:
         """
             handle stream chat generate response
         """
@@ -544,7 +625,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
             if delta.finish_reason is None and (delta.delta.content is None or delta.delta.content == ''):
                 continue
-            
+
             # check if there is a tool call in the response
             function_call = None
             tool_calls = []
@@ -573,9 +654,9 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 prompt_tokens = self._num_tokens_from_messages(messages=prompt_messages, tools=tools)
                 completion_tokens = self._num_tokens_from_messages(messages=[temp_assistant_prompt_message], tools=[])
 
-                usage = self._calc_response_usage(model=model, credentials=credentials, 
+                usage = self._calc_response_usage(model=model, credentials=credentials,
                                                   prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
-                
+
                 yield LLMResultChunk(
                     model=model,
                     prompt_messages=prompt_messages,
@@ -601,14 +682,14 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 full_response += delta.delta.content
 
     def _handle_completion_generate_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
-                                        tools: list[PromptMessageTool],
-                                        resp: Completion) -> LLMResult:
+                                             tools: list[PromptMessageTool],
+                                             resp: Completion) -> LLMResult:
         """
             handle normal completion generate response
         """
         if len(resp.choices) == 0:
             raise InvokeServerUnavailableError("Empty response")
-        
+
         assistant_message = resp.choices[0].text
 
         # transform assistant message to prompt message
@@ -638,8 +719,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         return response
 
     def _handle_completion_stream_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
-                                        tools: list[PromptMessageTool],
-                                        resp: Iterator[Completion]) -> Generator:
+                                           tools: list[PromptMessageTool],
+                                           resp: Iterator[Completion]) -> Generator:
         """
             handle stream completion generate response
         """
@@ -670,9 +751,9 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 completion_tokens = self._num_tokens_from_messages(
                     messages=[temp_assistant_prompt_message], tools=[], is_completion_model=True
                 )
-                usage = self._calc_response_usage(model=model, credentials=credentials, 
+                usage = self._calc_response_usage(model=model, credentials=credentials,
                                                   prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
-                
+
                 yield LLMResultChunk(
                     model=model,
                     prompt_messages=prompt_messages,

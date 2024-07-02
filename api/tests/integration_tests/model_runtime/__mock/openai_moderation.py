@@ -1,16 +1,17 @@
 import re
-from typing import Any, List, Literal, Union
+from typing import Any, Literal, Union
 
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from openai._types import NOT_GIVEN, NotGiven
 from openai.resources.moderations import Moderations
 from openai.types import ModerationCreateResponse
 from openai.types.moderation import Categories, CategoryScores, Moderation
 
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 
-class MockModerationClass(object):
+
+class MockModerationClass:
     def moderation_create(self: Moderations,*,
-        input: Union[str, List[str]],
+        input: Union[str, list[str]],
         model: Union[str, Literal["text-moderation-latest", "text-moderation-stable"]] | NotGiven = NOT_GIVEN,
         **kwargs: Any
     ) -> ModerationCreateResponse:

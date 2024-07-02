@@ -11,6 +11,7 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.rag.retrieval.retrival_methods import RetrievalMethod
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
@@ -21,7 +22,7 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.workflow import WorkflowNodeExecutionStatus
 
 default_retrieval_model = {
-    'search_method': 'semantic_search',
+    'search_method': RetrievalMethod.SEMANTIC_SEARCH,
     'reranking_enable': False,
     'reranking_model': {
         'reranking_provider_name': '',
@@ -148,10 +149,9 @@ class KnowledgeRetrievalNode(BaseNode):
         if all_documents:
             document_score_list = {}
             for item in all_documents:
-                if 'score' in item.metadata and item.metadata['score']:
+                if item.metadata.get('score'):
                     document_score_list[item.metadata['doc_id']] = item.metadata['score']
 
-            document_context_list = []
             index_node_ids = [document.metadata['doc_id'] for document in all_documents]
             segments = DocumentSegment.query.filter(
                 DocumentSegment.dataset_id.in_(dataset_ids),
@@ -165,11 +165,6 @@ class KnowledgeRetrievalNode(BaseNode):
                 sorted_segments = sorted(segments,
                                          key=lambda segment: index_node_id_to_position.get(segment.index_node_id,
                                                                                            float('inf')))
-                for segment in sorted_segments:
-                    if segment.answer:
-                        document_context_list.append(f'question:{segment.content} answer:{segment.answer}')
-                    else:
-                        document_context_list.append(segment.content)
 
                 for segment in sorted_segments:
                     dataset = Dataset.query.filter_by(
@@ -202,9 +197,9 @@ class KnowledgeRetrievalNode(BaseNode):
                             'title': document.name
                         }
                         if segment.answer:
-                            source['content'] = f'question:{segment.content} \nanswer:{segment.answer}'
+                            source['content'] = f'question:{segment.get_sign_content()} \nanswer:{segment.answer}'
                         else:
-                            source['content'] = segment.content
+                            source['content'] = segment.get_sign_content()
                         context_list.append(source)
                         resource_number += 1
         return context_list

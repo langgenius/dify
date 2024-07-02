@@ -1,0 +1,51 @@
+identity:
+  name: simple_code
+  author: Dify
+  label:
+    en_US: Code Interpreter
+    zh_Hans: 代码解释器
+    pt_BR: Interpretador de Código
+description:
+  human:
+    en_US: Run code and get the result back. When you're using a lower quality model, please make sure there are some tips help LLM to understand how to write the code.
+    zh_Hans: 运行一段代码并返回结果。当您使用较低质量的模型时，请确保有一些提示帮助LLM理解如何编写代码。
+    pt_BR: Execute um trecho de código e obtenha o resultado de volta. quando você estiver usando um modelo de qualidade inferior, certifique-se de que existam algumas dicas para ajudar o LLM a entender como escrever o código.
+  llm: A tool for running code and getting the result back. Only native packages are allowed, network/IO operations are disabled. and you must use print() or console.log() to output the result or result will be empty.
+parameters:
+  - name: language
+    type: string
+    required: true
+    label:
+      en_US: Language
+      zh_Hans: 语言
+      pt_BR: Idioma
+    human_description:
+      en_US: The programming language of the code
+      zh_Hans: 代码的编程语言
+      pt_BR: A linguagem de programação do código
+    llm_description: language of the code, only "python3" and "javascript" are supported
+    form: llm
+    options:
+      - value: python3
+        label:
+          en_US: Python3
+          zh_Hans: Python3
+          pt_BR: Python3
+      - value: javascript
+        label:
+          en_US: JavaScript
+          zh_Hans: JavaScript
+          pt_BR: JavaScript
+  - name: code
+    type: string
+    required: true
+    label:
+      en_US: Code
+      zh_Hans: 代码
+      pt_BR: Código
+    human_description:
+      en_US: The code to be executed
+      zh_Hans: 要执行的代码
+      pt_BR: O código a ser executado
+    llm_description: code to be executed, only native packages are allowed, network/IO operations are disabled.
+    form: llm

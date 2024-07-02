@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 import openai
 from httpx import Timeout
 
@@ -12,7 +14,7 @@ from core.model_runtime.errors.invoke import (
 
 
 class _CommonOpenAI:
-    def _to_credential_kwargs(self, credentials: dict) -> dict:
+    def _to_credential_kwargs(self, credentials: Mapping) -> dict:
         """
         Transform credentials to kwargs for model instance
 
@@ -25,9 +27,9 @@ class _CommonOpenAI:
             "max_retries": 1,
         }
 
-        if 'openai_api_base' in credentials and credentials['openai_api_base']:
-            credentials['openai_api_base'] = credentials['openai_api_base'].rstrip('/')
-            credentials_kwargs['base_url'] = credentials['openai_api_base'] + '/v1'
+        if credentials.get("openai_api_base"):
+            openai_api_base = credentials["openai_api_base"].rstrip("/")
+            credentials_kwargs["base_url"] = openai_api_base + "/v1"
 
         if 'openai_organization' in credentials:
             credentials_kwargs['organization'] = credentials['openai_organization']
@@ -45,24 +47,14 @@ class _CommonOpenAI:
         :return: Invoke error mapping
         """
         return {
-            InvokeConnectionError: [
-                openai.APIConnectionError,
-                openai.APITimeoutError
-            ],
-            InvokeServerUnavailableError: [
-                openai.InternalServerError
-            ],
-            InvokeRateLimitError: [
-                openai.RateLimitError
-            ],
-            InvokeAuthorizationError: [
-                openai.AuthenticationError,
-                openai.PermissionDeniedError
-            ],
+            InvokeConnectionError: [openai.APIConnectionError, openai.APITimeoutError],
+            InvokeServerUnavailableError: [openai.InternalServerError],
+            InvokeRateLimitError: [openai.RateLimitError],
+            InvokeAuthorizationError: [openai.AuthenticationError, openai.PermissionDeniedError],
             InvokeBadRequestError: [
                 openai.BadRequestError,
                 openai.NotFoundError,
                 openai.UnprocessableEntityError,
-                openai.APIError
-            ]
+                openai.APIError,
+            ],
         }

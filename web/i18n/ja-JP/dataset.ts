@@ -1,13 +1,14 @@
 const translation = {
   knowledge: '知識',
   documentCount: ' ドキュメント',
-  wordCount: 'k 単語',
+  wordCount: ' k 単語',
   appCount: ' リンクされたアプリ',
   createDataset: '知識を作成',
   createDatasetIntro: '独自のテキストデータをインポートするか、LLMコンテキストの強化のためにWebhookを介してリアルタイムでデータを書き込むことができます。',
   deleteDatasetConfirmTitle: 'この知識を削除しますか？',
   deleteDatasetConfirmContent:
     '知識を削除すると元に戻すことはできません。ユーザーはもはやあなたの知識にアクセスできず、すべてのプロンプトの設定とログが永久に削除されます。',
+  datasetUsedByApp: 'この知識は一部のアプリによって使用されています。アプリはこの知識を使用できなくなり、すべてのプロンプト設定とログは永久に削除されます。',
   datasetDeleted: '知識が削除されました',
   datasetDeleteFailed: '知識の削除に失敗しました',
   didYouKnow: 'ご存知ですか？',
@@ -42,6 +43,8 @@ const translation = {
     change: '変更',
     changeRetrievalMethod: '検索方法の変更',
   },
+  docsFailedNotice: 'ドキュメントのインデックスに失敗しました',
+  retry: '再試行',
 }
 
 export default translation

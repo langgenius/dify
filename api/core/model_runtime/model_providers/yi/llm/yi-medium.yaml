@@ -1,0 +1,43 @@
+model: yi-medium
+label:
+  zh_Hans: yi-medium
+  en_US: yi-medium
+model_type: llm
+features:
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 16384
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+    type: float
+    default: 0.3
+    min: 0.0
+    max: 2.0
+    help:
+      zh_Hans: 控制生成结果的多样性和随机性。数值越小，越严谨；数值越大，越发散。
+      en_US: Control the diversity and randomness of generated results. The smaller the value, the more rigorous it is; the larger the value, the more divergent it is.
+  - name: max_tokens
+    use_template: max_tokens
+    type: int
+    default: 1024
+    min: 1
+    max: 16384
+    help:
+      zh_Hans: 指定生成结果长度的上限。如果生成结果截断，可以调大该参数。
+      en_US: Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.
+  - name: top_p
+    use_template: top_p
+    type: float
+    default: 0.9
+    min: 0.01
+    max: 1.00
+    help:
+      zh_Hans: 控制生成结果的随机性。数值越小，随机性越弱；数值越大，随机性越强。一般而言，top_p 和 temperature 两个参数选择一个进行调整即可。
+      en_US: Control the randomness of generated results. The smaller the value, the weaker the randomness; the larger the value, the stronger the randomness. Generally speaking, you can adjust one of the two parameters top_p and temperature.
+pricing:
+  input: '2.5'
+  output: '2.5'
+  unit: '0.000001'
+  currency: RMB

@@ -35,6 +35,7 @@
   <a href="./README_ES.md"><img alt="Actividad de Commits el último mes" src="https://img.shields.io/badge/Español-d9d9d9"></a>
   <a href="./README_KL.md"><img alt="Actividad de Commits el último mes" src="https://img.shields.io/badge/Français-d9d9d9"></a>
   <a href="./README_FR.md"><img alt="Actividad de Commits el último mes" src="https://img.shields.io/badge/Klingon-d9d9d9"></a>
+  <a href="./README_KR.md"><img alt="Actividad de Commits el último mes" src="https://img.shields.io/badge/한국어-d9d9d9"></a>
 </p>
 
 #
@@ -54,7 +55,7 @@ Dify es una plataforma de desarrollo de aplicaciones de LLM de código abierto. 
 
 
 **2. Soporte de modelos completo**: 
-  Integración perfecta con cientos de LLMs propietarios / de código abierto de docenas de proveedores de inferencia y soluciones auto-alojadas, que cubren GPT, Mistral, Llama2 y cualquier modelo compatible con la API de OpenAI. Se puede encontrar una lista completa de proveedores de modelos admitidos [aquí](https://docs.dify.ai/getting-started/readme/model-providers).
+  Integración perfecta con cientos de LLMs propietarios / de código abierto de docenas de proveedores de inferencia y soluciones auto-alojadas, que cubren GPT, Mistral, Llama3 y cualquier modelo compatible con la API de OpenAI. Se puede encontrar una lista completa de proveedores de modelos admitidos [aquí](https://docs.dify.ai/getting-started/readme/model-providers).
 
 ![proveedores-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
@@ -111,7 +112,7 @@ es basados en LLM Function Calling o ReAct, y agregar herramientas preconstruida
     <td align="center">Agente</td>
     <td align="center">✅</td>
     <td align="center">✅</td>
-    <td align="center">✅</td>
+    <td align="center">❌</td>
     <td align="center">✅</td>
   </tr>
   <tr>
@@ -178,6 +179,7 @@ La forma más fácil de iniciar el servidor de Dify es ejecutar nuestro archivo 
 
 ```bash
 cd docker
+cp .env.example .env
 docker compose up -d
 ```
 
@@ -187,14 +189,21 @@ Después de ejecutarlo, puedes acceder al panel de control de Dify en tu navegad
 
 ## Próximos pasos
 
-Si necesitas personalizar la configuración, consulta los comentarios en nuestro archivo [docker-compose.yml](docker/docker-compose.yaml) y configura manualmente la configuración del entorno
+Si necesita personalizar la configuración, consulte los comentarios en nuestro archivo [.env.example](docker/.env.example) y actualice los valores correspondientes en su archivo `.env`. Además, es posible que deba realizar ajustes en el propio archivo `docker-compose.yaml`, como cambiar las versiones de las imágenes, las asignaciones de puertos o los montajes de volúmenes, según su entorno de implementación y requisitos específicos. Después de realizar cualquier cambio, vuelva a ejecutar `docker-compose up -d`. Puede encontrar la lista completa de variables de entorno disponibles [aquí](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
 . Después de realizar los cambios, ejecuta `docker-compose up -d` nuevamente. Puedes ver la lista completa de variables de entorno [aquí](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
-Si deseas configurar una instalación altamente disponible, hay [Gráficos Helm](https://helm.sh/) contribuidos por la comunidad que permiten implementar Dify en Kubernetes.
+Si desea configurar una configuración de alta disponibilidad, la comunidad proporciona [Gráficos Helm](https://helm.sh/) y archivos YAML, a través de los cuales puede desplegar Dify en Kubernetes.
 
 - [Gráfico Helm por @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Gráfico Helm por @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
+- [Ficheros YAML por @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+
+#### Uso de Terraform para el despliegue
+
+##### Azure Global
+Utiliza [terraform](https://www.terraform.io/) para desplegar Dify en Azure con un solo clic.
+- [Azure Terraform por @nikawang](https://github.com/nikawang/dify-azure-terraform)
 
 
 ## Contribuir

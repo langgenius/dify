@@ -47,7 +47,14 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       const { id, app } = installedAppInfo!
       return {
         app_id: id,
-        site: { title: app.name, icon: app.icon, icon_background: app.icon_background, prompt_public: false, copyright: '' },
+        site: {
+          title: app.name,
+          icon: app.icon,
+          icon_background: app.icon_background,
+          prompt_public: false,
+          copyright: '',
+          show_workflow_steps: true,
+        },
         plan: 'basic',
       } as AppData
     }
@@ -129,11 +136,17 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
-    return (appParams?.user_input_form || []).filter((item: any) => item.paragraph || item.select || item['text-input']).map((item: any) => {
+    return (appParams?.user_input_form || []).filter((item: any) => item.paragraph || item.select || item['text-input'] || item.number).map((item: any) => {
       if (item.paragraph) {
         return {
           ...item.paragraph,
           type: 'paragraph',
+        }
+      }
+      if (item.number) {
+        return {
+          ...item.number,
+          type: 'number',
         }
       }
       if (item.select) {
@@ -142,6 +155,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           type: 'select',
         }
       }
+
       return {
         ...item['text-input'],
         type: 'text-input',
@@ -157,7 +171,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
 
-  const { data: newConversation } = useSWR(newConversationId ? [isInstalledApp, appId, newConversationId] : null, () => generationConversationName(isInstalledApp, appId, newConversationId))
+  const { data: newConversation } = useSWR(newConversationId ? [isInstalledApp, appId, newConversationId] : null, () => generationConversationName(isInstalledApp, appId, newConversationId), { revalidateOnFocus: false })
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
     if (appConversationData?.data && !appConversationDataLoading)
@@ -226,7 +240,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       setShowNewConversationItemInList(true)
     }
   }, [setShowConfigPanelBeforeChat, setShowNewConversationItemInList, checkInputsRequired])
-  const currentChatInstanceRef = useRef<{ handleStop: () => void }>({ handleStop: () => {} })
+  const currentChatInstanceRef = useRef<{ handleStop: () => void }>({ handleStop: () => { } })
   const handleChangeConversation = useCallback((conversationId: string) => {
     currentChatInstanceRef.current.handleStop()
     setNewConversationId('')

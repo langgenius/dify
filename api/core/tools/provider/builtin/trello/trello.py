@@ -32,3 +32,4 @@ class TrelloProvider(BuiltinToolProviderController):
         except requests.exceptions.RequestException as e:
             # Handle other exceptions, such as connection errors
             raise ToolProviderCredentialValidationError("Error validating Trello credentials")
+        

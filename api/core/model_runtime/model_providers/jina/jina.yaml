@@ -19,6 +19,7 @@ supported_model_types:
   - rerank
 configurate_methods:
   - predefined-model
+  - customizable-model
 provider_credential_schema:
   credential_form_schemas:
     - variable: api_key
@@ -29,3 +30,40 @@ provider_credential_schema:
       placeholder:
         zh_Hans: 在此输入您的 API Key
         en_US: Enter your API Key
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
+    - variable: base_url
+      label:
+        zh_Hans: 服务器 URL
+        en_US: Base URL
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: Base URL, e.g. https://api.jina.ai/v1
+        en_US: Base URL, e.g. https://api.jina.ai/v1
+      default: 'https://api.jina.ai/v1'
+    - variable: context_size
+      label:
+        zh_Hans: 上下文大小
+        en_US: Context size
+      placeholder:
+        zh_Hans: 输入上下文大小
+        en_US: Enter context size
+      required: false
+      type: text-input
+      default: '8192'

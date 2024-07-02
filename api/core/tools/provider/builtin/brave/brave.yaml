@@ -10,6 +10,8 @@ identity:
     zh_Hans: Brave
     pt_BR: Brave
   icon: icon.svg
+  tags:
+    - search
 credentials_for_provider:
   brave_search_api_key:
     type: secret-input

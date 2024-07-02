@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: 'Публічний URL',
       preview: 'Попередній перегляд',
       regenerate: 'Відновити',
+      regenerateNotice: 'Бажаєте згенерувати новий публічний URL?',
       preUseReminder: 'Будь ласка, активуйте веб-додаток перед продовженням.',
       settings: {
         entry: 'Налаштування',
@@ -43,6 +44,15 @@ const translation = {
         webDescTip: 'Цей текст буде відображений на клієнтському боці, надаючи базові вказівки щодо використання додатка',
         webDescPlaceholder: 'Введіть опис веб-додатку',
         language: 'Мова',
+        workflow: {
+          title: 'Кроки робочого процесу',
+          show: 'Показати',
+          hide: 'Приховати',
+        },
+        chatColorTheme: 'Тема кольору чату',
+        chatColorThemeDesc: 'Встановіть тему кольору чат-бота',
+        chatColorThemeInverted: 'Інвертовано',
+        invalidHexMessage: 'Недійсне шістнадцяткове значення',
         more: {
           entry: 'Показати додаткові налаштування',
           copyright: 'Авторське право',
@@ -50,6 +60,9 @@ const translation = {
           privacyPolicy: 'Політика конфіденційності',
           privacyPolicyPlaceholder: 'Введіть посилання на політику конфіденційності',
           privacyPolicyTip: 'Допомагає відвідувачам зрозуміти дані, зібрані додатком, див. <privacyPolicyLink>Політику конфіденційності</privacyPolicyLink> Dify.',
+          customDisclaimer: 'Відмова від відповідальності',
+          customDisclaimerPlaceholder: 'Введіть відмову від відповідальності',
+          customDisclaimerTip: 'Відображається на клієнтському боці, щоб визначити відповідальність за використання додатка',
         },
       },
       embedded: {

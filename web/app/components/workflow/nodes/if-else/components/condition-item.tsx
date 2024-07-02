@@ -3,13 +3,15 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import VarReferencePicker from '../../_base/components/variable/var-reference-picker'
 import { isComparisonOperatorNeedTranslate } from '../utils'
 import { VarType } from '../../../types'
 import type { Condition } from '@/app/components/workflow/nodes/if-else/types'
 import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/if-else/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { RefreshCw05 } from '@/app/components/base/icons/src/vender/line/arrows'
 import Selector from '@/app/components/workflow/nodes/_base/components/selector'
 import Toast from '@/app/components/base/toast'
@@ -96,7 +98,7 @@ const Item: FC<ItemProps> = ({
   readonly,
   nodeId,
   payload,
-  varType,
+  varType = VarType.string,
   onChange,
   canRemove,
   onRemove = () => { },
@@ -145,7 +147,7 @@ const Item: FC<ItemProps> = ({
   return (
     <div className='space-y-2'>
       {isShowLogicalOperator && (
-        <div className='flex items-center select-none'>
+        <div className='flex items-center justify-center select-none'>
           <div className='flex items-center '>
             {Line}
             <div
@@ -168,7 +170,7 @@ const Item: FC<ItemProps> = ({
           nodeId={nodeId}
           readonly={readonly}
           isShowNodeName
-          className='w-[162px]'
+          className='min-w-[162px] flex-grow'
           value={payload.variable_selector}
           onChange={handleVarReferenceChange}
           filterVar={filterVar}
@@ -184,7 +186,7 @@ const Item: FC<ItemProps> = ({
                   e.stopPropagation()
                   return
                 }
-                if (!varType) {
+                if (!payload.variable_selector || payload.variable_selector.length === 0) {
                   e.stopPropagation()
                   Toast.notify({
                     message: t(`${i18nPrefix}.notSetVariable`),
@@ -229,7 +231,7 @@ const Item: FC<ItemProps> = ({
           value={!isValueReadOnly ? payload.value : ''}
           onChange={handleValueChange}
           placeholder={(!readonly && !isValueReadOnly) ? t(`${i18nPrefix}.enterValue`)! : ''}
-          className='w-[80px] h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+          className='min-w-[80px] flex-grow h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
           type='text'
         />
         {!readonly && (
@@ -237,7 +239,7 @@ const Item: FC<ItemProps> = ({
             className={cn(canRemove ? 'text-gray-500 bg-gray-100 hover:bg-gray-200  cursor-pointer' : 'bg-gray-25 text-gray-300', 'p-2 rounded-lg ')}
             onClick={canRemove ? onRemove : () => { }}
           >
-            <Trash03 className='w-4 h-4 ' />
+            <RiDeleteBinLine className='w-4 h-4 ' />
           </div>
         )}
       </div>

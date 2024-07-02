@@ -8,6 +8,7 @@ from flask_restful import Resource
 
 from constants.languages import languages
 from extensions.ext_database import db
+from libs.helper import get_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
@@ -78,9 +79,7 @@ class OAuthCallback(Resource):
 
         TenantService.create_owner_tenant_if_not_exist(account)
 
-        AccountService.update_last_login(account, request)
-
-        token = AccountService.get_account_jwt_token(account)
+        token = AccountService.login(account, ip_address=get_remote_ip(request))
 
         return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?console_token={token}')
 

@@ -20,7 +20,7 @@ const Forms = () => {
   }
   return <div className={
     cn(
-      'flex flex-col items-center w-full grow items-center justify-center',
+      'flex flex-col items-center w-full grow justify-center',
       'px-6',
       'md:px-[108px]',
     )

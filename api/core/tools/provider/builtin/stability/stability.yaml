@@ -1,0 +1,31 @@
+identity:
+  author: Dify
+  name: stability
+  label:
+    en_US: Stability
+    zh_Hans: Stability
+    pt_BR: Stability
+  description:
+    en_US: Activating humanity's potential through generative AI
+    zh_Hans: 通过生成式 AI 激活人类的潜力
+    pt_BR: Activating humanity's potential through generative AI
+  icon: icon.svg
+  tags:
+    - image
+credentials_for_provider:
+  api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: API key
+      zh_Hans: API key
+      pt_BR: API key
+    placeholder:
+      en_US: Please input your API key
+      zh_Hans: 请输入你的 API key
+      pt_BR: Please input your API key
+    help:
+      en_US: Get your API key from Stability
+      zh_Hans: 从 Stability 获取你的 API key
+      pt_BR: Get your API key from Stability
+    url: https://platform.stability.ai/account/keys

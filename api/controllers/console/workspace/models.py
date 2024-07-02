@@ -11,6 +11,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
+from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider_service import ModelProviderService
 
 
@@ -41,6 +42,9 @@ class DefaultModelApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
+        if not current_user.is_admin_or_owner:
+            raise Forbidden()
+        
         parser = reqparse.RequestParser()
         parser.add_argument('model_settings', type=list, required=True, nullable=False, location='json')
         args = parser.parse_args()
@@ -94,7 +98,7 @@ class ModelProviderModelApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider: str):
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         tenant_id = current_user.current_tenant_id
@@ -103,21 +107,56 @@ class ModelProviderModelApi(Resource):
         parser.add_argument('model', type=str, required=True, nullable=False, location='json')
         parser.add_argument('model_type', type=str, required=True, nullable=False,
                             choices=[mt.value for mt in ModelType], location='json')
-        parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('credentials', type=dict, required=False, nullable=True, location='json')
+        parser.add_argument('load_balancing', type=dict, required=False, nullable=True, location='json')
+        parser.add_argument('config_from', type=str, required=False, nullable=True, location='json')
         args = parser.parse_args()
 
-        model_provider_service = ModelProviderService()
+        model_load_balancing_service = ModelLoadBalancingService()
 
-        try:
-            model_provider_service.save_model_credentials(
+        if ('load_balancing' in args and args['load_balancing'] and
+                'enabled' in args['load_balancing'] and args['load_balancing']['enabled']):
+            if 'configs' not in args['load_balancing']:
+                raise ValueError('invalid load balancing configs')
+
+            # save load balancing configs
+            model_load_balancing_service.update_load_balancing_configs(
                 tenant_id=tenant_id,
                 provider=provider,
                 model=args['model'],
                 model_type=args['model_type'],
-                credentials=args['credentials']
+                configs=args['load_balancing']['configs']
             )
-        except CredentialsValidateFailedError as ex:
-            raise ValueError(str(ex))
+
+            # enable load balancing
+            model_load_balancing_service.enable_model_load_balancing(
+                tenant_id=tenant_id,
+                provider=provider,
+                model=args['model'],
+                model_type=args['model_type']
+            )
+        else:
+            # disable load balancing
+            model_load_balancing_service.disable_model_load_balancing(
+                tenant_id=tenant_id,
+                provider=provider,
+                model=args['model'],
+                model_type=args['model_type']
+            )
+
+            if args.get('config_from', '') != 'predefined-model':
+                model_provider_service = ModelProviderService()
+
+                try:
+                    model_provider_service.save_model_credentials(
+                        tenant_id=tenant_id,
+                        provider=provider,
+                        model=args['model'],
+                        model_type=args['model_type'],
+                        credentials=args['credentials']
+                    )
+                except CredentialsValidateFailedError as ex:
+                    raise ValueError(str(ex))
 
         return {'result': 'success'}, 200
 
@@ -125,7 +164,7 @@ class ModelProviderModelApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, provider: str):
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         tenant_id = current_user.current_tenant_id
@@ -169,9 +208,71 @@ class ModelProviderModelCredentialApi(Resource):
             model=args['model']
         )
 
+        model_load_balancing_service = ModelLoadBalancingService()
+        is_load_balancing_enabled, load_balancing_configs = model_load_balancing_service.get_load_balancing_configs(
+            tenant_id=tenant_id,
+            provider=provider,
+            model=args['model'],
+            model_type=args['model_type']
+        )
+
         return {
-            "credentials": credentials
+            "credentials": credentials,
+            "load_balancing": {
+                "enabled": is_load_balancing_enabled,
+                "configs": load_balancing_configs
+            }
         }
+
+
+class ModelProviderModelEnableApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def patch(self, provider: str):
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('model', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('model_type', type=str, required=True, nullable=False,
+                            choices=[mt.value for mt in ModelType], location='json')
+        args = parser.parse_args()
+
+        model_provider_service = ModelProviderService()
+        model_provider_service.enable_model(
+            tenant_id=tenant_id,
+            provider=provider,
+            model=args['model'],
+            model_type=args['model_type']
+        )
+
+        return {'result': 'success'}
+
+
+class ModelProviderModelDisableApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def patch(self, provider: str):
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('model', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('model_type', type=str, required=True, nullable=False,
+                            choices=[mt.value for mt in ModelType], location='json')
+        args = parser.parse_args()
+
+        model_provider_service = ModelProviderService()
+        model_provider_service.disable_model(
+            tenant_id=tenant_id,
+            provider=provider,
+            model=args['model'],
+            model_type=args['model_type']
+        )
+
+        return {'result': 'success'}
 
 
 class ModelProviderModelValidateApi(Resource):
@@ -258,6 +359,10 @@ class ModelProviderAvailableModelApi(Resource):
 
 
 api.add_resource(ModelProviderModelApi, '/workspaces/current/model-providers/<string:provider>/models')
+api.add_resource(ModelProviderModelEnableApi, '/workspaces/current/model-providers/<string:provider>/models/enable',
+                 endpoint='model-provider-model-enable')
+api.add_resource(ModelProviderModelDisableApi, '/workspaces/current/model-providers/<string:provider>/models/disable',
+                 endpoint='model-provider-model-disable')
 api.add_resource(ModelProviderModelCredentialApi,
                  '/workspaces/current/model-providers/<string:provider>/models/credentials')
 api.add_resource(ModelProviderModelValidateApi,

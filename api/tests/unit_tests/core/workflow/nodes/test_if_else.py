@@ -1,5 +1,6 @@
 from unittest.mock import MagicMock
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import UserFrom
@@ -15,6 +16,7 @@ def test_execute_if_else_result_true():
         workflow_id='1',
         user_id='1',
         user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
         config={
             'id': 'if-else',
             'data': {
@@ -118,6 +120,7 @@ def test_execute_if_else_result_true():
     # construct variable pool
     pool = VariablePool(system_variables={
         SystemVariable.FILES: [],
+        SystemVariable.USER_ID: 'aaa'
     }, user_inputs={})
     pool.append_variable(node_id='start', variable_key_list=['array_contains'], value=['ab', 'def'])
     pool.append_variable(node_id='start', variable_key_list=['array_not_contains'], value=['ac', 'def'])
@@ -154,6 +157,7 @@ def test_execute_if_else_result_false():
         workflow_id='1',
         user_id='1',
         user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.DEBUGGER,
         config={
             'id': 'if-else',
             'data': {
@@ -179,6 +183,7 @@ def test_execute_if_else_result_false():
     # construct variable pool
     pool = VariablePool(system_variables={
         SystemVariable.FILES: [],
+        SystemVariable.USER_ID: 'aaa'
     }, user_inputs={})
     pool.append_variable(node_id='start', variable_key_list=['array_contains'], value=['1ab', 'def'])
     pool.append_variable(node_id='start', variable_key_list=['array_not_contains'], value=['ab', 'def'])

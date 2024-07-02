@@ -34,6 +34,8 @@ const translation = {
     log: 'ログ',
     learnMore: '詳細を見る',
     params: 'パラメータ',
+    duplicate: '重複',
+    rename: '名前の変更',
   },
   placeholder: {
     input: '入力してください',
@@ -42,6 +44,7 @@ const translation = {
   voice: {
     language: {
       zhHans: '中国語',
+      zhHant: '繁体字中国語',
       enUS: '英語',
       deDE: 'ドイツ語',
       frFR: 'フランス語',
@@ -54,6 +57,8 @@ const translation = {
       ptBR: 'ポルトガル語',
       ruRU: 'ロシア語',
       ukUA: 'ウクライナ語',
+      viVN: 'ベトナム語',
+      plPL: 'ポーランド語',
     },
   },
   unit: {
@@ -151,6 +156,9 @@ const translation = {
     langGeniusAccountTip: 'Difyアカウントと関連するユーザーデータ。',
     editName: '名前を編集',
     showAppLength: '{{length}}アプリを表示',
+    delete: 'アカウントを削除',
+    deleteTip: 'アカウントを削除すると、すべてのデータが完全に消去され、復元できなくなります。',
+    deleteConfirmTip: '確認のため、登録したメールから次の内容をに送信してください ',
   },
   members: {
     team: 'チーム',
@@ -164,6 +172,8 @@ const translation = {
     adminTip: 'アプリの構築およびチーム設定の管理ができます',
     normal: '通常',
     normalTip: 'アプリの使用のみが可能で、アプリの構築はできません',
+    editor: 'エディター',
+    editorTip: 'アプリの構築ができますが、チーム設定の管理はできません',
     inviteTeamMember: 'チームメンバーを招待する',
     inviteTeamMemberTip: '彼らはサインイン後、直接あなたのチームデータにアクセスできます。',
     email: 'メール',
@@ -180,6 +190,7 @@ const translation = {
     removeFromTeamTip: 'チームへのアクセスが削除されます',
     setAdmin: '管理者に設定',
     setMember: '通常のメンバーに設定',
+    setEditor: 'エディターに設定',
     disinvite: '招待をキャンセル',
     deleteMember: 'メンバーを削除',
     you: '(あなた)',
@@ -455,6 +466,21 @@ const translation = {
     pasteImageLinkInputPlaceholder: 'ここに画像リンクを貼り付けてください',
     pasteImageLinkInvalid: '無効な画像リンク',
     imageUpload: '画像アップロード',
+  },
+  tag: {
+    placeholder: 'すべてのタグ',
+    addNew: '新しいタグを追加',
+    noTag: 'タグなし',
+    noTagYet: 'まだタグがありません',
+    addTag: 'タグを追加',
+    editTag: 'タグを編集',
+    manageTags: 'タグの管理',
+    selectorPlaceholder: '検索または作成する文字を入力',
+    create: '作成',
+    delete: 'タグを削除',
+    deleteTip: 'タグは使用されています、削除しますか',
+    created: 'タグは正常に作成されました',
+    failed: 'タグの作成に失敗しました',
   },
 }
 

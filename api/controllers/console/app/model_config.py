@@ -25,6 +25,7 @@ class ModelConfigResource(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
     def post(self, app_model):
+        
         """Modify app model config"""
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
@@ -57,6 +58,7 @@ class ModelConfigResource(Resource):
                 try:
                     tool_runtime = ToolManager.get_agent_tool_runtime(
                         tenant_id=current_user.current_tenant_id,
+                        app_id=app_model.id,
                         agent_tool=agent_tool_entity,
                     )
                     manager = ToolParameterConfigurationManager(
@@ -64,6 +66,7 @@ class ModelConfigResource(Resource):
                         tool_runtime=tool_runtime,
                         provider_name=agent_tool_entity.provider_id,
                         provider_type=agent_tool_entity.provider_type,
+                        identity_id=f'AGENT.{app_model.id}'
                     )
                 except Exception as e:
                     continue
@@ -94,6 +97,7 @@ class ModelConfigResource(Resource):
                     try:
                         tool_runtime = ToolManager.get_agent_tool_runtime(
                             tenant_id=current_user.current_tenant_id,
+                            app_id=app_model.id,
                             agent_tool=agent_tool_entity,
                         )
                     except Exception as e:
@@ -104,6 +108,7 @@ class ModelConfigResource(Resource):
                     tool_runtime=tool_runtime,
                     provider_name=agent_tool_entity.provider_id,
                     provider_type=agent_tool_entity.provider_type,
+                    identity_id=f'AGENT.{app_model.id}'
                 )
                 manager.delete_tool_parameters_cache()
 
@@ -111,9 +116,11 @@ class ModelConfigResource(Resource):
                 if agent_tool_entity.tool_parameters:
                     if key not in masked_parameter_map:
                         continue
-
-                    if agent_tool_entity.tool_parameters == masked_parameter_map[key]:
-                        agent_tool_entity.tool_parameters = parameter_map[key]
+                    
+                    for masked_key, masked_value in masked_parameter_map[key].items():
+                        if masked_key in agent_tool_entity.tool_parameters and \
+                                agent_tool_entity.tool_parameters[masked_key] == masked_value:
+                            agent_tool_entity.tool_parameters[masked_key] = parameter_map[key].get(masked_key)
 
                 # encrypt parameters
                 if agent_tool_entity.tool_parameters:

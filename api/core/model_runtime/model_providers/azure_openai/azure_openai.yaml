@@ -54,11 +54,23 @@ model_credential_schema:
       required: true
       options:
         - label:
+            en_US: 2024-05-01-preview
+          value: 2024-05-01-preview
+        - label:
+            en_US: 2024-04-01-preview
+          value: 2024-04-01-preview
+        - label:
+            en_US: 2024-03-01-preview
+          value: 2024-03-01-preview
+        - label:
             en_US: 2024-02-15-preview
           value: 2024-02-15-preview
         - label:
             en_US: 2023-12-01-preview
           value: 2023-12-01-preview
+        - label:
+            en_US: '2024-02-01'
+          value: '2024-02-01'
       placeholder:
         zh_Hans: 在此选择您的 API 版本
         en_US: Select your API Version here
@@ -96,6 +108,24 @@ model_credential_schema:
         - label:
             en_US: gpt-4-32k
           value: gpt-4-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4o
+          value: gpt-4o
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4o-2024-05-13
+          value: gpt-4o-2024-05-13
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4-turbo
+          value: gpt-4-turbo
           show_on:
             - variable: __model_type
               value: llm

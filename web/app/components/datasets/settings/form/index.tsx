@@ -25,6 +25,7 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const rowClass = `
   flex justify-between py-4 flex-wrap gap-y-2
@@ -59,7 +60,17 @@ const Form = () => {
   const [permission, setPermission] = useState(currentDataset?.permission)
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
-
+  const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
+    currentDataset?.embedding_model
+      ? {
+        provider: currentDataset.embedding_model_provider,
+        model: currentDataset.embedding_model,
+      }
+      : {
+        provider: '',
+        model: '',
+      },
+  )
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
@@ -100,7 +111,12 @@ const Form = () => {
           description,
           permission,
           indexing_technique: indexMethod,
-          retrieval_model: postRetrievalConfig,
+          retrieval_model: {
+            ...postRetrievalConfig,
+            score_threshold: postRetrievalConfig.score_threshold_enabled ? postRetrievalConfig.score_threshold : 0,
+          },
+          embedding_model: embeddingModel.model,
+          embedding_model_provider: embeddingModel.provider,
         },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -182,25 +198,20 @@ const Form = () => {
           </div>
         </>
       )}
-      {currentDataset && currentDataset.indexing_technique === 'high_quality' && (
+      {indexMethod === 'high_quality' && (
         <div className={rowClass}>
           <div className={labelClass}>
             <div>{t('datasetSettings.form.embeddingModel')}</div>
           </div>
           <div className='w-[480px]'>
             <ModelSelector
-              readonly
-              triggerClassName='!h-9 !cursor-not-allowed opacity-60'
-              defaultModel={{
-                provider: currentDataset.embedding_model_provider,
-                model: currentDataset.embedding_model,
-              }}
+              triggerClassName=''
+              defaultModel={embeddingModel}
               modelList={embeddingModelList}
+              onSelect={(model: DefaultModel) => {
+                setEmbeddingModel(model)
+              }}
             />
-            <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
-              {t('datasetSettings.form.embeddingModelTip')}
-              <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
-            </div>
           </div>
         </div>
       )}
@@ -210,7 +221,7 @@ const Form = () => {
           <div>
             <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
             <div className='leading-[18px] text-xs font-normal text-gray-500'>
-              <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/features/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+              <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-6-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
               {t('datasetSettings.form.retrievalSetting.description')}
             </div>
           </div>
@@ -236,8 +247,8 @@ const Form = () => {
           <div className={labelClass} />
           <div className='w-[480px]'>
             <Button
-              className='min-w-24 text-sm'
-              type='primary'
+              className='min-w-24'
+              variant='primary'
               onClick={handleSave}
             >
               {t('datasetSettings.form.save')}

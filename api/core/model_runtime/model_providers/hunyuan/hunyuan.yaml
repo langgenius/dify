@@ -1,0 +1,40 @@
+provider: hunyuan
+label:
+  zh_Hans: 腾讯混元
+  en_US: Hunyuan
+description:
+  en_US: Models provided by Tencent Hunyuan, such as hunyuan-standard, hunyuan-standard-256k, hunyuan-pro and hunyuan-lite.
+  zh_Hans: 腾讯混元提供的模型，例如 hunyuan-standard、 hunyuan-standard-256k, hunyuan-pro 和 hunyuan-lite。
+icon_small:
+  en_US: icon_s_en.png
+icon_large:
+  en_US: icon_l_en.png
+background: "#F6F7F7"
+help:
+  title:
+    en_US: Get your API Key from Tencent Hunyuan
+    zh_Hans: 从腾讯混元获取 API Key
+  url:
+    en_US: https://console.cloud.tencent.com/cam/capi
+supported_model_types:
+  - llm
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: secret_id
+      label:
+        en_US: Secret ID
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 Secret ID
+        en_US: Enter your Secret ID
+    - variable: secret_key
+      label:
+        en_US: Secret Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 Secret Key
+        en_US: Enter your Secret Key

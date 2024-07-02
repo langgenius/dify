@@ -85,5 +85,5 @@ provider_credential_schema:
       type: text-input
       required: false
       placeholder:
-        zh_Hans: 在此输入您的 API Base
-        en_US: Enter your API Base
+        zh_Hans: 在此输入您的 API Base, 如：https://api.openai.com
+        en_US: Enter your API Base, e.g. https://api.openai.com

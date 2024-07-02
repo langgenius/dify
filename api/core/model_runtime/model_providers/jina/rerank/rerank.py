@@ -2,6 +2,8 @@ from typing import Optional
 
 import httpx
 
+from core.model_runtime.entities.common_entities import I18nObject
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType
 from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
@@ -38,9 +40,13 @@ class JinaRerankModel(RerankModel):
         if len(docs) == 0:
             return RerankResult(model=model, docs=[])
 
+        base_url = credentials.get('base_url', 'https://api.jina.ai/v1')
+        if base_url.endswith('/'):
+            base_url = base_url[:-1]
+
         try:
             response = httpx.post(
-                "https://api.jina.ai/v1/rerank",
+                base_url + '/rerank',
                 json={
                     "model": model,
                     "query": query,
@@ -103,3 +109,19 @@ class JinaRerankModel(RerankModel):
             InvokeAuthorizationError: [httpx.HTTPStatusError],  
             InvokeBadRequestError: [httpx.RequestError]
         }
+
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
+        """
+            generate custom model entities from credentials
+        """
+        entity = AIModelEntity(
+            model=model,
+            label=I18nObject(en_US=model),
+            model_type=ModelType.RERANK,
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_properties={
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size'))
+            }
+        )
+
+        return entity

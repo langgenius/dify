@@ -17,13 +17,19 @@ class VersionApi(Resource):
         args = parser.parse_args()
         check_update_url = current_app.config['CHECK_UPDATE_URL']
 
-        if not check_update_url:
-            return {
-                'version': '0.0.0',
-                'release_date': '',
-                'release_notes': '',
-                'can_auto_update': False
+        result = {
+            'version': current_app.config['CURRENT_VERSION'],
+            'release_date': '',
+            'release_notes': '',
+            'can_auto_update': False,
+            'features': {
+                'can_replace_logo': current_app.config['CAN_REPLACE_LOGO'],
+                'model_load_balancing_enabled': current_app.config['MODEL_LB_ENABLED']
             }
+        }
+
+        if not check_update_url:
+            return result
 
         try:
             response = requests.get(check_update_url, {
@@ -31,20 +37,15 @@ class VersionApi(Resource):
             })
         except Exception as error:
             logging.warning("Check update version error: {}.".format(str(error)))
-            return {
-                'version': args.get('current_version'),
-                'release_date': '',
-                'release_notes': '',
-                'can_auto_update': False
-            }
+            result['version'] = args.get('current_version')
+            return result
 
         content = json.loads(response.content)
-        return {
-            'version': content['version'],
-            'release_date': content['releaseDate'],
-            'release_notes': content['releaseNotes'],
-            'can_auto_update': content['canAutoUpdate']
-        }
+        result['version'] = content['version']
+        result['release_date'] = content['releaseDate']
+        result['release_notes'] = content['releaseNotes']
+        result['can_auto_update'] = content['canAutoUpdate']
+        return result
 
 
 api.add_resource(VersionApi, '/version')

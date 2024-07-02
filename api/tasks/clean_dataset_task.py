@@ -16,6 +16,7 @@ from models.dataset import (
 )
 
 
+# Add import statement for ValueError
 @shared_task(queue='dataset')
 def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
                        index_struct: str, collection_binding_id: str, doc_form: str):
@@ -48,6 +49,9 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
             logging.info(click.style('No documents found for dataset: {}'.format(dataset_id), fg='green'))
         else:
             logging.info(click.style('Cleaning documents for dataset: {}'.format(dataset_id), fg='green'))
+            # Specify the index type before initializing the index processor
+            if doc_form is None:
+                raise ValueError("Index type must be specified.")
             index_processor = IndexProcessorFactory(doc_form).init_index_processor()
             index_processor.clean(dataset, None)
 

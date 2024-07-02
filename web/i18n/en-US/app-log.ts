@@ -77,7 +77,15 @@ const translation = {
     workflowTitle: 'Log Detail',
   },
   promptLog: 'Prompt Log',
+  agentLog: 'Agent Log',
   viewLog: 'View Log',
+  agentLogDetail: {
+    agentMode: 'Agent Mode',
+    toolUsed: 'Tool Used',
+    iterations: 'Iterations',
+    iteration: 'Iteration',
+    finalProcessing: 'Final Processing',
+  },
 }
 
 export default translation

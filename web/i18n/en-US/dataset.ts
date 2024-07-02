@@ -1,13 +1,14 @@
 const translation = {
   knowledge: 'Knowledge',
   documentCount: ' docs',
-  wordCount: 'k words',
+  wordCount: ' k words',
   appCount: ' linked apps',
   createDataset: 'Create Knowledge',
   createDatasetIntro: 'Import your own text data or write data in real-time via Webhook for LLM context enhancement.',
   deleteDatasetConfirmTitle: 'Delete this Knowledge?',
   deleteDatasetConfirmContent:
     'Deleting the Knowledge is irreversible. Users will no longer be able to access your Knowledge, and all prompt configurations and logs will be permanently deleted.',
+  datasetUsedByApp: 'The knowledge is being used by some apps. Apps will no longer be able to use this Knowledge, and all prompt configurations and logs will be permanently deleted.',
   datasetDeleted: 'Knowledge deleted',
   datasetDeleteFailed: 'Failed to delete Knowledge',
   didYouKnow: 'Did you know?',
@@ -20,7 +21,7 @@ const translation = {
   unavailable: 'Unavailable',
   unavailableTip: 'Embedding model is not available, the default embedding model needs to be configured',
   datasets: 'KNOWLEDGE',
-  datasetsApi: 'API',
+  datasetsApi: 'API ACCESS',
   retrieval: {
     semantic_search: {
       title: 'Vector Search',
@@ -32,7 +33,7 @@ const translation = {
     },
     hybrid_search: {
       title: 'Hybrid Search',
-      description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Configuration of the Rerank model APIis necessary.',
+      description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Configuration of the Rerank model APIs necessary.',
       recommend: 'Recommend',
     },
     invertedIndex: {
@@ -42,6 +43,8 @@ const translation = {
     change: 'Change',
     changeRetrievalMethod: 'Change retrieval method',
   },
+  docsFailedNotice: 'documents failed to be indexed',
+  retry: 'Retry',
 }
 
 export default translation

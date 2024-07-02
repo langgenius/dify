@@ -1,7 +1,7 @@
 from typing import Optional
 
 from core.agent.entities import AgentEntity, AgentPromptEntity, AgentToolEntity
-from core.tools.prompt.template import REACT_PROMPT_TEMPLATES
+from core.agent.prompt.template import REACT_PROMPT_TEMPLATES
 
 
 class AgentConfigManager:
@@ -40,7 +40,7 @@ class AgentConfigManager:
                         'provider_type': tool['provider_type'],
                         'provider_id': tool['provider_id'],
                         'tool_name': tool['tool_name'],
-                        'tool_parameters': tool['tool_parameters'] if 'tool_parameters' in tool else {}
+                        'tool_parameters': tool.get('tool_parameters', {})
                     }
 
                     agent_tools.append(AgentToolEntity(**agent_tool_properties))

@@ -71,6 +71,10 @@ const translation = {
     },
     privacyPolicy: 'プライバシーポリシー',
     privacyPolicyPlaceholder: 'プライバシーポリシーを入力してください',
+    customDisclaimer: 'カスタム免責事項',
+    customDisclaimerPlaceholder: 'カスタム免責事項を入力してください',
+    deleteToolConfirmTitle: 'このツールを削除しますか？',
+    deleteToolConfirmContent: 'ツールの削除は取り消しできません。ユーザーはもうあなたのツールにアクセスできません。',
   },
   test: {
     title: 'テスト',

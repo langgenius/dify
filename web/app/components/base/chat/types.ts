@@ -3,7 +3,7 @@ import type {
   VisionFile,
   VisionSettings,
 } from '@/types/app'
-import type { IChatItem } from '@/app/components/app/chat/type'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { NodeTracing } from '@/types/workflow'
 import type { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
@@ -54,11 +54,13 @@ export type WorkflowProcess = {
   status: WorkflowRunningStatus
   tracing: NodeTracing[]
   expand?: boolean // for UI
+  resultText?: string
 }
 
 export type ChatItem = IChatItem & {
   isError?: boolean
   workflowProcess?: WorkflowProcess
+  conversationId?: string
 }
 
 export type OnSend = (message: string, files?: VisionFile[]) => void

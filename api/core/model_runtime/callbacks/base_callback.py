@@ -1,4 +1,3 @@
-from abc import ABC
 from typing import Optional
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
@@ -14,7 +13,7 @@ _TEXT_COLOR_MAPPING = {
 }
 
 
-class Callback(ABC):
+class Callback:
     """
     Base class for callbacks.
     Only for LLM.

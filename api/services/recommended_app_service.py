@@ -86,6 +86,7 @@ class RecommendedAppService:
                 'description': site.description,
                 'copyright': site.copyright,
                 'privacy_policy': site.privacy_policy,
+                'custom_disclaimer': site.custom_disclaimer,
                 'category': recommended_app.category,
                 'position': recommended_app.position,
                 'is_listed': recommended_app.is_listed
@@ -94,7 +95,7 @@ class RecommendedAppService:
 
             categories.add(recommended_app.category)  # add category to categories
 
-        return {'recommended_apps': recommended_apps_result, 'categories': list(categories)}
+        return {'recommended_apps': recommended_apps_result, 'categories': sorted(categories)}
 
     @classmethod
     def _fetch_recommended_apps_from_dify_official(cls, language: str) -> dict:

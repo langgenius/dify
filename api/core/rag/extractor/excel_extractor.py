@@ -1,8 +1,8 @@
 """Abstract interface for document loader implementations."""
+import os
 from typing import Optional
 
 import pandas as pd
-import xlrd
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -28,61 +28,26 @@ class ExcelExtractor(BaseExtractor):
         self._autodetect_encoding = autodetect_encoding
 
     def extract(self) -> list[Document]:
-        """ parse excel file"""
-        if self._file_path.endswith('.xls'):
-            return self._extract4xls()
-        elif self._file_path.endswith('.xlsx'):
-            return self._extract4xlsx()
-
-    def _extract4xls(self) -> list[Document]:
-        wb = xlrd.open_workbook(filename=self._file_path)
+        """ Load from Excel file in xls or xlsx format using Pandas."""
         documents = []
-        # loop over all sheets
-        for sheet in wb.sheets():
-            for row_index, row in enumerate(sheet.get_rows(), start=1):
-                row_header = None
-                if self.is_blank_row(row):
-                    continue
-                if row_header is None:
-                    row_header = row
-                    continue
-                item_arr = []
-                for index, cell in enumerate(row):
-                    txt_value = str(cell.value)
-                    item_arr.append(f'{row_header[index].value}:{txt_value}')
-                item_str = "\n".join(item_arr)
-                document = Document(page_content=item_str, metadata={'source': self._file_path})
-                documents.append(document)
-        return documents
-
-    def _extract4xlsx(self) -> list[Document]:
-        """Load from file path using Pandas."""
-        data = []
+        # Determine the file extension
+        file_extension = os.path.splitext(self._file_path)[-1].lower()
         # Read each worksheet of an Excel file using Pandas
-        xls = pd.ExcelFile(self._file_path)
-        for sheet_name in xls.sheet_names:
-            df = pd.read_excel(xls, sheet_name=sheet_name)
+        if file_extension == '.xlsx':
+            excel_file = pd.ExcelFile(self._file_path, engine='openpyxl')
+        elif file_extension == '.xls':
+            excel_file = pd.ExcelFile(self._file_path, engine='xlrd')
+        else:
+            raise ValueError(f"Unsupported file extension: {file_extension}")
+        for sheet_name in excel_file.sheet_names:
+            df: pd.DataFrame = excel_file.parse(sheet_name=sheet_name)
 
             # filter out rows with all NaN values
             df.dropna(how='all', inplace=True)
 
             # transform each row into a Document
-            for _, row in df.iterrows():
-                item = ';'.join(f'{k}:{v}' for k, v in row.items() if pd.notna(v))
-                document = Document(page_content=item, metadata={'source': self._file_path})
-                data.append(document)
-        return data
+            documents += [Document(page_content=';'.join(f'"{k}":"{v}"' for k, v in row.items() if pd.notna(v)),
+                                   metadata={'source': self._file_path},
+                                   ) for _, row in df.iterrows()]
 
-    @staticmethod
-    def is_blank_row(row):
-        """
-
-        Determine whether the specified line is a blank line.
-        :param row: row object。
-        :return: Returns True if the row is blank, False otherwise.
-        """
-        # Iterates through the cells and returns False if a non-empty cell is found
-        for cell in row:
-            if cell.value is not None and cell.value != '':
-                return False
-        return True
+        return documents

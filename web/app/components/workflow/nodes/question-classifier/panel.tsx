@@ -11,6 +11,8 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
@@ -25,18 +27,23 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
     inputs,
     handleModelChanged,
     isChatMode,
+    isChatModel,
     handleCompletionParamsChange,
     handleQueryVarChange,
     handleTopicsChange,
+    hasSetBlockStatus,
+    availableVars,
+    availableNodesWithParent,
     handleInstructionChange,
+    inputVarValues,
+    varInputs,
+    setInputVarValues,
     handleMemoryChange,
     isShowSingleRun,
     hideSingleRun,
     runningStatus,
     handleRun,
     handleStop,
-    query,
-    setQuery,
     runResult,
     filterVar,
   } = useConfig(id, data)
@@ -44,8 +51,8 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
   const model = inputs.model
 
   return (
-    <div>
-      <div className='mt-2 px-4 space-y-4'>
+    <div className='mt-2'>
+      <div className='px-4 pb-4 space-y-4'>
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
         >
@@ -97,8 +104,25 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             memory={inputs.memory}
             onMemoryChange={handleMemoryChange}
             readonly={readOnly}
+            isChatApp={isChatMode}
+            isChatModel={isChatModel}
+            hasSetBlockStatus={hasSetBlockStatus}
+            nodesOutputVars={availableVars}
+            availableNodes={availableNodesWithParent}
           />
         </Field>
+      </div>
+      <Split />
+      <div className='px-4 pt-4 pb-2'>
+        <OutputVars>
+          <>
+            <VarItem
+              name='class_name'
+              type='string'
+              description={t(`${i18nPrefix}.outputVars.className`)}
+            />
+          </>
+        </OutputVars>
       </div>
       {isShowSingleRun && (
         <BeforeRunForm
@@ -111,9 +135,9 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
                 variable: 'query',
                 type: InputVarType.paragraph,
                 required: true,
-              }],
-              values: { query },
-              onChange: keyValue => setQuery((keyValue as any).query),
+              }, ...varInputs],
+              values: inputVarValues,
+              onChange: setInputVarValues,
             },
           ]}
           runningStatus={runningStatus}

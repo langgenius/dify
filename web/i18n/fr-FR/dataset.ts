@@ -1,13 +1,14 @@
 const translation = {
   knowledge: 'Connaissance',
   documentCount: ' documents',
-  wordCount: 'k mots',
+  wordCount: ' k mots',
   appCount: ' applications liées',
   createDataset: 'Créer des Connaissances',
   createDatasetIntro: 'Importez vos propres données textuelles ou écrivez des données en temps réel via Webhook pour l\'amélioration du contexte LLM.',
   deleteDatasetConfirmTitle: 'Supprimer cette Connaissance ?',
   deleteDatasetConfirmContent:
     'La suppression de la Connaissance est irréversible. Les utilisateurs ne pourront plus accéder à votre Savoir, et toutes les configurations de prompt et les journaux seront supprimés de façon permanente.',
+  datasetUsedByApp: 'La connaissance est utilisée par certaines applications. Les applications ne pourront plus utiliser cette Connaissance, et toutes les configurations de prompts et les journaux seront définitivement supprimés.',
   datasetDeleted: 'Connaissance supprimée',
   datasetDeleteFailed: 'Échec de la suppression de la Connaissance',
   didYouKnow: 'Saviez-vous ?',
@@ -42,6 +43,8 @@ const translation = {
     change: 'Changer',
     changeRetrievalMethod: 'Changer la méthode de récupération',
   },
+  docsFailedNotice: 'Les documents n\'ont pas pu être indexés',
+  retry: 'Réessayer',
 }
 
 export default translation

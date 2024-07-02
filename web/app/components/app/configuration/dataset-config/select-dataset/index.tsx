@@ -94,7 +94,6 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       isShow={isShow}
       onClose={onClose}
       className='w-[400px]'
-      wrapperClassName='!z-[101]'
       title={t('appDebug.feature.dataSet.selectTitle')}
     >
       {!loaded && (
@@ -156,8 +155,8 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
             {selected.length > 0 && `${selected.length} ${t('appDebug.feature.dataSet.selected')}`}
           </div>
           <div className='flex space-x-2'>
-            <Button className='!w-24 !h-9' onClick={onClose}>{t('common.operation.cancel')}</Button>
-            <Button className='!w-24 !h-9' type='primary' onClick={handleSelect} disabled={hasNoData}>{t('common.operation.add')}</Button>
+            <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
+            <Button variant='primary' onClick={handleSelect} disabled={hasNoData}>{t('common.operation.add')}</Button>
           </div>
         </div>
       )}

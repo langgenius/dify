@@ -38,3 +38,23 @@ parameters:
       pt_BR: used for identifying the browser.
     form: form
     default: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.1000.0 Safari/537.36
+  - name: generate_summary
+    type: boolean
+    required: false
+    label:
+      en_US: Whether to generate summary
+      zh_Hans: 是否生成摘要
+    human_description:
+      en_US: If true, the crawler will only return the page summary content.
+      zh_Hans: 如果启用，爬虫将仅返回页面摘要内容。
+    form: form
+    options:
+      - value: 'true'
+        label:
+          en_US: 'Yes'
+          zh_Hans: 是
+      - value: 'false'
+        label:
+          en_US: 'No'
+          zh_Hans: 否
+    default: 'false'

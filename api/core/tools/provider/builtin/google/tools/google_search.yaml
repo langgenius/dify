@@ -25,27 +25,3 @@ parameters:
       pt_BR: used for searching
     llm_description: key words for searching
     form: llm
-  - name: result_type
-    type: select
-    required: true
-    options:
-      - value: text
-        label:
-          en_US: text
-          zh_Hans: 文本
-          pt_BR: texto
-      - value: link
-        label:
-          en_US: link
-          zh_Hans: 链接
-          pt_BR: link
-    default: link
-    label:
-      en_US: Result type
-      zh_Hans: 结果类型
-      pt_BR: Result type
-    human_description:
-      en_US: used for selecting the result type, text or link
-      zh_Hans: 用于选择结果类型，使用文本还是链接进行展示
-      pt_BR: used for selecting the result type, text or link
-    form: form

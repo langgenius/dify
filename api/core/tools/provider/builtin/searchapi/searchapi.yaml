@@ -1,0 +1,34 @@
+identity:
+  author: SearchApi
+  name: searchapi
+  label:
+    en_US: SearchApi
+    zh_Hans: SearchApi
+    pt_BR: SearchApi
+  description:
+    en_US: SearchApi is a robust real-time SERP API delivering structured data from a collection of search engines including Google Search, Google Jobs, YouTube, Google News, and many more.
+    zh_Hans: SearchApi 是一个强大的实时 SERP API，可提供来自 Google 搜索、Google 招聘、YouTube、Google 新闻等搜索引擎集合的结构化数据。
+    pt_BR: SearchApi is a robust real-time SERP API delivering structured data from a collection of search engines including Google Search, Google Jobs, YouTube, Google News, and many more.
+  icon: icon.svg
+  tags:
+    - search
+    - business
+    - news
+    - productivity
+credentials_for_provider:
+  searchapi_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: SearchApi API key
+      zh_Hans: SearchApi API key
+      pt_BR: SearchApi API key
+    placeholder:
+      en_US: Please input your SearchApi API key
+      zh_Hans: 请输入你的 SearchApi API key
+      pt_BR: Please input your SearchApi API key
+    help:
+      en_US: Get your SearchApi API key from SearchApi
+      zh_Hans: 从 SearchApi 获取您的 SearchApi API key
+      pt_BR: Get your SearchApi API key from SearchApi
+    url: https://www.searchapi.io/

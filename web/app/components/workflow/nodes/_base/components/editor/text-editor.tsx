@@ -13,6 +13,7 @@ type Props = {
   onBlur?: () => void
   placeholder?: string
   readonly?: boolean
+  isInNode?: boolean
 }
 
 const TextEditor: FC<Props> = ({
@@ -24,6 +25,7 @@ const TextEditor: FC<Props> = ({
   onBlur,
   placeholder,
   readonly,
+  isInNode,
 }) => {
   const [isFocus, {
     setTrue: setIsFocus,
@@ -43,6 +45,7 @@ const TextEditor: FC<Props> = ({
         headerRight={headerRight}
         isFocus={isFocus}
         minHeight={minHeight}
+        isInNode={isInNode}
       >
         <textarea
           value={value}

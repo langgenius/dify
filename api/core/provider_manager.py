@@ -11,6 +11,8 @@ from core.entities.provider_entities import (
     CustomConfiguration,
     CustomModelConfiguration,
     CustomProviderConfiguration,
+    ModelLoadBalancingConfiguration,
+    ModelSettings,
     QuotaConfiguration,
     SystemConfiguration,
 )
@@ -25,14 +27,18 @@ from core.model_runtime.entities.provider_entities import (
 from core.model_runtime.model_providers import model_provider_factory
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models.provider import (
+    LoadBalancingModelConfig,
     Provider,
     ProviderModel,
+    ProviderModelSetting,
     ProviderQuotaType,
     ProviderType,
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from services.feature_service import FeatureService
 
 
 class ProviderManager:
@@ -98,6 +104,13 @@ class ProviderManager:
         # Get All preferred provider types of the workspace
         provider_name_to_preferred_model_provider_records_dict = self._get_all_preferred_model_providers(tenant_id)
 
+        # Get All provider model settings
+        provider_name_to_provider_model_settings_dict = self._get_all_provider_model_settings(tenant_id)
+
+        # Get All load balancing configs
+        provider_name_to_provider_load_balancing_model_configs_dict \
+            = self._get_all_provider_load_balancing_configs(tenant_id)
+
         provider_configurations = ProviderConfigurations(
             tenant_id=tenant_id
         )
@@ -105,14 +118,8 @@ class ProviderManager:
         # Construct ProviderConfiguration objects for each provider
         for provider_entity in provider_entities:
             provider_name = provider_entity.provider
-
-            provider_records = provider_name_to_provider_records_dict.get(provider_entity.provider)
-            if not provider_records:
-                provider_records = []
-
-            provider_model_records = provider_name_to_provider_model_records_dict.get(provider_entity.provider)
-            if not provider_model_records:
-                provider_model_records = []
+            provider_records = provider_name_to_provider_records_dict.get(provider_entity.provider, [])
+            provider_model_records = provider_name_to_provider_model_records_dict.get(provider_entity.provider, [])
 
             # Convert to custom configuration
             custom_configuration = self._to_custom_configuration(
@@ -134,38 +141,38 @@ class ProviderManager:
 
             if preferred_provider_type_record:
                 preferred_provider_type = ProviderType.value_of(preferred_provider_type_record.preferred_provider_type)
+            elif custom_configuration.provider or custom_configuration.models:
+                preferred_provider_type = ProviderType.CUSTOM
+            elif system_configuration.enabled:
+                preferred_provider_type = ProviderType.SYSTEM
             else:
-                if custom_configuration.provider or custom_configuration.models:
-                    preferred_provider_type = ProviderType.CUSTOM
-                elif system_configuration.enabled:
-                    preferred_provider_type = ProviderType.SYSTEM
-                else:
-                    preferred_provider_type = ProviderType.CUSTOM
+                preferred_provider_type = ProviderType.CUSTOM
 
             using_provider_type = preferred_provider_type
+            has_valid_quota = any(quota_conf.is_valid for quota_conf in system_configuration.quota_configurations)
+
             if preferred_provider_type == ProviderType.SYSTEM:
-                if not system_configuration.enabled:
+                if not system_configuration.enabled or not has_valid_quota:
                     using_provider_type = ProviderType.CUSTOM
 
-                has_valid_quota = False
-                for quota_configuration in system_configuration.quota_configurations:
-                    if quota_configuration.is_valid:
-                        has_valid_quota = True
-                        break
-
-                if not has_valid_quota:
-                    using_provider_type = ProviderType.CUSTOM
             else:
                 if not custom_configuration.provider and not custom_configuration.models:
-                    if system_configuration.enabled:
-                        has_valid_quota = False
-                        for quota_configuration in system_configuration.quota_configurations:
-                            if quota_configuration.is_valid:
-                                has_valid_quota = True
-                                break
+                    if system_configuration.enabled and has_valid_quota:
+                        using_provider_type = ProviderType.SYSTEM
 
-                        if has_valid_quota:
-                            using_provider_type = ProviderType.SYSTEM
+            # Get provider load balancing configs
+            provider_model_settings = provider_name_to_provider_model_settings_dict.get(provider_name)
+
+            # Get provider load balancing configs
+            provider_load_balancing_configs \
+                = provider_name_to_provider_load_balancing_model_configs_dict.get(provider_name)
+
+            # Convert to model settings
+            model_settings = self._to_model_settings(
+                provider_entity=provider_entity,
+                provider_model_settings=provider_model_settings,
+                load_balancing_model_configs=provider_load_balancing_configs
+            )
 
             provider_configuration = ProviderConfiguration(
                 tenant_id=tenant_id,
@@ -173,7 +180,8 @@ class ProviderManager:
                 preferred_provider_type=preferred_provider_type,
                 using_provider_type=using_provider_type,
                 system_configuration=system_configuration,
-                custom_configuration=custom_configuration
+                custom_configuration=custom_configuration,
+                model_settings=model_settings
             )
 
             provider_configurations[provider_name] = provider_configuration
@@ -233,30 +241,17 @@ class ProviderManager:
             )
 
             if available_models:
-                found = False
-                for available_model in available_models:
-                    if available_model.model == "gpt-4":
-                        default_model = TenantDefaultModel(
-                            tenant_id=tenant_id,
-                            model_type=model_type.to_origin_model_type(),
-                            provider_name=available_model.provider.provider,
-                            model_name=available_model.model
-                        )
-                        db.session.add(default_model)
-                        db.session.commit()
-                        found = True
-                        break
+                available_model = next((model for model in available_models if model.model == "gpt-4"),
+                                       available_models[0])
 
-                if not found:
-                    available_model = available_models[0]
-                    default_model = TenantDefaultModel(
-                        tenant_id=tenant_id,
-                        model_type=model_type.to_origin_model_type(),
-                        provider_name=available_model.provider.provider,
-                        model_name=available_model.model
-                    )
-                    db.session.add(default_model)
-                    db.session.commit()
+                default_model = TenantDefaultModel(
+                    tenant_id=tenant_id,
+                    model_type=model_type.to_origin_model_type(),
+                    provider_name=available_model.provider.provider,
+                    model_name=available_model.model
+                )
+                db.session.add(default_model)
+                db.session.commit()
 
         if not default_model:
             return None
@@ -371,7 +366,7 @@ class ProviderManager:
         """
         Get All preferred provider types of the workspace.
 
-        :param tenant_id:
+        :param tenant_id: workspace id
         :return:
         """
         preferred_provider_types = db.session.query(TenantPreferredModelProvider) \
@@ -385,6 +380,56 @@ class ProviderManager:
         }
 
         return provider_name_to_preferred_provider_type_records_dict
+
+    def _get_all_provider_model_settings(self, tenant_id: str) -> dict[str, list[ProviderModelSetting]]:
+        """
+        Get All provider model settings of the workspace.
+
+        :param tenant_id: workspace id
+        :return:
+        """
+        provider_model_settings = db.session.query(ProviderModelSetting) \
+            .filter(
+            ProviderModelSetting.tenant_id == tenant_id
+        ).all()
+
+        provider_name_to_provider_model_settings_dict = defaultdict(list)
+        for provider_model_setting in provider_model_settings:
+            (provider_name_to_provider_model_settings_dict[provider_model_setting.provider_name]
+             .append(provider_model_setting))
+
+        return provider_name_to_provider_model_settings_dict
+
+    def _get_all_provider_load_balancing_configs(self, tenant_id: str) -> dict[str, list[LoadBalancingModelConfig]]:
+        """
+        Get All provider load balancing configs of the workspace.
+
+        :param tenant_id: workspace id
+        :return:
+        """
+        cache_key = f"tenant:{tenant_id}:model_load_balancing_enabled"
+        cache_result = redis_client.get(cache_key)
+        if cache_result is None:
+            model_load_balancing_enabled = FeatureService.get_features(tenant_id).model_load_balancing_enabled
+            redis_client.setex(cache_key, 120, str(model_load_balancing_enabled))
+        else:
+            cache_result = cache_result.decode('utf-8')
+            model_load_balancing_enabled = cache_result == 'True'
+
+        if not model_load_balancing_enabled:
+            return {}
+
+        provider_load_balancing_configs = db.session.query(LoadBalancingModelConfig) \
+            .filter(
+            LoadBalancingModelConfig.tenant_id == tenant_id
+        ).all()
+
+        provider_name_to_provider_load_balancing_model_configs_dict = defaultdict(list)
+        for provider_load_balancing_config in provider_load_balancing_configs:
+            (provider_name_to_provider_load_balancing_model_configs_dict[provider_load_balancing_config.provider_name]
+             .append(provider_load_balancing_config))
+
+        return provider_name_to_provider_load_balancing_model_configs_dict
 
     def _init_trial_provider_records(self, tenant_id: str,
                                      provider_name_to_provider_records_dict: dict[str, list]) -> dict[str, list]:
@@ -406,7 +451,7 @@ class ProviderManager:
             if not provider_records:
                 provider_records = []
 
-            provider_quota_to_provider_record_dict = dict()
+            provider_quota_to_provider_record_dict = {}
             for provider_record in provider_records:
                 if provider_record.provider_type != ProviderType.SYSTEM.value:
                     continue
@@ -616,7 +661,7 @@ class ProviderManager:
         provider_hosting_configuration = hosting_configuration.provider_map.get(provider_entity.provider)
 
         # Convert provider_records to dict
-        quota_type_to_provider_records_dict = dict()
+        quota_type_to_provider_records_dict = {}
         for provider_record in provider_records:
             if provider_record.provider_type != ProviderType.SYSTEM.value:
                 continue
@@ -759,3 +804,97 @@ class ProviderManager:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables
+
+    def _to_model_settings(self, provider_entity: ProviderEntity,
+                           provider_model_settings: Optional[list[ProviderModelSetting]] = None,
+                           load_balancing_model_configs: Optional[list[LoadBalancingModelConfig]] = None) \
+            -> list[ModelSettings]:
+        """
+        Convert to model settings.
+
+        :param provider_model_settings: provider model settings include enabled, load balancing enabled
+        :param load_balancing_model_configs: load balancing model configs
+        :return:
+        """
+        # Get provider model credential secret variables
+        model_credential_secret_variables = self._extract_secret_variables(
+            provider_entity.model_credential_schema.credential_form_schemas
+            if provider_entity.model_credential_schema else []
+        )
+
+        model_settings = []
+        if not provider_model_settings:
+            return model_settings
+
+        for provider_model_setting in provider_model_settings:
+            load_balancing_configs = []
+            if provider_model_setting.load_balancing_enabled and load_balancing_model_configs:
+                for load_balancing_model_config in load_balancing_model_configs:
+                    if (load_balancing_model_config.model_name == provider_model_setting.model_name
+                            and load_balancing_model_config.model_type == provider_model_setting.model_type):
+                        if not load_balancing_model_config.enabled:
+                            continue
+
+                        if not load_balancing_model_config.encrypted_config:
+                            if load_balancing_model_config.name == "__inherit__":
+                                load_balancing_configs.append(ModelLoadBalancingConfiguration(
+                                    id=load_balancing_model_config.id,
+                                    name=load_balancing_model_config.name,
+                                    credentials={}
+                                ))
+                            continue
+
+                        provider_model_credentials_cache = ProviderCredentialsCache(
+                            tenant_id=load_balancing_model_config.tenant_id,
+                            identity_id=load_balancing_model_config.id,
+                            cache_type=ProviderCredentialsCacheType.LOAD_BALANCING_MODEL
+                        )
+
+                        # Get cached provider model credentials
+                        cached_provider_model_credentials = provider_model_credentials_cache.get()
+
+                        if not cached_provider_model_credentials:
+                            try:
+                                provider_model_credentials = json.loads(load_balancing_model_config.encrypted_config)
+                            except JSONDecodeError:
+                                continue
+
+                            # Get decoding rsa key and cipher for decrypting credentials
+                            if self.decoding_rsa_key is None or self.decoding_cipher_rsa is None:
+                                self.decoding_rsa_key, self.decoding_cipher_rsa = encrypter.get_decrypt_decoding(
+                                    load_balancing_model_config.tenant_id)
+
+                            for variable in model_credential_secret_variables:
+                                if variable in provider_model_credentials:
+                                    try:
+                                        provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
+                                            provider_model_credentials.get(variable),
+                                            self.decoding_rsa_key,
+                                            self.decoding_cipher_rsa
+                                        )
+                                    except ValueError:
+                                        pass
+
+                            # cache provider model credentials
+                            provider_model_credentials_cache.set(
+                                credentials=provider_model_credentials
+                            )
+                        else:
+                            provider_model_credentials = cached_provider_model_credentials
+
+                        load_balancing_configs.append(ModelLoadBalancingConfiguration(
+                            id=load_balancing_model_config.id,
+                            name=load_balancing_model_config.name,
+                            credentials=provider_model_credentials
+                        ))
+
+            model_settings.append(
+                ModelSettings(
+                    model=provider_model_setting.model_name,
+                    model_type=ModelType.value_of(provider_model_setting.model_type),
+                    enabled=provider_model_setting.enabled,
+                    load_balancing_configs=load_balancing_configs if len(load_balancing_configs) > 1 else []
+                )
+            )
+
+        return model_settings

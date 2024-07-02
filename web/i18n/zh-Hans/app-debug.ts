@@ -281,6 +281,7 @@ const translation = {
     'inputPlaceholder': '请输入',
     'labelName': '显示名称',
     'required': '必填',
+    'content': '内容',
     'errorMsg': {
       varNameRequired: '变量名称必填',
       labelNameRequired: '显示名称必填',
@@ -323,7 +324,7 @@ const translation = {
   openingStatement: {
     title: '对话开场白',
     add: '添加开场白',
-    writeOpner: '编写开场白',
+    writeOpener: '编写开场白',
     placeholder: '在这里写下你的开场白，你可以使用变量，尝试输入 {{variable}}。',
     openingQuestion: '开场问题',
     noDataPlaceHolder:

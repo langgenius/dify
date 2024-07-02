@@ -2,7 +2,7 @@ from abc import ABC
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class PromptMessageRole(Enum):
@@ -88,6 +88,14 @@ class PromptMessage(ABC, BaseModel):
     content: Optional[str | list[PromptMessageContent]] = None
     name: Optional[str] = None
 
+    def is_empty(self) -> bool:
+        """
+        Check if prompt message is empty.
+
+        :return: True if prompt message is empty, False otherwise
+        """
+        return not self.content
+
 
 class UserPromptMessage(PromptMessage):
     """
@@ -115,9 +123,27 @@ class AssistantPromptMessage(PromptMessage):
         type: str
         function: ToolCallFunction
 
+        @field_validator('id', mode='before')
+        @classmethod
+        def transform_id_to_str(cls, value) -> str:
+            if not isinstance(value, str):
+                return str(value)
+            else:
+                return value
+
     role: PromptMessageRole = PromptMessageRole.ASSISTANT
     tool_calls: list[ToolCall] = []
 
+    def is_empty(self) -> bool:
+        """
+        Check if prompt message is empty.
+
+        :return: True if prompt message is empty, False otherwise
+        """
+        if not super().is_empty() and not self.tool_calls:
+            return False
+
+        return True
 
 class SystemPromptMessage(PromptMessage):
     """
@@ -132,3 +158,14 @@ class ToolPromptMessage(PromptMessage):
     """
     role: PromptMessageRole = PromptMessageRole.TOOL
     tool_call_id: str
+
+    def is_empty(self) -> bool:
+        """
+        Check if prompt message is empty.
+
+        :return: True if prompt message is empty, False otherwise
+        """
+        if not super().is_empty() and not self.tool_call_id:
+            return False
+
+        return True

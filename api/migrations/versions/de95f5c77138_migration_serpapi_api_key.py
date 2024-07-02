@@ -8,7 +8,7 @@ Create Date: 2024-01-21 12:09:04.651394
 from json import dumps, loads
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 # revision identifiers, used by Alembic.
 revision = 'de95f5c77138'
@@ -40,8 +40,13 @@ def upgrade():
         {"serpapi_api_key": "$KEY"}
     - created_at <- tool_providers.created_at
     - updated_at <- tool_providers.updated_at
-
     """
+
+    # in alembic's offline mode (with --sql option), skip data operations and output comments describing the migration to raw sql
+    if context.is_offline_mode():
+        print(f"    /*{upgrade.__doc__}*/\n")
+        return
+
     # select all tool_providers
     tool_providers = op.get_bind().execute(
         sa.text(

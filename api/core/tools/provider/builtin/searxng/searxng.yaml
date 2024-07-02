@@ -8,6 +8,9 @@ identity:
     en_US: A free internet metasearch engine.
     zh_Hans: 开源互联网元搜索引擎
   icon: icon.svg
+  tags:
+    - search
+    - productivity
 credentials_for_provider:
   searxng_base_url:
     type: secret-input

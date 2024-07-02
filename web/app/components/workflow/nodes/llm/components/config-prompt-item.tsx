@@ -3,16 +3,20 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { uniqueId } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
-import type { PromptItem } from '../../../types'
+import { RiQuestionLine } from '@remixicon/react'
+import type { PromptItem, Variable } from '../../../types'
+import { EditionType } from '../../../types'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { PromptRole } from '@/models/debug'
 
 const i18nPrefix = 'workflow.nodes.llm'
 
 type Props = {
+  className?: string
+  headerClassName?: string
+  canNotChooseSystemRole?: boolean
   readOnly: boolean
   id: string
   canRemove: boolean
@@ -21,6 +25,7 @@ type Props = {
   payload: PromptItem
   handleChatModeMessageRoleChange: (role: PromptRole) => void
   onPromptChange: (p: string) => void
+  onEditionTypeChange: (editionType: EditionType) => void
   onRemove: () => void
   isShowContext: boolean
   hasSetBlockStatus: {
@@ -30,6 +35,8 @@ type Props = {
   }
   availableVars: any
   availableNodes: any
+  varList: Variable[]
+  handleAddVariable: (payload: any) => void
 }
 
 const roleOptions = [
@@ -47,7 +54,12 @@ const roleOptions = [
   },
 ]
 
+const roleOptionsWithoutSystemRole = roleOptions.filter(item => item.value !== PromptRole.system)
+
 const ConfigPromptItem: FC<Props> = ({
+  className,
+  headerClassName,
+  canNotChooseSystemRole,
   readOnly,
   id,
   canRemove,
@@ -56,41 +68,54 @@ const ConfigPromptItem: FC<Props> = ({
   isChatApp,
   payload,
   onPromptChange,
+  onEditionTypeChange,
   onRemove,
   isShowContext,
   hasSetBlockStatus,
   availableVars,
   availableNodes,
+  varList,
+  handleAddVariable,
 }) => {
   const { t } = useTranslation()
   const [instanceId, setInstanceId] = useState(uniqueId())
   useEffect(() => {
     setInstanceId(`${id}-${uniqueId()}`)
   }, [id])
-  return (
 
+  return (
     <Editor
+      className={className}
+      headerClassName={headerClassName}
       instanceId={instanceId}
       key={instanceId}
       title={
         <div className='relative left-1 flex items-center'>
-          <TypeSelector
-            value={payload.role as string}
-            options={roleOptions}
-            onChange={handleChatModeMessageRoleChange}
-            triggerClassName='text-xs font-semibold text-gray-700 uppercase'
-            itemClassName='text-[13px] font-medium text-gray-700'
-          />
+          {payload.role === PromptRole.system
+            ? (<div className='relative left-[-4px] text-xs font-semibold text-gray-700 uppercase'>
+              SYSTEM
+            </div>)
+            : (
+              <TypeSelector
+                value={payload.role as string}
+                allOptions={roleOptions}
+                options={canNotChooseSystemRole ? roleOptionsWithoutSystemRole : roleOptions}
+                onChange={handleChatModeMessageRoleChange}
+                triggerClassName='text-xs font-semibold text-gray-700 uppercase'
+                itemClassName='text-[13px] font-medium text-gray-700'
+              />
+            )}
+
           <TooltipPlus
             popupContent={
               <div className='max-w-[180px]'>{t(`${i18nPrefix}.roleDescription.${payload.role}`)}</div>
             }
           >
-            <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
+            <RiQuestionLine className='w-3.5 h-3.5 text-gray-400' />
           </TooltipPlus>
         </div>
       }
-      value={payload.text}
+      value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}
       onChange={onPromptChange}
       readOnly={readOnly}
       showRemove={canRemove}
@@ -101,6 +126,11 @@ const ConfigPromptItem: FC<Props> = ({
       hasSetBlockStatus={hasSetBlockStatus}
       nodesOutputVars={availableVars}
       availableNodes={availableNodes}
+      isSupportJinja
+      editionType={payload.edition_type}
+      onEditionTypeChange={onEditionTypeChange}
+      varList={varList}
+      handleAddVariable={handleAddVariable}
     />
   )
 }

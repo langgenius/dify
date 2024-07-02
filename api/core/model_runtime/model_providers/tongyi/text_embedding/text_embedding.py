@@ -37,8 +37,11 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
         :return: embeddings result
         """
         credentials_kwargs = self._to_credential_kwargs(credentials)
-        dashscope.api_key = credentials_kwargs["dashscope_api_key"]
-        embeddings, embedding_used_tokens = self.embed_documents(model, texts)
+        embeddings, embedding_used_tokens = self.embed_documents(
+            credentials_kwargs=credentials_kwargs,
+            model=model,
+            texts=texts
+        )
 
         return TextEmbeddingResult(
             embeddings=embeddings,
@@ -74,17 +77,19 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
         try:
             # transform credentials to kwargs for model instance
             credentials_kwargs = self._to_credential_kwargs(credentials)
-            dashscope.api_key = credentials_kwargs["dashscope_api_key"]
+
             # call embedding model
-            self.embed_documents(model=model, texts=["ping"])
+            self.embed_documents(credentials_kwargs=credentials_kwargs, model=model, texts=["ping"])
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
     @staticmethod
-    def embed_documents(model: str, texts: list[str]) -> tuple[list[list[float]], int]:
+    def embed_documents(credentials_kwargs: dict, model: str, texts: list[str]) -> tuple[list[list[float]], int]:
         """Call out to Tongyi's embedding endpoint.
 
         Args:
+            credentials_kwargs: The credentials to use for the call.
+            model: The model to use for embedding.
             texts: The list of texts to embed.
 
         Returns:
@@ -93,7 +98,12 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
         embeddings = []
         embedding_used_tokens = 0
         for text in texts:
-            response = dashscope.TextEmbedding.call(model=model, input=text, text_type="document")
+            response = dashscope.TextEmbedding.call(
+                api_key=credentials_kwargs["dashscope_api_key"],
+                model=model,
+                input=text,
+                text_type="document"
+            )
             data = response.output["embeddings"][0]
             embeddings.append(data["embedding"])
             embedding_used_tokens += response.usage["total_tokens"]

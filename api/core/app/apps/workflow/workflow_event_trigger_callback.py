@@ -1,11 +1,15 @@
-from typing import Optional
+from typing import Any, Optional
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
+    QueueIterationCompletedEvent,
+    QueueIterationNextEvent,
+    QueueIterationStartEvent,
     QueueNodeFailedEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
+    QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
@@ -119,8 +123,76 @@ class WorkflowEventTriggerCallback(BaseWorkflowCallback):
         """
         Publish text chunk
         """
-        pass
+        self._queue_manager.publish(
+            QueueTextChunkEvent(
+                text=text,
+                metadata={
+                    "node_id": node_id,
+                    **metadata
+                }
+            ), PublishFrom.APPLICATION_MANAGER
+        )
 
+    def on_workflow_iteration_started(self, 
+                                      node_id: str,
+                                      node_type: NodeType,
+                                      node_run_index: int = 1,
+                                      node_data: Optional[BaseNodeData] = None,
+                                      inputs: dict = None,
+                                      predecessor_node_id: Optional[str] = None,
+                                      metadata: Optional[dict] = None) -> None:
+        """
+        Publish iteration started
+        """
+        self._queue_manager.publish(
+            QueueIterationStartEvent(
+                node_id=node_id,
+                node_type=node_type,
+                node_run_index=node_run_index,
+                node_data=node_data,
+                inputs=inputs,
+                predecessor_node_id=predecessor_node_id,
+                metadata=metadata
+            ),
+            PublishFrom.APPLICATION_MANAGER
+        )
+
+    def on_workflow_iteration_next(self, node_id: str, 
+                                   node_type: NodeType,
+                                   index: int, 
+                                   node_run_index: int,
+                                   output: Optional[Any]) -> None:
+        """
+        Publish iteration next
+        """
+        self._queue_manager.publish(
+            QueueIterationNextEvent(
+                node_id=node_id,
+                node_type=node_type,
+                index=index,
+                node_run_index=node_run_index,
+                output=output
+            ),
+            PublishFrom.APPLICATION_MANAGER
+        )
+
+    def on_workflow_iteration_completed(self, node_id: str, 
+                                        node_type: NodeType,
+                                        node_run_index: int,
+                                        outputs: dict) -> None:
+        """
+        Publish iteration completed
+        """
+        self._queue_manager.publish(
+            QueueIterationCompletedEvent(
+                node_id=node_id,
+                node_type=node_type,
+                node_run_index=node_run_index,
+                outputs=outputs
+            ),
+            PublishFrom.APPLICATION_MANAGER
+        )
+        
     def on_event(self, event: AppQueueEvent) -> None:
         """
         Publish event

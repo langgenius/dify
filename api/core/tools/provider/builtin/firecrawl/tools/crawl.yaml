@@ -1,0 +1,78 @@
+identity:
+  name: crawl
+  author: Richards Tu
+  label:
+    en_US: Crawl
+    zh_Hans: 爬取
+description:
+  human:
+    en_US: Extract data from a website by crawling through a URL.
+    zh_Hans: 通过URL从网站中提取数据。
+  llm: This tool initiates a web crawl to extract data from a specified URL. It allows configuring crawler options such as including or excluding URL patterns, generating alt text for images using LLMs (paid plan required), limiting the maximum number of pages to crawl, and returning only the main content of the page. The tool can return either a list of crawled documents or a list of URLs based on the provided options.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: URL to crawl
+      zh_Hans: 要爬取的URL
+    human_description:
+      en_US: The URL of the website to crawl and extract data from.
+      zh_Hans: 要爬取并提取数据的网站URL。
+    llm_description: The URL of the website that needs to be crawled. This is a required parameter.
+    form: llm
+  - name: includes
+    type: string
+    required: false
+    label:
+      en_US: URL patterns to include
+      zh_Hans: 要包含的URL模式
+    human_description:
+      en_US: Specify URL patterns to include during the crawl. Only pages matching these patterns will be crawled, you can use ',' to separate multiple patterns.
+      zh_Hans: 指定爬取过程中要包含的URL模式。只有与这些模式匹配的页面才会被爬取。
+    form: form
+    default: ''
+  - name: excludes
+    type: string
+    required: false
+    label:
+      en_US: URL patterns to exclude
+      zh_Hans: 要排除的URL模式
+    human_description:
+      en_US: Specify URL patterns to exclude during the crawl. Pages matching these patterns will be skipped, you can use ',' to separate multiple patterns.
+      zh_Hans: 指定爬取过程中要排除的URL模式。匹配这些模式的页面将被跳过。
+    form: form
+    default: 'blog/*'
+  - name: limit
+    type: number
+    required: false
+    label:
+      en_US: Maximum number of pages to crawl
+      zh_Hans: 最大爬取页面数
+    human_description:
+      en_US: Specify the maximum number of pages to crawl. The crawler will stop after reaching this limit.
+      zh_Hans: 指定要爬取的最大页面数。爬虫将在达到此限制后停止。
+    form: form
+    min: 1
+    max: 20
+    default: 5
+  - name: onlyMainContent
+    type: boolean
+    required: false
+    label:
+      en_US: Only return the main content of the page
+      zh_Hans: 仅返回页面的主要内容
+    human_description:
+      en_US: If enabled, the crawler will only return the main content of the page, excluding headers, navigation, footers, etc.
+      zh_Hans: 如果启用，爬虫将仅返回页面的主要内容，不包括标题、导航、页脚等。
+    form: form
+    options:
+      - value: 'true'
+        label:
+          en_US: 'Yes'
+          zh_Hans: 是
+      - value: 'false'
+        label:
+          en_US: 'No'
+          zh_Hans: 否
+    default: 'false'

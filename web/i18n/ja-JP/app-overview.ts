@@ -34,6 +34,7 @@ const translation = {
       accessibleAddress: '公開URL',
       preview: 'プレビュー',
       regenerate: '再生成',
+      regenerateNotice: '公開URLを再生成しますか？',
       preUseReminder: '続行する前にWebAppを有効にしてください。',
       settings: {
         entry: '設定',
@@ -43,6 +44,15 @@ const translation = {
         webDescTip: 'このテキストはクライアント側に表示され、アプリケーションの使用方法の基本的なガイダンスを提供します。',
         webDescPlaceholder: 'WebAppの説明を入力してください',
         language: '言語',
+        workflow: {
+          title: 'ワークフローステップ',
+          show: '表示',
+          hide: '非表示',
+        },
+        chatColorTheme: 'チャットボットのカラーテーマ',
+        chatColorThemeDesc: 'チャットボットのカラーテーマを設定します',
+        chatColorThemeInverted: '反転',
+        invalidHexMessage: '無効な16進数値',
         more: {
           entry: 'その他の設定を表示',
           copyright: '著作権',
@@ -50,6 +60,9 @@ const translation = {
           privacyPolicy: 'プライバシーポリシー',
           privacyPolicyPlaceholder: 'プライバシーポリシーリンクを入力してください',
           privacyPolicyTip: '訪問者がアプリケーションが収集するデータを理解し、Difyの<privacyPolicyLink>プライバシーポリシー</privacyPolicyLink>を参照できるようにします。',
+          customDisclaimer: 'カスタム免責事項',
+          customDisclaimerPlaceholder: '免責事項を入力してください',
+          customDisclaimerTip: 'アプリケーションの使用に関する免責事項を提供します。',
         },
       },
       embedded: {

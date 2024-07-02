@@ -1,13 +1,14 @@
 const translation = {
   knowledge: 'Wiedza',
   documentCount: ' documentos',
-  wordCount: 'k palavras',
+  wordCount: ' k palavras',
   appCount: ' aplicativos vinculados',
   createDataset: 'Criar Conhecimento',
   createDatasetIntro: 'Importe seus próprios dados de texto ou escreva dados em tempo real via Webhook para aprimoramento de contexto LLM.',
   deleteDatasetConfirmTitle: 'Excluir este Conhecimento?',
   deleteDatasetConfirmContent:
     'A exclusão do Conhecimento é irreversível. Os usuários não poderão mais acessar seu Conhecimento e todas as configurações e registros de prompt serão excluídos permanentemente.',
+  datasetUsedByApp: 'O conhecimento está sendo usado por alguns aplicativos. Os aplicativos não poderão mais usar esse Conhecimento, e todas as configurações de prompt e logs serão excluídos permanentemente.',
   datasetDeleted: 'Conhecimento excluído',
   datasetDeleteFailed: 'Falha ao excluir o Conhecimento',
   didYouKnow: 'Você sabia?',
@@ -41,6 +42,8 @@ const translation = {
     change: 'Alterar',
     changeRetrievalMethod: 'Alterar método de recuperação',
   },
+  docsFailedNotice: 'documentos falharam ao serem indexados',
+  retry: 'Tentar novamente',
 }
 
 export default translation

@@ -1,7 +1,9 @@
 import os
-from typing import Callable, List, Literal
+from collections.abc import Callable
+from typing import Literal
 
 import pytest
+
 # import monkeypatch
 from _pytest.monkeypatch import MonkeyPatch
 from openai.resources.audio.transcriptions import Transcriptions
@@ -10,6 +12,7 @@ from openai.resources.completions import Completions
 from openai.resources.embeddings import Embeddings
 from openai.resources.models import Models
 from openai.resources.moderations import Moderations
+
 from tests.integration_tests.model_runtime.__mock.openai_chat import MockChatClass
 from tests.integration_tests.model_runtime.__mock.openai_completion import MockCompletionsClass
 from tests.integration_tests.model_runtime.__mock.openai_embeddings import MockEmbeddingsClass
@@ -18,7 +21,7 @@ from tests.integration_tests.model_runtime.__mock.openai_remote import MockModel
 from tests.integration_tests.model_runtime.__mock.openai_speech2text import MockSpeech2TextClass
 
 
-def mock_openai(monkeypatch: MonkeyPatch, methods: List[Literal["completion", "chat", "remote", "moderation", "speech2text", "text_embedding"]]) -> Callable[[], None]:
+def mock_openai(monkeypatch: MonkeyPatch, methods: list[Literal["completion", "chat", "remote", "moderation", "speech2text", "text_embedding"]]) -> Callable[[], None]:
     """
         mock openai module
 

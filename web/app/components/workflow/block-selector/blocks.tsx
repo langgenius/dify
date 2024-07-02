@@ -72,15 +72,13 @@ const Blocks = ({
               className='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !bg-transparent !rounded-xl !shadow-lg'
               htmlContent={(
                 <div>
-                  <div className='flex items-center mb-2'>
-                    <BlockIcon
-                      size='md'
-                      className='mr-2'
-                      type={block.type}
-                    />
-                    <div className='text-sm text-gray-900'>{block.title}</div>
-                  </div>
-                  {nodesExtraData[block.type].about}
+                  <BlockIcon
+                    size='md'
+                    className='mb-2'
+                    type={block.type}
+                  />
+                  <div className='mb-1 text-sm leading-5 text-gray-900'>{block.title}</div>
+                  <div className='text-xs text-gray-700 leading-[18px]'>{nodesExtraData[block.type].about}</div>
                 </div>
               )}
               noArrow
@@ -91,7 +89,7 @@ const Blocks = ({
                 onClick={() => onSelect(block.type)}
               >
                 <BlockIcon
-                  className='mr-2'
+                  className='mr-2 shrink-0'
                   type={block.type}
                 />
                 <div className='text-sm text-gray-900'>{block.title}</div>

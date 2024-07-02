@@ -5,7 +5,7 @@ const translation = {
     chatbot: 'チャットボット',
     agent: 'エージェント',
     workflow: 'ワークフロー',
-    completion: '完了',
+    completion: 'テキスト生成',
   },
   duplicate: '複製',
   duplicateTitle: 'アプリを複製する',
@@ -23,7 +23,8 @@ const translation = {
     'さまざまなチャンネルでチームメンバーや貢献者、開発者と議論します。',
   roadmap: 'ロードマップを見る',
   newApp: {
-    startFromBlank: 'から作成',
+    // this comment is to recreate PR
+    startFromBlank: '最初から作成',
     startFromTemplate: 'テンプレートから作成',
     captionAppType: 'どのタイプのアプリを作成しますか？',
     chatbotDescription: 'チャット形式のアプリケーションを構築します。このアプリは質問と回答の形式を使用し、複数のラウンドの継続的な会話を可能にします。',
@@ -83,7 +84,7 @@ const translation = {
     chatbot: 'チャットボット',
     agent: 'エージェント',
     workflow: 'ワークフロー',
-    completion: '完了',
+    completion: 'テキスト生成',
   },
 }
 

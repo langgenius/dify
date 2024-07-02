@@ -18,6 +18,11 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
       type: BodyType.none,
       data: '',
     },
+    timeout: {
+      max_connect_timeout: 0,
+      max_read_timeout: 0,
+      max_write_timeout: 0,
+    },
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode
@@ -34,9 +39,6 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
 
     if (!errorMessages && !payload.url)
       errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('workflow.nodes.http.api') })
-
-    if (!errorMessages && !payload.url.startsWith('http://') && !payload.url.startsWith('https://'))
-      errorMessages = t('workflow.nodes.http.notStartWithHttp')
 
     return {
       isValid: !errorMessages,
