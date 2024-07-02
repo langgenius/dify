@@ -24,7 +24,7 @@ const translation = {
     resetConfig: 'Reset',
     debugConfig: 'Debug',
     addFeature: 'Add Feature',
-    automatic: 'Automatic',
+    automatic: 'Generate',
     stopResponding: 'Stop responding',
     agree: 'like',
     disagree: 'dislike',

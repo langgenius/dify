@@ -24,7 +24,7 @@ const translation = {
     resetConfig: '重置',
     debugConfig: '除錯',
     addFeature: '新增功能',
-    automatic: '自動編排',
+    automatic: '產生',
     stopResponding: '停止響應',
     agree: '贊同',
     disagree: '反對',

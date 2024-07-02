@@ -24,7 +24,7 @@ const translation = {
     resetConfig: 'Zurücksetzen',
     debugConfig: 'Debuggen',
     addFeature: 'Funktion hinzufügen',
-    automatic: 'Automatisch',
+    automatic: 'Generieren',
     stopResponding: 'Antworten stoppen',
     agree: 'gefällt mir',
     disagree: 'gefällt mir nicht',
