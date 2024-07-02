@@ -1,0 +1,27 @@
+identity:
+  author: William Espegren
+  name: spider
+  label:
+    en_US: Spider
+    zh_CN: Spider
+  description:
+    en_US: Spider API integration, returning LLM-ready data by scraping & crawling websites.
+    zh_CN: Spider API 集成，通过爬取和抓取网站返回 LLM-ready 数据。
+  icon: icon.svg
+  tags:
+    - search
+    - utilities
+credentials_for_provider:
+  spider_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Spider API Key
+      zh_CN: Spider API 密钥
+    placeholder:
+      en_US: Please input your Spider API key
+      zh_CN: 请输入您的 Spider API 密钥
+    help:
+      en_US: Get your Spider API key from your Spider dashboard
+      zh_CN: 从您的 Spider 仪表板中获取 Spider API 密钥。
+    url: https://spider.cloud/
