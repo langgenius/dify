@@ -36,7 +36,7 @@ class TagListApi(Resource):
     @account_initialization_required
     def post(self):
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
