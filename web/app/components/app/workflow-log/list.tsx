@@ -76,8 +76,8 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
     return <Loading />
 
   return (
-    <div className='overflow-x-auto'>
-      <table className={`w-full min-w-[440px] border-collapse border-0 text-sm mt-3 ${s.logTable}`}>
+    <div className='overflow-x-auto h-full'>
+      <table className={`h-full w-full min-w-[440px] border-collapse border-0 text-sm mt-3 ${s.logTable}`}>
         <thead className="h-8 !pl-3 py-2 leading-[18px] border-b border-gray-200 text-xs text-gray-500 font-medium">
           <tr>
             <td className='w-[1.375rem] whitespace-nowrap'></td>

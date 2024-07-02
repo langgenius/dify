@@ -22,6 +22,9 @@ const translation = {
     pagination: {
       previous: '上一頁',
       next: '下一頁',
+      goTo: '跳至',
+      page: '頁',
+      invalidPageNum: '無效頁碼',
     },
     empty: {
       noChat: '未開始的對話',

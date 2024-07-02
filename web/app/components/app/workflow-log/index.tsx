@@ -7,6 +7,7 @@ import { Pagination } from 'react-headless-pagination'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import { Trans, useTranslation } from 'react-i18next'
 import Link from 'next/link'
+import Toast from '../../base/toast'
 import List from './list'
 import Filter from './filter'
 import s from './style.module.css'
@@ -51,7 +52,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
   const [queryParams, setQueryParams] = useState<QueryParam>({ status: 'all' })
   const [currPage, setCurrPage] = React.useState<number>(0)
-
+  const [inputPage, setInputPage] = React.useState<string>('')
   const query = {
     page: currPage + 1,
     limit: APP_PAGE_LIMIT,
@@ -70,7 +71,26 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     params: query,
   }, fetchWorkflowLogs)
   const total = workflowLogs?.total
+  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setInputPage(event.target.value)
+  }
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      if (Number(inputPage) <= 0 || Number(inputPage) - 1 > Math.ceil(Number(total) / APP_PAGE_LIMIT) - 1) {
+        Toast.notify({
+          message: t('appLog.table.pagination.invalidPageNum'),
+          type: 'error',
+        })
+        setInputPage('')
+        return
+      }
+
+      if (Number(inputPage) !== currPage + 1)
+        setCurrPage(Number(inputPage) - 1)
+      setInputPage('')
+    }
+  }
   return (
     <div className='flex flex-col h-full'>
       <h1 className='text-md font-semibold text-gray-900'>{t('appLog.workflowTitle')}</h1>
@@ -96,13 +116,13 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
             truncableClassName="w-8 px-0.5 text-center"
             truncableText="..."
           >
+            <div className='flex-1'></div>
             <Pagination.PrevButton
               disabled={currPage === 0}
-              className={`flex items-center mr-2 text-gray-500  focus:outline-none ${currPage === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
+              className={`flex items-center my-2 text-gray-500  focus:outline-none ${currPage === 0 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
               <ArrowLeftIcon className="mr-3 h-3 w-3" />
-              {t('appLog.table.pagination.previous')}
             </Pagination.PrevButton>
-            <div className={`flex items-center justify-center flex-grow ${s.pagination}`}>
+            <div className={`flex items-center justify-center shrink ${s.pagination}`}>
               <Pagination.PageButton
                 activeClassName="bg-primary-50 dark:bg-opacity-0 text-primary-600 dark:text-white"
                 className="flex items-center justify-center h-8 w-8 rounded-full cursor-pointer"
@@ -112,9 +132,18 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
             <Pagination.NextButton
               disabled={currPage === Math.ceil(total / APP_PAGE_LIMIT) - 1}
               className={`flex items-center mr-2 text-gray-500 focus:outline-none ${currPage === Math.ceil(total / APP_PAGE_LIMIT) - 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
-              {t('appLog.table.pagination.next')}
               <ArrowRightIcon className="ml-3 h-3 w-3" />
             </Pagination.NextButton>
+            <div className='flex gap-2 items-center'>
+              <span>{t('appLog.table.pagination.goTo')}</span>
+              <input
+                className={'appearance-none py-1 px-3 inline-block w-10 rounded-md border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
+                onChange={handleInputChange}
+                value={inputPage}
+                onKeyDown={handleKeyDown}
+              />
+              {t('appLog.table.pagination.page')}
+            </div>
           </Pagination>
           : null}
       </div>
