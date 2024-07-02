@@ -13,3 +13,4 @@ class VectorType(str, Enum):
     OPENSEARCH = 'opensearch'
     TENCENT = 'tencent'
     ORACLE = 'oracle'
+    ELASTICSEARCH = 'elasticsearch'

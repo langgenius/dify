@@ -69,6 +69,9 @@ class Vector:
             case VectorType.RELYT:
                 from core.rag.datasource.vdb.relyt.relyt_vector import RelytVectorFactory
                 return RelytVectorFactory
+            case VectorType.ELASTICSEARCH:
+                from core.rag.datasource.vdb.es.elasticsearch_vector import ElasticSearchVectorFactory
+                return ElasticSearchVectorFactory
             case VectorType.TIDB_VECTOR:
                 from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
                 return TiDBVectorFactory
