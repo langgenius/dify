@@ -157,7 +157,8 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         """
         for stream_response in generator:
             yield WorkflowAppStreamResponse(
-                workflow_run_id=self._task_state.workflow_run_id,
+                workflow_run_id=self._task_state.workflow_run_id
+                if self._task_state.workflow_run_id is not None else 'WORKFLOW_NOT_STATED',
                 stream_response=stream_response
             )
 
