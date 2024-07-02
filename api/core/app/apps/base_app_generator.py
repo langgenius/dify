@@ -1,4 +1,5 @@
 from core.app.app_config.entities import AppConfig, VariableEntity
+from models.model import App
 
 
 class BaseAppGenerator:
@@ -50,3 +51,9 @@ class BaseAppGenerator:
 
         return filtered_inputs
 
+    def _get_max_active_requests(self, app_record: App) -> int:
+        max_active_requests = app_record.max_active_requests
+        if app_record.max_active_requests == 0:
+            from flask import current_app
+            max_active_requests = int(current_app.config['APP_MAX_ACTIVE_REQUESTS'])
+        return max_active_requests

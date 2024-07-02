@@ -411,6 +411,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         support_function_call = credentials.get('support_function_call', False)
         if support_function_call:
             features.append(ModelFeature.TOOL_CALL)
+            features.append(ModelFeature.STREAM_TOOL_CALL)
 
         support_vision = credentials.get('support_vision', False)
         if support_vision:

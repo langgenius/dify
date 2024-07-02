@@ -17,6 +17,8 @@ from core.app.apps.chat.generate_response_converter import ChatAppGenerateRespon
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
+from core.app.features.rate_limiting import RateLimit
+from core.errors.error import QuotaExceededError
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -187,15 +189,24 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
+                app_record = db.session.query(App).filter(App.id == application_generate_entity.app_config.app_id).first()
+                if not app_record:
+                    raise ValueError("App not found")
 
                 # chatbot app
-                runner = ChatAppRunner()
-                runner.run(
-                    application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager,
-                    conversation=conversation,
-                    message=message
-                )
+                max_active_request = self._get_max_active_requests(app_record)
+                rate_limit = RateLimit(app_record.id, max_active_request)
+                try:
+                    rate_limit.enter(message_id)
+                    runner = ChatAppRunner()
+                    runner.run(
+                        application_generate_entity=application_generate_entity,
+                        queue_manager=queue_manager,
+                        conversation=conversation,
+                        message=message
+                    )
+                finally:
+                    rate_limit.exit(message_id)
             except GenerateTaskStoppedException:
                 pass
             except InvokeAuthorizationError:
@@ -206,7 +217,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             except ValidationError as e:
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            except (ValueError, InvokeError) as e:
+            except (ValueError, InvokeError, QuotaExceededError) as e:
                 if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
