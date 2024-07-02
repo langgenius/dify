@@ -93,6 +93,8 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
                 'model': model,
                 **extra_model_kwargs
             }
+            if max_chunks == 1:
+                payload['input'] = payload['input'][0]
 
             # Make the request to the OpenAI API
             response = requests.post(
