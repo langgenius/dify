@@ -4,12 +4,11 @@ import React, { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
+import { FeishuProvider } from './constants'
 import type { DataSourceFeishu as TDataSourceFeishu } from '@/models/common'
 import { useAppContext } from '@/context/app-context'
 import { fetchFeishuConnection } from '@/service/common'
 import FeishuIcon from '@/app/components/base/feishu-icon'
-
-export const FeishuProvider = 'feishuwiki'
 
 const Icon: FC<{
   src: string
@@ -33,7 +32,7 @@ const DataSourceFeishu: FC<Props> = ({
 }) => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const [canConnectFeishu, setCanConnectFeishu] = useState(false)
-  const { data } = useSWR(canConnectFeishu ? '/oauth/data-source/feishuwiki' : null, fetchFeishuConnection)
+  const { data } = useSWR(canConnectFeishu ? `/oauth/data-source/${FeishuProvider}` : null, fetchFeishuConnection)
 
   const connected = !!workspaces.length
 
@@ -46,6 +45,7 @@ const DataSourceFeishu: FC<Props> = ({
 
   const handleAuthAgain = () => {
     if (data?.data)
+      // TODO 跳转飞书，这里返回是空
       window.location.href = data.data
     else
       setCanConnectFeishu(true)

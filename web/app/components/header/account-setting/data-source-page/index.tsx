@@ -1,8 +1,9 @@
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import DataSourceNotion from './data-source-notion'
-import DataSourceFeishu, { FeishuProvider } from './data-source-feishu'
+import DataSourceFeishu from './data-source-feishu'
 import DataSourceWebsite from './data-source-website'
+import { FeishuProvider } from './data-source-feishu/constants'
 import { fetchDataSource } from '@/service/common'
 
 export default function DataSourcePage() {
