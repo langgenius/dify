@@ -1598,3 +1598,29 @@ class DatasetPermissionService:
         except Exception as e:
             db.session.rollback()
             raise e
+
+    @classmethod
+    def check_permission(cls, user, dataset, requested_permission, requested_partial_member_list):
+        if not user.is_dataset_editor:
+            raise NoPermissionError('User does not have permission to edit this dataset.')
+
+        if user.is_dataset_operator and dataset.permission != requested_permission:
+            raise NoPermissionError('Dataset operators cannot change the dataset permissions.')
+
+        if user.is_dataset_operator and requested_permission == 'partial_members':
+            if not requested_partial_member_list:
+                raise ValueError('Partial member list is required when setting to partial members.')
+
+            local_member_list = cls.get_dataset_partial_member_list(dataset.id)
+            request_member_list = [user['user_id'] for user in requested_partial_member_list]
+            if set(local_member_list) != set(request_member_list):
+                raise ValueError('Dataset operators cannot change the dataset permissions.')
+
+    @classmethod
+    def clear_partial_member_list(cls, dataset_id):
+        try:
+            db.session.query(DatasetPermission).filter(DatasetPermission.dataset_id == dataset_id).delete()
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            raise e
