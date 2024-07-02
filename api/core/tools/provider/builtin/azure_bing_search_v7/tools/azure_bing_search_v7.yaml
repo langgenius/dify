@@ -168,7 +168,7 @@ parameters:
     default: ja-JP
     required: false
     label:
-      en_US: Market 
+      en_US: Market
     human_description:
-      en_US: The market where the results come from. Typically, mkt is the country where the user is making the request from. 
+      en_US: The market where the results come from. Typically, mkt is the country where the user is making the request from.
     form: form
