@@ -56,6 +56,7 @@ class HitTestingService:
                                                   )
 
         end = time.perf_counter()
+
         logging.debug(f"Hit testing retrieve in {end - start:0.4f} seconds")
 
         dataset_query = DatasetQuery(
