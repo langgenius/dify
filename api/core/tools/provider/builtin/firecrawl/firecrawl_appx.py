@@ -1,9 +1,7 @@
 import os
-import logging
 import time
 import requests
 from requests.exceptions import HTTPError
-
 
 class FirecrawlApp:
     def __init__(self, api_key=None, api_url=None):
@@ -11,7 +9,6 @@ class FirecrawlApp:
         if not self.api_key:
             raise ValueError("API key is required")
         self.api_url = api_url or 'https://api.firecrawl.dev'
-        self.logger = logging.getLogger(__name__)
 
     def _prepare_headers(self, idempotency_key=None):
         headers = {
@@ -32,18 +29,8 @@ class FirecrawlApp:
                 if response.status_code == 502 and i < retries - 1:
                     time.sleep(backoff_factor * (2 ** i))
                 else:
-                    self._handle_error(response)
+                    raise
         return None
-
-    def _handle_error(self, response):
-        try:
-            error_detail = response.json()
-        except ValueError:
-            error_detail = response.text
-        if response.status_code == 500:
-            raise HTTPError(f'Server Error: {error_detail}')
-        else:
-            raise HTTPError(f'{response.status_code} Error: {error_detail}')
 
     def scrape_url(self, url, **kwargs):
         endpoint = f'{self.api_url}/v0/scrape'
@@ -61,7 +48,8 @@ class FirecrawlApp:
         endpoint = f'{self.api_url}/v0/crawl'
         headers = self._prepare_headers(idempotency_key)
         data = {'url': url, **kwargs}
-        job_id = self._request('POST', endpoint, data, headers)
+        response = self._request('POST', endpoint, data, headers)
+        job_id = response['jobId']  # 确保使用正确的键名
         if wait:
             return self._monitor_job_status(job_id, headers, poll_interval)
         return job_id
@@ -80,15 +68,12 @@ class FirecrawlApp:
                 raise HTTPError(f'Job {job_id} failed: {status["error"]}')
             time.sleep(poll_interval)
 
-
 # Example usage
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
     api_key = os.getenv('FIRECRAWL_API_KEY')
-    app = DifyFirecrawlApp(api_key)
+    app = FirecrawlApp(api_key)
     try:
         result = app.scrape_url('https://example.com')
         print(result)
-        exit(0)
     except HTTPError as e:
         print("Error:", e)
