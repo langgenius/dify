@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, cast
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.base_node_data_entities import BaseIterationState
@@ -6,6 +6,7 @@ from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseIterationNode
 from core.workflow.nodes.iteration.entities import IterationNodeData, IterationState
+from core.workflow.utils.condition.entities import Condition
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -117,3 +118,19 @@ class IterationNode(BaseIterationNode):
         return {
             'input_selector': node_data.iterator_selector,
         }
+
+    @classmethod
+    def get_conditions(cls, node_config: dict[str, Any]) -> list[Condition]:
+        """
+        Get conditions.
+        """
+        node_id = node_config.get('id')
+        if not node_id:
+            return []
+
+        return [Condition(
+            variable_selector=[node_id, 'index'],
+            comparison_operator="≤",
+            value_type="value_selector",
+            value_selector=node_config.get('data', {}).get('iterator_selector')
+        )]

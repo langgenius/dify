@@ -1,5 +1,6 @@
 import logging
 import time
+from collections.abc import Generator
 from typing import Any, Optional, cast
 
 from flask import current_app
@@ -12,15 +13,18 @@ from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_entities import WorkflowNodeAndResult, WorkflowRunState
-from core.workflow.entities.workflow_runtime_state_entities import WorkflowRuntimeState
+from core.workflow.entities.workflow_runtime_state import WorkflowRuntimeState
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.graph import Graph
+from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_engine.entities.run_condition import RunCondition
+from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.base_node import BaseIterationNode, BaseNode, UserFrom
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
+from core.workflow.nodes.iterable_node import IterableNodeMixin
 from core.workflow.nodes.iteration.entities import IterationState
 from core.workflow.nodes.iteration.iteration_node import IterationNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
@@ -36,7 +40,6 @@ from extensions.ext_database import db
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionStatus,
-    WorkflowType,
 )
 
 node_classes = {
@@ -60,7 +63,7 @@ node_classes = {
 logger = logging.getLogger(__name__)
 
 
-class WorkflowEngineManager:
+class WorkflowEntry:
     def run_workflow(self, workflow: Workflow,
                      user_id: str,
                      user_from: UserFrom,
@@ -69,7 +72,7 @@ class WorkflowEngineManager:
                      user_inputs: dict,
                      system_inputs: dict[SystemVariable, Any],
                      call_depth: int = 0,
-                     variable_pool: Optional[VariablePool] = None) -> None:
+                     variable_pool: Optional[VariablePool] = None) -> Generator:
         """
         :param workflow: Workflow instance
         :param user_id: user id
@@ -102,25 +105,25 @@ class WorkflowEngineManager:
                 user_inputs=user_inputs
             )
 
-        # fetch max call depth
-        workflow_call_max_depth = current_app.config.get("WORKFLOW_CALL_MAX_DEPTH")
-        workflow_call_max_depth = cast(int, workflow_call_max_depth)
-        if call_depth > workflow_call_max_depth:
-            raise ValueError('Max workflow call depth {} reached.'.format(workflow_call_max_depth))
+        # init graph
+        graph = self._init_graph(
+            graph_config=graph_config
+        )
 
-        # init workflow runtime state
-        workflow_runtime_state = WorkflowRuntimeState(
+        if not graph:
+            raise ValueError('graph not found in workflow')
+
+        # init workflow run state
+        graph_engine = GraphEngine(
             tenant_id=workflow.tenant_id,
             app_id=workflow.app_id,
-            workflow_id=workflow.id,
-            workflow_type=WorkflowType.value_of(workflow.type),
             user_id=user_id,
             user_from=user_from,
-            variable_pool=variable_pool,
             invoke_from=invoke_from,
-            graph=graph_config,
             call_depth=call_depth,
-            start_at=time.perf_counter()
+            graph=graph,
+            variable_pool=variable_pool,
+            callbacks=callbacks
         )
 
         # init workflow run
@@ -130,11 +133,7 @@ class WorkflowEngineManager:
 
         try:
             # run workflow
-            self._run_workflow(
-                graph_config=graph_config,
-                workflow_runtime_state=workflow_runtime_state,
-                callbacks=callbacks,
-            )
+            rst = graph_engine.run()
         except WorkflowRunFailedError as e:
             self._workflow_run_failed(
                 error=e.error,
@@ -150,6 +149,8 @@ class WorkflowEngineManager:
         self._workflow_run_success(
             callbacks=callbacks
         )
+
+        return rst
 
     def _init_graph(self, graph_config: dict, root_node_id: Optional[str] = None) -> Optional[Graph]:
         """
@@ -259,23 +260,51 @@ class WorkflowEngineManager:
 
             sub_graph: Optional[Graph] = None
             target_node_type: NodeType = NodeType.value_of(target_node_config.get('data', {}).get('type'))
-            if target_node_type and target_node_type in [IterationNode.node_type, NodeType.LOOP]:
+            target_node_cls = None
+            if target_node_type:
+                target_node_cls = node_classes.get(target_node_type)
+                if not target_node_cls:
+                    raise Exception(f'Node class not found for node type: {target_node_type}')
+
+            if target_node_cls and issubclass(target_node_cls, IterableNodeMixin):
                 # find iteration/loop sub nodes that have no predecessor node
+                sub_graph_root_node_config = None
                 for root_node_config in root_node_configs:
                     if root_node_config.get('parentId') == target_node_id:
-                        # create sub graph
-                        sub_graph = Graph.init(
-                            root_node_config=root_node_config
-                        )
-
-                        self._recursively_add_edges(
-                            graph=sub_graph,
-                            source_node_config=root_node_config,
-                            edges_mapping=edges_mapping,
-                            nodes_mapping=nodes_mapping,
-                            root_node_configs=root_node_configs
-                        )
+                        sub_graph_root_node_config = root_node_config
                         break
+
+                if sub_graph_root_node_config:
+                    # create sub graph run condition
+                    iterable_node_cls: IterableNodeMixin = cast(IterableNodeMixin, target_node_cls)
+                    sub_graph_run_condition = RunCondition(
+                        type='condition',
+                        conditions=iterable_node_cls.get_conditions(
+                            node_config=target_node_config
+                        )
+                    )
+
+                    # create sub graph
+                    sub_graph = Graph.init(
+                        root_node_config=sub_graph_root_node_config,
+                        run_condition=sub_graph_run_condition
+                    )
+
+                    self._recursively_add_edges(
+                        graph=sub_graph,
+                        source_node_config=sub_graph_root_node_config,
+                        edges_mapping=edges_mapping,
+                        nodes_mapping=nodes_mapping,
+                        root_node_configs=root_node_configs
+                    )
+
+            # parse run condition
+            run_condition = None
+            if edge_config.get('sourceHandle'):
+                run_condition = RunCondition(
+                    type='branch_identify',
+                    branch_identify=edge_config.get('sourceHandle')
+                )
 
             # add edge
             graph.add_edge(
@@ -283,6 +312,7 @@ class WorkflowEngineManager:
                 source_node_config=source_node_config,
                 target_node_config=target_node_config,
                 target_node_sub_graph=sub_graph,
+                run_condition=run_condition
             )
 
             # recursively add edges

@@ -1,20 +1,10 @@
-from collections.abc import Callable
-from typing import Literal, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from core.workflow.utils.condition.entities import Condition
-
-
-class RunCondition(BaseModel):
-    type: Literal["branch_identify", "condition"]
-    """condition type"""
-
-    branch_identify: Optional[str] = None
-    """branch identify, required when type is branch_identify"""
-
-    conditions: Optional[list[Condition]] = None
-    """conditions to run the node, required when type is condition"""
+from core.workflow.graph_engine.condition_handlers.base_handler import RunConditionHandler
+from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
+from core.workflow.graph_engine.entities.run_condition import RunCondition
 
 
 class GraphNode(BaseModel):
@@ -33,9 +23,6 @@ class GraphNode(BaseModel):
     run_condition: Optional[RunCondition] = None
     """condition to run the node"""
 
-    run_condition_callback: Optional[Callable] = Field(None, exclude=True)
-    """condition function check if the node can be executed, translated from run_conditions, not serialized"""
-
     node_config: dict
     """original node config"""
 
@@ -48,9 +35,22 @@ class GraphNode(BaseModel):
     def add_child(self, node_id: str) -> None:
         self.descendant_node_ids.append(node_id)
 
+    def get_run_condition_handler(self) -> Optional[RunConditionHandler]:
+        """
+        Get run condition handler
+
+        :return: run condition handler
+        """
+        if not self.run_condition:
+            return None
+
+        return ConditionManager.get_condition_handler(
+            run_condition=self.run_condition
+        )
+
 
 class Graph(BaseModel):
-    graph_nodes: dict[str, GraphNode] = {}
+    graph_nodes: dict[str, GraphNode] = Field(default_factory=dict)
     """graph nodes"""
 
     root_node: GraphNode
@@ -65,8 +65,12 @@ class Graph(BaseModel):
         :param run_condition: run condition when root node parent is iteration/loop
         :return: graph
         """
+        node_id = root_node_config.get('id')
+        if not node_id:
+            raise ValueError("Graph root node id is required")
+
         root_node = GraphNode(
-            id=root_node_config.get('id'),
+            id=node_id,
             parent_id=root_node_config.get('parentId'),
             node_config=root_node_config,
             run_condition=run_condition
@@ -74,15 +78,14 @@ class Graph(BaseModel):
 
         graph = cls(root_node=root_node)
 
-        # TODO parse run_condition to run_condition_callback
-
-        graph.add_graph_node(graph.root_node)
+        graph._add_graph_node(graph.root_node)
         return graph
 
     def add_edge(self, edge_config: dict,
                  source_node_config: dict,
                  target_node_config: dict,
-                 target_node_sub_graph: Optional["Graph"] = None) -> None:
+                 target_node_sub_graph: Optional["Graph"] = None,
+                 run_condition: Optional[RunCondition] = None) -> None:
         """
         Add edge to the graph
 
@@ -90,6 +93,7 @@ class Graph(BaseModel):
         :param source_node_config: source node config
         :param target_node_config: target node config
         :param target_node_sub_graph: sub graph
+        :param run_condition: run condition
         """
         source_node_id = source_node_config.get('id')
         if not source_node_id:
@@ -105,47 +109,24 @@ class Graph(BaseModel):
         source_node = self.graph_nodes[source_node_id]
         source_node.add_child(target_node_id)
 
-        # if run_conditions:
-        #     run_condition_callback = lambda: all()
-
-
         if target_node_id not in self.graph_nodes:
-            run_condition = None # todo
-            run_condition_callback = None # todo
-
             target_graph_node = GraphNode(
                 id=target_node_id,
                 parent_id=source_node_config.get('parentId'),
                 predecessor_node_id=source_node_id,
                 node_config=target_node_config,
                 run_condition=run_condition,
-                run_condition_callback=run_condition_callback,
                 source_edge_config=edge_config,
                 sub_graph=target_node_sub_graph
             )
 
-            self.add_graph_node(target_graph_node)
+            self._add_graph_node(target_graph_node)
         else:
             target_node = self.graph_nodes[target_node_id]
             target_node.predecessor_node_id = source_node_id
-            target_node.run_conditions = run_conditions
-            target_node.run_condition_callback = run_condition_callback
+            target_node.run_condition = run_condition
             target_node.source_edge_config = edge_config
             target_node.sub_graph = target_node_sub_graph
-
-    def add_graph_node(self, graph_node: GraphNode) -> None:
-        """
-        Add graph node to the graph
-
-        :param graph_node: graph node
-        """
-        if graph_node.id in self.graph_nodes:
-            return
-
-        if len(self.graph_nodes) == 0:
-            self.root_node = graph_node
-
-        self.graph_nodes[graph_node.id] = graph_node
 
     def get_root_node(self) -> Optional[GraphNode]:
         """
@@ -169,13 +150,27 @@ class Graph(BaseModel):
         if not graph_node.descendant_node_ids:
             return None
 
-        descendants_graph = Graph()
-        descendants_graph.add_graph_node(graph_node)
+        descendants_graph = Graph(root_node=graph_node)
+        descendants_graph._add_graph_node(graph_node)
 
         for child_node_id in graph_node.descendant_node_ids:
             self._add_descendants_graph_nodes(descendants_graph, child_node_id)
 
         return descendants_graph
+
+    def _add_graph_node(self, graph_node: GraphNode) -> None:
+        """
+        Add graph node to the graph
+
+        :param graph_node: graph node
+        """
+        if graph_node.id in self.graph_nodes:
+            return
+
+        if len(self.graph_nodes) == 0:
+            self.root_node = graph_node
+
+        self.graph_nodes[graph_node.id] = graph_node
 
     def _add_descendants_graph_nodes(self, descendants_graph: "Graph", node_id: str) -> None:
         """
@@ -188,7 +183,7 @@ class Graph(BaseModel):
             return
 
         graph_node = self.graph_nodes[node_id]
-        descendants_graph.add_graph_node(graph_node)
+        descendants_graph._add_graph_node(graph_node)
 
         for child_node_id in graph_node.descendant_node_ids:
             self._add_descendants_graph_nodes(descendants_graph, child_node_id)

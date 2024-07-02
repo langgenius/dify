@@ -24,7 +24,12 @@ class ConditionProcessor:
                     variable_selector=condition.variable_selector
                 )
 
-                expected_value = condition.value
+                if condition.value_type == "value_selector":
+                    expected_value = variable_pool.get_variable_value(
+                        variable_selector=condition.value_selector
+                    )
+                else:
+                    expected_value = condition.value
 
                 input_conditions.append({
                     "actual_value": actual_value,
@@ -208,7 +213,7 @@ class ConditionProcessor:
             return True
         return False
 
-    def _assert_equal(self, actual_value: Optional[int | float], expected_value: str) -> bool:
+    def _assert_equal(self, actual_value: Optional[int | float], expected_value: str | int | float) -> bool:
         """
         Assert equal
         :param actual_value: actual value
@@ -230,7 +235,7 @@ class ConditionProcessor:
             return False
         return True
 
-    def _assert_not_equal(self, actual_value: Optional[int | float], expected_value: str) -> bool:
+    def _assert_not_equal(self, actual_value: Optional[int | float], expected_value: str | int | float) -> bool:
         """
         Assert not equal
         :param actual_value: actual value
@@ -252,7 +257,7 @@ class ConditionProcessor:
             return False
         return True
 
-    def _assert_greater_than(self, actual_value: Optional[int | float], expected_value: str) -> bool:
+    def _assert_greater_than(self, actual_value: Optional[int | float], expected_value: str | int | float) -> bool:
         """
         Assert greater than
         :param actual_value: actual value
@@ -274,7 +279,7 @@ class ConditionProcessor:
             return False
         return True
 
-    def _assert_less_than(self, actual_value: Optional[int | float], expected_value: str) -> bool:
+    def _assert_less_than(self, actual_value: Optional[int | float], expected_value: str | int | float) -> bool:
         """
         Assert less than
         :param actual_value: actual value
@@ -296,7 +301,7 @@ class ConditionProcessor:
             return False
         return True
 
-    def _assert_greater_than_or_equal(self, actual_value: Optional[int | float], expected_value: str) -> bool:
+    def _assert_greater_than_or_equal(self, actual_value: Optional[int | float], expected_value: str | int | float) -> bool:
         """
         Assert greater than or equal
         :param actual_value: actual value
@@ -318,7 +323,7 @@ class ConditionProcessor:
             return False
         return True
 
-    def _assert_less_than_or_equal(self, actual_value: Optional[int | float], expected_value: str) -> bool:
+    def _assert_less_than_or_equal(self, actual_value: Optional[int | float], expected_value: str | int | float) -> bool:
         """
         Assert less than or equal
         :param actual_value: actual value

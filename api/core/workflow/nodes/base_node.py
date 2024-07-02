@@ -7,6 +7,7 @@ from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.nodes.iterable_node import IterableNodeMixin
 
 
 class UserFrom(Enum):
@@ -39,7 +40,7 @@ class BaseNode(ABC):
     user_id: str
     user_from: UserFrom
     invoke_from: InvokeFrom
-    
+
     workflow_call_depth: int
 
     node_id: str
@@ -149,7 +150,8 @@ class BaseNode(ABC):
         """
         return self._node_type
 
-class BaseIterationNode(BaseNode):
+
+class BaseIterationNode(BaseNode, IterableNodeMixin):
     @abstractmethod
     def _run(self, variable_pool: VariablePool) -> BaseIterationState:
         """
@@ -174,7 +176,7 @@ class BaseIterationNode(BaseNode):
         :return: next node id
         """
         return self._get_next_iteration(variable_pool, state)
-    
+
     @abstractmethod
     def _get_next_iteration(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
         """

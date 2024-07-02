@@ -1,5 +1,4 @@
-from core.workflow.graph import Graph
-from core.workflow.workflow_engine_manager import WorkflowEngineManager
+from core.workflow.workflow_entry import WorkflowEntry
 
 
 def test__init_graph():
@@ -217,18 +216,17 @@ def test__init_graph():
         ],
     }
 
-    workflow_engine_manager = WorkflowEngineManager()
-    graph = workflow_engine_manager._init_graph(
+    workflow_entry = WorkflowEntry()
+    graph = workflow_entry._init_graph(
         graph_config=graph_config
     )
 
     assert graph.root_node.id == "1717222650545"
     assert graph.root_node.source_edge_config is None
-    assert graph.root_node.target_edge_config is not None
     assert graph.root_node.descendant_node_ids == ["1719481290322"]
 
     assert graph.graph_nodes.get("1719481290322") is not None
     assert len(graph.graph_nodes.get("1719481290322").descendant_node_ids) == 2
 
-    assert graph.graph_nodes.get("llm").run_condition_callback is not None
-    assert graph.graph_nodes.get("1719481315734").run_condition_callback is not None
+    assert graph.graph_nodes.get("llm").run_condition is not None
+    assert graph.graph_nodes.get("1719481315734").run_condition is not None
