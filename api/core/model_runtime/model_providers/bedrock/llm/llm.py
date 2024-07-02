@@ -344,7 +344,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         for message in prompt_messages:
             if isinstance(message, SystemPromptMessage):
                 message.content=message.content.strip()
-                system.append(message.content)
+                system.append({"text": message.content})
 
         prompt_message_dicts = []
         for message in prompt_messages:
