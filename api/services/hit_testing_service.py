@@ -4,10 +4,6 @@ import time
 import numpy as np
 from sklearn.manifold import TSNE
 
-from core.embedding.cached_embedding import CacheEmbedding
-from core.model_manager import ModelManager
-from core.model_runtime.entities.model_entities import ModelType
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
 from core.rag.retrieval.retrival_methods import RetrievalMethod
