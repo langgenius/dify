@@ -12,7 +12,7 @@ const translation = {
     permissions: 'Permissions',
     permissionsOnlyMe: 'Only me',
     permissionsAllMember: 'All team members',
-    permissionsInvitedMembers: 'Only invited members',
+    permissionsInvitedMembers: 'Partial team members',
     me: '(You)',
     indexMethod: 'Index Method',
     indexMethodHighQuality: 'High Quality',

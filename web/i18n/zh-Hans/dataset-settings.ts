@@ -12,7 +12,7 @@ const translation = {
     permissions: '可见权限',
     permissionsOnlyMe: '只有我',
     permissionsAllMember: '所有团队成员',
-    permissionsInvitedMembers: '仅受邀成员',
+    permissionsInvitedMembers: '部分团队成员',
     me: '（你）',
     indexMethod: '索引模式',
     indexMethodHighQuality: '高质量',
