@@ -62,7 +62,7 @@ function useOutputVarList<T>({
     })
     setInputs(newInputs)
     onOutputKeyOrdersChange([...outputKeyOrders, newKey])
-  }, [inputs, setInputs, varKey, outputKeyOrders, onOutputKeyOrdersChange])
+  }, [generateNewKey, inputs, setInputs, onOutputKeyOrdersChange, outputKeyOrders, varKey])
 
   const [isShowRemoveVarConfirm, {
     setTrue: showRemoveVarConfirm,
