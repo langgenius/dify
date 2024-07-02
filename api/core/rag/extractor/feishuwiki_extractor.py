@@ -13,10 +13,10 @@ from models.source import DataSourceOauthBinding
 
 logger = logging.getLogger(__name__)
 
-DOCUMENT_RAW_CONTENT_URL = "https://open.feishu-boe.cn/open-apis/docx/v1/documents/{document_id}/raw_content"
-DOCUMENT_BLOCK_CONTENT_URL = "https://open.feishu-boe.cn/open-apis/docx/v1/documents/{document_id}/blocks/{block_id}"
-DOCUMENT_ALL_BLOCK_URL = "https://open.feishu-boe.cn/open-apis/docx/v1/documents/{document_id}/blocks"
-FEISHU_WIKI_NODE_URL = "https://open.feishu-boe.cn/open-apis/wiki/v2/spaces/get_node"
+DOCUMENT_RAW_CONTENT_URL = "https://open.larkoffice.com/open-apis/docx/v1/documents/{document_id}/raw_content"
+DOCUMENT_BLOCK_CONTENT_URL = "https://open.larkoffice.com/open-apis/docx/v1/documents/{document_id}/blocks/{block_id}"
+DOCUMENT_ALL_BLOCK_URL = "https://open.larkoffice.com/open-apis/docx/v1/documents/{document_id}/blocks"
+FEISHU_WIKI_NODE_URL = "https://open.larkoffice.com/open-apis/wiki/v2/spaces/get_node"
 
 
 class FeishuWikiExtractor(BaseExtractor):

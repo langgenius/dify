@@ -304,9 +304,9 @@ class NotionOAuth(OAuthDataSource):
 
 
 class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
-    _FEISHU_TENANT_ACCESS_TOKEN_URL = 'https://open.feishu-boe.cn/open-apis/auth/v3/tenant_access_token/internal'
-    _FEISHU_WIKI_SPACES_SEARCH = 'https://open.feishu-boe.cn/open-apis/wiki/v2/spaces'
-    _FEISHU_WIKI_NODES_SEARCH = 'https://open.feishu-boe.cn/open-apis/wiki/v2/spaces/{space_id}/nodes'
+    _FEISHU_TENANT_ACCESS_TOKEN_URL = 'https://open.larkoffice.com/open-apis/auth/v3/tenant_access_token/internal'
+    _FEISHU_WIKI_SPACES_SEARCH = 'https://open.larkoffice.com/open-apis/wiki/v2/spaces'
+    _FEISHU_WIKI_NODES_SEARCH = 'https://open.larkoffice.com/open-apis/wiki/v2/spaces/{space_id}/nodes'
 
     def get_tenant_access_token(self):
         data = {
