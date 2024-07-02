@@ -37,7 +37,6 @@ class AzureBingSearchAPI:
         params = {
             "q": query,
             "count": count,
-            "freshness": freshness,
             "freshness": freshness if freshness != "Unspecified" else None,
             "market": market,
             "textDecorations": False,
