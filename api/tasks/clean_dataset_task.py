@@ -6,6 +6,7 @@ from celery import shared_task
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
+from extensions.ext_storage import storage
 from models.dataset import (
     AppDatasetJoin,
     Dataset,
@@ -14,6 +15,7 @@ from models.dataset import (
     Document,
     DocumentSegment,
 )
+from models.model import UploadFile
 
 
 # Add import statement for ValueError
@@ -65,8 +67,27 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
         db.session.query(DatasetQuery).filter(DatasetQuery.dataset_id == dataset_id).delete()
         db.session.query(AppDatasetJoin).filter(AppDatasetJoin.dataset_id == dataset_id).delete()
 
-        db.session.commit()
+        # delete files
+        if documents:
+            for document in documents:
+                try:
+                    if document.data_source_type == 'upload_file':
+                        if document.data_source_info:
+                            data_source_info = document.data_source_info_dict
+                            if data_source_info and 'upload_file_id' in data_source_info:
+                                file_id = data_source_info['upload_file_id']
+                                file = db.session.query(UploadFile).filter(
+                                    UploadFile.tenant_id == document.tenant_id,
+                                    UploadFile.id == file_id
+                                ).first()
+                                if not file:
+                                    continue
+                                storage.delete(file.key)
+                                db.session.delete(file)
+                except Exception:
+                    continue
 
+        db.session.commit()
         end_at = time.perf_counter()
         logging.info(
             click.style('Cleaned dataset when dataset deleted: {} latency: {}'.format(dataset_id, end_at - start_at), fg='green'))
