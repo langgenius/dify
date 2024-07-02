@@ -1,0 +1,81 @@
+identity:
+  name: sql_search
+  author: Nut
+  label:
+    en_US: SqlSearchUitl
+    zh_Hans: Sql查询
+description:
+  human:
+    en_US: A tool for sql search.
+    zh_Hans: 一个用于执行sql查询的工具。输入应该是一个搜索查询。
+  llm: A tool for executing sql queries.Input should be a search query.
+parameters:
+  - name: db_type
+    type: select
+    required: true
+    options:
+      - value: mysql
+        label:
+          en_US: mysql
+          zh_Hans: mysql
+    default: mysql
+    label:
+      en_US: Database type
+      zh_Hans: 数据库类型
+    human_description:
+      en_US: used for selecting the database type, mysql or other
+      zh_Hans: 用于选择数据库类型
+    form: form
+  - name: db_connection
+    type: string
+    required: true
+    label:
+      en_US: DB connections
+      zh_Hans: 数据库连接
+    human_description:
+      en_US: DB connection url,example：mysql+pymysql://root:xxxxx@localhost:3306/test
+      zh_Hans: DB连接字符串,例如：mysql+pymysql://root:xxxxx@localhost:3306/test
+    llm_description: DB connections
+    form: form
+  - name: query_sql
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+    human_description:
+      en_US: sql statement,example：select * from fact_statistic_service_called_times
+      zh_Hans: sql查询语句,例如：select * from fact_statistic_service_called_times
+    llm_description: sql for searching
+    form: llm
+  - name: use_comment_colname
+    type: select
+    required: false
+    options:
+      - value: yes
+        label:
+          en_US: yes
+          zh_Hans: 是
+      - value: no
+        label:
+          en_US: no
+          zh_Hans: 否
+    default: no
+    label:
+      en_US: use comment name
+      zh_Hans: 使用中文列名
+    human_description:
+      en_US: use comment for column names
+      zh_Hans: 使用中文列名
+    form: form
+  - name: table_name
+    type: string
+    required: false
+    label:
+      en_US: table_name
+      zh_Hans: 查询表名
+    human_description:
+      en_US: Not required, when querying table names, it is necessary to return comment column names
+      zh_Hans: 非必须，查询表名，需要返回中文列名时需要
+    llm_description: table_name for searching
+    form: llm

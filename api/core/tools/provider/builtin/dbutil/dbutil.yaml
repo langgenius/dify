@@ -1,0 +1,13 @@
+identity:
+  author: Nut
+  name: dbutil
+  label:
+    en_US: DbUtil
+    zh_Hans: DbUtil
+  description:
+    en_US: Database Utils
+    zh_Hans: 数据库查询工具
+  icon: icon.svg
+  tags:
+    - utilities
+credentials_for_provider:
