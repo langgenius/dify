@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="25" viewBox="0 0 24 25" fill="none">
+  <defs>
+    <radialGradient id="ea8ddd8a-48ba-441c-8311-10e5bddbfbfb" cx="10.629" cy="7.175" r="6.675" gradientUnits="userSpaceOnUse">
+      <stop offset="0.225" stop-color="#32d4f5"/>
+      <stop offset="0.59" stop-color="#32d2f2"/>
+      <stop offset="0.825" stop-color="#32caea"/>
+      <stop offset="1" stop-color="#32bedd"/>
+    </radialGradient>
+  </defs>
+  <title>MsPortalFx.base.images-56</title>
+  <g id="e958cf41-a31a-426c-90ab-58b20591ece8">
+    <g>
+      <rect x="-0.375" y="12.598" width="9.73" height="2.216" rx="1.036" transform="translate(-8.376 7.19) rotate(-45)" fill="#198ab3"/>
+      <circle cx="10.629" cy="7.175" r="6.675" fill="url(#ea8ddd8a-48ba-441c-8311-10e5bddbfbfb)"/>
+      <circle cx="10.615" cy="7.056" r="5.243" fill="#fff"/>
+      <path d="M5.535,8.353S6.97,1.171,13.676,2.8a5.14,5.14,0,0,0-6.186.047A5.121,5.121,0,0,0,5.535,8.353Z" fill="#c3f1ff"/>
+    </g>
+  </g>
+</svg>

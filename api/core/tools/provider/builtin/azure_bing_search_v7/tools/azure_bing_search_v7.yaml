@@ -1,0 +1,174 @@
+identity:
+  name: azure_bing_Search_v7
+  author: keita69
+  label:
+    en_US: Azure Bing Search V7
+description:
+  human:
+    en_US: A tool for performing an Azure Bing Search v7 search and extracting snippets and webpages.Input should be a search query.
+  llm: A tool for performing an Azure Bing Search v7 search and extracting snippets and webpages.Input should be a search query.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+    human_description:
+      en_US: used for searching
+    llm_description: key words for searching
+    form: llm
+  - name: count
+    type: number
+    required: true
+    label:
+      en_US: Results Count
+    human_description:
+      en_US: The number of search results to return in the response. The default is 10 and the maximum value is 50. The actual number delivered may be less than requested.
+    llm_description: number of search results
+    form: llm
+  - name: freshness
+    type: select
+    options: # 選択ボックスオプション
+      - value: Unspecified
+        label:
+          en_US: Unspecified
+      - value: Day
+        label:
+          en_US: Day (last 24 hours)
+      - value: Week
+        label:
+          en_US: Week (last 7 days)
+      - value: Month
+        label:
+          en_US: Month (last 30 days)
+    default: null
+    required: false
+    label:
+      en_US: Filter search results by age
+    human_description:
+      en_US: Filter search results by the following case-insensitive age values. Day:last 24 hours / Week:last 7 days / Month:last 30 days
+    form: form
+  - name: market
+    type: select
+    options: # 選択ボックスオプション
+      - value: es-AR
+        label:
+          en_US: Argentina
+      - value: en-AU
+        label:
+          en_US: Australia
+      - value: de-AT
+        label:
+          en_US: Austria
+      - value: nl-BE
+        label:
+          en_US: Belgium (Dutch)
+      - value: fr-BE
+        label:
+          en_US: Belgium (French)
+      - value: pt-BR
+        label:
+          en_US: Brazil
+      - value: en-CA
+        label:
+          en_US: Canada (English)
+      - value: fr-CA
+        label:
+          en_US: Canada (French)
+      - value: es-CL
+        label:
+          en_US: Chile
+      - value: da-DK
+        label:
+          en_US: Denmark
+      - value: fi-FI
+        label:
+          en_US: Finland
+      - value: fr-FR
+        label:
+          en_US: France
+      - value: de-DE
+        label:
+          en_US: Germany
+      - value: zh-HK
+        label:
+          en_US: Hong Kong SAR
+      - value: en-IN
+        label:
+          en_US: India
+      - value: en-ID
+        label:
+          en_US: Indonesia
+      - value: it-IT
+        label:
+          en_US: Italy
+      - value: ja-JP
+        label:
+          en_US: Japan
+      - value: ko-KR
+        label:
+          en_US: Korea
+      - value: en-MY
+        label:
+          en_US: Malaysia
+      - value: es-MX
+        label:
+          en_US: Mexico
+      - value: nl-NL
+        label:
+          en_US: Netherlandsk
+      - value: en-NZ
+        label:
+          en_US: New Zealand
+      - value: no-NO
+        label:
+          en_US: Norway
+      - value: zh-CN
+        label:
+          en_US: People's Republic of China
+      - value: pl-PL
+        label:
+          en_US: Poland
+      - value: en-PH
+        label:
+          en_US: Republic of the Philippines
+      - value: ru-RU
+        label:
+          en_US: Russia
+      - value: en-ZA
+        label:
+          en_US: South Africa
+      - value: es-ES
+        label:
+          en_US: Spaink
+      - value: sv-SE
+        label:
+          en_US: Sweden
+      - value: fr-CH
+        label:
+          en_US: Switzerland (French)
+      - value: de-CH
+        label:
+          en_US: Switzerland (German)
+      - value: zh-TW
+        label:
+          en_US: Taiwan
+      - value: tr-TR
+        label:
+          en_US: Türkiye
+      - value: en-GB
+        label:
+          en_US: United Kingdom
+      - value: en-US
+        label:
+          en_US: United States (English)
+      - value: es-US
+        label:
+          en_US: United States (Spanish)
+    default: ja-JP
+    required: false
+    label:
+      en_US: Market 
+    human_description:
+      en_US: The market where the results come from. Typically, mkt is the country where the user is making the request from. 
+    form: form
