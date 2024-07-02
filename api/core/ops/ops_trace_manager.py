@@ -352,10 +352,17 @@ class TraceTask:
         query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
 
         # get workflow_app_log_id
-        workflow_app_log_data = db.session.query(WorkflowAppLog).filter_by(workflow_run_id=workflow_run.id).first()
+        workflow_app_log_data = db.session.query(WorkflowAppLog).filter_by(
+            tenant_id=tenant_id,
+            app_id=workflow_run.app_id,
+            workflow_run_id=workflow_run.id
+        ).first()
         workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
         # get message_id
-        message_data = db.session.query(Message.id).filter_by(workflow_run_id=workflow_run_id).first()
+        message_data = db.session.query(Message.id).filter_by(
+            conversation_id=conversation_id,
+            workflow_run_id=workflow_run_id
+        ).first()
         message_id = str(message_data.id) if message_data else None
 
         metadata = {

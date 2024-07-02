@@ -196,6 +196,12 @@ docker compose up -d
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
+#### Terraformを使用したデプロイ
+
+##### Azure Global
+[terraform](https://www.terraform.io/) を使用して、AzureにDifyをワンクリックでデプロイします。
+- [nikawangのAzure Terraform](https://github.com/nikawang/dify-azure-terraform)
+
 
 ## 貢献
 
