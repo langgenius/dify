@@ -8,6 +8,7 @@ const translation = {
   deleteDatasetConfirmTitle: 'この知識を削除しますか？',
   deleteDatasetConfirmContent:
     '知識を削除すると元に戻すことはできません。ユーザーはもはやあなたの知識にアクセスできず、すべてのプロンプトの設定とログが永久に削除されます。',
+  datasetUsedByApp: 'この知識は一部のアプリによって使用されています。アプリはこの知識を使用できなくなり、すべてのプロンプト設定とログは永久に削除されます。',
   datasetDeleted: '知識が削除されました',
   datasetDeleteFailed: '知識の削除に失敗しました',
   didYouKnow: 'ご存知ですか？',
