@@ -1,98 +1,94 @@
+import os
+import logging
 import time
-
 import requests
+from requests.exceptions import HTTPError
 
 
 class FirecrawlApp:
-    def __init__(self, api_key=None, base_url=None):
+    def __init__(self, api_key=None, api_url=None):
         self.api_key = api_key
-        self.base_url = base_url or 'https://api.firecrawl.dev'
-        if self.api_key is None and self.base_url == 'https://api.firecrawl.dev':
-            raise ValueError('No API key provided')
+        if not self.api_key:
+            raise ValueError("API key is required")
+        self.api_url = api_url or 'https://api.firecrawl.dev'
+        self.logger = logging.getLogger(__name__)
 
-    def scrape_url(self, url, params=None) -> dict:
+    def _prepare_headers(self, idempotency_key=None):
         headers = {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.api_key}'
         }
-        json_data = {'url': url}
-        if params:
-            json_data.update(params)
-        response = requests.post(
-            f'{self.base_url}/v0/scrape',
-            headers=headers,
-            json=json_data
-        )
-        if response.status_code == 200:
-            response = response.json()
-            if response['success'] == True:
-                return response['data']
-            else:
-                raise Exception(f'Failed to scrape URL. Error: {response["error"]}')
+        if idempotency_key:
+            headers['Idempotency-Key'] = idempotency_key
+        return headers
 
-        elif response.status_code in [402, 409, 500]:
-            error_message = response.json().get('error', 'Unknown error occurred')
-            raise Exception(f'Failed to scrape URL. Status code: {response.status_code}. Error: {error_message}')
-        else:
-            raise Exception(f'Failed to scrape URL. Status code: {response.status_code}')
-
-    def crawl_url(self, url, params=None, wait_until_done=True, timeout=2) -> str:
-        headers = self._prepare_headers()
-        json_data = {'url': url}
-        if params:
-            json_data.update(params)
-        response = self._post_request(f'{self.base_url}/v0/crawl', json_data, headers)
-        if response.status_code == 200:
-            job_id = response.json().get('jobId')
-            if wait_until_done:
-                return self._monitor_job_status(job_id, headers, timeout)
-            else:
-                return {'jobId': job_id}
-        else:
-            self._handle_error(response, 'start crawl job')
-
-    def check_crawl_status(self, job_id) -> dict:
-        headers = self._prepare_headers()
-        response = self._get_request(f'{self.base_url}/v0/crawl/status/{job_id}', headers)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            self._handle_error(response, 'check crawl status')
-
-    def _prepare_headers(self):
-        return {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.api_key}'
-        }
-
-    def _post_request(self, url, data, headers):
-        return requests.post(url, headers=headers, json=data)
-
-    def _get_request(self, url, headers):
-        return requests.get(url, headers=headers)
-
-    def _monitor_job_status(self, job_id, headers, timeout):
-        while True:
-            status_response = self._get_request(f'{self.base_url}/v0/crawl/status/{job_id}', headers)
-            if status_response.status_code == 200:
-                status_data = status_response.json()
-                if status_data['status'] == 'completed':
-                    if 'data' in status_data:
-                        return status_data['data']
-                    else:
-                        raise Exception('Crawl job completed but no data was returned')
-                elif status_data['status'] in ['active', 'paused', 'pending', 'queued']:
-                    if timeout < 2:
-                        timeout = 2
-                    time.sleep(timeout)  # Wait for the specified timeout before checking again
+    def _request(self, method, url, data=None, headers=None, retries=3, backoff_factor=0.3):
+        for i in range(retries):
+            try:
+                response = requests.request(method, url, json=data, headers=headers)
+                response.raise_for_status()
+                return response.json()
+            except HTTPError as e:
+                if response.status_code == 502 and i < retries - 1:
+                    time.sleep(backoff_factor * (2 ** i))
                 else:
-                    raise Exception(f'Crawl job failed or was stopped. Status: {status_data["status"]}')
-            else:
-                self._handle_error(status_response, 'check crawl status')
+                    self._handle_error(response)
+        return None
 
-    def _handle_error(self, response, action):
-        if response.status_code in [402, 409, 500]:
-            error_message = response.json().get('error', 'Unknown error occurred')
-            raise Exception(f'Failed to {action}. Status code: {response.status_code}. Error: {error_message}')
+    def _handle_error(self, response):
+        try:
+            error_detail = response.json()
+        except ValueError:
+            error_detail = response.text
+        if response.status_code == 500:
+            raise HTTPError(f'Server Error: {error_detail}')
         else:
-            raise Exception(f'Unexpected error occurred while trying to {action}. Status code: {response.status_code}')
+            raise HTTPError(f'{response.status_code} Error: {error_detail}')
+
+    def scrape_url(self, url, **kwargs):
+        endpoint = f'{self.api_url}/v0/scrape'
+        headers = self._prepare_headers()
+        data = {'url': url, **kwargs}
+        return self._request('POST', endpoint, data, headers)
+
+    def search(self, query, **kwargs):
+        endpoint = f'{self.api_url}/v0/search'
+        headers = self._prepare_headers()
+        data = {'query': query, **kwargs}
+        return self._request('POST', endpoint, data, headers)
+
+    def crawl_url(self, url, wait=False, poll_interval=5, idempotency_key=None, **kwargs):
+        endpoint = f'{self.api_url}/v0/crawl'
+        headers = self._prepare_headers(idempotency_key)
+        data = {'url': url, **kwargs}
+        job_id = self._request('POST', endpoint, data, headers)
+        if wait:
+            return self._monitor_job_status(job_id, headers, poll_interval)
+        return job_id
+
+    def check_crawl_status(self, job_id):
+        endpoint = f'{self.api_url}/v0/crawl/status/{job_id}'
+        headers = self._prepare_headers()
+        return self._request('GET', endpoint, headers=headers)
+
+    def _monitor_job_status(self, job_id, headers, poll_interval):
+        while True:
+            status = self.check_crawl_status(job_id)
+            if status['status'] == 'completed':
+                return status
+            elif status['status'] == 'failed':
+                raise HTTPError(f'Job {job_id} failed: {status["error"]}')
+            time.sleep(poll_interval)
+
+
+# Example usage
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    api_key = os.getenv('FIRECRAWL_API_KEY')
+    app = DifyFirecrawlApp(api_key)
+    try:
+        result = app.scrape_url('https://example.com')
+        print(result)
+        exit(0)
+    except HTTPError as e:
+        print("Error:", e)

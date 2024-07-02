@@ -115,7 +115,6 @@ chardet = "~5.1.0"
 cohere = "~5.2.4"
 cos-python-sdk-v5 = "1.9.30"
 dashscope = { version = "~1.17.0", extras = ["tokenizer"] }
-firecrawl-py = "0.0.5"
 flask = "~3.0.1"
 flask-compress = "~1.14"
 flask-cors = "~4.0.0"
