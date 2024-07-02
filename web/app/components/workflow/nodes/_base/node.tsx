@@ -196,7 +196,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           )
         }
         {
-          data.desc && data.type !== BlockEnum.Iteration && (
+          data.desc && (
             <div className='px-3 pt-1 pb-2 text-xs leading-[18px] text-gray-500 whitespace-pre-line break-words'>
               {data.desc}
             </div>
