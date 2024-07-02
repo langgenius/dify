@@ -18,8 +18,8 @@ class MarkdownExtractor(BaseExtractor):
     def __init__(
             self,
             file_path: str,
-            remove_hyperlinks: bool = True,
-            remove_images: bool = True,
+            remove_hyperlinks: bool = False,
+            remove_images: bool = False,
             encoding: Optional[str] = None,
             autodetect_encoding: bool = True,
     ):
