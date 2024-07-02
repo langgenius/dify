@@ -72,19 +72,23 @@ class AudioApi(Resource):
 class TextApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     def post(self, app_model: App, end_user: EndUser):
-        parser = reqparse.RequestParser()
-        parser.add_argument('text', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('voice', type=str, location='json')
-        parser.add_argument('streaming', type=bool, required=False, nullable=False, location='json')
-        args = parser.parse_args()
-
         try:
+            parser = reqparse.RequestParser()
+            parser.add_argument('message_id', type=str, required=True, location='json')
+            parser.add_argument('voice', type=str, location='json')
+            parser.add_argument('streaming', type=bool, location='json')
+            args = parser.parse_args()
+
+            message_id = args.get('message_id')
+            streaming = args.get('streaming') if args.get('streaming') else True
+            voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get(
+                'voice')
             response = AudioService.transcript_tts(
                 app_model=app_model,
-                text=args['text'],
-                end_user=end_user,
-                voice=args.get('voice'),
-                streaming=args['streaming']
+                message_id=message_id,
+                end_user=end_user.external_user_id,
+                voice=voice,
+                streaming=streaming
             )
 
             return response

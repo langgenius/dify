@@ -4,6 +4,7 @@ import time
 from collections.abc import Generator
 from typing import Any, Optional, Union, cast
 
+from core.app.apps.advanced_chat.app_generator_redis_publisher import AppGeneratorRedisPublisher
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -189,7 +190,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         Process stream response.
         :return:
         """
+        publisher = AppGeneratorRedisPublisher()
         for message in self._queue_manager.listen():
+            publisher.publish(message=message)
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
@@ -318,7 +321,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 yield self._ping_stream_response()
             else:
                 continue
-
+        publisher.publish(None)
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 
@@ -525,7 +528,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         :return:
         """
         if not self._task_state.current_stream_generate_state:
-            return None
+            return
 
         route_chunks = self._task_state.current_stream_generate_state.generate_route[
                        self._task_state.current_stream_generate_state.current_route_position:]

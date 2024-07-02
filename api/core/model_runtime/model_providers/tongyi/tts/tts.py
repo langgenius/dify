@@ -4,7 +4,7 @@ from io import BytesIO
 from typing import Optional
 
 import dashscope
-from flask import Response, stream_with_context
+from flask import Response
 from pydub import AudioSegment
 
 from core.model_runtime.errors.invoke import InvokeBadRequestError
@@ -36,15 +36,12 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         audio_type = self._get_model_audio_type(model, credentials)
         if not voice or voice not in [d['value'] for d in self.get_tts_model_voices(model=model, credentials=credentials)]:
             voice = self._get_model_default_voice(model, credentials)
-        if streaming:
-            return Response(stream_with_context(self._tts_invoke_streaming(model=model,
-                                                                           credentials=credentials,
-                                                                           content_text=content_text,
-                                                                           voice=voice,
-                                                                           tenant_id=tenant_id)),
-                            status=200, mimetype=f'audio/{audio_type}')
-        else:
-            return self._tts_invoke(model=model, credentials=credentials, content_text=content_text, voice=voice)
+
+        return self._tts_invoke_streaming(model=model,
+                                          credentials=credentials,
+                                          content_text=content_text,
+                                          voice=voice,
+                                          tenant_id=tenant_id)
 
     def validate_credentials(self, model: str, credentials: dict, user: Optional[str] = None) -> None:
         """

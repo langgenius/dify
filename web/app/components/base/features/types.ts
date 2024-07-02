@@ -14,6 +14,7 @@ export type SuggestedQuestionsAfterAnswer = EnabledOrDisabled
 export type TextToSpeech = EnabledOrDisabled & {
   language?: string
   voice?: string
+  autoPlay?: string
 }
 
 export type SpeechToText = EnabledOrDisabled

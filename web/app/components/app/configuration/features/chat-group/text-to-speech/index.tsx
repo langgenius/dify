@@ -40,7 +40,6 @@ const TextToSpeech: FC = () => {
           { languageInfo?.example && (
             <AudioBtn
               value={languageInfo?.example}
-              voice={voiceItem?.value}
               isAudition
               noCache
             />

@@ -81,15 +81,29 @@ class ChatMessageTextApi(Resource):
     @account_initialization_required
     @get_app_model
     def post(self, app_model):
+        from werkzeug.exceptions import InternalServerError
+
         try:
+            parser = reqparse.RequestParser()
+            parser.add_argument('message_id', type=str, location='json')
+            parser.add_argument('text', type=str, location='json')
+            parser.add_argument('voice', type=str, location='json')
+            parser.add_argument('streaming', type=bool, location='json')
+            args = parser.parse_args()
+
+            message_id = args.get('message_id', None)
+            text = args.get('text', None)
+            streaming = args.get('streaming') if args.get('streaming') else True
+            voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get(
+                'voice')
             response = AudioService.transcript_tts(
                 app_model=app_model,
-                text=request.form['text'],
-                voice=request.form['voice'],
-                streaming=False
+                text=text,
+                message_id=message_id,
+                voice=voice,
+                streaming=streaming
             )
-
-            return {'data': response.data.decode('latin1')}
+            return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
             raise AppUnavailableError()

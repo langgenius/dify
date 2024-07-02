@@ -1,124 +1,101 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { t } from 'i18next'
 import { useParams, usePathname } from 'next/navigation'
 import s from './style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import { randomString } from '@/utils'
-import { textToAudio } from '@/service/share'
+import { textToAudioStream } from '@/service/share'
 import Loading from '@/app/components/base/loading'
+import { type AudioPlayer, getAudioPlayer } from '@/app/components/base/audio-btn/audio'
+import { useChatContext } from '@/app/components/base/chat/chat/context'
 
 type AudioBtnProps = {
-  value: string
+  id?: string
   voice?: string
+  value?: string
   className?: string
   isAudition?: boolean
-  noCache: boolean
+  noCache?: boolean
 }
 
 type AudioState = 'initial' | 'loading' | 'playing' | 'paused' | 'ended'
 
 const AudioBtn = ({
-  value,
+  id,
   voice,
+  value,
   className,
   isAudition,
-  noCache,
 }: AudioBtnProps) => {
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const [audioState, setAudioState] = useState<AudioState>('initial')
 
   const selector = useRef(`play-tooltip-${randomString(4)}`)
   const params = useParams()
   const pathname = usePathname()
-  const removeCodeBlocks = (inputText: any) => {
-    const codeBlockRegex = /```[\s\S]*?```/g
-    if (inputText)
-      return inputText.replace(codeBlockRegex, '')
-    return ''
+  const {
+    config: chatContextConfig,
+  } = useChatContext()
+  const voiceRef = useRef(chatContextConfig?.text_to_speech?.voice)
+  const audioPlayerRef = useRef<AudioPlayer | null>(null)
+  const audio_finished_call = () => {
+    setAudioState('ended')
   }
-
   const loadAudio = async () => {
-    const formData = new FormData()
-    formData.append('text', removeCodeBlocks(value))
-    formData.append('voice', removeCodeBlocks(voice))
+    let url = ''
+    let isPublic = false
 
-    if (value !== '') {
-      setAudioState('loading')
+    if (params.token) {
+      url = '/text-to-audio'
+      isPublic = true
+    }
+    else if (params.appId) {
+      if (pathname.search('explore/installed') > -1)
+        url = `/installed-apps/${params.appId}/text-to-audio`
+      else
+        url = `/apps/${params.appId}/text-to-audio`
+    }
+    try {
+      const voice_value = voice || voiceRef.current
+      const audioResponse: any = await textToAudioStream(url, isPublic, {
+        message_id: id,
+        streaming: true,
+        voice: voice_value,
+        text: value,
+      })
+      const reader = audioResponse.body.getReader() // 获取reader
+      const audioPlayer = getAudioPlayer(id, audio_finished_call, true)
+      audioPlayerRef.current = audioPlayer
+      while (true) {
+        const { value, done } = await reader.read()
 
-      let url = ''
-      let isPublic = false
+        if (done) {
+          audioPlayer.finishReceiver()
+          break
+        }
+        setAudioState('playing')
+        audioPlayer.receiveAudioData(value)
+      }
+    }
 
-      if (params.token) {
-        url = '/text-to-audio'
-        isPublic = true
-      }
-      else if (params.appId) {
-        if (pathname.search('explore/installed') > -1)
-          url = `/installed-apps/${params.appId}/text-to-audio`
-        else
-          url = `/apps/${params.appId}/text-to-audio`
-      }
-
-      try {
-        const audioResponse = await textToAudio(url, isPublic, formData)
-        const blob_bytes = Buffer.from(audioResponse.data, 'latin1')
-        const blob = new Blob([blob_bytes], { type: 'audio/wav' })
-        const audioUrl = URL.createObjectURL(blob)
-        audioRef.current!.src = audioUrl
-      }
-      catch (error) {
-        setAudioState('initial')
-        console.error('Error playing audio:', error)
-      }
+    catch (error) {
+      console.error('Error playing audio:', error)
+      setAudioState('ended')
     }
   }
 
   const handleToggle = async () => {
-    if (audioState === 'initial' || noCache) {
+    let audioPlayer: AudioPlayer | null = null
+    if (audioState === 'playing') {
+      setAudioState('paused')
+      audioPlayer = getAudioPlayer(id, audio_finished_call)
+      audioPlayer.stop()
+    }
+    else {
+      setAudioState('playing')
       await loadAudio()
     }
-    else if (audioRef.current) {
-      if (audioState === 'playing') {
-        audioRef.current.pause()
-        setAudioState('paused')
-      }
-      else {
-        audioRef.current.play()
-        setAudioState('playing')
-      }
-    }
   }
-
-  useEffect(() => {
-    const currentAudio = audioRef.current
-
-    const handleLoading = () => {
-      setAudioState('loading')
-    }
-
-    const handlePlay = () => {
-      currentAudio?.play()
-      setAudioState('playing')
-    }
-
-    const handleEnded = () => {
-      setAudioState('ended')
-    }
-
-    currentAudio?.addEventListener('progress', handleLoading)
-    currentAudio?.addEventListener('canplaythrough', handlePlay)
-    currentAudio?.addEventListener('ended', handleEnded)
-
-    return () => {
-      currentAudio?.removeEventListener('progress', handleLoading)
-      currentAudio?.removeEventListener('canplaythrough', handlePlay)
-      currentAudio?.removeEventListener('ended', handleEnded)
-      URL.revokeObjectURL(currentAudio?.src || '')
-      currentAudio?.pause()
-      currentAudio?.setAttribute('src', '')
-    }
-  }, [])
 
   const tooltipContent = {
     initial: t('appApi.play'),
@@ -151,7 +128,6 @@ const AudioBtn = ({
             )}
         </button>
       </Tooltip>
-      <audio ref={audioRef} src='' className='hidden' />
     </div>
   )
 }

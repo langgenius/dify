@@ -69,16 +69,28 @@ class AudioApi(WebApiResource):
 
 class TextApi(WebApiResource):
     def post(self, app_model: App, end_user):
+        from flask_restful import reqparse
         try:
+            parser = reqparse.RequestParser()
+            parser.add_argument('message_id', type=str, required=True, location='json')
+            parser.add_argument('voice', type=str, location='json')
+            parser.add_argument('streaming', type=bool, location='json')
+            args = parser.parse_args()
+
+            message_id = args.get('message_id')
+            streaming = args.get('streaming') if args.get('streaming') else True
+            voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get(
+                'voice')
+
             response = AudioService.transcript_tts(
                 app_model=app_model,
-                text=request.form['text'],
+                message_id=message_id,
                 end_user=end_user.external_user_id,
-                voice=request.form['voice'] if request.form.get('voice') else None,
-                streaming=False
+                voice=voice,
+                streaming=streaming
             )
 
-            return {'data': response.data.decode('latin1')}
+            return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
             raise AppUnavailableError()

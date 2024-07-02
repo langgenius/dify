@@ -79,6 +79,7 @@ export type TextToSpeechConfig = {
   enabled: boolean
   voice?: string
   language?: string
+  autoPlay?: string
 }
 
 export type CitationConfig = MoreLikeThisConfig

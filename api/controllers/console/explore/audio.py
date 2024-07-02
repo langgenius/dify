@@ -70,16 +70,27 @@ class ChatAudioApi(InstalledAppResource):
 
 class ChatTextApi(InstalledAppResource):
     def post(self, installed_app):
-        app_model = installed_app.app
+        from flask_restful import reqparse
 
+        app_model = installed_app.app
         try:
+            parser = reqparse.RequestParser()
+            parser.add_argument('message_id', type=str, required=True, location='json')
+            parser.add_argument('voice', type=str, location='json')
+            parser.add_argument('streaming', type=bool, location='json')
+            args = parser.parse_args()
+
+            message_id = args.get('message_id')
+            streaming = args.get('streaming') if args.get('streaming') else True
+            voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get(
+                'voice')
             response = AudioService.transcript_tts(
                 app_model=app_model,
-                text=request.form['text'],
-                voice=request.form['voice'] if request.form.get('voice') else app_model.app_model_config.text_to_speech_dict.get('voice'),
-                streaming=False
+                message_id=message_id,
+                voice=voice,
+                streaming=streaming
             )
-            return {'data': response.data.decode('latin1')}
+            return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
             raise AppUnavailableError()
@@ -108,3 +119,5 @@ class ChatTextApi(InstalledAppResource):
 
 api.add_resource(ChatAudioApi, '/installed-apps/<uuid:installed_app_id>/audio-to-text', endpoint='installed_app_audio')
 api.add_resource(ChatTextApi, '/installed-apps/<uuid:installed_app_id>/text-to-audio', endpoint='installed_app_text')
+# api.add_resource(ChatTextApiWithMessageId, '/installed-apps/<uuid:installed_app_id>/text-to-audio/message-id',
+#                  endpoint='installed_app_text_with_message_id')

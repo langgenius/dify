@@ -2,6 +2,7 @@ import logging
 from collections.abc import Generator
 from typing import Any, Optional, Union
 
+from core.app.apps.advanced_chat.app_generator_redis_publisher import AppGeneratorRedisPublisher
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
@@ -169,7 +170,9 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         Process stream response.
         :return:
         """
+        publisher = AppGeneratorRedisPublisher()
         for message in self._queue_manager.listen():
+            publisher.publish(message=message)
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
@@ -250,7 +253,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 yield self._ping_stream_response()
             else:
                 continue
-
+        publisher.publish(None)
     def _save_workflow_app_log(self, workflow_run: WorkflowRun) -> None:
         """
         Save workflow app log.
