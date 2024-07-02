@@ -762,14 +762,18 @@ class DocumentStatusApi(DocumentResource):
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
+
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
 
-        document = self.get_document(dataset_id, document_id)
+        # check user's permission
+        DatasetService.check_dataset_permission(dataset, current_user)
 
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        document = self.get_document(dataset_id, document_id)
 
         indexing_cache_key = 'document_{}_indexing'.format(document.id)
         cache_result = redis_client.get(indexing_cache_key)
