@@ -28,7 +28,7 @@ parameters:
     form: llm
   - name: freshness
     type: select
-    options: # 選択ボックスオプション
+    options:
       - value: Unspecified
         label:
           en_US: Unspecified
@@ -50,7 +50,7 @@ parameters:
     form: form
   - name: market
     type: select
-    options: # 選択ボックスオプション
+    options:
       - value: es-AR
         label:
           en_US: Argentina
