@@ -350,16 +350,16 @@ class DatasetRetrieval:
             )
 
             # if 'dataset_id' in document.metadata:
-            if 'dataset_id' in document.metadata:
-                query = query.filter(DocumentSegment.dataset_id == document.metadata['dataset_id'])
+            #if 'dataset_id' in document.metadata:
+            #    query = query.filter(DocumentSegment.dataset_id == document.metadata['dataset_id'])
 
             # add hit count to document segment
-            query.update(
-                {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
-                synchronize_session=False
-            )
+            #query.update(
+            #    {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
+            #    synchronize_session=False
+            #)
 
-            db.session.commit()
+            #db.session.commit()
 
         # get tracing instance
         trace_manager: TraceQueueManager = self.application_generate_entity.trace_manager if self.application_generate_entity else None

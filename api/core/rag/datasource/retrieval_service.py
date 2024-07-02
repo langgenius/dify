@@ -32,7 +32,7 @@ class RetrievalService:
         ).first()
         if not dataset or dataset.available_document_count == 0 or dataset.available_segment_count == 0:
             return []
-        all_documents = []
+        all_documents = [{'example':'text'}]
         threads = []
         exceptions = []
         # retrieval_model source with keyword
