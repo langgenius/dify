@@ -63,6 +63,13 @@ const OutputVarList: FC<Props> = ({
           type: 'error',
           message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
         })
+        // reset list, when not isValid
+        const l = list.map((o, i) => {
+          return i === index
+            ? { ...o, variable: oldKey }
+            : o
+        })
+        setList(l)
         return
       }
 
