@@ -83,13 +83,16 @@ const Apps = () => {
 
   useEffect(() => {
     document.title = `${t('common.menus.apps')} -  Dify`
-    if (isCurrentWorkspaceDatasetOperator)
-      return router.replace('/datasets')
     if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
     }
   }, [])
+
+  useEffect(() => {
+    if (isCurrentWorkspaceDatasetOperator)
+      return router.replace('/datasets')
+  }, [isCurrentWorkspaceDatasetOperator])
 
   const hasMore = data?.at(-1)?.has_more ?? true
   useEffect(() => {

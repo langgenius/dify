@@ -17,6 +17,11 @@ const Layout: FC = () => {
       return router.replace('/datasets')
   }, [])
 
+  useEffect(() => {
+    if (isCurrentWorkspaceDatasetOperator)
+      return router.replace('/datasets')
+  }, [isCurrentWorkspaceDatasetOperator])
+
   return <ToolProviderList />
 }
 export default React.memo(Layout)
