@@ -2543,63 +2543,65 @@ test = ["cffi (>=1.12.2)", "coverage (>=5.0)", "dnspython (>=1.16.0,<2.0)", "idn
 
 [[package]]
 name = "gmpy2"
-version = "2.1.5"
-description = "gmpy2 interface to GMP/MPIR, MPFR, and MPC for Python 2.7 and 3.5+"
+version = "2.2.0"
+description = "gmpy2 interface to GMP, MPFR, and MPC for Python 3.7+"
 optional = false
-python-versions = "*"
+python-versions = ">=3.7"
 files = [
-    {file = "gmpy2-2.1.5-cp27-cp27m-macosx_10_9_x86_64.whl", hash = "sha256:d8e531a799f09cc66bd2de16b867cf19ce981bbc005bd026fa8d9af46cbdc08b"},
-    {file = "gmpy2-2.1.5-cp27-cp27m-manylinux2010_i686.whl", hash = "sha256:eec3b3c9413dd1ea4413af57fc9c92ccbb4d5bb8336da5efbbda8f107fd90eec"},
-    {file = "gmpy2-2.1.5-cp27-cp27m-manylinux2010_x86_64.whl", hash = "sha256:55dcf08d4278b439c1ba37d9b6893bb77bc34b55ccc9b1ad8645d4596a12700e"},
-    {file = "gmpy2-2.1.5-cp27-cp27m-win_amd64.whl", hash = "sha256:8947f3b8a1c90f5bae26caf83b9ba2313e52cd06472f7c2be7a5b3a32bdc1bdd"},
-    {file = "gmpy2-2.1.5-cp27-cp27mu-manylinux2010_i686.whl", hash = "sha256:3459447d579dd0620a09c2aa4a9c1dbfc46cc8084b6928b901607e8565f04a83"},
-    {file = "gmpy2-2.1.5-cp27-cp27mu-manylinux2010_x86_64.whl", hash = "sha256:931adb3006afb55562094e9a866a1db584c11bc9b4a370d1f4719b551b5403fe"},
-    {file = "gmpy2-2.1.5-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:df404ae9a97b9f399d9ca6890b02bef175a373f87e317f93cbaae00f68774e11"},
-    {file = "gmpy2-2.1.5-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:cd876ee5232b0d70dd0bae2b39f54a75f6cc9bbf1dd90b8f0fda8c267fa383a2"},
-    {file = "gmpy2-2.1.5-cp310-cp310-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:4877978256fbb6d6b51cc3892183327171c174fbf60671962ab7aa5e70af8eb3"},
-    {file = "gmpy2-2.1.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:565d0444f0d174d84bcbcb0da8feede0ce09733dabd905b63343b94d666e46c0"},
-    {file = "gmpy2-2.1.5-cp310-cp310-musllinux_1_1_i686.whl", hash = "sha256:85614559144edad1223a46cae4a3e965818022cb2bb44438f3c42406395a9eb7"},
-    {file = "gmpy2-2.1.5-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:29441b7d31ea60c93249667c6ef33f2560d34ce3cf284d7e4e32e91ed1f9ac1b"},
-    {file = "gmpy2-2.1.5-cp310-cp310-win_amd64.whl", hash = "sha256:8946dc912c647f7cd29a587339c9e79860d9b34a3a59cbdc04d6d6fe20cfff39"},
-    {file = "gmpy2-2.1.5-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:58097d7ef48f3eabc86e55ca078d3eee5fa3574d9d585f944ee7bc0f00900864"},
-    {file = "gmpy2-2.1.5-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:fa312ec90e643c8ed2224e204f43239c2e27d14261b349c84912c8858a54c5d5"},
-    {file = "gmpy2-2.1.5-cp311-cp311-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:9ac72073e7938c2307e7e4645367709a32036787f5e176c4acf881c7d8efff28"},
-    {file = "gmpy2-2.1.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3245fd34217649f6c48515ef42da67eb43794f24a20fc961dc2c0c99bb8ebb39"},
-    {file = "gmpy2-2.1.5-cp311-cp311-musllinux_1_1_i686.whl", hash = "sha256:4e9d64c1e1e66a2137617c361714022da3de75787d51bd1aed205eb28ddb362c"},
-    {file = "gmpy2-2.1.5-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:81004086f2543399b6b425989fc96cc02dd38ab74dcbfd3acb324af1a6770eaf"},
-    {file = "gmpy2-2.1.5-cp311-cp311-win_amd64.whl", hash = "sha256:03beaccf3843c9e9d9cf70102a74cd1e617e792337b64ae73a417b80bf96b385"},
-    {file = "gmpy2-2.1.5-cp35-cp35m-macosx_10_9_x86_64.whl", hash = "sha256:131d441cc0e77620d88a900eaa6eee8648ba630621b8337b966cda76964e7662"},
-    {file = "gmpy2-2.1.5-cp35-cp35m-manylinux2010_i686.whl", hash = "sha256:b6a04cfa85607b47e86eefe102b1124c6d0a8981f4197a3afd7071f0719ac9b6"},
-    {file = "gmpy2-2.1.5-cp35-cp35m-manylinux2010_x86_64.whl", hash = "sha256:09800f5a7566093d74702ad31f775f176df539f1138f4475ba8edf11903a2b2b"},
-    {file = "gmpy2-2.1.5-cp35-cp35m-win_amd64.whl", hash = "sha256:a3a61cd88aca0a891e26ada53f2bf3f4433d4fb1c771f12dec97e8edc17f9f7e"},
-    {file = "gmpy2-2.1.5-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:411d1ea2f5a04d8857a7fe1e59d28d384f19232cb7519f29565c087bda364685"},
-    {file = "gmpy2-2.1.5-cp36-cp36m-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:a5fa902b1c6911d41e6045c94eac57cf2ea76f71946ca65ab65ae8f5d20b2aae"},
-    {file = "gmpy2-2.1.5-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:51b95d8e2d6914552118d0316c8ce566441b709e001e66c5db16495be1a429ac"},
-    {file = "gmpy2-2.1.5-cp36-cp36m-musllinux_1_1_i686.whl", hash = "sha256:7bbe8d39d83e96b5f81b26e65f99a3e8794cf1edfd891e154a233757a26764fb"},
-    {file = "gmpy2-2.1.5-cp36-cp36m-musllinux_1_1_x86_64.whl", hash = "sha256:e7f324dd859a1324bbc5d5375f431f1ac81c6487035a34cba12fbe8658a888f0"},
-    {file = "gmpy2-2.1.5-cp36-cp36m-win_amd64.whl", hash = "sha256:c9e9909d12d06697867568007e9b945246f567116fa5b830513f72766ca8b0c7"},
-    {file = "gmpy2-2.1.5-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:4957d9164a8b2a93263e8a43f99c635a84c1a4044a256e1a496503dd624376a8"},
-    {file = "gmpy2-2.1.5-cp37-cp37m-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:efda6e0508d0c7fe79d0fc3fccd3bab90937dba05384224cbc08398856805ce6"},
-    {file = "gmpy2-2.1.5-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b8f59c69dd138d84d471530e0907c254429855a839b93b00c7e9fa7ec766feae"},
-    {file = "gmpy2-2.1.5-cp37-cp37m-musllinux_1_1_i686.whl", hash = "sha256:943078c7abef7757758bb0f313b4346cf9b0c91f93039b5980d22f2ee0d53177"},
-    {file = "gmpy2-2.1.5-cp37-cp37m-musllinux_1_1_x86_64.whl", hash = "sha256:c935af5fcd2fbd2ed89d0e0cf1c7fd11603101293dbddb46fd1325c56363573f"},
-    {file = "gmpy2-2.1.5-cp37-cp37m-win_amd64.whl", hash = "sha256:18233c35d5bbddfe2ec8c269e216dc841ce24ba5f2b00e79e8278ba843eb22dc"},
-    {file = "gmpy2-2.1.5-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:6300a0e427bb8b12442db2629b7b271d4d0cd3dbffe2e3880c408932993d31ba"},
-    {file = "gmpy2-2.1.5-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:8d2299682455ee22830f7c0f5851a86ae121ccc5fca2f483be7229a91a2f3be5"},
-    {file = "gmpy2-2.1.5-cp38-cp38-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:f50d91d779fe24e7dd3feaa1c06e47e11452a73d0a8c67daeea055a6d58cf233"},
-    {file = "gmpy2-2.1.5-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c398e6e5bb470f0529ca4e2490d5a396bc9c50c860818f297f47486e51e86673"},
-    {file = "gmpy2-2.1.5-cp38-cp38-musllinux_1_1_i686.whl", hash = "sha256:cfdb61f87edf9a7897e7c3e9204f141ddb1de68ecb7038edf0c676bdea815ef2"},
-    {file = "gmpy2-2.1.5-cp38-cp38-musllinux_1_1_x86_64.whl", hash = "sha256:356c986799a3b34bdcf845961976398556bcfe104e115379effefc50b2cce320"},
-    {file = "gmpy2-2.1.5-cp38-cp38-win_amd64.whl", hash = "sha256:c40ed4d68e0b54efa53a9d9fe62662342dd85212f08382b852ca9effab2e7666"},
-    {file = "gmpy2-2.1.5-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:6131ccb4f34849b0fa54b9dd8261c00b16fcf4c3332696cb16469a21c217f884"},
-    {file = "gmpy2-2.1.5-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:2fee8bb2934300173d8de0ce670bdfedbb5b09817db94c2467aafa18380a1286"},
-    {file = "gmpy2-2.1.5-cp39-cp39-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:c23c98db9cccb63872dd32bdd98275c9503809117d8a23ddd683d8baa3e3ee67"},
-    {file = "gmpy2-2.1.5-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b2764dfc443c364b918506ecad8973a61b76ca0b5afdf460f940134166a2a3e7"},
-    {file = "gmpy2-2.1.5-cp39-cp39-musllinux_1_1_i686.whl", hash = "sha256:4fccf90d28f934f76cc4252007d2e94cc38700ed016d3fd787974f79819381fd"},
-    {file = "gmpy2-2.1.5-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:0baf36b2724e154bf98ea17f4ff8234543dc7af7297ce3a0a7098bca0209b768"},
-    {file = "gmpy2-2.1.5-cp39-cp39-win_amd64.whl", hash = "sha256:8739ca54323ff28bc317920ed96723a13558a3c442ef77ac325eb3cdd5d32d05"},
-    {file = "gmpy2-2.1.5.tar.gz", hash = "sha256:bc297f1fd8c377ae67a4f493fc0f926e5d1b157e5c342e30a4d84dc7b9f95d96"},
+    {file = "gmpy2-2.2.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:31c917c3f33c2bd2775cb607d9a5f61c8f8f7efd66f6028c358e9f210e9d88e7"},
+    {file = "gmpy2-2.2.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:d279a90a15f7cf7326472ff650bea986f1f279e561645436e86679c67f2647da"},
+    {file = "gmpy2-2.2.0-cp310-cp310-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:cfa43bb615cbfc48c5384919c141614713bf656440cecd9859d8d22abe4b7ef3"},
+    {file = "gmpy2-2.2.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5f70c5369f23ca56d90bf5824105b3e5b433f3d865574bb3c7f1522d48462475"},
+    {file = "gmpy2-2.2.0-cp310-cp310-musllinux_1_2_i686.whl", hash = "sha256:89b11e298ab1b72e6b4844415286db7a5615de6c830d5d2b954944ff2d562886"},
+    {file = "gmpy2-2.2.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:822c4feef35dd305d64cb664291d08b20a94a1a248a4b5cedd9575bd7ca8792c"},
+    {file = "gmpy2-2.2.0-cp310-cp310-win_amd64.whl", hash = "sha256:cfe352f303066dd7bbb5e824bc78f03ce73a014f9760f97aff2c3daa347b1770"},
+    {file = "gmpy2-2.2.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:67755787021a8700c204d39063ad5bb1b968dc242c6b70a51103f6fc51b1392c"},
+    {file = "gmpy2-2.2.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:cb80aa90eae1660d5d3f136df45ff01db3badbcbdd7b9ba82b66d75d6b73029f"},
+    {file = "gmpy2-2.2.0-cp311-cp311-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:d069347192f9d23aaf0d30e729797bed6238e7f336d7311560f1938d21bd95e3"},
+    {file = "gmpy2-2.2.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:fded16cbb0f122d675313cbe6af586fb851224447b7bc7ee9162cbfb5ba3719e"},
+    {file = "gmpy2-2.2.0-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:b685bf48378722d636dfbc445909fea635316755a45bea5a39e176e4e95e2f26"},
+    {file = "gmpy2-2.2.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:fb140d43fcf56ffbf370acaefa21cd3f443a89b0f5ebce0e44a3d364d013f392"},
+    {file = "gmpy2-2.2.0-cp311-cp311-win_amd64.whl", hash = "sha256:92389cbcb2eccf0305c165754e6edee916bfe80611b067778915eb418e6d3854"},
+    {file = "gmpy2-2.2.0-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:8fe1e5b793091937399f8560f930e33ca53aa11e846dc3f10f45163b26d8b373"},
+    {file = "gmpy2-2.2.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:865cd50fb79b98aa82993ecaacb9a062ba7198f5732cf83fcee8b46a2b888dff"},
+    {file = "gmpy2-2.2.0-cp312-cp312-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:bb489ac25fd18e7e94ee4147c353e272e9de5f1acec8f678f6205389f7c313f5"},
+    {file = "gmpy2-2.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9cd72f734ae20e1f7ee52690e300da4cc94b75f9c83877796769066e77b660d0"},
+    {file = "gmpy2-2.2.0-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:bfafa7fd23306664e3ab916aaf8993cfba6c7115a0dbf818692199a2731fe123"},
+    {file = "gmpy2-2.2.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:333a94e746a62ecad9dad8c860ba8f730fbb91e1c34a58c966fdf55914f87f42"},
+    {file = "gmpy2-2.2.0-cp312-cp312-win_amd64.whl", hash = "sha256:cbb1cdcd9b93b280a73935e01a3839634d6eb55a10e7dddfe1fbc9ae0b1d5b88"},
+    {file = "gmpy2-2.2.0-cp313-cp313-macosx_10_9_x86_64.whl", hash = "sha256:f148075319d1e38564bbdff89fc92af1a8ae80d8f8da28cd23867a1944498dc3"},
+    {file = "gmpy2-2.2.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:0a2d62b4decf81c078e8286f1a865d730ab00db016444dcc2972324c9784e12f"},
+    {file = "gmpy2-2.2.0-cp313-cp313-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:d22b3cc84b79d40c6bb9c6c092487d53cd9785be00e8dcae4c8da580f5e44c41"},
+    {file = "gmpy2-2.2.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b598d917e77204f9044b1c22783108f3411caf3c39d1ebd80bd3b6c6d4763416"},
+    {file = "gmpy2-2.2.0-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:334b0d79b05c797c861181cdcffbf97d1c5ff18dafd62cbadf26f92fdf82dcf7"},
+    {file = "gmpy2-2.2.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:6a5c0f489567764c21730f0958fc9eb8e1b3d9ce5f41504a9bfd2f33214ca9eb"},
+    {file = "gmpy2-2.2.0-cp313-cp313-win_amd64.whl", hash = "sha256:b225710d606485abf830a27805435c6d31aba6057401a692f7e157f6c41c54f1"},
+    {file = "gmpy2-2.2.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:4ed0a55ed50e10edddfa34491da0a772a5f022a6496297fa15b0413fad66c0c1"},
+    {file = "gmpy2-2.2.0-cp37-cp37m-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:c3c4ee9caf6c2f2e91fbc9c007a390a8ed1c5796f5b09e20410ac6a4c58eebe8"},
+    {file = "gmpy2-2.2.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0e80433016f28598c3d98fb46c13be29b396f79bb4ab4dc162356c41201a6532"},
+    {file = "gmpy2-2.2.0-cp37-cp37m-musllinux_1_2_i686.whl", hash = "sha256:67e367ec799875864111411f162f68e49c48ef6e4ebdc1453c48fa4783b7e2cd"},
+    {file = "gmpy2-2.2.0-cp37-cp37m-musllinux_1_2_x86_64.whl", hash = "sha256:f908045a8bb7b4f2e48a405cfd6ac0eac84fbb8368b9d120851f7e710281d5b7"},
+    {file = "gmpy2-2.2.0-cp37-cp37m-win_amd64.whl", hash = "sha256:896695fd208215b4954dcb4d90a463abb48812e89a423371106edd01814094c9"},
+    {file = "gmpy2-2.2.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:6711366b59ff6ef8ad0733420729b74ad790570d599e7de6ab54e505db88a20f"},
+    {file = "gmpy2-2.2.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:8e60438c9b015f8df590fdad8caa03259de539d228be1f1e2ae74fb3180285c9"},
+    {file = "gmpy2-2.2.0-cp38-cp38-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:ff82f7da5fa155517b645401f2d1d792f317355ae8bd93e31357ec507db8ebcc"},
+    {file = "gmpy2-2.2.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0f9b18b9bbeed57bc53948764d8c43c9ec47e7edfb935b95ff510488a81c42f6"},
+    {file = "gmpy2-2.2.0-cp38-cp38-musllinux_1_2_i686.whl", hash = "sha256:ac13a4941df971fb2628eca6b35551816982eef1311fcc2077ed8bb734ae4c5d"},
+    {file = "gmpy2-2.2.0-cp38-cp38-musllinux_1_2_x86_64.whl", hash = "sha256:2308eaae1a78eb6ac496fc5ee2d9abadb275c3c926b0f47f9cbc607408770f81"},
+    {file = "gmpy2-2.2.0-cp38-cp38-win_amd64.whl", hash = "sha256:2a73c6bd7952b1b124cfe0e0e33dca78c3e9bc73c296306228dcd488aebd8367"},
+    {file = "gmpy2-2.2.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:33359e0e8eb7df4bdb0f53891c0f4fb885ecb846af9ea31225b1124aa28b6c8d"},
+    {file = "gmpy2-2.2.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:552f32176309451b5b877fdd536f80c1ec31fd723c65a20e991cb2628696f0da"},
+    {file = "gmpy2-2.2.0-cp39-cp39-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:c993ddd1ffab8904779b37bd0496e8ee777ff9f8ccb57d70fa1af25db86df3cf"},
+    {file = "gmpy2-2.2.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9b0867bdec52687c968d4a8c2b68dd8c42a687de287817ed035814bdd810b9ad"},
+    {file = "gmpy2-2.2.0-cp39-cp39-musllinux_1_2_i686.whl", hash = "sha256:0be0afed606e5d5b7d52fa0dcc2a2bbea3a30536428c445a072cf1297807171d"},
+    {file = "gmpy2-2.2.0-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:ce6b6ddd9364a2f6a139bc7afd01f418808a0bd155269b4ecc1c0b6c729747f2"},
+    {file = "gmpy2-2.2.0-cp39-cp39-win_amd64.whl", hash = "sha256:52f350d927b1de6557834de1d6694cbf9b2d488828b65e34c1845d5db66d9aa9"},
+    {file = "gmpy2-2.2.0.tar.gz", hash = "sha256:e19e62dfeb1e4a57079f0bf51c51dec30633d9fe9e89cb9a083e05e4823afa70"},
 ]
+
+[package.extras]
+docs = ["sphinx (>=4)", "sphinx-rtd-theme (>=1)"]
+tests = ["cython", "hypothesis", "mpmath", "pytest", "setuptools"]
 
 [[package]]
 name = "google-ai-generativelanguage"
@@ -9095,4 +9097,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "90f0e77567fbe5100d15bf2bc9472007aafc53c2fd594b6a90dd8455dea58582"
+content-hash = "dfd49a120e4998b8744415ee0b35737957a53c4a7a1b22006a65f139af62fd71"
