@@ -1,0 +1,122 @@
+identity:
+  name: databaseoperation_sqlexec
+  author: Xiao Ley
+  label:
+    en_US: SQL Execution
+    zh_Hans: SQL执行
+  icon: icon.svg
+description:
+  human:
+    en_US: |
+      Execute SQL and return JSON or markdown.
+      Return value JSON format: [[{"column1":"value1","column2":"value2"},{"column1":"value1","column2":"value2"}], ...]
+    zh_Hans: |
+      执行SQL，返回值为JSON或者markdown。
+      返回值JSON格式：[[{"column1":"value1","column2":"value2"},{"column1":"value1","column2":"value2"}], ...]
+  llm: A tool for executing SQL
+parameters:
+  - name: sql
+    type: string
+    required: true
+    label:
+      en_US: SQL
+      zh_Hans: SQL
+    human_description:
+      en_US: SQL statements (currently supports SELECT statements)
+      zh_Hans: SQL 语句（目前支持 SELECT 语句）
+    llm_description: SQL to be executed
+    form: llm
+  - name: output_format
+    type: select
+    default: "json"
+    required: true
+    label:
+      en_US: Output Format
+      zh_Hans: 输出格式
+    human_description:
+      en_US: Output format
+      zh_Hans: 输出格式
+    form: form
+    options:
+      - value: "json"
+        label:
+          en_US: JSON
+          zh_Hans: JSON
+      - value: "markdown"
+        label:
+          en_US: Markdown
+          zh_Hans: Markdown
+  - name: dbsystem
+    type: select
+    required: true
+    label:
+      en_US: Database System
+      zh_Hans: 数据库系统
+    human_description:
+      en_US: Database system
+      zh_Hans: 数据库系统
+    form: form
+    options:
+      - value: "postgresql"
+        label:
+          en_US: PostgreSQL
+          zh_Hans: PostgreSQL
+      - value: "mysql"
+        label:
+          en_US: MySQL
+          zh_Hans: MySQL
+  - name: host
+    type: string
+    required: true
+    label:
+      en_US: Host
+      zh_Hans: 主机地址
+    human_description:
+      en_US: Host
+      zh_Hans: 主机地址
+    llm_description: Database server address
+    form: form
+  - name: port
+    type: string
+    required: true
+    label:
+      en_US: Port
+      zh_Hans: 端口
+    human_description:
+      en_US: Port
+      zh_Hans: 端口
+    llm_description: Database server port
+    form: form
+  - name: username
+    type: string
+    required: true
+    label:
+      en_US: Username
+      zh_Hans: 用户名
+    human_description:
+      en_US: Username
+      zh_Hans: 用户名
+    llm_description: Database username
+    form: form
+  - name: password
+    type: secret-input
+    required: true
+    label:
+      en_US: Password
+      zh_Hans: 密码
+    human_description:
+      en_US: Password
+      zh_Hans: 密码
+    llm_description: Database password
+    form: form
+  - name: dbname
+    type: string
+    required: true
+    label:
+      en_US: database name
+      zh_Hans: 数据库名
+    human_description:
+      en_US: Database name
+      zh_Hans: 数据库名
+    llm_description: Database name
+    form: form
