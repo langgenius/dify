@@ -18,7 +18,6 @@ import Confirm from '@/app/components/base/confirm'
 
 // type
 import type { AutomaticRes } from '@/service/debug'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 
 const noDataIcon = (
@@ -58,9 +57,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   onFinished,
 }) => {
   const { t } = useTranslation()
-
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
 
   const tryList = [
     {
@@ -131,24 +127,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   const [showConfirmOverwrite, setShowConfirmOverwrite] = React.useState(false)
 
-  const isShowAutoPromptInput = () => {
-    if (isMobile) {
-      // hide prompt panel on mobile if it is loading or has had result
-      if (isLoading || res)
-        return false
-      return true
-    }
-
-    // always display prompt panel on desktop mode
-    return true
-  }
-
   const isShowAutoPromptResPlaceholder = () => {
-    if (isMobile) {
-      // hide placeholder panel on mobile
-      return false
-    }
-
     return !isLoading && !res
   }
 
@@ -160,7 +139,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       closable
     >
       <div className='flex h-[680px] flex-wrap space-y-4 overflow-y-auto'>
-        {isShowAutoPromptInput() && <div className='w-[570px] shrink-0 p-6 h-full overflow-y-auto border-r border-gray-100'>
+        <div className='w-[570px] shrink-0 p-6 h-full overflow-y-auto border-r border-gray-100'>
           <div className='mb-8'>
             <div className={`leading-[28px] text-lg font-bold ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
             <div className='mt-1 text-[13px] font-normal text-gray-500'>{t('appDebug.generate.description')}</div>
@@ -202,7 +181,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               </Button>
             </div>
           </div>
-        </div>}
+        </div>
 
         {(!isLoading && res) && (
           <div className='w-0 grow p-6 h-full overflow-y-auto'>
