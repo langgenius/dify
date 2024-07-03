@@ -38,8 +38,8 @@ class FeishuWikiExtractor(BaseExtractor):
         )
         if self._feishu_obj_type == "docx":
             raw_content = self.get_document_raw_content(self._feishu_obj_token)
-            table_block_content = self.get_document_table_block_content(self._feishu_obj_token, "")
-            docs = [Document(page_content=raw_content), Document(page_content=table_block_content)]
+            # table_block_content = self.get_document_table_block_content(self._feishu_obj_token, "")
+            docs = [Document(page_content=raw_content)]
             return docs
         else:
             raise ValueError("feishu obj type not supported")
