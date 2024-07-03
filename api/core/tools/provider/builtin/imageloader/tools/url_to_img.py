@@ -75,45 +75,6 @@ class ImageLoaderConvertUrlTool(BuiltinTool):
         
         result.append(msg)
 
-        url = "https://i.natgeofe.com/n/548467d8-c5f1-4551-9f58-6817a8d2c45e/NationalGeographic_2572187.jpg"
-        image_ext = ""
-        filename = url.split('/')[-1]
-        if '.' in filename:
-            filename, image_ext = path.splitext(filename)
-
-        filename = self.generate_fixed_uuid4(url)
-
-        file_key = f"tools/{tenant_id}/{filename}{image_ext}"
-        mime_type, _ = guess_type(file_key)
-        if not storage.exists(file_key):
-            response = requests.get(url, stream=True)
-            if response.status_code == 200:
-                storage.save(file_key, response.content)
-            else:
-                raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
-
-            # sign_url = ToolFileManager.sign_file(file.file_key, image_ext)
-
-        _ = ToolFileManager.create_file_by_key(
-            id=filename,
-            user_id=user_id, 
-            tenant_id=tenant_id,
-            conversation_id=None,
-            file_key=file_key,
-            mimetype=mime_type
-        )
-
-        meta = { 
-            "url": url,
-            "tool_file_id": filename
-        }
-
-        msg = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE_LINK,
-                                message=url,
-                                save_as=filename,
-                                meta=meta)
-        
-        result.append(msg)
 
         # result = []
         # result.append(self.create_blob_message(blob=decoded_bytes,
