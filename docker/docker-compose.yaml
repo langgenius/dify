@@ -8,8 +8,8 @@ x-shared-env: &shared-api-worker-env
   CONSOLE_API_URL: ${CONSOLE_API_URL:-}
   SERVICE_API_URL: ${SERVICE_API_URL:-}
   APP_WEB_URL: ${APP_WEB_URL:-}
-  CHECK_UPDATE_URL: ${CHECK_UPDATE_URL:-true}
-  OPENAI_API_BASE: ${OPENAI_API_BASE:-}
+  CHECK_UPDATE_URL: ${CHECK_UPDATE_URL:-https://updates.dify.ai}
+  OPENAI_API_BASE: ${OPENAI_API_BASE:-https://api.openai.com/v1}
   FILES_URL: ${FILES_URL:-}
   FILES_ACCESS_TIMEOUT: ${FILES_ACCESS_TIMEOUT:-300}
   MIGRATION_ENABLED: ${MIGRATION_ENABLED:-true}
@@ -308,8 +308,8 @@ services:
       - api
       - web
     ports:
-      - "${NGINX_PORT:-80}:${EXPOSE_NGINX_PORT:-80}"
-      - "${NGINX_SSL_PORT:-443}:${EXPOSE_NGINX_SSL_PORT:-443}"
+      - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
+      - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"
 
   # The Weaviate vector store.
   weaviate:

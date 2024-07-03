@@ -20,6 +20,7 @@ import { getInputKeys } from '@/app/components/base/block-input'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import { getNewVar } from '@/utils/var'
 import { varHighlightHTML } from '@/app/components/app/configuration/base/var-highlight'
+import Toast from '@/app/components/base/toast'
 
 const MAX_QUESTION_NUM = 5
 
@@ -93,6 +94,15 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   }
 
   const handleConfirm = () => {
+    if (!(tempValue || '').trim()) {
+      Toast.notify({
+        type: 'error',
+        message: t('common.errorMsg.fieldRequired', {
+          field: t('appDebug.openingStatement.title'),
+        }),
+      })
+      return
+    }
     const keys = getInputKeys(tempValue)
     const promptKeys = promptVariables.map(item => item.key)
     let notIncludeKeys: string[] = []
