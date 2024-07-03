@@ -81,12 +81,14 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     },
   ]
 
-  const [hopingToSolve, setHopingToSolve] = React.useState<string>('')
+  const [instruction, setInstruction] = React.useState<string>('')
   const isValid = () => {
-    if (hopingToSolve.trim() === '') {
+    if (instruction.trim() === '') {
       Toast.notify({
         type: 'error',
-        message: t('appDebug.generate.problemRequired'),
+        message: t('common.errorMsg.fieldRequired', {
+          field: t('appDebug.generate.instruction'),
+        }),
       })
       return false
     }
@@ -118,7 +120,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     try {
       // TODO: wait for api
       const res = await generateRule({
-        hoping_to_solve: hopingToSolve,
+        hoping_to_solve: instruction,
       })
       setRes(res)
     }
@@ -165,7 +167,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           </div>
           <div >
             <div className='flex items-center'>
-              <div className='mr-3 shrink-0 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>Try it</div>
+              <div className='mr-3 shrink-0 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>{t('appDebug.generate.tryIt')}</div>
               <div className='grow h-px' style={{
                 background: 'linear-gradient(to right, rgba(243, 244, 246, 1), rgba(243, 244, 246, 0))',
               }}></div>
@@ -182,15 +184,15 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             </div>
           </div>
           {/* inputs */}
-          <div className='mt-2 space-y-5'>
-            <div className='space-y-2'>
-              <div className='text-[13px] font-medium text-gray-900'>{t('appDebug.generate.solveProblem')}</div>
-              <textarea className="w-full h-[200px] overflow-y-auto p-3 text-[13px] font-normal bg-gray-50 rounded-lg" placeholder={t('appDebug.generate.solveProblemPlaceHolder') as string} value={hopingToSolve} onChange={e => setHopingToSolve(e.target.value)} />
+          <div className='mt-6'>
+            <div className='text-[0px]'>
+              <div className='mb-2 leading-5 text-sm font-medium text-gray-900'>{t('appDebug.generate.instruction')}</div>
+              <textarea className="w-full h-[200px] overflow-y-auto px-3 py-2 text-sm bg-gray-50 rounded-lg" placeholder={t('appDebug.generate.instructionPlaceHolder') as string} value={instruction} onChange={e => setInstruction(e.target.value)} />
             </div>
 
-            <div className='mt-6 flex justify-end'>
+            <div className='mt-5 flex justify-end'>
               <Button
-                className='flex space-x-2'
+                className='flex space-x-1'
                 variant='primary'
                 onClick={onGenerate}
                 disabled={isLoading}

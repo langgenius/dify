@@ -202,16 +202,10 @@ const translation = {
   generate: {
     title: 'Prompt Generator',
     description: 'The prompt generator can convert input task instructions into high-quality, structured prompts. Please write clear and specific instructions as much detail as possible. The quality of the generated prompts depends on the inference model you choose.',
-
-    intendedAudience: 'Who is the intended audience?',
-    intendedAudiencePlaceHolder: 'e.g. Student',
-    solveProblem: 'What problems do they hope AI can solve for them?',
-    solveProblemPlaceHolder: 'e.g. Extract insights and summarize information from long reports and articles',
+    instruction: 'Instructions',
+    instructionPlaceHolder: 'Write clear and specific instructions.',
     generate: 'Generate',
-    audiencesRequired: 'Audiences required',
-    problemRequired: 'Problem required',
     resTitle: 'We have orchestrated the following application for you.',
-    apply: 'Apply this orchestration',
     noData: 'Describe your use case on the left, the orchestration preview will show here.',
     loading: 'Orchestrating the application for you...',
     overwriteTitle: 'Override existing configuration?',
