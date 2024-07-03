@@ -1,5 +1,5 @@
 # Variables
-DOCKER_REGISTRY=magicpsyche
+DOCKER_REGISTRY=ghcr.io/magicpsyche
 WEB_IMAGE=$(DOCKER_REGISTRY)/dify-web
 API_IMAGE=$(DOCKER_REGISTRY)/dify-api
 VERSION=latest
