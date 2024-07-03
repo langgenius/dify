@@ -1,6 +1,6 @@
 import os
 
-from configs.app_config import DifyConfig
+from configs import dify_config
 
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG", "false").lower() != 'true':
     from gevent import monkey
@@ -81,7 +81,7 @@ def create_flask_app_with_configs() -> Flask:
     with configs loaded from .env file
     """
     dify_app = DifyApp(__name__)
-    dify_app.config.from_mapping(DifyConfig().model_dump())
+    dify_app.config.from_mapping(dify_config.model_dump())
 
     # populate configs into system environment variables
     for key, value in dify_app.config.items():
