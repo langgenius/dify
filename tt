@@ -1,0 +1,1 @@
+echo $GITHUB_TOKEN | docker login ghcr.io -u magicpsyche --password-stdin
