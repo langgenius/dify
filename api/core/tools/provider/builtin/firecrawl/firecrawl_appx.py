@@ -4,11 +4,11 @@ import requests
 from requests.exceptions import HTTPError
 
 class FirecrawlApp:
-    def __init__(self, api_key=None, api_url=None):
+    def __init__(self, api_key=None, base_url=None):
         self.api_key = api_key
         if not self.api_key:
             raise ValueError("API key is required")
-        self.api_url = api_url or 'https://api.firecrawl.dev'
+        self.base_url = base_url or 'https://api.firecrawl.dev'
 
     def _prepare_headers(self, idempotency_key=None):
         headers = {
@@ -33,29 +33,29 @@ class FirecrawlApp:
         return None
 
     def scrape_url(self, url, **kwargs):
-        endpoint = f'{self.api_url}/v0/scrape'
+        endpoint = f'{self.base_url}/v0/scrape'
         headers = self._prepare_headers()
         data = {'url': url, **kwargs}
         return self._request('POST', endpoint, data, headers)
 
     def search(self, query, **kwargs):
-        endpoint = f'{self.api_url}/v0/search'
+        endpoint = f'{self.base_url}/v0/search'
         headers = self._prepare_headers()
         data = {'query': query, **kwargs}
         return self._request('POST', endpoint, data, headers)
 
     def crawl_url(self, url, wait=False, poll_interval=5, idempotency_key=None, **kwargs):
-        endpoint = f'{self.api_url}/v0/crawl'
+        endpoint = f'{self.base_url}/v0/crawl'
         headers = self._prepare_headers(idempotency_key)
         data = {'url': url, **kwargs}
         response = self._request('POST', endpoint, data, headers)
-        job_id = response['jobId']  # 确保使用正确的键名
+        job_id = response['jobId']  
         if wait:
             return self._monitor_job_status(job_id, headers, poll_interval)
         return job_id
 
     def check_crawl_status(self, job_id):
-        endpoint = f'{self.api_url}/v0/crawl/status/{job_id}'
+        endpoint = f'{self.base_url}/v0/crawl/status/{job_id}'
         headers = self._prepare_headers()
         return self._request('GET', endpoint, headers=headers)
 
@@ -68,7 +68,6 @@ class FirecrawlApp:
                 raise HTTPError(f'Job {job_id} failed: {status["error"]}')
             time.sleep(poll_interval)
 
-# Example usage
 if __name__ == "__main__":
     api_key = os.getenv('FIRECRAWL_API_KEY')
     app = FirecrawlApp(api_key)
