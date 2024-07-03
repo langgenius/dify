@@ -196,6 +196,18 @@ export const NODES_INITIAL_DATA = {
     title: '',
     desc: '',
     query_variable_selector: [],
+    authorized_dataset_ids_variable_selector: [],
+    filter_mode_to_metadata_filter_config_dict: {
+      must: {
+        filter_items: [],
+      },
+      should: {
+        filter_items: [],
+      },
+      must_not: {
+        filter_items: [],
+      },
+    },
     dataset_ids: [],
     retrieval_mode: 'single',
     ...KnowledgeRetrievalDefault.defaultValue,

@@ -22,6 +22,8 @@ const Service: FC = () => {
     await createApp({
       name: `new app${Math.round(Math.random() * 100)}`,
       mode: 'chat',
+      icon: '',
+      icon_background: '',
     })
     // reload app list
     mutate({ url: '/apps', params: { page: 1 } })

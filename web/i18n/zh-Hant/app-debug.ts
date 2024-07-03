@@ -222,7 +222,7 @@ const translation = {
   },
   errorMessage: {
     nameOfKeyRequired: '變數 {{key}} 對應的名稱必填',
-    valueOfVarRequired: '{{key}}必填',
+    valueOfVarRequired: '{{key}} 必填',
     queryRequired: '主要文字必填',
     waitForResponse: '請等待上條資訊響應完成',
     waitForBatchResponse: '請等待批次任務完成',

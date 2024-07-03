@@ -7,6 +7,7 @@ from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.retrieval.retrival_methods import RetrievalMethod
+from core.workflow.nodes.knowledge_retrieval.entities import MetadataFilterConfig
 from extensions.ext_database import db
 from models.dataset import Dataset
 
@@ -25,11 +26,10 @@ default_retrieval_model = {
 class RetrievalService:
 
     @classmethod
-    def retrieve(cls, retrival_method: str, dataset_id: str, query: str,
-                 top_k: int, score_threshold: Optional[float] = .0, reranking_model: Optional[dict] = None):
-        dataset = db.session.query(Dataset).filter(
-            Dataset.id == dataset_id
-        ).first()
+    def retrieve(cls, retrival_method: str, dataset_id: str, query: str, top_k: int,
+                 score_threshold: Optional[float] = .0, reranking_model: Optional[dict] = None,
+                 filter_mode_to_metadata_filter_config_dict: Optional[dict[str, MetadataFilterConfig]] = None):
+        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
         if not dataset or dataset.available_document_count == 0 or dataset.available_segment_count == 0:
             return []
         all_documents = []
@@ -58,6 +58,7 @@ class RetrievalService:
                 'reranking_model': reranking_model,
                 'all_documents': all_documents,
                 'retrival_method': retrival_method,
+                'filter_mode_to_metadata_filter_config_dict': filter_mode_to_metadata_filter_config_dict,
                 'exceptions': exceptions,
             })
             threads.append(embedding_thread)
@@ -74,6 +75,7 @@ class RetrievalService:
                 'top_k': top_k,
                 'reranking_model': reranking_model,
                 'all_documents': all_documents,
+                'filter_mode_to_metadata_filter_config_dict': filter_mode_to_metadata_filter_config_dict,
                 'exceptions': exceptions,
             })
             threads.append(full_text_index_thread)
@@ -97,8 +99,8 @@ class RetrievalService:
         return all_documents
 
     @classmethod
-    def keyword_search(cls, flask_app: Flask, dataset_id: str, query: str,
-                       top_k: int, all_documents: list, exceptions: list):
+    def keyword_search(cls, flask_app: Flask, dataset_id: str, query: str, top_k: int, all_documents: list,
+                       exceptions: list):
         with flask_app.app_context():
             try:
                 dataset = db.session.query(Dataset).filter(
@@ -120,7 +122,8 @@ class RetrievalService:
     @classmethod
     def embedding_search(cls, flask_app: Flask, dataset_id: str, query: str,
                          top_k: int, score_threshold: Optional[float], reranking_model: Optional[dict],
-                         all_documents: list, retrival_method: str, exceptions: list):
+                         all_documents: list, retrival_method: str,
+                         filter_mode_to_metadata_filter_config_dict: Optional[dict[str, MetadataFilterConfig]], exceptions: list):
         with flask_app.app_context():
             try:
                 dataset = db.session.query(Dataset).filter(
@@ -138,7 +141,8 @@ class RetrievalService:
                     score_threshold=score_threshold,
                     filter={
                         'group_id': [dataset.id]
-                    }
+                    },
+                    filter_mode_to_metadata_filter_config_dict=filter_mode_to_metadata_filter_config_dict
                 )
 
                 if documents:
@@ -158,21 +162,16 @@ class RetrievalService:
     @classmethod
     def full_text_index_search(cls, flask_app: Flask, dataset_id: str, query: str,
                                top_k: int, score_threshold: Optional[float], reranking_model: Optional[dict],
-                               all_documents: list, retrival_method: str, exceptions: list):
+                               all_documents: list, retrival_method: str,
+                               filter_mode_to_metadata_filter_config_dict: Optional[dict[str, MetadataFilterConfig]],
+                               exceptions: list):
         with flask_app.app_context():
             try:
-                dataset = db.session.query(Dataset).filter(
-                    Dataset.id == dataset_id
-                ).first()
+                dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+                vector_processor = Vector(dataset=dataset)
+                documents = vector_processor.search_by_full_text(query, top_k=top_k,
+                                                                 filter_mode_to_metadata_filter_config_dict=filter_mode_to_metadata_filter_config_dict)
 
-                vector_processor = Vector(
-                    dataset=dataset,
-                )
-
-                documents = vector_processor.search_by_full_text(
-                    query,
-                    top_k=top_k
-                )
                 if documents:
                     if reranking_model and retrival_method == RetrievalMethod.FULL_TEXT_SEARCH:
                         data_post_processor = DataPostProcessor(str(dataset.tenant_id), reranking_model, False)

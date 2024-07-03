@@ -4,23 +4,27 @@ from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.models.document import Document
 from models.dataset import Dataset, DocumentSegment
+from models.dataset import Document as DatasetDocument
 
 
 class VectorService:
 
     @classmethod
     def create_segments_vector(cls, keywords_list: Optional[list[list[str]]],
-                               segments: list[DocumentSegment], dataset: Dataset):
+                               segments: list[DocumentSegment], dataset: Dataset, parent_document: DatasetDocument):
         documents = []
         for segment in segments:
+            metadata = {
+                "doc_id": segment.index_node_id,
+                "doc_hash": segment.index_node_hash,
+                "document_id": segment.document_id,
+                "dataset_id": segment.dataset_id,
+            }
+            if parent_document.doc_metadata:
+                metadata["doc_metadata"] = parent_document.doc_metadata
             document = Document(
                 page_content=segment.content,
-                metadata={
-                    "doc_id": segment.index_node_id,
-                    "doc_hash": segment.index_node_hash,
-                    "document_id": segment.document_id,
-                    "dataset_id": segment.dataset_id,
-                }
+                metadata=metadata
             )
             documents.append(document)
         if dataset.indexing_technique == 'high_quality':

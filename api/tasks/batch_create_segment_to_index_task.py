@@ -89,7 +89,7 @@ def batch_create_segment_to_index_task(job_id: str, content: list, dataset_id: s
             document_segments.append(segment_document)
         # add index to db
         indexing_runner = IndexingRunner()
-        indexing_runner.batch_add_segments(document_segments, dataset)
+        indexing_runner.batch_add_segments(document_segments, dataset_document, dataset)
         db.session.commit()
         redis_client.setex(indexing_cache_key, 600, 'completed')
         end_at = time.perf_counter()

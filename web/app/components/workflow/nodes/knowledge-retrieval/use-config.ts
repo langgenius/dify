@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import produce from 'immer'
 import { isEqual } from 'lodash-es'
 import type { ValueSelector, Var } from '../../types'
@@ -7,7 +7,8 @@ import {
   useIsChatMode, useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
-import type { KnowledgeRetrievalNodeType, MultipleRetrievalConfig } from './types'
+import type { FilterMode, FilterModeToMetadataFilterConfigDict, KnowledgeRetrievalNodeType, MultipleRetrievalConfig } from './types'
+import { createDefaultFilterItem } from './default'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { DATASET_DEFAULT } from '@/config'
 import type { DataSet } from '@/models/datasets'
@@ -44,6 +45,20 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const handleQueryVarChange = useCallback((newVar: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
       draft.query_variable_selector = newVar as ValueSelector
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleAuthorizedDatasetIdsChange = useCallback((newVar: ValueSelector | string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.authorized_dataset_ids_variable_selector = newVar as ValueSelector
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleFilterModeToMetadataFilterConfigDictChange = useCallback((newVar: FilterModeToMetadataFilterConfigDict) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.filter_mode_to_metadata_filter_config_dict = newVar as FilterModeToMetadataFilterConfigDict
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -221,6 +236,43 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     return varPayload.type === VarType.string
   }, [])
 
+  const selectedFilterModes = useMemo(() => {
+    const keys = inputs.filter_mode_to_metadata_filter_config_dict ? Object.keys(inputs.filter_mode_to_metadata_filter_config_dict) as FilterMode[] : []
+    return keys.filter((key) => {
+      return inputs.filter_mode_to_metadata_filter_config_dict[key]?.filter_items?.length
+    })
+  }, [inputs.filter_mode_to_metadata_filter_config_dict])
+
+  const addFilterModePanel = useCallback((mode: FilterMode) => {
+    if (!inputs.filter_mode_to_metadata_filter_config_dict) {
+      inputs.filter_mode_to_metadata_filter_config_dict = {
+        must: {
+          filter_items: [],
+        },
+        must_not: {
+          filter_items: [],
+        },
+        should: {
+          filter_items: [],
+        },
+      }
+    }
+
+    const currentMode = inputs.filter_mode_to_metadata_filter_config_dict[mode]
+
+    if (currentMode.filter_items.length > 0)
+      return
+
+    const newInputs = produce(inputs, (draft) => {
+      draft.filter_mode_to_metadata_filter_config_dict[mode] = {
+        filter_items: [
+          createDefaultFilterItem(),
+        ],
+      }
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   // single run
   const {
     isShowSingleRun,
@@ -266,6 +318,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     query,
     setQuery,
     runResult,
+    handleAuthorizedDatasetIdsChange,
+    selectedFilterModes,
+    addFilterModePanel,
+    handleFilterModeToMetadataFilterConfigDictChange,
   }
 }
 

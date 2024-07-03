@@ -276,6 +276,51 @@ const translation = {
     knowledgeRetrieval: {
       queryVariable: '查询变量',
       knowledge: '知识库',
+      dynamicKnowledge: '动态知识库',
+      dynamicKnowledgeTip: '支持使用变量动态指定检索的知识库id列表（与默认选中的知识库列表取并集检索召回）',
+      metadataFilter: '元数据筛选器',
+      metadataFilterTip: '支持使用知识库文档分片的元数据进行条件筛选过滤',
+      metadataFilterItem: {
+        params: '参数',
+        parameter: '元数据筛选器参数',
+        condition: '元数据筛选器操作符',
+        valueSelector: '元数据筛选器参数值',
+        operatorLabel: '操作符',
+        operator: {
+          matchAny: {
+            label: '包含',
+            hoverTip: '匹配任意值',
+          },
+          matchExcept: {
+            label: '不包含',
+            hoverTip: '至少有一个不匹配',
+          },
+          matchText: {
+            label: '全文匹配',
+            hoverTip: '字符串的全文匹配',
+          },
+          matchValue: {
+            label: '=',
+            hoverTip: '与给定值完全匹配',
+          },
+          le: {
+            label: '<=',
+            hoverTip: '小于等于',
+          },
+          lt: {
+            label: '<',
+            hoverTip: '小于',
+          },
+          ge: {
+            label: '>=',
+            hoverTip: '大于等于',
+          },
+          gt: {
+            label: '>',
+            hoverTip: '大于',
+          },
+        },
+      },
       outputVars: {
         output: '召回的分段',
         content: '分段内容',

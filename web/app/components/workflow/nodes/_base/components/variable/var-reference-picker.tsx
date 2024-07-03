@@ -110,7 +110,7 @@ const VarReferencePicker: FC<Props> = ({
     onOpen()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
-  const hasValue = !isConstant && value.length > 0
+  const hasValue = !isConstant && value?.length > 0
 
   const isIterationVar = (() => {
     if (!isInIteration)

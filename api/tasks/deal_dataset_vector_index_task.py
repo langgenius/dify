@@ -83,14 +83,17 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                         DocumentSegment.enabled == True
                     ).order_by(DocumentSegment.position.asc()).all()
                     for segment in segments:
+                        metadata = {
+                            "doc_id": segment.index_node_id,
+                            "doc_hash": segment.index_node_hash,
+                            "document_id": segment.document_id,
+                            "dataset_id": segment.dataset_id,
+                        }
+                        if dataset_document.doc_metadata:
+                            metadata["doc_metadata"] = dataset_document.doc_metadata
                         document = Document(
                             page_content=segment.content,
-                            metadata={
-                                "doc_id": segment.index_node_id,
-                                "doc_hash": segment.index_node_hash,
-                                "document_id": segment.document_id,
-                                "dataset_id": segment.dataset_id,
-                            }
+                            metadata=metadata
                         )
 
                         documents.append(document)

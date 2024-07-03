@@ -9,7 +9,7 @@ import type { IconBaseProps, IconData } from '@/app/components/base/icons/IconBa
 const Icon = React.forwardRef<React.MutableRefObject<SVGElement>, Omit<IconBaseProps, 'data'>>((
   props,
   ref,
-) => <IconBase {...props} ref={ref} data={data as IconData} />)
+) => <IconBase {...props} ref={ref} data={data as unknown as IconData} />)
 
 Icon.displayName = 'D'
 

@@ -1,5 +1,5 @@
 import { CodeGroup } from '@/app/components/develop/code.tsx'
-import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '@/app/components/develop/md.tsx'
+import { Row, Col, Properties, Property, Heading } from '@/app/components/develop/md.tsx'
 
 # 知识库 API
 
@@ -66,6 +66,26 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
               - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
               - <code>max_tokens</code> 最大长度 (token) 默认为 1000
       </Property>
+      <Property name='doc_metadata' type='object' key='doc_metadata'>
+        文档元数据
+      </Property>
+      <Property name='doc_type' type='string' key='doc_type'>
+        文档类型
+          - <code>book</code>
+          - <code>web_page</code>
+          - <code>paper</code>
+          - <code>web_page</code>
+          - <code>social_media_post</code>
+          - <code>wikipedia_entry</code>
+          - <code>personal_document</code>
+          - <code>business_document</code>
+          - <code>im_chat_log</code>
+          - <code>synced_from_notion</code>
+          - <code>synced_from_github</code>
+          - <code>jira_issues</code>
+          - <code>confluence_page</code>
+          - <code>others</code>
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -73,7 +93,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       title="Request"
       tag="POST"
       label="/datasets/{dataset_id}/document/create_by_text"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "text","text": "text","indexing_technique": "high_quality","process_rule": {"mode": "automatic"}}'`}
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name":"text","text":"text","indexing_technique":"high_quality","process_rule":{"mode":"automatic"},"doc_metadata":{"issue_id":"issue_id","project_key":"project_key","keyword":"keyword","last_edit_date":"2023-06-21 22:52:32"},"doc_type":"jira_issues"}'`}
     >
     ```bash {{ title: 'cURL' }}
     curl --location --request --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \
@@ -85,7 +105,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         "indexing_technique": "high_quality",
         "process_rule": {
             "mode": "automatic"
-        }
+        },
+        "doc_metadata": {
+            "issue_id": "issue_id",
+            "project_key": "project_key",
+            "keyword": "keyword",
+            "last_edit_date": "2023-06-21 22:52:32"
+        },
+        "doc_type": "jira_issues"
     }'
     ```
     </CodeGroup>

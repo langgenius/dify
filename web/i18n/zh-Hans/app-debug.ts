@@ -222,7 +222,7 @@ const translation = {
   },
   errorMessage: {
     nameOfKeyRequired: '变量 {{key}} 对应的名称必填',
-    valueOfVarRequired: '{{key}}必填',
+    valueOfVarRequired: '{{key}} 必填',
     queryRequired: '主要文本必填',
     waitForResponse: '请等待上条信息响应完成',
     waitForBatchResponse: '请等待批量任务完成',
@@ -358,6 +358,8 @@ const translation = {
   datasetConfig: {
     settingTitle: '召回设置',
     knowledgeTip: '点击 “+” 按钮添加知识库',
+    metaDataFilterTip: '点击 “+” 按钮添加元数据筛选器',
+    metaDataFilterModeTip: '模式',
     retrieveOneWay: {
       title: 'N选1召回',
       description: '根据用户意图和知识库描述，由 Agent 自主判断选择最匹配的单个知识库来查询相关文本，适合知识库区分度大且知识库数量偏少的应用。',

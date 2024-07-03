@@ -376,9 +376,11 @@ class WorkflowConverter:
         retrieve_config = dataset_config.retrieve_config
         if new_app_mode == AppMode.ADVANCED_CHAT:
             query_variable_selector = ["sys", "query"]
+            authorized_dataset_ids_variable_selector = ["sys", "query"]
         elif retrieve_config.query_variable:
             # fetch query variable
             query_variable_selector = ["start", retrieve_config.query_variable]
+            authorized_dataset_ids_variable_selector = ["start", retrieve_config.query_variable]
         else:
             return None
 
@@ -389,6 +391,7 @@ class WorkflowConverter:
                 "title": "KNOWLEDGE RETRIEVAL",
                 "type": NodeType.KNOWLEDGE_RETRIEVAL.value,
                 "query_variable_selector": query_variable_selector,
+                "authorized_dataset_ids_variable_selector": authorized_dataset_ids_variable_selector,
                 "dataset_ids": dataset_config.dataset_ids,
                 "retrieval_mode": retrieve_config.retrieve_strategy.value,
                 "single_retrieval_config": {

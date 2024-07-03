@@ -276,6 +276,52 @@ const translation = {
     knowledgeRetrieval: {
       queryVariable: 'Query Variable',
       knowledge: 'Knowledge',
+      dynamicKnowledge: 'Dynamic Knowledge',
+      dynamicKnowledgeTip: 'Supports using variables to dynamically specify the list of knowledge base IDs to be retrieved (the list of knowledge bases selected by default is retrieved by taking the union of the list of knowledge bases to be retrieved)',
+      metadataFilter: 'Metadata Filter',
+      metadataFilterTip: 'Supports conditional filtering using metadata of knowledge base document shards',
+      metadataFilterItem: {
+        operatorLabel: 'Operator',
+        params: 'Params',
+        queryVariable: 'Metadata Filter Variable',
+        parameter: 'Metadata Filter Parameter',
+        condition: 'Metadata Filter Condition',
+        valueSelector: 'Metadata Filter Parameter Value',
+        operator: {
+          matchAny: {
+            label: 'in',
+            hoverTip: 'Matches any value provided',
+          },
+          matchExcept: {
+            label: 'not in',
+            hoverTip: 'Does not match any value provided',
+          },
+          matchText: {
+            label: 'like',
+            hoverTip: 'The full text of the string matches',
+          },
+          matchValue: {
+            label: '=',
+            hoverTip: 'Match the given value exactly',
+          },
+          le: {
+            label: '<=',
+            hoverTip: 'Less than or equal to',
+          },
+          lt: {
+            label: '<',
+            hoverTip: 'Less than',
+          },
+          ge: {
+            label: '>=',
+            hoverTip: 'More than or equal to',
+          },
+          gt: {
+            label: '>',
+            hoverTip: 'More than',
+          },
+        },
+      },
       outputVars: {
         output: 'Retrieval segmented data',
         content: 'Segmented content',

@@ -7,12 +7,17 @@ import RetrievalConfig from './components/retrieval-config'
 import AddKnowledge from './components/add-dataset'
 import DatasetList from './components/dataset-list'
 import type { KnowledgeRetrievalNodeType } from './types'
+import AddMetadataFilter from './components/add-metadata-filter'
+import MetadataFilterModes from './components/metadata-filter-modes'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
+import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
+import HelpCircle from '@/app/components/base/icons/src/vender/line/general/HelpCircle'
 
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
@@ -21,6 +26,10 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
+
+  const arrayStringfilterVar = React.useCallback((varPayload: Var) => {
+    return varPayload.type === VarType.arrayString
+  }, [])
 
   const {
     readOnly,
@@ -41,6 +50,10 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     query,
     setQuery,
     runResult,
+    handleAuthorizedDatasetIdsChange,
+    selectedFilterModes,
+    addFilterModePanel,
+    handleFilterModeToMetadataFilterConfigDictChange,
   } = useConfig(id, data)
 
   return (
@@ -93,6 +106,55 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
             readonly={readOnly}
           />
         </Field>
+
+        <Field
+          title={<>
+            {t(`${i18nPrefix}.dynamicKnowledge`)}
+            {
+              <TooltipPlus popupContent={
+                <div className='w-[470px]'>
+                  {t(`${i18nPrefix}.dynamicKnowledgeTip`)}
+                </div>}>
+                <HelpCircle className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
+              </TooltipPlus>
+            }
+          </>}
+        >
+          <VarReferencePicker
+            nodeId={id}
+            readonly={readOnly}
+            isShowNodeName
+            value={inputs.authorized_dataset_ids_variable_selector ? inputs.authorized_dataset_ids_variable_selector : []}
+            onChange={handleAuthorizedDatasetIdsChange}
+            filterVar={arrayStringfilterVar}
+          />
+        </Field>
+
+        <Field
+          title={<>
+            {t(`${i18nPrefix}.metadataFilter`)}
+            {
+              <TooltipPlus popupContent={
+                <div className='w-[270]'>
+                  {t(`${i18nPrefix}.metadataFilterTip`)}
+                </div>}>
+                <HelpCircle className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
+              </TooltipPlus>
+            }
+          </>}
+
+          operations={
+            <AddMetadataFilter readonly={readOnly} selectedKeys={selectedFilterModes} onSelect={addFilterModePanel} />
+          }
+        >
+          <MetadataFilterModes
+            value={inputs.filter_mode_to_metadata_filter_config_dict}
+            onChange={handleFilterModeToMetadataFilterConfigDictChange}
+            readonly={readOnly}
+            nodeId={id}
+          />
+        </Field>
+
       </div>
 
       <Split />

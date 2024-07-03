@@ -50,6 +50,7 @@ from models.dataset import Dataset, DatasetProcessRule, Document, DocumentSegmen
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService
 from tasks.add_document_to_index_task import add_document_to_index_task
+from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
 
 
@@ -293,6 +294,8 @@ class DatasetInitApi(Resource):
                             location='json')
         parser.add_argument('retrieval_model', type=dict, required=False, nullable=False,
                             location='json')
+        parser.add_argument('doc_metadata', type=str, required=False, nullable=True, location='json')
+        parser.add_argument('doc_type', type=str, required=False, nullable=True, location='json')
         args = parser.parse_args()
         if args['indexing_technique'] == 'high_quality':
             try:
@@ -742,6 +745,10 @@ class DocumentMetadataApi(DocumentResource):
         document.doc_type = doc_type
         document.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
+
+        if document.doc_metadata:
+            # trigger async task
+            document_indexing_update_task.delay(document.dataset_id, document.id)
 
         return {'result': 'success', 'message': 'Document metadata updated.'}, 200
 

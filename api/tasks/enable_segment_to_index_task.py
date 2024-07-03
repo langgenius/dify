@@ -34,14 +34,17 @@ def enable_segment_to_index_task(segment_id: str):
     indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
 
     try:
+        metadata = {
+            "doc_id": segment.index_node_id,
+            "doc_hash": segment.index_node_hash,
+            "document_id": segment.document_id,
+            "dataset_id": segment.dataset_id,
+        }
+        if dataset_document.doc_metadata:
+            metadata["doc_metadata"] = dataset_document.doc_metadata
         document = Document(
             page_content=segment.content,
-            metadata={
-                "doc_id": segment.index_node_id,
-                "doc_hash": segment.index_node_hash,
-                "document_id": segment.document_id,
-                "dataset_id": segment.dataset_id,
-            }
+            metadata=metadata
         )
 
         dataset = segment.dataset

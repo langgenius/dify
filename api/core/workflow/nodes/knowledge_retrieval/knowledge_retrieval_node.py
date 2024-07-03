@@ -1,4 +1,5 @@
-from typing import Any, cast
+import uuid
+from typing import Any, Optional, cast
 
 from sqlalchemy import func
 
@@ -14,7 +15,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrival_methods import RetrievalMethod
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.entities.variable_pool import ValueType, VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from extensions.ext_database import db
@@ -31,6 +32,16 @@ default_retrieval_model = {
     'top_k': 2,
     'score_threshold_enabled': False
 }
+
+
+def is_valid_uuid(s):
+    try:
+        # Try parsing a string into a UUID object
+        uuid.UUID(s)
+        return True
+    except ValueError:
+        # Parsing failed, indicating that the string is not a valid UUID
+        return False
 
 
 class KnowledgeRetrievalNode(BaseNode):
@@ -51,6 +62,10 @@ class KnowledgeRetrievalNode(BaseNode):
                 inputs=variables,
                 error="Query is required."
             )
+
+        self._extract_authorized_dataset_ids(variable_pool, node_data, variables)
+        self._extract_metadata_filter_args(variable_pool, node_data)
+
         # retrieve knowledge
         try:
             results = self._fetch_dataset_retriever(
@@ -73,6 +88,35 @@ class KnowledgeRetrievalNode(BaseNode):
                 inputs=variables,
                 error=str(e)
             )
+
+    def _extract_authorized_dataset_ids(self, variable_pool: VariablePool, node_data: KnowledgeRetrievalNodeData,
+                                        variables: Optional[dict]):
+        authorized_dataset_ids = []
+        # check node_data.authorized_dataset_ids_variable_selector
+        if isinstance(node_data.authorized_dataset_ids_variable_selector, list):
+            if len(node_data.authorized_dataset_ids_variable_selector) >= 2:
+                authorized_dataset_ids = variable_pool.get_variable_value(
+                    variable_selector=node_data.authorized_dataset_ids_variable_selector,
+                    target_value_type=ValueType.ARRAY_STRING
+                )
+        if authorized_dataset_ids:
+            for dataset_id in authorized_dataset_ids:
+                if not is_valid_uuid(dataset_id):
+                    return NodeRunResult(
+                        status=WorkflowNodeExecutionStatus.FAILED,
+                        inputs=variables,
+                        error="Authorized dataset id is not valid."
+                    )
+            # take the union of the datasets to remove duplicates
+            node_data.dataset_ids = set(node_data.dataset_ids + authorized_dataset_ids)
+
+    def _extract_metadata_filter_args(self, variable_pool: VariablePool, node_data: KnowledgeRetrievalNodeData):
+        # Extract metadata variable values
+        filter_mode_to_metadata_filter_config_dict = node_data.filter_mode_to_metadata_filter_config_dict
+        if isinstance(filter_mode_to_metadata_filter_config_dict, dict):
+            for filter_mode, metadata_filter_config in filter_mode_to_metadata_filter_config_dict.items():
+                for filter_item in metadata_filter_config.filter_items:
+                    filter_item.arg = variable_pool.get_variable_value(variable_selector=filter_item.value_selector)
 
     def _fetch_dataset_retriever(self, node_data: KnowledgeRetrievalNodeData, query: str) -> list[
         dict[str, Any]]:
@@ -134,7 +178,8 @@ class KnowledgeRetrievalNode(BaseNode):
                     query=query,
                     model_config=model_config,
                     model_instance=model_instance,
-                    planning_strategy=planning_strategy
+                    planning_strategy=planning_strategy,
+                    filter_mode_to_metadata_filter_config_dict=node_data.filter_mode_to_metadata_filter_config_dict
                 )
         elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value:
             all_documents = dataset_retrieval.multiple_retrieve(self.app_id, self.tenant_id, self.user_id,
@@ -143,7 +188,8 @@ class KnowledgeRetrievalNode(BaseNode):
                                                                 node_data.multiple_retrieval_config.top_k,
                                                                 node_data.multiple_retrieval_config.score_threshold,
                                                                 node_data.multiple_retrieval_config.reranking_model.provider,
-                                                                node_data.multiple_retrieval_config.reranking_model.model)
+                                                                node_data.multiple_retrieval_config.reranking_model.model,
+                                                                filter_mode_to_metadata_filter_config_dict=node_data.filter_mode_to_metadata_filter_config_dict)
 
         context_list = []
         if all_documents:

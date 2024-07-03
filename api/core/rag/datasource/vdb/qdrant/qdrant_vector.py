@@ -25,6 +25,7 @@ from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
+from core.workflow.nodes.knowledge_retrieval.entities import MetadataFilterItem
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, DatasetCollectionBinding
@@ -332,7 +333,7 @@ class QdrantVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from qdrant_client.http import models
-        filter = models.Filter(
+        query_filter = models.Filter(
             must=[
                 models.FieldCondition(
                     key="group_id",
@@ -340,10 +341,12 @@ class QdrantVector(BaseVector):
                 ),
             ],
         )
+        self._add_metadata_filter(query_filter, **kwargs)
+
         results = self._client.search(
             collection_name=self._collection_name,
             query_vector=query_vector,
-            query_filter=filter,
+            query_filter=query_filter,
             limit=kwargs.get("top_k", 4),
             with_payload=True,
             with_vectors=True,
@@ -363,6 +366,65 @@ class QdrantVector(BaseVector):
                 docs.append(doc)
         return docs
 
+    def _add_metadata_filter(self, query_filter: rest.Filter, **kwargs: Any):
+        """Add metadata filter to the query."""
+        filter_handlers = {
+            'must': self._handle_must_filter,
+            'should': self._handle_should_filter,
+            'must_not': self._handle_must_not_filter,
+        }
+
+        filter_mode_to_metadata_filter_config_dict = kwargs.get('filter_mode_to_metadata_filter_config_dict', None)
+        if filter_mode_to_metadata_filter_config_dict is not None and isinstance(
+                filter_mode_to_metadata_filter_config_dict, dict):
+            for filter_mode, metadata_filter_config in filter_mode_to_metadata_filter_config_dict.items():
+                handler = filter_handlers.get(filter_mode)
+                filter_items = metadata_filter_config.filter_items
+                if handler and filter_items:
+                    for filter_item in filter_items:
+                        handler(query_filter, filter_item)
+
+    def _build_payload_key(self, key: str) -> str:
+        return f"metadata.doc_metadata.{key}"
+
+    def _field_condition_builder(self, filter_item: MetadataFilterItem) -> Optional[rest.FieldCondition]:
+        condition_map = {
+            'MatchValue': (lambda x: rest.MatchValue(value=x), (str, int, bool), 'match'),
+            'MatchText': (lambda x: rest.MatchText(text=x), list, 'match'),
+            'MatchAny': (lambda x: rest.MatchAny(any=x), list, 'match'),
+            'MatchExcept': (lambda x: rest.MatchExcept(except_=x), list, 'match'),
+            'le': (lambda x: rest.Range(lte=x), float, 'range'),
+            'lt': (lambda x: rest.Range(lt=x), float, 'range'),
+            'ge': (lambda x: rest.Range(gte=x), float, 'range'),
+            'gt': (lambda x: rest.Range(gt=x), float, 'range'),
+        }
+
+        condition = condition_map.get(filter_item.field_condition)
+        if condition is None:
+            raise ValueError(f'Invalid field condition: {filter_item.field_condition}')
+
+        condition_class, expected_type, condition_type = condition
+        if filter_item.arg is not None and isinstance(filter_item.arg, expected_type):
+            payload_key = self._build_payload_key(filter_item.key)
+            if condition_type == 'match':
+                return rest.FieldCondition(key=payload_key, match=condition_class(filter_item.arg))
+            elif condition_type == 'range':
+                return rest.FieldCondition(key=payload_key, range=condition_class(filter_item.arg))
+        else:
+            self._raise_type_error(filter_item.field_condition, filter_item.arg)
+
+    def _raise_type_error(self, condition, arg):
+        raise TypeError(f'Invalid type for {condition}: {type(arg)}')
+
+    def _handle_must_filter(self, query_filter: rest.Filter, filter_item: MetadataFilterItem):
+        query_filter.must.append(self._field_condition_builder(filter_item))
+
+    def _handle_should_filter(self, query_filter: rest.Filter, filter_item: MetadataFilterItem):
+        query_filter.should.append(self._field_condition_builder(filter_item))
+
+    def _handle_must_not_filter(self, query_filter: rest.Filter, filter_item: MetadataFilterItem):
+        query_filter.must_not.append(self._field_condition_builder(filter_item))
+
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         """Return docs most similar by bm25.
         Returns:
@@ -381,6 +443,8 @@ class QdrantVector(BaseVector):
                 )
             ]
         )
+        self._add_metadata_filter(scroll_filter, **kwargs)
+
         response = self._client.scroll(
             collection_name=self._collection_name,
             scroll_filter=scroll_filter,
