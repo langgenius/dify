@@ -49,6 +49,10 @@ const translation = {
           show: '표시',
           hide: '숨기기',
         },
+        chatColorTheme: '챗봇 색상 테마',
+        chatColorThemeDesc: '챗봇의 색상 테마를 설정하세요',
+        chatColorThemeInverted: '반전',
+        invalidHexMessage: '잘못된 16진수 값',
         more: {
           entry: '추가 설정 보기',
           copyright: '저작권',

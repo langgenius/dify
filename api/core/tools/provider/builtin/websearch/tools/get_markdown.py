@@ -43,7 +43,7 @@ class GetMarkdownTool(BuiltinTool):
         Invoke the SerplyApi tool.
         """
         url = tool_parameters["url"]
-        location = tool_parameters.get("location", None)
+        location = tool_parameters.get("location")
 
         api_key = self.runtime.credentials["serply_api_key"]
         result = SerplyApi(api_key).run(url, location=location)

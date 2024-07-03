@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import AliasChoices, BaseModel, Field, NonNegativeInt, PositiveInt
+from pydantic import AliasChoices, BaseModel, Field, NonNegativeInt, PositiveInt, computed_field
 
 from configs.feature.hosted_service import HostedServiceConfig
 
@@ -33,7 +33,7 @@ class CodeExecutionSandboxConfig(BaseModel):
     Code Execution Sandbox configs
     """
     CODE_EXECUTION_ENDPOINT: str = Field(
-        description='whether to enable HTTP response compression of gzip',
+        description='endpoint URL of code execution servcie',
         default='http://sandbox:8194',
     )
 
@@ -50,25 +50,25 @@ class EndpointConfig(BaseModel):
     CONSOLE_API_URL: str = Field(
         description='The backend URL prefix of the console API.'
                     'used to concatenate the login authorization callback or notion integration callback.',
-        default='https://cloud.dify.ai',
+        default='',
     )
 
     CONSOLE_WEB_URL: str = Field(
         description='The front-end URL prefix of the console web.'
                     'used to concatenate some front-end addresses and for CORS configuration use.',
-        default='https://cloud.dify.ai',
+        default='',
     )
 
     SERVICE_API_URL: str = Field(
         description='Service API Url prefix.'
                     'used to display Service API Base Url to the front-end.',
-        default='https://api.dify.ai',
+        default='',
     )
 
     APP_WEB_URL: str = Field(
         description='WebApp Url prefix.'
                     'used to display WebAPP API Base Url to the front-end.',
-        default='https://udify.app',
+        default='',
     )
 
 
@@ -82,7 +82,7 @@ class FileAccessConfig(BaseModel):
                     'Url is signed and has expiration time.',
         validation_alias=AliasChoices('FILES_URL', 'CONSOLE_API_URL'),
         alias_priority=1,
-        default='https://cloud.dify.ai',
+        default='',
     )
 
     FILES_ACCESS_TIMEOUT: int = Field(
@@ -124,6 +124,28 @@ class HttpConfig(BaseModel):
         description='whether to enable HTTP response compression of gzip',
         default=False,
     )
+
+    inner_CONSOLE_CORS_ALLOW_ORIGINS: str = Field(
+        description='',
+        validation_alias=AliasChoices('CONSOLE_CORS_ALLOW_ORIGINS', 'CONSOLE_WEB_URL'),
+        default='',
+    )
+
+    @computed_field
+    @property
+    def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
+        return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(',')
+
+    inner_WEB_API_CORS_ALLOW_ORIGINS: str = Field(
+        description='',
+        validation_alias=AliasChoices('WEB_API_CORS_ALLOW_ORIGINS'),
+        default='*',
+    )
+
+    @computed_field
+    @property
+    def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
+        return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(',')
 
 
 class InnerAPIConfig(BaseModel):
@@ -309,7 +331,7 @@ class MailConfig(BaseModel):
 
     SMTP_PORT: Optional[int] = Field(
         description='smtp server port',
-        default=None,
+        default=465,
     )
 
     SMTP_USERNAME: Optional[str] = Field(

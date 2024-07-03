@@ -66,8 +66,8 @@ class ProviderConfiguration(BaseModel):
                 original_provider_configurate_methods[self.provider.provider].append(configurate_method)
 
         if original_provider_configurate_methods[self.provider.provider] == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
-            if (any([len(quota_configuration.restrict_models) > 0
-                     for quota_configuration in self.system_configuration.quota_configurations])
+            if (any(len(quota_configuration.restrict_models) > 0
+                     for quota_configuration in self.system_configuration.quota_configurations)
                     and ConfigurateMethod.PREDEFINED_MODEL not in self.provider.configurate_methods):
                 self.provider.configurate_methods.append(ConfigurateMethod.PREDEFINED_MODEL)
 

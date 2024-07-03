@@ -15,7 +15,7 @@ class PGVectoRSConfig(BaseModel):
 
     PGVECTO_RS_PORT: Optional[PositiveInt] = Field(
         description='PGVectoRS port',
-        default=None,
+        default=5431,
     )
 
     PGVECTO_RS_USER: Optional[str] = Field(

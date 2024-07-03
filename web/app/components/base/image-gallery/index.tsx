@@ -46,6 +46,7 @@ const ImageGallery: FC<Props> = ({
           src={src}
           alt=''
           onClick={() => setImagePreviewUrl(src)}
+          onError={e => e.currentTarget.remove()}
         />
       ))}
       {

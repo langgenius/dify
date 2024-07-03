@@ -130,14 +130,6 @@ class PGVectoRS(BaseVector):
 
         return pks
 
-    def delete_by_document_id(self, document_id: str):
-        ids = self.get_ids_by_metadata_field('document_id', document_id)
-        if ids:
-            with Session(self._client) as session:
-                select_statement = sql_text(f"DELETE FROM {self._collection_name} WHERE id = ANY(:ids)")
-                session.execute(select_statement, {'ids': ids})
-                session.commit()
-
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None
         with Session(self._client) as session:
