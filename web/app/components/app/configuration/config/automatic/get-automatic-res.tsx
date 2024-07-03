@@ -138,7 +138,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       className='!p-0 min-w-[1140px]'
       closable
     >
-      <div className='flex h-[680px] flex-wrap space-y-4'>
+      <div className='flex h-[680px] flex-wrap'>
         <div className='w-[570px] shrink-0 p-6 h-full overflow-y-auto border-r border-gray-100'>
           <div className='mb-8'>
             <div className={`leading-[28px] text-lg font-bold ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
@@ -185,7 +185,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
         {(!isLoading && res) && (
           <div className='w-0 grow p-6 h-full overflow-y-auto'>
-            <div className='mb-4 text-lg font-medium text-gray-900'>{t('appDebug.generate.resTitle')}</div>
+            <div className='mb-3 leading-[160%] text-base font-semibold text-gray-800'>{t('appDebug.generate.resTitle')}</div>
 
             <ConfigPrompt
               mode={mode}
@@ -216,7 +216,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               </>
             )}
 
-            <div className='sticky bottom-0 flex justify-end right-0 py-4 bg-white'>
+            <div className='sticky bottom-[-24px] flex justify-end right-0 py-4 bg-white'>
               <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
               <Button variant='primary' className='ml-2' onClick={() => {
                 setShowConfirmOverwrite(true)
