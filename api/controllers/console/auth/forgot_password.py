@@ -49,7 +49,7 @@ class ForgotPasswordCheckApi(Resource):
         args = parser.parse_args()
         token = args['token']
 
-        reset_data = AccountService.get_reset_data(token)
+        reset_data = AccountService.get_reset_password_data(token)
 
         if reset_data is None:
             return {'is_valid': False, 'email': None}
@@ -73,12 +73,12 @@ class ForgotPasswordResetApi(Resource):
             raise PasswordMismatchError()
 
         token = args['token']
-        reset_data = AccountService.get_reset_data(token)
+        reset_data = AccountService.get_reset_password_data(token)
 
         if reset_data is None:
             raise InvalidTokenError()
 
-        AccountService.revoke_reset_token(token)
+        AccountService.revoke_reset_password_token(token)
 
         salt = secrets.token_bytes(16)
         base64_salt = base64.b64encode(salt).decode()

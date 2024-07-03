@@ -17,7 +17,7 @@ class SecurityConfig(BaseModel):
         default=None,
     )
 
-    RESET_TOKEN_EXPIRY_HOURS: PositiveInt = Field(
+    RESET_PASSWORD_TOKEN_EXPIRY_HOURS: PositiveInt = Field(
         description='Expiry time in hours for reset token',
         default=24,
     )
