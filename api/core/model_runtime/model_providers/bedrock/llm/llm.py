@@ -1,5 +1,4 @@
 # standard import
-import ast
 import base64
 import json
 import logging
@@ -443,7 +442,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 "content": [{
                     "toolResult": {
                         "toolUseId": message.tool_call_id,
-                        "content": [{"json": ast.literal_eval(message.content)}]
+                        "content": [{"json": {"text": message.content}}]
                     }                   
                 }]
             }
