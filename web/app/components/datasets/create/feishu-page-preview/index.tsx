@@ -2,8 +2,10 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { XMarkIcon } from '@heroicons/react/20/solid'
 import s from './index.module.css'
 import type { FeishuPage } from '@/models/common'
+import FeishuIcon from '@/app/components/base/notion-icon'
 import { fetchFeishuPagePreview } from '@/service/datasets'
 
 type IProps = {
@@ -43,9 +45,7 @@ const FeishuPagePreview = ({
 
   return (
     <div className={cn(s.filePreview)}>
-      xxx
-      feishu preview
-      {/* <div className={cn(s.previewHeader)}>
+      <div className={cn(s.previewHeader)}>
         <div className={cn(s.title)}>
           <span>{t('datasetCreation.stepOne.pagePreview')}</span>
           <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
@@ -53,7 +53,7 @@ const FeishuPagePreview = ({
           </div>
         </div>
         <div className={cn(s.fileName)}>
-          <NotionIcon
+          <FeishuIcon
             className='shrink-0 mr-1'
             type='page'
             src={currentPage?.page_icon}
@@ -66,7 +66,7 @@ const FeishuPagePreview = ({
         {!loading && (
           <div className={cn(s.fileContent)}>{previewContent}</div>
         )}
-      </div> */}
+      </div>
     </div>
   )
 }
