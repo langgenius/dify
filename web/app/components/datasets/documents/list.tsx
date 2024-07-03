@@ -31,7 +31,7 @@ import type { IndicatorProps } from '@/app/components/header/indicator'
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument, syncWebsite, unArchiveDocument } from '@/service/datasets'
+import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument, syncFeishuDocument, syncWebsite, unArchiveDocument } from '@/service/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
 import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
@@ -150,9 +150,10 @@ export const OperationAction: FC<{
         opApi = disableDocument
         break
       case 'sync':
-        if (data_source_type === 'notion_import' || data_source_type === DataSourceType.FEISHUWIKI)
+        if (data_source_type === 'notion_import')
           opApi = syncDocument
-
+        else if (data_source_type === DataSourceType.FEISHU)
+          opApi = syncFeishuDocument
         else
           opApi = syncWebsite
 

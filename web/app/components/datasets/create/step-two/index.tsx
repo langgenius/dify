@@ -269,12 +269,9 @@ const StepTwo = ({
       return {
         workspace_id: workspace.workspaceId,
         pages: workspace.pages.map((page) => {
-          const { page_id, page_icon, type, page_name, obj_token, obj_type } = page
+          const { page_name, obj_token, obj_type } = page
           return {
-            // page_id,
             page_name,
-            // page_icon,
-            // type,
             obj_token,
             obj_type,
           }

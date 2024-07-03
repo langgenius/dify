@@ -2,30 +2,30 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { XMarkIcon } from '@heroicons/react/24/outline'
-import NotionPageSelector from '../base'
-import type { NotionPageSelectorValue } from '../base'
+import FeishuPageSelector from '../base'
+import type { FeishuPageSelectorValue } from '../base'
 import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
 
-type NotionPageSelectorModalProps = {
+type FeishuPageSelectorModalProps = {
   isShow: boolean
   onClose: () => void
-  onSave: (selectedPages: NotionPageSelectorValue[]) => void
+  onSave: (selectedPages: FeishuPageSelectorValue[]) => void
   datasetId: string
 }
-const NotionPageSelectorModal = ({
+const FeishuPageSelectorModal = ({
   isShow,
   onClose,
   onSave,
   datasetId,
-}: NotionPageSelectorModalProps) => {
+}: FeishuPageSelectorModalProps) => {
   const { t } = useTranslation()
-  const [selectedPages, setSelectedPages] = useState<NotionPageSelectorValue[]>([])
+  const [selectedPages, setSelectedPages] = useState<FeishuPageSelectorValue[]>([])
 
   const handleClose = () => {
     onClose()
   }
-  const handleSelectPage = (newSelectedPages: NotionPageSelectorValue[]) => {
+  const handleSelectPage = (newSelectedPages: FeishuPageSelectorValue[]) => {
     setSelectedPages(newSelectedPages)
   }
   const handleSave = () => {
@@ -46,7 +46,7 @@ const NotionPageSelectorModal = ({
           <XMarkIcon className='w-4 h-4' />
         </div>
       </div>
-      <NotionPageSelector
+      <FeishuPageSelector
         onSelect={handleSelectPage}
         canPreview={false}
         datasetId={datasetId}
@@ -59,4 +59,4 @@ const NotionPageSelectorModal = ({
   )
 }
 
-export default NotionPageSelectorModal
+export default FeishuPageSelectorModal

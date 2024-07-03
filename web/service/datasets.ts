@@ -159,6 +159,10 @@ export const syncDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId,
   return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/notion/sync`)
 }
 
+export const syncFeishuDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+  return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/${FeishuProvider}/sync`)
+}
+
 export const syncWebsite: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/website-sync`)
 }
