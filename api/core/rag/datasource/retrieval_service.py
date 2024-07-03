@@ -62,7 +62,6 @@ class RetrievalService:
             })
             threads.append(embedding_thread)
             embedding_thread.start()
-
         # retrieval source with full text
         if RetrievalMethod.is_support_fulltext_search(retrival_method):
             full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search, kwargs={
@@ -81,7 +80,7 @@ class RetrievalService:
 
         for thread in threads:
             thread.join()
-
+        print('RetrievalService_retrieve_all_documents_86',all_documents)
         if exceptions:
             exception_message = ';\n'.join(exceptions)
             raise Exception(exception_message)

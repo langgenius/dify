@@ -1,7 +1,7 @@
 x-shared-env: &shared-api-worker-env
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
-  DEBUG: ${DEBUG:-false}
-  FLASK_DEBUG: ${FLASK_DEBUG:-false}
+  DEBUG: ${DEBUG:-true}
+  FLASK_DEBUG: ${FLASK_DEBUG:-true}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
   INIT_PASSWORD: ${INIT_PASSWORD:-}
   CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-https://dify.0-0.cloud}
