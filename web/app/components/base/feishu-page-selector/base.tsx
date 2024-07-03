@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import cn from 'classnames'
+import { FeishuProvider } from '../../header/account-setting/data-source-page/data-source-feishu/constants'
 import s from './base.module.css'
 import WorkspaceSelector from './workspace-selector'
 import SearchInput from './search-input'
@@ -27,22 +28,22 @@ const FeishuPageSelector = ({
   onPreview,
   datasetId = '',
 }: FeishuPageSelectorProps) => {
-  const { data, mutate } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportFeishuPages)
+  const { data, mutate } = useSWR({ url: `/${FeishuProvider}/pre-import/pages`, datasetId }, preImportFeishuPages)
   const [prevData, setPrevData] = useState(data)
   const [searchValue, setSearchValue] = useState('')
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
   const { setShowAccountSettingModal } = useModalContext()
 
-  const notionWorkspaces = useMemo(() => {
-    return data?.notion_info || []
-  }, [data?.notion_info])
-  const firstWorkspaceId = notionWorkspaces[0]?.workspace_id
-  const currentWorkspace = notionWorkspaces.find(workspace => workspace.workspace_id === currentWorkspaceId)
+  const feishuWorkspaces = useMemo(() => {
+    return data?.feishuwiki_info || []
+  }, [data?.feishuwiki_info])
+  const firstWorkspaceId = feishuWorkspaces[0]?.workspace_id
+  const currentWorkspace = feishuWorkspaces.find(workspace => workspace.workspace_id === currentWorkspaceId)
 
   const getPagesMapAndSelectedPagesId: [DataSourceFeishuPageMap, Set<string>, Set<string>] = useMemo(() => {
     const selectedPagesId = new Set<string>()
     const boundPagesId = new Set<string>()
-    const pagesMap = notionWorkspaces.reduce((prev: DataSourceFeishuPageMap, next: DataSourceFeishuWorkspace) => {
+    const pagesMap = feishuWorkspaces.reduce((prev: DataSourceFeishuPageMap, next: DataSourceFeishuWorkspace) => {
       next.pages.forEach((page) => {
         if (page.is_bound) {
           selectedPagesId.add(page.page_id)
@@ -57,7 +58,7 @@ const FeishuPageSelector = ({
       return prev
     }, {})
     return [pagesMap, selectedPagesId, boundPagesId]
-  }, [notionWorkspaces])
+  }, [feishuWorkspaces])
   const defaultSelectedPagesId = [...Array.from(getPagesMapAndSelectedPagesId[1]), ...(value || [])]
   const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
 
@@ -90,13 +91,13 @@ const FeishuPageSelector = ({
   return (
     <div className='bg-gray-25 border border-gray-200 rounded-xl'>
       {
-        data?.notion_info?.length
+        data?.feishuwiki_info?.length
           ? (
             <>
               <div className='flex items-center pl-[10px] pr-2 h-11 bg-white border-b border-b-gray-200 rounded-t-xl'>
                 <WorkspaceSelector
                   value={currentWorkspaceId || firstWorkspaceId}
-                  items={notionWorkspaces}
+                  items={feishuWorkspaces}
                   onSelect={handleSelectWorkspace}
                 />
                 <div className='mx-1 w-[1px] h-3 bg-gray-200' />
