@@ -175,9 +175,9 @@ const Panel: FC = () => {
   }
 
   return (
-    <div className={cn('mb-3 flex justify-between items-center cursor-pointer')} onClick={showPopup}>
+    <div className={cn('mb-3 flex justify-between items-center')}>
       <Title className='h-[41px]' />
-      <div className='flex items-center p-2 rounded-xl border-[0.5px] border-gray-200 shadow-xs hover:bg-gray-100'>
+      <div className='flex items-center p-2 rounded-xl border-[0.5px] border-gray-200 shadow-xs cursor-pointer hover:bg-gray-100' onClick={showPopup}>
         {!inUseTracingProvider
           ? <>
             <TracingIcon size='md' className='mr-2' />
