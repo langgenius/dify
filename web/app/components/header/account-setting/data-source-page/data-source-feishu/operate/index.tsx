@@ -9,7 +9,8 @@ import {
   RiStickyNoteAddLine,
 } from '@remixicon/react'
 import { Menu, Transition } from '@headlessui/react'
-import { updateDataSourceFeishuAction } from '@/service/common'
+import { FeishuProvider } from '../constants'
+import { syncDataSourceFeishu, updateDataSourceFeishuAction } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 
 type OperateProps = {
@@ -41,9 +42,8 @@ export default function Operate({
     mutate({ url: 'data-source/integrates' })
   }
   const handleSync = async () => {
-    console.log('sync feishu')
-    // await syncDataSourceFeishu({ url: `/oauth/data-source/${FeishuProvider}/${payload.id}/sync` })
-    // updateIntegrates()
+    await syncDataSourceFeishu({ url: `/oauth/data-source/${FeishuProvider}/${payload.id}/sync` })
+    updateIntegrates()
   }
   const handleRemove = async () => {
     await updateDataSourceFeishuAction({ url: `/data-source/integrates/${payload.id}/disable` })

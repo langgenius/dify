@@ -8,6 +8,7 @@ import {
 } from '@remixicon/react'
 import Indicator from '../../../indicator'
 import Operate from '../data-source-notion/operate'
+import FeishuOperate from '../data-source-feishu/operate'
 import { DataSourceType } from './types'
 import s from './style.module.css'
 
@@ -69,7 +70,7 @@ const ConfigItem: FC<Props> = ({
         />
       )}
       {isFeishu && (
-        <Operate payload={{
+        <FeishuOperate payload={{
           id: payload.id,
           total: payload.notionConfig?.total || 0,
         }} onAuthAgain={onChangeAuthorizedPage}

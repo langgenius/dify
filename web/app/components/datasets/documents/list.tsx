@@ -259,7 +259,7 @@ export const OperationAction: FC<{
                   <SettingsIcon />
                   <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
                 </div>
-                {['notion_import', DataSourceType.WEB, DataSourceType.FEISHUWIKI].includes(data_source_type) && (
+                {['notion_import', DataSourceType.WEB, DataSourceType.FEISHU].includes(data_source_type) && (
                   <div className={s.actionItem} onClick={() => onOperate('sync')}>
                     <SyncIcon />
                     <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
