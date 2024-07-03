@@ -121,6 +121,10 @@ const StepOne = ({
     setCurrentNotionPage(undefined)
   }
 
+  const updateCurrentFeishuPage = (page: FeishuPage) => {
+    setCurrentFeishuPage(page)
+  }
+
   const hideFeishuPagePreview = () => {
     setCurrentFeishuPage(undefined)
   }
@@ -275,7 +279,7 @@ const StepOne = ({
                     <FeishuPageSelector
                       value={feishuPages.map(page => page.page_id)}
                       onSelect={updateFeishuPages}
-                      onPreview={updateCurrentPage}
+                      onPreview={updateCurrentFeishuPage}
                     />
                   </div>
                   {isShowVectorSpaceFull && (

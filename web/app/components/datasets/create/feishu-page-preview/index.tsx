@@ -3,15 +3,15 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import s from './index.module.css'
-import type { NotionPage } from '@/models/common'
-import { fetchNotionPagePreview } from '@/service/datasets'
+import type { FeishuPage } from '@/models/common'
+import { fetchFeishuPagePreview } from '@/service/datasets'
 
 type IProps = {
-  currentPage?: NotionPage
+  currentPage?: FeishuPage
   hidePreview: () => void
 }
 
-const NotionPagePreview = ({
+const FeishuPagePreview = ({
   currentPage,
   hidePreview,
 }: IProps) => {
@@ -23,10 +23,10 @@ const NotionPagePreview = ({
     if (!currentPage)
       return
     try {
-      const res = await fetchNotionPagePreview({
+      const res = await fetchFeishuPagePreview({
         workspaceID: currentPage.workspace_id,
-        pageID: currentPage.page_id,
-        pageType: currentPage.type,
+        objectToken: currentPage.obj_token,
+        objectType: currentPage.obj_type,
       })
       setPreviewContent(res.content)
       setLoading(false)
@@ -71,4 +71,4 @@ const NotionPagePreview = ({
   )
 }
 
-export default NotionPagePreview
+export default FeishuPagePreview

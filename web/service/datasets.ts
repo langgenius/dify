@@ -29,6 +29,7 @@ import type {
   CreateApiKeyResponse,
 } from '@/models/app'
 import type { RetrievalConfig } from '@/types/app'
+import { FeishuProvider } from '@/app/components/header/account-setting/data-source-page/data-source-feishu/constants'
 
 // apis for documents in a dataset
 
@@ -223,6 +224,10 @@ export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, In
 
 export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; pageType: string }> = ({ workspaceID, pageID, pageType }) => {
   return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`)
+}
+
+export const fetchFeishuPagePreview: Fetcher<{ content: string }, { workspaceID: string; objectToken: string; objectType: string }> = ({ workspaceID, objectToken, objectType }) => {
+  return get<{ content: string }>(`${FeishuProvider}/workspaces/${workspaceID}/pages/${objectToken}/${objectType}/preview`)
 }
 
 export const fetchApiKeysList: Fetcher<ApikeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {

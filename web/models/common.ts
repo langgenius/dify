@@ -297,6 +297,9 @@ export type DataSourceFeishuPage = {
 
 export type FeishuPage = DataSourceFeishuPage & {
   workspace_id: string
+  obj_token: string
+  obj_type: string
+  space_id: string
 }
 
 export type DataSourceFeishuPageMap = Record<string, DataSourceFeishuPage & { workspace_id: string }>
