@@ -126,6 +126,7 @@ const ConfigPromptItem: FC<Props> = ({
       hasSetBlockStatus={hasSetBlockStatus}
       nodesOutputVars={availableVars}
       availableNodes={availableNodes}
+      isSupportPromptGenerator={payload.role === PromptRole.system}
       isSupportJinja
       editionType={payload.edition_type}
       onEditionTypeChange={onEditionTypeChange}
