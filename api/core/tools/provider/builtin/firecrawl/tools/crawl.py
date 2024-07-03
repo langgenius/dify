@@ -22,6 +22,7 @@ class CrawlTool(BuiltinTool):
 
         crawl_result = app.crawl_url(
             url=tool_parameters['url'], 
+            params=options,
             wait=True
         )
 
