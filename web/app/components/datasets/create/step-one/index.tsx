@@ -8,9 +8,10 @@ import NotionPagePreview from '../notion-page-preview'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import Website from '../website'
 import WebsitePreview from '../website/preview'
+import FeishuPagePreview from '../feishu-page-preview'
 import s from './index.module.css'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
-import type { NotionPage } from '@/models/common'
+import type { FeishuPage, NotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
@@ -30,6 +31,8 @@ type IStepOneProps = {
   updateFile: (fileItem: FileItem, progress: number, list: FileItem[]) => void
   notionPages?: NotionPage[]
   updateNotionPages: (value: NotionPage[]) => void
+  feishuPages?: NotionPage[]
+  updateFeishuPages: (value: FeishuPage[]) => void
   onStepChange: () => void
   changeType: (type: DataSourceType) => void
   websitePages?: CrawlResultItem[]
@@ -55,6 +58,22 @@ export const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
   )
 }
 
+type FeishuConnectorProps = {
+  onSetting: () => void
+}
+export const FeishuConnector = ({ onSetting }: FeishuConnectorProps) => {
+  const { t } = useTranslation()
+
+  return (
+    <div className={s.notionConnectionTip}>
+      <span className={s.feishuIcon} />
+      <div className={s.title}>{t('datasetCreation.stepOne.feishuSyncTitle')}</div>
+      <div className={s.tip}>{t('datasetCreation.stepOne.feishuSyncTip')}</div>
+      <Button className='h-8' variant='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
+    </div>
+  )
+}
+
 const StepOne = ({
   datasetId,
   dataSourceType: inCreatePageDataSourceType,
@@ -68,6 +87,8 @@ const StepOne = ({
   updateFile,
   notionPages = [],
   updateNotionPages,
+  feishuPages = [],
+  updateFeishuPages,
   websitePages = [],
   updateWebsitePages,
   onFireCrawlJobIdChange,
@@ -78,6 +99,7 @@ const StepOne = ({
   const [showModal, setShowModal] = useState(false)
   const [currentFile, setCurrentFile] = useState<File | undefined>()
   const [currentNotionPage, setCurrentNotionPage] = useState<NotionPage | undefined>()
+  const [currentFeishuPage, setCurrentFeishuPage] = useState<FeishuPage | undefined>()
   const [currentWebsite, setCurrentWebsite] = useState<CrawlResultItem | undefined>()
   const { t } = useTranslation()
 
@@ -97,6 +119,10 @@ const StepOne = ({
 
   const hideNotionPagePreview = () => {
     setCurrentNotionPage(undefined)
+  }
+
+  const hideFeishuPagePreview = () => {
+    setCurrentFeishuPage(undefined)
   }
 
   const hideWebsitePreview = () => {
@@ -179,7 +205,7 @@ const StepOne = ({
                       return
                     changeType(DataSourceType.FEISHU)
                     hideFilePreview()
-                    hideNotionPagePreview()
+                    hideFeishuPagePreview()
                   }}
                 >
                   <span className={cn(s.datasetIcon, s.feishu)} />
@@ -242,13 +268,13 @@ const StepOne = ({
           )}
           {dataSourceType === DataSourceType.FEISHU && (
             <>
-              {!hasConnection && <NotionConnector onSetting={onSetting} />}
+              {!hasConnection && <FeishuConnector onSetting={onSetting} />}
               {hasConnection && (
                 <>
                   <div className='mb-8 w-[640px]'>
                     <FeishuPageSelector
-                      value={notionPages.map(page => page.page_id)}
-                      onSelect={updateNotionPages}
+                      value={feishuPages.map(page => page.page_id)}
+                      onSelect={updateFeishuPages}
                       onPreview={updateCurrentPage}
                     />
                   </div>
@@ -293,6 +319,7 @@ const StepOne = ({
       </div>
       {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
       {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
+      {currentFeishuPage && <FeishuPagePreview currentPage={currentFeishuPage} hidePreview={hideFeishuPagePreview} />}
       {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
     </div>
   )

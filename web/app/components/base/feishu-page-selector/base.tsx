@@ -5,29 +5,29 @@ import s from './base.module.css'
 import WorkspaceSelector from './workspace-selector'
 import SearchInput from './search-input'
 import PageSelector from './page-selector'
-import { preImportNotionPages } from '@/service/datasets'
-import { NotionConnector } from '@/app/components/datasets/create/step-one'
-import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
+import { preImportFeishuPages } from '@/service/datasets'
+import { FeishuConnector } from '@/app/components/datasets/create/step-one'
+import type { DataSourceFeishuPageMap, DataSourceFeishuWorkspace, FeishuPage } from '@/models/common'
 import { useModalContext } from '@/context/modal-context'
 
-type NotionPageSelectorProps = {
+type FeishuPageSelectorProps = {
   value?: string[]
-  onSelect: (selectedPages: NotionPage[]) => void
+  onSelect: (selectedPages: FeishuPage[]) => void
   canPreview?: boolean
   previewPageId?: string
-  onPreview?: (selectedPage: NotionPage) => void
+  onPreview?: (selectedPage: FeishuPage) => void
   datasetId?: string
 }
 
-const NotionPageSelector = ({
+const FeishuPageSelector = ({
   value,
   onSelect,
   canPreview,
   previewPageId,
   onPreview,
   datasetId = '',
-}: NotionPageSelectorProps) => {
-  const { data, mutate } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportNotionPages)
+}: FeishuPageSelectorProps) => {
+  const { data, mutate } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportFeishuPages)
   const [prevData, setPrevData] = useState(data)
   const [searchValue, setSearchValue] = useState('')
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
@@ -39,10 +39,10 @@ const NotionPageSelector = ({
   const firstWorkspaceId = notionWorkspaces[0]?.workspace_id
   const currentWorkspace = notionWorkspaces.find(workspace => workspace.workspace_id === currentWorkspaceId)
 
-  const getPagesMapAndSelectedPagesId: [DataSourceNotionPageMap, Set<string>, Set<string>] = useMemo(() => {
+  const getPagesMapAndSelectedPagesId: [DataSourceFeishuPageMap, Set<string>, Set<string>] = useMemo(() => {
     const selectedPagesId = new Set<string>()
     const boundPagesId = new Set<string>()
-    const pagesMap = notionWorkspaces.reduce((prev: DataSourceNotionPageMap, next: DataSourceNotionWorkspace) => {
+    const pagesMap = notionWorkspaces.reduce((prev: DataSourceFeishuPageMap, next: DataSourceFeishuWorkspace) => {
       next.pages.forEach((page) => {
         if (page.is_bound) {
           selectedPagesId.add(page.page_id)
@@ -126,11 +126,11 @@ const NotionPageSelector = ({
             </>
           )
           : (
-            <NotionConnector onSetting={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })} />
+            <FeishuConnector onSetting={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })} />
           )
       }
     </div>
   )
 }
 
-export default NotionPageSelector
+export default FeishuPageSelector

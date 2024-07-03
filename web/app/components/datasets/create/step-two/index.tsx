@@ -32,7 +32,7 @@ import { type RetrievalConfig } from '@/types/app'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
-import type { NotionPage } from '@/models/common'
+import type { FeishuPage, NotionPage } from '@/models/common'
 import { DataSourceType, DocForm } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Switch from '@/app/components/base/switch'
@@ -60,6 +60,7 @@ type StepTwoProps = {
   dataSourceType: DataSourceType
   files: CustomFile[]
   notionPages?: NotionPage[]
+  feishuPages?: FeishuPage[]
   websitePages?: CrawlResultItem[]
   crawlOptions?: CrawlOptions
   fireCrawlJobId?: string
@@ -89,6 +90,7 @@ const StepTwo = ({
   dataSourceType: inCreatePageDataSourceType,
   files,
   notionPages = [],
+  feishuPages = [],
   websitePages = [],
   crawlOptions,
   fireCrawlJobId = '',

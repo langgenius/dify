@@ -23,7 +23,7 @@ import type {
   SegmentsResponse,
   createDocumentResponse,
 } from '@/models/datasets'
-import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
+import type { CommonResponse, DataSourceFeishuWorkspace, DataSourceNotionWorkspace } from '@/models/common'
 import type {
   ApikeysListResponse,
   CreateApiKeyResponse,
@@ -164,6 +164,11 @@ export const syncWebsite: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, 
 
 export const preImportNotionPages: Fetcher<{ notion_info: DataSourceNotionWorkspace[] }, { url: string; datasetId?: string }> = ({ url, datasetId }) => {
   return get<{ notion_info: DataSourceNotionWorkspace[] }>(url, { params: { dataset_id: datasetId } })
+}
+
+// TODO 修改 feishu 类型
+export const preImportFeishuPages: Fetcher<{ notion_info: DataSourceFeishuWorkspace[] }, { url: string; datasetId?: string }> = ({ url, datasetId }) => {
+  return get<{ notion_info: DataSourceFeishuWorkspace[] }>(url, { params: { dataset_id: datasetId } })
 }
 
 export const modifyDocMetadata: Fetcher<CommonResponse, CommonDocReq & { body: { doc_type: string; doc_metadata: Record<string, any> } }> = ({ datasetId, documentId, body }) => {

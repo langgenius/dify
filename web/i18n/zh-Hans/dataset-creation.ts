@@ -42,6 +42,8 @@ const translation = {
     },
     notionSyncTitle: 'Notion 未绑定',
     notionSyncTip: '同步 Notion 内容前，须先绑定 Notion 空间',
+    feishuSyncTitle: '飞书 未绑定',
+    feishuSyncTip: '同步 飞书 内容前，须先绑定 飞书 空间',
     connect: '去绑定',
     button: '下一步',
     emptyDatasetCreation: '创建一个空知识库',
