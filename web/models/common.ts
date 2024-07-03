@@ -293,13 +293,13 @@ export type DataSourceFeishuPage = {
   parent_id: string
   type: string
   is_bound: boolean
+  obj_token: string
+  obj_type: string
+  space_id: string
 }
 
 export type FeishuPage = DataSourceFeishuPage & {
   workspace_id: string
-  obj_token: string
-  obj_type: string
-  space_id: string
 }
 
 export type DataSourceFeishuPageMap = Record<string, DataSourceFeishuPage & { workspace_id: string }>

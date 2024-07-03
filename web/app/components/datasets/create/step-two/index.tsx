@@ -16,7 +16,7 @@ import RetrievalMethodInfo from '../../common/retrieval-method-info'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
-import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, IndexingEstimateResponse, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FeishuInfo, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, IndexingEstimateResponse, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
   createDocument,
   createFirstDocument,
@@ -35,6 +35,7 @@ import { formatNumber } from '@/utils/format'
 import type { FeishuPage, NotionPage } from '@/models/common'
 import { DataSourceType, DocForm } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
+import FeishuIcon from '@/app/components/base/feishu-icon'
 import Switch from '@/app/components/base/switch'
 import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
@@ -256,6 +257,32 @@ const StepTwo = ({
     }) as NotionInfo[]
   }
 
+  const getFeishuInfo = () => {
+    const workspacesMap = groupBy(feishuPages, 'workspace_id')
+    const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
+      return {
+        workspaceId,
+        pages: workspacesMap[workspaceId],
+      }
+    })
+    return workspaces.map((workspace) => {
+      return {
+        workspace_id: workspace.workspaceId,
+        pages: workspace.pages.map((page) => {
+          const { page_id, page_icon, type, page_name, obj_token, obj_type } = page
+          return {
+            // page_id,
+            page_name,
+            // page_icon,
+            // type,
+            obj_token,
+            obj_type,
+          }
+        }),
+      }
+    }) as FeishuInfo[]
+  }
+
   const getWebsiteInfo = () => {
     return {
       provider: 'firecrawl',
@@ -294,6 +321,21 @@ const StepTwo = ({
         dataset_id: datasetId as string,
       }
     }
+
+    if (dataSourceType === DataSourceType.FEISHU) {
+      return {
+        info_list: {
+          data_source_type: dataSourceType,
+          feishuwiki_info_list: getFeishuInfo(),
+        },
+        indexing_technique: getIndexing_technique() as string,
+        process_rule: getProcessRule(),
+        doc_form: docForm,
+        doc_language: docLanguage,
+        dataset_id: datasetId as string,
+      }
+    }
+
     if (dataSourceType === DataSourceType.WEB) {
       return {
         info_list: {
@@ -371,6 +413,9 @@ const StepTwo = ({
       }
       if (dataSourceType === DataSourceType.NOTION)
         params.data_source.info_list.notion_info_list = getNotionInfo()
+
+      if (dataSourceType === DataSourceType.FEISHU)
+        params.data_source.info_list.feishuwiki_info_list = getFeishuInfo()
 
       if (dataSourceType === DataSourceType.WEB)
         params.data_source.info_list.website_info_list = getWebsiteInfo()
@@ -853,6 +898,26 @@ const StepTwo = ({
                           <span>{t('datasetCreation.stepTwo.other')}</span>
                           <span>{notionPages.length - 1}</span>
                           <span>{t('datasetCreation.stepTwo.notionUnit')}</span>
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
+                {dataSourceType === DataSourceType.FEISHU && (
+                  <>
+                    <div className='mb-2 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.feishuSource')}</div>
+                    <div className='flex items-center text-sm leading-6 font-medium text-gray-800'>
+                      <FeishuIcon
+                        className='shrink-0 mr-1'
+                        type='page'
+                        src={feishuPages[0]?.page_icon}
+                      />
+                      {feishuPages[0]?.page_name}
+                      {feishuPages.length > 1 && (
+                        <span className={s.sourceCount}>
+                          <span>{t('datasetCreation.stepTwo.other')}</span>
+                          <span>{feishuPages.length - 1}</span>
+                          <span>{t('datasetCreation.stepTwo.feishuUnit')}</span>
                         </span>
                       )}
                     </div>

@@ -1,4 +1,4 @@
-import type { DataSourceNotionPage } from './common'
+import type { DataSourceFeishuPage, DataSourceNotionPage } from './common'
 import type { AppMode, RetrievalConfig } from '@/types/app'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 
@@ -236,6 +236,7 @@ export type DataSource = {
   info_list: {
     data_source_type: DataSourceType
     notion_info_list?: NotionInfo[]
+    feishuwiki_info_list?: FeishuInfo[]
     file_info_list?: {
       file_ids: string[]
     }
@@ -252,6 +253,15 @@ export type NotionInfo = {
   pages: DataSourceNotionPage[]
 }
 export type NotionPage = {
+  page_id: string
+  type: string
+}
+
+export type FeishuInfo = {
+  workspace_id: string
+  pages: DataSourceFeishuPage[]
+}
+export type FeishuPage = {
   page_id: string
   type: string
 }
