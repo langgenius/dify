@@ -50,25 +50,25 @@ class EndpointConfig(BaseModel):
     CONSOLE_API_URL: str = Field(
         description='The backend URL prefix of the console API.'
                     'used to concatenate the login authorization callback or notion integration callback.',
-        default='https://cloud.dify.ai',
+        default='',
     )
 
     CONSOLE_WEB_URL: str = Field(
         description='The front-end URL prefix of the console web.'
                     'used to concatenate some front-end addresses and for CORS configuration use.',
-        default='https://cloud.dify.ai',
+        default='',
     )
 
     SERVICE_API_URL: str = Field(
         description='Service API Url prefix.'
                     'used to display Service API Base Url to the front-end.',
-        default='https://api.dify.ai',
+        default='',
     )
 
     APP_WEB_URL: str = Field(
         description='WebApp Url prefix.'
                     'used to display WebAPP API Base Url to the front-end.',
-        default='https://udify.app',
+        default='',
     )
 
 
@@ -82,7 +82,7 @@ class FileAccessConfig(BaseModel):
                     'Url is signed and has expiration time.',
         validation_alias=AliasChoices('FILES_URL', 'CONSOLE_API_URL'),
         alias_priority=1,
-        default='https://cloud.dify.ai',
+        default='',
     )
 
     FILES_ACCESS_TIMEOUT: int = Field(
