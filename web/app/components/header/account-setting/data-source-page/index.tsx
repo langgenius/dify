@@ -4,13 +4,14 @@ import DataSourceNotion from './data-source-notion'
 import DataSourceFeishu from './data-source-feishu'
 import DataSourceWebsite from './data-source-website'
 import { FeishuProvider } from './data-source-feishu/constants'
+import type { DataSourceFeishu as TDataSourceFeishu } from '@/models/common'
 import { fetchDataSource } from '@/service/common'
 
 export default function DataSourcePage() {
   const { t } = useTranslation()
   const { data } = useSWR({ url: 'data-source/integrates' }, fetchDataSource)
   const notionWorkspaces = data?.data.filter(item => item.provider === 'notion') || []
-  const feishuWorkspaces = data?.data.filter(item => item.provider === FeishuProvider) || []
+  const feishuWorkspaces: TDataSourceFeishu[] = data?.data.filter(item => item.provider === FeishuProvider) || []
 
   return (
     <div className='mb-8'>

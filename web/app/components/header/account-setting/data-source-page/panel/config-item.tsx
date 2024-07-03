@@ -13,6 +13,7 @@ import { DataSourceType } from './types'
 import s from './style.module.css'
 
 export type ConfigItemType = {
+  feishuConfig: any
   id: string
   logo: any
   name: string
@@ -29,6 +30,9 @@ type Props = {
   notionActions?: {
     onChangeAuthorizedPage: () => void
   }
+  feishuActions?: {
+    onFeishuChangeAuthorizedPage: () => void
+  }
   readOnly: boolean
 }
 
@@ -37,6 +41,7 @@ const ConfigItem: FC<Props> = ({
   payload,
   onRemove,
   notionActions,
+  feishuActions,
   readOnly,
 }) => {
   const { t } = useTranslation()
@@ -44,7 +49,7 @@ const ConfigItem: FC<Props> = ({
   const isFeishu = type === DataSourceType.feishu
   const isWebsite = type === DataSourceType.website
   const onChangeAuthorizedPage = notionActions?.onChangeAuthorizedPage || function () { }
-
+  const onFeishuChangeAuthorizedPage = feishuActions?.onFeishuChangeAuthorizedPage || function () { }
   return (
     <div className={cn(s['workspace-item'], 'flex items-center mb-1 py-1 pr-1 bg-white rounded-lg')} key={payload.id}>
       <payload.logo className='ml-3 mr-1.5' />
@@ -60,6 +65,11 @@ const ConfigItem: FC<Props> = ({
             ? t(isNotion ? 'common.dataSource.notion.connected' : 'common.dataSource.website.active')
             : t(isNotion ? 'common.dataSource.notion.disconnected' : 'common.dataSource.website.inactive')
         }
+        {
+          payload.isActive
+            ? t(isFeishu ? 'common.dataSource.feishu.connected' : 'common.dataSource.website.active')
+            : t(isFeishu ? 'common.dataSource.feishu.disconnected' : 'common.dataSource.website.inactive')
+        }
       </div>
       <div className='mr-2 w-[1px] h-3 bg-gray-100' />
       {isNotion && (
@@ -72,8 +82,8 @@ const ConfigItem: FC<Props> = ({
       {isFeishu && (
         <FeishuOperate payload={{
           id: payload.id,
-          total: payload.notionConfig?.total || 0,
-        }} onAuthAgain={onChangeAuthorizedPage}
+          total: payload.feishuConfig?.total || 0,
+        }} onAuthAgain={onFeishuChangeAuthorizedPage}
         />
       )}
       {
