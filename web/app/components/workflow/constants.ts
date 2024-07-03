@@ -26,7 +26,7 @@ type NodesExtraData = {
 }
 export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
   [BlockEnum.Start]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -35,7 +35,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: StartNodeDefault.checkValid,
   },
   [BlockEnum.End]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -44,7 +44,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: EndNodeDefault.checkValid,
   },
   [BlockEnum.Answer]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -53,7 +53,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: AnswerDefault.checkValid,
   },
   [BlockEnum.LLM]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -62,7 +62,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: LLMDefault.checkValid,
   },
   [BlockEnum.KnowledgeRetrieval]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -71,7 +71,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: KnowledgeRetrievalDefault.checkValid,
   },
   [BlockEnum.IfElse]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -80,7 +80,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: IfElseDefault.checkValid,
   },
   [BlockEnum.Iteration]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -89,7 +89,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: IterationDefault.checkValid,
   },
   [BlockEnum.Code]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -98,7 +98,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: CodeDefault.checkValid,
   },
   [BlockEnum.TemplateTransform]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -107,7 +107,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: TemplateTransformDefault.checkValid,
   },
   [BlockEnum.QuestionClassifier]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -116,7 +116,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: QuestionClassifierDefault.checkValid,
   },
   [BlockEnum.HttpRequest]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -125,7 +125,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: HttpRequestDefault.checkValid,
   },
   [BlockEnum.VariableAssigner]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -134,7 +134,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: VariableAssignerDefault.checkValid,
   },
   [BlockEnum.VariableAggregator]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -143,7 +143,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: VariableAssignerDefault.checkValid,
   },
   [BlockEnum.ParameterExtractor]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],
@@ -152,7 +152,7 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     checkValid: ParameterExtractorDefault.checkValid,
   },
   [BlockEnum.Tool]: {
-    author: 'Dify',
+    author: '',
     about: '',
     availablePrevNodes: [],
     availableNextNodes: [],

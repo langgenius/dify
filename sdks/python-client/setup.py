@@ -11,7 +11,7 @@ setup(
     description="A package for interacting with the Dify Service-API",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/langgenius/dify",
+    url="https://github.com/",
     license='MIT',
     packages=['dify_client'],
     classifiers=[
