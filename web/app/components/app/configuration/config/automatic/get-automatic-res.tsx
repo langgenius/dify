@@ -41,7 +41,7 @@ const TryLabel: FC<{
 }> = ({ Icon, text, onClick }) => {
   return (
     <div
-      className='mt-2 flex h-7 items-center px-2 bg-gray-100 rounded-lg cursor-pointer'
+      className='mt-2 mr-1 shrink-0 flex h-7 items-center px-2 bg-gray-100 rounded-lg cursor-pointer'
       onClick={onClick}
     >
       <Icon className='w-4 h-4 text-gray-500'></Icon>
@@ -61,6 +61,25 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+
+  const tryList = [
+    {
+      icon: Generator,
+      text: 'Write me an email',
+    },
+    {
+      icon: Generator,
+      text: 'Generate an SEO article',
+    },
+    {
+      icon: Generator,
+      text: 'Code debug',
+    },
+    {
+      icon: Generator,
+      text: 'Translate English to Chinese',
+    },
+  ]
 
   const [hopingToSolve, setHopingToSolve] = React.useState<string>('')
   const isValid = () => {
@@ -151,12 +170,15 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 background: 'linear-gradient(to right, rgba(243, 244, 246, 1), rgba(243, 244, 246, 0))',
               }}></div>
             </div>
-            <div className='flex '>
-              <TryLabel
-                Icon={Generator}
-                text={t('appDebug.generate.tryIt')}
-                onClick={() => { }}
-              />
+            <div className='flex flex-wrap'>
+              {tryList.map(item => (
+                <TryLabel
+                  key={item.text}
+                  Icon={item.icon}
+                  text={item.text}
+                  onClick={() => { }}
+                />
+              ))}
             </div>
           </div>
           {/* inputs */}
