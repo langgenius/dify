@@ -82,6 +82,8 @@ type Shape = {
   setShortcutsDisabled: (shortcutsDisabled: boolean) => void
   showDebugAndPreviewPanel: boolean
   setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
+  showEnvPanel: boolean
+  setShowEnvPanel: (showEnvPanel: boolean) => void
   selection: null | { x1: number; y1: number; x2: number; y2: number }
   setSelection: (selection: Shape['selection']) => void
   bundleNodeSize: { width: number; height: number } | null
@@ -190,6 +192,8 @@ export const createWorkflowStore = () => {
     setShortcutsDisabled: shortcutsDisabled => set(() => ({ shortcutsDisabled })),
     showDebugAndPreviewPanel: false,
     setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
+    showEnvPanel: false,
+    setShowEnvPanel: showEnvPanel => set(() => ({ showEnvPanel })),
     selection: null,
     setSelection: selection => set(() => ({ selection })),
     bundleNodeSize: null,

@@ -30,6 +30,7 @@ import EditingTitle from './editing-title'
 import RunningTitle from './running-title'
 import RestoringTitle from './restoring-title'
 import ViewHistory from './view-history'
+import EnvButton from './env-button'
 import Checklist from './checklist'
 import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
 import Button from '@/app/components/base/button'
@@ -192,6 +193,7 @@ const Header: FC = () => {
               }}
             />
             <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
+            <EnvButton />
             <Checklist disabled={nodesReadOnly} />
           </div>
         )
