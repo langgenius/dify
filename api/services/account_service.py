@@ -337,6 +337,28 @@ class TenantService:
         return updated_accounts
 
     @staticmethod
+    def get_dataset_operator_members(tenant: Tenant) -> list[Account]:
+        """Get dataset admin members"""
+        query = (
+            db.session.query(Account, TenantAccountJoin.role)
+            .select_from(Account)
+            .join(
+                TenantAccountJoin, Account.id == TenantAccountJoin.account_id
+            )
+            .filter(TenantAccountJoin.tenant_id == tenant.id)
+            .filter(TenantAccountJoin.role == 'dataset_operator')
+        )
+
+        # Initialize an empty list to store the updated accounts
+        updated_accounts = []
+
+        for account, role in query:
+            account.role = role
+            updated_accounts.append(account)
+
+        return updated_accounts
+
+    @staticmethod
     def has_roles(tenant: Tenant, roles: list[TenantAccountJoinRole]) -> bool:
         """Check if user has any of the given roles for a tenant"""
         if not all(isinstance(role, TenantAccountJoinRole) for role in roles):
