@@ -28,6 +28,8 @@ type PreviewRunningData = WorkflowRunningData & {
 type Shape = {
   appId: string
   panelWidth: number
+  showSingleRunPanel: boolean
+  setShowSingleRunPanel: (showSingleRunPanel: boolean) => void
   workflowRunningData?: PreviewRunningData
   setWorkflowRunningData: (workflowData: PreviewRunningData) => void
   historyWorkflowData?: HistoryWorkflowData
@@ -137,6 +139,8 @@ export const createWorkflowStore = () => {
   return createStore<Shape>(set => ({
     appId: '',
     panelWidth: localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
+    showSingleRunPanel: false,
+    setShowSingleRunPanel: showSingleRunPanel => set(() => ({ showSingleRunPanel })),
     workflowRunningData: undefined,
     setWorkflowRunningData: workflowRunningData => set(() => ({ workflowRunningData })),
     historyWorkflowData: undefined,

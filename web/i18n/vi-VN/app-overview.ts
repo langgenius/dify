@@ -49,6 +49,10 @@ const translation = {
           show: 'Hiển thị',
           hide: 'Ẩn',
         },
+        chatColorTheme: 'Chủ đề màu sắc trò chuyện',
+        chatColorThemeDesc: 'Thiết lập chủ đề màu sắc của chatbot',
+        chatColorThemeInverted: 'Đảo ngược',
+        invalidHexMessage: 'Giá trị không hợp lệ của hệ màu hex',
         more: {
           entry: 'Hiển thị thêm cài đặt',
           copyright: 'Bản quyền',

@@ -105,15 +105,15 @@ class BingSearchTool(BuiltinTool):
         
 
     def validate_credentials(self, credentials: dict[str, Any], tool_parameters: dict[str, Any]) -> None:
-        key = credentials.get('subscription_key', None)
+        key = credentials.get('subscription_key')
         if not key:
             raise Exception('subscription_key is required')
         
-        server_url = credentials.get('server_url', None)
+        server_url = credentials.get('server_url')
         if not server_url:
             server_url = self.url
 
-        query = tool_parameters.get('query', None)
+        query = tool_parameters.get('query')
         if not query:
             raise Exception('query is required')
         
@@ -170,7 +170,7 @@ class BingSearchTool(BuiltinTool):
         if not server_url:
             server_url = self.url
         
-        query = tool_parameters.get('query', None)
+        query = tool_parameters.get('query')
         if not query:
             raise Exception('query is required')
         

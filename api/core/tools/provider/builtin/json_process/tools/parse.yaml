@@ -1,0 +1,40 @@
+identity:
+  name: parse
+  author: Mingwei Zhang
+  label:
+    en_US: JSON Parse
+    zh_Hans: JSON 解析
+    pt_BR: JSON Parse
+description:
+  human:
+    en_US: A tool for extracting JSON objects
+    zh_Hans: 一个解析JSON对象的工具
+    pt_BR: A tool for extracting JSON objects
+  llm: A tool for extracting JSON objects
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: JSON data
+      zh_Hans: JSON数据
+      pt_BR: JSON data
+    human_description:
+      en_US: JSON data
+      zh_Hans: JSON数据
+      pt_BR: JSON数据
+    llm_description: JSON data to be processed
+    form: llm
+  - name: json_filter
+    type: string
+    required: true
+    label:
+      en_US: JSON filter
+      zh_Hans: JSON解析对象
+      pt_BR: JSON filter
+    human_description:
+      en_US: JSON fields to be parsed
+      zh_Hans: 需要解析的 JSON 字段
+      pt_BR: JSON fields to be parsed
+    llm_description: JSON fields to be parsed
+    form: llm

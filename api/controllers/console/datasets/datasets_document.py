@@ -20,6 +20,7 @@ from controllers.console.datasets.error import (
     ArchivedDocumentImmutableError,
     DocumentAlreadyFinishedError,
     DocumentIndexingError,
+    IndexingEstimateError,
     InvalidActionError,
     InvalidMetadataError,
 )
@@ -388,6 +389,8 @@ class DocumentIndexingEstimateApi(DocumentResource):
                         "in the Settings -> Model Provider.")
                 except ProviderTokenNotInitError as ex:
                     raise ProviderNotInitializeError(ex.description)
+                except Exception as e:
+                    raise IndexingEstimateError(str(e))
 
         return response
 
@@ -493,6 +496,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     "in the Settings -> Model Provider.")
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
+            except Exception as e:
+                raise IndexingEstimateError(str(e))
         return response
 
 

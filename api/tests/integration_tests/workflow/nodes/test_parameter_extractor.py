@@ -59,7 +59,7 @@ def get_mocked_fetch_model_config(
         provider_model_bundle=provider_model_bundle
     )
 
-    return MagicMock(return_value=tuple([model_instance, model_config]))
+    return MagicMock(return_value=(model_instance, model_config))
 
 @pytest.mark.parametrize('setup_openai_mock', [['chat']], indirect=True)
 def test_function_calling_parameter_extractor(setup_openai_mock):

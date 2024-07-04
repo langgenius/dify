@@ -81,10 +81,6 @@ class AbstractVectorTest:
     def text_exists(self):
         assert self.vector.text_exists(self.example_doc_id)
 
-    def delete_by_document_id(self):
-        with pytest.raises(NotImplementedError):
-            self.vector.delete_by_document_id(document_id=self.example_doc_id)
-
     def get_ids_by_metadata_field(self):
         with pytest.raises(NotImplementedError):
             self.vector.get_ids_by_metadata_field(key='key', value='value')
@@ -95,7 +91,6 @@ class AbstractVectorTest:
         self.search_by_full_text()
         self.text_exists()
         self.get_ids_by_metadata_field()
-        self.delete_by_document_id()
         added_doc_ids = self.add_texts()
         self.delete_by_ids(added_doc_ids)
         self.delete_vector()

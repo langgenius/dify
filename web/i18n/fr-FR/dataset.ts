@@ -8,6 +8,7 @@ const translation = {
   deleteDatasetConfirmTitle: 'Supprimer cette Connaissance ?',
   deleteDatasetConfirmContent:
     'La suppression de la Connaissance est irréversible. Les utilisateurs ne pourront plus accéder à votre Savoir, et toutes les configurations de prompt et les journaux seront supprimés de façon permanente.',
+  datasetUsedByApp: 'La connaissance est utilisée par certaines applications. Les applications ne pourront plus utiliser cette Connaissance, et toutes les configurations de prompts et les journaux seront définitivement supprimés.',
   datasetDeleted: 'Connaissance supprimée',
   datasetDeleteFailed: 'Échec de la suppression de la Connaissance',
   didYouKnow: 'Saviez-vous ?',
