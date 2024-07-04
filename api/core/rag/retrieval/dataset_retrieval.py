@@ -38,7 +38,6 @@ default_retrieval_model = {
     'score_threshold_enabled': False
 }
 
-
 class DatasetRetrieval:
     def __init__(self, application_generate_entity=None):
         self.application_generate_entity = application_generate_entity
@@ -103,7 +102,6 @@ class DatasetRetrieval:
                 planning_strategy = PlanningStrategy.ROUTER
         available_datasets = []
 
-        print('DatasetRetrieval_retrieve_dataset_query_110',query)
         for dataset_id in dataset_ids:
             # get dataset from dataset id
             dataset = db.session.query(Dataset).filter(
@@ -120,7 +118,6 @@ class DatasetRetrieval:
                 continue
 
             available_datasets.append(dataset)
-            print('DatasetRetrieval_retrieve_dataset_126',dataset)
         all_documents = []
         user_from = 'account' if invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else 'end_user'
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
@@ -138,7 +135,6 @@ class DatasetRetrieval:
                 retrieve_config.reranking_model.get('reranking_model_name'),
                 message_id,
             )
-        print('DatasetRetrieval_retrieve_all_documents_145',dataset)
         document_score_list = {}
         for item in all_documents:
             if item.metadata.get('score'):
@@ -152,7 +148,6 @@ class DatasetRetrieval:
             DocumentSegment.enabled == True,
             DocumentSegment.index_node_id.in_(index_node_ids)
         ).all()
-        print('DatasetRetrieval_retrieve_segments_159',segments)
         if segments:
             index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
             sorted_segments = sorted(segments,
@@ -174,7 +169,6 @@ class DatasetRetrieval:
                                                             DatasetDocument.enabled == True,
                                                             DatasetDocument.archived == False,
                                                             ).first()
-                    print('DatasetRetrieval_retrieve_document_182',document)
                     if dataset and document:
                         source = {
                             'position': resource_number,
@@ -242,7 +236,6 @@ class DatasetRetrieval:
         elif planning_strategy == PlanningStrategy.ROUTER:
             function_call_router = FunctionCallMultiDatasetRouter()
             dataset_id = function_call_router.invoke(query, tools, model_config, model_instance)
-        print('DatasetRetrieval_single_retrieve_dataset_id_249',dataset_id)
         if dataset_id:
             # get retrieval model config
             dataset = db.session.query(Dataset).filter(
@@ -251,7 +244,6 @@ class DatasetRetrieval:
             if dataset:
                 retrieval_model_config = dataset.retrieval_model \
                     if dataset.retrieval_model else default_retrieval_model
-                print('DatasetRetrieval_single_retrieve_dataset_258',dataset)
                 # get top k
                 top_k = retrieval_model_config['top_k']
                 # get retrieval method

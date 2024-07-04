@@ -80,7 +80,6 @@ class RetrievalService:
 
         for thread in threads:
             thread.join()
-        print('RetrievalService_retrieve_all_documents_86',all_documents)
         if exceptions:
             exception_message = ';\n'.join(exceptions)
             raise Exception(exception_message)
