@@ -13,7 +13,6 @@ class BaseAppGenerator:
         filtered_inputs = {k: self._sanitize_value(v) for k, v in filtered_inputs.items()}
         return filtered_inputs
 
-
     def _validate_input(self, *, inputs: Mapping[str, Any], var: VariableEntity):
         user_input_value = inputs.get(var.name)
         if var.required and not user_input_value:

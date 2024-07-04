@@ -1,8 +1,8 @@
 """'add_max_active_requests'
 
-Revision ID: a6167f486841
-Revises: b2602e131636
-Create Date: 2024-07-04 09:08:32.797442
+Revision ID: 408176b91ad3
+Revises: 7e6a8693e07a
+Create Date: 2024-07-04 09:25:14.029023
 
 """
 import sqlalchemy as sa
@@ -11,8 +11,8 @@ from alembic import op
 import models as models
 
 # revision identifiers, used by Alembic.
-revision = 'a6167f486841'
-down_revision = 'b2602e131636'
+revision = '408176b91ad3'
+down_revision = '7e6a8693e07a'
 branch_labels = None
 depends_on = None
 
