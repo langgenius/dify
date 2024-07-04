@@ -201,10 +201,8 @@ const ConfigPrompt: FC<Props> = ({
                           handleAddVariable={handleAddVariable}
                         />
                       </div>
-
                     )
                   })
-
                 }
               </ReactSortable>
             </div>
