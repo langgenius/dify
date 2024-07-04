@@ -6,7 +6,7 @@ from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
 
 
-class BaseWorkflowCallback(ABC):
+class WorkflowCallback(ABC):
     @abstractmethod
     def on_workflow_run_started(self) -> None:
         """

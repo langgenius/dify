@@ -8,7 +8,7 @@ from core.app.app_config.entities import FileExtraConfig
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
-from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
+from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_entities import WorkflowNodeAndResult, WorkflowRunState
@@ -156,7 +156,7 @@ class WorkflowEngineManager:
 
     def _run_workflow(self, workflow: Workflow,
                      workflow_run_state: WorkflowRunState,
-                     callbacks: list[BaseWorkflowCallback] = None,
+                     callbacks: list[WorkflowCallback],
                      start_at: Optional[str] = None,
                      end_at: Optional[str] = None) -> None:
         """
@@ -421,7 +421,7 @@ class WorkflowEngineManager:
                                             node_id: str,
                                             user_id: str,
                                             user_inputs: dict,
-                                            callbacks: list[BaseWorkflowCallback] = None,
+                                            callbacks: list[WorkflowCallback],
     ) -> None:
         """
         Single iteration run workflow node
@@ -538,7 +538,7 @@ class WorkflowEngineManager:
             end_at=end_node_id
         )
 
-    def _workflow_run_success(self, callbacks: list[BaseWorkflowCallback] = None) -> None:
+    def _workflow_run_success(self, callbacks: list[WorkflowCallback]) -> None:
         """
         Workflow run success
         :param callbacks: workflow callbacks
@@ -550,7 +550,7 @@ class WorkflowEngineManager:
                 callback.on_workflow_run_succeeded()
 
     def _workflow_run_failed(self, error: str,
-                             callbacks: list[BaseWorkflowCallback] = None) -> None:
+                             callbacks: list[WorkflowCallback]) -> None:
         """
         Workflow run failed
         :param error: error message
@@ -563,11 +563,11 @@ class WorkflowEngineManager:
                     error=error
                 )
 
-    def _workflow_iteration_started(self, graph: dict, 
+    def _workflow_iteration_started(self, *, graph: dict, 
                                     current_iteration_node: BaseIterationNode,
                                     workflow_run_state: WorkflowRunState,
                                     predecessor_node_id: Optional[str] = None,
-                                    callbacks: list[BaseWorkflowCallback] = None) -> None:
+                                    callbacks: list[WorkflowCallback]) -> None:
         """
         Workflow iteration started
         :param current_iteration_node: current iteration node
@@ -600,10 +600,10 @@ class WorkflowEngineManager:
         # add steps
         workflow_run_state.workflow_node_steps += 1
 
-    def _workflow_iteration_next(self, graph: dict,
+    def _workflow_iteration_next(self, *, graph: dict,
                                  current_iteration_node: BaseIterationNode,
                                  workflow_run_state: WorkflowRunState, 
-                                 callbacks: list[BaseWorkflowCallback] = None) -> None:
+                                 callbacks: list[WorkflowCallback]) -> None:
         """
         Workflow iteration next
         :param workflow_run_state: workflow run state
@@ -632,9 +632,9 @@ class WorkflowEngineManager:
         for node in nodes:
             workflow_run_state.variable_pool.clear_node_variables(node_id=node.get('id'))
     
-    def _workflow_iteration_completed(self, current_iteration_node: BaseIterationNode,
+    def _workflow_iteration_completed(self, *, current_iteration_node: BaseIterationNode,
                                         workflow_run_state: WorkflowRunState, 
-                                        callbacks: list[BaseWorkflowCallback] = None) -> None:
+                                        callbacks: list[WorkflowCallback]) -> None:
         if callbacks:
             if isinstance(workflow_run_state.current_iteration_state, IterationState):
                 for callback in callbacks:
@@ -647,10 +647,10 @@ class WorkflowEngineManager:
                         }
                     )
 
-    def _get_next_overall_node(self, workflow_run_state: WorkflowRunState,
+    def _get_next_overall_node(self, *, workflow_run_state: WorkflowRunState,
                        graph: dict,
                        predecessor_node: Optional[BaseNode] = None,
-                       callbacks: list[BaseWorkflowCallback] = None,
+                       callbacks: list[WorkflowCallback],
                        start_at: Optional[str] = None,
                        end_at: Optional[str] = None) -> Optional[BaseNode]:
         """
@@ -744,7 +744,7 @@ class WorkflowEngineManager:
     def _get_node(self, workflow_run_state: WorkflowRunState, 
                   graph: dict, 
                   node_id: str,
-                  callbacks: list[BaseWorkflowCallback]) -> Optional[BaseNode]:
+                  callbacks: list[WorkflowCallback]) -> Optional[BaseNode]:
         """
         Get node from graph by node id
         """
@@ -788,10 +788,10 @@ class WorkflowEngineManager:
             if node_and_result.node_id == node_id
         ])
 
-    def _run_workflow_node(self, workflow_run_state: WorkflowRunState,
+    def _run_workflow_node(self, *, workflow_run_state: WorkflowRunState,
                            node: BaseNode,
                            predecessor_node: Optional[BaseNode] = None,
-                           callbacks: list[BaseWorkflowCallback] = None) -> None:
+                           callbacks: list[WorkflowCallback]) -> None:
         if callbacks:
             for callback in callbacks:
                 callback.on_workflow_node_execute_started(

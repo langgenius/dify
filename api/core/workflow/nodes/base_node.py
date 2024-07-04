@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Optional
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
+from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
@@ -46,7 +46,7 @@ class BaseNode(ABC):
     node_data: BaseNodeData
     node_run_result: Optional[NodeRunResult] = None
 
-    callbacks: list[BaseWorkflowCallback]
+    callbacks: list[WorkflowCallback]
 
     def __init__(self, tenant_id: str,
                  app_id: str,
@@ -55,7 +55,7 @@ class BaseNode(ABC):
                  user_from: UserFrom,
                  invoke_from: InvokeFrom,
                  config: dict,
-                 callbacks: list[BaseWorkflowCallback] = None,
+                 callbacks: list[WorkflowCallback] = None,
                  workflow_call_depth: int = 0) -> None:
         self.tenant_id = tenant_id
         self.app_id = app_id
