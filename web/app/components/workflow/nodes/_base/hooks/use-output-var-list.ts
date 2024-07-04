@@ -96,4 +96,3 @@ function useOutputVarList<T>({
 }
 
 export default useOutputVarList
-
