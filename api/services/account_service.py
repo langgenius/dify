@@ -30,6 +30,7 @@ from services.errors.account import (
     LinkAccountIntegrateError,
     MemberNotInTenantError,
     NoPermissionError,
+    RateLimitExceededError,
     RoleAlreadyAssignedError,
     TenantNotFound,
 )
@@ -233,8 +234,7 @@ class AccountService:
     @classmethod
     def send_reset_password_email(cls, account):
         if cls.reset_password_rate_limiter.is_rate_limited(account.email):
-            logging.warning(f"Rate limit exceeded for email: {account.email}")
-            return None
+            raise RateLimitExceededError(f"Rate limit exceeded for email: {account.email}. Please try again later.")
 
         token = TokenManager.generate_token(account, 'reset_password')
         send_reset_password_mail_task.delay(

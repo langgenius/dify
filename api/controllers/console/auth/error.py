@@ -23,3 +23,10 @@ class InvalidTokenError(BaseHTTPException):
     error_code = 'invalid_or_expired_token'
     description = "The token is invalid or has expired."
     code = 400
+
+
+class PasswordResetRateLimitExceededError(BaseHTTPException):
+    error_code = 'password_reset_rate_limit_exceeded'
+    description = "Password reset rate limit exceeded. Try again later."
+    code = 429
+

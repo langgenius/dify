@@ -9,6 +9,7 @@ from controllers.console.auth.error import (
     InvalidEmailError,
     InvalidTokenError,
     PasswordMismatchError,
+    PasswordResetRateLimitExceededError,
 )
 from controllers.console.setup import setup_required
 from extensions.ext_database import db
@@ -16,6 +17,7 @@ from libs.helper import email as email_validate
 from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService
+from services.errors.account import RateLimitExceededError
 
 
 class ForgotPasswordSendEmailApi(Resource):
@@ -34,12 +36,16 @@ class ForgotPasswordSendEmailApi(Resource):
         account = Account.query.filter_by(email=email).first()
 
         if account:
-            AccountService.send_reset_password_email(account=account)
-            return {"result": "success"}
+            try:
+                AccountService.send_reset_password_email(account=account)
+            except RateLimitExceededError:
+                logging.warning(f"Rate limit exceeded for email: {account.email}")
+                raise PasswordResetRateLimitExceededError()
         else:
-            logging.warning(f"Attempt to reset password for unregistered email: {email}")
             # Return success to avoid revealing email registration status
-            return {"result": "success"}
+            logging.warning(f"Attempt to reset password for unregistered email: {email}")
+
+        return {"result": "success"}
 
 
 class ForgotPasswordCheckApi(Resource):
