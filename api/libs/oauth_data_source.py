@@ -5,6 +5,7 @@ import requests
 from flask_login import current_user
 
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models.source import DataSourceOauthBinding
 
 logger = logging.getLogger(__name__)
@@ -309,6 +310,12 @@ class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
     _FEISHU_WIKI_NODES_SEARCH = 'https://open.larkoffice.com/open-apis/wiki/v2/spaces/{space_id}/nodes'
 
     def get_tenant_access_token(self):
+        tenant_access_token_cache_key = f'tenant_access_token_{self.app_id}'
+
+        cache_result = redis_client.get(tenant_access_token_cache_key)
+        if cache_result:
+            return cache_result
+
         data = {
             "app_id": self.app_id,
             "app_secret": self.app_secret
@@ -319,6 +326,7 @@ class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
 
         code = response_json.get('code')
         tenant_access_token = response_json.get('tenant_access_token')
+        redis_client.setex(tenant_access_token_cache_key, 3600, tenant_access_token)
 
         if code != 0:
             raise ValueError(f"Error in Feishu OAuth: {response_json}")
