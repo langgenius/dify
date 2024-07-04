@@ -219,6 +219,7 @@ const ConfigPrompt: FC<Props> = ({
               hasSetBlockStatus={hasSetBlockStatus}
               nodesOutputVars={availableVars}
               availableNodes={availableNodesWithParent}
+              isSupportPromptGenerator
               isSupportJinja
               editionType={(payload as PromptItem).edition_type}
               varList={varList}

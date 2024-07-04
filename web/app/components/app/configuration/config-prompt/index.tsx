@@ -19,6 +19,8 @@ export type IPromptProps = {
   promptTemplate: string
   promptVariables: PromptVariable[]
   readonly?: boolean
+  noTitle?: boolean
+  gradientBorder?: boolean
   onChange?: (prompt: string, promptVariables: PromptVariable[]) => void
 }
 
@@ -26,6 +28,8 @@ const Prompt: FC<IPromptProps> = ({
   mode,
   promptTemplate,
   promptVariables,
+  noTitle,
+  gradientBorder,
   readonly = false,
   onChange,
 }) => {
@@ -99,6 +103,8 @@ const Prompt: FC<IPromptProps> = ({
         promptVariables={promptVariables}
         readonly={readonly}
         onChange={onChange}
+        noTitle={noTitle}
+        gradientBorder={gradientBorder}
       />
     )
   }

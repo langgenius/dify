@@ -36,6 +36,8 @@ export type ISimplePromptInput = {
   promptVariables: PromptVariable[]
   readonly?: boolean
   onChange?: (promp: string, promptVariables: PromptVariable[]) => void
+  noTitle?: boolean
+  gradientBorder?: boolean
 }
 
 const Prompt: FC<ISimplePromptInput> = ({
@@ -44,6 +46,8 @@ const Prompt: FC<ISimplePromptInput> = ({
   promptVariables,
   readonly = false,
   onChange,
+  noTitle,
+  gradientBorder,
 }) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
@@ -138,27 +142,30 @@ const Prompt: FC<ISimplePromptInput> = ({
   const [editorHeight, setEditorHeight] = useState(minHeight)
 
   return (
-    <div className={cn(!readonly ? `${s.gradientBorder}` : 'bg-gray-50', ' relative shadow-md')}>
+    <div className={cn((!readonly || gradientBorder) ? `${s.gradientBorder}` : 'bg-gray-50', ' relative shadow-md')}>
       <div className='rounded-xl bg-[#EEF4FF]'>
-        <div className="flex justify-between items-center h-11 px-3">
-          <div className="flex items-center space-x-1">
-            <div className='h2'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
-            {!readonly && (
-              <Tooltip
-                htmlContent={<div className='w-[180px]'>
-                  {t('appDebug.promptTip')}
-                </div>}
-                selector='config-prompt-tooltip'>
-                <RiQuestionLine className='w-[14px] h-[14px] text-indigo-400' />
-              </Tooltip>
-            )}
+        {!noTitle && (
+          <div className="flex justify-between items-center h-11 px-3">
+            <div className="flex items-center space-x-1">
+              <div className='h2'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
+              {!readonly && (
+                <Tooltip
+                  htmlContent={<div className='w-[180px]'>
+                    {t('appDebug.promptTip')}
+                  </div>}
+                  selector='config-prompt-tooltip'>
+                  <RiQuestionLine className='w-[14px] h-[14px] text-indigo-400' />
+                </Tooltip>
+              )}
+            </div>
+            <div className='flex items-center'>
+              {!isAgent && !readonly && !isMobile && (
+                <AutomaticBtn onClick={showAutomaticTrue} />
+              )}
+            </div>
           </div>
-          <div className='flex items-center'>
-            {!isAgent && !readonly && !isMobile && (
-              <AutomaticBtn onClick={showAutomaticTrue} />
-            )}
-          </div>
-        </div>
+        )}
+
         <PromptEditorHeightResizeWrap
           className='px-4 pt-2 min-h-[228px] bg-white rounded-t-xl text-sm text-gray-700'
           height={editorHeight}
@@ -220,6 +227,7 @@ const Prompt: FC<ISimplePromptInput> = ({
             onBlur={() => {
               handleChange(promptTemplate, getVars(promptTemplate))
             }}
+            editable={!readonly}
           />
         </PromptEditorHeightResizeWrap>
       </div>

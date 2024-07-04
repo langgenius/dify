@@ -192,6 +192,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               promptTemplate={res?.prompt || ''}
               promptVariables={[]}
               readonly
+              noTitle={isInLLMNode}
+              gradientBorder
             />
             {!isInLLMNode && (
               <>
