@@ -166,8 +166,8 @@ class Workflow(db.Model):
         return Account.query.get(self.updated_by) if self.updated_by else None
 
     @property
-    def graph_dict(self):
-        return json.loads(self.graph) if self.graph else None
+    def graph_dict(self) -> Mapping[str, Any]:
+        return json.loads(self.graph) if self.graph else {}
 
     @property
     def features_dict(self) -> Mapping[str, Any]:

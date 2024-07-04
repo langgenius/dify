@@ -1,7 +1,8 @@
 import logging
 import os
 import time
-from typing import Optional, cast
+from collections.abc import Mapping
+from typing import Any, Optional, cast
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.advanced_chat.workflow_event_trigger_callback import WorkflowEventTriggerCallback
@@ -162,7 +163,7 @@ class AdvancedChatAppRunner(AppRunner):
             self, queue_manager: AppQueueManager,
             app_record: App,
             app_generate_entity: AdvancedChatAppGenerateEntity,
-            inputs: dict,
+            inputs: Mapping[str, Any],
             query: str,
             message_id: str
     ) -> bool:

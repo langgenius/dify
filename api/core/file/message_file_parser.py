@@ -1,4 +1,5 @@
-from typing import Union
+from collections.abc import Mapping, Sequence
+from typing import Any, Union
 
 import requests
 
@@ -16,7 +17,7 @@ class MessageFileParser:
         self.tenant_id = tenant_id
         self.app_id = app_id
 
-    def validate_and_transform_files_arg(self, files: list[dict], file_extra_config: FileExtraConfig,
+    def validate_and_transform_files_arg(self, files: Sequence[Mapping[str, Any]], file_extra_config: FileExtraConfig,
                                          user: Union[Account, EndUser]) -> list[FileVar]:
         """
         validate and transform files arg
