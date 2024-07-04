@@ -298,6 +298,11 @@ class WorkflowEntry:
                         root_node_configs=root_node_configs
                     )
 
+                    # add edge from end node to first node of sub graph
+                    sub_graph_root_node_id = sub_graph.root_node.id
+                    for leaf_node in sub_graph.get_leaf_nodes():
+                        leaf_node.add_child(sub_graph_root_node_id)
+
             # parse run condition
             run_condition = None
             if edge_config.get('sourceHandle'):
