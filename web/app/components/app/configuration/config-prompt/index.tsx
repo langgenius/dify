@@ -21,6 +21,7 @@ export type IPromptProps = {
   readonly?: boolean
   noTitle?: boolean
   gradientBorder?: boolean
+  editorHeight?: number
   onChange?: (prompt: string, promptVariables: PromptVariable[]) => void
 }
 
@@ -31,6 +32,7 @@ const Prompt: FC<IPromptProps> = ({
   noTitle,
   gradientBorder,
   readonly = false,
+  editorHeight,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -105,6 +107,7 @@ const Prompt: FC<IPromptProps> = ({
         onChange={onChange}
         noTitle={noTitle}
         gradientBorder={gradientBorder}
+        editorHeight={editorHeight}
       />
     )
   }

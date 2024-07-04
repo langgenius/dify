@@ -184,9 +184,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         </div>
 
         {(!isLoading && res) && (
-          <div className='w-0 grow p-6 h-full overflow-y-auto'>
+          <div className='w-0 grow p-6 pb-0 h-full overflow-y-auto'>
             <div className='mb-3 leading-[160%] text-base font-semibold text-gray-800'>{t('appDebug.generate.resTitle')}</div>
-
             <ConfigPrompt
               mode={mode}
               promptTemplate={res?.prompt || ''}
@@ -194,6 +193,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               readonly
               noTitle={isInLLMNode}
               gradientBorder
+              editorHeight={isInLLMNode ? 524 : 0}
             />
             {!isInLLMNode && (
               <>

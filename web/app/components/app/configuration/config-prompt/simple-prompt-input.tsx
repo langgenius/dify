@@ -38,6 +38,7 @@ export type ISimplePromptInput = {
   onChange?: (promp: string, promptVariables: PromptVariable[]) => void
   noTitle?: boolean
   gradientBorder?: boolean
+  editorHeight?: number
 }
 
 const Prompt: FC<ISimplePromptInput> = ({
@@ -48,6 +49,7 @@ const Prompt: FC<ISimplePromptInput> = ({
   onChange,
   noTitle,
   gradientBorder,
+  editorHeight: initEditorHeight,
 }) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
@@ -139,7 +141,7 @@ const Prompt: FC<ISimplePromptInput> = ({
       setIntroduction(res.opening_statement)
     showAutomaticFalse()
   }
-  const minHeight = 228
+  const minHeight = initEditorHeight || 228
   const [editorHeight, setEditorHeight] = useState(minHeight)
 
   return (
