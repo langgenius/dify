@@ -18,8 +18,6 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
-from core.app.features.rate_limiting import RateLimit
-from core.errors.error import QuotaExceededError
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -232,22 +230,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
                         user_id=application_generate_entity.user_id
                     )
                 else:
-                    app_record = db.session.query(App).filter(
-                        App.id == application_generate_entity.app_config.app_id).first()
-                    if not app_record:
-                        raise ValueError("App not found")
-
-                    max_active_request = self._get_max_active_requests(app_record)
-                    request_id = str(uuid.uuid4())
-                    try:
-                        rate_limit = RateLimit(app_record.id, max_active_request)
-                        rate_limit.enter(request_id)
-                        runner.run(
-                            application_generate_entity=application_generate_entity,
-                            queue_manager=queue_manager
-                        )
-                    finally:
-                        rate_limit.exit(request_id)
+                    runner.run(
+                        application_generate_entity=application_generate_entity,
+                        queue_manager=queue_manager
+                    )
             except GenerateTaskStoppedException:
                 pass
             except InvokeAuthorizationError:
@@ -258,7 +244,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             except ValidationError as e:
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
-            except (ValueError, InvokeError, QuotaExceededError) as e:
+            except (ValueError, InvokeError) as e:
                 if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)

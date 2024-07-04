@@ -2,7 +2,6 @@ from collections.abc import Mapping
 from typing import Any, Optional
 
 from core.app.app_config.entities import AppConfig, VariableEntity
-from models.model import App
 
 
 class BaseAppGenerator:
@@ -14,12 +13,6 @@ class BaseAppGenerator:
         filtered_inputs = {k: self._sanitize_value(v) for k, v in filtered_inputs.items()}
         return filtered_inputs
 
-    def _get_max_active_requests(self, app_record: App) -> int:
-        max_active_requests = app_record.max_active_requests
-        if app_record.max_active_requests == 0:
-            from flask import current_app
-            max_active_requests = int(current_app.config['APP_MAX_ACTIVE_REQUESTS'])
-        return max_active_requests
 
     def _validate_input(self, *, inputs: Mapping[str, Any], var: VariableEntity):
         user_input_value = inputs.get(var.name)
