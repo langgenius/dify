@@ -8,7 +8,7 @@ module.exports = {
     typography: require('./typography'),
     extend: {
       colors: {
-        gray: {
+        'gray': {
           25: '#fcfcfd',
           50: '#f9fafb',
           100: '#f2f4f7',
@@ -21,7 +21,7 @@ module.exports = {
           800: '#1d2939',
           900: '#101828',
         },
-        primary: {
+        'primary': {
           25: '#f5f8ff',
           50: '#eff4ff',
           100: '#d1e0ff',
@@ -34,24 +34,24 @@ module.exports = {
           800: '#0040c1',
           900: '#00359e',
         },
-        blue: {
+        'blue': {
           500: '#E1EFFE',
         },
-        green: {
+        'green': {
           50: '#F3FAF7',
           100: '#DEF7EC',
           800: '#03543F',
 
         },
-        yellow: {
+        'yellow': {
           100: '#FDF6B2',
           800: '#723B13',
         },
-        purple: {
+        'purple': {
           50: '#F6F5FF',
           200: '#DCD7FE',
         },
-        indigo: {
+        'indigo': {
           25: '#F5F8FF',
           50: '#EEF4FF',
           100: '#E0EAFF',
@@ -60,6 +60,7 @@ module.exports = {
           600: '#444CE7',
           800: '#2D31A6',
         },
+        'background-body': 'var(--color-background-body)',
       },
       screens: {
         mobile: '100px',

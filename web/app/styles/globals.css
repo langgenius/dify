@@ -151,3 +151,6 @@ button:focus-within {
 @import '../components/base/modal/index.css';
 
 @tailwind utilities;
+
+@import '../../themes/light.css';
+@import '../../themes/dark.css';

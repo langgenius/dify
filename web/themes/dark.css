@@ -1,0 +1,11 @@
+html[data-theme="dark"] {
+  /* text */
+  --color-text-primary: #de7a22;
+
+  /* background */
+  --color-background-body: #1D1D20;
+
+  /* state */
+
+  /* component */
+}

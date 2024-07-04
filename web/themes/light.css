@@ -1,0 +1,12 @@
+html[data-theme="light"] {
+  /* text */
+  --color-text-primary: #de7a22;
+
+  /* background */
+  --color-background-body: #F2F4F7;
+
+  /* state */
+
+  /* component */
+
+}
