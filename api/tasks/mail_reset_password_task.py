@@ -6,33 +6,6 @@ from celery import shared_task
 from flask import current_app, render_template
 
 from extensions.ext_mail import mail
-from extensions.ext_redis import redis_client
-
-RESET_PASSWORD_RATE_LIMIT_KEY_PREFIX = "reset_password_rate_limit"
-RATE_LIMIT_MAX_ATTEMPTS = 5
-RATE_LIMIT_TIME_WINDOW = 60 * 60
-
-
-def is_rate_limited(email: str) -> bool:
-    key = f"{RESET_PASSWORD_RATE_LIMIT_KEY_PREFIX}:{email}"
-    current_time = int(time.time())
-    window_start_time = current_time - RATE_LIMIT_TIME_WINDOW
-
-    redis_client.zremrangebyscore(key, '-inf', window_start_time)
-
-    attempts = redis_client.zcard(key)
-
-    if attempts and int(attempts) >= RATE_LIMIT_MAX_ATTEMPTS:
-        return True
-    return False
-
-
-def increment_rate_limit(email: str):
-    key = f"{RESET_PASSWORD_RATE_LIMIT_KEY_PREFIX}:{email}"
-    current_time = int(time.time())
-
-    redis_client.zadd(key, {current_time: current_time})
-    redis_client.expire(key, RATE_LIMIT_TIME_WINDOW * 2)
 
 
 @shared_task(queue='mail')
@@ -44,10 +17,6 @@ def send_reset_password_mail_task(language: str, to: str, token: str):
     :param token: Reset password token to be included in the email
     """
     if not mail.is_inited():
-        return
-
-    if is_rate_limited(to):
-        logging.warning(f"Rate limit exceeded for {to}. Email not sent.")
         return
 
     logging.info(click.style('Start password reset mail to {}'.format(to), fg='green'))
@@ -67,7 +36,6 @@ def send_reset_password_mail_task(language: str, to: str, token: str):
                                            url=url)
             mail.send(to=to, subject="Reset Your Dify Password", html=html_content)
 
-        increment_rate_limit(to)
         end_at = time.perf_counter()
         logging.info(
             click.style('Send password reset mail to {} succeeded: latency: {}'.format(to, end_at - start_at),

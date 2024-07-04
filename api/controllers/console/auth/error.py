@@ -13,12 +13,6 @@ class InvalidEmailError(BaseHTTPException):
     code = 400
 
 
-class EmailNotRegisteredError(BaseHTTPException):
-    error_code = 'email_not_registered'
-    description = "Sorry, the email address is not registered."
-    code = 400
-
-
 class PasswordMismatchError(BaseHTTPException):
     error_code = 'password_mismatch'
     description = "The passwords do not match."

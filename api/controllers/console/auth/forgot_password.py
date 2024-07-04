@@ -1,11 +1,11 @@
 import base64
+import logging
 import secrets
 
 from flask_restful import Resource, reqparse
 
 from controllers.console import api
 from controllers.console.auth.error import (
-    EmailNotRegisteredError,
     InvalidEmailError,
     InvalidTokenError,
     PasswordMismatchError,
@@ -37,7 +37,9 @@ class ForgotPasswordSendEmailApi(Resource):
             AccountService.send_reset_password_email(account=account)
             return {"result": "success"}
         else:
-            raise EmailNotRegisteredError()
+            logging.warning(f"Attempt to reset password for unregistered email: {email}")
+            # Return success to avoid revealing email registration status
+            return {"result": "success"}
 
 
 class ForgotPasswordCheckApi(Resource):

@@ -13,6 +13,7 @@ from werkzeug.exceptions import Unauthorized
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import redis_client
+from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
@@ -37,6 +38,12 @@ from tasks.mail_reset_password_task import send_reset_password_mail_task
 
 
 class AccountService:
+
+    reset_password_rate_limiter = RateLimiter(
+        prefix="reset_password_rate_limit",
+        max_attempts=5,
+        time_window=60 * 60
+    )
 
     @staticmethod
     def load_user(user_id: str) -> Account:
@@ -224,13 +231,18 @@ class AccountService:
         return AccountService.load_user(account_id)
 
     @classmethod
-    def send_reset_password_email(cls, account: Account):
+    def send_reset_password_email(cls, account):
+        if cls.reset_password_rate_limiter.is_rate_limited(account.email):
+            logging.warning(f"Rate limit exceeded for email: {account.email}")
+            return None
+
         token = TokenManager.generate_token(account, 'reset_password')
         send_reset_password_mail_task.delay(
             language=account.interface_language,
             to=account.email,
             token=token
         )
+        cls.reset_password_rate_limiter.increment_rate_limit(account.email)
         return token
 
     @classmethod
@@ -662,68 +674,3 @@ class RegisterService:
 
             invitation = json.loads(data)
             return invitation
-
-
-class TokenManager:
-
-    @classmethod
-    def generate_token(cls, account: Account, token_type: str, additional_data: dict = None) -> str:
-        old_token = cls._get_current_token_for_account(account.id, token_type)
-        if old_token:
-            if isinstance(old_token, bytes):
-                old_token = old_token.decode('utf-8')
-            cls.revoke_token(old_token, token_type)
-
-        token = str(uuid.uuid4())
-        token_data = {
-            'account_id': account.id,
-            'email': account.email,
-            'token_type': token_type
-        }
-        if additional_data:
-            token_data.update(additional_data)
-
-        expiry_hours = current_app.config[f'{token_type.upper()}_TOKEN_EXPIRY_HOURS']
-        token_key = cls._get_token_key(token, token_type)
-        redis_client.setex(
-            token_key,
-            expiry_hours * 60 * 60,
-            json.dumps(token_data)
-        )
-
-        cls._set_current_token_for_account(account.id, token, token_type, expiry_hours)
-        return token
-
-    @classmethod
-    def _get_token_key(cls, token: str, token_type: str) -> str:
-        return f'{token_type}:token:{token}'
-
-    @classmethod
-    def revoke_token(cls, token: str, token_type: str):
-        token_key = cls._get_token_key(token, token_type)
-        redis_client.delete(token_key)
-
-    @classmethod
-    def get_token_data(cls, token: str, token_type: str) -> Optional[dict[str, Any]]:
-        key = cls._get_token_key(token, token_type)
-        token_data_json = redis_client.get(key)
-        if token_data_json is None:
-            logging.warning(f"{token_type} token {token} not found with key {key}")
-            return None
-        token_data = json.loads(token_data_json)
-        return token_data
-
-    @classmethod
-    def _get_current_token_for_account(cls, account_id: str, token_type: str) -> Optional[str]:
-        key = cls._get_account_token_key(account_id, token_type)
-        current_token = redis_client.get(key)
-        return current_token
-
-    @classmethod
-    def _set_current_token_for_account(cls, account_id: str, token: str, token_type: str, expiry_hours: int):
-        key = cls._get_account_token_key(account_id, token_type)
-        redis_client.setex(key, expiry_hours * 60 * 60, token)
-
-    @classmethod
-    def _get_account_token_key(cls, account_id: str, token_type: str) -> str:
-        return f'{token_type}:account:{account_id}'
