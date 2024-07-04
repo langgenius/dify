@@ -160,7 +160,7 @@ export type ModelConfig = {
     enabled: boolean
     voice?: string
     language?: string
-    autoPlay?: 'enabled' | 'disabled'
+    autoPlay?: ttsAutoPlay
   }
   retriever_resource: {
     enabled: boolean
