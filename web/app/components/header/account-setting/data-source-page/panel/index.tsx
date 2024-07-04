@@ -46,7 +46,7 @@ const Panel: FC<Props> = ({
             <div className='text-sm font-medium text-gray-800'>{t(`common.dataSource.${type}.title`)}</div>
             {isWebsite && (
               <div className='ml-1 leading-[18px] px-1.5 rounded-md bg-white border border-gray-100 text-xs font-medium text-gray-700'>
-                <span className='text-gray-500'>{t('common.dataSource.website.with')}</span> 🔥 FireCrawl
+                <span className='text-gray-500'>{t('common.dataSource.website.with')}</span> 🔥 Firecrawl
               </div>
             )}
           </div>
