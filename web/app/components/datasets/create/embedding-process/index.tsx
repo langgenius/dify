@@ -17,6 +17,7 @@ import { formatNumber } from '@/utils/format'
 import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchIndexingEstimateBatch, fetchProcessRule } from '@/service/datasets'
 import { DataSourceType } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
+import FeishuIcon from '@/app/components/base/feishu-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import { Plan } from '@/app/components/billing/type'
 import { ZapFast } from '@/app/components/base/icons/src/vender/solid/general'
@@ -242,6 +243,13 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
               )}
               {getSourceType(indexingStatusDetail.id) === DataSourceType.NOTION && (
                 <NotionIcon
+                  className='shrink-0 mr-1'
+                  type='page'
+                  src={getIcon(indexingStatusDetail.id)}
+                />
+              )}
+              {getSourceType(indexingStatusDetail.id) === DataSourceType.FEISHU && (
+                <FeishuIcon
                   className='shrink-0 mr-1'
                   type='page'
                   src={getIcon(indexingStatusDetail.id)}

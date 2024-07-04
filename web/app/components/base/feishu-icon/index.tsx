@@ -1,20 +1,20 @@
 import cn from 'classnames'
 import s from './index.module.css'
-import type { DataSourceNotionPage } from '@/models/common'
+import type { DataSourceFeishuPage } from '@/models/common'
 
 type IconTypes = 'workspace' | 'page'
-type NotionIconProps = {
+type FeishuIconProps = {
   type?: IconTypes
   name?: string | null
   className?: string
-  src?: string | null | DataSourceNotionPage['page_icon']
+  src?: string | null | DataSourceFeishuPage['page_icon']
 }
-const NotionIcon = ({
+const FeishuIcon = ({
   type = 'workspace',
   src,
   name,
   className,
-}: NotionIconProps) => {
+}: FeishuIconProps) => {
   if (type === 'workspace') {
     if (typeof src === 'string') {
       if (src.startsWith('https://') || src.startsWith('http://')) {
@@ -55,4 +55,4 @@ const NotionIcon = ({
   )
 }
 
-export default NotionIcon
+export default FeishuIcon
