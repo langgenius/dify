@@ -18,7 +18,7 @@ class StartNode(BaseNode):
         :return:
         """
         # Get cleaned inputs
-        cleaned_inputs = variable_pool.user_inputs
+        cleaned_inputs = dict(variable_pool.user_inputs)
 
         for var in variable_pool.system_variables:
             cleaned_inputs['sys.' + var.value] = variable_pool.system_variables[var]
