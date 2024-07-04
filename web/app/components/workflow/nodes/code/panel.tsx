@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import RemoveEffectVarConfirm from '../_base/components/remove-effect-var-confirm'
 import useConfig from './use-config'
 import type { CodeNodeType } from './types'
 import { CodeLanguage } from './types'
@@ -47,9 +46,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     handleVarsChange,
     handleAddOutputVariable,
     filterVar,
-    isShowRemoveVarConfirm,
-    hideRemoveVarConfirm,
-    onRemoveVarConfirm,
+    removeVarConfirmHolder,
     // single run
     isShowSingleRun,
     hideSingleRun,
@@ -162,11 +159,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           />
         )
       }
-      <RemoveEffectVarConfirm
-        isShow={isShowRemoveVarConfirm}
-        onCancel={hideRemoveVarConfirm}
-        onConfirm={onRemoveVarConfirm}
-      />
+      {removeVarConfirmHolder}
     </div >
   )
 }

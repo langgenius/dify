@@ -1,12 +1,14 @@
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import produce from 'immer'
-import { useBoolean } from 'ahooks'
+import { useTranslation } from 'react-i18next'
 import { type OutputVar } from '../../code/types'
-import type { ValueSelector } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import {
   useWorkflow,
 } from '@/app/components/workflow/hooks'
+import useConfirm from '@/app/components/base/confirm/use-confirm'
+
+const i18nPrefix = 'workflow.common.effectVarConfirm'
 
 type Params<T> = {
   id: string
@@ -25,6 +27,7 @@ function useOutputVarList<T>({
   onOutputKeyOrdersChange,
 }: Params<T>) {
   const { handleOutVarRenameChange, isVarUsedInNodes, removeUsedVarInNodes } = useWorkflow()
+  const { t } = useTranslation()
 
   const handleVarsChange = useCallback((newVars: OutputVar, changedIndex?: number, newKey?: string) => {
     const newInputs = produce(inputs, (draft: any) => {
@@ -64,39 +67,33 @@ function useOutputVarList<T>({
     onOutputKeyOrdersChange([...outputKeyOrders, newKey])
   }, [generateNewKey, inputs, setInputs, onOutputKeyOrdersChange, outputKeyOrders, varKey])
 
-  const [isShowRemoveVarConfirm, {
-    setTrue: showRemoveVarConfirm,
-    setFalse: hideRemoveVarConfirm,
-  }] = useBoolean(false)
-  const [removedVar, setRemovedVar] = useState<ValueSelector>([])
-  const removeVarInNode = useCallback(() => {
-    removeUsedVarInNodes(removedVar)
-    hideRemoveVarConfirm()
-  }, [hideRemoveVarConfirm, removeUsedVarInNodes, removedVar])
-  const handleRemoveVariable = useCallback((index: number) => {
+  const [removeVarConfirm, removeVarConfirmHolder] = useConfirm()
+  const handleRemoveVariable = useCallback(async (index: number) => {
     const key = outputKeyOrders[index]
 
     if (isVarUsedInNodes([id, key])) {
-      showRemoveVarConfirm()
-      setRemovedVar([id, key])
-      return
+      const confirmed = await removeVarConfirm({
+        title: t(`${i18nPrefix}.title`),
+        content: t(`${i18nPrefix}.content`),
+      })
+      if (confirmed) {
+        removeUsedVarInNodes([id, key])
+        const newInputs = produce(inputs, (draft: any) => {
+          delete draft[varKey][key]
+        })
+        setInputs(newInputs)
+        onOutputKeyOrdersChange(outputKeyOrders.filter((_, i) => i !== index))
+      }
     }
-
-    const newInputs = produce(inputs, (draft: any) => {
-      delete draft[varKey][key]
-    })
-    setInputs(newInputs)
-    onOutputKeyOrdersChange(outputKeyOrders.filter((_, i) => i !== index))
-  }, [outputKeyOrders, isVarUsedInNodes, id, inputs, setInputs, onOutputKeyOrdersChange, showRemoveVarConfirm, varKey])
+  }, [outputKeyOrders, isVarUsedInNodes, id, inputs, setInputs, onOutputKeyOrdersChange, varKey, removeVarConfirm, removeUsedVarInNodes, t])
 
   return {
     handleVarsChange,
     handleAddVariable,
     handleRemoveVariable,
-    isShowRemoveVarConfirm,
-    hideRemoveVarConfirm,
-    onRemoveVarConfirm: removeVarInNode,
+    removeVarConfirmHolder,
   }
 }
 
 export default useOutputVarList
+
