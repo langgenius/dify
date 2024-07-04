@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dify-api
+  annotations:
+    originImageName: ghcr.io/magicpsyche/dify-api:latest
+    deploy.cloud.sealos.io/minReplicas: '1'
+    deploy.cloud.sealos.io/maxReplicas: '1'
+  labels:
+    cloud.sealos.io/app-deploy-manager: dify-api
+    app: dify-api
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  minReadySeconds: 10
+  serviceName: dify-api
+  selector:
+    matchLabels:
+      app: dify-api
+  template:
+    metadata:
+      labels:
+        app: dify-api
+    spec:
+      terminationGracePeriodSeconds: 10
+      automountServiceAccountToken: false
+      containers:
+        - name: dify-api
+          image: ghcr.io/magicpsyche/dify-api:latest
+          env:
+            - name: MODE
+              value: api
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          ports:
+            - containerPort: 5001
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: vn-appvn-apivn-storage
+              mountPath: /app/api/storage
+        - name: dify-worker
+          image: ghcr.io/magicpsyche/dify-api:latest
+          env:
+            - name: MODE
+              value: worker
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 2Gi
+          ports:
+            - containerPort: 5001
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: vn-appvn-apivn-storage
+              mountPath: /app/api/storage
+  volumeClaimTemplates:
+    - metadata:
+        annotations:
+          path: /app/api/storage
+          value: '1'
+        name: vn-appvn-apivn-storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dify-api
+  labels:
+    cloud.sealos.io/app-deploy-manager: dify-api
+spec:
+  ports:
+    - port: 5001
+  selector:
+    app: dify-api
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dify-api
+  labels:
+    cloud.sealos.io/app-deploy-manager: dify-api
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - host: ${{ defaults.app_host_api }}.${{ SEALOS_CLOUD_DOMAIN }}
+      http:
+        paths:
+          - pathType: Prefix
+            path: /
+            backend:
+              service:
+                name: dify-api
+                port:
+                  number: 5001
+  tls:
+    - hosts:
+        - ${{ defaults.app_host_api }}.${{ SEALOS_CLOUD_DOMAIN }}
+      secretName: ${{ SEALOS_CERT_SECRET_NAME }}
