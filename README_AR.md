@@ -175,6 +175,12 @@ docker compose up -d
 - [رسم بياني Helm من قبل @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [ملف YAML من قبل @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
+#### استخدام Terraform للتوزيع
+
+##### Azure Global
+استخدم [terraform](https://www.terraform.io/) لنشر Dify على Azure بنقرة واحدة.
+- [Azure Terraform بواسطة @nikawang](https://github.com/nikawang/dify-azure-terraform)
+
 
 ## المساهمة
 

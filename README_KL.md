@@ -197,6 +197,13 @@ If you'd like to configure a highly-available setup, there are community-contrib
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
+#### Terraform atorlugu pilersitsineq
+
+##### Azure Global
+Atoruk [terraform](https://www.terraform.io/) Dify-mik Azure-mut ataatsikkut ikkussuilluarlugu.
+- [Azure Terraform atorlugu @nikawang](https://github.com/nikawang/dify-azure-terraform)
+
+
 ## Contributing
 
 For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). 
