@@ -321,18 +321,16 @@ class TenantService:
         if tenant_id is None:
             raise ValueError("Tenant ID must be provided.")
 
-        tenant_account_join = db.session.query(TenantAccountJoin).join(Tenant,
-                                                                       TenantAccountJoin.tenant_id == Tenant.id).filter(
+        tenant_account_join = db.session.query(TenantAccountJoin).join(Tenant, TenantAccountJoin.tenant_id == Tenant.id).filter(
             TenantAccountJoin.account_id == account.id,
             TenantAccountJoin.tenant_id == tenant_id,
             Tenant.status == TenantStatus.NORMAL,
-            ).first()
+        ).first()
 
         if not tenant_account_join:
             raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
         else:
-            TenantAccountJoin.query.filter(TenantAccountJoin.account_id == account.id,
-                                           TenantAccountJoin.tenant_id != tenant_id).update({'current': False})
+            TenantAccountJoin.query.filter(TenantAccountJoin.account_id == account.id, TenantAccountJoin.tenant_id != tenant_id).update({'current': False})
             tenant_account_join.current = True
             # Set the current tenant for the account
             account.current_tenant_id = tenant_account_join.tenant_id
@@ -544,8 +542,7 @@ class RegisterService:
         return account
 
     @classmethod
-    def invite_new_member(cls, tenant: Tenant, email: str, language: str, role: str = 'normal',
-                          inviter: Account = None) -> str:
+    def invite_new_member(cls, tenant: Tenant, email: str, language: str, role: str = 'normal', inviter: Account = None) -> str:
         """Invite new member"""
         account = Account.query.filter_by(email=email).first()
 
