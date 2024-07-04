@@ -124,6 +124,11 @@ const Prompt: FC<ISimplePromptInput> = ({
 
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
   const handleAutomaticRes = (res: AutomaticRes) => {
+    // put eventEmitter in first place to prevent overwrite the configs.prompt_variables.But another problem is that prompt won't hight the prompt_variables.
+    eventEmitter?.emit({
+      type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
+      payload: res.prompt,
+    } as any)
     const newModelConfig = produce(modelConfig, (draft) => {
       draft.configs.prompt_template = res.prompt
       draft.configs.prompt_variables = res.variables.map(key => ({ key, name: key, type: 'string', required: true }))
@@ -133,10 +138,6 @@ const Prompt: FC<ISimplePromptInput> = ({
     if (mode !== AppType.completion)
       setIntroduction(res.opening_statement)
     showAutomaticFalse()
-    eventEmitter?.emit({
-      type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
-      payload: res.prompt,
-    } as any)
   }
   const minHeight = 228
   const [editorHeight, setEditorHeight] = useState(minHeight)
