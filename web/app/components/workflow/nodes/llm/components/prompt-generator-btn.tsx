@@ -9,7 +9,7 @@ import { AppType } from '@/types/app'
 import type { AutomaticRes } from '@/service/debug'
 type Props = {
   className?: string
-  onGenerated: (res: string) => void
+  onGenerated?: (prompt: string) => void
 }
 
 const PromptGeneratorBtn: FC<Props> = ({
@@ -18,7 +18,7 @@ const PromptGeneratorBtn: FC<Props> = ({
 }) => {
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
   const handleAutomaticRes = useCallback((res: AutomaticRes) => {
-    onGenerated(res.prompt)
+    onGenerated?.(res.prompt)
     showAutomaticFalse()
   }, [onGenerated, showAutomaticFalse])
   return (

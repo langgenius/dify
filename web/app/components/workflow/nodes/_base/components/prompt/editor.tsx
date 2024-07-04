@@ -57,6 +57,7 @@ type Props = {
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
   isSupportPromptGenerator?: boolean
+  onGenerated?: (prompt: string) => void
   // for jinja
   isSupportJinja?: boolean
   editionType?: EditionType
@@ -88,6 +89,7 @@ const Editor: FC<Props> = ({
   onEditionTypeChange,
   varList = [],
   handleAddVariable,
+  onGenerated,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -128,9 +130,7 @@ const Editor: FC<Props> = ({
             <div className='flex items-center'>
               <div className='leading-[18px] text-xs font-medium text-gray-500'>{value?.length || 0}</div>
               {isSupportPromptGenerator && (
-                <PromptGeneratorBtn className='ml-[5px]' onGenerated={() => {
-
-                }} />
+                <PromptGeneratorBtn className='ml-[5px]' onGenerated={onGenerated} />
               )}
 
               <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>

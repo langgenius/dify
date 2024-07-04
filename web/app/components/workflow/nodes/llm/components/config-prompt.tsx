@@ -9,6 +9,7 @@ import cn from 'classnames'
 import type { PromptItem, ValueSelector, Var, Variable } from '../../../types'
 import { EditionType, PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
+import { useWorkflowStore } from '../../../store'
 import ConfigPromptItem from './config-prompt-item'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
@@ -48,6 +49,10 @@ const ConfigPrompt: FC<Props> = ({
   handleAddVariable,
 }) => {
   const { t } = useTranslation()
+  const workflowStore = useWorkflowStore()
+  const {
+    setControlPromptEditorRerenderKey,
+  } = workflowStore.getState()
   const payloadWithIds = (isChatModel && Array.isArray(payload))
     ? payload.map((item) => {
       const id = uuid4()
@@ -123,6 +128,11 @@ const ConfigPrompt: FC<Props> = ({
     })
     onChange(newPrompt)
   }, [onChange, payload])
+
+  const handleGenerated = useCallback((prompt: string) => {
+    handleCompletionPromptChange(prompt)
+    setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
+  }, [handleCompletionPromptChange, setControlPromptEditorRerenderKey])
 
   const handleCompletionEditionTypeChange = useCallback((editionType: EditionType) => {
     const newPrompt = produce(payload as PromptItem, (draft) => {
@@ -225,6 +235,7 @@ const ConfigPrompt: FC<Props> = ({
               varList={varList}
               onEditionTypeChange={handleCompletionEditionTypeChange}
               handleAddVariable={handleAddVariable}
+              onGenerated={handleGenerated}
             />
           </div>
         )}
