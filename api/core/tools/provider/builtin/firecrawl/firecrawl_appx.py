@@ -1,14 +1,16 @@
 import os
 import time
+
 import requests
 from requests.exceptions import HTTPError
+
 
 class FirecrawlApp:
     def __init__(self, api_key=None, base_url=None):
         self.api_key = api_key
+        self.base_url = base_url or 'https://api.firecrawl.dev'
         if not self.api_key:
             raise ValueError("API key is required")
-        self.base_url = base_url or 'https://api.firecrawl.dev'
 
     def _prepare_headers(self, idempotency_key=None):
         headers = {
