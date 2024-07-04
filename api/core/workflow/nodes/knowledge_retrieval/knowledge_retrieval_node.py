@@ -79,6 +79,12 @@ class KnowledgeRetrievalNode(BaseNode):
         available_datasets = []
         dataset_ids = node_data.dataset_ids
 
+        result=re.match(r'[^<]*<dataset_id>(?P<dataset_id>[^<]+)</dataset_id>', query)
+        if result is not None:
+            dataset_id_str=result.groupdict()['dataset_id']
+            dataset_ids=dataset_id_str.split(',')
+            query=query.replace('<dataset_id>'+dataset_id_str+'</dataset_id>','')
+            
         # Subquery: Count the number of available documents for each dataset
         subquery = db.session.query(
             Document.dataset_id,

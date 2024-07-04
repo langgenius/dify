@@ -102,11 +102,7 @@ class DatasetRetrieval:
                     or ModelFeature.MULTI_TOOL_CALL in features:
                 planning_strategy = PlanningStrategy.ROUTER
         available_datasets = []
-        result=re.match(r'[^<]*<dataset_id>(?P<dataset_id>[^<]+)</dataset_id>', query)
-        if result is not None:
-            dataset_id=result.groupdict()['dataset_id']
-            dataset_ids=dataset_id.split(',')
-            query=query.replace('<dataset_id>'+dataset_id+'</dataset_id>','')
+
         print('DatasetRetrieval_retrieve_dataset_query_110',query)
         for dataset_id in dataset_ids:
             # get dataset from dataset id
