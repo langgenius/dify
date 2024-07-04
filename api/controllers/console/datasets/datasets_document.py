@@ -964,10 +964,11 @@ class DocumentRenameApi(DocumentResource):
     @account_initialization_required
     @marshal_with(document_fields)
     def post(self, dataset_id, document_id):
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+        if not current_user.is_dataset_editor:
             raise Forbidden()
-
+        dataset = DatasetService.get_dataset(dataset_id)
+        DatasetService.check_dataset_operator_permission(current_user, dataset)
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, nullable=False, location='json')
         args = parser.parse_args()

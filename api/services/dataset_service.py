@@ -318,7 +318,7 @@ class DatasetService:
 
     @staticmethod
     def check_dataset_operator_permission(user: Account = None, dataset: Dataset = None):
-        if dataset.permission == 'only_me' or dataset.permission == 'all_team_members':
+        if dataset.permission == 'only_me':
             if dataset.created_by != user.id:
                 raise NoPermissionError('You do not have permission to access this dataset.')
 
