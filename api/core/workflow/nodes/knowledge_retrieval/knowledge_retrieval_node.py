@@ -20,7 +20,7 @@ from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalN
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 from models.workflow import WorkflowNodeExecutionStatus
-
+import re
 default_retrieval_model = {
     'search_method': RetrievalMethod.SEMANTIC_SEARCH,
     'reranking_enable': False,
@@ -84,7 +84,6 @@ class KnowledgeRetrievalNode(BaseNode):
             dataset_id_str=result.groupdict()['dataset_id']
             dataset_ids=dataset_id_str.split(',')
             query=query.replace('<dataset_id>'+dataset_id_str+'</dataset_id>','')
-            
         # Subquery: Count the number of available documents for each dataset
         subquery = db.session.query(
             Document.dataset_id,
