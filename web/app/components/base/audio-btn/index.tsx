@@ -5,10 +5,8 @@ import { useParams, usePathname } from 'next/navigation'
 import s from './style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import { randomString } from '@/utils'
-import { textToAudioStream } from '@/service/share'
 import Loading from '@/app/components/base/loading'
-import { type AudioPlayer, getAudioPlayer } from '@/app/components/base/audio-btn/audio'
-import { useChatContext } from '@/app/components/base/chat/chat/context'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 
 type AudioBtnProps = {
   id?: string
@@ -33,67 +31,46 @@ const AudioBtn = ({
   const selector = useRef(`play-tooltip-${randomString(4)}`)
   const params = useParams()
   const pathname = usePathname()
-  const {
-    config: chatContextConfig,
-  } = useChatContext()
-  const voiceRef = useRef(chatContextConfig?.text_to_speech?.voice)
-  const audioPlayerRef = useRef<AudioPlayer | null>(null)
-  const audio_finished_call = () => {
-    setAudioState('ended')
-  }
-  const loadAudio = async () => {
-    let url = ''
-    let isPublic = false
-
-    if (params.token) {
-      url = '/text-to-audio'
-      isPublic = true
-    }
-    else if (params.appId) {
-      if (pathname.search('explore/installed') > -1)
-        url = `/installed-apps/${params.appId}/text-to-audio`
-      else
-        url = `/apps/${params.appId}/text-to-audio`
-    }
-    try {
-      const voice_value = voice || voiceRef.current
-      const audioResponse: any = await textToAudioStream(url, isPublic, {
-        message_id: id,
-        streaming: true,
-        voice: voice_value,
-        text: value,
-      })
-      const reader = audioResponse.body.getReader() // 获取reader
-      const audioPlayer = getAudioPlayer(id, audio_finished_call, true)
-      audioPlayerRef.current = audioPlayer
-      while (true) {
-        const { value, done } = await reader.read()
-
-        if (done) {
-          audioPlayer.finishReceiver()
-          break
-        }
+  const audio_finished_call = (event: string): any => {
+    switch (event) {
+      case 'ended':
+        setAudioState('ended')
+        break
+      case 'paused':
+        setAudioState('ended')
+        break
+      case 'loaded':
+        setAudioState('loading')
+        break
+      case 'play':
         setAudioState('playing')
-        audioPlayer.receiveAudioData(value)
-      }
-    }
-
-    catch (error) {
-      console.error('Error playing audio:', error)
-      setAudioState('ended')
+        break
+      case 'error':
+        setAudioState('ended')
+        break
     }
   }
+  let url = ''
+  let isPublic = false
 
+  if (params.token) {
+    url = '/text-to-audio'
+    isPublic = true
+  }
+  else if (params.appId) {
+    if (pathname.search('explore/installed') > -1)
+      url = `/installed-apps/${params.appId}/text-to-audio`
+    else
+      url = `/apps/${params.appId}/text-to-audio`
+  }
   const handleToggle = async () => {
-    let audioPlayer: AudioPlayer | null = null
-    if (audioState === 'playing') {
+    if (audioState === 'playing' || audioState === 'loading') {
       setAudioState('paused')
-      audioPlayer = getAudioPlayer(id, audio_finished_call)
-      audioPlayer.stop()
+      AudioPlayerManager.getInstance().getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call).pauseAudio()
     }
     else {
-      setAudioState('playing')
-      await loadAudio()
+      setAudioState('loading')
+      AudioPlayerManager.getInstance().getAudioPlayer(url, isPublic, id, value, voice, audio_finished_call).playAudio()
     }
   }
 

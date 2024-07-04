@@ -2,16 +2,13 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams, usePathname } from 'next/navigation'
 import type {
   ChatConfig,
   ChatItem,
 } from '../../types'
 import { useChatContext } from '../context'
-import type { AudioPlayer } from '../../../audio-btn/audio'
-import { getAudioPlayer } from '../../../audio-btn/audio'
 import Operation from './operation'
 import AgentContent from './agent-content'
 import BasicContent from './basic-content'
@@ -24,7 +21,6 @@ import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import type { Emoji } from '@/app/components/tools/types'
-import { textToAudioStream } from '@/service/share'
 import type { AppData } from '@/models/share'
 
 type AnswerProps = {
@@ -64,96 +60,20 @@ const Answer: FC<AnswerProps> = ({
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
-  const [containerWidth, setContainerWidth] = useState(0)
+  const [containerWidth] = useState(0)
   const [contentWidth, setContentWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
-  const [localFeedback, setLocalFeedback] = useState(item.feedback)
-  const params = useParams()
-  const pathname = usePathname()
-  const messageIDFromDB = useMemo(() => (item.content || item.agent_thoughts?.length) ? item.id : '', [item])
-  const audioPlayerRef = useRef<AudioPlayer | null>(null)
 
   const {
     config: chatContextConfig,
-    onFeedback,
   } = useChatContext()
 
-  const autoPlayAudio = useMemo(() => chatContextConfig?.text_to_speech?.autoPlay === 'enabled', [chatContextConfig?.text_to_speech?.autoPlay])
   const voiceRef = useRef(chatContextConfig?.text_to_speech?.voice)
-
-  const handleFeedback = async (rating: 'like' | 'dislike' | null) => {
-    if (!chatContextConfig?.supportFeedback || !onFeedback)
-      return
-    await onFeedback?.(item.id, { rating })
-    setLocalFeedback({ rating })
-  }
-  const getContainerWidth = () => {
-    if (containerRef.current)
-      setContainerWidth(containerRef.current?.clientWidth + 16)
-  }
   const getContentWidth = () => {
     if (contentRef.current)
       setContentWidth(contentRef.current?.clientWidth)
   }
-
-  const audio_finished_call = () => {
-    console.log('audio finished')
-  }
-  const autoPlayAudioForMessage = async (messageId: string) => {
-    let url = ''
-    let isPublic = false
-
-    if (params.token) {
-      url = '/text-to-audio'
-      isPublic = true
-    }
-    else if (params.appId) {
-      if (pathname.search('explore/installed') > -1)
-        url = `/installed-apps/${params.appId}/text-to-audio`
-      else
-        url = `/apps/${params.appId}/text-to-audio`
-    }
-
-    try {
-      const audioResponse: any = await textToAudioStream(url, isPublic, {
-        message_id: messageId,
-        streaming: true,
-        voice: voiceRef.current,
-      })
-
-      const reader = audioResponse.body.getReader() // 获取reader
-
-      const audioPlayer = getAudioPlayer(messageId, audio_finished_call, true)
-
-      audioPlayerRef.current = audioPlayer
-
-      while (true) {
-        const { value, done } = await reader.read()
-
-        if (done)
-          break
-        audioPlayer.receiveAudioData(value)
-      }
-    }
-
-    catch (error) {
-      console.error('Error playing audio:', error)
-    }
-  }
-
-  useEffect(() => {
-    getContainerWidth()
-    let audioPlayer: AudioPlayer | null = null
-    if (chatContextConfig?.text_to_speech?.enabled) {
-      audioPlayer = getAudioPlayer()
-      audioPlayer.stop()
-    }
-
-    return () => {
-      audioPlayerRef.current?.stop()
-    }
-  }, [])
 
   useEffect(() => {
     voiceRef.current = chatContextConfig?.text_to_speech?.voice
@@ -164,11 +84,6 @@ const Answer: FC<AnswerProps> = ({
     if (!responding)
       getContentWidth()
   }, [responding])
-
-  useEffect(() => {
-    if (messageIDFromDB && autoPlayAudio && responding)
-      autoPlayAudioForMessage(messageIDFromDB)
-  }, [messageIDFromDB, autoPlayAudio, responding])
 
   return (
     <div className='flex mb-2 last:mb-0'>

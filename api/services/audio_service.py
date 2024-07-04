@@ -1,7 +1,5 @@
 import io
 import logging
-import re
-import threading
 from typing import Optional
 
 from werkzeug.datastructures import FileStorage
@@ -69,10 +67,8 @@ class AudioService:
         return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user)}
 
     @classmethod
-    def transcript_tts(cls, app_model: App, streaming: bool, text: Optional[str] = None,
+    def transcript_tts(cls, app_model: App, text: Optional[str] = None,
                        voice: Optional[str] = None, end_user: Optional[str] = None, message_id: Optional[str] = None):
-        import concurrent.futures
-        import queue
         from collections.abc import Generator
 
         from flask import Response, stream_with_context
@@ -84,12 +80,7 @@ class AudioService:
 
         lock_key = f"{REDIS_MESSAGE_PREFIX}lock:{message_id}"
 
-        look = redis_client.setnx(lock_key, '1')
-        redis_client.expire(f"{REDIS_MESSAGE_PREFIX}{message_id}", 1800)
-        tts_max_trunk_size = 5
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)
-
-        def invoke_tts(text: str, voice: Optional[str] = None):
+        def invoke_tts(text_content: str, app_model, voice: Optional[str] = None):
             with app.app_context():
                 if app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
                     workflow = app_model.workflow
@@ -123,129 +114,36 @@ class AudioService:
                             raise ValueError("Sorry, no voice available.")
 
                     return model_instance.invoke_tts(
-                        content_text=text.strip(),
+                        content_text=text_content.strip(),
                         user=end_user,
-                        streaming=streaming,
                         tenant_id=app_model.tenant_id,
                         voice=voice
                     )
                 except Exception as e:
                     raise e
 
-        def extract_sentence(org_text):
-            pattern = r'[。.!?]'
-            match = re.compile(pattern)
-            tx = match.finditer(org_text)
-            start = 0
-            result = []
-            for i in tx:
-                end = i.regs[0][1]
-                result.append(org_text[start:end])
-                start = end
-            return result, org_text[start:]
-
-        if message_id:
-            message = db.session.query(Message).filter(
-                Message.id == message_id
-            ).first()
-            if message.answer == '' and message.status == 'normal':
-                if not look:
+        try:
+            if message_id:
+                message = db.session.query(Message).filter(
+                    Message.id == message_id
+                ).first()
+                if message.answer == '' and message.status == 'normal':
                     return None
 
-                def generate():
-                    future_queue = queue.Queue()
-
-                    def process_redis():
-                        with app.app_context():
-                            text_buff = []
-                            times_count = 0
-                            while True:
-                                redis_result = redis_client.blpop(f"{REDIS_MESSAGE_PREFIX}{message_id}", timeout=2)
-                                if redis_result is None:
-                                    continue
-                                txt = redis_result[1].decode('utf-8')
-                                if txt == 'None':
-                                    break
-                                text_buff.append(str(txt))
-                                count = redis_client.llen(f"{REDIS_MESSAGE_PREFIX}{message_id}")
-                                for i in range(count - 1):
-                                    redis_result = redis_client.blpop(f"{REDIS_MESSAGE_PREFIX}{message_id}", timeout=30)
-                                    try:
-                                        txt = redis_result[1].decode('utf-8')
-                                        text_buff.append(txt)
-                                        if txt == 'None':
-                                            break
-                                    except Exception:
-                                        logger.error(redis_result)
-                                        continue
-
-                                tt = "".join(text_buff)
-                                sens, temp_str = extract_sentence(tt)
-
-                                if len(sens) > 0 and len(sens) > min(tts_max_trunk_size, times_count):
-                                    times_count += 1
-                                    text_buff.clear()
-                                    text_buff.append(temp_str)
-
-                                    voice_text = "".join(sens)
-                                    futures_result = executor.submit(invoke_tts, voice_text, voice)
-                                    future_queue.put(futures_result)
-                            if len(text_buff) > 0:
-                                voice_text = "".join(text_buff)
-                                futures_result = executor.submit(invoke_tts, voice_text, voice)
-                                future_queue.put(futures_result)
-                            future_queue.put(None)
-
-                    threading.Thread(target=process_redis).start()
-                    while True:
-                        try:
-                            futures = future_queue.get(timeout=5)
-                            if futures is None:
-                                break
-                            yield from futures.result()
-                        except Exception as e:
-                            logger.error(e)
-                            break
-                    redis_client.delete(lock_key)
-                    executor.shutdown(wait=False)
-
-                return Response(stream_with_context(generate()))
-            else:
-                sens, tmp_str = extract_sentence(message.answer)
-                if tmp_str:
-                    sens.append(tmp_str)
-                if len(sens) > tts_max_trunk_size:
-                    ft = [executor.submit(invoke_tts, "".join(sens[i:i + tts_max_trunk_size]), voice=voice) for i in
-                          range(0, len(sens), tts_max_trunk_size)]
-
-                    def generate(futures):
-                        for index, future in enumerate(futures):
-                            if index == len(futures) - 1:
-                                tts_result = future.result()
-                                executor.shutdown(wait=False)
-                                redis_client.delete(lock_key)
-                                yield from tts_result
-                            else:
-                                yield from future.result()
-
-
-                    return Response(stream_with_context(generate(ft)))
                 else:
-                    response = invoke_tts(message.answer, voice)
-                redis_client.delete(lock_key)
+                    response = invoke_tts(message.answer, app_model=app_model, voice=voice)
+                    if isinstance(response, Generator):
+                        return Response(stream_with_context(response), content_type='audio/mpeg')
+                    return response
+            else:
+                response = invoke_tts(text, app_model, voice)
                 if isinstance(response, Generator):
-                    return Response(stream_with_context(response))
+                    return Response(stream_with_context(response), content_type='audio/mpeg')
                 return response
-        else:
-            try:
-                def generator(t: str, v: str):
-                    yield from invoke_tts(t, v)
-
-                return Response(stream_with_context(generator(text, voice)))
-            except Exception as e:
-                raise e
-            finally:
-                redis_client.delete(lock_key)
+        except Exception as e:
+            raise e
+        finally:
+            redis_client.delete(lock_key)
 
     @classmethod
     def transcript_tts_voices(cls, tenant_id: str, language: str):

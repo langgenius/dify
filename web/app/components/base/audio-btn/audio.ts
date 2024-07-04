@@ -1,14 +1,5 @@
-import { uuid4 } from '@sentry/utils'
 import Toast from '@/app/components/base/toast'
-
-export function byteArrayToArrayBuffer(byteArray: Uint8Array): ArrayBuffer {
-  const arrayBuffer = new ArrayBuffer(byteArray.length)
-  const uint8Array = new Uint8Array(arrayBuffer)
-  uint8Array.set(byteArray)
-  return arrayBuffer
-}
-
-let audioPlayer: AudioPlayer | null
+import { textToAudioStream } from '@/service/share'
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
@@ -17,23 +8,28 @@ declare global {
   }
 }
 
-export class AudioPlayer {
+export default class AudioPlayer {
   mediaSource: MediaSource | null
   audio: HTMLAudioElement
   audioContext: AudioContext
   sourceBuffer?: SourceBuffer
   cacheBuffers: ArrayBuffer[] = []
   pauseTimer: number | null = null
-  msgId: string
-  finishCallback: (() => void) | undefined
+  msgId: string | undefined
+  msgContent: string | null | undefined = null
+  voice: string | undefined = undefined
+  isLoadData = false
+  url: string
+  isPublic: boolean
+  callback: ((event: string) => {}) | null
 
-  constructor(msgId: string | undefined, finishCallback: (() => void) | undefined) {
+  constructor(streamUrl: string, isPublic: boolean, msgId: string | undefined, msgContent: string | null | undefined, callback: ((event: string) => {}) | null) {
     this.audioContext = new AudioContext()
-    this.finishCallback = finishCallback
-    if (!msgId)
-      this.msgId = uuid4().toString()
-    else
-      this.msgId = msgId
+    this.msgId = msgId
+    this.msgContent = msgContent
+    this.url = streamUrl
+    this.isPublic = isPublic
+    this.callback = callback
 
     // Compatible with iphone ios17 ManagedMediaSource
     const MediaSource = window.MediaSource || window.ManagedMediaSource
@@ -43,116 +39,188 @@ export class AudioPlayer {
         type: 'error',
       })
     }
-
     this.mediaSource = MediaSource ? new MediaSource() : null
-
     this.audio = new Audio()
-    if (finishCallback) {
-      this.audio.addEventListener('ended', finishCallback, true)
-      this.audio.addEventListener('paused', finishCallback, true)
-      this.audio.addEventListener('loaded', finishCallback, true)
-    }
-
+    this.setCallback(callback)
     this.audio.src = this.mediaSource ? URL.createObjectURL(this.mediaSource) : ''
+    // this.audio.autoplay = true
 
-    this.audioContextConnect()
-    this.listenMediaSource()
-  }
-
-  private audioContextConnect() {
     const source = this.audioContext.createMediaElementSource(this.audio)
     source.connect(this.audioContext.destination)
+    this.listenMediaSource('audio/mpeg')
   }
 
-  private listenMediaSource() {
+  public resetMsgId(msgId: string) {
+    this.msgId = msgId
+  }
+
+  private listenMediaSource(contentType: string) {
     this.mediaSource?.addEventListener('sourceopen', () => {
       if (this.sourceBuffer)
         return
 
-      this.sourceBuffer = this.mediaSource?.addSourceBuffer('audio/mpeg')
-
+      this.sourceBuffer = this.mediaSource?.addSourceBuffer(contentType)
       this.sourceBuffer?.addEventListener('update', () => {
         if (this.cacheBuffers.length && !this.sourceBuffer?.updating) {
           const cacheBuffer = this.cacheBuffers.shift()!
           this.sourceBuffer?.appendBuffer(cacheBuffer)
         }
-        this.pauseAudio()
+        // this.pauseAudio()
       })
     })
   }
 
-  private pauseAudio() {
-    const neePlayTime = this.sourceBuffer!.timestampOffset - this.audio.currentTime || 0
+  public setCallback(callback: ((event: string) => {}) | null) {
+    this.callback = callback
+    if (callback) {
+      this.audio.addEventListener('ended', () => {
+        callback('ended')
+      }, false)
+      this.audio.addEventListener('paused', () => {
+        this.isLoadData = false
+        callback('paused')
+      }, true)
+      this.audio.addEventListener('loaded', () => {
+        callback('loaded')
+      }, true)
+      this.audio.addEventListener('play', () => {
+        callback('play')
+      }, true)
+      this.audio.addEventListener('timeupdate', () => {
+        callback('timeupdate')
+      }, true)
+      this.audio.addEventListener('loadeddate', () => {
+        callback('loadeddate')
+      }, true)
+      this.audio.addEventListener('canplay', () => {
+        callback('canplay')
+      }, true)
+      this.audio.addEventListener('error', () => {
+        callback('error')
+      }, true)
+    }
+  }
 
-    this.pauseTimer && clearTimeout(this.pauseTimer)
+  private async loadAudio() {
+    try {
+      const audioResponse: any = await textToAudioStream(this.url, this.isPublic, { content_type: 'audio/mpeg' }, {
+        message_id: this.msgId,
+        streaming: true,
+        voice: this.voice,
+        text: this.msgContent,
+      })
 
-    this.pauseTimer = setTimeout(() => this.audio.pause(), neePlayTime * 1000 + 5000) as unknown as number
+      if (audioResponse.status !== 200) {
+        if (this.callback)
+          this.callback('error')
+      }
+
+      const reader = audioResponse.body.getReader()
+      while (true) {
+        const { value, done } = await reader.read()
+
+        if (done) {
+          this.receiveAudioData(value)
+          break
+        }
+
+        this.receiveAudioData(value)
+      }
+    }
+    catch (error) {
+      this.callback && this.callback('error')
+    }
   }
 
   // play audio
-  private playAudio() {
-    setTimeout(() => {
+  public playAudio() {
+    if (this.isLoadData) {
       if (this.audio.paused) {
+        this.audioContext.resume().then((_) => {
+          this.audio.play()
+          this.callback && this.callback('play')
+        })
+      }
+      else if (this.audio.ended) {
+        this.audio.play()
+        this.callback && this.callback('play')
+      }
+      if (this.callback)
+        this.callback('play')
+    }
+    else {
+      this.isLoadData = true
+      this.cacheBuffers = []
+      this.sourceBuffer?.abort()
+      this.loadAudio()
+    }
+  }
+
+  public async playAudioWithAudio(audio: string, play = true) {
+    const audioContent = Buffer.from(audio, 'base64')
+    this.receiveAudioData(new Uint8Array(audioContent))
+
+    if (play) {
+      if (this.audio.paused) {
+        this.audioContext.resume().then((_) => {
+          this.audio.play()
+          this.callback && this.callback('play')
+        })
+      }
+      else if (this.audio.ended) {
+        this.audio.play()
+        this.callback && this.callback('play')
+      }
+      else {
+        this.audio.play()
+        this.callback && this.callback('play')
+      }
+    }
+  }
+
+  public pauseAudio() {
+    this.callback && this.callback('paused')
+    this.audio.pause()
+    this.audioContext.suspend()
+  }
+
+  public cancer() {
+
+  }
+
+  private receiveAudioData(unit8Array: Uint8Array) {
+    if (!unit8Array) {
+      try {
+        this.mediaSource?.endOfStream()
+      }
+      catch (e) {
+      }
+      return
+    }
+    const audioData = this.byteArrayToArrayBuffer(unit8Array)
+    if (!audioData.byteLength) {
+      if (this.mediaSource?.readyState === 'open') {
         try {
-          this.audioContext.resume().then(r => this.audio.play())
-          // else this.audio.play().finally(this.finishCallback)
+          this.mediaSource?.endOfStream()
         }
         catch (e) {
-          this.playAudio()
         }
       }
-    }, 200)
-  }
-
-  public finishReceiver() {
-    // this.mediaSource?.addEventListener('updateend', () => {
-    //   this.mediaSource?.endOfStream('decode')
-    // }, true)
-    try {
-      this.mediaSource?.endOfStream()
-    }
-    catch (e) {
-      console.error(e)
-    }
-  }
-
-  public receiveAudioData(unit8Array: Uint8Array) {
-    const audioData = byteArrayToArrayBuffer(unit8Array)
-    if (!audioData.byteLength)
       return
+    }
 
     if (this.sourceBuffer?.updating)
       this.cacheBuffers.push(audioData)
-
     else
       this.sourceBuffer?.appendBuffer(audioData)
-
-    this.playAudio()
+    if (this.audioContext.state !== 'suspended')
+      this.audio.play()
   }
 
-  public stop() {
-    this.audio.pause()
+  private byteArrayToArrayBuffer(byteArray: Uint8Array): ArrayBuffer {
+    const arrayBuffer = new ArrayBuffer(byteArray.length)
+    const uint8Array = new Uint8Array(arrayBuffer)
+    uint8Array.set(byteArray)
+    return arrayBuffer
   }
 }
-
-export function getAudioPlayer(msgId?: string | undefined, finishCallback?: () => void, forceNew?: boolean): AudioPlayer {
-  if (forceNew) {
-    audioPlayer = new AudioPlayer(msgId, finishCallback)
-    return audioPlayer
-  }
-  if (audioPlayer) {
-    if (audioPlayer.msgId !== msgId) {
-      audioPlayer.cacheBuffers = []
-      if (audioPlayer.sourceBuffer?.updating)
-        audioPlayer.sourceBuffer?.abort?.()
-      else if (audioPlayer.sourceBuffer && audioPlayer.sourceBuffer?.buffered.length > 0)
-        audioPlayer.sourceBuffer?.remove(0, audioPlayer.sourceBuffer.buffered.end(0))
-      audioPlayer = new AudioPlayer(msgId, finishCallback)
-    }
-  }
-  else { audioPlayer = new AudioPlayer(msgId, finishCallback) }
-
-  return audioPlayer
-}
-
-export default AudioPlayer

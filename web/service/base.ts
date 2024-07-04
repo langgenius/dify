@@ -59,6 +59,8 @@ export type IOnIterationStarted = (workflowStarted: IterationStartedResponse) =>
 export type IOnIterationNexted = (workflowStarted: IterationNextedResponse) => void
 export type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => void
 export type IOnTextChunk = (textChunk: TextChunkResponse) => void
+export type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
+export type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
 export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
 
 export type IOtherOptions = {
@@ -84,6 +86,8 @@ export type IOtherOptions = {
   onIterationNext?: IOnIterationNexted
   onIterationFinish?: IOnIterationFinished
   onTextChunk?: IOnTextChunk
+  onTTSChunk?: IOnTTSChunk
+  onTTSEnd?: IOnTTSEnd
   onTextReplace?: IOnTextReplace
 }
 
@@ -135,6 +139,8 @@ const handleStream = (
   onIterationNext?: IOnIterationNexted,
   onIterationFinish?: IOnIterationFinished,
   onTextChunk?: IOnTextChunk,
+  onTTSChunk?: IOnTTSChunk,
+  onTTSEnd?: IOnTTSEnd,
   onTextReplace?: IOnTextReplace,
 ) => {
   if (!response.ok)
@@ -226,6 +232,12 @@ const handleStream = (
             }
             else if (bufferObj.event === 'text_replace') {
               onTextReplace?.(bufferObj as TextReplaceResponse)
+            }
+            else if (bufferObj.event === 'tts_message') {
+              onTTSChunk?.(bufferObj.message_id, bufferObj.audio, bufferObj.audio_type)
+            }
+            else if (bufferObj.event === 'tts_message_end') {
+              onTTSEnd?.(bufferObj.message_id, bufferObj.audio)
             }
           }
         })
@@ -475,6 +487,8 @@ export const ssePost = (
     onIterationNext,
     onIterationFinish,
     onTextChunk,
+    onTTSChunk,
+    onTTSEnd,
     onTextReplace,
     onError,
     getAbortController,
@@ -527,7 +541,7 @@ export const ssePost = (
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onTextChunk, onTextReplace)
+      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onFile, onWorkflowStarted, onWorkflowFinished, onNodeStarted, onNodeFinished, onIterationStart, onIterationNext, onIterationFinish, onTextChunk, onTTSChunk, onTTSEnd, onTextReplace)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.')
         Toast.notify({ type: 'error', message: e })

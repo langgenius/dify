@@ -19,6 +19,7 @@ from controllers.console.app.error import (
 from controllers.console.explore.wraps import InstalledAppResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
+from models.model import AppMode
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -81,14 +82,15 @@ class ChatTextApi(InstalledAppResource):
             args = parser.parse_args()
 
             message_id = args.get('message_id')
-            streaming = args.get('streaming') if args.get('streaming') else True
-            voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get(
-                'voice')
+            if app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
+                text_to_speech = app_model.workflow.features_dict.get('text_to_speech')
+                voice = args.get('voice') if args.get('voice') else text_to_speech.get('voice')
+            else:
+                voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get('voice')
             response = AudioService.transcript_tts(
                 app_model=app_model,
                 message_id=message_id,
-                voice=voice,
-                streaming=streaming
+                voice=voice
             )
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:

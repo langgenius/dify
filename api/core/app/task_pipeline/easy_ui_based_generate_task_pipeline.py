@@ -4,7 +4,7 @@ import time
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
-from core.app.apps.advanced_chat.app_generator_redis_publisher import AppGeneratorRedisPublisher
+from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
@@ -33,6 +33,8 @@ from core.app.entities.task_entities import (
     CompletionAppStreamResponse,
     EasyUITaskState,
     ErrorStreamResponse,
+    MessageAudioEndStreamResponse,
+    MessageAudioStreamResponse,
     MessageEndStreamResponse,
     StreamResponse,
 )
@@ -88,6 +90,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
         """
         super().__init__(application_generate_entity, queue_manager, user, stream)
         self._model_config = application_generate_entity.model_conf
+        self._app_config = application_generate_entity.app_config
         self._conversation = conversation
         self._message = message
 
@@ -103,7 +106,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
         self._conversation_name_generate_thread = None
 
     def process(
-        self,
+            self,
     ) -> Union[
         ChatbotAppBlockingResponse,
         CompletionAppBlockingResponse,
@@ -124,7 +127,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                 self._application_generate_entity.query
             )
 
-        generator = self._process_stream_response(
+        generator = self._wrapper_process_stream_response(
             trace_manager=self._application_generate_entity.trace_manager
         )
         if self._stream:
@@ -203,16 +206,55 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                     stream_response=stream_response
                 )
 
+    def _listenAudioMsg(self, publisher, task_id: str):
+        if publisher is None:
+            return None
+        audio_msg: AudioTrunk = publisher.checkAndGetAudio()
+        if audio_msg and audio_msg.status != "finish":
+            # audio_str = audio_msg.audio.decode('utf-8', errors='ignore')
+            return MessageAudioStreamResponse(audio=audio_msg.audio, task_id=task_id)
+        return None
+
+    def _wrapper_process_stream_response(self, trace_manager: Optional[TraceQueueManager] = None) -> \
+            Generator[StreamResponse, None, None]:
+
+        tenant_id = self._application_generate_entity.app_config.tenant_id
+        task_id = self._application_generate_entity.task_id
+        publisher = None
+        text_to_speech_dict = self._app_config.app_model_config_dict.get('text_to_speech')
+        if text_to_speech_dict and text_to_speech_dict.get('autoPlay') == 'enabled' and text_to_speech_dict.get('enabled'):
+            publisher = AppGeneratorTTSPublisher(tenant_id, text_to_speech_dict.get('voice', None))
+        for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
+            audio_response = self._listenAudioMsg(publisher, task_id)
+            if audio_response:
+                yield audio_response
+            yield response
+
+        while True:
+            if publisher is None:
+                break
+            audio = publisher.checkAndGetAudio()
+            if audio is None:
+                continue
+            if audio.status == "finish":
+                break
+            else:
+                yield MessageAudioStreamResponse(audio=audio.audio,
+                                                 task_id=task_id)
+        yield MessageAudioEndStreamResponse(audio='', task_id=task_id)
+
     def _process_stream_response(
-        self, trace_manager: Optional[TraceQueueManager] = None
+            self,
+            publisher: AppGeneratorTTSPublisher,
+            trace_manager: Optional[TraceQueueManager] = None
     ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
         :return:
         """
-        publisher = AppGeneratorRedisPublisher()
         for message in self._queue_manager.listen():
-            publisher.publish(message=message)
+            if publisher:
+                publisher.publish(message)
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
@@ -275,12 +317,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
                 yield self._ping_stream_response()
             else:
                 continue
-        publisher.publish(None)
+        if publisher:
+            publisher.publish(None)
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 
     def _save_message(
-        self, trace_manager: Optional[TraceQueueManager] = None
+            self, trace_manager: Optional[TraceQueueManager] = None
     ) -> None:
         """
         Save message.
