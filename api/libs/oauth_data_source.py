@@ -313,20 +313,25 @@ class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
         tenant_access_token_cache_key = f'tenant_access_token_{self.app_id}'
 
         cache_result = redis_client.get(tenant_access_token_cache_key)
-        if cache_result:
-            return cache_result
+        if cache_result is not None:
+            return cache_result.decode('utf-8')
 
         data = {
             "app_id": self.app_id,
             "app_secret": self.app_secret
         }
         headers = {'Accept': 'application/json'}
-        response = requests.post(self._FEISHU_TENANT_ACCESS_TOKEN_URL, data=data, headers=headers)
+        response = requests.post(self._FEISHU_TENANT_ACCESS_TOKEN_URL, data=data, headers=headers, timeout=(60, 120))
         response_json = response.json()
 
         code = response_json.get('code')
         tenant_access_token = response_json.get('tenant_access_token')
-        redis_client.setex(tenant_access_token_cache_key, 3600, tenant_access_token)
+
+        expire = response_json.get('expire')
+        if expire > 3600:
+            redis_client.setex(tenant_access_token_cache_key, 3600, tenant_access_token)
+        else:
+            redis_client.setex(tenant_access_token_cache_key, expire, tenant_access_token)
 
         if code != 0:
             raise ValueError(f"Error in Feishu OAuth: {response_json}")
@@ -343,7 +348,7 @@ class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
             "page_token": page_token,
         }
 
-        response = requests.get(url=self._FEISHU_WIKI_SPACES_SEARCH, params=params, headers=headers, timeout=(30, 60))
+        response = requests.get(url=self._FEISHU_WIKI_SPACES_SEARCH, params=params, headers=headers, timeout=(60, 120))
         response_json = response.json()
 
         if not response.ok:
@@ -487,7 +492,7 @@ class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
         }
 
         response = requests.get(url=self._FEISHU_WIKI_NODES_SEARCH.format(space_id=space_id), params=params,
-                                headers=headers, timeout=(30, 60))
+                                headers=headers, timeout=(60, 120))
         response_json = response.json()
 
         if not response.ok:
