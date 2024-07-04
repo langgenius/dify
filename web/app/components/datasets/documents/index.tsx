@@ -16,10 +16,11 @@ import { get } from '@/service/base'
 import { createDocument, fetchDocuments } from '@/service/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
-import type { NotionPage } from '@/models/common'
+import type { FeishuPage, NotionPage } from '@/models/common'
 import type { CreateDocumentReq } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
 import RetryButton from '@/app/components/base/retry-button'
+import { FeishuPageSelectorModal } from '@/app/components/base/feishu-page-selector'
 // Custom page count is not currently supported.
 const limit = 15
 
@@ -81,15 +82,17 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const router = useRouter()
   const { dataset } = useDatasetDetailContext()
   const [notionPageSelectorModalVisible, setNotionPageSelectorModalVisible] = useState(false)
+  const [feishuPageSelectorModalVisible, setFeishuPageSelectorModalVisible] = useState(false)
   const [timerCanRun, setTimerCanRun] = useState(true)
   const isDataSourceNotion = dataset?.data_source_type === DataSourceType.NOTION
+  const isDataSourceFeishu = dataset?.data_source_type === DataSourceType.FEISHU
   const isDataSourceWeb = dataset?.data_source_type === DataSourceType.WEB
   const isDataSourceFile = dataset?.data_source_type === DataSourceType.FILE
   const embeddingAvailable = !!dataset?.embedding_available
 
   const query = useMemo(() => {
-    return { page: currPage + 1, limit, keyword: searchValue, fetch: isDataSourceNotion ? true : '' }
-  }, [searchValue, currPage, isDataSourceNotion])
+    return { page: currPage + 1, limit, keyword: searchValue, fetch: (isDataSourceNotion || isDataSourceFeishu) ? true : '' }
+  }, [searchValue, currPage, isDataSourceNotion, isDataSourceFeishu])
 
   const { data: documentsRes, error, mutate } = useSWR(
     {
@@ -98,7 +101,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       params: query,
     },
     apiParams => fetchDocuments(omit(apiParams, 'action')),
-    { refreshInterval: (isDataSourceNotion && timerCanRun) ? 2500 : 0 },
+    { refreshInterval: ((isDataSourceNotion || isDataSourceFeishu) && timerCanRun) ? 2500 : 0 },
   )
 
   const documentsWithProgress = useMemo(() => {
@@ -137,6 +140,10 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const routeToDocCreate = () => {
     if (isDataSourceNotion) {
       setNotionPageSelectorModalVisible(true)
+      return
+    }
+    if (isDataSourceFeishu) {
+      setFeishuPageSelectorModalVisible(true)
       return
     }
     router.push(`/datasets/${datasetId}/documents/create`)
@@ -190,6 +197,52 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     setNotionPageSelectorModalVisible(false)
   }
 
+  const handleSaveFeishuPageSelected = async (selectedPages: FeishuPage[]) => {
+    const workspacesMap = groupBy(selectedPages, 'workspace_id')
+    const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
+      return {
+        workspaceId,
+        pages: workspacesMap[workspaceId],
+      }
+    })
+    const params = {
+      data_source: {
+        type: dataset?.data_source_type,
+        info_list: {
+          data_source_type: dataset?.data_source_type,
+          feishuwiki_info_list: workspaces.map((workspace) => {
+            return {
+              workspace_id: workspace.workspaceId,
+              pages: workspace.pages.map((page) => {
+                const { space_id, page_name, obj_token, obj_type } = page
+                return {
+                  page_name,
+                  obj_token,
+                  obj_type,
+                  space_id,
+                }
+              }),
+            }
+          }),
+        },
+      },
+      indexing_technique: dataset?.indexing_technique,
+      process_rule: {
+        rules: {},
+        mode: 'automatic',
+      },
+    } as CreateDocumentReq
+
+    await createDocument({
+      datasetId,
+      body: params,
+    })
+    mutate()
+    setTimerCanRun(true)
+    // mutateDatasetIndexingStatus(undefined, { revalidate: true })
+    setFeishuPageSelectorModalVisible(false)
+  }
+
   const documentsList = isDataSourceNotion ? documentsWithProgress?.data : documentsRes?.data
 
   return (
@@ -213,6 +266,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
               <Button variant='primary' onClick={routeToDocCreate} className='shrink-0'>
                 <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
                 {isDataSourceNotion && t('datasetDocuments.list.addPages')}
+                {isDataSourceFeishu && t('datasetDocuments.list.addPages')}
                 {isDataSourceWeb && t('datasetDocuments.list.addUrl')}
                 {isDataSourceFile && t('datasetDocuments.list.addFile')}
               </Button>
@@ -233,6 +287,12 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           isShow={notionPageSelectorModalVisible}
           onClose={() => setNotionPageSelectorModalVisible(false)}
           onSave={handleSaveNotionPageSelected}
+          datasetId={dataset?.id || ''}
+        />
+        <FeishuPageSelectorModal
+          isShow={feishuPageSelectorModalVisible}
+          onClose={() => setFeishuPageSelectorModalVisible(false)}
+          onSave={handleSaveFeishuPageSelected}
           datasetId={dataset?.id || ''}
         />
       </div>

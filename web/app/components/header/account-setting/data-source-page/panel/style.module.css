@@ -3,6 +3,11 @@
   background-size: 20px 20px;
 }
 
+.feishu-icon {
+  background: #ffffff url(../../../assets/feishu.svg) center center no-repeat;
+  background-size: 20px 20px;
+}
+
 .website-icon {
   background: #ffffff url(../../../../datasets/create/assets/web.svg) center center no-repeat;
   background-size: 20px 20px;

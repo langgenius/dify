@@ -23,12 +23,13 @@ import type {
   SegmentsResponse,
   createDocumentResponse,
 } from '@/models/datasets'
-import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
+import type { CommonResponse, DataSourceFeishuWorkspace, DataSourceNotionWorkspace } from '@/models/common'
 import type {
   ApikeysListResponse,
   CreateApiKeyResponse,
 } from '@/models/app'
 import type { RetrievalConfig } from '@/types/app'
+import { FeishuProvider } from '@/app/components/header/account-setting/data-source-page/data-source-feishu/constants'
 
 // apis for documents in a dataset
 
@@ -158,12 +159,20 @@ export const syncDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId,
   return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/notion/sync`)
 }
 
+export const syncFeishuDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+  return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/${FeishuProvider}/sync`)
+}
+
 export const syncWebsite: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/website-sync`)
 }
 
 export const preImportNotionPages: Fetcher<{ notion_info: DataSourceNotionWorkspace[] }, { url: string; datasetId?: string }> = ({ url, datasetId }) => {
   return get<{ notion_info: DataSourceNotionWorkspace[] }>(url, { params: { dataset_id: datasetId } })
+}
+
+export const preImportFeishuPages: Fetcher<{ feishuwiki_info: DataSourceFeishuWorkspace[] }, { url: string; datasetId?: string }> = ({ url, datasetId }) => {
+  return get<{ feishuwiki_info: DataSourceFeishuWorkspace[] }>(url, { params: { dataset_id: datasetId } })
 }
 
 export const modifyDocMetadata: Fetcher<CommonResponse, CommonDocReq & { body: { doc_type: string; doc_metadata: Record<string, any> } }> = ({ datasetId, documentId, body }) => {
@@ -219,6 +228,10 @@ export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, In
 
 export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; pageType: string }> = ({ workspaceID, pageID, pageType }) => {
   return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`)
+}
+
+export const fetchFeishuPagePreview: Fetcher<{ content: string }, { workspaceID: string; objectToken: string; objectType: string }> = ({ workspaceID, objectToken, objectType }) => {
+  return get<{ content: string }>(`${FeishuProvider}/workspaces/${workspaceID}/pages/${objectToken}/${objectType}/preview`)
 }
 
 export const fetchApiKeysList: Fetcher<ApikeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
