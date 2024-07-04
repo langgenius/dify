@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import RemoveEffectVarConfirm from '../_base/components/remove-effect-var-confirm'
 import VarList from './components/var-list'
 import VarItem from './components/var-item'
 import useConfig from './use-config'
@@ -28,9 +27,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
     handleAddVariable,
     hideAddVarModal,
     handleVarListChange,
-    isShowRemoveVarConfirm,
-    hideRemoveVarConfirm,
-    onRemoveVarConfirm,
+    removeVarConfirmHolder,
   } = useConfig(id, data)
 
   const handleAddVarConfirm = (payload: InputVar) => {
@@ -123,12 +120,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
           varKeys={inputs.variables.map(v => v.variable)}
         />
       )}
-
-      <RemoveEffectVarConfirm
-        isShow={isShowRemoveVarConfirm}
-        onCancel={hideRemoveVarConfirm}
-        onConfirm={onRemoveVarConfirm}
-      />
+      {removeVarConfirmHolder}
     </div>
   )
 }
