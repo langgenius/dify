@@ -78,7 +78,7 @@ class WorkflowCallback(ABC):
                                       node_type: NodeType,
                                       node_run_index: int = 1,
                                       node_data: Optional[BaseNodeData] = None,
-                                      inputs: dict = None,
+                                      inputs: Optional[dict] = None,
                                       predecessor_node_id: Optional[str] = None,
                                       metadata: Optional[dict] = None) -> None:
         """

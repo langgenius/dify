@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional, Union
 
@@ -29,8 +29,8 @@ class VariablePool:
 
     def __init__(
         self,
-        system_variables: dict[SystemVariable, Any],
-        user_inputs: dict,
+        system_variables: Mapping[SystemVariable, Any],
+        user_inputs: Mapping[str, Any],
         # TODO: remove Optional
         environment_variables: Optional[Sequence[EnvironmentVariable]] = None,
     ) -> None:

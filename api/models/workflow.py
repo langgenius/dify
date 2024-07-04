@@ -1,5 +1,5 @@
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional, Union
 
@@ -170,7 +170,7 @@ class Workflow(db.Model):
         return json.loads(self.graph) if self.graph else None
 
     @property
-    def features_dict(self):
+    def features_dict(self) -> Mapping[str, Any]:
         return json.loads(self.features) if self.features else {}
 
     def user_input_form(self, to_old_structure: bool = False) -> list:
