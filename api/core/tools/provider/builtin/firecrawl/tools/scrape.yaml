@@ -1,0 +1,23 @@
+identity:
+  name: crawl
+  author: Richards Tu
+  label:
+    en_US: Scrape
+    zh_Hans: 抓取
+description:
+  human:
+    en_US: Extract data from a single URL.
+    zh_Hans: 从单个URL抓取数据。
+  llm: This utility initiates a web scraping process to harvest data from a designated URL. It facilitates customization of scraping preferences, including the option to include or exclude specific URL patterns, enhance image alt text generation leveraging advanced LLM technology (available with a premium plan), impose a limit on the maximum pages to scrape, and extract solely the primary content of each webpage. Depending on your preferences, the tool is capable of delivering either an inventory of scraped documents or a compilation of URLs.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: URL to scrape
+      zh_Hans: 要抓取的URL
+    human_description:
+      en_US: The URL of the website to scrape and extract data from.
+      zh_Hans: 要抓取并提取数据的网站URL。
+    llm_description: The URL of the website that needs to be crawled. This is a required parameter.
+    form: llm
