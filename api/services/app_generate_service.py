@@ -34,7 +34,7 @@ class AppGenerateService:
         rate_limit = RateLimit(app_model.id, max_active_request)
         request_id = RateLimit.gen_request_key()
         try:
-            rate_limit.enter(request_id)
+            request_id = rate_limit.enter(request_id)
             if app_model.mode == AppMode.COMPLETION.value:
                 return CompletionAppGenerator().generate(
                     app_model=app_model,
