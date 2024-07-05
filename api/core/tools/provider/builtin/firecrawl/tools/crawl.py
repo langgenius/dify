@@ -27,12 +27,10 @@ class CrawlTool(BuiltinTool):
             wait=True
         )
 
-        if isinstance(crawl_result, dict):
-            result_message = json.dumps(crawl_result, ensure_ascii=False, indent=4)
-        else:
-            result_message = str(crawl_result)
+        if not isinstance(crawl_result, str):
+            crawl_result = json.dumps(crawl_result, ensure_ascii=False, indent=4)
 
         if not crawl_result:
             return self.create_text_message("Crawl request failed.")
 
-        return self.create_text_message(result_message)
+        return self.create_text_message(crawl_result)
