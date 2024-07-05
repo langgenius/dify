@@ -17,6 +17,10 @@ class SecurityConfig(BaseModel):
         default=None,
     )
 
+    RESET_PASSWORD_TOKEN_EXPIRY_HOURS: PositiveInt = Field(
+        description='Expiry time in hours for reset token',
+        default=24,
+    )
 
 class AppExecutionConfig(BaseModel):
     """
@@ -389,6 +393,11 @@ class DataSetConfig(BaseModel):
     CLEAN_DAY_SETTING: PositiveInt = Field(
         description='interval in days for cleaning up dataset',
         default=30,
+    )
+
+    DATASET_OPERATOR_ENABLED: bool = Field(
+        description='whether to enable dataset operator',
+        default=False,
     )
 
 

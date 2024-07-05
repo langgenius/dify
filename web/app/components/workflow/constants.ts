@@ -377,6 +377,10 @@ export const TOOL_OUTPUT_STRUCT: Var[] = [
     variable: 'files',
     type: VarType.arrayFile,
   },
+  {
+    variable: 'json',
+    type: VarType.arrayObject,
+  },
 ]
 
 export const PARAMETER_EXTRACTOR_COMMON_STRUCT: Var[] = [
