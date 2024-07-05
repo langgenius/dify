@@ -103,7 +103,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         application_generate_entity: WorkflowAppGenerateEntity,
         invoke_from: InvokeFrom,
         stream: bool = True,
-    ):
+    ) -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
 
@@ -163,10 +163,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
         """
         if not node_id:
             raise ValueError('node_id is required')
-        
+
         if args.get('inputs') is None:
             raise ValueError('inputs is required')
-        
+
         extras = {
             "auto_generate_conversation_name": False
         }
