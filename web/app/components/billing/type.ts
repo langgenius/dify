@@ -66,7 +66,6 @@ export type CurrentPlanInfoBackend = {
   docs_processing: DocumentProcessingPriority
   can_replace_logo: boolean
   model_load_balancing_enabled: boolean
-  dataset_operator_enabled: boolean
 }
 
 export type SubscriptionItem = {

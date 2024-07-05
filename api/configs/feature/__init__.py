@@ -395,11 +395,6 @@ class DataSetConfig(BaseModel):
         default=30,
     )
 
-    DATASET_OPERATOR_ENABLED: bool = Field(
-        description='whether to enable dataset operator',
-        default=False,
-    )
-
 
 class WorkspaceConfig(BaseModel):
     """
