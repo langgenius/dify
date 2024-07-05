@@ -1,13 +1,23 @@
 import type { FC } from 'react'
-import React from 'react'
+import {
+  Fragment,
+  memo,
+  useState,
+} from 'react'
+import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
-import Split from '../_base/components/split'
-import AddButton from '../_base/components/add-button'
+import {
+  RiAddLine,
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import useConfig from './use-config'
+import ConditionAdd from './components/condition-add'
 import ConditionList from './components/condition-list'
 import type { IfElseNodeType } from './types'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
+import Button from '@/app/components/base/button'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import { useGetAvailableVars } from '@/app/components/workflow/nodes/variable-assigner/hooks'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
@@ -15,52 +25,99 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-
+  const getAvailableVars = useGetAvailableVars()
   const {
     readOnly,
     inputs,
-    handleConditionsChange,
-    handleAddCondition,
-    handleLogicalOperatorToggle,
-    varTypesList,
     filterVar,
+    handleAddCase,
+    handleRemoveCase,
+    handleAddCondition,
+    handleUpdateCondition,
+    handleRemoveCondition,
+    handleUpdateConditionLogicalOperator,
+    nodesOutputVars,
+    availableNodes,
   } = useConfig(id, data)
+  const [willDeleteCaseId, setWillDeleteCaseId] = useState('')
+  const cases = inputs.cases || []
+
   return (
-    <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
-        <Field
-          title={t(`${i18nPrefix}.if`)}
+    <div className='p-1'>
+      {
+        cases.map((item, index) => (
+          <Fragment key={item.caseId}>
+            <div
+              className={cn(
+                'relative py-1 px-3 min-h-[40px] rounded-[10px]',
+                willDeleteCaseId === item.caseId && 'bg-[#FEF3F2]',
+              )}
+            >
+              <div className='absolute top-1.5 left-3 text-[13px] font-semibold text-[#354052]'>
+                {
+                  index === 0 ? 'IF' : 'ELIF'
+                }
+              </div>
+              {
+                !!item.conditions.length && (
+                  <div className='mb-2'>
+                    <ConditionList
+                      disabled={readOnly}
+                      caseItem={item}
+                      onUpdateCondition={handleUpdateCondition}
+                      onRemoveCondition={handleRemoveCondition}
+                      onUpdateConditionLogicalOperator={handleUpdateConditionLogicalOperator}
+                      nodesOutputVars={nodesOutputVars}
+                      availableNodes={availableNodes}
+                    />
+                  </div>
+                )
+              }
+              <div className='flex items-center justify-between pl-[60px] pr-[30px]'>
+                <ConditionAdd
+                  disabled={readOnly}
+                  caseId={item.caseId}
+                  variables={getAvailableVars(id, '', filterVar)}
+                  onSelectVariable={handleAddCondition}
+                />
+                <Button
+                  className='hover:text-[#D92D20] hover:bg-[#FEE4E2]'
+                  size='small'
+                  variant='ghost'
+                  disabled={readOnly}
+                  onClick={() => handleRemoveCase(item.caseId)}
+                  onMouseEnter={() => setWillDeleteCaseId(item.caseId)}
+                  onMouseLeave={() => setWillDeleteCaseId('')}
+                >
+                  <RiDeleteBinLine className='mr-1 w-3.5 h-3.5' />
+                  Remove
+                </Button>
+              </div>
+            </div>
+            <div className='my-2 mx-3 h-[1px] bg-[#101828]/[0.04]'></div>
+          </Fragment>
+        ))
+      }
+      <div className='px-4 py-2'>
+        <Button
+          className='w-full'
+          variant='tertiary'
+          onClick={() => handleAddCase()}
+          disabled={readOnly}
         >
-          <>
-            <ConditionList
-              className='mt-2'
-              readonly={readOnly}
-              nodeId={id}
-              list={inputs.conditions}
-              onChange={handleConditionsChange}
-              logicalOperator={inputs.logical_operator}
-              onLogicalOperatorToggle={handleLogicalOperatorToggle}
-              varTypesList={varTypesList}
-              filterVar={filterVar}
-            />
-            {!readOnly && (
-              <AddButton
-                className='mt-3'
-                text={t(`${i18nPrefix}.addCondition`)}
-                onClick={handleAddCondition}
-              />
-            )}
-          </>
-        </Field>
-        <Split />
-        <Field
-          title={t(`${i18nPrefix}.else`)}
-        >
-          <div className='leading-[18px] text-xs font-normal text-gray-400'>{t(`${i18nPrefix}.elseDescription`)}</div>
-        </Field>
+          <RiAddLine className='mr-1 w-4 h-4' />
+          ELIF
+        </Button>
       </div>
+      <div className='my-2 mx-3 h-[1px] bg-[#101828]/[0.04]'></div>
+      <Field
+        title={t(`${i18nPrefix}.else`)}
+        className='px-4 py-2'
+      >
+        <div className='leading-[18px] text-xs font-normal text-gray-400'>{t(`${i18nPrefix}.elseDescription`)}</div>
+      </Field>
     </div>
   )
 }
 
-export default React.memo(Panel)
+export default memo(Panel)

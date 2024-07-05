@@ -23,6 +23,7 @@ import {
   START_INITIAL_POSITION,
 } from './constants'
 import type { QuestionClassifierNodeType } from './nodes/question-classifier/types'
+import type { IfElseNodeType } from './nodes/if-else/types'
 import type { ToolNodeType } from './nodes/tool/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
@@ -124,6 +125,17 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
           name: 'IS FALSE',
         },
       ]
+      const nodeData = node.data as IfElseNodeType
+
+      if (!nodeData.cases && nodeData.logical_operator && nodeData.conditions) {
+        (node.data as IfElseNodeType).cases = [
+          {
+            caseId: uuid4(),
+            logical_operator: nodeData.logical_operator,
+            conditions: nodeData.conditions,
+          },
+        ]
+      }
     }
 
     if (node.data.type === BlockEnum.QuestionClassifier) {

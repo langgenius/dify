@@ -1,76 +1,118 @@
 import { useCallback } from 'react'
 import produce from 'immer'
-import type { Var } from '../../types'
+import { v4 as uuid4 } from 'uuid'
+import type {
+  Var,
+} from '../../types'
 import { VarType } from '../../types'
-import { getVarType } from '../_base/components/variable/utils'
-import useNodeInfo from '../_base/hooks/use-node-info'
 import { LogicalOperator } from './types'
-import type { Condition, IfElseNodeType } from './types'
+import type {
+  HandleAddCondition,
+  HandleRemoveCondition,
+  HandleUpdateCondition,
+  HandleUpdateConditionLogicalOperator,
+  IfElseNodeType,
+} from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
-  useIsChatMode,
   useNodesReadOnly,
-  useWorkflow,
 } from '@/app/components/workflow/hooks'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 
 const useConfig = (id: string, payload: IfElseNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const { getBeforeNodesInSameBranch } = useWorkflow()
-  const {
-    parentNode,
-  } = useNodeInfo(id)
-  const isChatMode = useIsChatMode()
-  const beforeNodes = getBeforeNodesInSameBranch(id)
-
   const { inputs, setInputs } = useNodeCrud<IfElseNodeType>(id, payload)
-
-  const handleConditionsChange = useCallback((newConditions: Condition[]) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.conditions = newConditions
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  const handleAddCondition = useCallback(() => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.conditions.push({
-        id: `${Date.now()}`,
-        variable_selector: [],
-        comparison_operator: undefined,
-        value: '',
-      })
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  const handleLogicalOperatorToggle = useCallback(() => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.logical_operator = draft.logical_operator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
 
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type !== VarType.arrayFile
   }, [])
 
-  const varTypesList = (inputs.conditions || []).map((condition) => {
-    return getVarType({
-      parentNode,
-      valueSelector: condition.variable_selector,
-      availableNodes: beforeNodes,
-      isChatMode,
-    })
+  const {
+    availableVars,
+    availableNodesWithParent,
+  } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar,
   })
+
+  const handleAddCase = useCallback(() => {
+    const newInputs = produce(inputs, () => {
+      if (inputs.cases) {
+        inputs.cases.push({
+          caseId: uuid4(),
+          logical_operator: LogicalOperator.and,
+          conditions: [],
+        })
+      }
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleRemoveCase = useCallback((caseId: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.cases = draft.cases?.filter(item => item.caseId !== caseId)
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleAddCondition = useCallback<HandleAddCondition>((caseId, valueSelector, varItem) => {
+    const newInputs = produce(inputs, (draft) => {
+      const targetCase = draft.cases?.find(item => item.caseId === caseId)
+      if (targetCase) {
+        targetCase.conditions.push({
+          id: uuid4(),
+          varType: varItem.type,
+          variable_selector: valueSelector,
+          comparison_operator: undefined,
+          value: '',
+        })
+      }
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleRemoveCondition = useCallback<HandleRemoveCondition>((caseId, conditionId) => {
+    const newInputs = produce(inputs, (draft) => {
+      const targetCase = draft.cases?.find(item => item.caseId === caseId)
+      if (targetCase)
+        targetCase.conditions = targetCase.conditions.filter(item => item.id !== conditionId)
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleUpdateCondition = useCallback<HandleUpdateCondition>((caseId, conditionId, newCondition) => {
+    const newInputs = produce(inputs, (draft) => {
+      const targetCase = draft.cases?.find(item => item.caseId === caseId)
+      if (targetCase) {
+        const targetCondition = targetCase.conditions.find(item => item.id === conditionId)
+        if (targetCondition)
+          Object.assign(targetCondition, newCondition)
+      }
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleUpdateConditionLogicalOperator = useCallback<HandleUpdateConditionLogicalOperator>((caseId, value) => {
+    const newInputs = produce(inputs, (draft) => {
+      const targetCase = draft.cases?.find(item => item.caseId === caseId)
+      if (targetCase)
+        targetCase.logical_operator = value
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
 
   return {
     readOnly,
     inputs,
-    handleConditionsChange,
-    handleAddCondition,
-    handleLogicalOperatorToggle,
-    varTypesList,
     filterVar,
+    handleAddCase,
+    handleRemoveCase,
+    handleAddCondition,
+    handleRemoveCondition,
+    handleUpdateCondition,
+    handleUpdateConditionLogicalOperator,
+    nodesOutputVars: availableVars,
+    availableNodes: availableNodesWithParent,
   }
 }
 
