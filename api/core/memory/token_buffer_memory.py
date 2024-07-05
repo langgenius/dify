@@ -36,9 +36,11 @@ class TokenBufferMemory:
         ).order_by(Message.created_at.desc())
 
         if message_limit and message_limit > 0:
-            messages = query.limit(message_limit).all()
+            message_limit = message_limit if message_limit <= 500 else 500
         else:
-            messages = query.all()
+            message_limit = 500
+
+        messages = query.limit(message_limit).all()
 
         messages = list(reversed(messages))
         message_file_parser = MessageFileParser(
