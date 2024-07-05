@@ -76,8 +76,13 @@ class DatabaseConfig:
         default='dify',
     )
 
+    DB_CHARSET: str = Field(
+        description='db charset',
+        default='',
+    )
+
     DB_EXTRAS: str = Field(
-        iption='db extras options. Example: client_encoding=UTF-8&keepalives_idle=10&keepalives=1',
+        iption='db extras options. Example: keepalives_idle=60&keepalives=1',
         default='',
     )
 
@@ -89,7 +94,12 @@ class DatabaseConfig:
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
-        db_extras = f"?{self.DB_EXTRAS}" if self.DB_EXTRAS else ""
+        db_extras = (
+            f"{self.DB_EXTRAS}&client_encoding={self.DB_CHARSET}"
+            if self.DB_CHARSET
+            else self.DB_EXTRAS
+        ).strip("&")
+        db_extras = f"?{db_extras}" if db_extras else ""
         return (f"{self.SQLALCHEMY_DATABASE_URI_SCHEME}://"
                 f"{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}"
                 f"{db_extras}")
