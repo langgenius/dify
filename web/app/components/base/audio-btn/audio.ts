@@ -151,7 +151,11 @@ export default class AudioPlayer {
     else {
       this.isLoadData = true
       this.cacheBuffers = []
-      this.sourceBuffer?.abort()
+      try {
+        this.sourceBuffer?.abort()
+      }
+      catch (e) {
+      }
       this.loadAudio()
     }
   }

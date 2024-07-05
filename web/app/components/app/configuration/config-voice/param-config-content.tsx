@@ -17,7 +17,7 @@ import ConfigContext from '@/context/debug-configuration'
 import { fetchAppVoices } from '@/service/apps'
 import Tooltip from '@/app/components/base/tooltip'
 import { languages } from '@/i18n/language'
-import { ttsAutoPlay } from '@/types/app'
+import { TtsAutoPlay } from '@/types/app'
 const VoiceParamConfig: FC = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
@@ -190,15 +190,15 @@ const VoiceParamConfig: FC = () => {
               options={[
                 {
                   label: t('appDebug.voice.voiceSettings.autoPlayEnabled'),
-                  value: ttsAutoPlay.enabled,
+                  value: TtsAutoPlay.enabled,
                 },
                 {
                   label: t('appDebug.voice.voiceSettings.autoPlayDisabled'),
-                  value: ttsAutoPlay.disabled,
+                  value: TtsAutoPlay.disabled,
                 },
               ]}
               value={textToSpeechConfig.autoPlay}
-              onChange={(value: ttsAutoPlay) => {
+              onChange={(value: TtsAutoPlay) => {
                 setTextToSpeechConfig({
                   ...textToSpeechConfig,
                   autoPlay: value,

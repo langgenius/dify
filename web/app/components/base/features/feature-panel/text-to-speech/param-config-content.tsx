@@ -20,7 +20,7 @@ import { fetchAppVoices } from '@/service/apps'
 import Tooltip from '@/app/components/base/tooltip'
 import { languages } from '@/i18n/language'
 import RadioGroup from '@/app/components/app/configuration/config-vision/radio-group'
-import { ttsAutoPlay } from '@/types/app'
+import { TtsAutoPlay } from '@/types/app'
 
 type VoiceParamConfigProps = {
   onChange?: OnFeaturesChange
@@ -213,17 +213,17 @@ const VoiceParamConfig = ({
               options={[
                 {
                   label: t('appDebug.voice.voiceSettings.autoPlayEnabled'),
-                  value: ttsAutoPlay.enabled,
+                  value: TtsAutoPlay.enabled,
                 },
                 {
                   label: t('appDebug.voice.voiceSettings.autoPlayDisabled'),
-                  value: ttsAutoPlay.disabled,
+                  value: TtsAutoPlay.disabled,
                 },
               ]}
               value={text2speech?.autoPlay}
-              onChange={(value: ttsAutoPlay) => {
+              onChange={(value: TtsAutoPlay) => {
                 handleChange({
-                  autoPlay: String(value),
+                  autoPlay: value,
                 })
               }}
             />

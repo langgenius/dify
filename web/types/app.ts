@@ -160,7 +160,7 @@ export type ModelConfig = {
     enabled: boolean
     voice?: string
     language?: string
-    autoPlay?: ttsAutoPlay
+    autoPlay?: TtsAutoPlay
   }
   retriever_resource: {
     enabled: boolean
@@ -350,7 +350,7 @@ export enum TransferMethod {
   remote_url = 'remote_url',
 }
 
-export enum ttsAutoPlay {
+export enum TtsAutoPlay {
   enabled = 'enabled',
   disabled = 'disabled',
 }
