@@ -44,6 +44,8 @@ const translation = {
     appNamePlaceholder: 'Give your app a name',
     captionDescription: 'Description',
     appDescriptionPlaceholder: 'Enter the description of the app',
+    appMaxActiveRequests: 'Max active requests',
+    appMaxActiveRequestsPlaceholder: 'The maximum number of active requests for the application, where 0 means unlimited, should be a non-negative integer.',
     useTemplate: 'Use this template',
     previewDemo: 'Preview demo',
     chatApp: 'Assistant',

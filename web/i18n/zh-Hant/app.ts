@@ -41,6 +41,8 @@ const translation = {
     advancedDescription: '工作流編排以工作流的形式編排聊天機器人，提供高度的自定義，包括編輯內建提示的能力。 它適合有經驗的使用者。',
     captionName: '圖示 & 名稱',
     appNamePlaceholder: '給你的應用起個名字',
+    appMaxActiveRequests: '最大活動請求數',
+    appMaxActiveRequestsPlaceholder: '應用程式的最大活動請求數，其中 0 表示無限制，應為非負整數。',
     captionDescription: '描述',
     appDescriptionPlaceholder: '輸入應用的描述',
     useTemplate: '使用該模板',

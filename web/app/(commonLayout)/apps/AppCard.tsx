@@ -73,6 +73,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     name,
     icon,
     icon_background,
+    max_active_requests,
     description,
   }) => {
     try {
@@ -81,6 +82,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         name,
         icon,
         icon_background,
+        max_active_requests,
         description,
       })
       setShowEditModal(false)
@@ -337,6 +339,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           appIcon={app.icon}
           appIconBackground={app.icon_background}
           appName={app.name}
+          maxActiveRequests={app.max_active_requests}
           appDescription={app.description}
           show={showEditModal}
           onConfirm={onEdit}

@@ -58,6 +58,7 @@ class AppListApi(Resource):
         """Create app"""
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, location='json')
+        parser.add_argument('max_active_requests', type=int, location='json')
         parser.add_argument('description', type=str, location='json')
         parser.add_argument('mode', type=str, choices=ALLOW_CREATE_APP_MODES, location='json')
         parser.add_argument('icon', type=str, location='json')
@@ -70,6 +71,8 @@ class AppListApi(Resource):
 
         if 'mode' not in args or args['mode'] is None:
             raise BadRequest("mode is required")
+        if 'max_active_requests' in args and args['max_active_requests'] is not None and args['max_active_requests'] < 0:
+            raise BadRequest("max active requests should be a non-negative integer")
 
         app_service = AppService()
         app = app_service.create_app(current_user.current_tenant_id, args, current_user)
@@ -134,6 +137,7 @@ class AppApi(Resource):
         parser.add_argument('description', type=str, location='json')
         parser.add_argument('icon', type=str, location='json')
         parser.add_argument('icon_background', type=str, location='json')
+        parser.add_argument('max_active_requests', type=int, location='json')
         args = parser.parse_args()
 
         app_service = AppService()

@@ -42,6 +42,8 @@ const translation = {
     advancedDescription: 'L\'orchestration de flux de travail orchestre les Chatbots sous forme de workflows, offrant un haut degré de personnalisation, y compris la possibilité de modifier les invites intégrées. Il convient aux utilisateurs expérimentés.',
     captionName: 'Icône et nom de l\'application',
     appNamePlaceholder: 'Donnez un nom à votre application',
+    appMaxActiveRequests: 'Nombre maximal de requêtes actives',
+    appMaxActiveRequestsPlaceholder: 'Le nombre maximum de requêtes actives pour l\'application, où 0 signifie illimité, doit être un entier non négatif.',
     captionDescription: 'Description',
     appDescriptionPlaceholder: 'Entrez la description de l\'application',
     useTemplate: 'Utiliser ce modèle',

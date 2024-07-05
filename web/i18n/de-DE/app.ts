@@ -23,6 +23,8 @@ const translation = {
   newApp: {
     startToCreate: 'Lassen Sie uns mit Ihrer neuen App beginnen',
     captionName: 'App-Symbol & Name',
+    appMaxActiveRequests: 'Maximale aktive Anfragen',
+    appMaxActiveRequestsPlaceholder: 'Die maximale Anzahl aktiver Anfragen für die Anwendung, wobei 0 unbegrenzt bedeutet, sollte eine nicht-negative Ganzzahl sein.',
     captionAppType: 'Welchen Typ von App möchten Sie erstellen?',
     previewDemo: 'Vorschau-Demo',
     chatApp: 'Assistent',

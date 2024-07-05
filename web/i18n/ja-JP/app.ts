@@ -43,6 +43,8 @@ const translation = {
     advancedDescription: 'ワークフロー オーケストレートは、ワークフロー形式でチャットボットをオーケストレートし、組み込みのプロンプトを編集する機能を含む高度なカスタマイズを提供します。経験豊富なユーザー向けです。',
     captionName: 'アプリのアイコンと名前',
     appNamePlaceholder: 'アプリに名前を付ける',
+    appMaxActiveRequests: '最大アクティブリクエスト数',
+    appMaxActiveRequestsPlaceholder: 'アプリケーションの最大アクティブリクエスト数。0は無制限を意味し、非負の整数である必要があります。',
     captionDescription: '説明',
     appDescriptionPlaceholder: 'アプリの説明を入力してください',
     useTemplate: 'このテンプレートを使用する',

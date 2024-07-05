@@ -10,6 +10,7 @@ from flask_sqlalchemy.pagination import Pagination
 
 from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
+from core.app.features.rate_limiting import RateLimit
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
@@ -118,6 +119,7 @@ class AppService:
 
         app = App(**app_template['app'])
         app.name = args['name']
+        app.max_active_requests = args['max_active_requests']
         app.description = args.get('description', '')
         app.mode = args['mode']
         app.icon = args['icon']
@@ -322,11 +324,14 @@ class AppService:
         """
         app.name = args.get('name')
         app.description = args.get('description', '')
+        app.max_active_requests = args.get('max_active_requests', 0)
         app.icon = args.get('icon')
         app.icon_background = args.get('icon_background')
         app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
+        rate_limit = RateLimit(app.id, app.max_active_requests)
+        rate_limit.flush_cache(use_local_value=True)
         return app
 
     def update_app_name(self, app: App, name: str) -> App:

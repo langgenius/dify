@@ -188,6 +188,7 @@ const Apps = ({
           appIcon={currApp?.app.icon || ''}
           appIconBackground={currApp?.app.icon_background || ''}
           appName={currApp?.app.name || ''}
+          maxActiveRequests={currApp?.app.max_active_request || 0}
           appDescription={currApp?.app.description || ''}
           show={isShowCreateModal}
           onConfirm={onCreate}
