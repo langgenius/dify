@@ -34,25 +34,32 @@ class FirecrawlApp:
                     raise
         return None
 
-
     def scrape_url(self, url, **kwargs):
         endpoint = f'{self.base_url}/v0/scrape'
         headers = self._prepare_headers()
         data = {'url': url, **kwargs}
-        return self._request('POST', endpoint, data, headers)
+        response = self._request('POST', endpoint, data, headers)
+        if response is None:
+            raise HTTPError("Failed to scrape URL after multiple retries")
+        return response
 
     def search(self, query, **kwargs):
         endpoint = f'{self.base_url}/v0/search'
         headers = self._prepare_headers()
         data = {'query': query, **kwargs}
-        return self._request('POST', endpoint, data, headers)
+        response = self._request('POST', endpoint, data, headers)
+        if response is None:
+            raise HTTPError("Failed to perform search after multiple retries")
+        return response
 
     def crawl_url(self, url, wait=False, poll_interval=5, idempotency_key=None, **kwargs):
         endpoint = f'{self.base_url}/v0/crawl'
         headers = self._prepare_headers(idempotency_key)
         data = {'url': url, **kwargs}
         response = self._request('POST', endpoint, data, headers)
-        job_id = response['jobId']  
+        if response is None:
+            raise HTTPError("Failed to initiate crawl after multiple retries")
+        job_id = response['jobId']
         if wait:
             return self._monitor_job_status(job_id, headers, poll_interval)
         return job_id
@@ -60,7 +67,10 @@ class FirecrawlApp:
     def check_crawl_status(self, job_id):
         endpoint = f'{self.base_url}/v0/crawl/status/{job_id}'
         headers = self._prepare_headers()
-        return self._request('GET', endpoint, headers=headers)
+        response = self._request('GET', endpoint, headers=headers)
+        if response is None:
+            raise HTTPError(f"Failed to check status for job {job_id} after multiple retries")
+        return response
 
     def _monitor_job_status(self, job_id, headers, poll_interval):
         while True:
