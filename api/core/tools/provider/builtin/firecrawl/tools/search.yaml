@@ -6,8 +6,8 @@ identity:
     zh_Hans: 搜索
 description:
   human:
-    en_US: Extract data from a single URL.
-    zh_Hans: 从单个URL抓取数据。
+    en_US: Search, and output in Markdown format
+    zh_Hans: 搜索，并且以Markdown格式输出
   llm: This tool can perform online searches and convert the results to Markdown format.
   parameters:
   - name: Keyword
