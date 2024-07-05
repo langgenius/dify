@@ -82,7 +82,7 @@ class DatabaseConfig:
     )
 
     DB_EXTRAS: str = Field(
-        iption='db extras options. Example: keepalives_idle=60&keepalives=1',
+        description='db extras options. Example: keepalives_idle=60&keepalives=1',
         default='',
     )
 
