@@ -11,7 +11,7 @@ class SearchTool(BuiltinTool):
         app = FirecrawlApp(api_key=self.runtime.credentials['firecrawl_api_key'], base_url=self.runtime.credentials['base_url'])
 
         crawl_result = app.search(
-            query=tool_parameters['query'],
+            query=tool_parameters['keyword'],
             wait=True
         )
 
