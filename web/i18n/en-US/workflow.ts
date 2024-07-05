@@ -396,6 +396,7 @@ const translation = {
           url: 'Image url',
           upload_file_id: 'Upload file id',
         },
+        json: 'tool generated json',
       },
     },
     questionClassifiers: {

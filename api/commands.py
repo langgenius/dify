@@ -8,6 +8,7 @@ import click
 from flask import current_app
 from werkzeug.exceptions import NotFound
 
+from configs import dify_config
 from constants.languages import languages
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -112,7 +113,7 @@ def reset_encrypt_key_pair():
     After the reset, all LLM credentials will become invalid, requiring re-entry.
     Only support SELF_HOSTED mode.
     """
-    if current_app.config['EDITION'] != 'SELF_HOSTED':
+    if dify_config.EDITION != 'SELF_HOSTED':
         click.echo(click.style('Sorry, only support SELF_HOSTED mode.', fg='red'))
         return
 

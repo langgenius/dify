@@ -197,6 +197,12 @@ docker compose up -d
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [YAML 文件 by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
+#### 使用 Terraform 部署
+
+##### Azure Global
+使用 [terraform](https://www.terraform.io/) 一键部署 Dify 到 Azure。
+- [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
+
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)

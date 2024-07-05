@@ -197,6 +197,12 @@ Si vous souhaitez configurer une configuration haute disponibilité, la communau
 - [Helm Chart par @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [Fichier YAML par @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
+#### Utilisation de Terraform pour le déploiement
+
+##### Azure Global
+Utilisez [terraform](https://www.terraform.io/) pour déployer Dify sur Azure en un clic.
+- [Azure Terraform par @nikawang](https://github.com/nikawang/dify-azure-terraform)
+
 
 ## Contribuer
 

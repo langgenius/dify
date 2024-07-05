@@ -394,6 +394,8 @@ class AppService:
         Delete app
         :param app: App instance
         """
+        db.session.delete(app)
+        db.session.commit()
         # Trigger asynchronous deletion of app and related data
         remove_app_and_related_data_task.delay(app.id)
 
