@@ -2084,20 +2084,6 @@ files = [
 ]
 
 [[package]]
-name = "firecrawl-py"
-version = "0.0.5"
-description = "Python SDK for Firecrawl API"
-optional = false
-python-versions = "*"
-files = [
-    {file = "firecrawl-py-0.0.5.tar.gz", hash = "sha256:3d1cc30b7d86c12aa06e6434ebb526072cd70ab9a0c8b145008efe044a1cd09c"},
-    {file = "firecrawl_py-0.0.5-py3-none-any.whl", hash = "sha256:476694345141c0145a1bee9c01a8ad0103f75892c12a122dc511a3adad0785e7"},
-]
-
-[package.dependencies]
-requests = "*"
-
-[[package]]
 name = "flask"
 version = "3.0.3"
 description = "A simple framework for building complex web applications."
@@ -9095,4 +9081,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "90f0e77567fbe5100d15bf2bc9472007aafc53c2fd594b6a90dd8455dea58582"
+content-hash = "420c866aaff914d48c00c443a59f181c778690c24f81a955b1f970729bb441b7"
