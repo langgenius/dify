@@ -189,6 +189,9 @@ class MessageFileParser:
             if response.status_code == 200:
                 return True, ""
             else:
-                return False, "URL does not exist."
+                if response.status_code == 304:
+                    return True, ""
+                else:
+                    return False, "URL does not exist."
         except requests.RequestException as e:
             return False, f"Error checking URL: {e}"
