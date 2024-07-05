@@ -9,7 +9,7 @@ description:
     en_US: Search, and output in Markdown format
     zh_Hans: 搜索，并且以Markdown格式输出
   llm: This tool can perform online searches and convert the results to Markdown format.
-  parameters:
+parameters:
   - name: keyword
     type: string
     required: true
