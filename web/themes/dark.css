@@ -354,9 +354,9 @@ html[data-theme="dark"] {
 
   --color-divider-subtle: #C8CEDA14;
   --color-divider-regular: #C8CEDA24;
-  --color-divider-darker: #C8CEDA33;
+  --color-divider-deep: #C8CEDA33;
   --color-divider-burn: #18181BF2;
-  --color-divider-darker+: #C8CEDA66;
+  --color-divider-intense: #C8CEDA66;
   --color-divider-soild: #3A3A40;
   --color-divider-soild-alt: #747481;
 

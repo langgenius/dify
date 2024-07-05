@@ -154,3 +154,7 @@ button:focus-within {
 
 @import '../../themes/light.css';
 @import '../../themes/dark.css';
+
+html[data-changing-theme] * {
+  transition: none !important;
+}
