@@ -15,7 +15,6 @@ language_timezone_mapping = {
     'ro-RO': 'Europe/Bucharest',
     'pl-PL': 'Europe/Warsaw',
     'hi-IN': 'Asia/Kolkata',
-    'es-MX': 'America/Mexico_City'
 }
 
 languages = list(language_timezone_mapping.keys())
