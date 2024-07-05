@@ -27,12 +27,13 @@ class FirecrawlApp:
                 response = requests.request(method, url, json=data, headers=headers)
                 response.raise_for_status()
                 return response.json()
-            except HTTPError as e:
-                if response.status_code == 502 and i < retries - 1:
+            except requests.exceptions.RequestException as e:
+                if i < retries - 1:
                     time.sleep(backoff_factor * (2 ** i))
                 else:
                     raise
         return None
+
 
     def scrape_url(self, url, **kwargs):
         endpoint = f'{self.base_url}/v0/scrape'
