@@ -74,11 +74,7 @@ class AudioService:
         from flask import Response, stream_with_context
 
         from app import app
-        from constants.constants import REDIS_MESSAGE_PREFIX
         from extensions.ext_database import db
-        from extensions.ext_redis import redis_client
-
-        lock_key = f"{REDIS_MESSAGE_PREFIX}lock:{message_id}"
 
         def invoke_tts(text_content: str, app_model, voice: Optional[str] = None):
             with app.app_context():
@@ -122,28 +118,23 @@ class AudioService:
                 except Exception as e:
                     raise e
 
-        try:
-            if message_id:
-                message = db.session.query(Message).filter(
-                    Message.id == message_id
-                ).first()
-                if message.answer == '' and message.status == 'normal':
-                    return None
+        if message_id:
+            message = db.session.query(Message).filter(
+                Message.id == message_id
+            ).first()
+            if message.answer == '' and message.status == 'normal':
+                return None
 
-                else:
-                    response = invoke_tts(message.answer, app_model=app_model, voice=voice)
-                    if isinstance(response, Generator):
-                        return Response(stream_with_context(response), content_type='audio/mpeg')
-                    return response
             else:
-                response = invoke_tts(text, app_model, voice)
+                response = invoke_tts(message.answer, app_model=app_model, voice=voice)
                 if isinstance(response, Generator):
                     return Response(stream_with_context(response), content_type='audio/mpeg')
                 return response
-        except Exception as e:
-            raise e
-        finally:
-            redis_client.delete(lock_key)
+        else:
+            response = invoke_tts(text, app_model, voice)
+            if isinstance(response, Generator):
+                return Response(stream_with_context(response), content_type='audio/mpeg')
+            return response
 
     @classmethod
     def transcript_tts_voices(cls, tenant_id: str, language: str):
