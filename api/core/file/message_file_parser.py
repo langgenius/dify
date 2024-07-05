@@ -189,7 +189,7 @@ class MessageFileParser:
             if response.status_code == 200:
                 return True, ""
             else:
-                if response.status_code == 304:
+                if response.status_code in {200, 304}:
                     return True, ""
                 else:
                     return False, "URL does not exist."
