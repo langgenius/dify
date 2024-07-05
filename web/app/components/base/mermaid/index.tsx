@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 import CryptoJS from 'crypto-js'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
@@ -22,6 +22,17 @@ const style = {
   minWidth: '480px',
   height: 'auto',
   overflow: 'auto',
+}
+
+const svgToBase64 = (svgGraph: string) => {
+  const svgBytes = new TextEncoder().encode(svgGraph)
+  const blob = new Blob([svgBytes], { type: 'image/svg+xml;charset=utf-8' })
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
 }
 
 const Flowchart = React.forwardRef((props: {
@@ -55,30 +66,18 @@ const Flowchart = React.forwardRef((props: {
         if (!dom.querySelector('g.main'))
           throw new Error('empty svg')
 
-        // const base64Svg: any = await svgToBase64(svgGraph.svg)
-        setSvgCode(svgGraph.svg)
+        const base64Svg: any = await svgToBase64(svgGraph.svg)
+        setSvgCode(base64Svg)
         setIsLoading(false)
-        if (chartId.current && svgGraph.svg)
-          localStorage.setItem(chartId.current, svgGraph.svg)
+        if (chartId.current && base64Svg)
+          localStorage.setItem(chartId.current, base64Svg)
       }
     }
     catch (error) {
-      console.error('mermaid', (error as Error).message)
       clearFlowchartCache()
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       handleReRender()
     }
-  }
-
-  const svgToBase64 = (svgGraph: string) => {
-    const svgBytes = new TextEncoder().encode(svgGraph)
-    const blob = new Blob([svgBytes], { type: 'image/svg+xml;charset=utf-8' })
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result)
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
   }
 
   const handleReRender = () => {
@@ -107,7 +106,7 @@ const Flowchart = React.forwardRef((props: {
     <div ref={ref}>
       {
         isRender
-          && <div id={chartId.current} className="mermaid" style={style}>
+          && <div className="mermaid" style={style}>
             {svgCode && <img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="Mermaid chart" />}
           </div>
       }
@@ -120,4 +119,4 @@ const Flowchart = React.forwardRef((props: {
   )
 })
 
-export default memo(Flowchart)
+export default Flowchart
