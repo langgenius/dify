@@ -114,7 +114,7 @@ class DatabaseConfig:
         default=False,
     )
 
-    SQLALCHEMY_ECHO: bool = Field(
+    SQLALCHEMY_ECHO: bool | str = Field(
         description='whether to enable SqlAlchemy echo',
         default=False,
     )
