@@ -2,12 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, usePathname } from 'next/navigation'
 import cn from 'classnames'
+import {
+  RiCloseLine,
+  RiLoader2Line,
+} from '@remixicon/react'
 import Recorder from 'js-audio-recorder'
 import { useRafInterval } from 'ahooks'
 import { convertToMp3 } from './utils'
 import s from './index.module.css'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
-import { Loading02, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { audioToText } from '@/service/share'
 
 type VoiceInputTypes = {
@@ -159,7 +162,7 @@ const VoiceInput = ({
       <div className='absolute inset-[1.5px] flex items-center pl-[14.5px] pr-[6.5px] py-[14px] bg-primary-25 rounded-[10.5px] overflow-hidden'>
         <canvas id='voice-input-record' className='absolute left-0 bottom-0 w-full h-4' />
         {
-          startConvert && <Loading02 className='animate-spin mr-2 w-4 h-4 text-primary-700' />
+          startConvert && <RiLoader2Line className='animate-spin mr-2 w-4 h-4 text-primary-700' />
         }
         <div className='grow'>
           {
@@ -193,7 +196,7 @@ const VoiceInput = ({
               className='flex justify-center items-center mr-1 w-8 h-8 hover:bg-gray-200 rounded-lg  cursor-pointer'
               onClick={onCancel}
             >
-              <XClose className='w-4 h-4 text-gray-500' />
+              <RiCloseLine className='w-4 h-4 text-gray-500' />
             </div>
           )
         }

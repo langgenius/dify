@@ -8,14 +8,16 @@ import services
 from controllers.console import api
 from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
-from controllers.console.datasets.error import DatasetNameDuplicateError
+from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
+from core.rag.retrieval.retrival_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
@@ -23,7 +25,7 @@ from fields.document_fields import document_status_fields
 from libs.login import login_required
 from models.dataset import Dataset, Document, DocumentSegment
 from models.model import ApiToken, UploadFile
-from services.dataset_service import DatasetService, DocumentService
+from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
 
 def _validate_name(name):
@@ -83,6 +85,12 @@ class DatasetListApi(Resource):
             else:
                 item['embedding_available'] = True
 
+            if item.get('permission') == 'partial_members':
+                part_users_list = DatasetPermissionService.get_dataset_partial_member_list(item['id'])
+                item.update({'partial_member_list': part_users_list})
+            else:
+                item.update({'partial_member_list': []})
+
         response = {
             'data': data,
             'has_more': len(datasets) == limit,
@@ -106,8 +114,8 @@ class DatasetListApi(Resource):
                             help='Invalid indexing technique.')
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
+        if not current_user.is_editor:
             raise Forbidden()
 
         try:
@@ -138,6 +146,10 @@ class DatasetApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         data = marshal(dataset, dataset_detail_fields)
+        if data.get('permission') == 'partial_members':
+            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
+            data.update({'partial_member_list': part_users_list})
+
         # check embedding setting
         provider_manager = ProviderManager()
         configurations = provider_manager.get_configurations(
@@ -161,6 +173,11 @@ class DatasetApi(Resource):
                 data['embedding_available'] = False
         else:
             data['embedding_available'] = True
+
+        if data.get('permission') == 'partial_members':
+            part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
+            data.update({'partial_member_list': part_users_list})
+
         return data, 200
 
     @setup_required
@@ -186,17 +203,21 @@ class DatasetApi(Resource):
                             nullable=True,
                             help='Invalid indexing technique.')
         parser.add_argument('permission', type=str, location='json', choices=(
-            'only_me', 'all_team_members'), help='Invalid permission.')
+            'only_me', 'all_team_members', 'partial_members'), help='Invalid permission.'
+                            )
         parser.add_argument('embedding_model', type=str,
                             location='json', help='Invalid embedding model.')
         parser.add_argument('embedding_model_provider', type=str,
                             location='json', help='Invalid embedding model provider.')
         parser.add_argument('retrieval_model', type=dict, location='json', help='Invalid retrieval model.')
+        parser.add_argument('partial_member_list', type=list, location='json', help='Invalid parent user list.')
         args = parser.parse_args()
+        data = request.get_json()
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+        DatasetPermissionService.check_permission(
+            current_user, dataset, data.get('permission'), data.get('partial_member_list')
+        )
 
         dataset = DatasetService.update_dataset(
             dataset_id_str, args, current_user)
@@ -204,7 +225,17 @@ class DatasetApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        return marshal(dataset, dataset_detail_fields), 200
+        result_data = marshal(dataset, dataset_detail_fields)
+
+        if data.get('partial_member_list') and data.get('permission') == 'partial_members':
+            DatasetPermissionService.update_partial_member_list(dataset_id_str, data.get('partial_member_list'))
+        else:
+            DatasetPermissionService.clear_partial_member_list(dataset_id_str)
+
+        partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
+        result_data.update({'partial_member_list': partial_member_list})
+
+        return result_data, 200
 
     @setup_required
     @login_required
@@ -212,15 +243,27 @@ class DatasetApi(Resource):
     def delete(self, dataset_id):
         dataset_id_str = str(dataset_id)
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor or current_user.is_dataset_operator:
             raise Forbidden()
 
-        if DatasetService.delete_dataset(dataset_id_str, current_user):
-            return {'result': 'success'}, 204
-        else:
-            raise NotFound("Dataset not found.")
+        try:
+            if DatasetService.delete_dataset(dataset_id_str, current_user):
+                return {'result': 'success'}, 204
+            else:
+                raise NotFound("Dataset not found.")
+        except services.errors.dataset.DatasetInUseError:
+            raise DatasetInUseError()
 
+class DatasetUseCheckApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id):
+        dataset_id_str = str(dataset_id)
+
+        dataset_is_using = DatasetService.dataset_use_check(dataset_id_str)
+        return {'is_using': dataset_is_using}, 200
 
 class DatasetQueryApi(Resource):
 
@@ -311,6 +354,22 @@ class DatasetIndexingEstimateApi(Resource):
                         document_model=args['doc_form']
                     )
                     extract_settings.append(extract_setting)
+        elif args['info_list']['data_source_type'] == 'website_crawl':
+            website_info_list = args['info_list']['website_info_list']
+            for url in website_info_list['urls']:
+                extract_setting = ExtractSetting(
+                    datasource_type="website_crawl",
+                    website_info={
+                        "provider": website_info_list['provider'],
+                        "job_id": website_info_list['job_id'],
+                        "url": url,
+                        "tenant_id": current_user.current_tenant_id,
+                        "mode": 'crawl',
+                        "only_main_content": website_info_list['only_main_content']
+                    },
+                    document_model=args['doc_form']
+                )
+                extract_settings.append(extract_setting)
         else:
             raise ValueError('Data source type not support')
         indexing_runner = IndexingRunner()
@@ -325,6 +384,8 @@ class DatasetIndexingEstimateApi(Resource):
                 "in the Settings -> Model Provider.")
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
+        except Exception as e:
+            raise IndexingEstimateError(str(e))
 
         return response, 200
 
@@ -476,20 +537,23 @@ class DatasetRetrievalSettingApi(Resource):
     @account_initialization_required
     def get(self):
         vector_type = current_app.config['VECTOR_STORE']
-        if vector_type in {"milvus", "relyt", "pgvector", "pgvecto_rs"}:
-            return {
-                'retrieval_method': [
-                    'semantic_search'
-                ]
-            }
-        elif vector_type in {"qdrant", "weaviate"}:
-            return {
-                'retrieval_method': [
-                    'semantic_search', 'full_text_search', 'hybrid_search'
-                ]
-            }
-        else:
-            raise ValueError("Unsupported vector db type.")
+        match vector_type:
+            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA | VectorType.TENCENT | VectorType.ORACLE:
+                return {
+                    'retrieval_method': [
+                        RetrievalMethod.SEMANTIC_SEARCH
+                    ]
+                }
+            case VectorType.QDRANT | VectorType.WEAVIATE | VectorType.OPENSEARCH:
+                return {
+                    'retrieval_method': [
+                        RetrievalMethod.SEMANTIC_SEARCH,
+                        RetrievalMethod.FULL_TEXT_SEARCH,
+                        RetrievalMethod.HYBRID_SEARCH,
+                    ]
+                }
+            case _:
+                raise ValueError(f"Unsupported vector db type {vector_type}.")
 
 
 class DatasetRetrievalSettingMockApi(Resource):
@@ -497,20 +561,25 @@ class DatasetRetrievalSettingMockApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, vector_type):
-        if vector_type in {'milvus', 'relyt', 'pgvector'}:
-            return {
-                'retrieval_method': [
-                    'semantic_search'
-                ]
-            }
-        elif vector_type in {'qdrant', 'weaviate'}:
-            return {
-                'retrieval_method': [
-                    'semantic_search', 'full_text_search', 'hybrid_search'
-                ]
-            }
-        else:
-            raise ValueError("Unsupported vector db type.")
+        match vector_type:
+            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA | VectorType.TENCENT | VectorType.ORACLE:
+                return {
+                    'retrieval_method': [
+                        RetrievalMethod.SEMANTIC_SEARCH
+                    ]
+                }
+            case VectorType.QDRANT | VectorType.WEAVIATE | VectorType.OPENSEARCH:
+                return {
+                    'retrieval_method': [
+                        RetrievalMethod.SEMANTIC_SEARCH,
+                        RetrievalMethod.FULL_TEXT_SEARCH,
+                        RetrievalMethod.HYBRID_SEARCH,
+                    ]
+                }
+            case _:
+                raise ValueError(f"Unsupported vector db type {vector_type}.")
+
+
 
 class DatasetErrorDocs(Resource):
     @setup_required
@@ -529,8 +598,30 @@ class DatasetErrorDocs(Resource):
         }, 200
 
 
+class DatasetPermissionUserListApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id):
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        partial_members_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
+
+        return {
+            'data': partial_members_list,
+        }, 200
+
+
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
+api.add_resource(DatasetUseCheckApi, '/datasets/<uuid:dataset_id>/use-check')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
 api.add_resource(DatasetErrorDocs, '/datasets/<uuid:dataset_id>/error-docs')
 api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
@@ -541,3 +632,4 @@ api.add_resource(DatasetApiDeleteApi, '/datasets/api-keys/<uuid:api_key_id>')
 api.add_resource(DatasetApiBaseUrlApi, '/datasets/api-base-info')
 api.add_resource(DatasetRetrievalSettingApi, '/datasets/retrieval-setting')
 api.add_resource(DatasetRetrievalSettingMockApi, '/datasets/retrieval-setting/<string:vector_type>')
+api.add_resource(DatasetPermissionUserListApi, '/datasets/<uuid:dataset_id>/permission-part-users')

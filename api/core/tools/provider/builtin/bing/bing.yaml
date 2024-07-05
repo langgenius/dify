@@ -10,6 +10,8 @@ identity:
     zh_Hans: Bing 搜索
     pt_BR: Bing Search
   icon: icon.svg
+  tags:
+    - search
 credentials_for_provider:
   subscription_key:
     type: secret-input

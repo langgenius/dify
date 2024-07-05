@@ -7,13 +7,14 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.retrieval_service import RetrievalService
-from core.rerank.rerank import RerankRunner
+from core.rag.rerank.rerank import RerankRunner
+from core.rag.retrieval.retrival_methods import RetrievalMethod
 from core.tools.tool.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
 default_retrieval_model = {
-    'search_method': 'semantic_search',
+    'search_method': RetrievalMethod.SEMANTIC_SEARCH,
     'reranking_enable': False,
     'reranking_model': {
         'reranking_provider_name': '',

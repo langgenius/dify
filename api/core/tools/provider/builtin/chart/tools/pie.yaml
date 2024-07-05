@@ -21,9 +21,9 @@ parameters:
       zh_Hans: 数据
       pt_BR: dados
     human_description:
-      en_US: data for generating pie chart
-      zh_Hans: 用于生成饼图的数据
-      pt_BR: dados para gerar gráfico de pizza
+      en_US: data for generating chart, each number should be separated by ";"
+      zh_Hans: 用于生成饼图的数据，每个数字之间用 ";" 分隔
+      pt_BR: dados para gerar gráfico de pizza, cada número deve ser separado por ";"
     llm_description: data for generating pie chart, data should be a string contains a list of numbers like "1;2;3;4;5"
     form: llm
   - name: categories
@@ -34,8 +34,8 @@ parameters:
       zh_Hans: 分类
       pt_BR: Categorias
     human_description:
-      en_US: Categories for pie chart
-      zh_Hans: 饼图的分类
-      pt_BR: Categorias para gráfico de pizza
+      en_US: Categories for chart, each category should be separated by ";"
+      zh_Hans: 饼图的分类，每个分类之间用 ";" 分隔
+      pt_BR: Categorias para gráfico de pizza, cada categoria deve ser separada por ";"
     llm_description: categories for pie chart, categories should be a string contains a list of texts like "a;b;c;1;2" in order to match the data, each category should be split by ";"
     form: llm

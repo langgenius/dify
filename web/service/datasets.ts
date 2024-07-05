@@ -53,7 +53,7 @@ export const fetchDatasetDetail: Fetcher<DataSet, string> = (datasetId: string) 
 export const updateDatasetSetting: Fetcher<DataSet, {
   datasetId: string
   body: Partial<Pick<DataSet,
-    'name' | 'description' | 'permission' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider'
+    'name' | 'description' | 'permission' | 'partial_member_list' | 'indexing_technique' | 'retrieval_model' | 'embedding_model' | 'embedding_model_provider'
   >>
 }> = ({ datasetId, body }) => {
   return patch<DataSet>(`/datasets/${datasetId}`, { body })
@@ -70,6 +70,12 @@ export const fetchDatasets: Fetcher<DataSetListResponse, { url: string; params: 
 
 export const createEmptyDataset: Fetcher<DataSet, { name: string }> = ({ name }) => {
   return post<DataSet>('/datasets', { body: { name } })
+}
+
+export const checkIsUsedInApp: Fetcher<{ is_using: boolean }, string> = (id) => {
+  return get<{ is_using: boolean }>(`/datasets/${id}/use-check`, {}, {
+    silent: true,
+  })
 }
 
 export const deleteDataset: Fetcher<DataSet, string> = (datasetID) => {
@@ -114,6 +120,12 @@ export const fetchDocumentDetail: Fetcher<DocumentDetailResponse, CommonDocReq &
   return get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params })
 }
 
+export const renameDocumentName: Fetcher<CommonResponse, CommonDocReq & { name: string }> = ({ datasetId, documentId, name }) => {
+  return post<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/rename`, {
+    body: { name },
+  })
+}
+
 export const pauseDocIndexing: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/processing/pause`)
 }
@@ -144,6 +156,10 @@ export const disableDocument: Fetcher<CommonResponse, CommonDocReq> = ({ dataset
 
 export const syncDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/notion/sync`)
+}
+
+export const syncWebsite: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+  return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/website-sync`)
 }
 
 export const preImportNotionPages: Fetcher<{ notion_info: DataSourceNotionWorkspace[] }, { url: string; datasetId?: string }> = ({ url, datasetId }) => {
@@ -219,6 +235,37 @@ export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Re
 
 export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> = (url) => {
   return get<{ api_base_url: string }>(url)
+}
+
+export const fetchDataSources = () => {
+  return get<CommonResponse>('api-key-auth/data-source')
+}
+
+export const createDataSourceApiKeyBinding: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('api-key-auth/data-source/binding', { body })
+}
+
+export const removeDataSourceApiKeyBinding: Fetcher<CommonResponse, string> = (id: string) => {
+  return del<CommonResponse>(`api-key-auth/data-source/${id}`)
+}
+
+export const createFirecrawlTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('website/crawl', {
+    body: {
+      ...body,
+      provider: 'firecrawl',
+    },
+  })
+}
+
+export const checkFirecrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
+  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
+    params: {
+      provider: 'firecrawl',
+    },
+  }, {
+    silent: true,
+  })
 }
 
 type FileTypesRes = {

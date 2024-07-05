@@ -1,3 +1,5 @@
+from typing import cast
+
 import flask_login
 from flask import current_app, request
 from flask_restful import Resource, reqparse
@@ -5,8 +7,9 @@ from flask_restful import Resource, reqparse
 import services
 from controllers.console import api
 from controllers.console.setup import setup_required
-from libs.helper import email
+from libs.helper import email, get_remote_ip
 from libs.password import valid_password
+from models.account import Account
 from services.account_service import AccountService, TenantService
 
 
@@ -34,10 +37,7 @@ class LoginApi(Resource):
         if len(tenants) == 0:
             return {'result': 'fail', 'data': 'workspace not found, please contact system admin to invite you to join in a workspace'}
 
-        AccountService.update_last_login(account, request)
-
-        # todo: return the user info
-        token = AccountService.get_account_jwt_token(account)
+        token = AccountService.login(account, ip_address=get_remote_ip(request))
 
         return {'result': 'success', 'data': token}
 
@@ -46,6 +46,9 @@ class LogoutApi(Resource):
 
     @setup_required
     def get(self):
+        account = cast(Account, flask_login.current_user)
+        token = request.headers.get('Authorization', '').split(' ')[1]
+        AccountService.logout(account=account, token=token)
         flask_login.logout_user()
         return {'result': 'success'}
 

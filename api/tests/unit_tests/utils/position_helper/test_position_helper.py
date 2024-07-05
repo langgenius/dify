@@ -2,7 +2,7 @@ from textwrap import dedent
 
 import pytest
 
-from core.utils.position_helper import get_position_map
+from core.helper.position_helper import get_position_map
 
 
 @pytest.fixture

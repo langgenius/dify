@@ -1,3 +1,4 @@
+import type { CollectionType } from '@/app/components/tools/types'
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 
 export enum VarType {
@@ -13,7 +14,7 @@ export type ToolVarInputs = Record<string, {
 
 export type ToolNodeType = CommonNodeType & {
   provider_id: string
-  provider_type: 'builtin'
+  provider_type: CollectionType
   provider_name: string
   tool_name: string
   tool_label: string

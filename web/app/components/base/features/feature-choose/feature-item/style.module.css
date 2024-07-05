@@ -1,7 +1,9 @@
 .preview {
   display: none;
   position: absolute;
-  transform: translate(480px, -54px);
+  top: 0;
+  left: 100%;
+  transform: translate(32px, -54px);
   width: 280px;
   height: 360px;
   background: center center no-repeat;
@@ -14,26 +16,26 @@
 }
 
 .openingStatementPreview {
-  background-image: url(./preview-imgs/opening-statement.png);
+  background-image: url(~@/app/components/app/configuration/config/feature/choose-feature/feature-item/preview-imgs/opening-statement.png);
 }
 
 .suggestedQuestionsAfterAnswerPreview {
-  background-image: url(./preview-imgs/suggested-questions-after-answer.svg);
+  background-image: url(~@/app/components/app/configuration/config/feature/choose-feature/feature-item/preview-imgs/suggested-questions-after-answer.png);
 }
 
 .moreLikeThisPreview {
-  background-image: url(./preview-imgs/more-like-this.svg);
+  background-image: url(~@/app/components/app/configuration/config/feature/choose-feature/feature-item/preview-imgs/more-like-this.png);
 }
 
 .speechToTextPreview {
-  background-image: url(./preview-imgs/speech-to-text.svg);
+  background-image: url(~@/app/components/app/configuration/config/feature/choose-feature/feature-item/preview-imgs/speech-to-text.png);
 }
 
 .textToSpeechPreview {
   @apply shadow-lg rounded-lg;
-  background-image: url(./preview-imgs/text-to-audio-preview-assistant@2x.png);
+  background-image: url(~@/app/components/app/configuration/config/feature/choose-feature/feature-item/preview-imgs/text-to-audio-preview-assistant@2x.png);
 }
 
 .citationPreview {
-  background-image: url(./preview-imgs/citation.svg);
+  background-image: url(~@/app/components/app/configuration/config/feature/choose-feature/feature-item/preview-imgs/citation.png);
 }

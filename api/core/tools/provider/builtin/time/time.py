@@ -14,3 +14,4 @@ class WikiPediaProvider(BuiltinToolProviderController):
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
+        

@@ -44,7 +44,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const isChatApp = mode === 'chat'
+  const isChatApp = mode === 'chat' || mode === 'advanced-chat'
 
   return <Modal
     title={t(`${prefixCustomize}.title`)}
@@ -63,7 +63,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
           <div className='text-gray-900'>{t(`${prefixCustomize}.way1.step1`)}</div>
           <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step1Tip`)}</div>
           <a href={`https://github.com/langgenius/${isChatApp ? 'webapp-conversation' : 'webapp-text-generator'}`} target='_blank' rel='noopener noreferrer'>
-            <Button className='text-gray-800 text-sm w-fit'><GithubIcon className='text-gray-800 mr-2' />{t(`${prefixCustomize}.way1.step1Operation`)}</Button>
+            <Button><GithubIcon className='text-gray-800 mr-2' />{t(`${prefixCustomize}.way1.step1Operation`)}</Button>
           </a>
         </div>
       </div>
@@ -73,7 +73,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
           <div className='text-gray-900'>{t(`${prefixCustomize}.way1.step3`)}</div>
           <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step2Tip`)}</div>
           <a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target='_blank' rel='noopener noreferrer'>
-            <Button className='text-gray-800 text-sm w-fit'>
+            <Button>
               <div className='mr-1.5 border-solid border-t-0 border-r-[7px] border-l-[7px] border-b-[12px] border-r-transparent border-b-black border-l-transparent border-t-transparent'></div>
               <span>{t(`${prefixCustomize}.way1.step2Operation`)}</span>
             </Button>
@@ -98,7 +98,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
       <Tag bordered={true} hideBg={true} className='text-primary-600 border-primary-600 uppercase'>{t(`${prefixCustomize}.way`)} 2</Tag>
       <p className='mt-2 text-base font-medium text-gray-800'>{t(`${prefixCustomize}.way2.name`)}</p>
       <Button
-        className='w-36 mt-2'
+        className='mt-2'
         onClick={() =>
           window.open(
             `https://docs.dify.ai/${locale !== LanguagesSupported[1]

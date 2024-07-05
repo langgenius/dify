@@ -16,7 +16,7 @@ class HostingModerationFeature:
         :param prompt_messages: prompt messages
         :return:
         """
-        model_config = application_generate_entity.model_config
+        model_config = application_generate_entity.model_conf
 
         text = ""
         for prompt_message in prompt_messages:

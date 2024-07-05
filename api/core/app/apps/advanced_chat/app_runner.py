@@ -70,7 +70,8 @@ class AdvancedChatAppRunner(AppRunner):
                 app_record=app_record,
                 app_generate_entity=application_generate_entity,
                 inputs=inputs,
-                query=query
+                query=query,
+                message_id=message.id
         ):
             return
 
@@ -102,6 +103,7 @@ class AdvancedChatAppRunner(AppRunner):
             user_from=UserFrom.ACCOUNT
             if application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
             else UserFrom.END_USER,
+            invoke_from=application_generate_entity.invoke_from,
             user_inputs=inputs,
             system_inputs={
                 SystemVariable.QUERY: query,
@@ -109,6 +111,35 @@ class AdvancedChatAppRunner(AppRunner):
                 SystemVariable.CONVERSATION_ID: conversation.id,
                 SystemVariable.USER_ID: user_id
             },
+            callbacks=workflow_callbacks,
+            call_depth=application_generate_entity.call_depth
+        )
+
+    def single_iteration_run(self, app_id: str, workflow_id: str,
+                             queue_manager: AppQueueManager,
+                             inputs: dict, node_id: str, user_id: str) -> None:
+        """
+        Single iteration run
+        """
+        app_record: App = db.session.query(App).filter(App.id == app_id).first()
+        if not app_record:
+            raise ValueError("App not found")
+        
+        workflow = self.get_workflow(app_model=app_record, workflow_id=workflow_id)
+        if not workflow:
+            raise ValueError("Workflow not initialized")
+        
+        workflow_callbacks = [WorkflowEventTriggerCallback(
+            queue_manager=queue_manager,
+            workflow=workflow
+        )]
+
+        workflow_engine_manager = WorkflowEngineManager()
+        workflow_engine_manager.single_step_run_iteration_workflow_node(
+            workflow=workflow,
+            node_id=node_id,
+            user_id=user_id,
+            user_inputs=inputs,
             callbacks=workflow_callbacks
         )
 
@@ -126,11 +157,14 @@ class AdvancedChatAppRunner(AppRunner):
         # return workflow
         return workflow
 
-    def handle_input_moderation(self, queue_manager: AppQueueManager,
-                                app_record: App,
-                                app_generate_entity: AdvancedChatAppGenerateEntity,
-                                inputs: dict,
-                                query: str) -> bool:
+    def handle_input_moderation(
+            self, queue_manager: AppQueueManager,
+            app_record: App,
+            app_generate_entity: AdvancedChatAppGenerateEntity,
+            inputs: dict,
+            query: str,
+            message_id: str
+    ) -> bool:
         """
         Handle input moderation
         :param queue_manager: application queue manager
@@ -138,6 +172,7 @@ class AdvancedChatAppRunner(AppRunner):
         :param app_generate_entity: application generate entity
         :param inputs: inputs
         :param query: query
+        :param message_id: message id
         :return:
         """
         try:
@@ -148,6 +183,7 @@ class AdvancedChatAppRunner(AppRunner):
                 app_generate_entity=app_generate_entity,
                 inputs=inputs,
                 query=query,
+                message_id=message_id,
             )
         except ModerationException as e:
             self._stream_output(

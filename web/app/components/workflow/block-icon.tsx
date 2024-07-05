@@ -8,8 +8,10 @@ import {
   Home,
   Http,
   IfElse,
+  Iteration,
   KnowledgeRetrieval,
   Llm,
+  ParameterExtractor,
   QuestionClassifier,
   TemplatingTransform,
   VariableX,
@@ -40,7 +42,10 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.QuestionClassifier]: <QuestionClassifier className={className} />,
     [BlockEnum.TemplateTransform]: <TemplatingTransform className={className} />,
     [BlockEnum.VariableAssigner]: <VariableX className={className} />,
+    [BlockEnum.VariableAggregator]: <VariableX className={className} />,
     [BlockEnum.Tool]: <VariableX className={className} />,
+    [BlockEnum.Iteration]: <Iteration className={className} />,
+    [BlockEnum.ParameterExtractor]: <ParameterExtractor className={className} />,
   }[type]
 }
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
@@ -49,12 +54,15 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.Code]: 'bg-[#2E90FA]',
   [BlockEnum.End]: 'bg-[#F79009]',
   [BlockEnum.IfElse]: 'bg-[#06AED4]',
+  [BlockEnum.Iteration]: 'bg-[#06AED4]',
   [BlockEnum.HttpRequest]: 'bg-[#875BF7]',
   [BlockEnum.Answer]: 'bg-[#F79009]',
   [BlockEnum.KnowledgeRetrieval]: 'bg-[#16B364]',
   [BlockEnum.QuestionClassifier]: 'bg-[#16B364]',
   [BlockEnum.TemplateTransform]: 'bg-[#2E90FA]',
   [BlockEnum.VariableAssigner]: 'bg-[#2E90FA]',
+  [BlockEnum.VariableAggregator]: 'bg-[#2E90FA]',
+  [BlockEnum.ParameterExtractor]: 'bg-[#2E90FA]',
 }
 const BlockIcon: FC<BlockIconProps> = ({
   type,
@@ -64,8 +72,8 @@ const BlockIcon: FC<BlockIconProps> = ({
 }) => {
   return (
     <div className={`
-      flex items-center justify-center border-[0.5px] border-white/[0.02] text-white
-      ${ICON_CONTAINER_CLASSNAME_SIZE_MAP[size]} 
+      flex items-center justify-center border-[0.5px] border-white/2 text-white
+      ${ICON_CONTAINER_CLASSNAME_SIZE_MAP[size]}
       ${ICON_CONTAINER_BG_COLOR_MAP[type]}
       ${toolIcon && '!shadow-none'}
       ${className}

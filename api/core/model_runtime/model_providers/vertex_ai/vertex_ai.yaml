@@ -36,8 +36,8 @@ provider_credential_schema:
         en_US: Enter your Google Cloud Location
     - variable: vertex_service_account_key
       label:
-        en_US: Service Account Key
+        en_US: Service Account Key (Leave blank if you use Application Default Credentials)
       type: secret-input
-      required: true
+      required: false
       placeholder:
         en_US: Enter your Google Cloud Service Account Key in base64 format

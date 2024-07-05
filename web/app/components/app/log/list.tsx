@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import {
   HandThumbDownIcon,
@@ -8,6 +8,7 @@ import {
   InformationCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
+import { RiEditFill } from '@remixicon/react'
 import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
@@ -20,14 +21,13 @@ import cn from 'classnames'
 import s from './style.module.css'
 import VarPanel from './var-panel'
 import { randomString } from '@/utils'
-import { EditIconSolid } from '@/app/components/app/chat/icon-component'
-import type { FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc } from '@/app/components/app/chat/type'
-import type { ChatConversationFullDetailResponse, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationFullDetailResponse, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
+import type { FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
+import type { Annotation, ChatConversationFullDetailResponse, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationFullDetailResponse, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
 import type { App } from '@/types/app'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Popover from '@/app/components/base/popover'
-import Chat from '@/app/components/app/chat'
+import Chat from '@/app/components/base/chat/chat'
 import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
@@ -38,12 +38,12 @@ import ModelName from '@/app/components/header/account-setting/model-provider-pa
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
-import AgentLogModal from '@/app/components/base/agent-log-modal'
-import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { CopyIcon } from '@/app/components/base/copy-icon'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -164,15 +164,12 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal, showMessageLogModal, setShowMessageLogModal } = useAppStore(useShallow(state => ({
+  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
-    showPromptLogModal: state.showPromptLogModal,
-    setShowPromptLogModal: state.setShowPromptLogModal,
-    showAgentLogModal: state.showAgentLogModal,
-    setShowAgentLogModal: state.setShowAgentLogModal,
     showMessageLogModal: state.showMessageLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
+    currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
   const { t } = useTranslation()
   const [items, setItems] = React.useState<IChatItem[]>([])
@@ -184,7 +181,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         return
       const params: ChatMessagesRequest = {
         conversation_id: detail.id,
-        limit: 4,
+        limit: 10,
       }
       if (items?.[0]?.id)
         params.first_id = items?.[0]?.id.replace('question-', '')
@@ -214,6 +211,72 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       console.error(err)
     }
   }
+
+  const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
+    setItems(items.map((item, i) => {
+      if (i === index - 1) {
+        return {
+          ...item,
+          content: query,
+        }
+      }
+      if (i === index) {
+        return {
+          ...item,
+          annotation: {
+            ...item.annotation,
+            logAnnotation: {
+              ...item.annotation?.logAnnotation,
+              content: answer,
+            },
+          } as any,
+        }
+      }
+      return item
+    }))
+  }, [items])
+  const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
+    setItems(items.map((item, i) => {
+      if (i === index - 1) {
+        return {
+          ...item,
+          content: query,
+        }
+      }
+      if (i === index) {
+        const answerItem = {
+          ...item,
+          content: item.content,
+          annotation: {
+            id: annotationId,
+            authorName,
+            logAnnotation: {
+              content: answer,
+              account: {
+                id: '',
+                name: authorName,
+                email: '',
+              },
+            },
+          } as Annotation,
+        }
+        return answerItem
+      }
+      return item
+    }))
+  }, [items])
+  const handleAnnotationRemoved = useCallback((index: number) => {
+    setItems(items.map((item, i) => {
+      if (i === index) {
+        return {
+          ...item,
+          content: item.content,
+          annotation: undefined,
+        }
+      }
+      return item
+    }))
+  }, [items])
 
   useEffect(() => {
     if (appDetail?.id && detail.id && appDetail?.mode !== 'completion')
@@ -280,7 +343,19 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
         <div>
           <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
-          <div className='text-gray-700 text-[13px] leading-[18px]'>{isChatMode ? detail.id?.split('-').slice(-1)[0] : formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
+          {isChatMode && (
+            <div className='flex items-center text-gray-700 text-[13px] leading-[18px]'>
+              <TooltipPlus
+                hideArrow
+                popupContent={detail.id}>
+                <div className='max-w-[105px] truncate'>{detail.id}</div>
+              </TooltipPlus>
+              <CopyIcon content={detail.id} />
+            </div>
+          )}
+          {!isChatMode && (
+            <div className='text-gray-700 text-[13px] leading-[18px]'>{formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
+          )}
         </div>
         <div className='flex items-center flex-wrap gap-y-1 justify-end'>
           {!isAdvanced && (
@@ -359,24 +434,36 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             isShowTextToSpeech
             appId={appDetail?.id}
             varList={varList}
+            siteInfo={null}
           />
         </div>
         : items.length < 8
-          ? <div className="px-2.5 pt-4 mb-4">
+          ? <div className="pt-4 mb-4">
             <Chat
+              config={{
+                appId: appDetail?.id,
+                text_to_speech: {
+                  enabled: true,
+                },
+                supportAnnotation: true,
+                annotation_reply: {
+                  enabled: true,
+                },
+                supportFeedback: true,
+              } as any}
               chatList={items}
-              isHideSendInput={true}
+              onAnnotationAdded={handleAnnotationAdded}
+              onAnnotationEdited={handleAnnotationEdited}
+              onAnnotationRemoved={handleAnnotationRemoved}
               onFeedback={onFeedback}
-              displayScene='console'
-              isShowPromptLog
-              supportAnnotation
-              isShowTextToSpeech
-              appId={appDetail?.id}
-              onChatListChange={setItems}
+              noChatInput
+              showPromptLog
+              hideProcessDetail
+              chatContainerInnerClassName='px-6'
             />
           </div>
           : <div
-            className="px-2.5 py-4"
+            className="py-4"
             id="scrollableDiv"
             style={{
               height: 1000, // Specify a value
@@ -407,35 +494,30 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
               inverse={true}
             >
               <Chat
+                config={{
+                  app_id: appDetail?.id,
+                  text_to_speech: {
+                    enabled: true,
+                  },
+                  supportAnnotation: true,
+                  annotation_reply: {
+                    enabled: true,
+                  },
+                  supportFeedback: true,
+                } as any}
                 chatList={items}
-                isHideSendInput={true}
+                onAnnotationAdded={handleAnnotationAdded}
+                onAnnotationEdited={handleAnnotationEdited}
+                onAnnotationRemoved={handleAnnotationRemoved}
                 onFeedback={onFeedback}
-                displayScene='console'
-                isShowPromptLog
+                noChatInput
+                showPromptLog
+                hideProcessDetail
+                chatContainerInnerClassName='px-6'
               />
             </InfiniteScroll>
           </div>
       }
-      {showPromptLogModal && (
-        <PromptLogModal
-          width={width}
-          currentLogItem={currentLogItem}
-          onCancel={() => {
-            setCurrentLogItem()
-            setShowPromptLogModal(false)
-          }}
-        />
-      )}
-      {showAgentLogModal && (
-        <AgentLogModal
-          width={width}
-          currentLogItem={currentLogItem}
-          onCancel={() => {
-            setCurrentLogItem()
-            setShowAgentLogModal(false)
-          }}
-        />
-      )}
       {showMessageLogModal && (
         <MessageLogModal
           width={width}
@@ -444,6 +526,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             setCurrentLogItem()
             setShowMessageLogModal(false)
           }}
+          defaultTab={currentLogModalActiveTab}
         />
       )}
     </div>
@@ -559,7 +642,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <Tooltip
         htmlContent={
           <span className='text-xs text-gray-500 inline-flex items-center'>
-            <EditIconSolid className='mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
+            <RiEditFill className='w-3 h-3 mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         }
         className={(isHighlight && !isChatMode) ? '' : '!hidden'}

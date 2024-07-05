@@ -3,8 +3,10 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import Tooltip from '../../base/tooltip'
-import { HelpCircle } from '../../base/icons/src/vender/line/general'
 import type { Credential } from '@/app/components/tools/types'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
@@ -12,6 +14,7 @@ import Radio from '@/app/components/base/radio/ui'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 
 type Props = {
+  positionCenter?: boolean
   credential: Credential
   onChange: (credential: Credential) => void
   onHide: () => void
@@ -38,6 +41,7 @@ const SelectItem: FC<ItemProps> = ({ text, value, isChecked, onClick }) => {
 }
 
 const ConfigCredential: FC<Props> = ({
+  positionCenter,
   credential,
   onChange,
   onHide,
@@ -48,11 +52,12 @@ const ConfigCredential: FC<Props> = ({
   return (
     <Drawer
       isShow
+      positionCenter={positionCenter}
       onHide={onHide}
       title={t('tools.createTool.authMethod.title')!}
-      panelClassName='mt-2 !w-[520px]'
+      panelClassName='mt-2 !w-[520px] h-fit'
       maxWidthClassName='!max-w-[520px]'
-      height='calc(100vh - 16px)'
+      height={'fit-content'}
       headerClassName='!border-b-black/5'
       body={
         <div className='pt-2 px-6'>
@@ -114,7 +119,7 @@ const ConfigCredential: FC<Props> = ({
                         </div>
                       }
                     >
-                      <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400'/>
+                      <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
                     </Tooltip>
                   </div>
                   <input
@@ -138,8 +143,8 @@ const ConfigCredential: FC<Props> = ({
           </div>
 
           <div className='mt-4 shrink-0 flex justify-end space-x-2 py-4'>
-            <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
-            <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={() => {
+            <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
+            <Button variant='primary' onClick={() => {
               onChange(tempCredential)
               onHide()
             }}>{t('common.operation.save')}</Button>

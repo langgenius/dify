@@ -90,3 +90,12 @@ class VariablePool:
                     raise ValueError(f'Invalid value type: {target_value_type.value}')
 
         return value
+
+    def clear_node_variables(self, node_id: str) -> None:
+        """
+        Clear node variables
+        :param node_id: node id
+        :return:
+        """
+        if node_id in self.variables_mapping:
+            self.variables_mapping.pop(node_id)

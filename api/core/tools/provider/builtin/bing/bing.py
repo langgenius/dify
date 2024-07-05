@@ -9,7 +9,7 @@ class BingProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             BingSearchTool().fork_tool_runtime(
-                meta={
+                runtime={
                     "credentials": credentials,
                 }
             ).validate_credentials(

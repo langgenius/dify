@@ -1,6 +1,8 @@
 import os
 
-if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
+from configs import dify_config
+
+if os.environ.get("DEBUG", "false").lower() != 'true':
     from gevent import monkey
 
     monkey.patch_all()
@@ -22,7 +24,6 @@ from flask_cors import CORS
 from werkzeug.exceptions import Unauthorized
 
 from commands import register_commands
-from config import Config
 
 # DO NOT REMOVE BELOW
 from events import event_handlers
@@ -42,6 +43,8 @@ from extensions import (
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 from libs.passport import PassportService
+
+# TODO: Find a way to avoid importing models here
 from models import account, dataset, model, source, task, tool, tools, web
 from services.account_service import AccountService
 
@@ -74,10 +77,28 @@ config_type = os.getenv('EDITION', default='SELF_HOSTED')  # ce edition first
 # Application Factory Function
 # ----------------------------
 
+def create_flask_app_with_configs() -> Flask:
+    """
+    create a raw flask app
+    with configs loaded from .env file
+    """
+    dify_app = DifyApp(__name__)
+    dify_app.config.from_mapping(dify_config.model_dump())
+
+    # populate configs into system environment variables
+    for key, value in dify_app.config.items():
+        if isinstance(value, str):
+            os.environ[key] = value
+        elif isinstance(value, int | float | bool):
+            os.environ[key] = str(value)
+        elif value is None:
+            os.environ[key] = ''
+
+    return dify_app
+
 
 def create_app() -> Flask:
-    app = DifyApp(__name__)
-    app.config.from_object(Config())
+    app = create_flask_app_with_configs()
 
     app.secret_key = app.config['SECRET_KEY']
 
@@ -99,9 +120,21 @@ def create_app() -> Flask:
         level=app.config.get('LOG_LEVEL'),
         format=app.config.get('LOG_FORMAT'),
         datefmt=app.config.get('LOG_DATEFORMAT'),
-        handlers=log_handlers
+        handlers=log_handlers,
+        force=True
     )
+    log_tz = app.config.get('LOG_TZ')
+    if log_tz:
+        from datetime import datetime
 
+        import pytz
+        timezone = pytz.timezone(log_tz)
+
+        def time_converter(seconds):
+            return datetime.utcfromtimestamp(seconds).astimezone(timezone).timetuple()
+
+        for handler in logging.root.handlers:
+            handler.formatter.converter = time_converter
     initialize_extensions(app)
     register_blueprints(app)
     register_commands(app)
@@ -129,27 +162,26 @@ def initialize_extensions(app):
 @login_manager.request_loader
 def load_user_from_request(request_from_flask_login):
     """Load user based on the request."""
-    if request.blueprint in ['console', 'inner_api']:
-        # Check if the user_id contains a dot, indicating the old format
-        auth_header = request.headers.get('Authorization', '')
-        if not auth_header:
-            auth_token = request.args.get('_token')
-            if not auth_token:
-                raise Unauthorized('Invalid Authorization token.')
-        else:
-            if ' ' not in auth_header:
-                raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-            auth_scheme, auth_token = auth_header.split(None, 1)
-            auth_scheme = auth_scheme.lower()
-            if auth_scheme != 'bearer':
-                raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-
-        decoded = PassportService().verify(auth_token)
-        user_id = decoded.get('user_id')
-
-        return AccountService.load_user(user_id)
-    else:
+    if request.blueprint not in ['console', 'inner_api']:
         return None
+    # Check if the user_id contains a dot, indicating the old format
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header:
+        auth_token = request.args.get('_token')
+        if not auth_token:
+            raise Unauthorized('Invalid Authorization token.')
+    else:
+        if ' ' not in auth_header:
+            raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+        auth_scheme, auth_token = auth_header.split(None, 1)
+        auth_scheme = auth_scheme.lower()
+        if auth_scheme != 'bearer':
+            raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+
+    decoded = PassportService().verify(auth_token)
+    user_id = decoded.get('user_id')
+
+    return AccountService.load_logged_in_account(account_id=user_id, token=auth_token)
 
 
 @login_manager.unauthorized_handler
@@ -210,7 +242,7 @@ def register_blueprints(app):
 app = create_app()
 celery = app.extensions["celery"]
 
-if app.config['TESTING']:
+if app.config.get('TESTING'):
     print("App is running in TESTING mode")
 
 

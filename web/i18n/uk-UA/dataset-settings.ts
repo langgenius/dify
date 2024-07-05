@@ -14,7 +14,7 @@ const translation = {
     permissionsAllMember: 'Усі члени команди',
     indexMethod: 'Метод індексації',
     indexMethodHighQuality: 'Висока якість',
-    indexMethodHighQualityTip: 'Використовуйте інтерфейс вбудовування OpenAI для обробки, щоб забезпечити вищу точність під час запитів користувачів.',
+    indexMethodHighQualityTip: 'Викликати модель Embedding для обробки, щоб забезпечити вищу точність під час запитів користувачів.',
     indexMethodEconomy: 'Економний',
     indexMethodEconomyTip: 'Використовуйте автономні векторні двигуни, індекси ключових слів тощо, щоб зменшити точність без використання токенів.',
     embeddingModel: 'Модель вбудовування',

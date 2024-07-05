@@ -36,6 +36,7 @@
   <a href="./README_FR.md"><img alt="README en Français" src="https://img.shields.io/badge/Français-d9d9d9"></a>
   <a href="./README_KL.md"><img alt="README tlhIngan Hol" src="https://img.shields.io/badge/Klingon-d9d9d9"></a>
   <a href="./README_KR.md"><img alt="README in Korean" src="https://img.shields.io/badge/한국어-d9d9d9"></a>
+  <a href="./README_AR.md"><img alt="README بالعربية" src="https://img.shields.io/badge/العربية-d9d9d9"></a>
 </p>
 
 
@@ -173,6 +174,7 @@ The easiest way to start the Dify server is to run our [docker-compose.yml](dock
 
 ```bash
 cd docker
+cp .env.example .env
 docker compose up -d
 ```
 
@@ -182,13 +184,19 @@ After running, you can access the Dify dashboard in your browser at [http://loca
 
 ## Next steps
 
-If you need to customize the configuration, please refer to the comments in our [docker-compose.yml](docker/docker-compose.yaml) file and manually set the environment configuration. After making the changes, please run `docker-compose up -d` again. You can see the full list of environment variables [here](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+If you need to customize the configuration, please refer to the comments in our [.env.example](docker/.env.example) file and update the corresponding values in your `.env` file. Additionally, you might need to make adjustments to the `docker-compose.yaml` file itself, such as changing image versions, port mappings, or volume mounts, based on your specific deployment environment and requirements. After making any changes, please re-run `docker-compose up -d`. You can find the full list of available environment variables [here](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
-If you'd like to configure a highly-available setup, there are community-contributed [Helm Charts](https://helm.sh/) which allow Dify to be deployed on Kubernetes.
+If you'd like to configure a highly-available setup, there are community-contributed [Helm Charts](https://helm.sh/) and YAML files which allow Dify to be deployed on Kubernetes.
 
 - [Helm Chart by @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
+- [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
+#### Using Terraform for Deployment
+
+##### Azure Global
+Deploy Dify to Azure with a single click using [terraform](https://www.terraform.io/).
+- [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
 
 ## Contributing
 

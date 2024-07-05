@@ -32,13 +32,13 @@ from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.tool_entities import (
-    ToolInvokeMessage,
     ToolParameter,
     ToolRuntimeVariablePool,
 )
 from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.tools.tool.tool import Tool
 from core.tools.tool_manager import ToolManager
+from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 from extensions.ext_database import db
 from models.model import Conversation, Message, MessageAgentThought
 from models.tools import ToolConversationVariables
@@ -128,6 +128,8 @@ class BaseAgentRunner(AppRunner):
             self.files = application_generate_entity.files
         else:
             self.files = []
+        self.query = None
+        self._current_thoughts: list[PromptMessage] = []
 
     def _repack_app_generate_entity(self, app_generate_entity: AgentChatAppGenerateEntity) \
             -> AgentChatAppGenerateEntity:
@@ -138,24 +140,6 @@ class BaseAgentRunner(AppRunner):
             app_generate_entity.app_config.prompt_template.simple_prompt_template = ''
 
         return app_generate_entity
-
-    def _convert_tool_response_to_str(self, tool_response: list[ToolInvokeMessage]) -> str:
-        """
-        Handle tool response
-        """
-        result = ''
-        for response in tool_response:
-            if response.type == ToolInvokeMessage.MessageType.TEXT:
-                result += response.message
-            elif response.type == ToolInvokeMessage.MessageType.LINK:
-                result += f"result link: {response.message}. please tell user to check it."
-            elif response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
-                 response.type == ToolInvokeMessage.MessageType.IMAGE:
-                result += "image has been created and sent to user already, you do not need to create it, just tell the user to check it now."
-            else:
-                result += f"tool response: {response.message}."
-
-        return result
     
     def _convert_tool_to_prompt_message_tool(self, tool: AgentToolEntity) -> tuple[PromptMessageTool, Tool]:
         """
@@ -165,6 +149,7 @@ class BaseAgentRunner(AppRunner):
             tenant_id=self.tenant_id,
             app_id=self.app_config.app_id,
             agent_tool=tool,
+            invoke_from=self.application_generate_entity.invoke_from
         )
         tool_entity.load_variables(self.variables_pool)
 
@@ -183,21 +168,11 @@ class BaseAgentRunner(AppRunner):
             if parameter.form != ToolParameter.ToolParameterForm.LLM:
                 continue
 
-            parameter_type = 'string'
+            parameter_type = ToolParameterConverter.get_parameter_type(parameter.type)
             enum = []
-            if parameter.type == ToolParameter.ToolParameterType.STRING:
-                parameter_type = 'string'
-            elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
-                parameter_type = 'boolean'
-            elif parameter.type == ToolParameter.ToolParameterType.NUMBER:
-                parameter_type = 'number'
-            elif parameter.type == ToolParameter.ToolParameterType.SELECT:
-                for option in parameter.options:
-                    enum.append(option.value)
-                parameter_type = 'string'
-            else:
-                raise ValueError(f"parameter type {parameter.type} is not supported")
-            
+            if parameter.type == ToolParameter.ToolParameterType.SELECT:
+                enum = [option.value for option in parameter.options]
+
             message_tool.parameters['properties'][parameter.name] = {
                 "type": parameter_type,
                 "description": parameter.llm_description or '',
@@ -278,20 +253,10 @@ class BaseAgentRunner(AppRunner):
             if parameter.form != ToolParameter.ToolParameterForm.LLM:
                 continue
 
-            parameter_type = 'string'
+            parameter_type = ToolParameterConverter.get_parameter_type(parameter.type)
             enum = []
-            if parameter.type == ToolParameter.ToolParameterType.STRING:
-                parameter_type = 'string'
-            elif parameter.type == ToolParameter.ToolParameterType.BOOLEAN:
-                parameter_type = 'boolean'
-            elif parameter.type == ToolParameter.ToolParameterType.NUMBER:
-                parameter_type = 'number'
-            elif parameter.type == ToolParameter.ToolParameterType.SELECT:
-                for option in parameter.options:
-                    enum.append(option.value)
-                parameter_type = 'string'
-            else:
-                raise ValueError(f"parameter type {parameter.type} is not supported")
+            if parameter.type == ToolParameter.ToolParameterType.SELECT:
+                enum = [option.value for option in parameter.options]
         
             prompt_tool.parameters['properties'][parameter.name] = {
                 "type": parameter_type,
@@ -463,7 +428,7 @@ class BaseAgentRunner(AppRunner):
         for message in messages:
             if message.id == self.message.id:
                 continue
-            
+
             result.append(self.organize_agent_user_prompt(message))
             agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
             if agent_thoughts:

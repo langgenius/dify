@@ -7,11 +7,13 @@ import {
   useWorkflow,
 } from '../../hooks'
 import { useStore } from '../../store'
+import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import type { QuestionClassifierNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 
 const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -67,7 +69,6 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
       draft.query_variable_selector = newVar as ValueSelector
     })
     setInputs(newInputs)
-    // console.log(newInputs.query_variable_selector)
   }, [inputs, setInputs])
 
   useEffect(() => {
@@ -93,6 +94,24 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const filterInputVar = useCallback((varPayload: Var) => {
+    return [VarType.number, VarType.string].includes(varPayload.type)
+  }, [])
+
+  const {
+    availableVars,
+    availableNodesWithParent,
+  } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: filterInputVar,
+  })
+
+  const hasSetBlockStatus = {
+    history: false,
+    query: isChatMode ? checkHasQueryBlock(inputs.instruction) : false,
+    context: false,
+  }
+
   const handleInstructionChange = useCallback((instruction: string) => {
     const newInputs = produce(inputs, (draft) => {
       draft.instruction = instruction
@@ -111,6 +130,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const {
     isShowSingleRun,
     hideSingleRun,
+    getInputVars,
     runningStatus,
     handleRun,
     handleStop,
@@ -133,6 +153,22 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     })
   }, [runInputData, setRunInputData])
 
+  const varInputs = getInputVars([inputs.instruction])
+  const inputVarValues = (() => {
+    const vars: Record<string, any> = {
+      query,
+    }
+    Object.keys(runInputData)
+      .forEach((key) => {
+        vars[key] = runInputData[key]
+      })
+    return vars
+  })()
+
+  const setInputVarValues = useCallback((newPayload: Record<string, any>) => {
+    setRunInputData(newPayload)
+  }, [setRunInputData])
+
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string
   }, [])
@@ -147,7 +183,13 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     handleQueryVarChange,
     filterVar,
     handleTopicsChange: handleClassesChange,
+    hasSetBlockStatus,
+    availableVars,
+    availableNodesWithParent,
     handleInstructionChange,
+    varInputs,
+    inputVarValues,
+    setInputVarValues,
     handleMemoryChange,
     isShowSingleRun,
     hideSingleRun,

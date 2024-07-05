@@ -1,23 +1,27 @@
 'use client'
 import type { FC } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import React, { useEffect } from 'react'
-import Tools from '@/app/components/tools'
-import { LOC } from '@/app/components/tools/types'
+import ToolProviderList from '@/app/components/tools/provider-list'
+import { useAppContext } from '@/context/app-context'
 
 const Layout: FC = () => {
   const { t } = useTranslation()
+  const router = useRouter()
+  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
   useEffect(() => {
     document.title = `${t('tools.title')} - Dify`
+    if (isCurrentWorkspaceDatasetOperator)
+      return router.replace('/datasets')
   }, [])
 
-  return (
-    <div className='overflow-hidden' style={{
-      height: 'calc(100vh - 56px)',
-    }}>
-      <Tools loc={LOC.tools} />
-    </div>
-  )
+  useEffect(() => {
+    if (isCurrentWorkspaceDatasetOperator)
+      return router.replace('/datasets')
+  }, [isCurrentWorkspaceDatasetOperator])
+
+  return <ToolProviderList />
 }
 export default React.memo(Layout)

@@ -284,6 +284,7 @@ const translation = {
     'varName': 'Variable Name',
     'labelName': 'Label Name',
     'inputPlaceholder': 'Please input',
+    'content': 'Content',
     'required': 'Required',
     'errorMsg': {
       varNameRequired: 'Variable name is required',

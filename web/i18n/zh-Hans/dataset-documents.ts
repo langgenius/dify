@@ -4,6 +4,7 @@ const translation = {
     desc: '知识库的所有文件都在这里显示，整个知识库都可以链接到 Dify 引用或通过 Chat 插件进行索引。',
     addFile: '添加文件',
     addPages: '添加页面',
+    addUrl: '添加 URL',
     table: {
       header: {
         fileName: '文件名',
@@ -13,6 +14,8 @@ const translation = {
         status: '状态',
         action: '操作',
       },
+      rename: '重命名',
+      name: '名称',
     },
     action: {
       uploadFile: '上传新文件',

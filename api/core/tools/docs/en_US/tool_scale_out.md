@@ -5,6 +5,7 @@ Here, we will use GoogleSearch as an example to demonstrate how to quickly integ
 ## 1. Prepare the Tool Provider yaml
 
 ### Introduction
+
 This yaml declares a new tool provider, and includes information like the provider's name, icon, author, and other details that are fetched by the frontend for display.
 
 ### Example
@@ -24,16 +25,41 @@ identity: # Basic information of the tool provider
     en_US: Google # English description
     zh_Hans: Google # Chinese description
   icon: icon.svg # Icon, needs to be placed in the _assets folder of the current module
+  tags:
+    - search
 
 ```
- - The `identity` field is mandatory, it contains the basic information of the tool provider, including author, name, label, description, icon, etc.
-    - The icon needs to be placed in the `_assets` folder of the current module, you can refer to [here](../../provider/builtin/google/_assets/icon.svg).
+
+- The `identity` field is mandatory, it contains the basic information of the tool provider, including author, name, label, description, icon, etc.
+  - The icon needs to be placed in the `_assets` folder of the current module, you can refer to [here](../../provider/builtin/google/_assets/icon.svg).
+  - The `tags` field is optional, it is used to classify the provider, and the frontend can filter the provider according to the tag, for all tags, they have been listed below:
+
+    ```python
+    class ToolLabelEnum(Enum):
+      SEARCH = 'search'
+      IMAGE = 'image'
+      VIDEOS = 'videos'
+      WEATHER = 'weather'
+      FINANCE = 'finance'
+      DESIGN = 'design'
+      TRAVEL = 'travel'
+      SOCIAL = 'social'
+      NEWS = 'news'
+      MEDICAL = 'medical'
+      PRODUCTIVITY = 'productivity'
+      EDUCATION = 'education'
+      BUSINESS = 'business'
+      ENTERTAINMENT = 'entertainment'
+      UTILITIES = 'utilities'
+      OTHER = 'other'
+    ```
 
 ## 2. Prepare Provider Credentials
 
 Google, as a third-party tool, uses the API provided by SerpApi, which requires an API Key to use. This means that this tool needs a credential to use. For tools like `wikipedia`, there is no need to fill in the credential field, you can refer to [here](../../provider/builtin/wikipedia/wikipedia.yaml).
 
 After configuring the credential field, the effect is as follows:
+
 ```yaml
 identity:
   author: Dify
@@ -65,6 +91,7 @@ credentials_for_provider: # Credential field
 - `type`: Credential field type, currently can be either `secret-input`, `text-input`, or `select` , corresponding to password input box, text input box, and drop-down box, respectively. If set to `secret-input`, it will mask the input content on the frontend, and the backend will encrypt the input content.
 
 ## 3. Prepare Tool yaml
+
 A provider can have multiple tools, each tool needs a yaml file to describe, this file contains the basic information, parameters, output, etc. of the tool.
 
 Still taking GoogleSearch as an example, we need to create a `tools` module under the `google` module, and create `tools/google_search.yaml`, the content is as follows.
@@ -118,21 +145,22 @@ parameters: # Parameter list
 
 - The `identity` field is mandatory, it contains the basic information of the tool, including name, author, label, description, etc.
 - `parameters` Parameter list
-    - `name` Parameter name, unique, no duplication with other parameters
-    - `type` Parameter type, currently supports `string`, `number`, `boolean`, `select`, `secret-input` four types, corresponding to string, number, boolean, drop-down box, and encrypted input box, respectively. For sensitive information, we recommend using `secret-input` type
-    - `required` Required or not
-        - In `llm` mode, if the parameter is required, the Agent is required to infer this parameter
-        - In `form` mode, if the parameter is required, the user is required to fill in this parameter on the frontend before the conversation starts
-    - `options` Parameter options
-        - In `llm` mode, Dify will pass all options to LLM, LLM can infer based on these options
-        - In `form` mode, when `type` is `select`, the frontend will display these options
-    - `default` Default value
-    - `label` Parameter label, for frontend display
-    - `human_description` Introduction for frontend display, supports multiple languages
-    - `llm_description` Introduction passed to LLM, in order to make LLM better understand this parameter, we suggest to write as detailed information about this parameter as possible here, so that LLM can understand this parameter
-    - `form` Form type, currently supports `llm`, `form` two types, corresponding to Agent self-inference and frontend filling
+  - `name` Parameter name, unique, no duplication with other parameters
+  - `type` Parameter type, currently supports `string`, `number`, `boolean`, `select`, `secret-input` four types, corresponding to string, number, boolean, drop-down box, and encrypted input box, respectively. For sensitive information, we recommend using `secret-input` type
+  - `required` Required or not
+    - In `llm` mode, if the parameter is required, the Agent is required to infer this parameter
+    - In `form` mode, if the parameter is required, the user is required to fill in this parameter on the frontend before the conversation starts
+  - `options` Parameter options
+    - In `llm` mode, Dify will pass all options to LLM, LLM can infer based on these options
+    - In `form` mode, when `type` is `select`, the frontend will display these options
+  - `default` Default value
+  - `label` Parameter label, for frontend display
+  - `human_description` Introduction for frontend display, supports multiple languages
+  - `llm_description` Introduction passed to LLM, in order to make LLM better understand this parameter, we suggest to write as detailed information about this parameter as possible here, so that LLM can understand this parameter
+  - `form` Form type, currently supports `llm`, `form` two types, corresponding to Agent self-inference and frontend filling
 
 ## 4. Add Tool Logic
+
 After completing the tool configuration, we can start writing the tool code that defines how it is invoked.
 
 Create `google_search.py` under the `google/tools` module, the content is as follows.
@@ -154,7 +182,7 @@ class GoogleSearchTool(BuiltinTool):
         query = tool_parameters['query']
         result_type = tool_parameters['result_type']
         api_key = self.runtime.credentials['serpapi_api_key']
-        # TODO: search with serpapi
+        # Search with serpapi
         result = SerpAPI(api_key).run(query, result_type=result_type)
 
         if result_type == 'text':
@@ -163,12 +191,15 @@ class GoogleSearchTool(BuiltinTool):
 ```
 
 ### Parameters
+
 The overall logic of the tool is in the `_invoke` method, this method accepts two parameters: `user_id` and `tool_parameters`, which represent the user ID and tool parameters respectively
 
 ### Return Data
+
 When the tool returns, you can choose to return one message or multiple messages, here we return one message, using `create_text_message` and `create_link_message` can create a text message or a link message.
 
 ## 5. Add Provider Code
+
 Finally, we need to create a provider class under the provider module to implement the provider's credential verification logic. If the credential verification fails, it will throw a `ToolProviderCredentialValidationError` exception.
 
 Create `google.py` under the `google` module, the content is as follows.
@@ -205,6 +236,7 @@ class GoogleProvider(BuiltinToolProviderController):
 ```
 
 ## Completion
+
 After the above steps are completed, we can see this tool on the frontend, and it can be used in the Agent.
 
 Of course, because google_search needs a credential, before using it, you also need to input your credentials on the frontend.

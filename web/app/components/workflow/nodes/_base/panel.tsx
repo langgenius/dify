@@ -7,34 +7,38 @@ import {
   memo,
   useCallback,
 } from 'react'
+import {
+  RiCloseLine,
+  RiPlayLargeLine,
+} from '@remixicon/react'
 import cn from 'classnames'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import NextStep from './components/next-step'
 import PanelOperator from './components/panel-operator'
+import HelpLink from './components/help-link'
 import {
   DescriptionInput,
   TitleInput,
 } from './components/title-description-input'
 import { useResizePanel } from './hooks/use-resize-panel'
-import {
-  XClose,
-} from '@/app/components/base/icons/src/vender/line/general'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
+  WorkflowHistoryEvent,
+  useAvailableBlocks,
   useNodeDataUpdate,
-  useNodesExtraData,
   useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
   useToolIcon,
   useWorkflow,
+  useWorkflowHistory,
 } from '@/app/components/workflow/hooks'
 import { canRunBySingle } from '@/app/components/workflow/utils'
-import { Play } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import type { Node } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useStore } from '@/app/components/workflow/store'
 
 type BasePanelProps = {
   children: ReactElement
@@ -49,6 +53,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { showMessageLogModal } = useAppStore(useShallow(state => ({
     showMessageLogModal: state.showMessageLogModal,
   })))
+  const showSingleRunPanel = useStore(s => s.showSingleRunPanel)
   const panelWidth = localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420
   const {
     setPanelWidth,
@@ -56,8 +61,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { handleNodeSelect } = useNodesInteractions()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { nodesReadOnly } = useNodesReadOnly()
-  const nodesExtraData = useNodesExtraData()
-  const availableNextNodes = nodesExtraData[data.type].availableNextNodes
+  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration)
   const toolIcon = useToolIcon(data)
 
   const handleResize = useCallback((width: number) => {
@@ -75,6 +79,8 @@ const BasePanel: FC<BasePanelProps> = ({
     onResize: handleResize,
   })
 
+  const { saveStateToHistory } = useWorkflowHistory()
+
   const {
     handleNodeDataUpdate,
     handleNodeDataUpdateWithSyncDraft,
@@ -82,10 +88,12 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const handleTitleBlur = useCallback((title: string) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { title } })
-  }, [handleNodeDataUpdateWithSyncDraft, id])
+    saveStateToHistory(WorkflowHistoryEvent.NodeTitleChange)
+  }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
   const handleDescriptionChange = useCallback((desc: string) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { desc } })
-  }, [handleNodeDataUpdateWithSyncDraft, id])
+    saveStateToHistory(WorkflowHistoryEvent.NodeDescriptionChange)
+  }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   return (
     <div className={cn(
@@ -99,7 +107,7 @@ const BasePanel: FC<BasePanelProps> = ({
       </div>
       <div
         ref={containerRef}
-        className='relative h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl overflow-y-auto'
+        className={cn('relative h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
           width: `${panelWidth}px`,
         }}
@@ -129,18 +137,19 @@ const BasePanel: FC<BasePanelProps> = ({
                         handleSyncWorkflowDraft(true)
                       }}
                     >
-                      <Play className='w-4 h-4 text-gray-500' />
+                      <RiPlayLargeLine className='w-4 h-4 text-gray-500' />
                     </div>
                   </TooltipPlus>
                 )
               }
-              <PanelOperator id={id} data={data} />
+              <HelpLink nodeType={data.type} />
+              <PanelOperator id={id} data={data} showHelpLink={false} />
               <div className='mx-3 w-[1px] h-3.5 bg-gray-200' />
               <div
                 className='flex items-center justify-center w-6 h-6 cursor-pointer'
                 onClick={() => handleNodeSelect(id, true)}
               >
-                <XClose className='w-4 h-4' />
+                <RiCloseLine className='w-4 h-4' />
               </div>
             </div>
           </div>
@@ -155,7 +164,7 @@ const BasePanel: FC<BasePanelProps> = ({
           {cloneElement(children, { id, data })}
         </div>
         {
-          !!availableNextNodes.length && (
+          !!availableNextBlocks.length && (
             <div className='p-4 border-t-[0.5px] border-t-black/5'>
               <div className='flex items-center mb-1 text-gray-700 text-[13px] font-semibold'>
                 {t('workflow.panel.nextStep').toLocaleUpperCase()}

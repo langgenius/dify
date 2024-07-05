@@ -3,7 +3,7 @@ import {
   getConnectedEdges,
   getOutgoers,
 } from 'reactflow'
-import dagre from 'dagre'
+import dagre from '@dagrejs/dagre'
 import { v4 as uuid4 } from 'uuid'
 import {
   cloneDeep,
@@ -17,6 +17,8 @@ import type {
 } from './types'
 import { BlockEnum } from './types'
 import {
+  CUSTOM_NODE,
+  ITERATION_NODE_Z_INDEX,
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from './constants'
@@ -93,8 +95,19 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
     })
   }
 
+  const iterationNodeMap = nodes.reduce((acc, node) => {
+    if (node.parentId) {
+      if (acc[node.parentId])
+        acc[node.parentId].push(node.id)
+      else
+        acc[node.parentId] = [node.id]
+    }
+    return acc
+  }, {} as Record<string, string[]>)
+
   return nodes.map((node) => {
-    node.type = 'custom'
+    if (!node.type)
+      node.type = CUSTOM_NODE
 
     const connectedEdges = getConnectedEdges([node], edges)
     node.data._connectedSourceHandleIds = connectedEdges.filter(edge => edge.source === node.id).map(edge => edge.sourceHandle || 'source')
@@ -118,6 +131,9 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
         return topic
       })
     }
+
+    if (node.data.type === BlockEnum.Iteration)
+      node.data._children = iterationNodeMap[node.id] || []
 
     return node
   })
@@ -172,19 +188,25 @@ export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
   })
 }
 
-const dagreGraph = new dagre.graphlib.Graph()
-dagreGraph.setDefaultEdgeLabel(() => ({}))
 export const getLayoutByDagre = (originNodes: Node[], originEdges: Edge[]) => {
-  const nodes = cloneDeep(originNodes)
-  const edges = cloneDeep(originEdges)
+  const dagreGraph = new dagre.graphlib.Graph()
+  dagreGraph.setDefaultEdgeLabel(() => ({}))
+  const nodes = cloneDeep(originNodes).filter(node => !node.parentId && node.type === CUSTOM_NODE)
+  const edges = cloneDeep(originEdges).filter(edge => !edge.data?.isInIteration)
   dagreGraph.setGraph({
     rankdir: 'LR',
     align: 'UL',
     nodesep: 40,
     ranksep: 60,
+    ranker: 'tight-tree',
+    marginx: 30,
+    marginy: 200,
   })
   nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: node.width, height: node.height })
+    dagreGraph.setNode(node.id, {
+      width: node.width!,
+      height: node.height!,
+    })
   })
 
   edges.forEach((edge) => {
@@ -204,6 +226,8 @@ export const canRunBySingle = (nodeType: BlockEnum) => {
     || nodeType === BlockEnum.QuestionClassifier
     || nodeType === BlockEnum.HttpRequest
     || nodeType === BlockEnum.Tool
+    || nodeType === BlockEnum.ParameterExtractor
+    || nodeType === BlockEnum.Iteration
 }
 
 type ConnectedSourceOrTargetNodesChange = {
@@ -235,16 +259,20 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
     }
 
     if (sourceNode) {
-      if (type === 'remove')
-        nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]._connectedSourceHandleIds = nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]._connectedSourceHandleIds.filter((handleId: string) => handleId !== edge.sourceHandle)
+      if (type === 'remove') {
+        const index = nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]._connectedSourceHandleIds.findIndex((handleId: string) => handleId === edge.sourceHandle)
+        nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]._connectedSourceHandleIds.splice(index, 1)
+      }
 
       if (type === 'add')
         nodesConnectedSourceOrTargetHandleIdsMap[sourceNode.id]._connectedSourceHandleIds.push(edge.sourceHandle || 'source')
     }
 
     if (targetNode) {
-      if (type === 'remove')
-        nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]._connectedTargetHandleIds = nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]._connectedTargetHandleIds.filter((handleId: string) => handleId !== edge.targetHandle)
+      if (type === 'remove') {
+        const index = nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]._connectedTargetHandleIds.findIndex((handleId: string) => handleId === edge.targetHandle)
+        nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]._connectedTargetHandleIds.splice(index, 1)
+      }
 
       if (type === 'add')
         nodesConnectedSourceOrTargetHandleIdsMap[targetNode.id]._connectedTargetHandleIds.push(edge.targetHandle || 'target')
@@ -254,15 +282,31 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
   return nodesConnectedSourceOrTargetHandleIdsMap
 }
 
-export const generateNewNode = ({ data, position, id }: Pick<Node, 'data' | 'position'> & { id?: string }) => {
+export const generateNewNode = ({ data, position, id, zIndex, type, ...rest }: Omit<Node, 'id'> & { id?: string }) => {
   return {
     id: id || `${Date.now()}`,
-    type: 'custom',
+    type: type || CUSTOM_NODE,
     data,
     position,
     targetPosition: Position.Left,
     sourcePosition: Position.Right,
+    zIndex: data.type === BlockEnum.Iteration ? ITERATION_NODE_Z_INDEX : zIndex,
+    ...rest,
   } as Node
+}
+
+export const genNewNodeTitleFromOld = (oldTitle: string) => {
+  const regex = /^(.+?)\s*\((\d+)\)\s*$/
+  const match = oldTitle.match(regex)
+
+  if (match) {
+    const title = match[1]
+    const num = parseInt(match[2], 10)
+    return `${title} (${num + 1})`
+  }
+  else {
+    return `${oldTitle} (1)`
+  }
 }
 
 export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
@@ -287,11 +331,15 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
     if (outgoers.length) {
       outgoers.forEach((outgoer) => {
         list.push(outgoer)
+        if (outgoer.data.type === BlockEnum.Iteration)
+          list.push(...nodes.filter(node => node.parentId === outgoer.id))
         traverse(outgoer, depth + 1)
       })
     }
     else {
       list.push(root)
+      if (root.data.type === BlockEnum.Iteration)
+        list.push(...nodes.filter(node => node.parentId === root.id))
     }
   }
 
@@ -307,11 +355,12 @@ export const getToolCheckParams = (
   toolData: ToolNodeType,
   buildInTools: ToolWithProvider[],
   customTools: ToolWithProvider[],
+  workflowTools: ToolWithProvider[],
   language: string,
 ) => {
   const { provider_id, provider_type, tool_name } = toolData
   const isBuiltIn = provider_type === CollectionType.builtIn
-  const currentTools = isBuiltIn ? buildInTools : customTools
+  const currentTools = provider_type === CollectionType.builtIn ? buildInTools : provider_type === CollectionType.custom ? customTools : workflowTools
   const currCollection = currentTools.find(item => item.id === provider_id)
   const currTool = currCollection?.tools.find(tool => tool.name === tool_name)
   const formSchemas = currTool ? toolParametersToFormSchemas(currTool.parameters) : []

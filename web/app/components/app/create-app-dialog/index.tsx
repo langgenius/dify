@@ -1,8 +1,8 @@
 'use client'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import NewAppDialog from './newAppDialog'
 import AppList, { PageType } from '@/app/components/explore/app-list'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 type CreateAppDialogProps = {
   show: boolean
@@ -28,7 +28,7 @@ const CreateAppTemplateDialog = ({ show, onSuccess, onClose }: CreateAppDialogPr
         }} pageType={PageType.CREATE} />
       </div>
       <div className='absolute right-6 top-6 p-2 cursor-pointer z-20' onClick={onClose}>
-        <XClose className='w-4 h-4 text-gray-500' />
+        <RiCloseLine className='w-4 h-4 text-gray-500' />
       </div>
     </NewAppDialog>
   )

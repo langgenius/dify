@@ -8,6 +8,7 @@ const translation = {
   deleteDatasetConfirmTitle: 'Delete this Knowledge?',
   deleteDatasetConfirmContent:
     'Deleting the Knowledge is irreversible. Users will no longer be able to access your Knowledge, and all prompt configurations and logs will be permanently deleted.',
+  datasetUsedByApp: 'The knowledge is being used by some apps. Apps will no longer be able to use this Knowledge, and all prompt configurations and logs will be permanently deleted.',
   datasetDeleted: 'Knowledge deleted',
   datasetDeleteFailed: 'Failed to delete Knowledge',
   didYouKnow: 'Did you know?',
@@ -32,7 +33,7 @@ const translation = {
     },
     hybrid_search: {
       title: 'Hybrid Search',
-      description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Configuration of the Rerank model APIis necessary.',
+      description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Configuration of the Rerank model APIs necessary.',
       recommend: 'Recommend',
     },
     invertedIndex: {

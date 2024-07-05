@@ -11,10 +11,10 @@ from models.tools import PublishedAppTool
 
 logger = logging.getLogger(__name__)
 
-class AppBasedToolProviderEntity(ToolProviderController):
+class AppToolProviderEntity(ToolProviderController):
     @property
-    def app_type(self) -> ToolProviderType:
-        return ToolProviderType.APP_BASED
+    def provider_type(self) -> ToolProviderType:
+        return ToolProviderType.APP
     
     def _validate_credentials(self, tool_name: str, credentials: dict[str, Any]) -> None:
         pass

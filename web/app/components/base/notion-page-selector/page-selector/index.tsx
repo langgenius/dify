@@ -10,6 +10,7 @@ import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/com
 
 type PageSelectorProps = {
   value: Set<string>
+  disabledValue: Set<string>
   searchValue: string
   pagesMap: DataSourceNotionPageMap
   list: DataSourceNotionPage[]
@@ -71,6 +72,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
   dataList: NotionPageItem[]
   handleToggle: (index: number) => void
   checkedIds: Set<string>
+  disabledCheckedIds: Set<string>
   handleCheck: (index: number) => void
   canPreview?: boolean
   handlePreview: (index: number) => void
@@ -80,12 +82,13 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
   pagesMap: DataSourceNotionPageMap
 }>) => {
   const { t } = useTranslation()
-  const { dataList, handleToggle, checkedIds, handleCheck, canPreview, handlePreview, listMapWithChildrenAndDescendants, searchValue, previewPageId, pagesMap } = data
+  const { dataList, handleToggle, checkedIds, disabledCheckedIds, handleCheck, canPreview, handlePreview, listMapWithChildrenAndDescendants, searchValue, previewPageId, pagesMap } = data
   const current = dataList[index]
   const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[current.page_id]
   const hasChild = currentWithChildrenAndDescendants.descendants.size > 0
   const ancestors = currentWithChildrenAndDescendants.ancestors
   const breadCrumbs = ancestors.length ? [...ancestors, current.page_name] : [current.page_name]
+  const disabled = disabledCheckedIds.has(current.page_id)
 
   const renderArrow = () => {
     if (hasChild) {
@@ -113,9 +116,17 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       style={{ ...style, top: style.top as number + 8, left: 8, right: 8, width: 'calc(100% - 16px)' }}
     >
       <Checkbox
-        className='shrink-0 mr-2 group-hover:border-primary-600 group-hover:border-[2px]'
+        className={cn(
+          'shrink-0 mr-2 group-hover:border-primary-600 group-hover:border-[2px]',
+          disabled && 'group-hover:border-transparent',
+        )}
         checked={checkedIds.has(current.page_id)}
-        onCheck={() => handleCheck(index)}
+        disabled={disabled}
+        onCheck={() => {
+          if (disabled)
+            return
+          handleCheck(index)
+        }}
       />
       {!searchValue && renderArrow()}
       <NotionIcon
@@ -155,6 +166,7 @@ const Item = memo(ItemComponent, areEqual)
 
 const PageSelector = ({
   value,
+  disabledValue,
   searchValue,
   pagesMap,
   list,
@@ -284,6 +296,7 @@ const PageSelector = ({
         dataList: currentDataList,
         handleToggle,
         checkedIds: value,
+        disabledCheckedIds: disabledValue,
         handleCheck,
         canPreview,
         handlePreview,

@@ -24,21 +24,21 @@ class SearXNGSearchTool(BuiltinTool):
     Tool for performing a search using SearXNG engine.
     """
 
-    SEARCH_TYPE = {
+    SEARCH_TYPE: dict[str, str] = {
         "page": "general",
         "news": "news",
         "image": "images",
         # "video": "videos",
         # "file": "files"
     }
-    LINK_FILED = {
+    LINK_FILED: dict[str, str] = {
         "page": "url",
         "news": "url",
         "image": "img_src",
         # "video": "iframe_src",
         # "file": "magnetlink"
     }
-    TEXT_FILED = {
+    TEXT_FILED: dict[str, str] = {
         "page": "content",
         "news": "content",
         "image": "img_src",
@@ -107,7 +107,7 @@ class SearXNGSearchTool(BuiltinTool):
         if not host:
             raise Exception('SearXNG api is required')
                 
-        query = tool_parameters.get('query', None)
+        query = tool_parameters.get('query')
         if not query:
             return self.create_text_message('Please input query')
                 
@@ -121,4 +121,5 @@ class SearXNGSearchTool(BuiltinTool):
             query=query, 
             search_type=search_type, 
             result_type=result_type, 
-            topK=num_results)
+            topK=num_results
+        )

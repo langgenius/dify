@@ -33,6 +33,10 @@ export const singleNodeRun = (appId: string, nodeId: string, params: object) => 
   return post(`apps/${appId}/workflows/draft/nodes/${nodeId}/run`, { body: params })
 }
 
+export const getIterationSingleNodeRunUrl = (isChatFlow: boolean, appId: string, nodeId: string) => {
+  return `apps/${appId}/${isChatFlow ? 'advanced-chat/' : ''}workflows/draft/iteration/nodes/${nodeId}/run`
+}
+
 export const publishWorkflow = (url: string) => {
   return post<CommonResponse & { created_at: number }>(url)
 }
@@ -49,4 +53,8 @@ export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}
   return get(`apps/${appId}/workflows/default-workflow-block-configs/${blockType}`, {
     params: { q: JSON.stringify(query) },
   })
+}
+
+export const updateWorkflowDraftFromDSL = (appId: string, data: string) => {
+  return post<FetchWorkflowDraftResponse>(`apps/${appId}/workflows/draft/import`, { body: { data } })
 }

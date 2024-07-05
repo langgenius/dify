@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiArrowDownSLine } from '@remixicon/react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import ModelIcon from '../../header/account-setting/model-provider-page/model-icon'
 import Button from '@/app/components/base/button'
@@ -9,7 +10,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useProviderContext } from '@/context/provider-context'
 import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -68,12 +68,12 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
     >
       <PortalToFollowElemTrigger className='w-full' onClick={handleToggle}>
         <Button
-          type='primary'
+          variant='primary'
           disabled={!validModelConfigs.length}
-          className='mt-3 px-3 py-0 w-full h-8 border-[0.5px] border-primary-700 rounded-lg text-[13px] font-medium'
+          className='mt-3 w-full'
         >
           {t('appDebug.operation.applyConfig')}
-          <ChevronDown className='ml-0.5 w-3 h-3' />
+          <RiArrowDownSLine className='ml-0.5 w-3 h-3' />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='mt-1 w-[288px] z-50'>

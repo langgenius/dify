@@ -4,6 +4,7 @@
 - google
 - vertex_ai
 - nvidia
+- nvidia_nim
 - cohere
 - bedrock
 - togetherai
@@ -30,3 +31,5 @@
 - volcengine_maas
 - openai_api_compatible
 - deepseek
+- hunyuan
+- siliconflow

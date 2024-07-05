@@ -4,5 +4,5 @@ model_properties:
   context_size: 8192
 pricing:
   input: '0.0001'
-  unit: '0.001'
+  unit: '0.0001'
   currency: USD

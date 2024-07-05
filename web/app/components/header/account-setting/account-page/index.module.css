@@ -2,3 +2,8 @@
   padding: 24px 32px !important;
   width: 400px !important;
 }
+
+.bg {
+  background: linear-gradient(180deg, rgba(217, 45, 32, 0.05) 0%, rgba(217, 45, 32, 0.00) 24.02%), #F9FAFB;
+}
+

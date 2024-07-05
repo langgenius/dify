@@ -41,6 +41,7 @@ const Annotation: FC<Props> = ({
   const fetchAnnotationConfig = async () => {
     const res = await doFetchAnnotationConfig(appDetail.id)
     setAnnotationConfig(res as AnnotationReplyConfig)
+    return (res as AnnotationReplyConfig).id
   }
   useEffect(() => {
     const isChatApp = appDetail.mode !== 'completion'
@@ -284,9 +285,9 @@ const Annotation: FC<Props> = ({
                 const { job_id: jobId }: any = await updateAnnotationStatus(appDetail.id, AnnotationEnableStatus.enable, embeddingModel, score)
                 await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)
               }
-
+              const annotationId = await fetchAnnotationConfig()
               if (score !== annotationConfig?.score_threshold)
-                await updateAnnotationScore(appDetail.id, annotationConfig?.id || '', score)
+                await updateAnnotationScore(appDetail.id, annotationId, score)
 
               await fetchAnnotationConfig()
               Toast.notify({

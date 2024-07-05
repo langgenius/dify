@@ -30,8 +30,10 @@ import type {
   DefaultModelResponse,
   Model,
   ModelItem,
+  ModelLoadBalancingConfig,
   ModelParameterRule,
   ModelProvider,
+  ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import type { SystemFeatures } from '@/types/feature'
@@ -166,8 +168,22 @@ export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (
   return get<{ data: ModelProvider[] }>(url)
 }
 
-export const fetchModelProviderCredentials: Fetcher<{ credentials?: Record<string, string | undefined | boolean> }, string> = (url) => {
-  return get<{ credentials?: Record<string, string | undefined | boolean> }>(url)
+export type ModelProviderCredentials = {
+  credentials?: Record<string, string | undefined | boolean>
+  load_balancing: ModelLoadBalancingConfig
+}
+export const fetchModelProviderCredentials: Fetcher<ModelProviderCredentials, string> = (url) => {
+  return get<ModelProviderCredentials>(url)
+}
+
+export const fetchModelLoadBalancingConfig: Fetcher<{
+  credentials?: Record<string, string | undefined | boolean>
+  load_balancing: ModelLoadBalancingConfig
+}, string> = (url) => {
+  return get<{
+    credentials?: Record<string, string | undefined | boolean>
+    load_balancing: ModelLoadBalancingConfig
+  }>(url)
 }
 
 export const fetchModelProviderModelList: Fetcher<{ data: ModelItem[] }, string> = (url) => {
@@ -179,6 +195,10 @@ export const fetchModelList: Fetcher<{ data: Model[] }, string> = (url) => {
 }
 
 export const validateModelProvider: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post<ValidateOpenAIKeyResponse>(url, { body })
+}
+
+export const validateModelLoadBalancingCredentials: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {
   return post<ValidateOpenAIKeyResponse>(url, { body })
 }
 
@@ -272,3 +292,9 @@ export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> 
 export const getSystemFeatures = () => {
   return get<SystemFeatures>('/system-features')
 }
+
+export const enableModel = (url: string, body: { model: string; model_type: ModelTypeEnum }) =>
+  patch<CommonResponse>(url, { body })
+
+export const disableModel = (url: string, body: { model: string; model_type: ModelTypeEnum }) =>
+  patch<CommonResponse>(url, { body })

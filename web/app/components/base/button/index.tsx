@@ -1,50 +1,55 @@
-import type { FC, MouseEventHandler } from 'react'
+import type { CSSProperties } from 'react'
 import React from 'react'
+import { type VariantProps, cva } from 'class-variance-authority'
+import classNames from 'classnames'
 import Spinner from '../spinner'
 
-export type IButtonProps = {
-  type?: string
-  className?: string
-  disabled?: boolean
+const buttonVariants = cva(
+  'btn disabled:btn-disabled',
+  {
+    variants: {
+      variant: {
+        'primary': 'btn-primary',
+        'warning': 'btn-warning',
+        'secondary': 'btn-secondary',
+        'secondary-accent': 'btn-secondary-accent',
+        'ghost': 'btn-ghost',
+      },
+      size: {
+        small: 'btn-small',
+        medium: 'btn-medium',
+        large: 'btn-large',
+      },
+    },
+    defaultVariants: {
+      variant: 'secondary',
+      size: 'medium',
+    },
+  },
+)
+
+export type ButtonProps = {
   loading?: boolean
-  tabIndex?: number
-  children: React.ReactNode
-  onClick?: MouseEventHandler<HTMLDivElement>
-}
+  styleCss?: CSSProperties
+} & React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>
 
-const Button: FC<IButtonProps> = ({
-  type,
-  disabled,
-  children,
-  className,
-  onClick,
-  loading = false,
-  tabIndex,
-}) => {
-  let style = 'cursor-pointer'
-  switch (type) {
-    case 'primary':
-      style = (disabled || loading) ? 'btn-primary-disabled' : 'btn-primary'
-      break
-    case 'warning':
-      style = (disabled || loading) ? 'btn-warning-disabled' : 'btn-warning'
-      break
-    default:
-      style = disabled ? 'btn-default-disabled' : 'btn-default'
-      break
-  }
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, loading, styleCss, children, ...props }, ref) => {
+    return (
+      <button
+        type='button'
+        className={classNames(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        style={styleCss}
+        {...props}
+      >
+        {children}
+        <Spinner loading={loading} className='!text-white !h-3 !w-3 !border-2 !ml-1' />
+      </button>
+    )
+  },
+)
+Button.displayName = 'Button'
 
-  return (
-    <div
-      className={`btn ${style} ${className && className}`}
-      tabIndex={tabIndex}
-      onClick={disabled ? undefined : onClick}
-    >
-      {children}
-      {/* Spinner is hidden when loading is false */}
-      <Spinner loading={loading} className='!text-white !h-3 !w-3 !border-2 !ml-1' />
-    </div>
-  )
-}
-
-export default React.memo(Button)
+export default Button
+export { Button, buttonVariants }

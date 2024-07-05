@@ -14,7 +14,7 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
-from services.file_service import ALLOWED_EXTENSIONS, UNSTRUSTURED_ALLOWED_EXTENSIONS, FileService
+from services.file_service import ALLOWED_EXTENSIONS, UNSTRUCTURED_ALLOWED_EXTENSIONS, FileService
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -77,7 +77,7 @@ class FileSupportTypeApi(Resource):
     @account_initialization_required
     def get(self):
         etl_type = current_app.config['ETL_TYPE']
-        allowed_extensions = UNSTRUSTURED_ALLOWED_EXTENSIONS if etl_type == 'Unstructured' else ALLOWED_EXTENSIONS
+        allowed_extensions = UNSTRUCTURED_ALLOWED_EXTENSIONS if etl_type == 'Unstructured' else ALLOWED_EXTENSIONS
         return {'allowed_extensions': allowed_extensions}
 
 

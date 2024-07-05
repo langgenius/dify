@@ -1,0 +1,14 @@
+identity:
+  author: Doug Lea
+  name: feishu_base
+  label:
+    en_US: Feishu Base
+    zh_Hans: 飞书多维表格
+  description:
+    en_US: Feishu Base
+    zh_Hans: 飞书多维表格
+  icon: icon.svg
+  tags:
+    - social
+    - productivity
+credentials_for_provider:

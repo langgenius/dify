@@ -28,10 +28,13 @@ class AgentChatAppRunner(AppRunner):
     """
     Agent Application Runner
     """
-    def run(self, application_generate_entity: AgentChatAppGenerateEntity,
-            queue_manager: AppQueueManager,
-            conversation: Conversation,
-            message: Message) -> None:
+
+    def run(
+        self, application_generate_entity: AgentChatAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        conversation: Conversation,
+        message: Message,
+    ) -> None:
         """
         Run assistant application
         :param application_generate_entity: application generate entity
@@ -58,7 +61,7 @@ class AgentChatAppRunner(AppRunner):
         # Not Include: memory, external data, dataset context
         self.get_pre_calculate_rest_tokens(
             app_record=app_record,
-            model_config=application_generate_entity.model_config,
+            model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
             inputs=inputs,
             files=files,
@@ -69,8 +72,8 @@ class AgentChatAppRunner(AppRunner):
         if application_generate_entity.conversation_id:
             # get memory of conversation (read-only)
             model_instance = ModelInstance(
-                provider_model_bundle=application_generate_entity.model_config.provider_model_bundle,
-                model=application_generate_entity.model_config.model
+                provider_model_bundle=application_generate_entity.model_conf.provider_model_bundle,
+                model=application_generate_entity.model_conf.model
             )
 
             memory = TokenBufferMemory(
@@ -83,7 +86,7 @@ class AgentChatAppRunner(AppRunner):
         #          memory(optional)
         prompt_messages, _ = self.organize_prompt_messages(
             app_record=app_record,
-            model_config=application_generate_entity.model_config,
+            model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
             inputs=inputs,
             files=files,
@@ -100,6 +103,7 @@ class AgentChatAppRunner(AppRunner):
                 app_generate_entity=application_generate_entity,
                 inputs=inputs,
                 query=query,
+                message_id=message.id
             )
         except ModerationException as e:
             self.direct_output(
@@ -152,7 +156,7 @@ class AgentChatAppRunner(AppRunner):
         #          memory(optional), external data, dataset context(optional)
         prompt_messages, _ = self.organize_prompt_messages(
             app_record=app_record,
-            model_config=application_generate_entity.model_config,
+            model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
             inputs=inputs,
             files=files,
@@ -182,12 +186,12 @@ class AgentChatAppRunner(AppRunner):
 
         # init model instance
         model_instance = ModelInstance(
-            provider_model_bundle=application_generate_entity.model_config.provider_model_bundle,
-            model=application_generate_entity.model_config.model
+            provider_model_bundle=application_generate_entity.model_conf.provider_model_bundle,
+            model=application_generate_entity.model_conf.model
         )
         prompt_message, _ = self.organize_prompt_messages(
             app_record=app_record,
-            model_config=application_generate_entity.model_config,
+            model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
             inputs=inputs,
             files=files,
@@ -199,7 +203,7 @@ class AgentChatAppRunner(AppRunner):
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
 
-        if set([ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL]).intersection(model_schema.features or []):
+        if {ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL}.intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING
 
         conversation = db.session.query(Conversation).filter(Conversation.id == conversation.id).first()
@@ -219,13 +223,13 @@ class AgentChatAppRunner(AppRunner):
             runner_cls = FunctionCallAgentRunner
         else:
             raise ValueError(f"Invalid agent strategy: {agent_entity.strategy}")
-        
+
         runner = runner_cls(
             tenant_id=app_config.tenant_id,
             application_generate_entity=application_generate_entity,
             conversation=conversation,
             app_config=app_config,
-            model_config=application_generate_entity.model_config,
+            model_config=application_generate_entity.model_conf,
             config=agent_entity,
             queue_manager=queue_manager,
             message=message,

@@ -5,8 +5,10 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 export enum DataSourceType {
   FILE = 'upload_file',
   NOTION = 'notion_import',
-  WEB = 'web_import',
+  WEB = 'website_crawl',
 }
+
+export type DatasetPermission = 'only_me' | 'all_team_members' | 'partial_members'
 
 export type DataSet = {
   id: string
@@ -14,7 +16,7 @@ export type DataSet = {
   icon: string
   icon_background: string
   description: string
-  permission: 'only_me' | 'all_team_members'
+  permission: DatasetPermission
   data_source_type: DataSourceType
   indexing_technique: 'high_quality' | 'economy'
   created_by: string
@@ -29,6 +31,7 @@ export type DataSet = {
   retrieval_model_dict: RetrievalConfig
   retrieval_model: RetrievalConfig
   tags: Tag[]
+  partial_member_list?: any[]
 }
 
 export type CustomFile = File & {
@@ -37,6 +40,22 @@ export type CustomFile = File & {
   mime_type?: string
   created_by?: string
   created_at?: number
+}
+
+export type CrawlOptions = {
+  crawl_sub_pages: boolean
+  only_main_content: boolean
+  includes: string
+  excludes: string
+  limit: number | string
+  max_depth: number | string
+}
+
+export type CrawlResultItem = {
+  title: string
+  markdown: string
+  description: string
+  source_url: string
 }
 
 export type FileItem = {
@@ -149,6 +168,8 @@ export type DataSourceInfo = {
     extension: string
   }
   notion_page_icon?: string
+  job_id: string
+  url: string
 }
 
 export type InitialDocumentDetail = {
@@ -178,6 +199,12 @@ export type SimpleDocumentDetail = InitialDocumentDetail & {
   updated_at: number
   hit_count: number
   dataset_process_rule_id?: string
+  data_source_detail_dict?: {
+    upload_file: {
+      name: string
+      extension: string
+    }
+  }
 }
 
 export type DocumentListResponse = {
@@ -212,6 +239,11 @@ export type DataSource = {
     notion_info_list?: NotionInfo[]
     file_info_list?: {
       file_ids: string[]
+    }
+    website_info_list?: {
+      provider: string
+      job_id: string
+      urls: string[]
     }
   }
 }

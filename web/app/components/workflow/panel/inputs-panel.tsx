@@ -46,7 +46,7 @@ const InputsPanel = ({ onRun }: Props) => {
         {
           type: InputVarType.files,
           variable: '__image',
-          required: true,
+          required: false,
           label: 'files',
         },
       ]
@@ -103,9 +103,9 @@ const InputsPanel = ({ onRun }: Props) => {
       </div>
       <div className='flex items-center justify-between px-4 py-2'>
         <Button
-          type='primary'
+          variant='primary'
           disabled={!canRun || workflowRunningData?.result?.status === WorkflowRunningStatus.Running}
-          className='py-0 w-full h-8 rounded-lg text-[13px] font-medium'
+          className='w-full'
           onClick={doRun}
         >
           {t('workflow.singleRun.startRun')}

@@ -2,8 +2,9 @@ const translation = {
   list: {
     title: 'Documents',
     desc: 'All files of the Knowledge are shown here, and the entire Knowledge can be linked to Dify citations or indexed via the Chat plugin.',
-    addFile: 'add file',
+    addFile: 'Add file',
     addPages: 'Add Pages',
+    addUrl: 'Add URL',
     table: {
       header: {
         fileName: 'FILE NAME',
@@ -13,6 +14,8 @@ const translation = {
         status: 'STATUS',
         action: 'ACTION',
       },
+      rename: 'Rename',
+      name: 'Name',
     },
     action: {
       uploadFile: 'Upload new file',

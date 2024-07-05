@@ -9,7 +9,7 @@ import TextGenerationRes from '@/app/components/app/text-generate/item'
 import NoData from '@/app/components/share/text-generation/no-data'
 import Toast from '@/app/components/base/toast'
 import { sendCompletionMessage, sendWorkflowMessage, updateFeedback } from '@/service/share'
-import type { Feedbacktype } from '@/app/components/app/chat/type'
+import type { Feedbacktype } from '@/app/components/base/chat/chat/type'
 import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
@@ -18,6 +18,7 @@ import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/ap
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import { sleep } from '@/utils'
+import type { SiteInfo } from '@/models/share'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -42,6 +43,7 @@ export type IResultProps = {
   moderationService?: (text: string) => ReturnType<ModerationService>
   visionConfig: VisionSettings
   completionFiles: VisionFile[]
+  siteInfo: SiteInfo | null
 }
 
 const Result: FC<IResultProps> = ({
@@ -65,6 +67,7 @@ const Result: FC<IResultProps> = ({
   onCompleted,
   visionConfig,
   completionFiles,
+  siteInfo,
 }) => {
   const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
   useEffect(() => {
@@ -192,6 +195,8 @@ const Result: FC<IResultProps> = ({
     })()
 
     if (isWorkflow) {
+      let isInIteration = false
+
       sendWorkflowMessage(
         data,
         {
@@ -203,9 +208,35 @@ const Result: FC<IResultProps> = ({
               expand: false,
               resultText: '',
             })
-            setRespondingFalse()
+          },
+          onIterationStart: ({ data }) => {
+            setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+              draft.expand = true
+              draft.tracing!.push({
+                ...data,
+                status: NodeRunningStatus.Running,
+                expand: true,
+              } as any)
+            }))
+            isInIteration = true
+          },
+          onIterationNext: () => {
+          },
+          onIterationFinish: ({ data }) => {
+            setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+              draft.expand = true
+              // const iteration = draft.tracing![draft.tracing!.length - 1]
+              draft.tracing![draft.tracing!.length - 1] = {
+                ...data,
+                expand: !!data.error,
+              } as any
+            }))
+            isInIteration = false
           },
           onNodeStarted: ({ data }) => {
+            if (isInIteration)
+              return
+
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
               draft.expand = true
               draft.tracing!.push({
@@ -216,6 +247,9 @@ const Result: FC<IResultProps> = ({
             }))
           },
           onNodeFinished: ({ data }) => {
+            if (isInIteration)
+              return
+
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
               const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id)
               if (currentIndex > -1 && draft.tracing) {
@@ -234,18 +268,29 @@ const Result: FC<IResultProps> = ({
               return
             if (data.error) {
               notify({ type: 'error', message: data.error })
+              setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+                draft.status = WorkflowRunningStatus.Failed
+              }))
               setRespondingFalse()
               onCompleted(getCompletionRes(), taskId, false)
               isEnd = true
               return
             }
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
-              draft.status = data.error ? WorkflowRunningStatus.Failed : WorkflowRunningStatus.Succeeded
+              draft.status = WorkflowRunningStatus.Succeeded
             }))
-            if (!data.outputs)
+            if (!data.outputs) {
               setCompletionRes('')
-            else
+            }
+            else {
               setCompletionRes(data.outputs)
+              const isStringOutput = Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
+              if (isStringOutput) {
+                setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+                  draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+                }))
+              }
+            }
             setRespondingFalse()
             setMessageId(tempMessageId)
             onCompleted(getCompletionRes(), taskId, true)
@@ -333,12 +378,13 @@ const Result: FC<IResultProps> = ({
       controlClearMoreLikeThis={controlClearMoreLikeThis}
       isShowTextToSpeech={isShowTextToSpeech}
       hideProcessDetail
+      siteInfo={siteInfo}
     />
   )
 
   return (
     <div className={cn(isNoData && !isCallBatchAPI && 'h-full')}>
-      {!isCallBatchAPI && (
+      {!isCallBatchAPI && !isWorkflow && (
         (isResponding && !completionRes)
           ? (
             <div className='flex h-full w-full justify-center items-center'>
@@ -346,13 +392,26 @@ const Result: FC<IResultProps> = ({
             </div>)
           : (
             <>
-              {(isNoData && !workflowProcessData)
+              {(isNoData)
                 ? <NoData />
                 : renderTextGenerationRes()
               }
             </>
           )
       )}
+      {
+        !isCallBatchAPI && isWorkflow && (
+          (isResponding && !workflowProcessData)
+            ? (
+              <div className='flex h-full w-full justify-center items-center'>
+                <Loading type='area' />
+              </div>
+            )
+            : !workflowProcessData
+              ? <NoData />
+              : renderTextGenerationRes()
+        )
+      }
       {isCallBatchAPI && (
         <div className='mt-2'>
           {renderTextGenerationRes()}

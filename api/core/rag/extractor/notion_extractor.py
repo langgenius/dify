@@ -9,7 +9,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import Document as DocumentModel
-from models.source import DataSourceBinding
+from models.source import DataSourceOauthBinding
 
 logger = logging.getLogger(__name__)
 
@@ -345,12 +345,12 @@ class NotionExtractor(BaseExtractor):
 
     @classmethod
     def _get_access_token(cls, tenant_id: str, notion_workspace_id: str) -> str:
-        data_source_binding = DataSourceBinding.query.filter(
+        data_source_binding = DataSourceOauthBinding.query.filter(
             db.and_(
-                DataSourceBinding.tenant_id == tenant_id,
-                DataSourceBinding.provider == 'notion',
-                DataSourceBinding.disabled == False,
-                DataSourceBinding.source_info['workspace_id'] == f'"{notion_workspace_id}"'
+                DataSourceOauthBinding.tenant_id == tenant_id,
+                DataSourceOauthBinding.provider == 'notion',
+                DataSourceOauthBinding.disabled == False,
+                DataSourceOauthBinding.source_info['workspace_id'] == f'"{notion_workspace_id}"'
             )
         ).first()
 

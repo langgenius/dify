@@ -7,6 +7,7 @@ const translation = {
   createDatasetIntro: '자체 텍스트 데이터를 가져오거나 LLM 컨텍스트를 강화하기 위해 웹훅을 통해 실시간 데이터를 기록할 수 있습니다.',
   deleteDatasetConfirmTitle: '이 지식을 삭제하시겠습니까?',
   deleteDatasetConfirmContent: '지식을 삭제하면 다시 되돌릴 수 없습니다. 사용자는 더 이상 귀하의 지식에 액세스할 수 없으며 모든 프롬프트 설정과 로그가 영구적으로 삭제됩니다.',
+  datasetUsedByApp: '이 지식은 일부 앱에서 사용 중입니다. 앱에서 더 이상 이 지식을 사용할 수 없게 되며, 모든 프롬프트 구성 및 로그가 영구적으로 삭제됩니다.',
   datasetDeleted: '지식이 삭제되었습니다',
   datasetDeleteFailed: '지식 삭제에 실패했습니다',
   didYouKnow: '알고 계셨나요?',

@@ -70,7 +70,7 @@ const TagInput: FC<TagInputProps> = ({
   return (
     <div className={cn('flex flex-wrap', !isInWorkflow && 'min-w-[200px]', isSpecialMode ? 'bg-gray-100 rounded-lg pb-1 pl-1' : '')}>
       {
-        items.map((item, index) => (
+        (items || []).map((item, index) => (
           <div
             key={item}
             className={cn('flex items-center mr-1 mt-1 px-2 py-1 text-sm text-gray-700 border border-gray-200', isSpecialMode ? 'bg-white rounded-md' : 'rounded-lg')}>

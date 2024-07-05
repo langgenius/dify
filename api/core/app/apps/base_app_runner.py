@@ -1,6 +1,6 @@
 import time
 from collections.abc import Generator
-from typing import Optional, Union, cast
+from typing import Optional, Union
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -16,11 +16,11 @@ from core.app.features.hosting_moderation.hosting_moderation import HostingModer
 from core.external_data_tool.external_data_fetch import ExternalDataFetch
 from core.file.file_obj import FileVar
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.invoke import InvokeBadRequestError
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.moderation.input_moderation import InputModeration
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
@@ -45,8 +45,11 @@ class AppRunner:
         :param query: query
         :return:
         """
-        model_type_instance = model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
+        # Invoke model
+        model_instance = ModelInstance(
+            provider_model_bundle=model_config.provider_model_bundle,
+            model=model_config.model
+        )
 
         model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
 
@@ -73,9 +76,7 @@ class AppRunner:
             query=query
         )
 
-        prompt_tokens = model_type_instance.get_num_tokens(
-            model_config.model,
-            model_config.credentials,
+        prompt_tokens = model_instance.get_llm_num_tokens(
             prompt_messages
         )
 
@@ -89,8 +90,10 @@ class AppRunner:
     def recalc_llm_max_tokens(self, model_config: ModelConfigWithCredentialsEntity,
                               prompt_messages: list[PromptMessage]):
         # recalc max_tokens if sum(prompt_token +  max_tokens) over model token limit
-        model_type_instance = model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
+        model_instance = ModelInstance(
+            provider_model_bundle=model_config.provider_model_bundle,
+            model=model_config.model
+        )
 
         model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
 
@@ -107,9 +110,7 @@ class AppRunner:
         if max_tokens is None:
             max_tokens = 0
 
-        prompt_tokens = model_type_instance.get_num_tokens(
-            model_config.model,
-            model_config.credentials,
+        prompt_tokens = model_instance.get_llm_num_tokens(
             prompt_messages
         )
 
@@ -217,7 +218,7 @@ class AppRunner:
             index = 0
             for token in text:
                 chunk = LLMResultChunk(
-                    model=app_generate_entity.model_config.model,
+                    model=app_generate_entity.model_conf.model,
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=index,
@@ -236,7 +237,7 @@ class AppRunner:
         queue_manager.publish(
             QueueMessageEndEvent(
                 llm_result=LLMResult(
-                    model=app_generate_entity.model_config.model,
+                    model=app_generate_entity.model_conf.model,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(content=text),
                     usage=usage if usage else LLMUsage.empty_usage()
@@ -337,11 +338,14 @@ class AppRunner:
             ), PublishFrom.APPLICATION_MANAGER
         )
 
-    def moderation_for_inputs(self, app_id: str,
-                              tenant_id: str,
-                              app_generate_entity: AppGenerateEntity,
-                              inputs: dict,
-                              query: str) -> tuple[bool, dict, str]:
+    def moderation_for_inputs(
+            self, app_id: str,
+            tenant_id: str,
+            app_generate_entity: AppGenerateEntity,
+            inputs: dict,
+            query: str,
+            message_id: str,
+    ) -> tuple[bool, dict, str]:
         """
         Process sensitive_word_avoidance.
         :param app_id: app id
@@ -349,6 +353,7 @@ class AppRunner:
         :param app_generate_entity: app generate entity
         :param inputs: inputs
         :param query: query
+        :param message_id: message id
         :return:
         """
         moderation_feature = InputModeration()
@@ -357,7 +362,9 @@ class AppRunner:
             tenant_id=tenant_id,
             app_config=app_generate_entity.app_config,
             inputs=inputs,
-            query=query if query else ''
+            query=query if query else '',
+            message_id=message_id,
+            trace_manager=app_generate_entity.trace_manager
         )
     
     def check_hosting_moderation(self, application_generate_entity: EasyUIBasedAppGenerateEntity,

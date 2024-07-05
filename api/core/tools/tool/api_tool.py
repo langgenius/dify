@@ -1,16 +1,13 @@
 import json
-from json import dumps
 from os import getenv
-from typing import Any, Union
+from typing import Any
 from urllib.parse import urlencode
 
 import httpx
-import requests
 
 import core.helper.ssrf_proxy as ssrf_proxy
-from core.tools.entities.tool_bundle import ApiBasedToolBundle
+from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
-from core.tools.entities.user_entities import UserToolProvider
 from core.tools.errors import ToolInvokeError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.tool.tool import Tool
 
@@ -19,13 +16,15 @@ API_TOOL_DEFAULT_TIMEOUT = (
     int(getenv('API_TOOL_DEFAULT_READ_TIMEOUT', '60'))
 )
 
+
 class ApiTool(Tool):
-    api_bundle: ApiBasedToolBundle
-    
+    api_bundle: ApiToolBundle
+
     """
     Api tool
     """
-    def fork_tool_runtime(self, meta: dict[str, Any]) -> 'Tool':
+
+    def fork_tool_runtime(self, runtime: dict[str, Any]) -> 'Tool':
         """
             fork a new tool with meta data
 
@@ -33,14 +32,15 @@ class ApiTool(Tool):
             :return: the new tool
         """
         return self.__class__(
-            identity=self.identity.copy() if self.identity else None,
+            identity=self.identity.model_copy() if self.identity else None,
             parameters=self.parameters.copy() if self.parameters else None,
-            description=self.description.copy() if self.description else None,
-            api_bundle=self.api_bundle.copy() if self.api_bundle else None,
-            runtime=Tool.Runtime(**meta)
+            description=self.description.model_copy() if self.description else None,
+            api_bundle=self.api_bundle.model_copy() if self.api_bundle else None,
+            runtime=Tool.Runtime(**runtime)
         )
-    
-    def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any], format_only: bool = False) -> str:
+
+    def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any],
+                             format_only: bool = False) -> str:
         """
             validate the credentials for Api tool
         """
@@ -48,14 +48,14 @@ class ApiTool(Tool):
         headers = self.assembling_request(parameters)
 
         if format_only:
-            return
+            return ''
 
         response = self.do_http_request(self.api_bundle.server_url, self.api_bundle.method, headers, parameters)
         # validate response
         return self.validate_and_parse_response(response)
 
     def tool_provider_type(self) -> ToolProviderType:
-        return UserToolProvider.ProviderType.API
+        return ToolProviderType.API
 
     def assembling_request(self, parameters: dict[str, Any]) -> dict[str, Any]:
         headers = {}
@@ -69,12 +69,12 @@ class ApiTool(Tool):
 
             if 'api_key_header' in credentials:
                 api_key_header = credentials['api_key_header']
-            
+
             if 'api_key_value' not in credentials:
                 raise ToolProviderCredentialValidationError('Missing api_key_value')
             elif not isinstance(credentials['api_key_value'], str):
                 raise ToolProviderCredentialValidationError('api_key_value must be a string')
-            
+
             if 'api_key_header_prefix' in credentials:
                 api_key_header_prefix = credentials['api_key_header_prefix']
                 if api_key_header_prefix == 'basic' and credentials['api_key_value']:
@@ -83,20 +83,20 @@ class ApiTool(Tool):
                     credentials['api_key_value'] = f'Bearer {credentials["api_key_value"]}'
                 elif api_key_header_prefix == 'custom':
                     pass
-            
+
             headers[api_key_header] = credentials['api_key_value']
 
         needed_parameters = [parameter for parameter in self.api_bundle.parameters if parameter.required]
         for parameter in needed_parameters:
             if parameter.required and parameter.name not in parameters:
                 raise ToolParameterValidationError(f"Missing required parameter {parameter.name}")
-            
+
             if parameter.default is not None and parameter.name not in parameters:
                 parameters[parameter.name] = parameter.default
 
         return headers
 
-    def validate_and_parse_response(self, response: Union[httpx.Response, requests.Response]) -> str:
+    def validate_and_parse_response(self, response: httpx.Response) -> str:
         """
             validate the response
         """
@@ -113,23 +113,20 @@ class ApiTool(Tool):
                     return json.dumps(response)
             except Exception as e:
                 return response.text
-        elif isinstance(response, requests.Response):
-            if not response.ok:
-                raise ToolInvokeError(f"Request failed with status code {response.status_code} and {response.text}")
-            if not response.content:
-                return 'Empty response from the tool, please check your parameters and try again.'
-            try:
-                response = response.json()
-                try:
-                    return json.dumps(response, ensure_ascii=False)
-                except Exception as e:
-                    return json.dumps(response)
-            except Exception as e:
-                return response.text
         else:
             raise ValueError(f'Invalid response type {type(response)}')
-    
-    def do_http_request(self, url: str, method: str, headers: dict[str, Any], parameters: dict[str, Any]) -> httpx.Response:
+
+    @staticmethod
+    def get_parameter_value(parameter, parameters):
+        if parameter['name'] in parameters:
+            return parameters[parameter['name']]
+        elif parameter.get('required', False):
+            raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
+        else:
+            return (parameter.get('schema', {}) or {}).get('default', '')
+
+    def do_http_request(self, url: str, method: str, headers: dict[str, Any],
+                        parameters: dict[str, Any]) -> httpx.Response:
         """
             do http request depending on api bundle
         """
@@ -142,44 +139,17 @@ class ApiTool(Tool):
 
         # check parameters
         for parameter in self.api_bundle.openapi.get('parameters', []):
+            value = self.get_parameter_value(parameter, parameters)
             if parameter['in'] == 'path':
-                value = ''
-                if parameter['name'] in parameters:
-                    value = parameters[parameter['name']]
-                elif parameter['required']:
-                    raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
-                else:
-                    value = (parameter.get('schema', {}) or {}).get('default', '')
                 path_params[parameter['name']] = value
 
             elif parameter['in'] == 'query':
-                value = ''
-                if parameter['name'] in parameters:
-                    value = parameters[parameter['name']]
-                elif parameter.get('required', False):
-                    raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
-                else:
-                    value = (parameter.get('schema', {}) or {}).get('default', '')
                 params[parameter['name']] = value
 
             elif parameter['in'] == 'cookie':
-                value = ''
-                if parameter['name'] in parameters:
-                    value = parameters[parameter['name']]
-                elif parameter.get('required', False):
-                    raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
-                else:
-                    value = (parameter.get('schema', {}) or {}).get('default', '')
                 cookies[parameter['name']] = value
 
             elif parameter['in'] == 'header':
-                value = ''
-                if parameter['name'] in parameters:
-                    value = parameters[parameter['name']]
-                elif parameter.get('required', False):
-                    raise ToolParameterValidationError(f"Missing required parameter {parameter['name']}")
-                else:
-                    value = (parameter.get('schema', {}) or {}).get('default', '')
                 headers[parameter['name']] = value
 
         # check if there is a request body and handle it
@@ -189,8 +159,8 @@ class ApiTool(Tool):
                 for content_type in self.api_bundle.openapi['requestBody']['content']:
                     headers['Content-Type'] = content_type
                     body_schema = self.api_bundle.openapi['requestBody']['content'][content_type]['schema']
-                    required = body_schema['required'] if 'required' in body_schema else []
-                    properties = body_schema['properties'] if 'properties' in body_schema else {}
+                    required = body_schema.get('required', [])
+                    properties = body_schema.get('properties', {})
                     for name, property in properties.items():
                         if name in parameters:
                             # convert type
@@ -204,7 +174,7 @@ class ApiTool(Tool):
                         else:
                             body[name] = None
                     break
-        
+
         # replace path parameters
         for name, value in path_params.items():
             url = url.replace(f'{{{name}}}', f'{value}')
@@ -212,33 +182,21 @@ class ApiTool(Tool):
         # parse http body data if needed, for GET/HEAD/OPTIONS/TRACE, the body is ignored
         if 'Content-Type' in headers:
             if headers['Content-Type'] == 'application/json':
-                body = dumps(body)
+                body = json.dumps(body)
             elif headers['Content-Type'] == 'application/x-www-form-urlencoded':
                 body = urlencode(body)
             else:
                 body = body
-        
-        # do http request
-        if method == 'get':
-            response = ssrf_proxy.get(url, params=params, headers=headers, cookies=cookies, timeout=API_TOOL_DEFAULT_TIMEOUT, follow_redirects=True)
-        elif method == 'post':
-            response = ssrf_proxy.post(url, params=params, headers=headers, cookies=cookies, data=body, timeout=API_TOOL_DEFAULT_TIMEOUT, follow_redirects=True)
-        elif method == 'put':
-            response = ssrf_proxy.put(url, params=params, headers=headers, cookies=cookies, data=body, timeout=API_TOOL_DEFAULT_TIMEOUT, follow_redirects=True)
-        elif method == 'delete':
-            response = ssrf_proxy.delete(url, params=params, headers=headers, cookies=cookies, data=body, timeout=API_TOOL_DEFAULT_TIMEOUT, allow_redirects=True)
-        elif method == 'patch':
-            response = ssrf_proxy.patch(url, params=params, headers=headers, cookies=cookies, data=body, timeout=API_TOOL_DEFAULT_TIMEOUT, follow_redirects=True)
-        elif method == 'head':
-            response = ssrf_proxy.head(url, params=params, headers=headers, cookies=cookies, timeout=API_TOOL_DEFAULT_TIMEOUT, follow_redirects=True)
-        elif method == 'options':
-            response = ssrf_proxy.options(url, params=params, headers=headers, cookies=cookies, timeout=API_TOOL_DEFAULT_TIMEOUT, follow_redirects=True)
+
+        if method in ('get', 'head', 'post', 'put', 'delete', 'patch'):
+            response = getattr(ssrf_proxy, method)(url, params=params, headers=headers, cookies=cookies, data=body,
+                                                   timeout=API_TOOL_DEFAULT_TIMEOUT, follow_redirects=True)
+            return response
         else:
-            raise ValueError(f'Invalid http method {method}')
-        
-        return response
-    
-    def _convert_body_property_any_of(self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]], max_recursive=10) -> Any:
+            raise ValueError(f'Invalid http method {self.method}')
+
+    def _convert_body_property_any_of(self, property: dict[str, Any], value: Any, any_of: list[dict[str, Any]],
+                                      max_recursive=10) -> Any:
         if max_recursive <= 0:
             raise Exception("Max recursion depth reached")
         for option in any_of or []:
@@ -323,4 +281,3 @@ class ApiTool(Tool):
 
         # assemble invoke message
         return self.create_text_message(response)
-    
