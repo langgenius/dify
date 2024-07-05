@@ -10,11 +10,11 @@ description:
     zh_Hans: 搜索，并且以Markdown格式输出
   llm: This tool can perform online searches and convert the results to Markdown format.
   parameters:
-  - name: Keyword
+  - name: keyword
     type: string
     required: true
     label:
-      en_US: Keyword
+      en_US: keyword
       zh_Hans: 关键词
     human_description:
       en_US: Input keywords to use Firecrawl API for search.
