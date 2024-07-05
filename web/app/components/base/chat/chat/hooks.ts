@@ -547,11 +547,11 @@ export const useChat = (
             }
           }))
         },
-        onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
+        onTTSChunk: (messageId: string, audio: string) => {
           player.playAudioWithAudio(audio, true)
           AudioPlayerManager.getInstance().resetMsgId(messageId)
         },
-        onTTSEnd: (messageId: string, audio: string, audioType?: string) => {
+        onTTSEnd: (messageId: string, audio: string) => {
           player.playAudioWithAudio(audio, true)
           AudioPlayerManager.getInstance().resetMsgId(messageId)
         },

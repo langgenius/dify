@@ -77,7 +77,6 @@ export default class AudioPlayer {
         callback('ended')
       }, false)
       this.audio.addEventListener('paused', () => {
-        this.isLoadData = false
         callback('paused')
       }, true)
       this.audio.addEventListener('loaded', () => {
@@ -111,6 +110,7 @@ export default class AudioPlayer {
       })
 
       if (audioResponse.status !== 200) {
+        this.isLoadData = false
         if (this.callback)
           this.callback('error')
       }
@@ -135,7 +135,7 @@ export default class AudioPlayer {
   // play audio
   public playAudio() {
     if (this.isLoadData) {
-      if (this.audio.paused) {
+      if (this.audioContext.state === 'suspended') {
         this.audioContext.resume().then((_) => {
           this.audio.play()
           this.callback && this.callback('play')
@@ -163,6 +163,7 @@ export default class AudioPlayer {
   public async playAudioWithAudio(audio: string, play = true) {
     const audioContent = Buffer.from(audio, 'base64')
     this.receiveAudioData(new Uint8Array(audioContent))
+    this.isLoadData = true
 
     if (play) {
       if (this.audio.paused) {
