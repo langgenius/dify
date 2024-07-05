@@ -4,6 +4,7 @@ import time
 from collections.abc import Generator
 from typing import Any, Optional, Union, cast
 
+from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
@@ -204,21 +205,30 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 'text_to_speech'].get('autoPlay') == 'enabled':
             publisher = AppGeneratorTTSPublisher(tenant_id, features_dict['text_to_speech'].get('voice'))
         for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
-            audio_response = self._listenAudioMsg(publisher, task_id=task_id)
-            if audio_response:
-                yield audio_response
+            while True:
+                audio_response = self._listenAudioMsg(publisher, task_id=task_id)
+                if audio_response:
+                    yield audio_response
+                else:
+                    break
             yield response
 
-        while True:
+        start_listener_time = time.time()
+        # timeout
+        while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
             try:
                 if not publisher:
                     break
                 audio_trunk = publisher.checkAndGetAudio()
                 if audio_trunk is None:
+                    # release cpu
+                    # sleep 20 ms ( 40ms => 1280 byte audio file,20ms => 640 byte audio file)
+                    time.sleep(TTS_AUTO_PLAY_YIELD_CPU_TIME)
                     continue
                 if audio_trunk.status == "finish":
                     break
                 else:
+                    start_listener_time = time.time()
                     yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
             except Exception as e:
                 logger.error(e)

@@ -29,12 +29,16 @@ def _invoiceTTS(text_content: str, model_instance, tenant_id: str, voice: str):
 
 def _process_future(future_queue, audio_queue):
     while True:
-        future = future_queue.get()
-        if future is None:
+        try:
+            future = future_queue.get()
+            if future is None:
+                break
+            for audio in future.result():
+                audio_base64 = base64.b64encode(bytes(audio))
+                audio_queue.put(AudioTrunk("responding", audio=audio_base64))
+        except Exception as e:
+            logging.getLogger(__name__).warning(e)
             break
-        for audio in future.result():
-            audio_base64 = base64.b64encode(bytes(audio))
-            audio_queue.put(AudioTrunk("responding", audio=audio_base64))
     audio_queue.put(AudioTrunk("finish", b''))
 
 

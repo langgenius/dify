@@ -4,6 +4,7 @@ import time
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
+from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import (
@@ -225,20 +226,29 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
         if text_to_speech_dict and text_to_speech_dict.get('autoPlay') == 'enabled' and text_to_speech_dict.get('enabled'):
             publisher = AppGeneratorTTSPublisher(tenant_id, text_to_speech_dict.get('voice', None))
         for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
-            audio_response = self._listenAudioMsg(publisher, task_id)
-            if audio_response:
-                yield audio_response
+            while True:
+                audio_response = self._listenAudioMsg(publisher, task_id)
+                if audio_response:
+                    yield audio_response
+                else:
+                    break
             yield response
 
-        while True:
+        start_listener_time = time.time()
+        # timeout
+        while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
             if publisher is None:
                 break
             audio = publisher.checkAndGetAudio()
             if audio is None:
+                # release cpu
+                # sleep 20 ms ( 40ms => 1280 byte audio file,20ms => 640 byte audio file)
+                time.sleep(TTS_AUTO_PLAY_YIELD_CPU_TIME)
                 continue
             if audio.status == "finish":
                 break
             else:
+                start_listener_time = time.time()
                 yield MessageAudioStreamResponse(audio=audio.audio,
                                                  task_id=task_id)
         yield MessageAudioEndStreamResponse(audio='', task_id=task_id)
