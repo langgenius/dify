@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 import CryptoJS from 'crypto-js'
+import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 
 let mermaidAPI: any
 mermaidAPI = null
@@ -23,12 +24,24 @@ const style = {
   overflow: 'auto',
 }
 
+const svgToBase64 = (svgGraph: string) => {
+  const svgBytes = new TextEncoder().encode(svgGraph)
+  const blob = new Blob([svgBytes], { type: 'image/svg+xml;charset=utf-8' })
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
 const Flowchart = React.forwardRef((props: {
   PrimitiveCode: string
 }, ref) => {
   const [svgCode, setSvgCode] = useState(null)
   const chartId = useRef(`flowchart_${CryptoJS.MD5(props.PrimitiveCode).toString()}`)
-  const [isRender, setIsRender] = useState(true)
+  const [isRender, setIsRender] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   const clearFlowchartCache = () => {
     for (let i = localStorage.length - 1; i >= 0; --i) {
@@ -43,14 +56,19 @@ const Flowchart = React.forwardRef((props: {
       const cachedSvg: any = localStorage.getItem(chartId.current)
       if (cachedSvg) {
         setSvgCode(cachedSvg)
+        setIsLoading(false)
         return
       }
 
       if (typeof window !== 'undefined' && mermaidAPI) {
         const svgGraph = await mermaidAPI.render(chartId.current, PrimitiveCode)
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        const dom = new DOMParser().parseFromString(svgGraph.svg, 'text/xml')
+        if (!dom.querySelector('g.main'))
+          throw new Error('empty svg')
+
         const base64Svg: any = await svgToBase64(svgGraph.svg)
         setSvgCode(base64Svg)
+        setIsLoading(false)
         if (chartId.current && base64Svg)
           localStorage.setItem(chartId.current, base64Svg)
       }
@@ -60,17 +78,6 @@ const Flowchart = React.forwardRef((props: {
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       handleReRender()
     }
-  }
-
-  const svgToBase64 = (svgGraph: string) => {
-    const svgBytes = new TextEncoder().encode(svgGraph)
-    const blob = new Blob([svgBytes], { type: 'image/svg+xml;charset=utf-8' })
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onloadend = () => resolve(reader.result)
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
   }
 
   const handleReRender = () => {
@@ -99,9 +106,14 @@ const Flowchart = React.forwardRef((props: {
     <div ref={ref}>
       {
         isRender
-          && <div id={chartId.current} className="mermaid" style={style}>
+          && <div className="mermaid" style={style}>
             {svgCode && <img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="Mermaid chart" />}
           </div>
+      }
+      {isLoading
+        && <div className='py-4 px-[26px]'>
+          <LoadingAnim type='text' />
+        </div>
       }
     </div>
   )

@@ -118,6 +118,7 @@ const FireCrawl: FC<Props> = ({
         ...res,
         total: Math.min(res.total, parseFloat(crawlOptions.limit as string)),
       })
+      onCheckedCrawlResultChange(res.data || []) // default select the crawl result
       await sleep(2500)
       return await waitForCrawlFinished(jobId)
     }
@@ -162,6 +163,7 @@ const FireCrawl: FC<Props> = ({
       }
       else {
         setCrawlResult(data)
+        onCheckedCrawlResultChange(data.data || []) // default select the crawl result
         setCrawlErrorMessage('')
       }
     }
