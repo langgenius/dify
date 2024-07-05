@@ -30,7 +30,7 @@ from .app import (
 )
 
 # Import auth controllers
-from .auth import activate, data_source_bearer_auth, data_source_oauth, login, oauth
+from .auth import activate, data_source_bearer_auth, data_source_oauth, forgot_password, login, oauth
 
 # Import billing controllers
 from .billing import billing
