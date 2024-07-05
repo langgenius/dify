@@ -113,7 +113,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                   ))
                 }
               </div>
-              {!isApp && (
+              {!isApp && isCurrentWorkspaceEditor && (
                 <Menu.Button className='p-1 w-full'>
                   <div onClick={() => onCreate('')} className={cn(
                     'flex items-center gap-2 px-3 py-[6px] rounded-lg cursor-pointer hover:bg-gray-100',

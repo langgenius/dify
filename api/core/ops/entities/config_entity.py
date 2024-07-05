@@ -27,7 +27,7 @@ class LangfuseConfig(BaseTracingConfig):
     def set_value(cls, v, info: ValidationInfo):
         if v is None or v == "":
             v = 'https://api.langfuse.com'
-        if not v.startswith('https://') or not v.startswith('http://'):
+        if not v.startswith('https://') and not v.startswith('http://'):
             raise ValueError('host must start with https:// or http://')
 
         return v
