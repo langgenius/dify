@@ -15,6 +15,8 @@ import type {
 } from '../types'
 import { TransferMethod } from '../types'
 import { useChatWithHistoryContext } from '../chat-with-history/context'
+import type { Theme } from '../embedded-chatbot/theme/theme-context'
+import { CssTransform } from '../embedded-chatbot/theme/utils'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ToastContext } from '@/app/components/base/toast'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -35,11 +37,13 @@ type ChatInputProps = {
   visionConfig?: VisionConfig
   speechToTextConfig?: EnableType
   onSend?: OnSend
+  theme?: Theme | null
 }
 const ChatInput: FC<ChatInputProps> = ({
   visionConfig,
   speechToTextConfig,
   onSend,
+  theme,
 }) => {
   const { appData } = useChatWithHistoryContext()
   const { t } = useTranslation()
@@ -112,14 +116,25 @@ const ChatInput: FC<ChatInputProps> = ({
     })
   }
 
+  const [isActiveIconFocused, setActiveIconFocused] = useState(false)
+
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const sendIconThemeStyle = theme
+    ? {
+      color: (isActiveIconFocused || query || (query.trim() !== '')) ? theme.primaryColor : '#d1d5db',
+    }
+    : {}
   const sendBtn = (
     <div
       className='group flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[#EBF5FF] cursor-pointer'
+      onMouseEnter={() => setActiveIconFocused(true)}
+      onMouseLeave={() => setActiveIconFocused(false)}
       onClick={handleSend}
+      style={isActiveIconFocused ? CssTransform(theme?.chatBubbleColorStyle ?? '') : {}}
     >
       <Send03
+        style={sendIconThemeStyle}
         className={`
           w-5 h-5 text-gray-300 group-hover:text-primary-600
           ${!!query.trim() && 'text-primary-600'}

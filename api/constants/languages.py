@@ -1,7 +1,3 @@
-
-
-languages = ['en-US', 'zh-Hans', 'zh-Hant', 'pt-BR', 'es-ES', 'fr-FR', 'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'uk-UA', 'vi-VN', 'pl-PL', 'hi-IN']
-
 language_timezone_mapping = {
     'en-US': 'America/New_York',
     'zh-Hans': 'Asia/Shanghai',
@@ -20,6 +16,8 @@ language_timezone_mapping = {
     'pl-PL': 'Europe/Warsaw',
     'hi-IN': 'Asia/Kolkata'
 }
+
+languages = list(language_timezone_mapping.keys())
 
 
 def supported_language(lang):

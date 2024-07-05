@@ -37,10 +37,10 @@ class GaodeRepositoriesTool(BuiltinTool):
                                                                    apikey=self.runtime.credentials.get('api_key')))
                     weatherInfo_data = weatherInfo_response.json()
                     if weatherInfo_response.status_code == 200 and weatherInfo_data.get('info') == 'OK':
-                        contents = list()
+                        contents = []
                         if len(weatherInfo_data.get('forecasts')) > 0:
                             for item in weatherInfo_data['forecasts'][0]['casts']:
-                                content = dict()
+                                content = {}
                                 content['date'] = item.get('date')
                                 content['week'] = item.get('week')
                                 content['dayweather'] = item.get('dayweather')

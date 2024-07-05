@@ -7,6 +7,7 @@ from core.app.app_config.entities import AppConfig, EasyUIBasedAppConfig, Workfl
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file.file_obj import FileVar
 from core.model_runtime.entities.model_entities import AIModelEntity
+from core.ops.ops_trace_manager import TraceQueueManager
 
 
 class InvokeFrom(Enum):
@@ -88,6 +89,12 @@ class AppGenerateEntity(BaseModel):
 
     # extra parameters, like: auto_generate_conversation_name
     extras: dict[str, Any] = {}
+
+    # tracing instance
+    trace_manager: Optional[TraceQueueManager] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):

@@ -247,12 +247,14 @@ function AppCard({
         ? (
           <>
             <SettingsModal
+              isChat={appMode === 'chat'}
               appInfo={appInfo}
               isShow={showSettingsModal}
               onClose={() => setShowSettingsModal(false)}
               onSave={onSaveSiteConfig}
             />
             <EmbeddedModal
+              siteInfo={appInfo.site}
               isShow={showEmbedded}
               onClose={() => setShowEmbedded(false)}
               appBaseUrl={app_base_url}

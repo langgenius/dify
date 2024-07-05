@@ -1,9 +1,15 @@
 import { memo } from 'react'
 import { MiniMap } from 'reactflow'
+import UndoRedo from '../header/undo-redo'
 import ZoomInOut from './zoom-in-out'
 import Control from './control'
 
-const Operator = () => {
+export type OperatorProps = {
+  handleUndo: () => void
+  handleRedo: () => void
+}
+
+const Operator = ({ handleUndo, handleRedo }: OperatorProps) => {
   return (
     <>
       <MiniMap
@@ -15,6 +21,7 @@ const Operator = () => {
       />
       <div className='flex items-center mt-1 gap-2 absolute left-4 bottom-4 z-[9]'>
         <ZoomInOut />
+        <UndoRedo handleUndo={handleUndo} handleRedo={handleRedo} />
         <Control />
       </div>
     </>

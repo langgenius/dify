@@ -7,6 +7,7 @@ from configs.middleware.storage.aliyun_oss_storage_config import AliyunOSSStorag
 from configs.middleware.storage.amazon_s3_storage_config import S3StorageConfig
 from configs.middleware.storage.azure_blob_storage_config import AzureBlobStorageConfig
 from configs.middleware.storage.google_cloud_storage_config import GoogleCloudStorageConfig
+from configs.middleware.storage.oci_storage_config import OCIStorageConfig
 from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
 from configs.middleware.vdb.chroma_config import ChromaConfig
 from configs.middleware.vdb.milvus_config import MilvusConfig
@@ -143,7 +144,7 @@ class CeleryConfig(DatabaseConfig):
 
     @computed_field
     @property
-    def CELERY_RESULT_BACKEND(self) -> str:
+    def CELERY_RESULT_BACKEND(self) -> str | None:
         return 'db+{}'.format(self.SQLALCHEMY_DATABASE_URI) \
             if self.CELERY_BACKEND == 'database' else self.CELERY_BROKER_URL
 
@@ -167,6 +168,7 @@ class MiddlewareConfig(
     GoogleCloudStorageConfig,
     TencentCloudCOSStorageConfig,
     S3StorageConfig,
+    OCIStorageConfig,
 
     # configs of vdb and vdb providers
     VectorStoreConfig,

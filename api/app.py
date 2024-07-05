@@ -1,8 +1,8 @@
 import os
 
-from configs.app_config import DifyConfig
+from configs import dify_config
 
-if not os.environ.get("DEBUG") or os.environ.get("DEBUG", "false").lower() != 'true':
+if os.environ.get("DEBUG", "false").lower() != 'true':
     from gevent import monkey
 
     monkey.patch_all()
@@ -43,6 +43,8 @@ from extensions import (
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 from libs.passport import PassportService
+
+# TODO: Find a way to avoid importing models here
 from models import account, dataset, model, source, task, tool, tools, web
 from services.account_service import AccountService
 
@@ -81,7 +83,17 @@ def create_flask_app_with_configs() -> Flask:
     with configs loaded from .env file
     """
     dify_app = DifyApp(__name__)
-    dify_app.config.from_mapping(DifyConfig().model_dump())
+    dify_app.config.from_mapping(dify_config.model_dump())
+
+    # populate configs into system environment variables
+    for key, value in dify_app.config.items():
+        if isinstance(value, str):
+            os.environ[key] = value
+        elif isinstance(value, int | float | bool):
+            os.environ[key] = str(value)
+        elif value is None:
+            os.environ[key] = ''
+
     return dify_app
 
 

@@ -179,6 +179,7 @@ La manière la plus simple de démarrer le serveur Dify est d'exécuter notre fi
 
 ```bash
 cd docker
+cp .env.example .env
 docker compose up -d
 ```
 
@@ -188,15 +189,19 @@ Après l'exécution, vous pouvez accéder au tableau de bord Dify dans votre nav
 
 ## Prochaines étapes
 
-Si vous devez personnaliser la configuration, veuillez
-
- vous référer aux commentaires dans notre fichier [docker-compose.yml](docker/docker-compose.yaml) et définir manuellement la configuration de l'environnement. Après avoir apporté les modifications, veuillez exécuter à nouveau `docker-compose up -d`. Vous pouvez voir la liste complète des variables d'environnement [ici](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+Si vous devez personnaliser la configuration, veuillez vous référer aux commentaires dans notre fichier [.env.example](docker/.env.example) et mettre à jour les valeurs correspondantes dans votre fichier `.env`. De plus, vous devrez peut-être apporter des modifications au fichier `docker-compose.yaml` lui-même, comme changer les versions d'image, les mappages de ports ou les montages de volumes, en fonction de votre environnement de déploiement et de vos exigences spécifiques. Après avoir effectué des modifications, veuillez réexécuter `docker-compose up -d`. Vous pouvez trouver la liste complète des variables d'environnement disponibles [ici](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
 Si vous souhaitez configurer une configuration haute disponibilité, la communauté fournit des [Helm Charts](https://helm.sh/) et des fichiers YAML, à travers lesquels vous pouvez déployer Dify sur Kubernetes.
 
 - [Helm Chart par @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [Helm Chart par @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [Fichier YAML par @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+
+#### Utilisation de Terraform pour le déploiement
+
+##### Azure Global
+Utilisez [terraform](https://www.terraform.io/) pour déployer Dify sur Azure en un clic.
+- [Azure Terraform par @nikawang](https://github.com/nikawang/dify-azure-terraform)
 
 
 ## Contribuer

@@ -15,7 +15,7 @@ class TiDBVectorConfig(BaseModel):
 
     TIDB_VECTOR_PORT: Optional[PositiveInt] = Field(
         description='TiDB Vector port',
-        default=None,
+        default=4000,
     )
 
     TIDB_VECTOR_USER: Optional[str] = Field(
