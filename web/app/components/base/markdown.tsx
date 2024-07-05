@@ -81,7 +81,7 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
 }
 
 export function Markdown(props: { content: string; className?: string }) {
-  const [isSVG, setIsSVG] = useState(false)
+  const [isSVG, setIsSVG] = useState(true)
   return (
     <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown

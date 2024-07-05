@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { memo, useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
 import CryptoJS from 'crypto-js'
+import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 
 let mermaidAPI: any
 mermaidAPI = null
@@ -28,7 +29,8 @@ const Flowchart = React.forwardRef((props: {
 }, ref) => {
   const [svgCode, setSvgCode] = useState(null)
   const chartId = useRef(`flowchart_${CryptoJS.MD5(props.PrimitiveCode).toString()}`)
-  const [isRender, setIsRender] = useState(true)
+  const [isRender, setIsRender] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
   const clearFlowchartCache = () => {
     for (let i = localStorage.length - 1; i >= 0; --i) {
@@ -43,19 +45,25 @@ const Flowchart = React.forwardRef((props: {
       const cachedSvg: any = localStorage.getItem(chartId.current)
       if (cachedSvg) {
         setSvgCode(cachedSvg)
+        setIsLoading(false)
         return
       }
 
       if (typeof window !== 'undefined' && mermaidAPI) {
         const svgGraph = await mermaidAPI.render(chartId.current, PrimitiveCode)
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        const base64Svg: any = await svgToBase64(svgGraph.svg)
-        setSvgCode(base64Svg)
-        if (chartId.current && base64Svg)
-          localStorage.setItem(chartId.current, base64Svg)
+        const dom = new DOMParser().parseFromString(svgGraph.svg, 'text/xml')
+        if (!dom.querySelector('g.main'))
+          throw new Error('empty svg')
+
+        // const base64Svg: any = await svgToBase64(svgGraph.svg)
+        setSvgCode(svgGraph.svg)
+        setIsLoading(false)
+        if (chartId.current && svgGraph.svg)
+          localStorage.setItem(chartId.current, svgGraph.svg)
       }
     }
     catch (error) {
+      console.error('mermaid', (error as Error).message)
       clearFlowchartCache()
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       handleReRender()
@@ -103,8 +111,13 @@ const Flowchart = React.forwardRef((props: {
             {svgCode && <img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="Mermaid chart" />}
           </div>
       }
+      {isLoading
+        && <div className='py-4 px-[26px]'>
+          <LoadingAnim type='text' />
+        </div>
+      }
     </div>
   )
 })
 
-export default Flowchart
+export default memo(Flowchart)
