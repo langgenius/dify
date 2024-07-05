@@ -74,7 +74,7 @@ class TextApi(Resource):
     def post(self, app_model: App, end_user: EndUser):
         try:
             parser = reqparse.RequestParser()
-            parser.add_argument('message_id', type=str, required=True, location='json')
+            parser.add_argument('message_id', type=str, required=False, location='json')
             parser.add_argument('voice', type=str, location='json')
             parser.add_argument('streaming', type=bool, location='json')
             args = parser.parse_args()
