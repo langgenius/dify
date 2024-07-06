@@ -81,6 +81,11 @@ class DatabaseConfig:
         default='',
     )
 
+    DB_EXTRAS: str = Field(
+        description='db extras options. Example: keepalives_idle=60&keepalives=1',
+        default='',
+    )
+
     SQLALCHEMY_DATABASE_URI_SCHEME: str = Field(
         description='db uri scheme',
         default='postgresql',
@@ -89,7 +94,12 @@ class DatabaseConfig:
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
-        db_extras = f"?client_encoding={self.DB_CHARSET}" if self.DB_CHARSET else ""
+        db_extras = (
+            f"{self.DB_EXTRAS}&client_encoding={self.DB_CHARSET}"
+            if self.DB_CHARSET
+            else self.DB_EXTRAS
+        ).strip("&")
+        db_extras = f"?{db_extras}" if db_extras else ""
         return (f"{self.SQLALCHEMY_DATABASE_URI_SCHEME}://"
                 f"{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}"
                 f"{db_extras}")
@@ -114,7 +124,7 @@ class DatabaseConfig:
         default=False,
     )
 
-    SQLALCHEMY_ECHO: bool = Field(
+    SQLALCHEMY_ECHO: bool | str = Field(
         description='whether to enable SqlAlchemy echo',
         default=False,
     )
