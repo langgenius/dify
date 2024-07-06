@@ -29,10 +29,8 @@ class ZhipuAI(HttpClient):
             http_client: httpx.Client | None = None,
             custom_headers: Mapping[str, str] | None = None
     ) -> None:
-        # if api_key is None:
-        #     api_key = os.environ.get("ZHIPUAI_API_KEY")
         if api_key is None:
-            raise ZhipuAIError("未提供api_key，请通过参数或环境变量提供")
+            raise ZhipuAIError("No api_key provided, please provide it through parameters or environment variables")
         self.api_key = api_key
 
         if base_url is None:
