@@ -1,5 +1,4 @@
 import json
-import os
 from copy import deepcopy
 from random import randint
 from typing import Any, Optional, Union
@@ -8,6 +7,7 @@ from urllib.parse import urlencode
 import httpx
 
 import core.helper.ssrf_proxy as ssrf_proxy
+from configs import dify_config
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.variable_pool import ValueType, VariablePool
 from core.workflow.nodes.http_request.entities import (
@@ -18,10 +18,10 @@ from core.workflow.nodes.http_request.entities import (
 )
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
-MAX_BINARY_SIZE = int(os.environ.get('HTTP_REQUEST_NODE_MAX_BINARY_SIZE', 1024 * 1024 * 10))  # 10MB
-READABLE_MAX_BINARY_SIZE = f'{MAX_BINARY_SIZE / 1024 / 1024:.2f}MB'
-MAX_TEXT_SIZE = int(os.environ.get('HTTP_REQUEST_NODE_MAX_TEXT_SIZE', 1024 * 1024))  # 1MB
-READABLE_MAX_TEXT_SIZE = f'{MAX_TEXT_SIZE / 1024 / 1024:.2f}MB'
+MAX_BINARY_SIZE = dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE
+READABLE_MAX_BINARY_SIZE = dify_config.HTTP_REQUEST_NODE_READABLE_MAX_BINARY_SIZE
+MAX_TEXT_SIZE = dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE
+READABLE_MAX_TEXT_SIZE = dify_config.HTTP_REQUEST_NODE_READABLE_MAX_TEXT_SIZE
 
 
 class HttpExecutorResponse:

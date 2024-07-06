@@ -1,3 +1,4 @@
+from pydantic import computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from configs.deploy import DeploymentConfig
@@ -43,3 +44,28 @@ class DifyConfig(
         # ignore extra attributes
         extra='ignore',
     )
+
+    CODE_MAX_NUMBER: int = 9223372036854775807
+    CODE_MIN_NUMBER: int = -9223372036854775808
+    CODE_MAX_STRING_LENGTH: int = 80000
+    CODE_MAX_STRING_ARRAY_LENGTH: int = 30
+    CODE_MAX_OBJECT_ARRAY_LENGTH: int = 30
+    CODE_MAX_NUMBER_ARRAY_LENGTH: int = 1000
+
+    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = 300
+    HTTP_REQUEST_MAX_READ_TIMEOUT: int = 600
+    HTTP_REQUEST_MAX_WRITE_TIMEOUT: int = 600
+    HTTP_REQUEST_NODE_MAX_BINARY_SIZE: int = 1024 * 1024 * 10
+
+    @computed_field
+    def HTTP_REQUEST_NODE_READABLE_MAX_BINARY_SIZE(self) -> str:
+        return f'{self.HTTP_REQUEST_NODE_MAX_BINARY_SIZE / 1024 / 1024:.2f}MB'
+
+    HTTP_REQUEST_NODE_MAX_TEXT_SIZE: int = 1024 * 1024
+
+    @computed_field
+    def HTTP_REQUEST_NODE_READABLE_MAX_TEXT_SIZE(self) -> str:
+        return f'{self.HTTP_REQUEST_NODE_MAX_TEXT_SIZE / 1024 / 1024:.2f}MB'
+
+    SSRF_PROXY_HTTP_URL: str | None = None
+    SSRF_PROXY_HTTPS_URL: str | None = None
