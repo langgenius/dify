@@ -1,5 +1,5 @@
-from pydantic import computed_field, Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, computed_field
+from pydantic_settings import SettingsConfigDict
 
 from configs.deploy import DeploymentConfig
 from configs.enterprise import EnterpriseFeatureConfig
