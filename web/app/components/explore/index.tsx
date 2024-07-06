@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import ExploreContext from '@/context/explore-context'
 import Sidebar from '@/app/components/explore/sidebar'
@@ -17,9 +16,8 @@ const Explore: FC<IExploreProps> = ({
   children,
 }) => {
   const { t } = useTranslation()
-  const router = useRouter()
   const [controlUpdateInstalledApps, setControlUpdateInstalledApps] = useState(0)
-  const { userProfile, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { userProfile } = useAppContext()
   const [hasEditPermission, setHasEditPermission] = useState(false)
   const [installedApps, setInstalledApps] = useState<InstalledApp[]>([])
 
@@ -33,11 +31,6 @@ const Explore: FC<IExploreProps> = ({
       setHasEditPermission(currUser?.role !== 'normal')
     })()
   }, [])
-
-  useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return router.replace('/datasets')
-  }, [isCurrentWorkspaceDatasetOperator])
 
   return (
     <div className='flex h-full bg-gray-100 border-t border-gray-200 overflow-hidden'>

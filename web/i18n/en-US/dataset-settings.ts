@@ -12,8 +12,6 @@ const translation = {
     permissions: 'Permissions',
     permissionsOnlyMe: 'Only me',
     permissionsAllMember: 'All team members',
-    permissionsInvitedMembers: 'Partial team members',
-    me: '(You)',
     indexMethod: 'Index Method',
     indexMethodHighQuality: 'High Quality',
     indexMethodHighQualityTip: 'Call Embedding model for processing to provide higher accuracy when users query.',

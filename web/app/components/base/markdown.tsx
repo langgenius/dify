@@ -103,7 +103,7 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }) => {
-  const [isSVG, setIsSVG] = useState(false)
+  const [isSVG, setIsSVG] = useState(true)
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
