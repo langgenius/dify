@@ -1,6 +1,7 @@
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic import Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic_settings import BaseSettings
 
 from configs.middleware.cache.redis_config import RedisConfig
 from configs.middleware.storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
@@ -22,7 +23,7 @@ from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
 
 
-class StorageConfig(BaseModel):
+class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
         description='storage type,'
                     ' default to `local`,'
@@ -36,14 +37,14 @@ class StorageConfig(BaseModel):
     )
 
 
-class VectorStoreConfig(BaseModel):
+class VectorStoreConfig(BaseSettings):
     VECTOR_STORE: Optional[str] = Field(
         description='vector store type',
         default=None,
     )
 
 
-class KeywordStoreConfig(BaseModel):
+class KeywordStoreConfig(BaseSettings):
     KEYWORD_STORE: str = Field(
         description='keyword store type',
         default='jieba',
