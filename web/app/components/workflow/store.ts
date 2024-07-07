@@ -60,6 +60,7 @@ type Shape = {
     edges: Edge[]
     viewport: Viewport
     features: Record<string, any>
+    environmentVariables: EnvironmentVariable[]
   }
   setBackupDraft: (backupDraft?: Shape['backupDraft']) => void
   notInitialWorkflow: boolean
