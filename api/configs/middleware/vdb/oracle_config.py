@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import Field, PositiveInt
+from pydantic_settings import BaseSettings
 
 
-class OracleConfig(BaseModel):
+class OracleConfig(BaseSettings):
     """
     ORACLE configs
     """
@@ -15,7 +16,7 @@ class OracleConfig(BaseModel):
 
     ORACLE_PORT: Optional[PositiveInt] = Field(
         description='ORACLE port',
-        default=None,
+        default=1521,
     )
 
     ORACLE_USER: Optional[str] = Field(

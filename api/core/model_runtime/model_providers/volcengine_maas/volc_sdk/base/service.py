@@ -150,7 +150,7 @@ class Request:
         self.headers = OrderedDict()
         self.query = OrderedDict()
         self.body = ''
-        self.form = dict()
+        self.form = {}
         self.connection_timeout = 0
         self.socket_timeout = 0
 

@@ -55,7 +55,7 @@ export const fetchSuggestedQuestions = (appId: string, messageId: string, getAbo
   )
 }
 
-export const fetchConvesationMessages = (appId: string, conversation_id: string, getAbortController?: any) => {
+export const fetchConversationMessages = (appId: string, conversation_id: string, getAbortController?: any) => {
   return get(`apps/${appId}/chat-messages`, {
     params: {
       conversation_id,

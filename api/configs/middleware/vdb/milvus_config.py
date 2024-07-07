@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import Field, PositiveInt
+from pydantic_settings import BaseSettings
 
 
-class MilvusConfig(BaseModel):
+class MilvusConfig(BaseSettings):
     """
     Milvus configs
     """
@@ -29,11 +30,11 @@ class MilvusConfig(BaseModel):
     )
 
     MILVUS_SECURE: bool = Field(
-        description='wheter to use SSL connection for Milvus',
+        description='whether to use SSL connection for Milvus',
         default=False,
     )
 
     MILVUS_DATABASE: str = Field(
-        description='Milvus database',
+        description='Milvus database, default to `default`',
         default='default',
     )

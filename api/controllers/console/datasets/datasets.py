@@ -8,7 +8,7 @@ import services
 from controllers.console import api
 from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
-from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError
+from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -226,6 +226,15 @@ class DatasetApi(Resource):
         except services.errors.dataset.DatasetInUseError:
             raise DatasetInUseError()
 
+class DatasetUseCheckApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id):
+        dataset_id_str = str(dataset_id)
+
+        dataset_is_using = DatasetService.dataset_use_check(dataset_id_str)
+        return {'is_using': dataset_is_using}, 200
 
 class DatasetQueryApi(Resource):
 
@@ -346,6 +355,8 @@ class DatasetIndexingEstimateApi(Resource):
                 "in the Settings -> Model Provider.")
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
+        except Exception as e:
+            raise IndexingEstimateError(str(e))
 
         return response, 200
 
@@ -560,6 +571,7 @@ class DatasetErrorDocs(Resource):
 
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
+api.add_resource(DatasetUseCheckApi, '/datasets/<uuid:dataset_id>/use-check')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
 api.add_resource(DatasetErrorDocs, '/datasets/<uuid:dataset_id>/error-docs')
 api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')

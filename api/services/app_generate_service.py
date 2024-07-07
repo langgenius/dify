@@ -18,7 +18,8 @@ class AppGenerateService:
                  user: Union[Account, EndUser],
                  args: Any,
                  invoke_from: InvokeFrom,
-                 streaming: bool = True) -> Union[dict, Generator[dict, None, None]]:
+                 streaming: bool = True,
+                 ) -> Union[dict, Generator[dict, None, None]]:
         """
         App Content Generate
         :param app_model: app model

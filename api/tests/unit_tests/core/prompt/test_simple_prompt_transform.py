@@ -238,8 +238,8 @@ def test__get_completion_model_prompt_messages():
     prompt_rules = prompt_template['prompt_rules']
     full_inputs = {**inputs, '#context#': context, '#query#': query, '#histories#': memory.get_history_prompt_text(
         max_token_limit=2000,
-        human_prefix=prompt_rules['human_prefix'] if 'human_prefix' in prompt_rules else 'Human',
-        ai_prefix=prompt_rules['assistant_prefix'] if 'assistant_prefix' in prompt_rules else 'Assistant'
+        human_prefix=prompt_rules.get("human_prefix", "Human"),
+        ai_prefix=prompt_rules.get("assistant_prefix", "Assistant")
     )}
     real_prompt = prompt_template['prompt_template'].format(full_inputs)
 

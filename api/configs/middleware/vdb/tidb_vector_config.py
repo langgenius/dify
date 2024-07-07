@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import Field, PositiveInt
+from pydantic_settings import BaseSettings
 
 
-class TiDBVectorConfig(BaseModel):
+class TiDBVectorConfig(BaseSettings):
     """
     TiDB Vector configs
     """
@@ -15,7 +16,7 @@ class TiDBVectorConfig(BaseModel):
 
     TIDB_VECTOR_PORT: Optional[PositiveInt] = Field(
         description='TiDB Vector port',
-        default=None,
+        default=4000,
     )
 
     TIDB_VECTOR_USER: Optional[str] = Field(

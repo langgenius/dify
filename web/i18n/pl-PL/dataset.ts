@@ -9,6 +9,7 @@ const translation = {
   deleteDatasetConfirmTitle: 'Czy na pewno usunąć tę Wiedzę?',
   deleteDatasetConfirmContent:
     'Usunięcie Wiedzy jest nieodwracalne. Użytkownicy nie będą już mieli dostępu do Twojej Wiedzy, a wszystkie konfiguracje i logi zostaną trwale usunięte.',
+  datasetUsedByApp: 'Ta wiedza jest wykorzystywana przez niektóre aplikacje. Aplikacje nie będą już mogły korzystać z tej Wiedzy, a wszystkie konfiguracje podpowiedzi i logi zostaną trwale usunięte.',
   datasetDeleted: 'Wiedza usunięta',
   datasetDeleteFailed: 'Nie udało się usunąć Wiedzy',
   didYouKnow: 'Czy wiedziałeś?',

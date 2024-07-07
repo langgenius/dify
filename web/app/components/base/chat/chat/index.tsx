@@ -19,6 +19,7 @@ import type {
   Feedback,
   OnSend,
 } from '../types'
+import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import Question from './question'
 import Answer from './answer'
 import ChatInput from './chat-input'
@@ -57,7 +58,10 @@ export type ChatProps = {
   onFeedback?: (messageId: string, feedback: Feedback) => void
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
+  hideLogModal?: boolean
+  themeBuilder?: ThemeBuilder
 }
+
 const Chat: FC<ChatProps> = ({
   appData,
   config,
@@ -83,6 +87,8 @@ const Chat: FC<ChatProps> = ({
   onFeedback,
   chatAnswerContainerInner,
   hideProcessDetail,
+  hideLogModal,
+  themeBuilder,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -219,6 +225,7 @@ const Chat: FC<ChatProps> = ({
                     key={item.id}
                     item={item}
                     questionIcon={questionIcon}
+                    theme={themeBuilder?.theme}
                   />
                 )
               })
@@ -260,12 +267,13 @@ const Chat: FC<ChatProps> = ({
                   visionConfig={config?.file_upload?.image}
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
+                  theme={themeBuilder?.theme}
                 />
               )
             }
           </div>
         </div>
-        {showPromptLogModal && (
+        {showPromptLogModal && !hideLogModal && (
           <PromptLogModal
             width={width}
             currentLogItem={currentLogItem}
@@ -275,7 +283,7 @@ const Chat: FC<ChatProps> = ({
             }}
           />
         )}
-        {showAgentLogModal && (
+        {showAgentLogModal && !hideLogModal && (
           <AgentLogModal
             width={width}
             currentLogItem={currentLogItem}

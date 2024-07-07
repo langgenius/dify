@@ -10,7 +10,7 @@ import Button from '@/app/components/base/button'
 import { Edit05 } from '@/app/components/base/icons/src/vender/line/general'
 import type { ConversationItem } from '@/models/share'
 import Confirm from '@/app/components/base/confirm'
-import RenameModal from '@/app/components/share/chat/sidebar/rename-modal'
+import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 
 const Sidebar = () => {
   const { t } = useTranslation()

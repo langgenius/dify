@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
-class AzureBlobStorageConfig(BaseModel):
+class AzureBlobStorageConfig(BaseSettings):
     """
     Azure Blob storage configs
     """
@@ -24,6 +25,6 @@ class AzureBlobStorageConfig(BaseModel):
     )
 
     AZURE_BLOB_ACCOUNT_URL: Optional[str] = Field(
-        description='Azure Blob account url',
+        description='Azure Blob account URL',
         default=None,
     )

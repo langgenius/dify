@@ -51,3 +51,8 @@ class MemberNotInTenantError(BaseServiceError):
 
 class RoleAlreadyAssignedError(BaseServiceError):
     pass
+
+
+class RateLimitExceededError(BaseServiceError):
+    pass
+
