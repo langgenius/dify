@@ -20,7 +20,7 @@ class SlackWebhookTool(BuiltinTool):
 
         webhook_url = tool_parameters.get('webhook_url', '')
 
-        if not webhook_url.startswith('https://hooks.slack.com/services/'):
+        if not webhook_url.startswith('https://hooks.slack.com/'):
             return self.create_text_message(
                 f'Invalid parameter webhook_url ${webhook_url}, not a valid Slack webhook URL')
 
