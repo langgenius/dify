@@ -132,7 +132,9 @@ class CodeExecutor:
             raise CodeExecutionException(f'Unsupported language {language}')
 
         runner, preload, dependencies = template_transformer.transform_caller(code, inputs, dependencies)
-
+        for d in dependencies:
+            if d.name=='PyYAML':
+                d.name='yaml'
         try:
             response = cls.execute_code(language, preload, runner, dependencies)
         except CodeExecutionException as e:
