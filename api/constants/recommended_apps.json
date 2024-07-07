@@ -363,8 +363,55 @@
                     "privacy_policy": null
                 }
             ]
+        },
+        "zh-Hans": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "zh-Hant": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "pt-BR": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "es-ES": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "fr-FR": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "de-DE": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "ja-JP": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "ko-KR": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "ru-RU": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "it-IT": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "uk-UA": {
+            "categories": [],
+            "recommended_apps": []
+        },
+        "vi-VN": {
+            "categories": [],
+            "recommended_apps": []
         }
-        
     },
     "app_details": {
         "b53545b1-79ea-4da3-b31a-c39391c6f041": {
