@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
-class PackagingInfo(BaseModel):
+class PackagingInfo(BaseSettings):
     """
     Packaging build information
     """
