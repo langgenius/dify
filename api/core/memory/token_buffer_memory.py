@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -12,7 +13,8 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from extensions.ext_database import db
-from models.model import AppMode, Conversation, Message
+from models.model import AppMode, Conversation, Message, MessageFile
+from models.workflow import WorkflowRun
 
 
 class TokenBufferMemory:
@@ -30,7 +32,13 @@ class TokenBufferMemory:
         app_record = self.conversation.app
 
         # fetch limited messages, and return reversed
-        query = db.session.query(Message).filter(
+        query = db.session.query(
+            Message.id,
+            Message.query,
+            Message.answer,
+            Message.created_at,
+            Message.workflow_run_id
+        ).filter(
             Message.conversation_id == self.conversation.id,
             Message.answer != ''
         ).order_by(Message.created_at.desc())
@@ -47,39 +55,50 @@ class TokenBufferMemory:
             tenant_id=app_record.tenant_id,
             app_id=app_record.id
         )
+        try:
+            prompt_messages = []
+            for message in messages:
+                files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
+                if files:
+                    file_extra_config = None
+                    if self.conversation.mode not in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
+                        app_model_config = self.conversation.model_config
+                        if app_model_config:
+                            file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
+                    else:
+                        if message.workflow_run_id:
+                            workflow_run = (db.session.query(WorkflowRun)
+                                            .filter(WorkflowRun.id == message.workflow_run_id).first())
 
-        prompt_messages = []
-        for message in messages:
-            files = message.message_files
-            if files:
-                if self.conversation.mode not in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
-                    file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
+                            if workflow_run:
+                                file_extra_config = FileUploadConfigManager.convert(
+                                    workflow_run.workflow.features_dict,
+                                    is_vision=False
+                                )
+
+                    if file_extra_config:
+                        file_objs = message_file_parser.transform_message_files(
+                            files,
+                            file_extra_config
+                        )
+                    else:
+                        file_objs = []
+
+                    if not file_objs:
+                        prompt_messages.append(UserPromptMessage(content=message.query))
+                    else:
+                        prompt_message_contents = [TextPromptMessageContent(data=message.query)]
+                        for file_obj in file_objs:
+                            prompt_message_contents.append(file_obj.prompt_message_content)
+
+                        prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
                 else:
-                    file_extra_config = FileUploadConfigManager.convert(
-                        message.workflow_run.workflow.features_dict,
-                        is_vision=False
-                    )
-
-                if file_extra_config:
-                    file_objs = message_file_parser.transform_message_files(
-                        files,
-                        file_extra_config
-                    )
-                else:
-                    file_objs = []
-
-                if not file_objs:
                     prompt_messages.append(UserPromptMessage(content=message.query))
-                else:
-                    prompt_message_contents = [TextPromptMessageContent(data=message.query)]
-                    for file_obj in file_objs:
-                        prompt_message_contents.append(file_obj.prompt_message_content)
 
-                    prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
-            else:
-                prompt_messages.append(UserPromptMessage(content=message.query))
-
-            prompt_messages.append(AssistantPromptMessage(content=message.answer))
+                prompt_messages.append(AssistantPromptMessage(content=message.answer))
+        except Exception as e:
+            logging.exception(f"Failed to get history prompt messages: {str(e)}")
+            raise e
 
         if not prompt_messages:
             return []
