@@ -26,7 +26,6 @@ class Python3TemplateTransformer(TemplateTransformer):
             'time',
             'traceback',
             'uuid',
-            'yaml'
         }
 
     @classmethod
