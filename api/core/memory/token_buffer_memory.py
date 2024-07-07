@@ -60,9 +60,7 @@ class TokenBufferMemory:
             if files:
                 file_extra_config = None
                 if self.conversation.mode not in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
-                    app_model_config = self.conversation.model_config
-                    if app_model_config:
-                        file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
+                    file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
                 else:
                     if message.workflow_run_id:
                         workflow_run = (db.session.query(WorkflowRun)
