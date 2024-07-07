@@ -82,14 +82,14 @@ const translation = {
     envPanelTitle: '环境变量',
     envDescription: '环境变量是一种存储敏感信息的方法，如 API 密钥、数据库密码等。它们被存储在工作流程中，而不是代码中，以便在不同环墋中共享。',
     envPanelButton: '添加环境变量',
-    exportable: '可导出',
-    nonExportable: '不可导出',
     modal: {
       title: '添加环境变量',
+      editTitle: '编辑环境变量',
       type: '类型',
-      value: '值',
       name: '名称',
-      exportable: '可导出',
+      namePlaceholder: '变量名',
+      value: '值',
+      valuePlaceholder: '变量值',
     },
   },
   changeHistory: {

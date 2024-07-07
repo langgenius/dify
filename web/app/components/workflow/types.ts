@@ -102,6 +102,13 @@ export type Variable = {
   isParagraph?: boolean
 }
 
+export type EnvironmentVariable = {
+  name: string
+  value: any
+  value_type: 'string' | 'number' | 'secret'
+  exportable: boolean
+}
+
 export type VariableWithValue = {
   key: string
   value: string
