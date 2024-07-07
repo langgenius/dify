@@ -91,6 +91,12 @@ const translation = {
       value: 'Value',
       valuePlaceholder: 'env value',
     },
+    export: {
+      title: 'Export Secret environment variables?',
+      checkbox: 'Confirm export of the above variables',
+      ignore: 'Ignore & Export DSL',
+      export: 'Export DSL with Secret variables ',
+    },
   },
   changeHistory: {
     title: 'Change History',
