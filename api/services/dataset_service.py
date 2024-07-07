@@ -61,7 +61,10 @@ class DatasetService:
 
         if user:
             if user.current_role == TenantAccountRole.DATASET_OPERATOR:
-                dataset_permission = DatasetPermission.query.filter_by(account_id=user.id).all()
+                dataset_permission = DatasetPermission.query.filter_by(
+                    account_id=user.id,
+                    tenant_id=tenant_id
+                ).all()
                 if dataset_permission:
                     dataset_ids = [dp.dataset_id for dp in dataset_permission]
                     query = query.filter(Dataset.id.in_(dataset_ids))
@@ -354,6 +357,7 @@ class DatasetService:
             (dataset.id in permitted_dataset_ids)
         ]
 
+        filtered_datasets.sort(key=lambda x: x.created_at, reverse=True)
         filtered_count = len(filtered_datasets)
 
         return filtered_datasets, filtered_count
@@ -1586,12 +1590,13 @@ class DatasetPermissionService:
         return user_list
 
     @classmethod
-    def update_partial_member_list(cls, dataset_id, user_list):
+    def update_partial_member_list(cls, tenant_id, dataset_id, user_list):
         try:
             db.session.query(DatasetPermission).filter(DatasetPermission.dataset_id == dataset_id).delete()
             permissions = []
             for user in user_list:
                 permission = DatasetPermission(
+                    tenant_id=tenant_id,
                     dataset_id=dataset_id,
                     account_id=user['user_id'],
                 )

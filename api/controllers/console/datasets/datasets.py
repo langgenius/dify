@@ -226,9 +226,12 @@ class DatasetApi(Resource):
             raise NotFound("Dataset not found.")
 
         result_data = marshal(dataset, dataset_detail_fields)
+        tenant_id = current_user.current_tenant_id
 
         if data.get('partial_member_list') and data.get('permission') == 'partial_members':
-            DatasetPermissionService.update_partial_member_list(dataset_id_str, data.get('partial_member_list'))
+            DatasetPermissionService.update_partial_member_list(
+                tenant_id, dataset_id_str, data.get('partial_member_list')
+            )
         else:
             DatasetPermissionService.clear_partial_member_list(dataset_id_str)
 
