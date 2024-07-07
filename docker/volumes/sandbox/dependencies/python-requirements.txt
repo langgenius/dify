@@ -3,3 +3,4 @@ langchain
 langchain-community
 cryptography==42.0.8
 python-socketio
+PyYAML
