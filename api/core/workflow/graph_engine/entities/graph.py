@@ -3,9 +3,7 @@ from typing import Optional, cast
 
 from pydantic import BaseModel, Field
 
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
+from core.workflow.entities.node_entities import NodeType
 from core.workflow.graph_engine.entities.run_condition import RunCondition
 
 
@@ -28,33 +26,6 @@ class GraphParallel(BaseModel):
     """parent parallel id if exists"""
 
 
-class GraphStateRoute(BaseModel):
-    route_id: str
-    """route id"""
-
-    node_id: str
-    """node id"""
-
-
-class GraphState(BaseModel):
-    routes: dict[str, list[GraphStateRoute]] = Field(default_factory=dict)
-    """graph state routes (source_node_id: routes)"""
-
-    variable_pool: VariablePool
-    """variable pool"""
-
-    node_route_results: dict[str, NodeRunResult] = Field(default_factory=dict)
-    """node results in route (node_id: run_result)"""
-
-
-class NextGraphNode(BaseModel):
-    node_id: str
-    """next node id"""
-
-    parallel: Optional[GraphParallel] = None
-    """parallel"""
-
-
 class Graph(BaseModel):
     root_node_id: str
     """root node id of the graph"""
@@ -71,19 +42,14 @@ class Graph(BaseModel):
     node_parallel_mapping: dict[str, str] = Field(default_factory=dict)
     """graph node parallel mapping (node id: parallel id)"""
 
-    run_state: GraphState
-    """graph run state"""
-
     @classmethod
     def init(cls,
              graph_config: dict,
-             variable_pool: VariablePool,
              root_node_id: Optional[str] = None) -> "Graph":
         """
         Init graph
 
         :param graph_config: graph config
-        :param variable_pool: variable pool
         :param root_node_id: root node id
         :return: graph
         """
@@ -149,7 +115,7 @@ class Graph(BaseModel):
         # fetch root node
         if not root_node_id:
             # if no root node id, use the START type node as root node
-            root_node_id = next((node_config for node_config in root_node_configs
+            root_node_id = next((node_config.get("id") for node_config in root_node_configs
                                  if node_config.get('data', {}).get('type', '') == NodeType.START.value), None)
 
         if not root_node_id or root_node_id not in root_node_ids:
@@ -178,79 +144,11 @@ class Graph(BaseModel):
             root_node_id=root_node_id,
             node_ids=node_ids,
             edge_mapping=edge_mapping,
-            run_state=GraphState(
-                variable_pool=variable_pool
-            ),
             parallel_mapping=parallel_mapping,
             node_parallel_mapping=node_parallel_mapping
         )
 
         return graph
-
-    @classmethod
-    def _recursively_add_node_ids(cls,
-                                  node_ids: list[str],
-                                  edge_mapping: dict[str, list[GraphEdge]],
-                                  node_id: str) -> None:
-        """
-        Recursively add node ids
-
-        :param node_ids: node ids
-        :param edge_mapping: edge mapping
-        :param node_id: node id
-        """
-        for graph_edge in edge_mapping.get(node_id, []):
-            if graph_edge.target_node_id in node_ids:
-                continue
-
-            node_ids.append(graph_edge.target_node_id)
-            cls._recursively_add_node_ids(
-                node_ids=node_ids,
-                edge_mapping=edge_mapping,
-                node_id=graph_edge.target_node_id
-            )
-
-    def next_node_ids(self) -> list[NextGraphNode]:
-        """
-        Get next node ids
-        """
-        # get current node ids in state
-        if not self.run_state.routes:
-            return [NextGraphNode(node_id=self.root_node_id)]
-
-        route_final_graph_edges: list[GraphEdge] = []
-        for route in self.run_state.routes[self.root_node_id]:
-            graph_edges = self.edge_mapping.get(route.node_id)
-            if not graph_edges:
-                continue
-
-            for edge in graph_edges:
-                if edge.target_node_id not in self.run_state.routes:
-                    route_final_graph_edges.append(edge)
-
-        next_graph_nodes = []
-        for route_final_graph_edge in route_final_graph_edges:
-            node_id = route_final_graph_edge.target_node_id
-            # check condition
-            if route_final_graph_edge.run_condition:
-                result = ConditionManager.get_condition_handler(
-                    run_condition=route_final_graph_edge.run_condition
-                ).check(
-                    source_node_id=route_final_graph_edge.source_node_id,
-                    target_node_id=route_final_graph_edge.target_node_id,
-                    graph=self
-                )
-
-                if not result:
-                    continue
-
-            parallel = None
-            if route_final_graph_edge.target_node_id in self.node_parallel_mapping:
-                parallel = self.parallel_mapping[self.node_parallel_mapping[node_id]]
-
-            next_graph_nodes.append(NextGraphNode(node_id=node_id, parallel=parallel))
-
-        return next_graph_nodes
 
     def add_extra_edge(self, source_node_id: str,
                        target_node_id: str,
@@ -294,6 +192,29 @@ class Graph(BaseModel):
                 leaf_node_ids.append(node_id)
 
         return leaf_node_ids
+
+    @classmethod
+    def _recursively_add_node_ids(cls,
+                                  node_ids: list[str],
+                                  edge_mapping: dict[str, list[GraphEdge]],
+                                  node_id: str) -> None:
+        """
+        Recursively add node ids
+
+        :param node_ids: node ids
+        :param edge_mapping: edge mapping
+        :param node_id: node id
+        """
+        for graph_edge in edge_mapping.get(node_id, []):
+            if graph_edge.target_node_id in node_ids:
+                continue
+
+            node_ids.append(graph_edge.target_node_id)
+            cls._recursively_add_node_ids(
+                node_ids=node_ids,
+                edge_mapping=edge_mapping,
+                node_id=graph_edge.target_node_id
+            )
 
     @classmethod
     def _recursively_add_parallels(cls,

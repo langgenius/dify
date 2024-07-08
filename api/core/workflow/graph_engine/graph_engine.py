@@ -22,6 +22,7 @@ class GraphEngine:
                  graph: Graph,
                  variable_pool: VariablePool,
                  callbacks: list[BaseWorkflowCallback]) -> None:
+        self.graph = graph
         self.graph_runtime_state = GraphRuntimeState(
             tenant_id=tenant_id,
             app_id=app_id,
@@ -29,7 +30,6 @@ class GraphEngine:
             user_from=user_from,
             invoke_from=invoke_from,
             call_depth=call_depth,
-            graph=graph,
             variable_pool=variable_pool
         )
 
@@ -43,3 +43,49 @@ class GraphEngine:
     def run(self) -> Generator:
         self.graph_runtime_state.start_at = time.perf_counter()
         pass
+
+    # def next_node_ids(self, node_state_id: str) -> list[NextGraphNode]:
+    #     """
+    #     Get next node ids
+    #
+    #     :param node_state_id: source node state id
+    #     """
+    #     # get current node ids in state
+    #     node_run_state = self.graph_runtime_state.node_run_state
+    #     graph = self.graph
+    #     if not node_run_state.routes:
+    #         return [NextGraphNode(node_id=graph.root_node_id)]
+    #
+    #     route_final_graph_edges: list[GraphEdge] = []
+    #     for route in route_state.routes[graph.root_node_id]:
+    #         graph_edges = graph.edge_mapping.get(route.node_id)
+    #         if not graph_edges:
+    #             continue
+    #
+    #         for edge in graph_edges:
+    #             if edge.target_node_id not in route_state.routes:
+    #                 route_final_graph_edges.append(edge)
+    #
+    #     next_graph_nodes = []
+    #     for route_final_graph_edge in route_final_graph_edges:
+    #         node_id = route_final_graph_edge.target_node_id
+    #         # check condition
+    #         if route_final_graph_edge.run_condition:
+    #             result = ConditionManager.get_condition_handler(
+    #                 run_condition=route_final_graph_edge.run_condition
+    #             ).check(
+    #                 source_node_id=route_final_graph_edge.source_node_id,
+    #                 target_node_id=route_final_graph_edge.target_node_id,
+    #                 graph=self
+    #             )
+    #
+    #             if not result:
+    #                 continue
+    #
+    #         parallel = None
+    #         if route_final_graph_edge.target_node_id in graph.node_parallel_mapping:
+    #             parallel = graph.parallel_mapping[graph.node_parallel_mapping[node_id]]
+    #
+    #         next_graph_nodes.append(NextGraphNode(node_id=node_id, parallel=parallel))
+    #
+    #     return next_graph_nodes

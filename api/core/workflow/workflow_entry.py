@@ -106,7 +106,7 @@ class WorkflowEntry:
             )
 
         # init graph
-        graph = self._init_graph(
+        graph = Graph.init(
             graph_config=graph_config
         )
 
@@ -151,86 +151,6 @@ class WorkflowEntry:
         )
 
         return rst
-
-    def _init_graph(self, graph_config: dict, root_node_id: Optional[str] = None) -> Optional[Graph]:
-        """
-        Initialize graph
-
-        :param graph_config: graph config
-        :param root_node_id: root node id if needed
-        :return: graph
-        """
-        # edge configs
-        edge_configs = graph_config.get('edges')
-        if not edge_configs:
-            return None
-
-        edge_configs = cast(list, edge_configs)
-
-        # reorganize edges mapping
-        source_edges_mapping: dict[str, list[dict]] = {}
-        target_edge_ids = set()
-        for edge_config in edge_configs:
-            source_node_id = edge_config.get('source')
-            if not source_node_id:
-                continue
-
-            if source_node_id not in source_edges_mapping:
-                source_edges_mapping[source_node_id] = []
-
-            source_edges_mapping[source_node_id].append(edge_config)
-
-            target_node_id = edge_config.get('target')
-            if target_node_id:
-                target_edge_ids.add(target_node_id)
-
-        # node configs
-        node_configs = graph_config.get('nodes')
-        if not node_configs:
-            return None
-
-        node_configs = cast(list, node_configs)
-
-        # fetch nodes that have no predecessor node
-        root_node_configs = []
-        nodes_mapping: dict[str, dict] = {}
-        for node_config in node_configs:
-            node_id = node_config.get('id')
-            if not node_id:
-                continue
-
-            if node_id not in target_edge_ids:
-                root_node_configs.append(node_config)
-
-            nodes_mapping[node_id] = node_config
-
-        # fetch root node
-        if root_node_id:
-            root_node_config = next((node_config for node_config in root_node_configs
-                                     if node_config.get('id') == root_node_id), None)
-        else:
-            # if no root node id, use the START type node as root node
-            root_node_config = next((node_config for node_config in root_node_configs
-                                     if node_config.get('data', {}).get('type', '') == NodeType.START.value), None)
-
-        if not root_node_config:
-            return None
-
-        # init graph
-        graph = Graph.init(
-            root_node_config=root_node_config
-        )
-
-        # add edge from root node
-        self._recursively_add_edges(
-            graph=graph,
-            source_node_config=root_node_config,
-            edges_mapping=source_edges_mapping,
-            nodes_mapping=nodes_mapping,
-            root_node_configs=root_node_configs
-        )
-
-        return graph
 
     def _recursively_add_edges(self, graph: Graph,
                                source_node_config: dict,
