@@ -57,9 +57,6 @@ class DatasetService:
 
     @staticmethod
     def get_datasets(page, per_page, provider="vendor", tenant_id=None, user=None, search=None, tag_ids=None):
-        if not user or not tenant_id:
-            raise ValueError('User and tenant_id are required.')
-
         query = Dataset.query.filter(Dataset.provider == provider, Dataset.tenant_id == tenant_id)
 
         if user:
