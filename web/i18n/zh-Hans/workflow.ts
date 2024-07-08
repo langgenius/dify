@@ -441,6 +441,7 @@ const translation = {
           url: '图片链接',
           upload_file_id: '上传文件ID',
         },
+        json: '工具生成的json',
       },
     },
     questionClassifiers: {
