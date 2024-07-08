@@ -6,6 +6,10 @@ import { useBoolean, useDebounceFn } from 'ahooks'
 import { ArrowDownIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid'
 import { pick } from 'lodash-es'
+import {
+  RiMoreFill,
+  RiQuestionLine,
+} from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -32,7 +36,6 @@ import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
 import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
-import { DotsHorizontal, HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import useTimestamp from '@/hooks/use-timestamp'
 
 export const SettingsIcon = ({ className }: SVGProps<SVGElement>) => {
@@ -98,7 +101,7 @@ export const StatusItem: FC<{
             <div className='max-w-[260px] break-all'>{errorMessage}</div>
           }
         >
-          <HelpCircle className='ml-1 w-[14px] h-[14px] text-gray-700' />
+          <RiQuestionLine className='ml-1 w-[14px] h-[14px] text-gray-700' />
         </Tooltip>
       )
     }
@@ -284,7 +287,7 @@ export const OperationAction: FC<{
         position='br'
         btnElement={
           <div className={cn(s.commonIcon)}>
-            <DotsHorizontal className='w-4 h-4 text-gray-700' />
+            <RiMoreFill className='w-4 h-4 text-gray-700' />
           </div>
         }
         btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!bg-gray-100 !shadow-none' : '!bg-transparent')}
@@ -303,7 +306,7 @@ export const OperationAction: FC<{
           <Button
             variant='warning'
             onClick={() => onOperate('delete')}
-            className='border-red-700 border-[0.5px]'
+            className='border-red-700'
           >
             {t('common.operation.sure')}
           </Button>

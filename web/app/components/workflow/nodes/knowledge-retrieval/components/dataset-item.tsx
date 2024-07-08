@@ -2,9 +2,12 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useBoolean } from 'ahooks'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import type { DataSet } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
-import { Settings01, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
+import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import FileIcon from '@/app/components/base/file-icon'
 import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
 import SettingsModal from '@/app/components/app/configuration/dataset-config/settings-modal'
@@ -65,7 +68,7 @@ const DatasetItem: FC<Props> = ({
             className='flex items-center justify-center w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'
             onClick={onRemove}
           >
-            <Trash03 className='w-4 h-4 text-gray-500' />
+            <RiDeleteBinLine className='w-4 h-4 text-gray-500' />
           </div>
         </div>
       )}

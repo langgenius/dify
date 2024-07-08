@@ -13,8 +13,7 @@ const translation = {
   },
   firecrawl: {
     configFirecrawl: 'Configure 🔥Firecrawl',
-    apiKeyPlaceholder: 'API key from firecrawl.dev, starting with "fc-"',
-    apiKeyFormatError: 'API key should start with "fc-"',
+    apiKeyPlaceholder: 'API key from firecrawl.dev',
     getApiKeyLinkText: 'Get your API key from firecrawl.dev',
   },
   stepOne: {
@@ -43,7 +42,7 @@ const translation = {
     notionSyncTitle: 'Notion is not connected',
     notionSyncTip: 'To sync with Notion, connection to Notion must be established first.',
     connect: 'Go to connect',
-    button: 'next',
+    button: 'Next',
     emptyDatasetCreation: 'I want to create an empty Knowledge',
     modal: {
       title: 'Create an empty Knowledge',

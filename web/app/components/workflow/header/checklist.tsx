@@ -7,6 +7,10 @@ import {
   useEdges,
   useNodes,
 } from 'reactflow'
+import {
+  RiCloseLine,
+  RiListCheck3,
+} from '@remixicon/react'
 import cn from 'classnames'
 import BlockIcon from '../block-icon'
 import {
@@ -23,9 +27,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import {
-  Checklist,
   ChecklistSquare,
-  XClose,
 } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 
@@ -66,7 +68,7 @@ const WorkflowChecklist = ({
               ${open && 'bg-primary-50'}
             `}
           >
-            <Checklist
+            <RiListCheck3
               className={`
                 w-4 h-4 group-hover:text-primary-600
                 ${open ? 'text-primary-600' : 'text-gray-500'}`
@@ -95,7 +97,7 @@ const WorkflowChecklist = ({
               className='shrink-0 flex items-center justify-center w-6 h-6 cursor-pointer'
               onClick={() => setOpen(false)}
             >
-              <XClose className='w-4 h-4 text-gray-500' />
+              <RiCloseLine className='w-4 h-4 text-gray-500' />
             </div>
           </div>
           <div className='py-2'>

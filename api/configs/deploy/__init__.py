@@ -1,10 +1,21 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
-class DeploymentConfigs(BaseModel):
+class DeploymentConfig(BaseSettings):
     """
     Deployment configs
     """
+    APPLICATION_NAME: str = Field(
+        description='application name',
+        default='langgenius/dify',
+    )
+
+    TESTING: bool = Field(
+        description='',
+        default=False,
+    )
+
     EDITION: str = Field(
         description='deployment edition',
         default='SELF_HOSTED',

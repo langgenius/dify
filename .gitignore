@@ -138,9 +138,21 @@ web/.vscode/settings.json
 !.idea/vcs.xml
 !.idea/icon.png
 .ideaDataSources/
+*.iml
+api/.idea
 
 api/.env
 api/storage/*
+
+docker-legacy/volumes/app/storage/*
+docker-legacy/volumes/db/data/*
+docker-legacy/volumes/redis/data/*
+docker-legacy/volumes/weaviate/*
+docker-legacy/volumes/qdrant/*
+docker-legacy/volumes/etcd/*
+docker-legacy/volumes/minio/*
+docker-legacy/volumes/milvus/*
+docker-legacy/volumes/chroma/*
 
 docker/volumes/app/storage/*
 docker/volumes/db/data/*
@@ -152,6 +164,9 @@ docker/volumes/minio/*
 docker/volumes/milvus/*
 docker/volumes/chroma/*
 
+docker/nginx/conf.d/default.conf
+docker/middleware.env
+
 sdks/python-client/build
 sdks/python-client/dist
 sdks/python-client/dify_client.egg-info
@@ -159,3 +174,5 @@ sdks/python-client/dify_client.egg-info
 .vscode/*
 !.vscode/launch.json
 pyrightconfig.json
+
+.idea/

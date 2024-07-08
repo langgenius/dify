@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { RiArrowDownSLine } from '@remixicon/react'
 import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
 import type { ModelConfig } from '../../../types'
 import {
@@ -19,7 +20,6 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import type {
   DatasetConfigs,
 } from '@/models/debug'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 type Props = {
   payload: {
@@ -94,7 +94,7 @@ const RetrievalConfig: FC<Props> = ({
       >
         <div className={cn(!readonly && 'cursor-pointer', open && 'bg-gray-100', 'flex items-center h-6  px-2 rounded-md hover:bg-gray-100 group  select-none')}>
           <div className={cn(open ? 'text-gray-700' : 'text-gray-500', 'leading-[18px] text-xs font-medium group-hover:bg-gray-100')}>{payload.retrieval_mode === RETRIEVE_TYPE.oneWay ? t('appDebug.datasetConfig.retrieveOneWay.title') : t('appDebug.datasetConfig.retrieveMultiWay.title')}</div>
-          {!readonly && <ChevronDown className='w-3 h-3 ml-1' />}
+          {!readonly && <RiArrowDownSLine className='w-3 h-3 ml-1' />}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>

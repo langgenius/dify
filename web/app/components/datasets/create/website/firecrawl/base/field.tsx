@@ -2,9 +2,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import cn from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import Input from './input'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 
 type Props = {
   className?: string
@@ -38,7 +40,7 @@ const Field: FC<Props> = ({
           <TooltipPlus popupContent={
             <div className='w-[200px]'>{tooltip}</div>
           }>
-            <HelpCircle className='relative top-[3px] w-3 h-3 ml-1 text-gray-500' />
+            <RiQuestionLine className='relative top-[3px] w-3 h-3 ml-1 text-gray-500' />
           </TooltipPlus>
         )}
       </div>

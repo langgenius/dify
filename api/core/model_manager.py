@@ -1,6 +1,6 @@
 import logging
 import os
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from typing import IO, Optional, Union, cast
 
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
@@ -102,7 +102,7 @@ class ModelInstance:
 
     def invoke_llm(self, prompt_messages: list[PromptMessage], model_parameters: Optional[dict] = None,
                    tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                   stream: bool = True, user: Optional[str] = None, callbacks: list[Callback] = None) \
+                   stream: bool = True, user: Optional[str] = None, callbacks: Optional[list[Callback]] = None) \
             -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -291,7 +291,7 @@ class ModelInstance:
             streaming=streaming
         )
 
-    def _round_robin_invoke(self, function: callable, *args, **kwargs):
+    def _round_robin_invoke(self, function: Callable, *args, **kwargs):
         """
         Round-robin invoke
         :param function: function to invoke
@@ -437,6 +437,7 @@ class LBModelManager:
 
         while True:
             current_index = redis_client.incr(cache_key)
+            current_index = cast(int, current_index)
             if current_index >= 10000000:
                 current_index = 1
                 redis_client.set(cache_key, current_index)
@@ -499,7 +500,10 @@ class LBModelManager:
             config.id
         )
 
-        return redis_client.exists(cooldown_cache_key)
+
+        res = redis_client.exists(cooldown_cache_key)
+        res = cast(bool, res)
+        return res
 
     @classmethod
     def get_config_in_cooldown_and_ttl(cls, tenant_id: str,
@@ -528,4 +532,5 @@ class LBModelManager:
         if ttl == -2:
             return False, 0
 
+        ttl = cast(int, ttl)
         return True, ttl

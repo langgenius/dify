@@ -4,6 +4,9 @@ import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
 import React, { Fragment } from 'react'
 import classNames from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Listbox, Transition } from '@headlessui/react'
@@ -12,7 +15,6 @@ import type { Item } from '@/app/components/base/select'
 import ConfigContext from '@/context/debug-configuration'
 import { fetchAppVoices } from '@/service/apps'
 import Tooltip from '@/app/components/base/tooltip'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { languages } from '@/i18n/language'
 const VoiceParamConfig: FC = () => {
   const { t } = useTranslation()
@@ -46,7 +48,7 @@ const VoiceParamConfig: FC = () => {
                   <div key={item}>{item}</div>
                 ))}
               </div>} selector='config-resolution-tooltip'>
-                <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
+                <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
             </div>
             <Listbox

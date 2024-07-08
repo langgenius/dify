@@ -14,14 +14,14 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import cn from 'classnames'
+import {
+  RiEditLine,
+  RiExternalLinkLine,
+  RiLinkUnlinkM,
+} from '@remixicon/react'
 import { useStore } from '../../store'
 import { useLink } from './hooks'
 import Button from '@/app/components/base/button'
-import {
-  Edit03,
-  LinkBroken01,
-  LinkExternal01,
-} from '@/app/components/base/icons/src/vender/line/general'
 
 type LinkEditorComponentProps = {
   containerElement: HTMLDivElement | null
@@ -88,10 +88,7 @@ const LinkEditorComponent = ({
                     />
                     <Button
                       variant='primary'
-                      className={cn(
-                        'py-0 px-2 h-6 text-xs',
-                        !url && 'cursor-not-allowed',
-                      )}
+                      size='small'
                       disabled={!url}
                       onClick={() => handleSaveLink(url)}
                     >
@@ -109,7 +106,7 @@ const LinkEditorComponent = ({
                       target='_blank'
                       rel='noreferrer'
                     >
-                      <LinkExternal01 className='mr-1 w-3 h-3' />
+                      <RiExternalLinkLine className='mr-1 w-3 h-3' />
                       <div className='mr-1'>
                         {t('workflow.nodes.note.editor.openLink')}
                       </div>
@@ -128,14 +125,14 @@ const LinkEditorComponent = ({
                         setLinkOperatorShow(false)
                       }}
                     >
-                      <Edit03 className='mr-1 w-3 h-3' />
+                      <RiEditLine className='mr-1 w-3 h-3' />
                       {t('common.operation.edit')}
                     </div>
                     <div
                       className='flex items-center px-2 h-6 rounded-md cursor-pointer hover:bg-gray-50'
                       onClick={handleUnlink}
                     >
-                      <LinkBroken01 className='mr-1 w-3 h-3' />
+                      <RiLinkUnlinkM className='mr-1 w-3 h-3' />
                       {t('workflow.nodes.note.editor.unlink')}
                     </div>
                   </>

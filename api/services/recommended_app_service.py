@@ -95,7 +95,7 @@ class RecommendedAppService:
 
             categories.add(recommended_app.category)  # add category to categories
 
-        return {'recommended_apps': recommended_apps_result, 'categories': sorted(list(categories))}
+        return {'recommended_apps': recommended_apps_result, 'categories': sorted(categories)}
 
     @classmethod
     def _fetch_recommended_apps_from_dify_official(cls, language: str) -> dict:
@@ -110,7 +110,12 @@ class RecommendedAppService:
         if response.status_code != 200:
             raise ValueError(f'fetch recommended apps failed, status code: {response.status_code}')
 
-        return response.json()
+        result = response.json()
+
+        if "categories" in result:
+            result["categories"] = sorted(result["categories"])
+        
+        return result
 
     @classmethod
     def _fetch_recommended_apps_from_builtin(cls, language: str) -> dict:

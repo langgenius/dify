@@ -5,16 +5,18 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import {
+  RiMoreFill,
+} from '@remixicon/react'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
-import { deleteDataset } from '@/service/datasets'
+import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import type { DataSet } from '@/models/datasets'
 import Tooltip from '@/app/components/base/tooltip'
 import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
-import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import RenameDatasetModal from '@/app/components/datasets/rename-modal'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
@@ -34,6 +36,19 @@ const DatasetCard = ({
 
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [confirmMessage, setConfirmMessage] = useState<string>('')
+  const detectIsUsedByApp = useCallback(async () => {
+    try {
+      const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
+      setConfirmMessage(isUsedByApp ? t('dataset.datasetUsedByApp')! : t('dataset.deleteDatasetConfirmContent')!)
+    }
+    catch (e: any) {
+      const res = await e.json()
+      notify({ type: 'error', message: res?.message || 'Unknown error' })
+    }
+
+    setShowConfirmDelete(true)
+  }, [dataset.id, notify, t])
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDataset(dataset.id)
@@ -42,10 +57,9 @@ const DatasetCard = ({
         onSuccess()
     }
     catch (e: any) {
-      notify({ type: 'error', message: `${t('dataset.datasetDeleteFailed')}${'message' in e ? `: ${e.message}` : ''}` })
     }
     setShowConfirmDelete(false)
-  }, [dataset.id])
+  }, [dataset.id, notify, onSuccess, t])
 
   const Operations = (props: HtmlContentProps) => {
     const onMouseLeave = async () => {
@@ -61,7 +75,7 @@ const DatasetCard = ({
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
-      setShowConfirmDelete(true)
+      detectIsUsedByApp()
     }
     return (
       <div className="relative w-full py-1" onMouseLeave={onMouseLeave}>
@@ -157,7 +171,7 @@ const DatasetCard = ({
               />
             </div>
           </div>
-          <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200'/>
+          <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200' />
           <div className='!hidden group-hover:!flex shrink-0'>
             <CustomPopover
               htmlContent={<Operations />}
@@ -167,7 +181,7 @@ const DatasetCard = ({
                 <div
                   className='flex items-center justify-center w-8 h-8 cursor-pointer rounded-md'
                 >
-                  <DotsHorizontal className='w-4 h-4 text-gray-700' />
+                  <RiMoreFill className='w-4 h-4 text-gray-700' />
                 </div>
               }
               btnClassName={open =>
@@ -192,7 +206,7 @@ const DatasetCard = ({
       {showConfirmDelete && (
         <Confirm
           title={t('dataset.deleteDatasetConfirmTitle')}
-          content={t('dataset.deleteDatasetConfirmContent')}
+          content={confirmMessage}
           isShow={showConfirmDelete}
           onClose={() => setShowConfirmDelete(false)}
           onConfirm={onConfirmDelete}

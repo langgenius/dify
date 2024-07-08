@@ -4,13 +4,13 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { RiMoreFill } from '@remixicon/react'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import Switch from '@/app/components/base/switch'
 
 export type OperatorProps = {
@@ -44,7 +44,7 @@ const Operator = ({
             open && 'bg-black/5',
           )}
         >
-          <DotsHorizontal className='w-4 h-4 text-gray-500' />
+          <RiMoreFill className='w-4 h-4 text-gray-500' />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>

@@ -152,4 +152,4 @@ def test_get_tools_num_tokens():
         ]
     )
 
-    assert num_tokens == 108
+    assert num_tokens == 88

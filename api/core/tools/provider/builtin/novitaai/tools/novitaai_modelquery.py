@@ -42,17 +42,18 @@ class NovitaAiModelQueryTool(BuiltinTool):
 
         result_str = ''
         if result_type == 'first sd_name':
-            result_str = models_data[0]['sd_name_in_api']
+            result_str = models_data[0]['sd_name_in_api'] if len(models_data) > 0 else ''
         elif result_type == 'first name sd_name pair':
-            result_str = json.dumps({'name': models_data[0]['name'], 'sd_name': models_data[0]['sd_name_in_api']})
+            result_str = json.dumps({'name': models_data[0]['name'], 'sd_name': models_data[0]['sd_name_in_api']}) if len(models_data) > 0 else ''
         elif result_type == 'sd_name array':
-            sd_name_array = [model['sd_name_in_api'] for model in models_data]
+            sd_name_array = [model['sd_name_in_api'] for model in models_data] if len(models_data) > 0 else []
             result_str = json.dumps(sd_name_array)
         elif result_type == 'name array':
-            name_array = [model['name'] for model in models_data]
+            name_array = [model['name'] for model in models_data] if len(models_data) > 0 else []
             result_str = json.dumps(name_array)
         elif result_type == 'name sd_name pair array':
-            name_sd_name_pair_array = [{'name': model['name'], 'sd_name': model['sd_name_in_api']} for model in models_data]
+            name_sd_name_pair_array = [{'name': model['name'], 'sd_name': model['sd_name_in_api']}
+                                       for model in models_data] if len(models_data) > 0 else []
             result_str = json.dumps(name_sd_name_pair_array)
         elif result_type == 'whole info array':
             result_str = json.dumps(models_data)

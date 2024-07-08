@@ -54,7 +54,7 @@ const ComponentPicker = ({
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',
     middleware: [
-      offset(3),
+      offset(0), // fix hide cursor
       shift({
         padding: 8,
       }),

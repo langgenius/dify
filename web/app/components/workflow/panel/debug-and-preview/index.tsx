@@ -4,6 +4,7 @@ import {
 } from 'react'
 import { useKeyPress } from 'ahooks'
 import cn from 'classnames'
+import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import {
   useEdgesInteractions,
@@ -13,7 +14,6 @@ import {
 import ChatWrapper from './chat-wrapper'
 import Button from '@/app/components/base/button'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 export type ChatWrapperRefType = {
   handleRestart: () => void
@@ -50,7 +50,6 @@ const DebugAndPreview = () => {
         {t('workflow.common.debugAndPreview').toLocaleUpperCase()}
         <div className='flex items-center'>
           <Button
-            className='px-2 h-8 bg-white border-[0.5px] border-gray-200 shadow-xs rounded-lg text-xs text-gray-700 font-medium'
             onClick={() => handleRestartChat()}
           >
             <RefreshCcw01 className='shrink-0 mr-1 w-3 h-3 text-gray-500' />
@@ -68,7 +67,7 @@ const DebugAndPreview = () => {
             className='flex items-center justify-center w-6 h-6 cursor-pointer'
             onClick={handleCancelDebugAndPreviewPanel}
           >
-            <XClose className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='w-4 h-4 text-gray-500' />
           </div>
         </div>
       </div>

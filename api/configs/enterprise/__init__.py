@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
-class EnterpriseFeatureConfigs(BaseModel):
+class EnterpriseFeatureConfig(BaseSettings):
     """
     Enterprise feature configs.
     **Before using, please contact business@dify.ai by email to inquire about licensing matters.**

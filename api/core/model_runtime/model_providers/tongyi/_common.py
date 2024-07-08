@@ -1,4 +1,20 @@
-from core.model_runtime.errors.invoke import InvokeError
+from dashscope.common.error import (
+    AuthenticationError,
+    InvalidParameter,
+    RequestFailure,
+    ServiceUnavailableError,
+    UnsupportedHTTPMethod,
+    UnsupportedModel,
+)
+
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 
 
 class _CommonTongyi:
@@ -20,4 +36,20 @@ class _CommonTongyi:
 
         :return: Invoke error mapping
         """
-        pass
+        return {
+            InvokeConnectionError: [
+                RequestFailure,
+            ],
+            InvokeServerUnavailableError: [
+                ServiceUnavailableError,
+            ],
+            InvokeRateLimitError: [],
+            InvokeAuthorizationError: [
+                AuthenticationError,
+            ],
+            InvokeBadRequestError: [
+                InvalidParameter,
+                UnsupportedModel,
+                UnsupportedHTTPMethod,
+            ]
+        }

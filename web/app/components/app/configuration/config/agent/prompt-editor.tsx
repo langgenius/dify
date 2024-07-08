@@ -5,7 +5,10 @@ import copy from 'copy-to-clipboard'
 import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
+import {
+  Clipboard,
+  ClipboardCheck,
+} from '@/app/components/base/icons/src/vender/line/files'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import type { ExternalDataTool } from '@/models/common'
 import ConfigContext from '@/context/debug-configuration'

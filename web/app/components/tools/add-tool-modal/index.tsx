@@ -5,6 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import cn from 'classnames'
+import {
+  RiAddLine,
+  RiCloseLine,
+} from '@remixicon/react'
 import { useMount } from 'ahooks'
 import type { Collection, CustomCollectionBackend, Tool } from '../types'
 import Type from './type'
@@ -16,7 +20,6 @@ import Drawer from '@/app/components/base/drawer'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import SearchInput from '@/app/components/base/search-input'
-import { Plus, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import {
@@ -80,7 +83,9 @@ const AddToolModal: FC<Props> = ({
         return toolWithProvider.labels.includes(currentCategory)
     }).filter((toolWithProvider) => {
       return toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(keywords.toLowerCase())
+        return Object.values(tool.label).some((label) => {
+          return label.toLowerCase().includes(keywords.toLowerCase())
+        })
       })
     })
   }, [currentType, currentCategory, toolList, keywords, language])
@@ -174,8 +179,8 @@ const AddToolModal: FC<Props> = ({
             <div className='sticky top-0 left-0 right-0'>
               <div className='sticky top-0 left-0 right-0 px-5 py-3 text-md font-semibold text-gray-900'>{t('tools.addTool')}</div>
               <div className='px-3 pt-2 pb-4'>
-                <Button variant='primary' className='w-[176px] text-[13px] leading-[18px] font-medium' onClick={() => setIsShowEditCustomCollectionModal(true)}>
-                  <Plus className='w-4 h-4 mr-1' />
+                <Button variant='primary' className='w-[176px]' onClick={() => setIsShowEditCustomCollectionModal(true)}>
+                  <RiAddLine className='w-4 h-4 mr-1' />
                   {t('tools.createCustomTool')}
                 </Button>
               </div>
@@ -192,7 +197,7 @@ const AddToolModal: FC<Props> = ({
               </div>
               <div className='ml-2 mr-1 w-[1px] h-4 bg-gray-200'></div>
               <div className='p-2 cursor-pointer' onClick={onHide}>
-                <XClose className='w-4 h-4 text-gray-500' />
+                <RiCloseLine className='w-4 h-4 text-gray-500' />
               </div>
             </div>
             {listLoading && (

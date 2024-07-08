@@ -18,7 +18,7 @@ from dashscope.common.error import (
 )
 
 from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -82,6 +82,7 @@ if you are not sure about the structure.
 <instructions>
 {{instructions}}
 </instructions>
+You should also complete the text started with ``` but not tell ``` directly.
 """
 
         code_block = model_parameters.get("response_format", "")
@@ -113,21 +114,17 @@ if you are not sure about the structure.
             # insert the system message
             prompt_messages.insert(0, SystemPromptMessage(
                 content=block_prompts
-                .replace("{{instructions}}", f"Please output a valid {code_block} object.")
+                .replace("{{instructions}}", f"Please output a valid {code_block} with markdown codeblocks.")
             ))
 
-        mode = self.get_model_mode(model, credentials)
-        if mode == LLMMode.CHAT:
-            if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
-                # add ```JSON\n to the last message
-                prompt_messages[-1].content += f"\n```{code_block}\n"
-            else:
-                # append a user message
-                prompt_messages.append(UserPromptMessage(
-                    content=f"```{code_block}\n"
-                ))
+        if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):
+            # add ```JSON\n to the last message
+            prompt_messages[-1].content += f"\n```{code_block}\n"
         else:
-            prompt_messages.append(AssistantPromptMessage(content=f"```{code_block}\n"))
+            # append a user message
+            prompt_messages.append(UserPromptMessage(
+                content=f"```{code_block}\n"
+            ))
 
         response = self._invoke(
             model=model,
@@ -243,11 +240,8 @@ if you are not sure about the structure.
 
             response = MultiModalConversation.call(**params, stream=stream)
         else:
-            if mode == LLMMode.CHAT:
-                params['messages'] = self._convert_prompt_messages_to_tongyi_messages(prompt_messages)
-            else:
-                params['prompt'] = prompt_messages[0].content.rstrip()
-
+            # nothing different between chat model and completion model in tongyi
+            params['messages'] = self._convert_prompt_messages_to_tongyi_messages(prompt_messages)
             response = Generation.call(**params,
                                        result_format='message',
                                        stream=stream)

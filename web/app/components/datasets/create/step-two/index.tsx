@@ -6,6 +6,10 @@ import { useBoolean } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import { RocketLaunchIcon } from '@heroicons/react/24/outline'
 import cn from 'classnames'
+import {
+  RiCloseLine,
+  RiQuestionLine,
+} from '@remixicon/react'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
 import RetrievalMethodInfo from '../../common/retrieval-method-info'
@@ -33,7 +37,6 @@ import { DataSourceType, DocForm } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Switch from '@/app/components/base/switch'
 import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
-import { HelpCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
@@ -630,7 +633,7 @@ const StepTwo = ({
                             {t('datasetCreation.stepTwo.overlapTip')}
                           </div>
                         }>
-                          <HelpCircle className='ml-1 w-3.5 h-3.5 text-gray-400' />
+                          <RiQuestionLine className='ml-1 w-3.5 h-3.5 text-gray-400' />
                         </TooltipPlus>
                       </div>
                       <input
@@ -655,8 +658,8 @@ const StepTwo = ({
                     </div>
                   </div>
                   <div className={s.formFooter}>
-                    <Button variant="primary" className={cn(s.button, '!h-8')} onClick={confirmChangeCustomConfig}>{t('datasetCreation.stepTwo.preview')}</Button>
-                    <Button className={cn(s.button, 'ml-2 !h-8')} onClick={resetRules}>{t('datasetCreation.stepTwo.reset')}</Button>
+                    <Button variant="primary" className={cn(s.button)} onClick={confirmChangeCustomConfig}>{t('datasetCreation.stepTwo.preview')}</Button>
+                    <Button className={cn(s.button, 'ml-2')} onClick={resetRules}>{t('datasetCreation.stepTwo.reset')}</Button>
                   </div>
                 </div>
               )}
@@ -760,7 +763,7 @@ const StepTwo = ({
                 {docForm === DocForm.QA && !QATipHide && (
                   <div className='flex justify-between items-center px-5 py-2 bg-orange-50 border-t border-amber-100 rounded-b-xl text-[13px] leading-[18px] text-medium text-amber-500'>
                     {t('datasetCreation.stepTwo.QATip')}
-                    <XClose className='w-4 h-4 text-gray-500 cursor-pointer' onClick={() => setQATipHide(true)} />
+                    <RiCloseLine className='w-4 h-4 text-gray-500 cursor-pointer' onClick={() => setQATipHide(true)} />
                   </div>
                 )}
               </div>
@@ -772,7 +775,7 @@ const StepTwo = ({
                   <div className={s.label}>
                     {t('datasetSettings.form.retrievalSetting.title')}
                     <div className='leading-[18px] text-xs font-normal text-gray-500'>
-                      <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/features/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                      <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-6-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                       {t('datasetSettings.form.retrievalSetting.longDescription')}
                     </div>
                   </div>
@@ -910,7 +913,7 @@ const StepTwo = ({
               <div className='grow flex items-center'>
                 <div>{t('datasetCreation.stepTwo.previewTitle')}</div>
                 {docForm === DocForm.QA && !previewSwitched && (
-                  <Button className='ml-2 !h-[26px] !py-[3px] !px-2 !text-xs !font-medium !text-primary-600' onClick={previewSwitch}>{t('datasetCreation.stepTwo.previewButton')}</Button>
+                  <Button className='ml-2' variant='secondary-accent' onClick={previewSwitch}>{t('datasetCreation.stepTwo.previewButton')}</Button>
                 )}
               </div>
               <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>

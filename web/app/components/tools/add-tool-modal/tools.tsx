@@ -4,8 +4,11 @@ import {
 } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
-import { Check, Plus } from '@/app/components/base/icons/src/vender/line/general'
+import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { Tag01 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -105,18 +108,20 @@ const Blocks = ({
                 )}
                 {!needAuth && !added && addable && (
                   <Button
-                    variant='default'
-                    className={cn('hidden shrink-0 items-center !h-6 px-2 py-1 bg-white text-xs font-medium leading-[18px] text-primary-600 group-hover/item:flex')}
+                    variant='secondary-accent'
+                    size='small'
+                    className={cn('hidden shrink-0 items-center group-hover/item:flex')}
                     onClick={() => onSelect(toolWithProvider, tool)}
                   >
-                    <Plus className='w-3 h-3' />
+                    <RiAddLine className='w-3 h-3' />
                     {t('tools.addToolModal.add').toLocaleUpperCase()}
                   </Button>
                 )}
                 {needAuth && (
                   <Button
-                    variant='default'
-                    className={cn('hidden shrink-0 items-center !h-6 px-2 py-1 bg-white text-xs font-medium leading-[18px] text-primary-600 group-hover/item:flex')}
+                    variant='secondary-accent'
+                    size='small'
+                    className={cn('hidden shrink-0 group-hover/item:flex')}
                     onClick={() => onAuthSetup(toolWithProvider)}
                   >{t('tools.auth.setup')}</Button>
                 )}

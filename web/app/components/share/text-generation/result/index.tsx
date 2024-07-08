@@ -9,7 +9,7 @@ import TextGenerationRes from '@/app/components/app/text-generate/item'
 import NoData from '@/app/components/share/text-generation/no-data'
 import Toast from '@/app/components/base/toast'
 import { sendCompletionMessage, sendWorkflowMessage, updateFeedback } from '@/service/share'
-import type { Feedbacktype } from '@/app/components/app/chat/type'
+import type { Feedbacktype } from '@/app/components/base/chat/chat/type'
 import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
@@ -18,6 +18,7 @@ import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/ap
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import { sleep } from '@/utils'
+import type { SiteInfo } from '@/models/share'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -42,6 +43,7 @@ export type IResultProps = {
   moderationService?: (text: string) => ReturnType<ModerationService>
   visionConfig: VisionSettings
   completionFiles: VisionFile[]
+  siteInfo: SiteInfo | null
 }
 
 const Result: FC<IResultProps> = ({
@@ -65,6 +67,7 @@ const Result: FC<IResultProps> = ({
   onCompleted,
   visionConfig,
   completionFiles,
+  siteInfo,
 }) => {
   const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
   useEffect(() => {
@@ -375,6 +378,7 @@ const Result: FC<IResultProps> = ({
       controlClearMoreLikeThis={controlClearMoreLikeThis}
       isShowTextToSpeech={isShowTextToSpeech}
       hideProcessDetail
+      siteInfo={siteInfo}
     />
   )
 

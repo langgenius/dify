@@ -24,7 +24,16 @@ class JinaSearchTool(BuiltinTool):
         if 'api_key' in self.runtime.credentials and self.runtime.credentials.get('api_key'):
             headers['Authorization'] = "Bearer " + self.runtime.credentials.get('api_key')
 
-        proxy_server = tool_parameters.get('proxy_server', None)
+        if tool_parameters.get('image_caption', False):
+            headers['X-With-Generated-Alt'] = 'true'
+
+        if tool_parameters.get('gather_all_links_at_the_end', False):
+            headers['X-With-Links-Summary'] = 'true'
+
+        if tool_parameters.get('gather_all_images_at_the_end', False):
+            headers['X-With-Images-Summary'] = 'true'
+
+        proxy_server = tool_parameters.get('proxy_server')
         if proxy_server is not None and proxy_server != '':
             headers['X-Proxy-Url'] = proxy_server
 

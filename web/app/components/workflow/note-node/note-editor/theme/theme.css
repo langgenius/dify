@@ -15,8 +15,12 @@
 }
 
 .note-editor-theme_link {
-  text-decoration: underline;
   cursor: pointer;
+  color: #155eef;
+}
+
+.note-editor-theme_link:hover {
+  text-decoration: underline;
 }
 
 .note-editor-theme_text-strikethrough {

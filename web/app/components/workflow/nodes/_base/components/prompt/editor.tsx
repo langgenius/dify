@@ -2,6 +2,9 @@
 import type { FC } from 'react'
 import React, { useCallback, useRef } from 'react'
 import cn from 'classnames'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
@@ -17,9 +20,11 @@ import { CodeLanguage } from '../../../code/types'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
+import {
+  Clipboard,
+  ClipboardCheck,
+} from '@/app/components/base/icons/src/vender/line/files'
 import s from '@/app/components/app/configuration/config-prompt/style.module.css'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -153,7 +158,7 @@ const Editor: FC<Props> = ({
                   </TooltipPlus>
                 )}
                 {showRemove && (
-                  <Trash03 className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={onRemove} />
+                  <RiDeleteBinLine className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={onRemove} />
                 )}
                 {!isCopied
                   ? (

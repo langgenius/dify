@@ -69,6 +69,11 @@ parameters:
           en_US: Asia/Shanghai
           zh_Hans: 亚洲/上海
           pt_BR: Asia/Shanghai
+      - value: Asia/Ho_Chi_Minh
+        label:
+          en_US: Asia/Ho_Chi_Minh
+          zh_Hans: 亚洲/胡志明市
+          pt_BR: Ásia/Ho Chi Minh
       - value: Asia/Tokyo
         label:
           en_US: Asia/Tokyo

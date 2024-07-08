@@ -210,7 +210,7 @@ class TencentVectorFactory(AbstractVectorFactory):
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
             dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.TIDB_VECTOR, collection_name))
+                self.gen_index_struct_dict(VectorType.TENCENT, collection_name))
 
         config = current_app.config
         return TencentVector(

@@ -1,12 +1,10 @@
-from pydantic import BaseModel
-
-from configs.extra.notion_configs import NotionConfigs
-from configs.extra.sentry_configs import SentryConfigs
+from configs.extra.notion_config import NotionConfig
+from configs.extra.sentry_config import SentryConfig
 
 
-class ExtraServiceConfigs(
+class ExtraServiceConfig(
     # place the configs in alphabet order
-    NotionConfigs,
-    SentryConfigs,
+    NotionConfig,
+    SentryConfig,
 ):
     pass

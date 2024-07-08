@@ -36,7 +36,7 @@ const NoData: FC<INoDataProps> = ({
         {t('share.generation.savedNoData.description')}
       </div>
       <Button
-        className='mt-4 !h-8 !px-3'
+        className='mt-4'
         onClick={onStartCreateContent}
       >
         <div className='flex items-center space-x-2 text-primary-600 text-[13px] font-medium'>

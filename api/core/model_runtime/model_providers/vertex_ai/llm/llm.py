@@ -100,7 +100,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
             token = credentials.token
 
         # Vertex AI Anthropic Claude3 Opus model available in us-east5 region, Sonnet and Haiku available in us-central1 region
-        if 'opus' in model:
+        if 'opus' or 'claude-3-5-sonnet' in model:
             location = 'us-east5'
         else:
             location = 'us-central1'
@@ -579,10 +579,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
                             type='function',
                             function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                                 name=part.function_call.name,
-                                arguments=json.dumps({
-                                    key: value 
-                                    for key, value in part.function_call.args.items()
-                                })
+                                arguments=json.dumps(dict(part.function_call.args.items()))
                             )
                         )
                     ]

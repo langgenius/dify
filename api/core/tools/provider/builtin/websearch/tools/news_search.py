@@ -80,7 +80,7 @@ class NewsSearchTool(BuiltinTool):
         query = tool_parameters["query"]
         gl = tool_parameters.get("gl", "us")
         hl = tool_parameters.get("hl", "en")
-        location = tool_parameters.get("location", None)
+        location = tool_parameters.get("location")
 
         api_key = self.runtime.credentials["serply_api_key"]
         result = SerplyApi(api_key).run(query, gl=gl, hl=hl, location=location)

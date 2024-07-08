@@ -201,7 +201,8 @@ const WorkflowToolConfigureButton = ({
               <div className='px-2.5 py-2 border-t-[0.5px] border-black/5'>
                 <div className='flex justify-between'>
                   <Button
-                    className='px-2 w-[140px] py-0 h-6 shadow-xs rounded-md text-xs font-medium text-gray-700 border-[0.5px] bg-white border-gray-200'
+                    size='small'
+                    className='w-[140px]'
                     onClick={() => setShowModal(true)}
                     disabled={!isCurrentWorkspaceManager}
                   >
@@ -209,7 +210,8 @@ const WorkflowToolConfigureButton = ({
                     {outdated && <Indicator className='ml-1' color={'yellow'} />}
                   </Button>
                   <Button
-                    className='px-2 w-[140px] py-0 h-6 shadow-xs rounded-md text-xs font-medium text-gray-700 border-[0.5px] bg-white border-gray-200'
+                    size='small'
+                    className='w-[140px]'
                     onClick={() => router.push('/tools?category=workflow')}
                   >
                     {t('workflow.common.manageInTools')}

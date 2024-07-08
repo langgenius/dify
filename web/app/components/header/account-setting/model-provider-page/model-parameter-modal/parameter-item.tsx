@@ -1,10 +1,12 @@
 import type { FC } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import type { ModelParameterRule } from '../declarations'
 import { useLanguage } from '../hooks'
 import { isNullOrUndefined } from '../utils'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import Slider from '@/app/components/base/slider'
@@ -234,7 +236,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
                   <div className='w-[200px] whitespace-pre-wrap'>{parameterRule.help[language] || parameterRule.help.en_US}</div>
                 )}
               >
-                <HelpCircle className='mr-1.5 w-3.5 h-3.5 text-gray-400' />
+                <RiQuestionLine className='mr-1.5 w-3.5 h-3.5 text-gray-400' />
               </Tooltip>
             )
           }

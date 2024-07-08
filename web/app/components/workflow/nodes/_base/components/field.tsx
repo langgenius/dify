@@ -2,11 +2,13 @@
 import type { FC } from 'react'
 import React from 'react'
 import cn from 'classnames'
+import {
+  RiArrowDownSLine,
+  RiQuestionLine,
+} from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import type { DefaultTFuncReturn } from 'i18next'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 type Props = {
   className?: string
@@ -42,7 +44,7 @@ const Filed: FC<Props> = ({
               <div className='w-[120px]'>
                 {tooltip}
               </div>}>
-              <HelpCircle className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
+              <RiQuestionLine className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
             </TooltipPlus>
           )}
 
@@ -50,7 +52,7 @@ const Filed: FC<Props> = ({
         <div className='flex'>
           {operations && <div>{operations}</div>}
           {supportFold && (
-            <ChevronRight className='w-3.5 h-3.5 text-gray-500 cursor-pointer transform transition-transform' style={{ transform: fold ? 'rotate(0deg)' : 'rotate(90deg)' }} />
+            <RiArrowDownSLine className='w-3.5 h-3.5 text-gray-500 cursor-pointer transform transition-transform' style={{ transform: fold ? 'rotate(0deg)' : 'rotate(90deg)' }} />
           )}
         </div>
       </div>

@@ -62,7 +62,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           <div className='px-4 pb-3'>
             <Button
               variant='primary'
-              className='w-full !h-8'
+              className='w-full'
               onClick={showSetAuthModal}
             >
               {t(`${i18nPrefix}.toAuthorize`)}
@@ -130,6 +130,11 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
               name='files'
               type='Array[File]'
               description={t(`${i18nPrefix}.outputVars.files.title`)}
+            />
+            <VarItem
+              name='json'
+              type='Array[Object]'
+              description={t(`${i18nPrefix}.outputVars.json`)}
             />
           </>
         </OutputVars>

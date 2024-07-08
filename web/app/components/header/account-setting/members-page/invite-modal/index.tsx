@@ -148,7 +148,7 @@ const InviteModal = ({
           </Listbox>
           <Button
             tabIndex={0}
-            className='w-full text-sm font-medium'
+            className='w-full'
             onClick={handleSend}
             disabled={!emails.length}
             variant='primary'

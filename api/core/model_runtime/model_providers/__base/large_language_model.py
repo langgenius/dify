@@ -3,7 +3,7 @@ import os
 import re
 import time
 from abc import abstractmethod
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from typing import Optional, Union
 
 from pydantic import ConfigDict
@@ -43,7 +43,7 @@ class LargeLanguageModel(AIModel):
     def invoke(self, model: str, credentials: dict,
                prompt_messages: list[PromptMessage], model_parameters: Optional[dict] = None,
                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-               stream: bool = True, user: Optional[str] = None, callbacks: list[Callback] = None) \
+               stream: bool = True, user: Optional[str] = None, callbacks: Optional[list[Callback]] = None) \
             -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -129,7 +129,7 @@ class LargeLanguageModel(AIModel):
                 user=user,
                 callbacks=callbacks
             )
-        else:
+        elif isinstance(result, LLMResult):
             self._trigger_after_invoke_callbacks(
                 model=model,
                 result=result,
@@ -148,7 +148,7 @@ class LargeLanguageModel(AIModel):
     def _code_block_mode_wrapper(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                            model_parameters: dict, tools: Optional[list[PromptMessageTool]] = None,
                            stop: Optional[list[str]] = None, stream: bool = True, user: Optional[str] = None,
-                           callbacks: list[Callback] = None) -> Union[LLMResult, Generator]:
+                           callbacks: Optional[list[Callback]] = None) -> Union[LLMResult, Generator]:
         """
         Code block mode wrapper, ensure the response is a code block with output markdown quote
 
@@ -196,7 +196,7 @@ if you are not sure about the structure.
             # override the system message
             prompt_messages[0] = SystemPromptMessage(
                 content=block_prompts
-                    .replace("{{instructions}}", prompt_messages[0].content)
+                    .replace("{{instructions}}", str(prompt_messages[0].content))
             )
         else:
             # insert the system message
@@ -274,8 +274,9 @@ if you are not sure about the structure.
             else:
                 yield piece
                 continue
-            new_piece = ""
+            new_piece: str = ""
             for char in piece:
+                char = str(char)
                 if state == "normal":
                     if char == "`":
                         state = "in_backticks"
@@ -340,7 +341,7 @@ if you are not sure about the structure.
             if state == "done":
                 continue
 
-            new_piece = ""
+            new_piece: str = ""
             for char in piece:
                 if state == "search_start":
                     if char == "`":
@@ -365,7 +366,7 @@ if you are not sure about the structure.
                             # If backticks were counted but we're still collecting content, it was a false start
                             new_piece += "`" * backtick_count
                             backtick_count = 0
-                        new_piece += char
+                        new_piece += str(char)
 
                 elif state == "done":
                     break
@@ -388,13 +389,14 @@ if you are not sure about the structure.
                                  prompt_messages: list[PromptMessage], model_parameters: dict,
                                  tools: Optional[list[PromptMessageTool]] = None,
                                  stop: Optional[list[str]] = None, stream: bool = True,
-                                 user: Optional[str] = None, callbacks: list[Callback] = None) -> Generator:
+                                 user: Optional[str] = None, callbacks: Optional[list[Callback]] = None) -> Generator:
         """
         Invoke result generator
 
         :param result: result generator
         :return: result generator
         """
+        callbacks = callbacks or []
         prompt_message = AssistantPromptMessage(
             content=""
         )
@@ -487,36 +489,6 @@ if you are not sure about the structure.
         """Cut off the text as soon as any stop words occur."""
         return re.split("|".join(stop), text, maxsplit=1)[0]
 
-    def _llm_result_to_stream(self, result: LLMResult) -> Generator:
-        """
-        Transform llm result to stream
-
-        :param result: llm result
-        :return: stream
-        """
-        index = 0
-
-        tool_calls = result.message.tool_calls
-
-        for word in result.message.content:
-            assistant_prompt_message = AssistantPromptMessage(
-                content=word,
-                tool_calls=tool_calls if index == (len(result.message.content) - 1) else []
-            )
-
-            yield LLMResultChunk(
-                model=result.model,
-                prompt_messages=result.prompt_messages,
-                system_fingerprint=result.system_fingerprint,
-                delta=LLMResultChunkDelta(
-                    index=index,
-                    message=assistant_prompt_message,
-                )
-            )
-
-            index += 1
-            time.sleep(0.01)
-
     def get_parameter_rules(self, model: str, credentials: dict) -> list[ParameterRule]:
         """
         Get parameter rules
@@ -531,7 +503,7 @@ if you are not sure about the structure.
 
         return []
 
-    def get_model_mode(self, model: str, credentials: Optional[dict] = None) -> LLMMode:
+    def get_model_mode(self, model: str, credentials: Optional[Mapping] = None) -> LLMMode:
         """
         Get model mode
 
@@ -595,7 +567,7 @@ if you are not sure about the structure.
                                          prompt_messages: list[PromptMessage], model_parameters: dict,
                                          tools: Optional[list[PromptMessageTool]] = None,
                                          stop: Optional[list[str]] = None, stream: bool = True,
-                                         user: Optional[str] = None, callbacks: list[Callback] = None) -> None:
+                                         user: Optional[str] = None, callbacks: Optional[list[Callback]] = None) -> None:
         """
         Trigger before invoke callbacks
 
@@ -633,7 +605,7 @@ if you are not sure about the structure.
                                      prompt_messages: list[PromptMessage], model_parameters: dict,
                                      tools: Optional[list[PromptMessageTool]] = None,
                                      stop: Optional[list[str]] = None, stream: bool = True,
-                                     user: Optional[str] = None, callbacks: list[Callback] = None) -> None:
+                                     user: Optional[str] = None, callbacks: Optional[list[Callback]] = None) -> None:
         """
         Trigger new chunk callbacks
 
@@ -672,7 +644,7 @@ if you are not sure about the structure.
                                         prompt_messages: list[PromptMessage], model_parameters: dict,
                                         tools: Optional[list[PromptMessageTool]] = None,
                                         stop: Optional[list[str]] = None, stream: bool = True,
-                                        user: Optional[str] = None, callbacks: list[Callback] = None) -> None:
+                                        user: Optional[str] = None, callbacks: Optional[list[Callback]] = None) -> None:
         """
         Trigger after invoke callbacks
 
@@ -712,7 +684,7 @@ if you are not sure about the structure.
                                         prompt_messages: list[PromptMessage], model_parameters: dict,
                                         tools: Optional[list[PromptMessageTool]] = None,
                                         stop: Optional[list[str]] = None, stream: bool = True,
-                                        user: Optional[str] = None, callbacks: list[Callback] = None) -> None:
+                                        user: Optional[str] = None, callbacks: Optional[list[Callback]] = None) -> None:
         """
         Trigger invoke error callbacks
 

@@ -44,6 +44,15 @@ const translation = {
         webDescTip: 'Văn bản này sẽ được hiển thị ở phía máy khách, cung cấp hướng dẫn cơ bản về cách sử dụng ứng dụng',
         webDescPlaceholder: 'Nhập mô tả của ứng dụng web',
         language: 'Ngôn ngữ',
+        workflow: {
+          title: 'Các Bước Quy trình',
+          show: 'Hiển thị',
+          hide: 'Ẩn',
+        },
+        chatColorTheme: 'Chủ đề màu sắc trò chuyện',
+        chatColorThemeDesc: 'Thiết lập chủ đề màu sắc của chatbot',
+        chatColorThemeInverted: 'Đảo ngược',
+        invalidHexMessage: 'Giá trị không hợp lệ của hệ màu hex',
         more: {
           entry: 'Hiển thị thêm cài đặt',
           copyright: 'Bản quyền',

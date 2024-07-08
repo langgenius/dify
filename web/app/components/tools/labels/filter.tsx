@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useDebounceFn, useMount } from 'ahooks'
 import cn from 'classnames'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { useStore as useLabelStore } from './store'
 import {
   PortalToFollowElem,
@@ -11,7 +12,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import SearchInput from '@/app/components/base/search-input'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
@@ -97,7 +97,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
             )}
             {!value.length && (
               <div className='p-[1px]'>
-                <ChevronDown className='h-3.5 w-3.5 text-gray-700'/>
+                <RiArrowDownSLine className='h-3.5 w-3.5 text-gray-700'/>
               </div>
             )}
             {!!value.length && (
