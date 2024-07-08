@@ -553,13 +553,13 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.34.140"
+version = "1.34.139"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "botocore-1.34.140-py3-none-any.whl", hash = "sha256:43940d3a67d946ba3301631ba4078476a75f1015d4fb0fb0272d0b754b2cf9de"},
-    {file = "botocore-1.34.140.tar.gz", hash = "sha256:86302b2226c743b9eec7915a4c6cfaffd338ae03989cd9ee181078ef39d1ab39"},
+    {file = "botocore-1.34.139-py3-none-any.whl", hash = "sha256:dd1e085d4caa2a4c1b7d83e3bc51416111c8238a35d498e9d3b04f3b63b086ba"},
+    {file = "botocore-1.34.139.tar.gz", hash = "sha256:df023d8cf8999d574214dad4645cb90f9d2ccd1494f6ee2b57b1ab7522f6be77"},
 ]
 
 [package.dependencies]
@@ -2118,20 +2118,6 @@ files = [
     {file = "filetype-1.2.0-py2.py3-none-any.whl", hash = "sha256:7ce71b6880181241cf7ac8697a2f1eb6a8bd9b429f7ad6d27b8db9ba5f1c2d25"},
     {file = "filetype-1.2.0.tar.gz", hash = "sha256:66b56cd6474bf41d8c54660347d37afcc3f7d1970648de365c102ef77548aadb"},
 ]
-
-[[package]]
-name = "firecrawl-py"
-version = "0.0.5"
-description = "Python SDK for Firecrawl API"
-optional = false
-python-versions = "*"
-files = [
-    {file = "firecrawl-py-0.0.5.tar.gz", hash = "sha256:3d1cc30b7d86c12aa06e6434ebb526072cd70ab9a0c8b145008efe044a1cd09c"},
-    {file = "firecrawl_py-0.0.5-py3-none-any.whl", hash = "sha256:476694345141c0145a1bee9c01a8ad0103f75892c12a122dc511a3adad0785e7"},
-]
-
-[package.dependencies]
-requests = "*"
 
 [[package]]
 name = "flask"
@@ -3979,13 +3965,13 @@ openai = ["openai (>=0.27.8)"]
 
 [[package]]
 name = "langsmith"
-version = "0.1.84"
+version = "0.1.83"
 description = "Client library to connect to the LangSmith LLM Tracing and Evaluation Platform."
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langsmith-0.1.84-py3-none-any.whl", hash = "sha256:01f3c6390dba26c583bac8dd0e551ce3d0509c7f55cad714db0b5c8d36e4c7ff"},
-    {file = "langsmith-0.1.84.tar.gz", hash = "sha256:5220c0439838b9a5bd320fd3686be505c5083dcee22d2452006c23891153bea1"},
+    {file = "langsmith-0.1.83-py3-none-any.whl", hash = "sha256:f54d8cd8479b648b6339f3f735d19292c3516d080f680933ecdca3eab4b67ed3"},
+    {file = "langsmith-0.1.83.tar.gz", hash = "sha256:5cdd947212c8ad19adb992c06471c860185a777daa6859bb47150f90daf64bf3"},
 ]
 
 [package.dependencies]
@@ -5394,12 +5380,12 @@ xml = ["lxml (>=4.9.2)"]
 
 [[package]]
 name = "peewee"
-version = "3.17.6"
+version = "3.17.5"
 description = "a little orm"
 optional = false
 python-versions = "*"
 files = [
-    {file = "peewee-3.17.6.tar.gz", hash = "sha256:cea5592c6f4da1592b7cff8eaf655be6648a1f5857469e30037bf920c03fb8fb"},
+    {file = "peewee-3.17.5.tar.gz", hash = "sha256:e1b6a64192207fd3ddb4e1188054820f42aef0aadfa749e3981af3c119a76420"},
 ]
 
 [[package]]
@@ -7686,13 +7672,13 @@ test = ["pytest", "tornado (>=4.5)", "typeguard"]
 
 [[package]]
 name = "tencentcloud-sdk-python-common"
-version = "3.0.1184"
+version = "3.0.1183"
 description = "Tencent Cloud Common SDK for Python"
 optional = false
 python-versions = "*"
 files = [
-    {file = "tencentcloud-sdk-python-common-3.0.1184.tar.gz", hash = "sha256:51e54d1d930e5dccd04697dd1cf689afc8c6d98386ebcb4ae1b0e3392186d7f7"},
-    {file = "tencentcloud_sdk_python_common-3.0.1184-py2.py3-none-any.whl", hash = "sha256:07d5d1f794be6c08c6fccf277c713b70ec54c4c152e3dbfab7d4f9b340ba2728"},
+    {file = "tencentcloud-sdk-python-common-3.0.1183.tar.gz", hash = "sha256:59f8175cd2be20badfbed035637794d1d827071dd4e9d746543689254a9eae47"},
+    {file = "tencentcloud_sdk_python_common-3.0.1183-py2.py3-none-any.whl", hash = "sha256:9deb38d80f7d8fbaf45b46f201f8c0c324a78cc0cb6c5034c1da84a06116af88"},
 ]
 
 [package.dependencies]
@@ -7700,17 +7686,17 @@ requests = ">=2.16.0"
 
 [[package]]
 name = "tencentcloud-sdk-python-hunyuan"
-version = "3.0.1184"
+version = "3.0.1183"
 description = "Tencent Cloud Hunyuan SDK for Python"
 optional = false
 python-versions = "*"
 files = [
-    {file = "tencentcloud-sdk-python-hunyuan-3.0.1184.tar.gz", hash = "sha256:c248db31607d19203acd18a63c3ca29fe78e11909bfe2eab86bfb4051c57fab4"},
-    {file = "tencentcloud_sdk_python_hunyuan-3.0.1184-py2.py3-none-any.whl", hash = "sha256:284646bc963da28bcb2a81dc94236a5d4efd7f67b0dd4eb72c146e421673a680"},
+    {file = "tencentcloud-sdk-python-hunyuan-3.0.1183.tar.gz", hash = "sha256:5648994f0124c694ee75dd498d991ca632c8dc8d55b6d349d8cc7fd5bc33b1bd"},
+    {file = "tencentcloud_sdk_python_hunyuan-3.0.1183-py2.py3-none-any.whl", hash = "sha256:01bfdf33ea04ed791931636c3eafa569a0387f623967ef880ff220b3c548e6f5"},
 ]
 
 [package.dependencies]
-tencentcloud-sdk-python-common = "3.0.1184"
+tencentcloud-sdk-python-common = "3.0.1183"
 
 [[package]]
 name = "threadpoolctl"
@@ -9147,4 +9133,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "b1e1fe8a7296c0aaa5d90d76f5d23125413632c55d8a1cc6f0cc08165abd944a"
+content-hash = "c2b7b8ec41f3f534977b26932fb4e28dbcc9758bee4d4cebf983924d254d1347"
