@@ -16,7 +16,7 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskNa
 from core.ops.utils import measure_time
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
-from core.rag.rerank.rerank import RerankRunner
+from core.rag.rerank.rerank_model import RerankRunner, RerankModelRunner
 from core.rag.retrieval.retrival_methods import RetrievalMethod
 from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
@@ -320,7 +320,7 @@ class DatasetRetrieval:
             model=reranking_model_name
         )
 
-        rerank_runner = RerankRunner(rerank_model_instance)
+        rerank_runner = RerankModelRunner(rerank_model_instance)
 
         with measure_time() as timer:
             all_documents = rerank_runner.run(
