@@ -115,16 +115,6 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
     node.data._connectedTargetHandleIds = connectedEdges.filter(edge => edge.target === node.id).map(edge => edge.targetHandle || 'target')
 
     if (node.data.type === BlockEnum.IfElse) {
-      node.data._targetBranches = [
-        {
-          id: 'true',
-          name: 'IS TRUE',
-        },
-        {
-          id: 'false',
-          name: 'IS FALSE',
-        },
-      ]
       const nodeData = node.data as IfElseNodeType
 
       if (!nodeData.cases && nodeData.logical_operator && nodeData.conditions) {
@@ -136,6 +126,16 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
           },
         ]
       }
+      node.data._targetBranches = (node.data as IfElseNodeType).cases.map((caseItem, index) => {
+        return {
+          id: caseItem.caseId,
+          name: `CASE ${index + 1}`,
+        }
+      })
+      node.data._targetBranches.push({
+        id: 'false',
+        name: 'ELSE',
+      })
     }
 
     if (node.data.type === BlockEnum.QuestionClassifier) {

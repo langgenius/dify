@@ -46,7 +46,7 @@ export type CaseItem = {
 export type IfElseNodeType = CommonNodeType & {
   logical_operator?: LogicalOperator
   conditions?: Condition[]
-  cases?: CaseItem[]
+  cases: CaseItem[]
 }
 
 export type HandleAddCondition = (caseId: string, valueSelector: ValueSelector, varItem: Var) => void

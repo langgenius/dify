@@ -7,6 +7,7 @@ import type {
 import { VarType } from '../../types'
 import { LogicalOperator } from './types'
 import type {
+  CaseItem,
   HandleAddCondition,
   HandleRemoveCondition,
   HandleUpdateCondition,
@@ -51,6 +52,18 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
   const handleRemoveCase = useCallback((caseId: string) => {
     const newInputs = produce(inputs, (draft) => {
       draft.cases = draft.cases?.filter(item => item.caseId !== caseId)
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleSortCase = useCallback((newCases: (CaseItem & { id: string })[]) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.cases = newCases.filter(Boolean).map(item => ({
+        id: item.id,
+        caseId: item.caseId,
+        logical_operator: item.logical_operator,
+        conditions: item.conditions,
+      }))
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -107,6 +120,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     filterVar,
     handleAddCase,
     handleRemoveCase,
+    handleSortCase,
     handleAddCondition,
     handleRemoveCondition,
     handleUpdateCondition,
