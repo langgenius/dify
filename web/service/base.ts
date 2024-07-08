@@ -19,6 +19,7 @@ const TIME_OUT = 100000
 const ContentType = {
   json: 'application/json',
   stream: 'text/event-stream',
+  audio: 'audio/mpeg',
   form: 'application/x-www-form-urlencoded; charset=UTF-8',
   download: 'application/octet-stream', // for download
   upload: 'multipart/form-data', // for upload
@@ -402,9 +403,10 @@ const baseFetch = <T>(
           }
 
           // return data
-          const data: Promise<T> = options.headers.get('Content-type') === ContentType.download ? res.blob() : res.json()
+          if (options.headers.get('Content-type') === ContentType.download || options.headers.get('Content-type') === ContentType.audio)
+            resolve(needAllResponseContent ? resClone : res.blob())
 
-          resolve(needAllResponseContent ? resClone : data)
+          else resolve(needAllResponseContent ? resClone : res.json())
         })
         .catch((err) => {
           if (!silent)

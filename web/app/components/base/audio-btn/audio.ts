@@ -43,7 +43,7 @@ export default class AudioPlayer {
     this.audio = new Audio()
     this.setCallback(callback)
     this.audio.src = this.mediaSource ? URL.createObjectURL(this.mediaSource) : ''
-    // this.audio.autoplay = true
+    this.audio.autoplay = true
 
     const source = this.audioContext.createMediaElementSource(this.audio)
     source.connect(this.audioContext.destination)
@@ -60,13 +60,21 @@ export default class AudioPlayer {
         return
 
       this.sourceBuffer = this.mediaSource?.addSourceBuffer(contentType)
-      this.sourceBuffer?.addEventListener('update', () => {
-        if (this.cacheBuffers.length && !this.sourceBuffer?.updating) {
-          const cacheBuffer = this.cacheBuffers.shift()!
-          this.sourceBuffer?.appendBuffer(cacheBuffer)
-        }
-        // this.pauseAudio()
-      })
+    //   this.sourceBuffer?.addEventListener('update', () => {
+    //     if (this.cacheBuffers.length && !this.sourceBuffer?.updating) {
+    //       const cacheBuffer = this.cacheBuffers.shift()!
+    //       this.sourceBuffer?.appendBuffer(cacheBuffer)
+    //     }
+    //     // this.pauseAudio()
+    //   })
+    //
+    //   this.sourceBuffer?.addEventListener('updateend', () => {
+    //     if (this.cacheBuffers.length && !this.sourceBuffer?.updating) {
+    //       const cacheBuffer = this.cacheBuffers.shift()!
+    //       this.sourceBuffer?.appendBuffer(cacheBuffer)
+    //     }
+    //     // this.pauseAudio()
+    //   })
     })
   }
 
@@ -128,6 +136,7 @@ export default class AudioPlayer {
       }
     }
     catch (error) {
+      this.isLoadData = false
       this.callback && this.callback('error')
     }
   }
@@ -150,22 +159,45 @@ export default class AudioPlayer {
     }
     else {
       this.isLoadData = true
-      this.cacheBuffers = []
-      try {
-        this.sourceBuffer?.abort()
-      }
-      catch (e) {
-      }
       this.loadAudio()
     }
   }
 
+  private theEndOfStream() {
+    const endTimer = setInterval(() => {
+      if (!this.sourceBuffer?.updating) {
+        this.mediaSource?.endOfStream()
+        clearInterval(endTimer)
+      }
+      console.log('finishStream  endOfStream endTimer')
+    }, 10)
+  }
+
+  private finishStream() {
+    const timer = setInterval(() => {
+      if (!this.cacheBuffers.length) {
+        this.theEndOfStream()
+        clearInterval(timer)
+      }
+
+      if (this.cacheBuffers.length && !this.sourceBuffer?.updating) {
+        const arrayBuffer = this.cacheBuffers.shift()!
+        this.sourceBuffer?.appendBuffer(arrayBuffer)
+      }
+      console.log('finishStream  timer')
+    }, 10)
+  }
+
   public async playAudioWithAudio(audio: string, play = true) {
+    if (!audio || !audio.length) {
+      this.finishStream()
+      return
+    }
+
     const audioContent = Buffer.from(audio, 'base64')
     this.receiveAudioData(new Uint8Array(audioContent))
-    this.isLoadData = true
-
     if (play) {
+      this.isLoadData = true
       if (this.audio.paused) {
         this.audioContext.resume().then((_) => {
           this.audio.play()
@@ -176,6 +208,8 @@ export default class AudioPlayer {
         this.audio.play()
         this.callback && this.callback('play')
       }
+      else if (this.audio.played) { /* empty */ }
+
       else {
         this.audio.play()
         this.callback && this.callback('play')
@@ -189,37 +223,35 @@ export default class AudioPlayer {
     this.audioContext.suspend()
   }
 
-  public cancer() {
+  private cancer() {
 
   }
 
   private receiveAudioData(unit8Array: Uint8Array) {
     if (!unit8Array) {
-      try {
-        this.mediaSource?.endOfStream()
-      }
-      catch (e) {
-      }
+      this.finishStream()
       return
     }
     const audioData = this.byteArrayToArrayBuffer(unit8Array)
     if (!audioData.byteLength) {
-      if (this.mediaSource?.readyState === 'open') {
-        try {
-          this.mediaSource?.endOfStream()
-        }
-        catch (e) {
-        }
-      }
+      if (this.mediaSource?.readyState === 'open')
+        this.finishStream()
       return
     }
 
-    if (this.sourceBuffer?.updating)
+    if (this.sourceBuffer?.updating) {
       this.cacheBuffers.push(audioData)
-    else
-      this.sourceBuffer?.appendBuffer(audioData)
-    if (this.audioContext.state !== 'suspended')
-      this.audio.play()
+    }
+    else {
+      if (this.cacheBuffers.length && !this.sourceBuffer?.updating) {
+        this.cacheBuffers.push(audioData)
+        const cacheBuffer = this.cacheBuffers.shift()!
+        this.sourceBuffer?.appendBuffer(cacheBuffer)
+      }
+      else {
+        this.sourceBuffer?.appendBuffer(audioData)
+      }
+    }
   }
 
   private byteArrayToArrayBuffer(byteArray: Uint8Array): ArrayBuffer {

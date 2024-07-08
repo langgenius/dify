@@ -86,7 +86,11 @@ class TextApi(Resource):
                 text_to_speech = app_model.workflow.features_dict.get('text_to_speech')
                 voice = args.get('voice') if args.get('voice') else text_to_speech.get('voice')
             else:
-                voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get('voice')
+                try:
+                    voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get(
+                        'voice')
+                except Exception:
+                    voice = None
             response = AudioService.transcript_tts(
                 app_model=app_model,
                 message_id=message_id,

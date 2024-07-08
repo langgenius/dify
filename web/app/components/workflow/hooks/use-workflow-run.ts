@@ -487,12 +487,13 @@ export const useWorkflowRun = () => {
           }))
         },
         onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
+          if (!audio || audio === '')
+            return
           player.playAudioWithAudio(audio, true)
           AudioPlayerManager.getInstance().resetMsgId(messageId)
         },
         onTTSEnd: (messageId: string, audio: string, audioType?: string) => {
-          player.playAudioWithAudio(audio, true)
-          AudioPlayerManager.getInstance().resetMsgId(messageId)
+          player.playAudioWithAudio(audio, false)
         },
         ...restCallback,
       },

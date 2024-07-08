@@ -28,6 +28,7 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
+    MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     StreamResponse,
     TextChunkStreamResponse,
@@ -211,6 +212,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             except Exception as e:
                 logger.error(e)
                 break
+        yield MessageAudioEndStreamResponse(audio='', task_id=task_id)
 
 
     def _process_stream_response(

@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import re
 import subprocess
 import uuid
@@ -11,7 +12,7 @@ from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelTy
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 
-
+logger = logging.getLogger(__name__)
 class TTSModel(AIModel):
     """
     Model class for ttstext model.
@@ -36,6 +37,7 @@ class TTSModel(AIModel):
         :return: translated audio file
         """
         try:
+            logger.info(f"Invoke TTS model: {model} , invoke content : {content_text}")
             self._is_ffmpeg_installed()
             return self._invoke(model=model, credentials=credentials, user=user,
                                 content_text=content_text, voice=voice, tenant_id=tenant_id)

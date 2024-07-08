@@ -35,12 +35,16 @@ const VoiceParamConfig = ({
   const text2speech = useFeatures(state => state.features.text2speech)
   const featuresStore = useFeaturesStore()
 
-  const languageItem = languages.find(item => item.value === text2speech?.language)
+  let languageItem = languages.find(item => item.value === text2speech?.language)
+  if (languages && !languageItem)
+    languageItem = languages[0]
   const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
 
   const language = languageItem?.value
   const voiceItems = useSWR({ appId, language }, fetchAppVoices).data
-  const voiceItem = voiceItems?.find(item => item.value === text2speech?.voice)
+  let voiceItem = voiceItems?.find(item => item.value === text2speech?.voice)
+  if (voiceItems && !voiceItem)
+    voiceItem = voiceItems[0]
   const localVoicePlaceholder = voiceItem?.name || t('common.placeholder.select')
 
   const handleChange = (value: Record<string, string>) => {
@@ -220,7 +224,7 @@ const VoiceParamConfig = ({
                   value: TtsAutoPlay.disabled,
                 },
               ]}
-              value={text2speech?.autoPlay}
+              value={text2speech?.autoPlay ? text2speech?.autoPlay : TtsAutoPlay.disabled}
               onChange={(value: TtsAutoPlay) => {
                 handleChange({
                   autoPlay: value,

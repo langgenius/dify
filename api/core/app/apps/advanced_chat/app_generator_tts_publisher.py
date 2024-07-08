@@ -61,7 +61,7 @@ class AppGeneratorTTSPublisher:
         self.voice = voice
         if not voice or voice not in values:
             self.voice = self.voices[0].get('value')
-        self.MAX_SENTENCE = 3
+        self.MAX_SENTENCE = 2
         self._last_audio_event = None
         self._runtime_thread = threading.Thread(target=self._runtime).start()
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=3)

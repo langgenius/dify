@@ -548,12 +548,13 @@ export const useChat = (
           }))
         },
         onTTSChunk: (messageId: string, audio: string) => {
+          if (!audio || audio === '')
+            return
           player.playAudioWithAudio(audio, true)
           AudioPlayerManager.getInstance().resetMsgId(messageId)
         },
         onTTSEnd: (messageId: string, audio: string) => {
-          player.playAudioWithAudio(audio, true)
-          AudioPlayerManager.getInstance().resetMsgId(messageId)
+          player.playAudioWithAudio(audio, false)
         },
       })
     return true
