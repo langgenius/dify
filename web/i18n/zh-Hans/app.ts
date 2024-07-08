@@ -84,6 +84,42 @@ const translation = {
     workflow: '工作流',
     completion: '文本生成',
   },
+  tracing: {
+    title: '追踪应用性能',
+    description: '配置第三方 LLMOps 提供商并跟踪应用程序性能。',
+    config: '配置',
+    collapse: '折叠',
+    expand: '展开',
+    tracing: '追踪',
+    disabled: '已禁用',
+    disabledTip: '请先配置提供商',
+    enabled: '已启用',
+    tracingDescription: '捕获应用程序执行的完整上下文，包括 LLM 调用、上下文、提示、HTTP 请求等，发送到第三方跟踪平台。',
+    configProviderTitle: {
+      configured: '已配置',
+      notConfigured: '配置提供商以启用追踪',
+      moreProvider: '更多提供商',
+    },
+    langsmith: {
+      title: 'LangSmith',
+      description: '一个全方位的开发者平台，适用于 LLM 驱动应用程序生命周期的每个步骤。',
+    },
+    langfuse: {
+      title: 'Langfuse',
+      description: '跟踪、评估、提示管理和指标，以调试和改进您的 LLM 应用程序。',
+    },
+    inUse: '使用中',
+    configProvider: {
+      title: '配置 ',
+      placeholder: '输入你的{{key}}',
+      project: '项目',
+      publicKey: '公钥',
+      secretKey: '密钥',
+      viewDocsLink: '查看 {{key}} 的文档',
+      removeConfirmTitle: '删除 {{key}} 配置?',
+      removeConfirmContent: '当前配置正在使用中，删除它将关闭追踪功能。',
+    },
+  },
 }
 
 export default translation

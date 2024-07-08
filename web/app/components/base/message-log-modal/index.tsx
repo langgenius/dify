@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useBoolean, useClickAway } from 'ahooks'
 import { RiCloseLine } from '@remixicon/react'
 import IterationResultPanel from '../../workflow/run/iteration-result-panel'
-import type { IChatItem } from '@/app/components/app/chat/type'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import Run from '@/app/components/workflow/run'
 import type { NodeTracing } from '@/types/workflow'
 

@@ -227,6 +227,7 @@ const AppPublisher = ({
         </div>
       </PortalToFollowElemContent>
       <EmbeddedModal
+        siteInfo={appDetail?.site}
         isShow={embeddingModalOpen}
         onClose={() => setEmbeddingModalOpen(false)}
         appBaseUrl={appBaseURL}

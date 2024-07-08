@@ -1,14 +1,16 @@
 import { useCallback } from 'react'
 import type { EditorState } from 'lexical'
-import { useNodeDataUpdate } from '../hooks'
+import { WorkflowHistoryEvent, useNodeDataUpdate, useWorkflowHistory } from '../hooks'
 import type { NoteTheme } from './types'
 
 export const useNote = (id: string) => {
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
+  const { saveStateToHistory } = useWorkflowHistory()
 
   const handleThemeChange = useCallback((theme: NoteTheme) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { theme } })
-  }, [handleNodeDataUpdateWithSyncDraft, id])
+    saveStateToHistory(WorkflowHistoryEvent.NoteChange)
+  }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const handleEditorChange = useCallback((editorState: EditorState) => {
     if (!editorState?.isEmpty())
@@ -19,7 +21,8 @@ export const useNote = (id: string) => {
 
   const handleShowAuthorChange = useCallback((showAuthor: boolean) => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { showAuthor } })
-  }, [handleNodeDataUpdateWithSyncDraft, id])
+    saveStateToHistory(WorkflowHistoryEvent.NoteChange)
+  }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   return {
     handleThemeChange,

@@ -5,7 +5,7 @@ import type {
   VisionFile,
 } from '../../types'
 import { Markdown } from '@/app/components/base/markdown'
-import Thought from '@/app/components/app/chat/thought'
+import Thought from '@/app/components/base/chat/chat/thought'
 import ImageGallery from '@/app/components/base/image-gallery'
 import type { Emoji } from '@/app/components/tools/types'
 

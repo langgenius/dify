@@ -2,13 +2,15 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useEmbeddedChatbotContext } from '../context'
+import { useThemeContext } from '../theme/theme-context'
+import { CssTransform } from '../theme/utils'
 import Form from './form'
 import Button from '@/app/components/base/button'
 import AppIcon from '@/app/components/base/app-icon'
 import { MessageDotsCircle } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Edit02 } from '@/app/components/base/icons/src/vender/line/general'
 import { Star06 } from '@/app/components/base/icons/src/vender/solid/shapes'
-import { FootLogo } from '@/app/components/share/chat/welcome/massive-component'
+import LogoSite from '@/app/components/base/logo/logo-site'
 
 const ConfigPanel = () => {
   const { t } = useTranslation()
@@ -22,6 +24,7 @@ const ConfigPanel = () => {
   const [collapsed, setCollapsed] = useState(true)
   const customConfig = appData?.custom_config
   const site = appData?.site
+  const themeBuilder = useThemeContext()
 
   return (
     <div className='flex flex-col max-h-[80%] w-full max-w-[720px]'>
@@ -34,6 +37,7 @@ const ConfigPanel = () => {
         )}
       >
         <div
+          style={CssTransform(themeBuilder.theme?.roundedBackgroundColorStyle ?? '')}
           className={`
             flex flex-wrap px-6 py-4 rounded-t-xl bg-indigo-25
             ${isMobile && '!px-4 !py-3'}
@@ -68,6 +72,7 @@ const ConfigPanel = () => {
                   {t('share.chat.configStatusDes')}
                 </div>
                 <Button
+                  styleCss={CssTransform(themeBuilder.theme?.backgroundButtonDefaultColorStyle ?? '')}
                   variant='secondary-accent'
                   size='small'
                   className='shrink-0'
@@ -96,6 +101,7 @@ const ConfigPanel = () => {
               <Form />
               <div className={cn('pl-[136px] flex items-center', isMobile && '!pl-0')}>
                 <Button
+                  styleCss={CssTransform(themeBuilder.theme?.backgroundButtonDefaultColorStyle ?? '')}
                   variant='primary'
                   className='mr-2'
                   onClick={() => {
@@ -119,6 +125,7 @@ const ConfigPanel = () => {
             <div className='p-6 rounded-b-xl'>
               <Form />
               <Button
+                styleCss={CssTransform(themeBuilder.theme?.backgroundButtonDefaultColorStyle ?? '')}
                 className={cn(inputsForms.length && !isMobile && 'ml-[136px]')}
                 variant='primary'
                 size='large'
@@ -154,7 +161,7 @@ const ConfigPanel = () => {
                       {
                         customConfig?.replace_webapp_logo
                           ? <img src={customConfig?.replace_webapp_logo} alt='logo' className='block w-auto h-5' />
-                          : <FootLogo />
+                          : <LogoSite className='!h-5' />
                       }
                     </div>
                   </div>

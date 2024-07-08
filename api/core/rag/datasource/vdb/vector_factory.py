@@ -78,6 +78,9 @@ class Vector:
             case VectorType.TENCENT:
                 from core.rag.datasource.vdb.tencent.tencent_vector import TencentVectorFactory
                 return TencentVectorFactory
+            case VectorType.ORACLE:
+                from core.rag.datasource.vdb.oracle.oraclevector import OracleVectorFactory
+                return OracleVectorFactory
             case VectorType.OPENSEARCH:
                 from core.rag.datasource.vdb.opensearch.opensearch_vector import OpenSearchVectorFactory
                 return OpenSearchVectorFactory

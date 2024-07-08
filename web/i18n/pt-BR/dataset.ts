@@ -8,6 +8,7 @@ const translation = {
   deleteDatasetConfirmTitle: 'Excluir este Conhecimento?',
   deleteDatasetConfirmContent:
     'A exclusão do Conhecimento é irreversível. Os usuários não poderão mais acessar seu Conhecimento e todas as configurações e registros de prompt serão excluídos permanentemente.',
+  datasetUsedByApp: 'O conhecimento está sendo usado por alguns aplicativos. Os aplicativos não poderão mais usar esse Conhecimento, e todas as configurações de prompt e logs serão excluídos permanentemente.',
   datasetDeleted: 'Conhecimento excluído',
   datasetDeleteFailed: 'Falha ao excluir o Conhecimento',
   didYouKnow: 'Você sabia?',

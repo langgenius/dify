@@ -22,7 +22,7 @@ default_app_templates = {
         'model_config': {
             'model': {
                 "provider": "openai",
-                "name": "gpt-4",
+                "name": "gpt-4o",
                 "mode": "chat",
                 "completion_params": {}
             },
@@ -51,7 +51,7 @@ default_app_templates = {
         'model_config': {
             'model': {
                 "provider": "openai",
-                "name": "gpt-4",
+                "name": "gpt-4o",
                 "mode": "chat",
                 "completion_params": {}
             }
@@ -77,7 +77,7 @@ default_app_templates = {
         'model_config': {
             'model': {
                 "provider": "openai",
-                "name": "gpt-4",
+                "name": "gpt-4o",
                 "mode": "chat",
                 "completion_params": {}
             }

@@ -8,6 +8,7 @@ const translation = {
   deleteDatasetConfirmTitle: '要刪除知識庫嗎？',
   deleteDatasetConfirmContent:
     '刪除知識庫是不可逆的。使用者將無法再訪問您的知識庫,所有的提示配置和日誌將被永久刪除。',
+  datasetUsedByApp: '這些知識正被一些應用程序使用。應用程序將無法再使用這些知識，所有提示配置和日誌將被永久刪除。',
   datasetDeleted: '知識庫已刪除',
   datasetDeleteFailed: '刪除知識庫失敗',
   didYouKnow: '你知道嗎？',
