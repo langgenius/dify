@@ -14,14 +14,20 @@ import type {
   HandleUpdateConditionLogicalOperator,
   IfElseNodeType,
 } from './types'
+import {
+  branchNameCorrect,
+  getOperators,
+} from './utils'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
+  useEdgesInteractions,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 
 const useConfig = (id: string, payload: IfElseNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
+  const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
   const { inputs, setInputs } = useNodeCrud<IfElseNodeType>(id, payload)
 
   const filterVar = useCallback((varPayload: Var) => {
@@ -39,11 +45,25 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
   const handleAddCase = useCallback(() => {
     const newInputs = produce(inputs, () => {
       if (inputs.cases) {
+        const caseId = uuid4()
         inputs.cases.push({
-          caseId: uuid4(),
+          caseId,
           logical_operator: LogicalOperator.and,
           conditions: [],
         })
+        if (inputs._targetBranches) {
+          const elseCaseIndex = inputs._targetBranches.findIndex(branch => branch.id === 'false')
+          if (elseCaseIndex > -1) {
+            inputs._targetBranches = branchNameCorrect([
+              ...inputs._targetBranches.slice(0, elseCaseIndex),
+              {
+                id: caseId,
+                name: '',
+              },
+              ...inputs._targetBranches.slice(elseCaseIndex),
+            ])
+          }
+        }
       }
     })
     setInputs(newInputs)
@@ -52,9 +72,14 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
   const handleRemoveCase = useCallback((caseId: string) => {
     const newInputs = produce(inputs, (draft) => {
       draft.cases = draft.cases?.filter(item => item.caseId !== caseId)
+
+      if (draft._targetBranches)
+        draft._targetBranches = branchNameCorrect(draft._targetBranches.filter(branch => branch.id !== caseId))
+
+      handleEdgeDeleteByDeleteBranch(id, caseId)
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [inputs, setInputs, id, handleEdgeDeleteByDeleteBranch])
 
   const handleSortCase = useCallback((newCases: (CaseItem & { id: string })[]) => {
     const newInputs = produce(inputs, (draft) => {
@@ -64,6 +89,11 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
         logical_operator: item.logical_operator,
         conditions: item.conditions,
       }))
+
+      draft._targetBranches = branchNameCorrect([
+        ...newCases.filter(Boolean).map(item => ({ id: item.caseId, name: '' })),
+        { id: 'false', name: '' },
+      ])
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -76,7 +106,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
           id: uuid4(),
           varType: varItem.type,
           variable_selector: valueSelector,
-          comparison_operator: undefined,
+          comparison_operator: getOperators(varItem.type)[0],
           value: '',
         })
       }

@@ -26,22 +26,29 @@ const VariableTag = ({
 
     return nodes.find(node => node.id === valueSelector[0])
   }, [nodes, valueSelector])
+  const variableName = valueSelector.slice(1).join('.')
 
   return (
-    <div className='inline-flex items-center px-1.5 h-6 text-xs rounded-md border-[0.5px] border-[rgba(16, 2440,0.08)] bg-white shadow-xs'>
-      <div className='flex items-center text-[#354052] font-medium'>
-        <VarBlockIcon
-          className='shrink-0 mr-0.5'
-          type={node!.data.type}
-        />
-        <div className='truncate'>{node!.data.title}</div>
+    <div className='inline-flex items-center px-1.5 max-w-full h-6 text-xs rounded-md border-[0.5px] border-[rgba(16, 2440,0.08)] bg-white shadow-xs'>
+      <VarBlockIcon
+        className='shrink-0 mr-0.5 text-[#354052]'
+        type={node!.data.type}
+      />
+      <div
+        className='max-w-[60px] truncate text-[#354052] font-medium'
+        title={node!.data.title}
+      >
+        {node!.data.title}
       </div>
-      <Line3 className='mx-0.5' />
-      <div className='flex items-center mr-0.5 text-[#155AEF] font-medium'>
-        <Variable02 className='shrink-0 mr-0.5 w-3.5 h-3.5' />
-        <div className='truncate'>{valueSelector.slice(1).join('.')}</div>
+      <Line3 className='shrink-0 mx-0.5' />
+      <Variable02 className='shrink-0 mr-0.5 w-3.5 h-3.5 text-[#155AEF]' />
+      <div
+        className='truncate text-[#155AEF] font-medium'
+        title={variableName}
+      >
+        {variableName}
       </div>
-      <div className='text-[#676F83]'>{capitalize(varType)}</div>
+      <div className='shrink-0 ml-0.5 text-[#676F83]'>{capitalize(varType)}</div>
     </div>
   )
 }

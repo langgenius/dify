@@ -44,6 +44,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
   } = useConfig(id, data)
   const [willDeleteCaseId, setWillDeleteCaseId] = useState('')
   const cases = inputs.cases || []
+  const casesLength = cases.length
 
   return (
     <div className='p-1'>
@@ -59,14 +60,19 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
             <Fragment key={item.caseId}>
               <div
                 className={cn(
-                  'relative py-1 px-3 min-h-[40px] rounded-[10px]',
-                  willDeleteCaseId === item.caseId && 'bg-[#FEF3F2]',
+                  'group relative py-1 px-3 min-h-[40px] rounded-[10px] bg-white',
+                  willDeleteCaseId === item.caseId && '!bg-[#FEF3F2]',
                 )}
               >
-                <RiDraggable className='handle absolute top-2 left-1 w-3 h-3 text-[#101828]/30 cursor-pointer' />
+                <RiDraggable className='hidden group-hover:block handle absolute top-2 left-1 w-3 h-3 text-[#101828]/30 cursor-pointer' />
                 <div className='absolute top-1.5 left-4 leading-4 text-[13px] font-semibold text-[#354052]'>
                   {
                     index === 0 ? 'IF' : 'ELIF'
+                  }
+                  {
+                    casesLength > 1 && (
+                      <div className='text-[10px] text-[#676F83] font-medium'>CASE {index + 1}</div>
+                    )
                   }
                 </div>
                 {
@@ -84,28 +90,35 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
                     </div>
                   )
                 }
-                <div className='flex items-center justify-between pl-[60px] pr-[30px]'>
+                <div className={cn(
+                  'flex items-center justify-between pl-[60px] pr-[30px]',
+                  !item.conditions.length && 'mt-1',
+                )}>
                   <ConditionAdd
                     disabled={readOnly}
                     caseId={item.caseId}
                     variables={getAvailableVars(id, '', filterVar)}
                     onSelectVariable={handleAddCondition}
                   />
-                  <Button
-                    className='hover:text-[#D92D20] hover:bg-[#FEE4E2]'
-                    size='small'
-                    variant='ghost'
-                    disabled={readOnly}
-                    onClick={() => handleRemoveCase(item.caseId)}
-                    onMouseEnter={() => setWillDeleteCaseId(item.caseId)}
-                    onMouseLeave={() => setWillDeleteCaseId('')}
-                  >
-                    <RiDeleteBinLine className='mr-1 w-3.5 h-3.5' />
-                    Remove
-                  </Button>
+                  {
+                    ((index === 0 && casesLength > 1) || (index > 0)) && (
+                      <Button
+                        className='hover:text-[#D92D20] hover:bg-[#FEE4E2]'
+                        size='small'
+                        variant='ghost'
+                        disabled={readOnly}
+                        onClick={() => handleRemoveCase(item.caseId)}
+                        onMouseEnter={() => setWillDeleteCaseId(item.caseId)}
+                        onMouseLeave={() => setWillDeleteCaseId('')}
+                      >
+                        <RiDeleteBinLine className='mr-1 w-3.5 h-3.5' />
+                        {t('common.operation.remove')}
+                      </Button>
+                    )
+                  }
                 </div>
               </div>
-              <div className='my-2 mx-3 h-[1px] bg-[#101828]/[0.04]'></div>
+              {/* <div className='my-2 mx-3 h-[1px] bg-[#101828]/[0.04]'></div> */}
             </Fragment>
           ))
         }

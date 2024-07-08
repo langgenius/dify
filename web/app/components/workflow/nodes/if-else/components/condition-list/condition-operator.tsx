@@ -2,6 +2,7 @@ import {
   useMemo,
   useState,
 } from 'react'
+import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { getOperators, isComparisonOperatorNeedTranslate } from '../../utils'
@@ -52,7 +53,7 @@ const ConditionOperator = ({
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <Button
-          className='shrink-0'
+          className={cn('shrink-0', !selectedOption && 'opacity-50')}
           size='small'
           variant='ghost'
           disabled={disabled}

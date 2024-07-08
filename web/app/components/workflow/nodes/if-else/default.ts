@@ -40,7 +40,10 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
     if (!cases || cases.length === 0)
       errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: 'IF' })
 
-    cases.forEach((caseItem) => {
+    cases.forEach((caseItem, index) => {
+      if (!caseItem.conditions.length)
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: index === 0 ? 'IF' : 'ELIF' })
+
       caseItem.conditions.forEach((condition) => {
         if (!errorMessages && (!condition.variable_selector || condition.variable_selector.length === 0))
           errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })

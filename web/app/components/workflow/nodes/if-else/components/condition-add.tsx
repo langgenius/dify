@@ -2,6 +2,7 @@ import {
   useCallback,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RiAddLine } from '@remixicon/react'
 import type { HandleAddCondition } from '../types'
 import Button from '@/app/components/base/button'
@@ -31,11 +32,13 @@ const ConditionAdd = ({
   onSelectVariable,
   disabled,
 }: ConditionAddProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   const handleSelectVariable = useCallback((valueSelector: ValueSelector, varItem: Var) => {
     onSelectVariable(caseId, valueSelector, varItem)
-  }, [caseId, onSelectVariable])
+    setOpen(false)
+  }, [caseId, onSelectVariable, setOpen])
 
   return (
     <PortalToFollowElem
@@ -54,7 +57,7 @@ const ConditionAdd = ({
           disabled={disabled}
         >
           <RiAddLine className='mr-1 w-3.5 h-3.5' />
-          Add Condition
+          {t('workflow.nodes.ifElse.addCondition')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>

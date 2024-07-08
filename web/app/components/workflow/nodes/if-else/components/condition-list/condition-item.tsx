@@ -57,11 +57,11 @@ const ConditionItem = ({
   return (
     <div className='flex mb-1 last-of-type:mb-0'>
       <div className={cn(
-        'w-[296px] bg-[#C8CEDA]/[0.25] rounded-lg',
+        'grow bg-[#C8CEDA]/[0.25] rounded-lg',
         isHovered && 'bg-[#FEF3F2]',
       )}>
         <div className='flex items-center p-1'>
-          <div className='grow'>
+          <div className='grow w-0'>
             <VariableTag
               valueSelector={condition.variable_selector}
               varType={condition.varType}
@@ -86,7 +86,7 @@ const ConditionItem = ({
         </div>
       </div>
       <div
-        className='flex items-center justify-center ml-1 mt-1 w-6 h-6 rounded-lg cursor-pointer hover:bg-[#FEF3F2] text-[#676F83] hover:text-[#D92D20]'
+        className='shrink-0 flex items-center justify-center ml-1 mt-1 w-6 h-6 rounded-lg cursor-pointer hover:bg-[#FEF3F2] text-[#676F83] hover:text-[#D92D20]'
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={() => onRemoveCondition(caseId, condition.id)}

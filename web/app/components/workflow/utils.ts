@@ -24,6 +24,7 @@ import {
 } from './constants'
 import type { QuestionClassifierNodeType } from './nodes/question-classifier/types'
 import type { IfElseNodeType } from './nodes/if-else/types'
+import { branchNameCorrect } from './nodes/if-else/utils'
 import type { ToolNodeType } from './nodes/tool/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
@@ -126,16 +127,10 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
           },
         ]
       }
-      node.data._targetBranches = (node.data as IfElseNodeType).cases.map((caseItem, index) => {
-        return {
-          id: caseItem.caseId,
-          name: `CASE ${index + 1}`,
-        }
-      })
-      node.data._targetBranches.push({
-        id: 'false',
-        name: 'ELSE',
-      })
+      node.data._targetBranches = branchNameCorrect([
+        ...(node.data as IfElseNodeType).cases.map(item => ({ id: item.caseId, name: '' })),
+        { id: 'false', name: '' },
+      ])
     }
 
     if (node.data.type === BlockEnum.QuestionClassifier) {
