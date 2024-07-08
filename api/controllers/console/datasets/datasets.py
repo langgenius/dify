@@ -115,7 +115,7 @@ class DatasetListApi(Resource):
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_editor:
+        if not current_user.is_dataset_editor:
             raise Forbidden()
 
         try:
