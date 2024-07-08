@@ -56,6 +56,7 @@
     "negotiator": "^0.6.3",
     "next": "^14.1.1",
     "next-nprogress-bar": "^2.3.8",
+    "pinyin-pro": "^3.23.0",
     "qrcode.react": "^3.1.0",
     "qs": "^6.11.1",
     "rc-textarea": "^1.5.2",
