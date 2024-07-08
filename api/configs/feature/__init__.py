@@ -47,6 +47,19 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default='dify-sandbox',
     )
 
+class PluginConfig(BaseSettings):
+    """
+    Plugin configs
+    """
+    PLUGIN_INNER_API_URL: str = Field(
+        description='Plugin inner API URL',
+        default='http://plugin:8194',
+    )
+
+    PLUGIN_INNER_API_KEY: str = Field(
+        description='Plugin inner API key',
+        default='dify-inner-api-key',
+    )
 
 class EndpointConfig(BaseSettings):
     """
@@ -431,6 +444,7 @@ class FeatureConfig(
     AppExecutionConfig,
     BillingConfig,
     CodeExecutionSandboxConfig,
+    PluginConfig,
     DataSetConfig,
     EndpointConfig,
     FileAccessConfig,
