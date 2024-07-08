@@ -31,7 +31,7 @@ export const useNodesSyncDraft = () => {
     const [x, y, zoom] = transform
     const {
       appId,
-      // environmentVariables,
+      environmentVariables,
       syncWorkflowDraftHash,
     } = workflowStore.getState()
 
@@ -81,8 +81,7 @@ export const useNodesSyncDraft = () => {
             sensitive_word_avoidance: features.moderation,
             file_upload: features.file,
           },
-          // #TODO ENV#
-          // environmentVariables,
+          environmentVariables,
           hash: syncWorkflowDraftHash,
         },
       }

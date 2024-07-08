@@ -479,19 +479,11 @@ export const useWorkflowInit = () => {
           name: 'PORT',
           value_type: 'number',
           value: 8888,
-          exportable: true,
-        },
-        {
-          name: 'VERSION',
-          value_type: 'string',
-          value: '1.0.0',
-          exportable: true,
         },
         {
           name: 'API_KEY',
           value_type: 'secret',
           value: 'sk-fjlda789whfkdlaf8wgkh2',
-          exportable: true,
         },
       ] as EnvironmentVariable[]
 

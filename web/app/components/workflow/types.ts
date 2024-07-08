@@ -106,7 +106,6 @@ export type EnvironmentVariable = {
   name: string
   value: any
   value_type: 'string' | 'number' | 'secret'
-  exportable: boolean
 }
 
 export type VariableWithValue = {
@@ -189,6 +188,7 @@ export type Memory = {
 export enum VarType {
   string = 'string',
   number = 'number',
+  secret = 'secret',
   boolean = 'boolean',
   object = 'object',
   array = 'array',

@@ -52,7 +52,6 @@ const VariableModal = ({
       value_type: type,
       name,
       value,
-      exportable: true,
     })
     onClose()
   }

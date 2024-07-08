@@ -229,6 +229,7 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
   }
 
   const selector = [id]
+  // #TODO ENV#: add env var list
   res.vars = res.vars.filter((v) => {
     const { children } = v
     if (!children)
