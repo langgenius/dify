@@ -8,7 +8,7 @@ export const groupItems = (items, getFirstChar) => {
 
     let letter
 
-    // transform chinese to pinyin
+    // transform Chinese to pinyin
     if (/[\u4E00-\u9FA5]/.test(firstChar))
       letter = pinyin(firstChar, { pattern: 'first', toneType: 'none' })[0].toUpperCase()
     else
