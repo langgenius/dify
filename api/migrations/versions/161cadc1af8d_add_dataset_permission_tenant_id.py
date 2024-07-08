@@ -35,7 +35,16 @@ def upgrade():
         """
         )
 
-        # Step 3: Alter column to NOT NULL
+        # Step 3: Update the column to set a default value for existing rows
+        op.execute(
+            """
+            UPDATE dataset_permissions
+            SET tenant_id = '00000000-0000-0000-0000-000000000000'
+            WHERE tenant_id IS NULL
+            """
+        )
+
+        # Step 4: Alter column to NOT NULL
         op.alter_column('dataset_permissions', 'tenant_id', nullable=False)
 
     # ### end Alembic commands ###
