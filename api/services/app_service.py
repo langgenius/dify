@@ -119,7 +119,6 @@ class AppService:
 
         app = App(**app_template['app'])
         app.name = args['name']
-        app.max_active_requests = args['max_active_requests']
         app.description = args.get('description', '')
         app.mode = args['mode']
         app.icon = args['icon']

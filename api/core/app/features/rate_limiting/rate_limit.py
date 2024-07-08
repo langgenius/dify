@@ -25,11 +25,11 @@ class RateLimit:
         return cls._instance_dict[client_id]
 
     def __init__(self, client_id: str, max_active_requests: int):
+        self.max_active_requests = max_active_requests
         if hasattr(self, 'initialized'):
             return
         self.initialized = True
         self.client_id = client_id
-        self.max_active_requests = max_active_requests
         self.active_requests_key = self._ACTIVE_REQUESTS_KEY.format(client_id)
         self.max_active_requests_key = self._MAX_ACTIVE_REQUESTS_KEY.format(client_id)
         self.last_recalculate_time = float('-inf')

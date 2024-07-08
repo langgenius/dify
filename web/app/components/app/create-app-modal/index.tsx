@@ -1,5 +1,5 @@
 'use client'
-import type { ChangeEvent, MouseEventHandler } from 'react'
+import type { MouseEventHandler } from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
@@ -43,12 +43,6 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
   const [emoji, setEmoji] = useState({ icon: '🤖', icon_background: '#FFEAD5' })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [name, setName] = useState('')
-  const [max_active_requests, setMaxActiveRequests] = useState<number | null>(null)
-  const handleMaxActiveRequestsChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if ((parseInt(value) >= 0 && !value.startsWith('-')))
-      setMaxActiveRequests(parseInt(value))
-  }
   const [description, setDescription] = useState('')
 
   const { plan, enableBilling } = useProviderContext()
@@ -74,7 +68,6 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
         description,
         icon: emoji.icon,
         icon_background: emoji.icon_background,
-        max_active_requests,
         mode: appMode,
       })
       notify({ type: 'success', message: t('app.newApp.appCreated') })
@@ -88,7 +81,7 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
     isCreatingRef.current = false
-  }, [name, notify, t, appMode, emoji.icon, emoji.icon_background, max_active_requests, description, onSuccess, onClose, mutateApps, push, isCurrentWorkspaceEditor])
+  }, [name, notify, t, appMode, emoji.icon, emoji.icon_background, description, onSuccess, onClose, mutateApps, push, isCurrentWorkspaceEditor])
 
   return (
     <Modal
@@ -294,17 +287,6 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
             setShowEmojiPicker(false)
           }}
         />}
-      </div>
-      {/* max active requests */}
-      <div className='pt-2 px-8'>
-        <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.newApp.appMaxActiveRequests')}</div>
-        <input
-          type="number"
-          className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs'
-          placeholder={t('app.newApp.appMaxActiveRequestsPlaceholder') || ''}
-          value={max_active_requests}
-          onChange={handleMaxActiveRequestsChange}
-        />
       </div>
       {/* description */}
       <div className='pt-2 px-8'>
