@@ -1,5 +1,4 @@
 from collections.abc import Generator
-from contextlib import closing
 from datetime import datetime, timedelta, timezone
 
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
