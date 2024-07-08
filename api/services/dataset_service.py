@@ -62,16 +62,20 @@ class DatasetService:
 
         query = Dataset.query.filter(Dataset.provider == provider, Dataset.tenant_id == tenant_id)
 
-        if user.current_role == TenantAccountRole.DATASET_OPERATOR:
-            dataset_permission = DatasetPermission.query.filter_by(
-                account_id=user.id,
-                tenant_id=tenant_id
-            ).all()
-            if dataset_permission:
-                dataset_ids = [dp.dataset_id for dp in dataset_permission]
-                query = query.filter(Dataset.id.in_(dataset_ids))
-            else:
-                query = query.filter(db.false())
+        if user:
+            if user.current_role == TenantAccountRole.DATASET_OPERATOR:
+                dataset_permission = DatasetPermission.query.filter_by(
+                    account_id=user.id,
+                    tenant_id=tenant_id
+                ).all()
+                if dataset_permission:
+                    dataset_ids = [dp.dataset_id for dp in dataset_permission]
+                    query = query.filter(Dataset.id.in_(dataset_ids))
+                else:
+                    query = query.filter(db.false())
+        else:
+            permission_filter = Dataset.permission == 'all_team_members'
+            query = query.filter(permission_filter)
 
         if search:
             query = query.filter(Dataset.name.ilike(f'%{search}%'))
@@ -91,7 +95,7 @@ class DatasetService:
         )
 
         # check datasets permission,
-        if user.current_role != TenantAccountRole.DATASET_OPERATOR:
+        if user and user.current_role != TenantAccountRole.DATASET_OPERATOR:
             datasets.items, datasets.total = DatasetService.filter_datasets_by_permission(
                 user, datasets, tenant_id
             )
