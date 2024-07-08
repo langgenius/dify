@@ -2,6 +2,13 @@
 @tailwind base;
 @tailwind components;
 
+@import '../../themes/light.css';
+@import '../../themes/dark.css';
+
+html[data-changing-theme] * {
+  transition: none !important;
+}
+
 :root {
   --max-width: 1100px;
   --border-radius: 12px;
@@ -151,10 +158,3 @@ button:focus-within {
 @import '../components/base/modal/index.css';
 
 @tailwind utilities;
-
-@import '../../themes/light.css';
-@import '../../themes/dark.css';
-
-html[data-changing-theme] * {
-  transition: none !important;
-}
