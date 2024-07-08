@@ -1,7 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
-import cn from 'classnames'
 import {
   RiAccountCircleFill,
   RiAccountCircleLine,
@@ -30,6 +29,7 @@ import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page'
 import ModelProviderPage from './model-provider-page'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import Modal from '@/app/components/base/modal'

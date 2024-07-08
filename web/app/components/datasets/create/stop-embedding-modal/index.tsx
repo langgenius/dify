@@ -1,8 +1,8 @@
 'use client'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 

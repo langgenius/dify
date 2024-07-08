@@ -3,13 +3,13 @@ import {
   memo,
   useState,
 } from 'react'
-import cn from 'classnames'
 import type { BlockEnum } from '../types'
 import { useTabs } from './hooks'
 import type { ToolDefaultValue } from './types'
 import { TabsEnum } from './types'
 import Blocks from './blocks'
 import AllTools from './all-tools'
+import cn from '@/utils/classnames'
 
 export type TabsProps = {
   searchText: string

@@ -87,6 +87,7 @@
     "sharp": "^0.33.2",
     "sortablejs": "^1.15.0",
     "swr": "^2.1.0",
+    "tailwind-merge": "^2.4.0",
     "use-context-selector": "^1.4.1",
     "uuid": "^9.0.1",
     "zod": "^3.23.6",

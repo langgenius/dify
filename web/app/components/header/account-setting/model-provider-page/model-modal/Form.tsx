@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { FC } from 'react'
-import cn from 'classnames'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
@@ -17,6 +16,7 @@ import type {
 import { FormTypeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import Input from './Input'
+import cn from '@/utils/classnames'
 import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip-plus'
 import Radio from '@/app/components/base/radio'

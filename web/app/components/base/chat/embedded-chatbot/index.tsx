@@ -2,7 +2,6 @@ import {
   useEffect,
   useState,
 } from 'react'
-import cn from 'classnames'
 import { useAsyncEffect } from 'ahooks'
 import {
   EmbeddedChatbotContext,
@@ -11,6 +10,7 @@ import {
 import { useEmbeddedChatbot } from './hooks'
 import { isDify } from './utils'
 import { useThemeContext } from './theme/theme-context'
+import cn from '@/utils/classnames'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
