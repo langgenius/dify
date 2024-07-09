@@ -3,7 +3,6 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiBold,
   RiItalic,
@@ -13,6 +12,7 @@ import {
 } from '@remixicon/react'
 import { useStore } from '../store'
 import { useCommand } from './hooks'
+import cn from '@/utils/classnames'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type CommandProps = {

@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import React from 'react'
 import copy from 'copy-to-clipboard'
-import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
+import cn from '@/utils/classnames'
 import {
   Clipboard,
   ClipboardCheck,

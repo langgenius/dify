@@ -5,7 +5,6 @@ import { HashtagIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { debounce, isNil, omitBy } from 'lodash-es'
-import cn from 'classnames'
 import {
   RiCloseLine,
   RiEditLine,
@@ -15,6 +14,7 @@ import { DocumentContext } from '../index'
 import { ProcessStatus } from '../segment-add'
 import s from './style.module.css'
 import InfiniteVirtualList from './InfiniteVirtualList'
+import cn from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'

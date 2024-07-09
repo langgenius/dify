@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import CheckboxWithLabel from './base/checkbox-with-label'
 import Field from './base/field'
+import cn from '@/utils/classnames'
 import type { CrawlOptions } from '@/models/datasets'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'

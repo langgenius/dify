@@ -1,8 +1,8 @@
 'use client'
-import classNames from 'classnames'
 import type { FC } from 'react'
 import React from 'react'
 import { Tooltip as ReactTooltip } from 'react-tooltip' // fixed version to 5.8.3 https://github.com/ReactTooltip/react-tooltip/issues/972
+import classNames from '@/utils/classnames'
 import 'react-tooltip/dist/react-tooltip.css'
 
 type TooltipProps = {

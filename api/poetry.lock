@@ -144,6 +144,198 @@ typing-extensions = ">=4"
 tz = ["backports.zoneinfo"]
 
 [[package]]
+name = "alibabacloud-credentials"
+version = "0.3.4"
+description = "The alibabacloud credentials module of alibabaCloud Python SDK."
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "alibabacloud_credentials-0.3.4.tar.gz", hash = "sha256:c15a34fe782c318d4cf24cb041a0385ac4ccd2548e524e5d7fe1cff56a9a6acc"},
+]
+
+[package.dependencies]
+alibabacloud-tea = "*"
+
+[[package]]
+name = "alibabacloud-endpoint-util"
+version = "0.0.3"
+description = "The endpoint-util module of alibabaCloud Python SDK."
+optional = false
+python-versions = "*"
+files = [
+    {file = "alibabacloud_endpoint_util-0.0.3.tar.gz", hash = "sha256:8c0efb76fdcc3af4ca716ef24bbce770201a3f83f98c0afcf81655f684b9c7d2"},
+]
+
+[package.dependencies]
+alibabacloud-tea = ">=0.0.1"
+
+[[package]]
+name = "alibabacloud-gateway-spi"
+version = "0.0.1"
+description = "Alibaba Cloud Gateway SPI SDK Library for Python"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "alibabacloud_gateway_spi-0.0.1.tar.gz", hash = "sha256:1b259855708afc3c04d8711d8530c63f7645e1edc0cf97e2fd15461b08e11c30"},
+]
+
+[package.dependencies]
+alibabacloud_credentials = ">=0.2.0,<1.0.0"
+
+[[package]]
+name = "alibabacloud-gpdb20160503"
+version = "3.8.2"
+description = "Alibaba Cloud AnalyticDB for PostgreSQL (20160503) SDK Library for Python"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "alibabacloud_gpdb20160503-3.8.2-py3-none-any.whl", hash = "sha256:081977cdd4174c786b303f3c5651026297d84baa0256386be8215ee997cd5c75"},
+    {file = "alibabacloud_gpdb20160503-3.8.2.tar.gz", hash = "sha256:c964ca721a05e440a1065e33aa74d456eafe2c8b17f6e0d960d5bb44dfe4bd9c"},
+]
+
+[package.dependencies]
+alibabacloud-endpoint-util = ">=0.0.3,<1.0.0"
+alibabacloud-openapi-util = ">=0.2.1,<1.0.0"
+alibabacloud-openplatform20191219 = ">=2.0.0,<3.0.0"
+alibabacloud-oss-sdk = ">=0.1.0,<1.0.0"
+alibabacloud-oss-util = ">=0.0.5,<1.0.0"
+alibabacloud-tea-fileform = ">=0.0.3,<1.0.0"
+alibabacloud-tea-openapi = ">=0.3.10,<1.0.0"
+alibabacloud-tea-util = ">=0.3.12,<1.0.0"
+
+[[package]]
+name = "alibabacloud-openapi-util"
+version = "0.2.2"
+description = "Aliyun Tea OpenApi Library for Python"
+optional = false
+python-versions = "*"
+files = [
+    {file = "alibabacloud_openapi_util-0.2.2.tar.gz", hash = "sha256:ebbc3906f554cb4bf8f513e43e8a33e8b6a3d4a0ef13617a0e14c3dda8ef52a8"},
+]
+
+[package.dependencies]
+alibabacloud_tea_util = ">=0.0.2"
+cryptography = ">=3.0.0"
+
+[[package]]
+name = "alibabacloud-openplatform20191219"
+version = "2.0.0"
+description = "Alibaba Cloud OpenPlatform (20191219) SDK Library for Python"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "alibabacloud_openplatform20191219-2.0.0-py3-none-any.whl", hash = "sha256:873821c45bca72a6c6ec7a906c9cb21554c122e88893bbac3986934dab30dd36"},
+    {file = "alibabacloud_openplatform20191219-2.0.0.tar.gz", hash = "sha256:e67f4c337b7542538746592c6a474bd4ae3a9edccdf62e11a32ca61fad3c9020"},
+]
+
+[package.dependencies]
+alibabacloud-endpoint-util = ">=0.0.3,<1.0.0"
+alibabacloud-openapi-util = ">=0.1.6,<1.0.0"
+alibabacloud-tea-openapi = ">=0.3.3,<1.0.0"
+alibabacloud-tea-util = ">=0.3.6,<1.0.0"
+
+[[package]]
+name = "alibabacloud-oss-sdk"
+version = "0.1.0"
+description = "Aliyun Tea OSS SDK Library for Python"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "alibabacloud_oss_sdk-0.1.0.tar.gz", hash = "sha256:cc5ce36044bae758047fccb56c0cb6204cbc362d18cc3dd4ceac54c8c0897b8b"},
+]
+
+[package.dependencies]
+alibabacloud_credentials = ">=0.1.2,<1.0.0"
+alibabacloud_oss_util = ">=0.0.5,<1.0.0"
+alibabacloud_tea_fileform = ">=0.0.3,<1.0.0"
+alibabacloud_tea_util = ">=0.3.1,<1.0.0"
+alibabacloud_tea_xml = ">=0.0.2,<1.0.0"
+
+[[package]]
+name = "alibabacloud-oss-util"
+version = "0.0.6"
+description = "The oss util module of alibabaCloud Python SDK."
+optional = false
+python-versions = "*"
+files = [
+    {file = "alibabacloud_oss_util-0.0.6.tar.gz", hash = "sha256:d3ecec36632434bd509a113e8cf327dc23e830ac8d9dd6949926f4e334c8b5d6"},
+]
+
+[package.dependencies]
+alibabacloud-tea = "*"
+
+[[package]]
+name = "alibabacloud-tea"
+version = "0.3.9"
+description = "The tea module of alibabaCloud Python SDK."
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "alibabacloud-tea-0.3.9.tar.gz", hash = "sha256:a9689770003fa9313d1995812f9fe36a2be315e5cdfc8d58de0d96808219ced9"},
+    {file = "alibabacloud_tea-0.3.9-py3-none-any.whl", hash = "sha256:402fd2a92e6729f228d8c0300b182f80019edce19d83afa497aeb15fd7947f9a"},
+]
+
+[package.dependencies]
+aiohttp = ">=3.7.0,<4.0.0"
+requests = ">=2.21.0,<3.0.0"
+
+[[package]]
+name = "alibabacloud-tea-fileform"
+version = "0.0.5"
+description = "The tea-fileform module of alibabaCloud Python SDK."
+optional = false
+python-versions = "*"
+files = [
+    {file = "alibabacloud_tea_fileform-0.0.5.tar.gz", hash = "sha256:fd00a8c9d85e785a7655059e9651f9e91784678881831f60589172387b968ee8"},
+]
+
+[package.dependencies]
+alibabacloud-tea = ">=0.0.1"
+
+[[package]]
+name = "alibabacloud-tea-openapi"
+version = "0.3.10"
+description = "Alibaba Cloud openapi SDK Library for Python"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "alibabacloud_tea_openapi-0.3.10.tar.gz", hash = "sha256:46e9c54ea857346306cd5c628dc33479349b559179ed2fdb2251dbe6ec9a1cf1"},
+]
+
+[package.dependencies]
+alibabacloud_credentials = ">=0.3.1,<1.0.0"
+alibabacloud_gateway_spi = ">=0.0.1,<1.0.0"
+alibabacloud_openapi_util = ">=0.2.1,<1.0.0"
+alibabacloud_tea_util = ">=0.3.12,<1.0.0"
+alibabacloud_tea_xml = ">=0.0.2,<1.0.0"
+
+[[package]]
+name = "alibabacloud-tea-util"
+version = "0.3.12"
+description = "The tea-util module of alibabaCloud Python SDK."
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "alibabacloud_tea_util-0.3.12.tar.gz", hash = "sha256:72a2f5a046e5b977ade4202eb4f65b3d70ad707a548e29aacd4a572c2d18d06b"},
+]
+
+[package.dependencies]
+alibabacloud-tea = ">=0.3.3"
+
+[[package]]
+name = "alibabacloud-tea-xml"
+version = "0.0.2"
+description = "The tea-xml module of alibabaCloud Python SDK."
+optional = false
+python-versions = "*"
+files = [
+    {file = "alibabacloud_tea_xml-0.0.2.tar.gz", hash = "sha256:f0135e8148fd7d9c1f029db161863f37f144f837c280cba16c2edeb2f9c549d8"},
+]
+
+[package.dependencies]
+alibabacloud-tea = ">=0.0.1"
+
+[[package]]
 name = "aliyun-python-sdk-core"
 version = "2.15.1"
 description = "The core module of Aliyun Python SDK."
@@ -9000,4 +9192,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "fdba75f08df361b7b0d89d375062fa9208a68d2a59597071c6e382285f6fccff"
+content-hash = "08572878f911d65a3c4796a7fff2a6d4c9a71dd3fe57387e225436607c179068"

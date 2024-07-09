@@ -3,12 +3,12 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlusIcon } from '@heroicons/react/24/solid'
-import cn from 'classnames'
 import type { ConfigItemType } from './config-item'
 import ConfigItem from './config-item'
 
 import s from './style.module.css'
 import { DataSourceType } from './types'
+import cn from '@/utils/classnames'
 
 type Props = {
   type: DataSourceType
