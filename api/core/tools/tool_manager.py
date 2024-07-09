@@ -154,7 +154,7 @@ class ToolManager:
                 'invoke_from': invoke_from,
                 'tool_invoke_from': tool_invoke_from,
             })
-        
+
         elif provider_type == 'api':
             if tenant_id is None:
                 raise ValueError('tenant id is required for api provider')
@@ -201,7 +201,7 @@ class ToolManager:
             init runtime parameter
         """
         parameter_value = parameters.get(parameter_rule.name)
-        if not parameter_value:
+        if not parameter_value and parameter_value != 0:
             # get default value
             parameter_value = parameter_rule.default
             if not parameter_value and parameter_rule.required:
@@ -321,14 +321,14 @@ class ToolManager:
         if cls._builtin_providers_loaded:
             yield from list(cls._builtin_providers.values())
             return
-        
+
         with cls._builtin_provider_lock:
             if cls._builtin_providers_loaded:
                 yield from list(cls._builtin_providers.values())
                 return
-            
+
             yield from cls._list_builtin_providers()
-    
+
     @classmethod
     def _list_builtin_providers(cls) -> Generator[BuiltinToolProviderController, None, None]:
         """
@@ -492,7 +492,7 @@ class ToolManager:
 
         controller = ApiToolProviderController.from_db(
             provider,
-            ApiProviderAuthType.API_KEY if provider.credentials['auth_type'] == 'api_key' else 
+            ApiProviderAuthType.API_KEY if provider.credentials['auth_type'] == 'api_key' else
             ApiProviderAuthType.NONE
         )
         controller.load_bundled_tools(provider.tools)

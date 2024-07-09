@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, NonNegativeFloat
+from pydantic import Field, NonNegativeFloat
+from pydantic_settings import BaseSettings
 
 
-class SentryConfig(BaseModel):
+class SentryConfig(BaseSettings):
     """
     Sentry configs
     """

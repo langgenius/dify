@@ -1,11 +1,12 @@
 from typing import Optional
 
-from pydantic import AliasChoices, BaseModel, Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic import AliasChoices, Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic_settings import BaseSettings
 
 from configs.feature.hosted_service import HostedServiceConfig
 
 
-class SecurityConfig(BaseModel):
+class SecurityConfig(BaseSettings):
     """
     Secret Key configs
     """
@@ -17,8 +18,12 @@ class SecurityConfig(BaseModel):
         default=None,
     )
 
+    RESET_PASSWORD_TOKEN_EXPIRY_HOURS: PositiveInt = Field(
+        description='Expiry time in hours for reset token',
+        default=24,
+    )
 
-class AppExecutionConfig(BaseModel):
+class AppExecutionConfig(BaseSettings):
     """
     App Execution configs
     """
@@ -28,7 +33,7 @@ class AppExecutionConfig(BaseModel):
     )
 
 
-class CodeExecutionSandboxConfig(BaseModel):
+class CodeExecutionSandboxConfig(BaseSettings):
     """
     Code Execution Sandbox configs
     """
@@ -43,7 +48,7 @@ class CodeExecutionSandboxConfig(BaseModel):
     )
 
 
-class EndpointConfig(BaseModel):
+class EndpointConfig(BaseSettings):
     """
     Module URL configs
     """
@@ -72,7 +77,7 @@ class EndpointConfig(BaseModel):
     )
 
 
-class FileAccessConfig(BaseModel):
+class FileAccessConfig(BaseSettings):
     """
     File Access configs
     """
@@ -91,7 +96,7 @@ class FileAccessConfig(BaseModel):
     )
 
 
-class FileUploadConfig(BaseModel):
+class FileUploadConfig(BaseSettings):
     """
     File Uploading configs
     """
@@ -116,7 +121,7 @@ class FileUploadConfig(BaseModel):
     )
 
 
-class HttpConfig(BaseModel):
+class HttpConfig(BaseSettings):
     """
     HTTP configs
     """
@@ -148,7 +153,7 @@ class HttpConfig(BaseModel):
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(',')
 
 
-class InnerAPIConfig(BaseModel):
+class InnerAPIConfig(BaseSettings):
     """
     Inner API configs
     """
@@ -163,7 +168,7 @@ class InnerAPIConfig(BaseModel):
     )
 
 
-class LoggingConfig(BaseModel):
+class LoggingConfig(BaseSettings):
     """
     Logging configs
     """
@@ -195,7 +200,7 @@ class LoggingConfig(BaseModel):
     )
 
 
-class ModelLoadBalanceConfig(BaseModel):
+class ModelLoadBalanceConfig(BaseSettings):
     """
     Model load balance configs
     """
@@ -205,7 +210,7 @@ class ModelLoadBalanceConfig(BaseModel):
     )
 
 
-class BillingConfig(BaseModel):
+class BillingConfig(BaseSettings):
     """
     Platform Billing Configurations
     """
@@ -215,7 +220,7 @@ class BillingConfig(BaseModel):
     )
 
 
-class UpdateConfig(BaseModel):
+class UpdateConfig(BaseSettings):
     """
     Update configs
     """
@@ -225,7 +230,7 @@ class UpdateConfig(BaseModel):
     )
 
 
-class WorkflowConfig(BaseModel):
+class WorkflowConfig(BaseSettings):
     """
     Workflow feature configs
     """
@@ -246,7 +251,7 @@ class WorkflowConfig(BaseModel):
     )
 
 
-class OAuthConfig(BaseModel):
+class OAuthConfig(BaseSettings):
     """
     oauth configs
     """
@@ -276,7 +281,7 @@ class OAuthConfig(BaseModel):
     )
 
 
-class ModerationConfig(BaseModel):
+class ModerationConfig(BaseSettings):
     """
     Moderation in app configs.
     """
@@ -288,7 +293,7 @@ class ModerationConfig(BaseModel):
     )
 
 
-class ToolConfig(BaseModel):
+class ToolConfig(BaseSettings):
     """
     Tool configs
     """
@@ -299,7 +304,7 @@ class ToolConfig(BaseModel):
     )
 
 
-class MailConfig(BaseModel):
+class MailConfig(BaseSettings):
     """
     Mail Configurations
     """
@@ -355,7 +360,7 @@ class MailConfig(BaseModel):
     )
 
 
-class RagEtlConfig(BaseModel):
+class RagEtlConfig(BaseSettings):
     """
     RAG ETL Configurations.
     """
@@ -381,7 +386,7 @@ class RagEtlConfig(BaseModel):
     )
 
 
-class DataSetConfig(BaseModel):
+class DataSetConfig(BaseSettings):
     """
     Dataset configs
     """
@@ -391,13 +396,8 @@ class DataSetConfig(BaseModel):
         default=30,
     )
 
-    DATASET_OPERATOR_ENABLED: bool = Field(
-        description='whether to enable dataset operator',
-        default=False,
-    )
 
-
-class WorkspaceConfig(BaseModel):
+class WorkspaceConfig(BaseSettings):
     """
     Workspace configs
     """
@@ -408,7 +408,7 @@ class WorkspaceConfig(BaseModel):
     )
 
 
-class IndexingConfig(BaseModel):
+class IndexingConfig(BaseSettings):
     """
     Indexing configs.
     """
@@ -419,7 +419,7 @@ class IndexingConfig(BaseModel):
     )
 
 
-class ImageFormatConfig(BaseModel):
+class ImageFormatConfig(BaseSettings):
     MULTIMODAL_SEND_IMAGE_FORMAT: str = Field(
         description='multi model send image format, support base64, url, default is base64',
         default='base64',

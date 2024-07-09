@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import useSWRInfinite from 'swr/infinite'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
@@ -51,8 +50,7 @@ const getKey = (
 
 const Apps = () => {
   const { t } = useTranslation()
-  const router = useRouter()
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'all',
@@ -88,11 +86,6 @@ const Apps = () => {
       mutate()
     }
   }, [])
-
-  useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return router.replace('/datasets')
-  }, [isCurrentWorkspaceDatasetOperator])
 
   const hasMore = data?.at(-1)?.has_more ?? true
   useEffect(() => {
