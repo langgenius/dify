@@ -30,15 +30,19 @@ const VariableTag = ({
 
   return (
     <div className='inline-flex items-center px-1.5 max-w-full h-6 text-xs rounded-md border-[0.5px] border-[rgba(16, 2440,0.08)] bg-white shadow-xs'>
-      <VarBlockIcon
-        className='shrink-0 mr-0.5 text-[#354052]'
-        type={node!.data.type}
-      />
+      {
+        node && (
+          <VarBlockIcon
+            className='shrink-0 mr-0.5 text-[#354052]'
+            type={node!.data.type}
+          />
+        )
+      }
       <div
         className='max-w-[60px] truncate text-[#354052] font-medium'
-        title={node!.data.title}
+        title={node?.data.title}
       >
-        {node!.data.title}
+        {node?.data.title}
       </div>
       <Line3 className='shrink-0 mx-0.5' />
       <Variable02 className='shrink-0 mr-0.5 w-3.5 h-3.5 text-[#155AEF]' />
@@ -48,7 +52,11 @@ const VariableTag = ({
       >
         {variableName}
       </div>
-      <div className='shrink-0 ml-0.5 text-[#676F83]'>{capitalize(varType)}</div>
+      {
+        varType && (
+          <div className='shrink-0 ml-0.5 text-[#676F83]'>{capitalize(varType)}</div>
+        )
+      }
     </div>
   )
 }

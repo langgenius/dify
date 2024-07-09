@@ -61,7 +61,7 @@ const ConditionAdd = ({
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className='w-[296px] bg-white rounded-lg border-[0.5px] border-[#101828]/[0.08] shadow-lg'>
+        <div className='w-[296px] bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg'>
           <VarReferenceVars
             vars={variables}
             onChange={handleSelectVariable}

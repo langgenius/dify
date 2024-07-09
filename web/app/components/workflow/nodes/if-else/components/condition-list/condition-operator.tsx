@@ -2,7 +2,6 @@ import {
   useMemo,
   useState,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { getOperators, isComparisonOperatorNeedTranslate } from '../../utils'
@@ -14,6 +13,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import type { VarType } from '@/app/components/workflow/types'
+import cn from '@/utils/classnames'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 type ConditionOperatorProps = {
@@ -67,12 +67,12 @@ const ConditionOperator = ({
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-10'>
-        <div className='p-1 bg-white/[0.95] rounded-xl border-[0.5px] border-[#101828]/[0.08] shadow-lg'>
+        <div className='p-1 bg-components-panel-bg-blur rounded-xl border-[0.5px] border-components-panel-border shadow-lg'>
           {
             options.map(option => (
               <div
                 key={option.value}
-                className='flex items-center px-3 py-1.5 h-7 text-[13px] font-medium text-[#354052] rounded-lg cursor-pointer hover:bg-[#C8CEDA]/20'
+                className='flex items-center px-3 py-1.5 h-7 text-[13px] font-medium text-text-secondary rounded-lg cursor-pointer hover:bg-state-base-hover'
                 onClick={() => {
                   onSelect(option.value)
                   setOpen(false)

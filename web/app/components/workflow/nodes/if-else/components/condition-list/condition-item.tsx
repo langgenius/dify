@@ -57,8 +57,8 @@ const ConditionItem = ({
   return (
     <div className='flex mb-1 last-of-type:mb-0'>
       <div className={cn(
-        'grow bg-[#C8CEDA]/[0.25] rounded-lg',
-        isHovered && 'bg-[#FEF3F2]',
+        'grow bg-components-input-bg-normal rounded-lg',
+        isHovered && 'bg-state-destructive-hover',
       )}>
         <div className='flex items-center p-1'>
           <div className='grow w-0'>
@@ -67,7 +67,7 @@ const ConditionItem = ({
               varType={condition.varType}
             />
           </div>
-          <div className='mx-1 w-[1px] h-3 bg-[#101828]/[0.08]'></div>
+          <div className='mx-1 w-[1px] h-3 bg-divider-regular'></div>
           <ConditionOperator
             disabled={disabled}
             varType={condition.varType}
@@ -75,7 +75,7 @@ const ConditionItem = ({
             onSelect={handleUpdateConditionOperator}
           />
         </div>
-        <div className='px-2 py-1 max-h-[100px] border-t border-t-[#101828]/[0.04] overflow-y-auto'>
+        <div className='px-2 py-1 max-h-[100px] border-t border-t-divider-subtle overflow-y-auto'>
           <ConditionInput
             disabled={disabled}
             value={condition.value}
@@ -86,7 +86,7 @@ const ConditionItem = ({
         </div>
       </div>
       <div
-        className='shrink-0 flex items-center justify-center ml-1 mt-1 w-6 h-6 rounded-lg cursor-pointer hover:bg-[#FEF3F2] text-[#676F83] hover:text-[#D92D20]'
+        className='shrink-0 flex items-center justify-center ml-1 mt-1 w-6 h-6 rounded-lg cursor-pointer hover:bg-state-destructive-hover text-text-tertiary hover:text-text-destructive'
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={() => onRemoveCondition(caseId, condition.id)}

@@ -51,7 +51,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
         list={cases.map(caseItem => ({ ...caseItem, id: caseItem.caseId }))}
         setList={handleSortCase}
         handle='.handle'
-        ghostClass='bg-white'
+        ghostClass='bg-components-panel-bg'
         animation={150}
       >
         {
@@ -59,18 +59,18 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
             <div key={item.caseId}>
               <div
                 className={cn(
-                  'group relative py-1 px-3 min-h-[40px] rounded-[10px] bg-white',
-                  willDeleteCaseId === item.caseId && '!bg-[#FEF3F2]',
+                  'group relative py-1 px-3 min-h-[40px] rounded-[10px] bg-components-panel-bg',
+                  willDeleteCaseId === item.caseId && 'bg-state-destructive-hover',
                 )}
               >
                 <RiDraggable className='hidden group-hover:block handle absolute top-2 left-1 w-3 h-3 text-[#101828]/30 cursor-pointer' />
-                <div className='absolute top-1.5 left-4 leading-4 text-[13px] font-semibold text-[#354052]'>
+                <div className='absolute top-1.5 left-4 leading-4 text-[13px] font-semibold text-text-secondary'>
                   {
                     index === 0 ? 'IF' : 'ELIF'
                   }
                   {
                     casesLength > 1 && (
-                      <div className='text-[10px] text-[#676F83] font-medium'>CASE {index + 1}</div>
+                      <div className='text-[10px] text-text-tertiary font-medium'>CASE {index + 1}</div>
                     )
                   }
                 </div>
@@ -102,7 +102,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
                   {
                     ((index === 0 && casesLength > 1) || (index > 0)) && (
                       <Button
-                        className='hover:text-[#D92D20] hover:bg-[#FEE4E2]'
+                        className='hover:text-components-button-destructive-ghost-text hover:bg-components-button-destructive-ghost-bg-hover'
                         size='small'
                         variant='ghost'
                         disabled={readOnly}
@@ -117,7 +117,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
                   }
                 </div>
               </div>
-              <div className='my-2 mx-3 h-[1px] bg-[#101828]/[0.04]'></div>
+              <div className='my-2 mx-3 h-[1px] bg-divider-subtle'></div>
             </div>
           ))
         }
@@ -133,12 +133,12 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
           ELIF
         </Button>
       </div>
-      <div className='my-2 mx-3 h-[1px] bg-[#101828]/[0.04]'></div>
+      <div className='my-2 mx-3 h-[1px] bg-divider-subtle'></div>
       <Field
         title={t(`${i18nPrefix}.else`)}
         className='px-4 py-2'
       >
-        <div className='leading-[18px] text-xs font-normal text-gray-400'>{t(`${i18nPrefix}.elseDescription`)}</div>
+        <div className='leading-[18px] text-xs font-normal text-text-tertiary'>{t(`${i18nPrefix}.elseDescription`)}</div>
       </Field>
     </div>
   )
