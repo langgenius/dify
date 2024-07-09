@@ -8,10 +8,10 @@ import {
   useNodesInitialized,
   useViewport,
 } from 'reactflow'
-import cn from 'classnames'
 import { useNodeIterationInteractions } from './use-interactions'
 import type { IterationNodeType } from './types'
 import AddBlock from './add-block'
+import cn from '@/utils/classnames'
 import type { NodeProps } from '@/app/components/workflow/types'
 
 const Node: FC<NodeProps<IterationNodeType>> = ({

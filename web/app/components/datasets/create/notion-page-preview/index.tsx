@@ -1,9 +1,9 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import type { NotionPage } from '@/models/common'
 import NotionIcon from '@/app/components/base/notion-icon'
 import { fetchNotionPagePreview } from '@/service/datasets'
@@ -33,7 +33,7 @@ const NotionPagePreview = ({
       setPreviewContent(res.content)
       setLoading(false)
     }
-    catch {}
+    catch { }
   }
 
   useEffect(() => {
@@ -62,7 +62,7 @@ const NotionPagePreview = ({
         </div>
       </div>
       <div className={cn(s.previewContent)}>
-        {loading && <div className={cn(s.loading)}/>}
+        {loading && <div className={cn(s.loading)} />}
         {!loading && (
           <div className={cn(s.fileContent)}>{previewContent}</div>
         )}

@@ -1,9 +1,9 @@
 'use client'
 import { useMemo } from 'react'
-import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import type { Collection } from '../types'
+import cn from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
 import { Tag01 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import I18n from '@/context/i18n'
@@ -40,7 +40,7 @@ const ProviderCard = ({
       <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
         <div className='relative shrink-0'>
           {typeof collection.icon === 'string' && (
-            <div className='w-10 h-10 bg-center bg-cover bg-no-repeat rounded-md' style={{ backgroundImage: `url(${collection.icon})` }}/>
+            <div className='w-10 h-10 bg-center bg-cover bg-no-repeat rounded-md' style={{ backgroundImage: `url(${collection.icon})` }} />
           )}
           {typeof collection.icon !== 'string' && (
             <AppIcon

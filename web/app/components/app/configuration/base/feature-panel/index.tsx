@@ -1,7 +1,7 @@
 'use client'
 import type { FC, ReactNode } from 'react'
 import React from 'react'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 import ParamsConfig from '@/app/components/app/configuration/config-voice/param-config'
 
 export type IFeaturePanelProps = {
@@ -46,7 +46,7 @@ const FeaturePanel: FC<IFeaturePanelProps> = ({
           <div className='flex gap-2 items-center'>
             {headerRight && <div>{headerRight}</div>}
             {isShowTextToSpeech && <div className='flex items-center'>
-              <ParamsConfig/>
+              <ParamsConfig />
             </div>}
           </div>
         </div>

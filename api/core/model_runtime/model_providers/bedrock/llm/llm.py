@@ -554,7 +554,10 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         content = message.content
 
         if isinstance(message, UserPromptMessage):
-            message_text = f"{human_prompt_prefix} {content} {human_prompt_postfix}"
+            body = content
+            if (isinstance(content, list)):
+                body = "".join([c.data for c in content if c.type == PromptMessageContentType.TEXT])
+            message_text = f"{human_prompt_prefix} {body} {human_prompt_postfix}"
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
         elif isinstance(message, SystemPromptMessage):
