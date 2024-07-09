@@ -122,7 +122,7 @@ const WorkflowChecklist = ({
                               className='mr-1.5'
                               toolIcon={node.toolIcon}
                             />
-                            <span className='w-[340px] truncate'>
+                            <span className='grow truncate'>
                               {node.title}
                             </span>
                           </div>
