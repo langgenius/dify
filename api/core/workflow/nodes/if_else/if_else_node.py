@@ -141,6 +141,8 @@ class IfElseNode(BaseNode):
             pass
 
     def resolve_template(self, template, variable_pool):
+        if template is None:
+            return None
         pattern = re.compile(r'\{\{#([^{}#]+)#\}\}')
         matches = pattern.findall(template)
         for var in matches:
