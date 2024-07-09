@@ -4,11 +4,11 @@ import type { Dispatch } from 'react'
 import { useContext } from 'use-context-selector'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
 import PermissionsRadio from '../permissions-radio'
 import IndexMethodRadio from '../index-method-radio'
+import cn from '@/utils/classnames'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { ToastContext } from '@/app/components/base/toast'
@@ -221,7 +221,7 @@ const Form = () => {
           <div>
             <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
             <div className='leading-[18px] text-xs font-normal text-gray-500'>
-              <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/features/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+              <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-6-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
               {t('datasetSettings.form.retrievalSetting.description')}
             </div>
           </div>

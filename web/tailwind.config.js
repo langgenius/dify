@@ -1,4 +1,5 @@
 /** @type {import('tailwindcss').Config} */
+import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
 module.exports = {
   content: [
     './app/**/*.{js,ts,jsx,tsx}',
@@ -60,6 +61,7 @@ module.exports = {
           600: '#444CE7',
           800: '#2D31A6',
         },
+        ...tailwindThemeVarDefine,
       },
       screens: {
         mobile: '100px',

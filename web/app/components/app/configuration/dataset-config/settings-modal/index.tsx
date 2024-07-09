@@ -2,9 +2,9 @@ import type { FC } from 'react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isEqual } from 'lodash-es'
-import cn from 'classnames'
 import { RiCloseLine } from '@remixicon/react'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
+import cn from '@/utils/classnames'
 import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
 import Button from '@/app/components/base/button'
 import type { DataSet } from '@/models/datasets'
@@ -232,7 +232,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div>
               <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
               <div className='leading-[18px] text-xs font-normal text-gray-500'>
-                <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/features/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-6-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                 {t('datasetSettings.form.retrievalSetting.description')}
               </div>
             </div>

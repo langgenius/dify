@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { RiArrowDownSLine } from '@remixicon/react'
 import AgentSetting from '../agent/agent-setting'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

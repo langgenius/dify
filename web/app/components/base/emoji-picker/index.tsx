@@ -5,12 +5,12 @@ import React, { useState } from 'react'
 import data from '@emoji-mart/data'
 import type { Emoji, EmojiMartData } from '@emoji-mart/data'
 import { SearchIndex, init } from 'emoji-mart'
-import cn from 'classnames'
 import {
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
 

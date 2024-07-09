@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
-class TencentCloudCOSStorageConfig(BaseModel):
+class TencentCloudCOSStorageConfig(BaseSettings):
     """
     Tencent Cloud COS storage configs
     """

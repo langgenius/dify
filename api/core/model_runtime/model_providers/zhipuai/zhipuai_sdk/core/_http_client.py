@@ -7,6 +7,8 @@ from typing import Any, Union, cast
 import httpx
 import pydantic
 from httpx import URL, Timeout
+from tenacity import retry
+from tenacity.stop import stop_after_attempt
 
 from . import _errors
 from ._base_type import NOT_GIVEN, Body, Data, Headers, NotGiven, Query, RequestFiles, ResponseT
@@ -221,6 +223,7 @@ class HttpClient:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    @retry(stop=stop_after_attempt(ZHIPUAI_DEFAULT_MAX_RETRIES))
     def request(
             self,
             *,
