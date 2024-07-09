@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { omit } from 'lodash-es'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
-import cn from 'classnames'
 import {
   RiErrorWarningFill,
 } from '@remixicon/react'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
 import Button from '@/app/components/base/button'
 import type { FullDocumentDetail, IndexingStatusResponse, ProcessRuleResponse } from '@/models/datasets'

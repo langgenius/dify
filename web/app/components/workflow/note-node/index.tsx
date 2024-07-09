@@ -3,7 +3,6 @@ import {
   useCallback,
   useRef,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import type { NodeProps } from 'reactflow'
@@ -21,11 +20,12 @@ import {
 import { THEME_MAP } from './constants'
 import { useNote } from './hooks'
 import type { NoteNodeType } from './types'
+import cn from '@/utils/classnames'
 
 const Icon = () => {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18" fill="none">
-      <path fillRule="evenodd" clipRule="evenodd" d="M12 9.75V6H13.5V9.75C13.5 11.8211 11.8211 13.5 9.75 13.5H6V12H9.75C10.9926 12 12 10.9926 12 9.75Z" fill="black" fillOpacity="0.16"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 9.75V6H13.5V9.75C13.5 11.8211 11.8211 13.5 9.75 13.5H6V12H9.75C10.9926 12 12 10.9926 12 9.75Z" fill="black" fillOpacity="0.16" />
     </svg>
   )
 }

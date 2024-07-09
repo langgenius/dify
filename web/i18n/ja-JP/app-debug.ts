@@ -319,6 +319,9 @@ const translation = {
       language: '言語',
       resolutionTooltip: 'テキスト読み上げの音声言語をサポートします。',
       voice: '音声',
+      autoPlay: '自動再生',
+      autoPlayEnabled: '開ける',
+      autoPlayDisabled: '關閉',
     },
   },
   openingStatement: {

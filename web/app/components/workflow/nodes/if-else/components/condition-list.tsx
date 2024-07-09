@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
-import cn from 'classnames'
 import type { Var, VarType } from '../../../types'
 import Item from './condition-item'
+import cn from '@/utils/classnames'
 import type { Condition, LogicalOperator } from '@/app/components/workflow/nodes/if-else/types'
 
 type Props = {

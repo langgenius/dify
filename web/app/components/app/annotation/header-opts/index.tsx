@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React, { Fragment, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiAddLine,
 } from '@remixicon/react'
@@ -16,6 +15,7 @@ import AddAnnotationModal from '../add-annotation-modal'
 import type { AnnotationItemBasic } from '../type'
 import BatchAddModal from '../batch-add-annotation-modal'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import CustomPopover from '@/app/components/base/popover'
 import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'

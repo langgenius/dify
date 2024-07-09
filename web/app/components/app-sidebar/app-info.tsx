@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
-import cn from 'classnames'
 import { RiArrowDownSLine } from '@remixicon/react'
 import React, { useCallback, useState } from 'react'
 import AppIcon from '../base/app-icon'
 import SwitchAppModal from '../app/switch-app-modal'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -350,7 +350,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                 'w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl',
                 showSwitchTip === 'chat' && s.expertPic,
                 showSwitchTip === 'completion' && s.completionPic,
-              )}/>
+              )} />
               <div className='px-4 pb-2'>
                 <div className='flex items-center gap-1 text-gray-700 text-md leading-6 font-semibold'>
                   {showSwitchTip === 'chat' ? t('app.newApp.advanced') : t('app.types.workflow')}

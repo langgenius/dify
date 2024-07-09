@@ -5,12 +5,12 @@ import {
   PlayIcon,
 } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiLoader2Line,
 } from '@remixicon/react'
 import CSVReader from './csv-reader'
 import CSVDownload from './csv-download'
+import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 export type IRunBatchProps = {
   vars: { name: string }[]

@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
 import produce from 'immer'
 import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
+import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'

@@ -2,6 +2,13 @@
 @tailwind base;
 @tailwind components;
 
+@import '../../themes/light.css';
+@import '../../themes/dark.css';
+
+html[data-changing-theme] * {
+  transition: none !important;
+}
+
 :root {
   --max-width: 1100px;
   --border-radius: 12px;
@@ -120,6 +127,372 @@ button:focus-within {
   color: #111928;
   line-height: 1.5;
 }
+
+/* font define start */
+.system-kbd {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.system-2xs-regular-uppercase {
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.system-2xs-medium {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.system-2xs-medium-uppercase {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.system-2xs-semibold-uppercase {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.system-xs-regular {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.system-xs-regular-uppercase {
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: uppercase;
+}
+
+.system-xs-medium {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.system-xs-medium-uppercase {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.system-xs-semibold {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.system-xs-semibold-uppercase {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.system-sm-regular {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.system-sm-medium {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.system-sm-medium-uppercase {
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.system-sm-semibold {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.system-sm-semibold-uppercase {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.system-md-regular {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.system-md-medium {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.system-md-semibold {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.system-md-semibold-uppercase {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.system-xl-regular {
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.system-xl-medium {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.system-xl-semibold {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.code-xs-regular {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.code-xs-semibold {
+  font-size: 12px;
+  font-weight: undefined;
+}
+
+.code-sm-regular {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.code-sm-semibold {
+  font-size: 13px;
+  font-weight: undefined;
+}
+
+.code-md-regular {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.code-md-semibold {
+  font-size: 14px;
+  font-weight: undefined;
+}
+
+.body-xs-light {
+  font-size: 12px;
+  font-weight: undefined;
+}
+
+.body-xs-regular {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.body-xs-medium {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.body-sm-light {
+  font-size: 13px;
+  font-weight: undefined;
+}
+
+.body-sm-regular {
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.body-sm-medium {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.body-md-light {
+  font-size: 14px;
+  font-weight: undefined;
+}
+
+.body-md-regular {
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.body-md-medium {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.body-lg-light {
+  font-size: 15px;
+  font-weight: undefined;
+}
+
+.body-lg-regular {
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.body-lg-medium {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.body-xl-regular {
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.body-xl-medium {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.body-xl-light {
+  font-size: 16px;
+  font-weight: undefined;
+}
+
+.body-2xl-light {
+  font-size: 18px;
+  font-weight: undefined;
+}
+
+.body-2xl-regular {
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.body-2xl-medium {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.title-xs-semi-bold {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.title-xs-bold {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.title-sm-semi-bold {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.title-sm-bold {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.title-md-semi-bold {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.title-md-bold {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.title-lg-semi-bold {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.title-lg-bold {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.title-xl-semi-bold {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.title-xl-bold {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.title-2xl-semi-bold {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.title-2xl-bold {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.title-3xl-semi-bold {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.title-3xl-bold {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.title-4xl-semi-bold {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.title-4xl-bold {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.title-5xl-semi-bold {
+  font-size: 30px;
+  font-weight: 600;
+}
+
+.title-5xl-bold {
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.title-6xl-semi-bold {
+  font-size: 36px;
+  font-weight: 600;
+}
+
+.title-6xl-bold {
+  font-size: 36px;
+  font-weight: 700;
+}
+
+.title-7xl-semi-bold {
+  font-size: 48px;
+  font-weight: 600;
+}
+
+.title-7xl-bold {
+  font-size: 48px;
+  font-weight: 700;
+}
+
+.title-8xl-semi-bold {
+  font-size: 60px;
+  font-weight: 600;
+}
+
+.title-8xl-bold {
+  font-size: 60px;
+  font-weight: 700;
+}
+/* font define end */
 
 .link {
   @apply text-blue-600 cursor-pointer hover:opacity-80 transition-opacity duration-200 ease-in-out;

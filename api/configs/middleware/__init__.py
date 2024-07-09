@@ -1,6 +1,7 @@
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic import Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic_settings import BaseSettings
 
 from configs.middleware.cache.redis_config import RedisConfig
 from configs.middleware.storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
@@ -9,6 +10,7 @@ from configs.middleware.storage.azure_blob_storage_config import AzureBlobStorag
 from configs.middleware.storage.google_cloud_storage_config import GoogleCloudStorageConfig
 from configs.middleware.storage.oci_storage_config import OCIStorageConfig
 from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
+from configs.middleware.vdb.analyticdb_config import AnalyticdbConfig
 from configs.middleware.vdb.chroma_config import ChromaConfig
 from configs.middleware.vdb.milvus_config import MilvusConfig
 from configs.middleware.vdb.opensearch_config import OpenSearchConfig
@@ -22,7 +24,7 @@ from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
 
 
-class StorageConfig(BaseModel):
+class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
         description='storage type,'
                     ' default to `local`,'
@@ -36,14 +38,14 @@ class StorageConfig(BaseModel):
     )
 
 
-class VectorStoreConfig(BaseModel):
+class VectorStoreConfig(BaseSettings):
     VECTOR_STORE: Optional[str] = Field(
         description='vector store type',
         default=None,
     )
 
 
-class KeywordStoreConfig(BaseModel):
+class KeywordStoreConfig(BaseSettings):
     KEYWORD_STORE: str = Field(
         description='keyword store type',
         default='jieba',
@@ -182,6 +184,7 @@ class MiddlewareConfig(
 
     # configs of vdb and vdb providers
     VectorStoreConfig,
+    AnalyticdbConfig,
     ChromaConfig,
     MilvusConfig,
     OpenSearchConfig,

@@ -1,7 +1,8 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
-class DeploymentConfig(BaseModel):
+class DeploymentConfig(BaseSettings):
     """
     Deployment configs
     """

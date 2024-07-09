@@ -1,5 +1,5 @@
-import classNames from 'classnames'
 import type { FC, ReactNode } from 'react'
+import classNames from '@/utils/classnames'
 
 type ModelBadgeProps = {
   className?: string

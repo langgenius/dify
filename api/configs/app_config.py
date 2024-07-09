@@ -1,5 +1,5 @@
-from pydantic import computed_field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, computed_field
+from pydantic_settings import SettingsConfigDict
 
 from configs.deploy import DeploymentConfig
 from configs.enterprise import EnterpriseFeatureConfig
@@ -9,13 +9,7 @@ from configs.middleware import MiddlewareConfig
 from configs.packaging import PackagingInfo
 
 
-# TODO: Both `BaseModel` and `BaseSettings` has `model_config` attribute but they are in different types.
-# This inheritance is depends on the order of the classes.
-# It is better to use `BaseSettings` as the base class.
 class DifyConfig(
-    # based on pydantic-settings
-    BaseSettings,
-
     # Packaging info
     PackagingInfo,
 
@@ -35,11 +29,13 @@ class DifyConfig(
     # **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
     EnterpriseFeatureConfig,
 ):
+    DEBUG: bool = Field(default=False, description='whether to enable debug mode.')
 
     model_config = SettingsConfigDict(
         # read from dotenv format config file
         env_file='.env',
         env_file_encoding='utf-8',
+        frozen=True,
 
         # ignore extra attributes
         extra='ignore',
