@@ -123,6 +123,8 @@ class AppService:
         app.icon = args['icon']
         app.icon_background = args['icon_background']
         app.tenant_id = tenant_id
+        app.api_rph = args.get('api_rph', 0)
+        app.api_rpm = args.get('api_rpm', 0)
 
         db.session.add(app)
         db.session.flush()
