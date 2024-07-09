@@ -31,6 +31,7 @@ class IfElseNode(BaseNode):
 
         input_conditions = []
         final_result = False
+        selected_case_id = None
         try:
             # Check if the new cases structure is used
             if node_data.cases:
@@ -41,14 +42,15 @@ class IfElseNode(BaseNode):
 
                     process_datas["condition_results"].append(
                         {
-                            "group": case,
+                            "group": case.model_dump(),
                             "results": group_result,
-                            "final_result": final_result
+                            "final_result": final_result,
                         }
                     )
 
                     # Break if a case passes (logical short-circuit)
                     if final_result:
+                        selected_case_id = case.caseId  # Capture the ID of the passing case
                         break
 
             else:
@@ -75,15 +77,21 @@ class IfElseNode(BaseNode):
                 error=str(e)
             )
 
-        return NodeRunResult(
+        outputs = {
+            "result": final_result
+        }
+        if node_data.cases:
+            outputs["selected_case_id"] = selected_case_id
+
+        data = NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=node_inputs,
             process_data=process_datas,
-            edge_source_handle="true" if final_result else "false",
-            outputs={
-                "result": final_result
-            }
+            edge_source_handle=selected_case_id if selected_case_id else "false",  # Use case ID or 'default'
+            outputs=outputs
         )
+
+        return data
 
     def evaluate_condition(
         self, actual_value: Optional[str | list], expected_value: str, comparison_operator: str
