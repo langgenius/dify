@@ -82,7 +82,7 @@ class DatasetService:
                         db.or_(
                             Dataset.permission == 'all_team_members',
                             db.and_(Dataset.permission == 'only_me', Dataset.created_by == user.id),
-                            Dataset.id.in_(permitted_dataset_ids)
+                            db.and_(Dataset.permission == 'partial_members', Dataset.id.in_(permitted_dataset_ids))
                         )
                     )
                 else:
