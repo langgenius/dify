@@ -2,13 +2,13 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import VarReferencePicker from '../../_base/components/variable/var-reference-picker'
 import { isComparisonOperatorNeedTranslate } from '../utils'
 import { VarType } from '../../../types'
+import cn from '@/utils/classnames'
 import type { Condition } from '@/app/components/workflow/nodes/if-else/types'
 import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/if-else/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'

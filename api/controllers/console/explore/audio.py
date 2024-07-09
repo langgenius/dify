@@ -19,6 +19,7 @@ from controllers.console.app.error import (
 from controllers.console.explore.wraps import InstalledAppResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
+from models.model import AppMode
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -70,16 +71,33 @@ class ChatAudioApi(InstalledAppResource):
 
 class ChatTextApi(InstalledAppResource):
     def post(self, installed_app):
-        app_model = installed_app.app
+        from flask_restful import reqparse
 
+        app_model = installed_app.app
         try:
+            parser = reqparse.RequestParser()
+            parser.add_argument('message_id', type=str, required=False, location='json')
+            parser.add_argument('voice', type=str, location='json')
+            parser.add_argument('streaming', type=bool, location='json')
+            args = parser.parse_args()
+
+            message_id = args.get('message_id')
+            if (app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]
+                    and app_model.workflow
+                    and app_model.workflow.features_dict):
+                text_to_speech = app_model.workflow.features_dict.get('text_to_speech')
+                voice = args.get('voice') if args.get('voice') else text_to_speech.get('voice')
+            else:
+                try:
+                    voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get('voice')
+                except Exception:
+                    voice = None
             response = AudioService.transcript_tts(
                 app_model=app_model,
-                text=request.form['text'],
-                voice=request.form['voice'] if request.form.get('voice') else app_model.app_model_config.text_to_speech_dict.get('voice'),
-                streaming=False
+                message_id=message_id,
+                voice=voice
             )
-            return {'data': response.data.decode('latin1')}
+            return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
             raise AppUnavailableError()
@@ -108,3 +126,5 @@ class ChatTextApi(InstalledAppResource):
 
 api.add_resource(ChatAudioApi, '/installed-apps/<uuid:installed_app_id>/audio-to-text', endpoint='installed_app_audio')
 api.add_resource(ChatTextApi, '/installed-apps/<uuid:installed_app_id>/text-to-audio', endpoint='installed_app_text')
+# api.add_resource(ChatTextApiWithMessageId, '/installed-apps/<uuid:installed_app_id>/text-to-audio/message-id',
+#                  endpoint='installed_app_text_with_message_id')

@@ -2,7 +2,6 @@ import {
   memo,
   useMemo,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import { useStore } from '../../../store'
@@ -20,6 +19,7 @@ import {
 import { filterVar } from '../utils'
 import AddVariable from './add-variable'
 import NodeVariableItem from './node-variable-item'
+import cn from '@/utils/classnames'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'

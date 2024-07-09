@@ -13,6 +13,7 @@ from werkzeug.exceptions import Unauthorized
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import redis_client
+from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
@@ -29,13 +30,21 @@ from services.errors.account import (
     LinkAccountIntegrateError,
     MemberNotInTenantError,
     NoPermissionError,
+    RateLimitExceededError,
     RoleAlreadyAssignedError,
     TenantNotFound,
 )
 from tasks.mail_invite_member_task import send_invite_member_mail_task
+from tasks.mail_reset_password_task import send_reset_password_mail_task
 
 
 class AccountService:
+
+    reset_password_rate_limiter = RateLimiter(
+        prefix="reset_password_rate_limit",
+        max_attempts=5,
+        time_window=60 * 60
+    )
 
     @staticmethod
     def load_user(user_id: str) -> Account:
@@ -222,8 +231,32 @@ class AccountService:
             return None
         return AccountService.load_user(account_id)
 
+    @classmethod
+    def send_reset_password_email(cls, account):
+        if cls.reset_password_rate_limiter.is_rate_limited(account.email):
+            raise RateLimitExceededError(f"Rate limit exceeded for email: {account.email}. Please try again later.")
+
+        token = TokenManager.generate_token(account, 'reset_password')
+        send_reset_password_mail_task.delay(
+            language=account.interface_language,
+            to=account.email,
+            token=token
+        )
+        cls.reset_password_rate_limiter.increment_rate_limit(account.email)
+        return token
+
+    @classmethod
+    def revoke_reset_password_token(cls, token: str):
+        TokenManager.revoke_token(token, 'reset_password')
+
+    @classmethod
+    def get_reset_password_data(cls, token: str) -> Optional[dict[str, Any]]:
+        return TokenManager.get_token_data(token, 'reset_password')
+
+
 def _get_login_cache_key(*, account_id: str, token: str):
     return f"account_login:{account_id}:{token}"
+
 
 class TenantService:
 

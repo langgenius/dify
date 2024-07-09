@@ -4,7 +4,6 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiCursorLine,
   RiFunctionAddLine,
@@ -22,6 +21,7 @@ import { useStore } from '../store'
 import AddBlock from './add-block'
 import TipPopup from './tip-popup'
 import { useOperator } from './hooks'
+import cn from '@/utils/classnames'
 
 const Control = () => {
   const { t } = useTranslation()

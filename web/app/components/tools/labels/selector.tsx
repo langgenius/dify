@@ -3,9 +3,9 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useDebounceFn, useMount } from 'ahooks'
-import cn from 'classnames'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useStore as useLabelStore } from './store'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -87,7 +87,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
               {!!value.length && selectedLabels}
             </div>
             <div className='shrink-0 ml-1 text-gray-700 opacity-60'>
-              <RiArrowDownSLine className='h-4 w-4'/>
+              <RiArrowDownSLine className='h-4 w-4' />
             </div>
           </div>
         </PortalToFollowElemTrigger>
@@ -106,7 +106,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
                   <Checkbox
                     className='shrink-0'
                     checked={value.includes(label.name)}
-                    onCheck={() => {}}
+                    onCheck={() => { }}
                   />
                   <div title={label.label[language]} className='grow text-sm text-gray-700 leading-5 truncate'>{label.label[language]}</div>
                 </div>

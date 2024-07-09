@@ -42,7 +42,7 @@ const translation = {
     notionSyncTitle: 'Notion is not connected',
     notionSyncTip: 'To sync with Notion, connection to Notion must be established first.',
     connect: 'Go to connect',
-    button: 'next',
+    button: 'Next',
     emptyDatasetCreation: 'I want to create an empty Knowledge',
     modal: {
       title: 'Create an empty Knowledge',

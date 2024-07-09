@@ -1,8 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiArrowDownSLine,
   RiCloseLine,
@@ -11,6 +10,7 @@ import produce from 'immer'
 import { useStoreApi } from 'reactflow'
 import VarReferencePopup from './var-reference-popup'
 import { getNodeInfoById, getVarType, isSystemVar, toNodeAvailableVars } from './utils'
+import cn from '@/utils/classnames'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
@@ -71,7 +71,9 @@ const VarReferencePicker: FC<Props> = ({
   const isChatMode = useIsChatMode()
 
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
-  const availableNodes = passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId))
+  const availableNodes = useMemo(() => {
+    return passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId))
+  }, [getBeforeNodesInSameBranch, getTreeLeafNodes, nodeId, onlyLeafNodeVar, passedInAvailableNodes])
   const startNode = availableNodes.find((node: any) => {
     return node.data.type === BlockEnum.Start
   })
@@ -91,7 +93,7 @@ const VarReferencePicker: FC<Props> = ({
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
   const isConstant = isSupportConstantValue && varKindType === VarKindType.constant
 
-  const outputVars = (() => {
+  const outputVars = useMemo(() => {
     if (availableVars)
       return availableVars
 
@@ -104,7 +106,8 @@ const VarReferencePicker: FC<Props> = ({
     })
 
     return vars
-  })()
+  }, [iterationNode, availableNodes, isChatMode, filterVar, availableVars, t])
+
   const [open, setOpen] = useState(false)
   useEffect(() => {
     onOpen()
@@ -112,16 +115,16 @@ const VarReferencePicker: FC<Props> = ({
   }, [open])
   const hasValue = !isConstant && value.length > 0
 
-  const isIterationVar = (() => {
+  const isIterationVar = useMemo(() => {
     if (!isInIteration)
       return false
     if (value[0] === node?.parentId && ['item', 'index'].includes(value[1]))
       return true
     return false
-  })()
+  }, [isInIteration, value, node])
 
   const outputVarNodeId = hasValue ? value[0] : ''
-  const outputVarNode = (() => {
+  const outputVarNode = useMemo(() => {
     if (!hasValue || isConstant)
       return null
 
@@ -132,16 +135,16 @@ const VarReferencePicker: FC<Props> = ({
       return startNode?.data
 
     return getNodeInfoById(availableNodes, outputVarNodeId)?.data
-  })()
+  }, [value, hasValue, isConstant, isIterationVar, iterationNode, availableNodes, outputVarNodeId, startNode])
 
-  const varName = (() => {
+  const varName = useMemo(() => {
     if (hasValue) {
       const isSystem = isSystemVar(value as ValueSelector)
       const varName = value.length >= 3 ? (value as ValueSelector).slice(-2).join('.') : value[value.length - 1]
       return `${isSystem ? 'sys.' : ''}${varName}`
     }
     return ''
-  })()
+  }, [hasValue, value])
 
   const varKindTypes = [
     {

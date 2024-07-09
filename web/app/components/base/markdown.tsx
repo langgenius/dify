@@ -8,8 +8,8 @@ import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import type { RefObject } from 'react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import cn from 'classnames'
 import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
+import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import SVGBtn from '@/app/components/base/svg'
 import Flowchart from '@/app/components/base/mermaid'
@@ -103,7 +103,7 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
 const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }) => {
-  const [isSVG, setIsSVG] = useState(false)
+  const [isSVG, setIsSVG] = useState(true)
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')

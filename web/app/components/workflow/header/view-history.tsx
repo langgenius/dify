@@ -2,7 +2,6 @@ import {
   memo,
   useState,
 } from 'react'
-import cn from 'classnames'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
@@ -19,6 +18,7 @@ import {
   useWorkflowRun,
 } from '../hooks'
 import { WorkflowRunningStatus } from '../types'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
