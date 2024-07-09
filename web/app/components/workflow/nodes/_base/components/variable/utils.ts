@@ -264,7 +264,6 @@ const formatItem = (
 
   return res
 }
-// #TODO ENV# usage check
 export const toNodeOutputVars = (
   nodes: any[],
   isChatMode: boolean,
@@ -400,7 +399,6 @@ export const getVarType = ({
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
   if (isSystem || isEnv) {
-    console.log()
     return curr.find((v: any) => v.variable === (valueSelector as ValueSelector).join('.'))?.type
   }
   else {

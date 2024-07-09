@@ -43,7 +43,7 @@ const EnvPanel = () => {
   return (
     <div
       className={cn(
-        'flex flex-col w-[400px] bg-gray-50 rounded-l-2xl h-full border border-black/2',
+        'relative flex flex-col w-[400px] bg-gray-50 rounded-l-2xl h-full border border-black/2',
       )}
     >
       <div className='shrink-0 flex items-center justify-between p-4 pb-0 font-semibold text-gray-900'>
@@ -94,7 +94,7 @@ const EnvPanel = () => {
         ))}
       </div>
       {showVariableModal && (
-        <div className='absolute top-0 left-[-352px]'>
+        <div className='absolute top-0 left-[-352px] z-50'>
           <VariableModal
             env={currentVar}
             onSave={handleSave}
