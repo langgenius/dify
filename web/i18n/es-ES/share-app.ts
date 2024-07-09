@@ -1,6 +1,6 @@
 const translation = {
   common: {
-    welcome: 'Bienvenido/a al uso',
+    welcome: '',
     appUnavailable: 'La aplicación no está disponible',
     appUnkonwError: 'La aplicación no está disponible',
   },

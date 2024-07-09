@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import classNames from 'classnames'
+import classNames from '@/utils/classnames'
 
 type LogoSiteProps = {
   className?: string

@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React, { useRef } from 'react'
-import cn from 'classnames'
 import { RiCloseLine } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 

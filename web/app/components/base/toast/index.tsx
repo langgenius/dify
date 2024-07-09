@@ -1,5 +1,4 @@
 'use client'
-import classNames from 'classnames'
 import type { ReactNode } from 'react'
 import React, { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -10,6 +9,7 @@ import {
   XCircleIcon,
 } from '@heroicons/react/20/solid'
 import { createContext, useContext } from 'use-context-selector'
+import classNames from '@/utils/classnames'
 
 export type IToastProps = {
   type?: 'success' | 'error' | 'warning' | 'info'
