@@ -36,58 +36,59 @@ class AppGenerateService:
         try:
             request_id = rate_limit.enter(request_id)
             if app_model.mode == AppMode.COMPLETION.value:
-                return CompletionAppGenerator().generate(
+                return rate_limit.generate(CompletionAppGenerator().generate(
                     app_model=app_model,
                     user=user,
                     args=args,
                     invoke_from=invoke_from,
                     stream=streaming
-                )
+                ), request_id)
             elif app_model.mode == AppMode.AGENT_CHAT.value or app_model.is_agent:
-                return AgentChatAppGenerator().generate(
+                return rate_limit.generate(AgentChatAppGenerator().generate(
                     app_model=app_model,
                     user=user,
                     args=args,
                     invoke_from=invoke_from,
                     stream=streaming
-                )
+                ), request_id)
             elif app_model.mode == AppMode.CHAT.value:
-                return ChatAppGenerator().generate(
+                return rate_limit.generate(ChatAppGenerator().generate(
                     app_model=app_model,
                     user=user,
                     args=args,
                     invoke_from=invoke_from,
                     stream=streaming
-                )
+                ), request_id)
             elif app_model.mode == AppMode.ADVANCED_CHAT.value:
                 workflow = cls._get_workflow(app_model, invoke_from)
-                return AdvancedChatAppGenerator().generate(
+                return rate_limit.generate(AdvancedChatAppGenerator().generate(
                     app_model=app_model,
                     workflow=workflow,
                     user=user,
                     args=args,
                     invoke_from=invoke_from,
                     stream=streaming
-                )
+                ), request_id)
             elif app_model.mode == AppMode.WORKFLOW.value:
                 workflow = cls._get_workflow(app_model, invoke_from)
-                return WorkflowAppGenerator().generate(
+                return rate_limit.generate(WorkflowAppGenerator().generate(
                     app_model=app_model,
                     workflow=workflow,
                     user=user,
                     args=args,
                     invoke_from=invoke_from,
                     stream=streaming
-                )
+                ), request_id)
             else:
                 raise ValueError(f'Invalid app mode {app_model.mode}')
         finally:
-            rate_limit.exit(request_id)
+            if not streaming:
+                rate_limit.exit(request_id)
 
     @staticmethod
     def _get_max_active_requests(app_model: App) -> int:
         max_active_requests = app_model.max_active_requests
-        if app_model.max_active_requests == 0:
+        if app_model.max_active_requests is None:
             from flask import current_app
             max_active_requests = int(current_app.config['APP_MAX_ACTIVE_REQUESTS'])
         return max_active_requests

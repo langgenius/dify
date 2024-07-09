@@ -1,8 +1,9 @@
 import logging
 import time
 import uuid
+from collections.abc import Generator
 from datetime import timedelta
-from typing import Optional
+from typing import Optional, Union
 
 from core.errors.error import AppInvokeQuotaExceededError
 from extensions.ext_redis import redis_client
@@ -81,3 +82,39 @@ class RateLimit:
     @staticmethod
     def gen_request_key() -> str:
         return str(uuid.uuid4())
+
+    def generate(self, generator: Union[Generator, callable, dict], request_id: str):
+        if isinstance(generator, dict):
+            return generator
+        else:
+            return RateLimitGenerator(self, generator, request_id)
+
+
+class RateLimitGenerator:
+    def __init__(self, rate_limit: RateLimit, generator: Union[Generator, callable], request_id: str):
+        self.rate_limit = rate_limit
+        if callable(generator):
+            self.generator = generator()
+        else:
+            self.generator = generator
+        self.request_id = request_id
+        self.closed = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.closed:
+            raise StopIteration
+        try:
+            return next(self.generator)
+        except StopIteration:
+            self.close()
+            raise
+
+    def close(self):
+        if not self.closed:
+            self.closed = True
+            self.rate_limit.exit(self.request_id)
+            if self.generator is not None and hasattr(self.generator, 'close'):
+                self.generator.close()
