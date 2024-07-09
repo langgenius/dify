@@ -35,6 +35,8 @@ class VariablePool:
         self.user_inputs = user_inputs
         self.system_variables = system_variables
         for system_variable, value in system_variables.items():
+            if system_variable.value=='files':
+                self.append_variable('sys', ['files_str'], repr(value))
             self.append_variable('sys', [system_variable.value], value)
 
     def append_variable(self, node_id: str, variable_key_list: list[str], value: VariableValue) -> None:
