@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import UpgradeBtn from '../upgrade-btn'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 import GridMask from '@/app/components/base/grid-mask'
 

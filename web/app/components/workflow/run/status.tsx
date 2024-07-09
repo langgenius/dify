@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 import Indicator from '@/app/components/header/indicator'
 
 type ResultProps = {
@@ -68,7 +68,7 @@ const StatusPanel: FC<ResultProps> = ({
           <div className='text-xs leading-[18px] font-medium text-gray-400'>{t('runLog.resultPanel.time')}</div>
           <div className='flex items-center gap-1 h-[18px] text-gray-700 text-xs leading-3 font-semibold'>
             {status === 'running' && (
-              <div className='w-16 h-2 rounded-sm bg-[rgba(0,0,0,0.05)]'/>
+              <div className='w-16 h-2 rounded-sm bg-[rgba(0,0,0,0.05)]' />
             )}
             {status !== 'running' && (
               <span>{`${time?.toFixed(3)}s`}</span>
@@ -79,7 +79,7 @@ const StatusPanel: FC<ResultProps> = ({
           <div className='text-xs leading-[18px] font-medium text-gray-400'>{t('runLog.resultPanel.tokens')}</div>
           <div className='flex items-center gap-1 h-[18px] text-gray-700 text-xs leading-3 font-semibold'>
             {status === 'running' && (
-              <div className='w-20 h-2 rounded-sm bg-[rgba(0,0,0,0.05)]'/>
+              <div className='w-20 h-2 rounded-sm bg-[rgba(0,0,0,0.05)]' />
             )}
             {status !== 'running' && (
               <span>{`${tokens || 0} Tokens`}</span>
@@ -89,7 +89,7 @@ const StatusPanel: FC<ResultProps> = ({
       </div>
       {status === 'failed' && error && (
         <>
-          <div className='my-2 h-[0.5px] bg-black opacity-5'/>
+          <div className='my-2 h-[0.5px] bg-black opacity-5' />
           <div className='text-xs leading-[18px] text-[#d92d20]'>{error}</div>
         </>
       )}

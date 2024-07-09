@@ -3,13 +3,13 @@ import {
   useCallback,
   useState,
 } from 'react'
-import cn from 'classnames'
 import { useNodesInteractions } from '../../hooks'
 import type {
   BlockEnum,
   OnSelectBlock,
 } from '../../types'
 import BlockSelector from '../../block-selector'
+import cn from '@/utils/classnames'
 
 type InsertBlockProps = {
   startNodeId: string

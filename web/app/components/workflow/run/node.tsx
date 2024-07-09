@@ -2,7 +2,6 @@
 import { useTranslation } from 'react-i18next'
 import type { FC } from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import cn from 'classnames'
 import {
   RiArrowRightSLine,
   RiCheckboxCircleLine,
@@ -12,6 +11,7 @@ import {
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import Split from '../nodes/_base/components/split'
+import cn from '@/utils/classnames'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
