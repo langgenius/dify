@@ -3,14 +3,13 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { NodeProps } from 'reactflow'
 import { NodeSourceHandle } from '../_base/components/node-handle'
-import ReadonlyInputWithSelectVar from '../_base/components/readonly-input-with-select-var'
 import { isComparisonOperatorNeedTranslate, isEmptyRelatedOperator } from './utils'
 import type { IfElseNodeType } from './types'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import ConditionValue from './components/condition-value'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
-  const { data, id } = props
+  const { data } = props
   const { t } = useTranslation()
   const { cases } = data
   const casesLength = cases.length
@@ -38,20 +37,11 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
                 <div key={condition.id} className='relative'>
                   {(condition.variable_selector?.length > 0 && condition.comparison_operator && (isEmptyRelatedOperator(condition.comparison_operator!) ? true : !!condition.value))
                     ? (
-                      <div className='flex items-center px-[5px] h-6 rounded-md bg-workflow-block-parma-bg'>
-                        <Variable02 className='shrink-0 mr-1 w-3.5 h-3.5 text-text-accent' />
-                        <span className='shrink-0 text-xs font-medium text-text-accent'>{condition.variable_selector.slice(-1)[0]}</span>
-                        <span className='shrink-0 mx-1 text-xs font-medium text-text-primary'>{isComparisonOperatorNeedTranslate(condition.comparison_operator) ? t(`${i18nPrefix}.comparisonOperator.${condition.comparison_operator}`) : condition.comparison_operator}</span>
-                        {
-                          !isEmptyRelatedOperator(condition.comparison_operator!) && (
-                            <ReadonlyInputWithSelectVar
-                              nodeId={id}
-                              value={condition.value}
-                              className='grow pt-[3px] h-4 !leading-4 overflow-hidden'
-                            />
-                          )
-                        }
-                      </div>
+                      <ConditionValue
+                        variable={condition.variable_selector.slice(-1)[0]}
+                        operator={isComparisonOperatorNeedTranslate(condition.comparison_operator) ? t(`${i18nPrefix}.comparisonOperator.${condition.comparison_operator}`) : condition.comparison_operator}
+                        value={condition.value}
+                      />
                     )
                     : (
                       <div className='flex items-center h-6 px-1 space-x-1 text-xs font-normal text-text-secondary bg-workflow-block-parma-bg rounded-md'>

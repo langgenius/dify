@@ -63,7 +63,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
                   willDeleteCaseId === item.caseId && 'bg-state-destructive-hover',
                 )}
               >
-                <RiDraggable className='hidden group-hover:block handle absolute top-2 left-1 w-3 h-3 text-[#101828]/30 cursor-pointer' />
+                <RiDraggable className='hidden group-hover:block handle absolute top-2 left-1 w-3 h-3 text-text-quaternary cursor-pointer' />
                 <div className='absolute top-1.5 left-4 leading-4 text-[13px] font-semibold text-text-secondary'>
                   {
                     index === 0 ? 'IF' : 'ELIF'
