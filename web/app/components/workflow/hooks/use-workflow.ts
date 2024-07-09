@@ -489,7 +489,7 @@ export const useWorkflowInit = () => {
 
       setData(res)
       workflowStore.setState({
-        environmentVariables: res.environment_variables || MOCK_ENV,
+        environmentVariables: res.environment_variables || [],
       })
       setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)
