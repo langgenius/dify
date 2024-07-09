@@ -62,10 +62,6 @@ const Flowchart = React.forwardRef((props: {
 
       if (typeof window !== 'undefined' && mermaidAPI) {
         const svgGraph = await mermaidAPI.render(chartId.current, PrimitiveCode)
-        const dom = new DOMParser().parseFromString(svgGraph.svg, 'text/xml')
-        if (!dom.querySelector('g.main'))
-          throw new Error('empty svg')
-
         const base64Svg: any = await svgToBase64(svgGraph.svg)
         setSvgCode(base64Svg)
         setIsLoading(false)
