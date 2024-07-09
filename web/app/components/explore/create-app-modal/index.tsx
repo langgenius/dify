@@ -1,5 +1,4 @@
 'use client'
-import type { ChangeEvent } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
@@ -15,7 +14,6 @@ export type CreateAppModalProps = {
   show: boolean
   isEditModal?: boolean
   appName: string
-  maxActiveRequests: number
   appDescription: string
   appIcon: string
   appIconBackground: string
@@ -23,7 +21,6 @@ export type CreateAppModalProps = {
     name: string
     icon: string
     icon_background: string
-    max_active_requests: number
     description: string
   }) => Promise<void>
   onHide: () => void
@@ -35,7 +32,6 @@ const CreateAppModal = ({
   appIcon,
   appIconBackground,
   appName,
-  maxActiveRequests,
   appDescription,
   onConfirm,
   onHide,
@@ -43,12 +39,6 @@ const CreateAppModal = ({
   const { t } = useTranslation()
 
   const [name, setName] = React.useState(appName)
-  const [max_active_requests, setMaxActiveRequests] = useState(maxActiveRequests)
-  const handleMaxActiveRequestsChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if (value === '' || (parseInt(value) >= 0 && !value.startsWith('-')))
-      setMaxActiveRequests(parseInt(value))
-  }
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [emoji, setEmoji] = useState({ icon: appIcon, icon_background: appIconBackground })
   const [description, setDescription] = useState(appDescription || '')
@@ -64,7 +54,6 @@ const CreateAppModal = ({
     onConfirm({
       name,
       ...emoji,
-      max_active_requests,
       description,
     })
     onHide()
@@ -99,17 +88,6 @@ const CreateAppModal = ({
                 className='grow h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs'
               />
             </div>
-          </div>
-          {/* max active requests */}
-          <div className='pt-2'>
-            <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.newApp.appMaxActiveRequests')}</div>
-            <input
-              type="number"
-              className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs'
-              placeholder={t('app.newApp.appMaxActiveRequestsPlaceholder') || ''}
-              value={max_active_requests}
-              onChange={handleMaxActiveRequestsChange}
-            />
           </div>
           {/* description */}
           <div className='pt-2'>

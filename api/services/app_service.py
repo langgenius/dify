@@ -325,7 +325,9 @@ class AppService:
         """
         app.name = args.get('name')
         app.description = args.get('description', '')
-        app.max_active_requests = args.get('max_active_requests', 0)
+        app.max_active_requests = args.get('max_active_requests', 0) or 0
+        if app.max_active_requests < 0:
+            app.max_active_requests = 0
         app.icon = args.get('icon')
         app.icon_background = args.get('icon_background')
         app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
