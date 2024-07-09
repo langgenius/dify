@@ -730,7 +730,7 @@ class IndexingRunner:
             self._check_document_paused_status(dataset_document.id)
 
             tokens = 0
-            if dataset.indexing_technique == 'high_quality' or embedding_model_type_instance:
+            if embedding_model_instance:
                 tokens += sum(
                     embedding_model_instance.get_text_embedding_num_tokens(
                         [document.page_content]
