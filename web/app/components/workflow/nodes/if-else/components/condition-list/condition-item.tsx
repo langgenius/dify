@@ -2,7 +2,6 @@ import {
   useCallback,
   useState,
 } from 'react'
-import cn from 'classnames'
 import { RiDeleteBinLine } from '@remixicon/react'
 import type {
   ComparisonOperator,
@@ -10,6 +9,7 @@ import type {
   HandleRemoveCondition,
   HandleUpdateCondition,
 } from '../../types'
+import { comparisonOperatorNotRequireValue } from '../../utils'
 import ConditionOperator from './condition-operator'
 import ConditionInput from './condition-input'
 import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
@@ -17,6 +17,7 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import cn from '@/utils/classnames'
 
 type ConditionItemProps = {
   disabled?: boolean
@@ -75,15 +76,19 @@ const ConditionItem = ({
             onSelect={handleUpdateConditionOperator}
           />
         </div>
-        <div className='px-2 py-1 max-h-[100px] border-t border-t-divider-subtle overflow-y-auto'>
-          <ConditionInput
-            disabled={disabled}
-            value={condition.value}
-            onChange={handleUpdateConditionValue}
-            nodesOutputVars={nodesOutputVars}
-            availableNodes={availableNodes}
-          />
-        </div>
+        {
+          !comparisonOperatorNotRequireValue(condition.comparison_operator) && (
+            <div className='px-2 py-1 max-h-[100px] border-t border-t-divider-subtle overflow-y-auto'>
+              <ConditionInput
+                disabled={disabled}
+                value={condition.value}
+                onChange={handleUpdateConditionValue}
+                nodesOutputVars={nodesOutputVars}
+                availableNodes={availableNodes}
+              />
+            </div>
+          )
+        }
       </div>
       <div
         className='shrink-0 flex items-center justify-center ml-1 mt-1 w-6 h-6 rounded-lg cursor-pointer hover:bg-state-destructive-hover text-text-tertiary hover:text-text-destructive'

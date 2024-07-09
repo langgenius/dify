@@ -3,7 +3,6 @@ import {
   memo,
   useState,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import {
@@ -19,6 +18,7 @@ import Button from '@/app/components/base/button'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { useGetAvailableVars } from '@/app/components/workflow/nodes/variable-assigner/hooks'
+import cn from '@/utils/classnames'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 const Panel: FC<NodePanelProps<IfElseNodeType>> = ({

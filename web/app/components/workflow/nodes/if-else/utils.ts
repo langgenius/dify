@@ -68,6 +68,13 @@ export const getOperators = (type?: VarType) => {
   }
 }
 
+export const comparisonOperatorNotRequireValue = (operator?: ComparisonOperator) => {
+  if (!operator)
+    return false
+
+  return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull].includes(operator)
+}
+
 export const branchNameCorrect = (branches: Branch[]) => {
   const branchLength = branches.length
   if (branchLength < 2)

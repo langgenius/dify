@@ -3,7 +3,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import type { NodeProps } from 'reactflow'
 import { NodeSourceHandle } from '../_base/components/node-handle'
-import { isComparisonOperatorNeedTranslate, isEmptyRelatedOperator } from './utils'
+import { isEmptyRelatedOperator } from './utils'
 import type { IfElseNodeType } from './types'
 import ConditionValue from './components/condition-value'
 const i18nPrefix = 'workflow.nodes.ifElse'
@@ -39,7 +39,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
                     ? (
                       <ConditionValue
                         variable={condition.variable_selector.slice(-1)[0]}
-                        operator={isComparisonOperatorNeedTranslate(condition.comparison_operator) ? t(`${i18nPrefix}.comparisonOperator.${condition.comparison_operator}`) : condition.comparison_operator}
+                        operator={condition.comparison_operator}
                         value={condition.value}
                       />
                     )
