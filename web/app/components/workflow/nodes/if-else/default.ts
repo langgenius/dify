@@ -8,8 +8,8 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
   defaultValue: {
     _targetBranches: [
       {
-        id: 'init-case-id',
-        name: 'CASE 1',
+        id: 'true',
+        name: 'IF',
       },
       {
         id: 'false',
@@ -18,7 +18,7 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
     ],
     cases: [
       {
-        caseId: 'init-case-id',
+        caseId: 'true',
         logical_operator: LogicalOperator.and,
         conditions: [],
       },

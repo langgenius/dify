@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import {
-  Fragment,
   memo,
   useState,
 } from 'react'
@@ -57,7 +56,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
       >
         {
           cases.map((item, index) => (
-            <Fragment key={item.caseId}>
+            <div key={item.caseId}>
               <div
                 className={cn(
                   'group relative py-1 px-3 min-h-[40px] rounded-[10px] bg-white',
@@ -118,8 +117,8 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
                   }
                 </div>
               </div>
-              {/* <div className='my-2 mx-3 h-[1px] bg-[#101828]/[0.04]'></div> */}
-            </Fragment>
+              <div className='my-2 mx-3 h-[1px] bg-[#101828]/[0.04]'></div>
+            </div>
           ))
         }
       </ReactSortable>

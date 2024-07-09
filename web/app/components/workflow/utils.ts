@@ -121,7 +121,7 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       if (!nodeData.cases && nodeData.logical_operator && nodeData.conditions) {
         (node.data as IfElseNodeType).cases = [
           {
-            caseId: uuid4(),
+            caseId: 'true',
             logical_operator: nodeData.logical_operator,
             conditions: nodeData.conditions,
           },
@@ -191,6 +191,7 @@ export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
         _connectedNodeIsSelected: edge.source === selectedNode.id || edge.target === selectedNode.id,
       } as any
     }
+
     return edge
   })
 }
