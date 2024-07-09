@@ -18,6 +18,7 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolInvokeFrom,
     ToolParameter,
+    ToolProviderType,
 )
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiToolProviderController
@@ -26,6 +27,7 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 from core.tools.tool.api_tool import ApiTool
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
+from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import (
     ToolConfigurationManager,
@@ -78,37 +80,13 @@ class ToolManager:
         return tool
 
     @classmethod
-    def get_tool(cls, provider_type: str, provider_id: str, tool_name: str, tenant_id: str = None) \
-            -> Union[BuiltinTool, ApiTool]:
-        """
-            get the tool
-
-            :param provider_type: the type of the provider
-            :param provider_name: the name of the provider
-            :param tool_name: the name of the tool
-
-            :return: the tool
-        """
-        if provider_type == 'builtin':
-            return cls.get_builtin_tool(provider_id, tool_name)
-        elif provider_type == 'api':
-            if tenant_id is None:
-                raise ValueError('tenant id is required for api provider')
-            api_provider, _ = cls.get_api_provider_controller(tenant_id, provider_id)
-            return api_provider.get_tool(tool_name)
-        elif provider_type == 'app':
-            raise NotImplementedError('app provider not implemented')
-        else:
-            raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
-
-    @classmethod
-    def get_tool_runtime(cls, provider_type: str,
+    def get_tool_runtime(cls, provider_type: ToolProviderType,
                          provider_id: str,
                          tool_name: str,
                          tenant_id: str,
                          invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
                          tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT) \
-        -> Union[BuiltinTool, ApiTool]:
+        -> Union[BuiltinTool, ApiTool, WorkflowTool]:
         """
             get the tool runtime
 
@@ -118,7 +96,7 @@ class ToolManager:
 
             :return: the tool
         """
-        if provider_type == 'builtin':
+        if provider_type == ToolProviderType.BUILT_IN:
             builtin_tool = cls.get_builtin_tool(provider_id, tool_name)
 
             # check if the builtin tool need credentials
@@ -155,7 +133,7 @@ class ToolManager:
                 'tool_invoke_from': tool_invoke_from,
             })
 
-        elif provider_type == 'api':
+        elif provider_type == ToolProviderType.API:
             if tenant_id is None:
                 raise ValueError('tenant id is required for api provider')
 
@@ -171,7 +149,7 @@ class ToolManager:
                 'invoke_from': invoke_from,
                 'tool_invoke_from': tool_invoke_from,
             })
-        elif provider_type == 'workflow':
+        elif provider_type == ToolProviderType.WORKFLOW:
             workflow_provider = db.session.query(WorkflowToolProvider).filter(
                 WorkflowToolProvider.tenant_id == tenant_id,
                 WorkflowToolProvider.id == provider_id
@@ -190,10 +168,10 @@ class ToolManager:
                 'invoke_from': invoke_from,
                 'tool_invoke_from': tool_invoke_from,
             })
-        elif provider_type == 'app':
+        elif provider_type == ToolProviderType.APP:
             raise NotImplementedError('app provider not implemented')
         else:
-            raise ToolProviderNotFoundError(f'provider type {provider_type} not found')
+            raise ToolProviderNotFoundError(f'provider type {provider_type.value} not found')
 
     @classmethod
     def _init_runtime_parameter(cls, parameter_rule: ToolParameter, parameters: dict) -> Union[str, int, float, bool]:
@@ -554,7 +532,7 @@ class ToolManager:
         })
 
     @classmethod
-    def get_tool_icon(cls, tenant_id: str, provider_type: str, provider_id: str) -> Union[str, dict]:
+    def get_tool_icon(cls, tenant_id: str, provider_type: ToolProviderType, provider_id: str) -> Union[str, dict]:
         """
             get the tool icon
 
@@ -563,14 +541,12 @@ class ToolManager:
             :param provider_id: the id of the provider
             :return:
         """
-        provider_type = provider_type
-        provider_id = provider_id
-        if provider_type == 'builtin':
+        if provider_type == ToolProviderType.BUILT_IN:
             return (current_app.config.get("CONSOLE_API_URL")
                     + "/console/api/workspaces/current/tool-provider/builtin/"
                     + provider_id
                     + "/icon")
-        elif provider_type == 'api':
+        elif provider_type == ToolProviderType.API:
             try:
                 provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
                     ApiToolProvider.tenant_id == tenant_id,
@@ -582,7 +558,7 @@ class ToolManager:
                     "background": "#252525",
                     "content": "\ud83d\ude01"
                 }
-        elif provider_type == 'workflow':
+        elif provider_type == ToolProviderType.WORKFLOW:
             provider: WorkflowToolProvider = db.session.query(WorkflowToolProvider).filter(
                 WorkflowToolProvider.tenant_id == tenant_id,
                 WorkflowToolProvider.id == provider_id

@@ -9,6 +9,7 @@ from core.helper.tool_provider_cache import ToolProviderCredentialsCache, ToolPr
 from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderCredentials,
+    ToolProviderType,
 )
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.tool import Tool
@@ -108,7 +109,7 @@ class ToolParameterConfigurationManager(BaseModel):
     tenant_id: str
     tool_runtime: Tool
     provider_name: str
-    provider_type: str
+    provider_type: ToolProviderType
     identity_id: str
 
     def _deep_copy(self, parameters: dict[str, Any]) -> dict[str, Any]:
@@ -191,7 +192,7 @@ class ToolParameterConfigurationManager(BaseModel):
         """
         cache = ToolParameterCache(
             tenant_id=self.tenant_id,
-            provider=f'{self.provider_type}.{self.provider_name}',
+            provider=f'{self.provider_type.value}.{self.provider_name}',
             tool_name=self.tool_runtime.identity.name,
             cache_type=ToolParameterCacheType.PARAMETER,
             identity_id=self.identity_id
@@ -221,7 +222,7 @@ class ToolParameterConfigurationManager(BaseModel):
     def delete_tool_parameters_cache(self):
         cache = ToolParameterCache(
             tenant_id=self.tenant_id,
-            provider=f'{self.provider_type}.{self.provider_name}',
+            provider=f'{self.provider_type.value}.{self.provider_name}',
             tool_name=self.tool_runtime.identity.name,
             cache_type=ToolParameterCacheType.PARAMETER,
             identity_id=self.identity_id

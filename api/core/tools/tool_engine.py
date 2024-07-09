@@ -1,4 +1,5 @@
 import json
+from collections.abc import Generator
 from copy import deepcopy
 from datetime import datetime, timezone
 from mimetypes import guess_type
@@ -8,6 +9,7 @@ from yarl import URL
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
+from core.callback_handler.plugin_tool_callback_handler import DifyPluginCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -64,16 +66,25 @@ class ToolEngine:
                 tool_inputs=tool_parameters
             )
 
-            meta, response = ToolEngine._invoke(tool, tool_parameters, user_id)
-            response = ToolFileMessageTransformer.transform_tool_invoke_messages(
-                messages=response, 
-                user_id=user_id, 
-                tenant_id=tenant_id, 
+            messages = ToolEngine._invoke(tool, tool_parameters, user_id)
+            invocation_meta_dict = {'meta': None}
+
+            def message_callback(invocation_meta_dict: dict, messages: Generator[ToolInvokeMessage, None, None]):
+                for message in messages:
+                    if isinstance(message, ToolInvokeMeta):
+                        invocation_meta_dict['meta'] = message
+                    else:
+                        yield message
+
+            messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
+                messages=message_callback(invocation_meta_dict, messages),
+                user_id=user_id,
+                tenant_id=tenant_id,
                 conversation_id=message.conversation_id
             )
 
             # extract binary data from tool invoke message
-            binary_files = ToolEngine._extract_tool_response_binary(response)
+            binary_files = ToolEngine._extract_tool_response_binary(messages)
             # create message file
             message_files = ToolEngine._create_message_files(
                 tool_messages=binary_files,
@@ -82,7 +93,9 @@ class ToolEngine:
                 user_id=user_id
             )
 
-            plain_text = ToolEngine._convert_tool_response_to_str(response)
+            plain_text = ToolEngine._convert_tool_response_to_str(messages)
+
+            meta = invocation_meta_dict['meta']
 
             # hit the callback handler
             agent_tool_callback.on_tool_end(
@@ -127,7 +140,7 @@ class ToolEngine:
                         user_id: str, workflow_id: str, 
                         workflow_tool_callback: DifyWorkflowCallbackHandler,
                         workflow_call_depth: int,
-                        ) -> list[ToolInvokeMessage]:
+        ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Workflow invokes the tool with the given arguments.
         """
@@ -154,10 +167,38 @@ class ToolEngine:
         except Exception as e:
             workflow_tool_callback.on_tool_error(e)
             raise e
-        
+    
+    @staticmethod
+    def plugin_invoke(tool: Tool, tool_parameters: dict, user_id: str,
+                      callback: DifyPluginCallbackHandler
+        ) -> Generator[ToolInvokeMessage, None, None]:
+        """
+        Plugin invokes the tool with the given arguments.
+        """
+        try:
+            # hit the callback handler
+            callback.on_tool_start(
+                tool_name=tool.identity.name, 
+                tool_inputs=tool_parameters
+            )
+
+            response = tool.invoke(user_id, tool_parameters)
+
+            # hit the callback handler
+            callback.on_tool_end(
+                tool_name=tool.identity.name,
+                tool_inputs=tool_parameters,
+                tool_outputs=response,
+            )
+
+            return response
+        except Exception as e:
+            callback.on_tool_error(e)
+            raise e
+    
     @staticmethod
     def _invoke(tool: Tool, tool_parameters: dict, user_id: str) \
-          -> tuple[ToolInvokeMeta, list[ToolInvokeMessage]]:
+          -> Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]:
         """
         Invoke the tool with the given arguments.
         """
@@ -170,16 +211,15 @@ class ToolEngine:
             'tool_icon': tool.identity.icon
         })
         try:
-            response = tool.invoke(user_id, tool_parameters)
+            yield from tool.invoke(user_id, tool_parameters)
         except Exception as e:
             meta.error = str(e)
             raise ToolEngineInvokeError(meta)
         finally:
             ended_at = datetime.now(timezone.utc)
             meta.time_cost = (ended_at - started_at).total_seconds()
+            yield meta
 
-        return meta, response
-    
     @staticmethod
     def _convert_tool_response_to_str(tool_response: list[ToolInvokeMessage]) -> str:
         """

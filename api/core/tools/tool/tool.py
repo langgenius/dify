@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections.abc import Generator
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Optional, Union
@@ -190,7 +191,7 @@ class Tool(BaseModel, ABC):
 
         return result
 
-    def invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
+    def invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         # update tool_parameters
         if self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
@@ -202,9 +203,6 @@ class Tool(BaseModel, ABC):
             user_id=user_id,
             tool_parameters=tool_parameters,
         )
-
-        if not isinstance(result, list):
-            result = [result]
 
         return result
 
@@ -221,7 +219,7 @@ class Tool(BaseModel, ABC):
         return result
 
     @abstractmethod
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
         pass
     
     def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any]) -> None:

@@ -1,4 +1,5 @@
 import json
+from collections.abc import Generator
 from os import getenv
 from typing import Any
 from urllib.parse import urlencode
@@ -269,7 +270,7 @@ class ApiTool(Tool):
         except ValueError as e:
             return value
 
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke http request
         """
@@ -283,4 +284,4 @@ class ApiTool(Tool):
         response = self.validate_and_parse_response(response)
 
         # assemble invoke message
-        return self.create_text_message(response)
+        yield self.create_text_message(response)

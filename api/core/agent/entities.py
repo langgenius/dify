@@ -1,14 +1,16 @@
 from enum import Enum
-from typing import Any, Literal, Optional, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel
+
+from core.tools.entities.tool_entities import ToolProviderType
 
 
 class AgentToolEntity(BaseModel):
     """
     Agent Tool Entity.
     """
-    provider_type: Literal["builtin", "api", "workflow"]
+    provider_type: ToolProviderType
     provider_id: str
     tool_name: str
     tool_parameters: dict[str, Any] = {}

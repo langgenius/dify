@@ -32,7 +32,7 @@ class ToolNode(BaseNode):
 
         # fetch tool icon
         tool_info = {
-            'provider_type': node_data.provider_type,
+            'provider_type': node_data.provider_type.value,
             'provider_id': node_data.provider_id
         }
 

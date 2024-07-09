@@ -1,5 +1,6 @@
 import json
 import logging
+from collections.abc import Generator
 from copy import deepcopy
 from typing import Any, Union
 
@@ -34,7 +35,7 @@ class WorkflowTool(Tool):
 
     def _invoke(
         self, user_id: str, tool_parameters: dict[str, Any]
-    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    ) -> Generator[ToolInvokeMessage, None, None]:
         """
             invoke the tool
         """
@@ -46,6 +47,7 @@ class WorkflowTool(Tool):
 
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
         generator = WorkflowAppGenerator()
+
         result = generator.generate(
             app_model=app, 
             workflow=workflow, 
@@ -64,16 +66,12 @@ class WorkflowTool(Tool):
         if data.get('error'):
             raise Exception(data.get('error'))
         
-        result = []
-
         outputs = data.get('outputs', {})
         outputs, files = self._extract_files(outputs)
         for file in files:
-            result.append(self.create_file_var_message(file))
+            yield self.create_file_var_message(file)
         
-        result.append(self.create_text_message(json.dumps(outputs, ensure_ascii=False)))
-
-        return result
+        yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
 
     def _get_user(self, user_id: str) -> Union[EndUser, Account]:
         """

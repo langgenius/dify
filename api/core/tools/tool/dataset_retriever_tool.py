@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from typing import Any
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
@@ -86,7 +87,7 @@ class DatasetRetrieverTool(Tool):
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.DATASET_RETRIEVAL
 
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
         """
         invoke dataset retriever tool
         """
@@ -97,7 +98,7 @@ class DatasetRetrieverTool(Tool):
         # invoke dataset retriever tool
         result = self.retrival_tool._run(query=query)
 
-        return self.create_text_message(text=result)
+        yield self.create_text_message(text=result)
 
     def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any]) -> None:
         """

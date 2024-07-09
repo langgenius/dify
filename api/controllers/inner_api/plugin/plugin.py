@@ -21,6 +21,8 @@ class PluginInvokeModelApi(Resource):
         parser.add_argument('parameters', type=dict, required=True, location='json')
 
         args = parser.parse_args()
+
+        
         
 
 class PluginInvokeToolApi(Resource):
