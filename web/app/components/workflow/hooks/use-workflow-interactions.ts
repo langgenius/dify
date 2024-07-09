@@ -62,13 +62,14 @@ export const useWorkflowUpdate = () => {
       appId,
       setSyncWorkflowDraftHash,
       setIsSyncingWorkflowDraft,
-      setEnvironmentVariables,
+      // setEnvironmentVariables,
     } = workflowStore.getState()
     setIsSyncingWorkflowDraft(true)
     fetchWorkflowDraft(`/apps/${appId}/workflows/draft`).then((response) => {
       handleUpdateWorkflowCanvas(response.graph as WorkflowDataUpdator)
       setSyncWorkflowDraftHash(response.hash)
-      setEnvironmentVariables(response.environment_variables || [])
+      // #TODO ENV#
+      // setEnvironmentVariables(response.environment_variables || [])
     }).finally(() => setIsSyncingWorkflowDraft(false))
   }, [handleUpdateWorkflowCanvas, workflowStore])
 
