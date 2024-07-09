@@ -352,11 +352,14 @@ const vars = {
   'workflow-display-disabled-vignette-color': 'var(--color-workflow-display-disabled-vignette-color)',
   'workflow-display-disabled-outline': 'var(--color-workflow-display-disabled-outline)',
 
+  'workflow-workflow-progress-bg-1': 'var(--color-workflow-workflow-progress-bg-1)',
+  'workflow-workflow-progress-bg-2': 'var(--color-workflow-workflow-progress-bg-2)',
+
   'divider-subtle': 'var(--color-divider-subtle)',
   'divider-regular': 'var(--color-divider-regular)',
-  'divider-darker': 'var(--color-divider-darker)',
+  'divider-deep': 'var(--color-divider-deep)',
   'divider-burn': 'var(--color-divider-burn)',
-  'divider-darker+': 'var(--color-divider-darker+)',
+  'divider-intense': 'var(--color-divider-intense)',
   'divider-soild': 'var(--color-divider-soild)',
   'divider-soild-alt': 'var(--color-divider-soild-alt)',
 
@@ -556,6 +559,7 @@ const vars = {
 
   'third-party-LangChain': 'var(--color-third-party-LangChain)',
   'third-party-Langfuse': 'var(--color-third-party-Langfuse)',
+
 }
 
 export default vars

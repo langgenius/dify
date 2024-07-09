@@ -352,6 +352,9 @@ html[data-theme="dark"] {
   --color-workflow-display-disabled-vignette-color: #C8CEDA40;
   --color-workflow-display-disabled-outline: #18181BF2;
 
+  --color-workflow-workflow-progress-bg-1: #18181B40;
+  --color-workflow-workflow-progress-bg-2: #18181B0A;
+
   --color-divider-subtle: #C8CEDA14;
   --color-divider-regular: #C8CEDA24;
   --color-divider-deep: #C8CEDA33;
