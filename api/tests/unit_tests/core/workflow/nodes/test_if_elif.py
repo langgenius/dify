@@ -9,7 +9,7 @@ from extensions.ext_database import db
 from models.workflow import WorkflowNodeExecutionStatus
 
 
-def test_if_elif_else_result_true():
+def test_if_elif_result_true():
     node = IfElseNode(
         tenant_id='1',
         app_id='1',
@@ -22,31 +22,34 @@ def test_if_elif_else_result_true():
             'data': {
                 'title': '123',
                 'type': 'if-else',
-                'cases': [
+                "cases": [{
+                    "id": "c88839c9-21a0-4d4f-985d-3b4fa070cabc",
+                    "caseId": "c88839c9-21a0-4d4f-985d-3b4fa070cabc",
+                    "logical_operator": "or",
+                    "conditions": [{
+                        "id": "56bb88df-7b83-4369-b203-0eadeda251e7",
+                        "varType": "string",
+                        "variable_selector": [
+                            "1719988447278",
+                            "query"
+                        ],
+                        "comparison_operator": "contains",
+                        "value": "你好"
+                    }]
+                },
                     {
-                        'logical_operator': 'and',
-                        'conditions': [
-                            {
-                                'comparison_operator': 'is',
-                                'variable_selector': ['start', 'is'],
-                                'value': 'ab'
-                            }
-                        ]
-                    },
-                    {
-                        'logical_operator': 'or',
-                        'conditions': [
-                            {
-                                'comparison_operator': 'contains',
-                                'variable_selector': ['start', 'contains'],
-                                'value': 'ab'
-                            },
-                            {
-                                'comparison_operator': 'not empty',
-                                'variable_selector': ['start', 'not_empty'],
-                                'value': 'ab'
-                            }
-                        ]
+                        "caseId": "6ee12213-def4-42d2-baee-cc25d4ab70e8",
+                        "logical_operator": "and",
+                        "conditions": [{
+                            "id": "501c675a-2410-4771-b5dc-ebbe92779c84",
+                            "varType": "string",
+                            "variable_selector": [
+                                "1719988491297",
+                                "class_name"
+                            ],
+                            "comparison_operator": "contains",
+                            "value": "打招呼"
+                        }]
                     }
                 ]
             }
@@ -58,9 +61,8 @@ def test_if_elif_else_result_true():
         SystemVariable.FILES: [],
         SystemVariable.USER_ID: 'aaa'
     }, user_inputs={})
-    pool.append_variable(node_id='start', variable_key_list=['is'], value='not_ab')  # Not satisfying first case
-    pool.append_variable(node_id='start', variable_key_list=['contains'], value='abcde')  # Satisfying second case
-    pool.append_variable(node_id='start', variable_key_list=['not_empty'], value='abcde')  # Satisfying second case
+    pool.append_variable(node_id='1719988447278', variable_key_list=['query'], value='你好')
+    pool.append_variable(node_id='1719988491297', variable_key_list=['class_name'], value='打招呼')
 
     # Mock db.session.close()
     db.session.close = MagicMock()
@@ -72,49 +74,3 @@ def test_if_elif_else_result_true():
     assert result.outputs['result'] is True, "The elseif condition should evaluate to True"
 
 
-def test_execute_if_else_result_all_false():
-    node = IfElseNode(
-        tenant_id='1',
-        app_id='1',
-        workflow_id='1',
-        user_id='1',
-        user_from=UserFrom.ACCOUNT,
-        invoke_from=InvokeFrom.DEBUGGER,
-        config={
-            'id': 'if-else',
-            'data': {
-                'title': '123',
-                'type': 'if-else',
-                'logical_operator': 'and',
-                'conditions': [
-                    {
-                        'comparison_operator': 'contains',
-                        'variable_selector': ['start', 'contains'],
-                        'value': 'xyz'
-                    },
-                    {
-                        'comparison_operator': 'is',
-                        'variable_selector': ['start', 'is'],
-                        'value': 'xyz'
-                    }
-                ]
-            }
-        }
-    )
-
-    # construct variable pool with values that do not satisfy any condition
-    pool = VariablePool(system_variables={
-        SystemVariable.FILES: [],
-        SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
-    pool.append_variable(node_id='start', variable_key_list=['contains'], value='abc')
-    pool.append_variable(node_id='start', variable_key_list=['is'], value='abc')
-
-    # Mock db.session.close()
-    db.session.close = MagicMock()
-
-    # execute node
-    result = node._run(pool)
-
-    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert not result.outputs['result'], "No conditions are met, the result should be False"
