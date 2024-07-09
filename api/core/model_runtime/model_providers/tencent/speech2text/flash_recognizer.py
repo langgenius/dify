@@ -119,8 +119,7 @@ class FlashRecognizer:
         return signstr
 
     def _build_header(self):
-        header = dict()
-        header["Host"] = "asr.cloud.tencent.com"
+        header = {"Host": "asr.cloud.tencent.com"}
         return header
 
     def _sign(self, signstr, secret_key):
@@ -140,24 +139,16 @@ class FlashRecognizer:
         return requrl
 
     def _create_query_arr(self, req):
-        query_arr = dict()
-        query_arr['appid'] = self.appid
-        query_arr['secretid'] = self.credential.secret_id
-        query_arr['timestamp'] = str(int(time.time()))
-        query_arr['engine_type'] = req.engine_type
-        query_arr['voice_format'] = req.voice_format
-        query_arr['speaker_diarization'] = req.speaker_diarization
-        query_arr['hotword_id'] = req.hotword_id
-        query_arr['customization_id'] = req.customization_id
-        query_arr['filter_dirty'] = req.filter_dirty
-        query_arr['filter_modal'] = req.filter_modal
-        query_arr['filter_punc'] = req.filter_punc
-        query_arr['convert_num_mode'] = req.convert_num_mode
-        query_arr['word_info'] = req.word_info
-        query_arr['first_channel_only'] = req.first_channel_only
-        query_arr['reinforce_hotword'] = req.reinforce_hotword
-        query_arr['sentence_max_length'] = req.sentence_max_length
-        return query_arr
+        return {
+            'appid': self.appid, 'secretid': self.credential.secret_id, 'timestamp': str(int(time.time())),
+             'engine_type': req.engine_type, 'voice_format': req.voice_format,
+             'speaker_diarization': req.speaker_diarization, 'hotword_id': req.hotword_id,
+             'customization_id': req.customization_id, 'filter_dirty': req.filter_dirty,
+             'filter_modal': req.filter_modal, 'filter_punc': req.filter_punc,
+             'convert_num_mode': req.convert_num_mode, 'word_info': req.word_info,
+             'first_channel_only': req.first_channel_only, 'reinforce_hotword': req.reinforce_hotword,
+             'sentence_max_length': req.sentence_max_length
+        }
 
     def recognize(self, req, data):
         header = self._build_header()
