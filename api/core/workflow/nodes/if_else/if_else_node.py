@@ -1,3 +1,4 @@
+import re
 from typing import Optional, cast
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
@@ -139,6 +140,16 @@ class IfElseNode(BaseNode):
         else:
             pass
 
+    def resolve_template(self, template, variable_pool):
+        pattern = re.compile(r'\{\{#([^{}#]+)#\}\}')
+        matches = pattern.findall(template)
+        for var in matches:
+            path_list = var.strip().split('.')
+            actual_value = variable_pool.get_variable_value(path_list)
+            if actual_value is not None:
+                template = template.replace(f'{{{{#{var}#}}}}', actual_value)
+        return template
+
     def process_conditions(self, variable_pool: VariablePool, conditions: list[Condition]):
         input_conditions = []
         group_result = []
@@ -147,9 +158,10 @@ class IfElseNode(BaseNode):
             actual_value = variable_pool.get_variable_value(
                 variable_selector=condition.variable_selector
             )
-            expected_value = condition.value
-            comparison_operator = condition.comparison_operator
 
+            # expected_value = condition.value
+            expected_value = self.resolve_template(condition.value, variable_pool)
+            comparison_operator = condition.comparison_operator
             input_conditions.append(
                 {
                     "actual_value": actual_value,
