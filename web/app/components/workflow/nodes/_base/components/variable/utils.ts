@@ -452,6 +452,7 @@ export const toNodeAvailableVars = ({
       valueSelector: iterationNode?.data.iterator_selector || [],
       availableNodes: beforeNodes,
       isChatMode,
+      environmentVariables,
     })
     const iterationVar = {
       nodeId: iterationNode?.id,

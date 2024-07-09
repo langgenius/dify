@@ -6,6 +6,9 @@ import { NodeSourceHandle } from '../_base/components/node-handle'
 import { isComparisonOperatorNeedTranslate, isEmptyRelatedOperator } from './utils'
 import type { IfElseNodeType } from './types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { Env } from '@/app/components/base/icons/src/vender/line/others'
+import { isENV } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
@@ -29,7 +32,8 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
             {(condition.variable_selector?.length > 0 && condition.comparison_operator && (isEmptyRelatedOperator(condition.comparison_operator!) ? true : !!condition.value))
               ? (
                 <div className='flex items-center h-6 px-1 space-x-1 text-xs font-normal text-gray-700 bg-gray-100 rounded-md'>
-                  <Variable02 className='w-3.5 h-3.5 text-primary-500' />
+                  {isENV(condition.variable_selector) && <Env className='w-3.5 h-3.5 text-[#7839EE]' />}
+                  {!isENV(condition.variable_selector) && <Variable02 className='w-3.5 h-3.5 text-primary-500' />}
                   <span>{condition.variable_selector.slice(-1)[0]}</span>
                   <span className='text-gray-500'>{isComparisonOperatorNeedTranslate(condition.comparison_operator) ? t(`${i18nPrefix}.comparisonOperator.${condition.comparison_operator}`) : condition.comparison_operator}</span>
                   {!isEmptyRelatedOperator(condition.comparison_operator!) && <span>{condition.value}</span>}

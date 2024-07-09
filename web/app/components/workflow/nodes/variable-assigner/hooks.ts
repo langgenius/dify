@@ -3,13 +3,13 @@ import {
   useNodes,
   useStoreApi,
 } from 'reactflow'
-import { useTranslation } from 'react-i18next'
 import { uniqBy } from 'lodash-es'
 import produce from 'immer'
 import {
   useIsChatMode,
   useNodeDataUpdate,
   useWorkflow,
+  useWorkflowVariables,
 } from '../../hooks'
 import type {
   Node,
@@ -21,7 +21,6 @@ import type {
   VarGroupItem,
   VariableAssignerNodeType,
 } from './types'
-import { toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 export const useVariableAssigner = () => {
   const store = useStoreApi()
@@ -123,9 +122,9 @@ export const useVariableAssigner = () => {
 }
 
 export const useGetAvailableVars = () => {
-  const { t } = useTranslation()
   const nodes: Node[] = useNodes()
   const { getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
+  const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
   const getAvailableVars = useCallback((nodeId: string, handleId: string, filterVar: (v: Var) => boolean) => {
     const availableNodes: Node[] = []
@@ -138,14 +137,13 @@ export const useGetAvailableVars = () => {
     availableNodes.push(...beforeNodes)
     const parentNode = nodes.find(node => node.id === currentNode.parentId)
 
-    return toNodeAvailableVars({
+    return getNodeAvailableVars({
       parentNode,
-      t,
       beforeNodes: uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId),
       isChatMode,
       filterVar,
     })
-  }, [nodes, t, isChatMode, getBeforeNodesInSameBranchIncludeParent])
+  }, [nodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode])
 
   return getAvailableVars
 }
