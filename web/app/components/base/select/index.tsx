@@ -191,6 +191,7 @@ const SimpleSelect: FC<ISelectProps> = ({
                   onClick={(e) => {
                     e.stopPropagation()
                     setSelectedItem(null)
+                    onSelect({ value: null })
                   }}
                   className="h-5 w-5 text-gray-400 cursor-pointer"
                   aria-hidden="false"

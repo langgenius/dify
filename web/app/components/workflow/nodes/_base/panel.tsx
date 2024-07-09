@@ -107,7 +107,7 @@ const BasePanel: FC<BasePanelProps> = ({
       </div>
       <div
         ref={containerRef}
-        className={cn('relative h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+        className={cn('h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
           width: `${panelWidth}px`,
         }}

@@ -2,7 +2,7 @@ import os
 
 from configs import dify_config
 
-if not os.environ.get("DEBUG") or os.environ.get("DEBUG", "false").lower() != 'true':
+if os.environ.get("DEBUG", "false").lower() != 'true':
     from gevent import monkey
 
     monkey.patch_all()
@@ -43,6 +43,8 @@ from extensions import (
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 from libs.passport import PassportService
+
+# TODO: Find a way to avoid importing models here
 from models import account, dataset, model, source, task, tool, tools, web
 from services.account_service import AccountService
 
