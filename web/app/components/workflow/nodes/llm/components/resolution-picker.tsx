@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 import { Resolution } from '@/types/app'
 
 const i18nPrefix = 'workflow.nodes.llm'

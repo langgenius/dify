@@ -1,5 +1,5 @@
 import ReactSlider from 'react-slider'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 import './style.css'
 
 type ISliderProps = {

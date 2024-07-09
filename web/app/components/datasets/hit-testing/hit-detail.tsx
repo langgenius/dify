@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import React from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { SegmentIndexTag } from '../documents/detail/completed'
 import s from '../documents/detail/completed/style.module.css'
+import cn from '@/utils/classnames'
 import type { SegmentDetailModel } from '@/models/datasets'
 import Divider from '@/app/components/base/divider'
 

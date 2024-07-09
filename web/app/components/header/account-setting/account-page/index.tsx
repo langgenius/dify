@@ -1,7 +1,6 @@
 'use client'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import classNames from 'classnames'
 import {
   RiCloseLine,
   RiErrorWarningFill,
@@ -10,6 +9,7 @@ import { useContext } from 'use-context-selector'
 import Collapse from '../collapse'
 import type { IItem } from '../collapse'
 import s from './index.module.css'
+import classNames from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { updateUserProfile } from '@/service/common'

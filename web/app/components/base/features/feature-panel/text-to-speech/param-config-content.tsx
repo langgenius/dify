@@ -2,7 +2,6 @@
 import useSWR from 'swr'
 import produce from 'immer'
 import React, { Fragment } from 'react'
-import classNames from 'classnames'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
@@ -15,6 +14,7 @@ import {
   useFeaturesStore,
 } from '../../hooks'
 import type { OnFeaturesChange } from '../../types'
+import classNames from '@/utils/classnames'
 import type { Item } from '@/app/components/base/select'
 import { fetchAppVoices } from '@/service/apps'
 import Tooltip from '@/app/components/base/tooltip'

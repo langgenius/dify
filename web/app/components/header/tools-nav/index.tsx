@@ -3,11 +3,11 @@
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { useSelectedLayoutSegment } from 'next/navigation'
-import classNames from 'classnames'
 import {
   RiHammerFill,
   RiHammerLine,
 } from '@remixicon/react'
+import classNames from '@/utils/classnames'
 type ToolsNavProps = {
   className?: string
 }

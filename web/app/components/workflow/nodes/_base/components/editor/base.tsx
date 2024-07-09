@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React, { useCallback, useRef, useState } from 'react'
 import copy from 'copy-to-clipboard'
-import cn from 'classnames'
 import Wrap from './wrap'
+import cn from '@/utils/classnames'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
 import {
   Clipboard,
