@@ -5,7 +5,7 @@ from core.file.file_obj import FileVar
 from core.workflow.entities.node_entities import SystemVariable
 
 VariableValue = Union[str, int, float, dict, list, FileVar]
-
+import json
 
 class ValueType(Enum):
     """
@@ -35,8 +35,9 @@ class VariablePool:
         self.user_inputs = user_inputs
         self.system_variables = system_variables
         for system_variable, value in system_variables.items():
+            print(system_variable.value)
             if system_variable.value=='files':
-                self.append_variable('sys', ['files_str'], repr(value))
+                self.append_variable('sys', ['files_str'], json.dumps(value))
             self.append_variable('sys', [system_variable.value], value)
 
     def append_variable(self, node_id: str, variable_key_list: list[str], value: VariableValue) -> None:
