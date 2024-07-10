@@ -46,7 +46,7 @@ const Blocks = ({
               key={tool.name}
               selector={`workflow-block-tool-${tool.name}`}
               position='right'
-              className='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !bg-transparent !rounded-xl !shadow-lg'
+              className='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
               htmlContent={(
                 <div>
                   <BlockIcon
