@@ -44,7 +44,7 @@ const ConditionList = ({
             <div
               className='absolute top-1/2 right-1 -translate-y-1/2 flex items-center px-1 h-[21px] rounded-md border-[0.5px] border-components-button-secondary-border shadow-xs bg-components-button-secondary-bg text-text-accent-secondary text-[10px] font-semibold cursor-pointer'
               onClick={() => {
-                onUpdateConditionLogicalOperator(caseItem.caseId, caseItem.logical_operator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and)
+                onUpdateConditionLogicalOperator(caseItem.case_id, caseItem.logical_operator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and)
               }}
             >
               {logical_operator.toUpperCase()}
@@ -58,7 +58,7 @@ const ConditionList = ({
           <ConditionItem
             key={condition.id}
             disabled={disabled}
-            caseId={caseItem.caseId}
+            caseId={caseItem.case_id}
             condition={condition}
             onUpdateCondition={onUpdateCondition}
             onRemoveCondition={onRemoveCondition}

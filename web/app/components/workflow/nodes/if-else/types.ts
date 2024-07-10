@@ -40,7 +40,7 @@ export type Condition = {
 }
 
 export type CaseItem = {
-  caseId: string
+  case_id: string
   logical_operator: LogicalOperator
   conditions: Condition[]
 }

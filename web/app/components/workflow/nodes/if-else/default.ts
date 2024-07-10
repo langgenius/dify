@@ -18,7 +18,7 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
     ],
     cases: [
       {
-        caseId: 'true',
+        case_id: 'true',
         logical_operator: LogicalOperator.and,
         conditions: [],
       },

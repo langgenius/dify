@@ -122,14 +122,14 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       if (!nodeData.cases && nodeData.logical_operator && nodeData.conditions) {
         (node.data as IfElseNodeType).cases = [
           {
-            caseId: 'true',
+            case_id: 'true',
             logical_operator: nodeData.logical_operator,
             conditions: nodeData.conditions,
           },
         ]
       }
       node.data._targetBranches = branchNameCorrect([
-        ...(node.data as IfElseNodeType).cases.map(item => ({ id: item.caseId, name: '' })),
+        ...(node.data as IfElseNodeType).cases.map(item => ({ id: item.case_id, name: '' })),
         { id: 'false', name: '' },
       ])
     }

@@ -57,9 +57,9 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
   const handleAddCase = useCallback(() => {
     const newInputs = produce(inputs, () => {
       if (inputs.cases) {
-        const caseId = uuid4()
+        const case_id = uuid4()
         inputs.cases.push({
-          caseId,
+          case_id,
           logical_operator: LogicalOperator.and,
           conditions: [],
         })
@@ -69,7 +69,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
             inputs._targetBranches = branchNameCorrect([
               ...inputs._targetBranches.slice(0, elseCaseIndex),
               {
-                id: caseId,
+                id: case_id,
                 name: '',
               },
               ...inputs._targetBranches.slice(elseCaseIndex),
@@ -83,7 +83,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
 
   const handleRemoveCase = useCallback((caseId: string) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.cases = draft.cases?.filter(item => item.caseId !== caseId)
+      draft.cases = draft.cases?.filter(item => item.case_id !== caseId)
 
       if (draft._targetBranches)
         draft._targetBranches = branchNameCorrect(draft._targetBranches.filter(branch => branch.id !== caseId))
@@ -97,13 +97,13 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     const newInputs = produce(inputs, (draft) => {
       draft.cases = newCases.filter(Boolean).map(item => ({
         id: item.id,
-        caseId: item.caseId,
+        case_id: item.case_id,
         logical_operator: item.logical_operator,
         conditions: item.conditions,
       }))
 
       draft._targetBranches = branchNameCorrect([
-        ...newCases.filter(Boolean).map(item => ({ id: item.caseId, name: '' })),
+        ...newCases.filter(Boolean).map(item => ({ id: item.case_id, name: '' })),
         { id: 'false', name: '' },
       ])
     })
@@ -112,7 +112,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
 
   const handleAddCondition = useCallback<HandleAddCondition>((caseId, valueSelector, varItem) => {
     const newInputs = produce(inputs, (draft) => {
-      const targetCase = draft.cases?.find(item => item.caseId === caseId)
+      const targetCase = draft.cases?.find(item => item.case_id === caseId)
       if (targetCase) {
         targetCase.conditions.push({
           id: uuid4(),
@@ -128,7 +128,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
 
   const handleRemoveCondition = useCallback<HandleRemoveCondition>((caseId, conditionId) => {
     const newInputs = produce(inputs, (draft) => {
-      const targetCase = draft.cases?.find(item => item.caseId === caseId)
+      const targetCase = draft.cases?.find(item => item.case_id === caseId)
       if (targetCase)
         targetCase.conditions = targetCase.conditions.filter(item => item.id !== conditionId)
     })
@@ -137,7 +137,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
 
   const handleUpdateCondition = useCallback<HandleUpdateCondition>((caseId, conditionId, newCondition) => {
     const newInputs = produce(inputs, (draft) => {
-      const targetCase = draft.cases?.find(item => item.caseId === caseId)
+      const targetCase = draft.cases?.find(item => item.case_id === caseId)
       if (targetCase) {
         const targetCondition = targetCase.conditions.find(item => item.id === conditionId)
         if (targetCondition)
@@ -149,7 +149,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
 
   const handleUpdateConditionLogicalOperator = useCallback<HandleUpdateConditionLogicalOperator>((caseId, value) => {
     const newInputs = produce(inputs, (draft) => {
-      const targetCase = draft.cases?.find(item => item.caseId === caseId)
+      const targetCase = draft.cases?.find(item => item.case_id === caseId)
       if (targetCase)
         targetCase.logical_operator = value
     })

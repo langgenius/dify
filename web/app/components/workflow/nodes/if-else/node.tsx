@@ -18,7 +18,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
     <div className='px-3'>
       {
         cases.map((caseItem, index) => (
-          <div key={caseItem.caseId}>
+          <div key={caseItem.case_id}>
             <div className='relative flex items-center h-6 px-1'>
               <div className='flex items-center justify-between w-full'>
                 <div className='text-[10px] font-semibold text-text-tertiary'>
@@ -28,7 +28,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
               </div>
               <NodeSourceHandle
                 {...props}
-                handleId={caseItem.caseId}
+                handleId={caseItem.case_id}
                 handleClassName='!top-1/2 !-right-[21px] !-translate-y-1/2'
               />
             </div>

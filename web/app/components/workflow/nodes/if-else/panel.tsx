@@ -49,7 +49,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
   return (
     <div className='p-1'>
       <ReactSortable
-        list={cases.map(caseItem => ({ ...caseItem, id: caseItem.caseId }))}
+        list={cases.map(caseItem => ({ ...caseItem, id: caseItem.case_id }))}
         setList={handleSortCase}
         handle='.handle'
         ghostClass='bg-components-panel-bg'
@@ -57,15 +57,21 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
       >
         {
           cases.map((item, index) => (
-            <div key={item.caseId}>
+            <div key={item.case_id}>
               <div
                 className={cn(
                   'group relative py-1 px-3 min-h-[40px] rounded-[10px] bg-components-panel-bg',
-                  willDeleteCaseId === item.caseId && 'bg-state-destructive-hover',
+                  willDeleteCaseId === item.case_id && 'bg-state-destructive-hover',
                 )}
               >
-                <RiDraggable className='hidden group-hover:block handle absolute top-2 left-1 w-3 h-3 text-text-quaternary cursor-pointer' />
-                <div className='absolute top-1.5 left-4 leading-4 text-[13px] font-semibold text-text-secondary'>
+                <RiDraggable className={cn(
+                  'hidden handle absolute top-2 left-1 w-3 h-3 text-text-quaternary cursor-pointer',
+                  casesLength > 1 && 'group-hover:block',
+                )} />
+                <div className={cn(
+                  'absolute left-4 leading-4 text-[13px] font-semibold text-text-secondary',
+                  casesLength === 1 ? 'top-2.5' : 'top-1',
+                )}>
                   {
                     index === 0 ? 'IF' : 'ELIF'
                   }
@@ -97,7 +103,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
                 )}>
                   <ConditionAdd
                     disabled={readOnly}
-                    caseId={item.caseId}
+                    caseId={item.case_id}
                     variables={getAvailableVars(id, '', filterVar)}
                     onSelectVariable={handleAddCondition}
                   />
@@ -108,8 +114,8 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
                         size='small'
                         variant='ghost'
                         disabled={readOnly}
-                        onClick={() => handleRemoveCase(item.caseId)}
-                        onMouseEnter={() => setWillDeleteCaseId(item.caseId)}
+                        onClick={() => handleRemoveCase(item.case_id)}
+                        onMouseEnter={() => setWillDeleteCaseId(item.case_id)}
                         onMouseLeave={() => setWillDeleteCaseId('')}
                       >
                         <RiDeleteBinLine className='mr-1 w-3.5 h-3.5' />
