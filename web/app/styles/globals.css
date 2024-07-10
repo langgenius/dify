@@ -286,7 +286,6 @@ button:focus-within {
   font-size: 12px;
   font-weight: 600;
   line-height: 1.5;
-
 }
 
 .code-sm-regular {
@@ -564,8 +563,70 @@ button:focus-within {
   font-weight: 700;
   line-height: 1.2;
 }
-
 /* font define end */
+
+/* border radius start */
+.radius-2xs {
+  border-radius: 2px;
+}
+
+.radius-xs {
+  border-radius: 4px;
+}
+
+.radius-sm {
+  border-radius: 6px;
+}
+
+.radius-md {
+  border-radius: 8px;
+}
+
+.radius-lg {
+  border-radius: 10px;
+}
+
+.radius-xl {
+  border-radius: 12px;
+}
+
+.radius-2xl {
+  border-radius: 16px;
+}
+
+.radius-3xl {
+  border-radius: 20px;
+}
+
+.radius-4xl {
+  border-radius: 24px;
+}
+
+.radius-5xl {
+  border-radius: 24px;
+}
+
+.radius-6xl {
+  border-radius: 28px;
+}
+
+.radius-7xl {
+  border-radius: 32px;
+}
+
+.radius-8xl {
+  border-radius: 40px;
+}
+
+.radius-9xl {
+  border-radius: 48px;
+}
+
+.radius-full {
+  border-radius: 64px;
+}
+/* border radius end */
+
 
 .link {
   @apply text-blue-600 cursor-pointer hover:opacity-80 transition-opacity duration-200 ease-in-out;
