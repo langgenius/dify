@@ -149,18 +149,20 @@ class IfElseNode(BaseNode):
                 variable_selector=condition.variable_selector
             )
 
-            variable_template_parser = VariableTemplateParser(template=condition.value)
-            expected_value = variable_template_parser.extract_variable_selectors()
-
-            variable_selectors = variable_template_parser.extract_variable_selectors()
-            if variable_selectors:
-                for variable_selector in variable_selectors:
-                    value = variable_pool.get_variable_value(
-                        variable_selector=variable_selector.value_selector
-                    )
-                    expected_value = variable_template_parser.format({variable_selector.variable: value})
+            if condition.value is not None:
+                variable_template_parser = VariableTemplateParser(template=condition.value)
+                expected_value = variable_template_parser.extract_variable_selectors()
+                variable_selectors = variable_template_parser.extract_variable_selectors()
+                if variable_selectors:
+                    for variable_selector in variable_selectors:
+                        value = variable_pool.get_variable_value(
+                            variable_selector=variable_selector.value_selector
+                        )
+                        expected_value = variable_template_parser.format({variable_selector.variable: value})
+                else:
+                    expected_value = condition.value
             else:
-                expected_value = condition.value
+                expected_value = None
 
             comparison_operator = condition.comparison_operator
             input_conditions.append(
