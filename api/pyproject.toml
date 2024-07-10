@@ -246,5 +246,5 @@ pytest-mock = "~3.14.0"
 optional = true
 
 [tool.poetry.group.lint.dependencies]
-ruff = "~0.4.8"
+ruff = "~0.5.1"
 dotenv-linter = "~0.5.0"
