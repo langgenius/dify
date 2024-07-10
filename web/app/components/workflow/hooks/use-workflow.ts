@@ -22,7 +22,6 @@ import {
 } from '../utils'
 import type {
   Edge,
-  EnvironmentVariable,
   Node,
   ValueSelector,
 } from '../types'
@@ -472,21 +471,6 @@ export const useWorkflowInit = () => {
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
-
-      // #TODO ENV# mock data of envs
-      const MOCK_ENV = [
-        {
-          name: 'PORT',
-          value_type: 'number',
-          value: 8888,
-        },
-        {
-          name: 'API_KEY',
-          value_type: 'secret',
-          value: 'sk-fjlda789whfkdlaf8wgkh2',
-        },
-      ] as EnvironmentVariable[]
-
       setData(res)
       workflowStore.setState({
         environmentVariables: res.environment_variables || [],
@@ -509,6 +493,7 @@ export const useWorkflowInit = () => {
                 features: {
                   retriever_resource: { enabled: true },
                 },
+                environment_variables: [],
               },
             }).then((res) => {
               workflowStore.getState().setDraftUpdatedAt(res.updated_at)

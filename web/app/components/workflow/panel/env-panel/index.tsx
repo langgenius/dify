@@ -11,7 +11,6 @@ import Button from '@/app/components/base/button'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import VariableModal from '@/app/components/workflow/panel/env-panel/variable-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
-import DSLExportConfirmModal from '@/app/components/workflow/panel/env-panel/dsl-export-confirm-modal'
 
 const EnvPanel = () => {
   const { t } = useTranslation()
@@ -21,8 +20,6 @@ const EnvPanel = () => {
 
   const [showVariableModal, setShowVariableModal] = useState(false)
   const [currentVar, setCurrentVar] = useState<EnvironmentVariable>()
-
-  const [showExportModal, setShowExportModal] = useState(false)
 
   const handleSave = (env: EnvironmentVariable) => {
     if (!currentVar)
@@ -57,7 +54,7 @@ const EnvPanel = () => {
           </div>
         </div>
       </div>
-      <div onClick={() => setShowExportModal(true)} className='shrink-0 py-1 px-4 text-[13px] leading-4 text-gray-500'>{t('workflow.env.envDescription')}</div>
+      <div className='shrink-0 py-1 px-4 text-[13px] leading-4 text-gray-500'>{t('workflow.env.envDescription')}</div>
       <div className='shrink-0 px-4 pt-2 pb-3'>
         <Button variant='primary' onClick={() => setShowVariableModal(true)}>
           <RiAddLine className='mr-1 w-4 h-4' />
@@ -104,13 +101,6 @@ const EnvPanel = () => {
             }}
           />
         </div>
-      )}
-      {showExportModal && (
-        <DSLExportConfirmModal
-          show={showExportModal}
-          onConfirm={() => {}}
-          onClose={() => setShowExportModal(false)}
-        />
       )}
     </div>
   )
