@@ -2,9 +2,9 @@ from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional, Union
 
+from core.app.variables import Variable
 from core.file.file_obj import FileVar
 from core.workflow.entities.node_entities import SystemVariable
-from models.workflow import EnvironmentVariable
 
 VariableValue = Union[str, int, float, dict, list, FileVar]
 
@@ -32,7 +32,7 @@ class VariablePool:
         system_variables: Mapping[SystemVariable, Any],
         user_inputs: Mapping[str, Any],
         # TODO: remove Optional
-        environment_variables: Optional[Sequence[EnvironmentVariable]] = None,
+        environment_variables: Optional[Sequence[Variable]] = None,
     ) -> None:
         # system variables
         # for example:

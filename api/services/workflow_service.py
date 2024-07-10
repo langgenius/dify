@@ -8,6 +8,7 @@ import yaml
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.app.variables import Variable, variable_factory
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -18,7 +19,6 @@ from models.account import Account
 from models.model import App, AppMode
 from models.workflow import (
     CreatedByRole,
-    EnvironmentVariable,
     Workflow,
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -67,12 +67,13 @@ class WorkflowService:
 
     def sync_draft_workflow(
         self,
+        *,
         app_model: App,
         graph: dict,
         features: dict,
         unique_hash: Optional[str],
         account: Account,
-        environment_variables: Sequence[EnvironmentVariable],
+        environment_variables: Sequence[Variable],
     ) -> Workflow:
         """
         Sync draft workflow
@@ -160,12 +161,15 @@ class WorkflowService:
             unique_hash = None
 
         # sync draft workflow
+        environment_variables_list = workflow.get('environment_variables') or []
+        environment_variables = [variable_factory.from_mapping(obj) for obj in environment_variables_list]
         draft_workflow = self.sync_draft_workflow(
             app_model=app_model,
             graph=workflow.get('graph'),
             features=workflow.get('features'),
             unique_hash=unique_hash,
-            account=account
+            account=account,
+            environment_variables=environment_variables,
         )
 
         return draft_workflow

@@ -13,13 +13,13 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.variables import variable_factory
 from fields.workflow_fields import workflow_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.model import App, AppMode
-from models.workflow import EnvironmentVariable
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import WorkflowService
@@ -97,7 +97,7 @@ class DraftWorkflowApi(Resource):
 
         try:
             environment_variables_list = args.get('environment_variables') or []
-            environment_variables = [EnvironmentVariable(**obj) for obj in environment_variables_list]
+            environment_variables = [variable_factory.from_mapping(obj) for obj in environment_variables_list]
             workflow = workflow_service.sync_draft_workflow(
                 app_model=app_model,
                 graph=args['graph'],

@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime, timezone
-from typing import cast
+from typing import Any, cast
 
 import yaml
 from flask import current_app
@@ -10,6 +10,7 @@ from flask_sqlalchemy.pagination import Pagination
 
 from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
+from core.app.variables import variable_factory
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
@@ -21,7 +22,6 @@ from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig
 from models.tools import ApiToolProvider
-from models.workflow import EnvironmentVariable
 from services.tag_service import TagService
 from services.workflow_service import WorkflowService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
@@ -196,7 +196,7 @@ class AppService:
             workflow_service = WorkflowService()
             # parse environment variables.
             environment_variables_list = workflow.get('environment_variables') or []
-            environment_variables = [EnvironmentVariable(**obj) for obj in environment_variables_list]
+            environment_variables = [variable_factory.from_mapping(obj) for obj in environment_variables_list]
             draft_workflow = workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=workflow.get('graph'),
@@ -228,7 +228,7 @@ class AppService:
 
         return app
 
-    def export_app(self, app: App) -> str:
+    def export_app(self, app: App, *, include_secret: bool = False) -> str:
         """
         Export app
         :param app: App instance
@@ -236,7 +236,7 @@ class AppService:
         """
         app_mode = AppMode.value_of(app.mode)
 
-        export_data = {
+        export_data: dict[str, Any] = {
             "app": {
                 "name": app.name,
                 "mode": app.mode,
@@ -251,14 +251,11 @@ class AppService:
             workflow = workflow_service.get_draft_workflow(app)
             if not workflow:
                 raise ValueError("Draft workflow not found")
-            export_data['workflow'] = {
-                "graph": workflow.graph_dict,
-                "features": workflow.features_dict,
-                "environment_variables": [var.export() for var in workflow.environment_variables if var.exportable]
-            }
+            export_data['workflow'] = workflow.to_dict(include_secret=include_secret)
         else:
             app_model_config = app.app_model_config
-
+            if not app_model_config:
+                raise ValueError("Model config not found")
             export_data['model_config'] = app_model_config.to_dict()
 
         return yaml.dump(export_data)

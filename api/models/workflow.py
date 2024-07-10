@@ -4,15 +4,17 @@ from enum import Enum
 from typing import Any, Optional, Union
 
 from flask_login import current_user
-from pydantic import BaseModel
 
+from core.app.variables import (
+    SecretVariable,
+    Variable,
+    variable_factory,
+)
 from core.helper import encrypter
 from extensions.ext_database import db
 from libs import helper
 from models import StringUUID
 from models.account import Account
-from models.helpers import encrypt_environment_variable
-from models.model import EndUser
 
 
 class CreatedByRole(Enum):
@@ -69,30 +71,6 @@ class WorkflowType(Enum):
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
 
 
-class EnvironmentType(str, Enum):
-    STRING = 'string'
-    NUMBER = 'number'
-    SECRET = 'secret'
-
-class EnvironmentVariable(BaseModel):
-    name: str
-    value: Any
-    value_type: EnvironmentType
-    exportable: bool
-
-    def export(self):
-        if not self.exportable:
-            raise ValueError(f'environment variable {self.name} is not exportable')
-        if self.value_type == EnvironmentType.SECRET:
-            cp =  self.model_copy()
-            cp.value = None
-            return cp.model_dump(mode='json')
-        return self.model_dump(mode='json')
-
-class DBEnvironmentVariable(BaseModel):
-    data: Sequence[EnvironmentVariable]
-
-
 class Workflow(db.Model):
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
@@ -144,18 +122,7 @@ class Workflow(db.Model):
     updated_by = db.Column(StringUUID)
     updated_at = db.Column(db.DateTime)
     # TODO: update this field to sqlalchemy column after frontend update.
-    # JSON example:
-    # {
-    #   "data": [
-    #     { 
-    #         "name": "ENV_VAR_NAME", 
-    #         "value": "ENV_VAR_VALUE",
-    #         "value_type": "string",
-    #         "exportable": true
-    #     }, 
-    #   ]
-    # }
-    _environment_variables = '{"data": [{"name": "TEST_ENV_NAME", "value": "TEST_ENV_VALUE", "value_type": "string", "exportable": true}, {"name": "TEST_ENV_NAME_2", "value":2, "value_type": "number", "exportable": true}]}'
+    _environment_variables = '{}'
 
     @property
     def created_by_account(self):
@@ -222,31 +189,59 @@ class Workflow(db.Model):
         ).first() is not None
 
     @property
-    def environment_variables(self) -> Sequence[EnvironmentVariable]:
-        return DBEnvironmentVariable.model_validate_json(self._environment_variables).data
+    def environment_variables(self) -> Sequence[Variable]:
+        # FIXME: get current user from flask context, may not a good way.
+        if current_user is None:
+            raise ValueError('current user is not found')
+
+        environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
+        results = [variable_factory.from_mapping(v) for v in environment_variables_dict.values()]
+        # decrypt secret variables value
+        decrypt_func = (
+            lambda var: var.model_copy(
+                update={'value': encrypter.decrypt_token(tenant_id=current_user.current_tenant_id, token=var.value)}
+            )
+            if isinstance(var, SecretVariable)
+            else var
+        )
+        results = [decrypt_func(var) for var in results]
+        return results
 
     @environment_variables.setter
-    def environment_variables(self, vars: Sequence[EnvironmentVariable]):
-        # get current user from flask context, may not a good way.
-        user = current_user
-        if not isinstance(user, Account | EndUser):
-            raise ValueError('current user is not account or end user')
-        
+    def environment_variables(self, vars: Sequence[Variable]):
+        # FIXME: get current user from flask context, may not a good way.
+        if current_user is None:
+            raise ValueError('current user is not found')
 
         previous_vars = {var.name: var for var in self.environment_variables}
-
-        new_vars = []
+        new_vars: list[Variable] = []
         for var in vars:
-            if var.name in previous_vars and var != previous_vars[var.name]:
-                new_vars.append(var)
-            elif var.name in previous_vars and var == previous_vars[var.name]:
-                new_vars.append(previous_vars[var.name])
-            elif var.value_type == EnvironmentType.SECRET:
-                new_vars.append(encrypt_environment_variable(var, encrypt_func=lambda t: encrypter.encrypt_token(user.current_tenant_id, t)))
-            else:
-                new_vars.append(var)
+            if var.name in previous_vars and var == previous_vars[var.name]:
+                var = previous_vars[var.name]
+            elif var.name not in previous_vars and isinstance(var, SecretVariable):
+                var = var.model_copy(
+                    update={'value': encrypter.encrypt_token(tenant_id=current_user.current_tenant_id, token=var.value)}
+                )
+            new_vars.append(var)
+        environment_variables_json = json.dumps(
+            {var.name: var.model_dump() for var in new_vars},
+            ensure_ascii=False,
+        )
+        self._environment_variables = environment_variables_json
 
-        self._environment_variables = DBEnvironmentVariable(data=new_vars).model_dump_json()
+    def to_dict(self, *, include_secret: bool = False) -> Mapping[str, Any]:
+        environment_variables = list(self.environment_variables)
+        environment_variables = [
+            v if not isinstance(v, SecretVariable) or include_secret else v.model_copy(update={'value': ''})
+            for v in environment_variables
+        ]
+
+        result = {
+            'graph': self.graph_dict,
+            'features': self.features_dict,
+            'environment_variables': [var.model_dump() for var in environment_variables],
+        }
+        return result
 
 
 class WorkflowRunTriggeredFrom(Enum):

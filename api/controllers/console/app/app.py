@@ -177,7 +177,7 @@ class AppCopyApi(Resource):
         args = parser.parse_args()
 
         app_service = AppService()
-        data = app_service.export_app(app_model)
+        data = app_service.export_app(app_model, include_secret=True)
         app = app_service.import_app(current_user.current_tenant_id, data, args, current_user)
 
         return app, 201
@@ -194,10 +194,15 @@ class AppExportApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
+        # Add include_secret params
+        parser = reqparse.RequestParser()
+        parser.add_argument('include_secret', type=bool, default=False, location='args')
+        args = parser.parse_args()
+
         app_service = AppService()
 
         return {
-            "data": app_service.export_app(app_model)
+            "data": app_service.export_app(app_model, include_secret=args['include_secret'])
         }
 
 

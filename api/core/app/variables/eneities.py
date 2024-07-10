@@ -2,16 +2,28 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from core.file.file_obj import FileVar
 from core.helper import encrypter
 
 
 class Variable(BaseModel):
-    value_type: str = 'unknown'
+    model_config = ConfigDict(frozen=True)
+
     name: str
     value: Any
+    value_type: str = 'unknown'
+
+    @field_validator('value_type')
+    def validate_value_type(cls, value):
+        """
+        This validator checks if the provided value is equal to the default value of the 'value_type' field.
+        If the value is different, a ValueError is raised.
+        """
+        if value != cls.model_fields['value_type'].default:
+            raise ValueError("Cannot modify 'value_type'")
+        return value
 
 
 class TextVariable(Variable):
