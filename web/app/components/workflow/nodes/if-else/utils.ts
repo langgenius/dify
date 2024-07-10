@@ -39,8 +39,6 @@ export const getOperators = (type?: VarType) => {
         ComparisonOperator.lessThan,
         ComparisonOperator.largerThanOrEqual,
         ComparisonOperator.lessThanOrEqual,
-        ComparisonOperator.is,
-        ComparisonOperator.isNot,
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]
