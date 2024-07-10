@@ -360,7 +360,7 @@ export const HTTP_REQUEST_OUTPUT_STRUCT: Var[] = [
   },
   {
     variable: 'headers',
-    type: VarType.string,
+    type: VarType.object,
   },
   {
     variable: 'files',
