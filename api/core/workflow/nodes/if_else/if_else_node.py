@@ -140,7 +140,7 @@ class IfElseNode(BaseNode):
         else:
             pass
 
-    def resolve_template(self, template, variable_pool):
+    def resolve_template(self, template, variable_pool, actual_value_type):
         if template is None:
             return None
         pattern = re.compile(r'\{\{#([^{}#]+)#\}\}')
@@ -149,6 +149,11 @@ class IfElseNode(BaseNode):
             path_list = var.strip().split('.')
             actual_value = variable_pool.get_variable_value(path_list)
             if actual_value is not None:
+                if actual_value_type == str:
+                    actual_value = str(actual_value)
+                elif actual_value_type == int:
+                    actual_value = int(actual_value)
+                actual_value = str(actual_value)
                 template = template.replace(f'{{{{#{var}#}}}}', actual_value)
         return template
 
@@ -162,7 +167,8 @@ class IfElseNode(BaseNode):
             )
 
             # expected_value = condition.value
-            expected_value = self.resolve_template(condition.value, variable_pool)
+            actual_value_type = type(actual_value)
+            expected_value = self.resolve_template(condition.value, variable_pool, actual_value_type)
             comparison_operator = condition.comparison_operator
             input_conditions.append(
                 {
