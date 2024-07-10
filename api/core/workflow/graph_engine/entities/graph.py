@@ -234,7 +234,7 @@ class Graph(BaseModel):
         if len(target_node_edges) > 1:
             # fetch all node ids in current parallels
             parallel_node_ids = [graph_edge.target_node_id
-                                 for graph_edge in target_node_edges if graph_edge.run_condition is not None]
+                                 for graph_edge in target_node_edges if graph_edge.run_condition is None]
 
             # any target node id in node_parallel_mapping
             if parallel_node_ids:
@@ -251,7 +251,10 @@ class Graph(BaseModel):
                     parallel_node_ids=parallel_node_ids
                 )
 
-                node_parallel_mapping.update({node_id: parallel.id for node_id in in_branch_node_ids})
+                # collect all branches node ids
+                for branch_node_id, node_ids in in_branch_node_ids.items():
+                    for node_id in node_ids:
+                        node_parallel_mapping[node_id] = parallel.id
 
         for graph_edge in target_node_edges:
             cls._recursively_add_parallels(
