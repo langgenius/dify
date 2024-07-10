@@ -56,19 +56,39 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   const tryList = [
     {
       icon: Generator,
-      text: 'Write me an email',
+      key: 'pythonDebugger',
     },
     {
       icon: Generator,
-      text: 'Generate an SEO article',
+      key: 'translation',
     },
     {
       icon: Generator,
-      text: 'Code debug',
+      key: 'meetingTakeaways',
     },
     {
       icon: Generator,
-      text: 'Translate English to Chinese',
+      key: 'writingsPolisher',
+    },
+    {
+      icon: Generator,
+      key: 'professionalAnalyst',
+    },
+    {
+      icon: Generator,
+      key: 'excelFormulaExpert',
+    },
+    {
+      icon: Generator,
+      key: 'travelPlanning',
+    },
+    {
+      icon: Generator,
+      key: 'SQLSorcerer',
+    },
+    {
+      icon: Generator,
+      key: 'GitGud',
     },
   ]
 
@@ -154,10 +174,12 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             <div className='flex flex-wrap'>
               {tryList.map(item => (
                 <TryLabel
-                  key={item.text}
+                  key={item.key}
                   Icon={item.icon}
-                  text={item.text}
-                  onClick={() => { }}
+                  text={t(`appDebug.generate.template.${item.key}.name`)}
+                  onClick={() => {
+                    // t(`appDebug.generate.template.${item.key}.description`
+                  }}
                 />
               ))}
             </div>

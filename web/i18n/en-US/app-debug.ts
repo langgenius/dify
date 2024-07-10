@@ -212,6 +212,44 @@ const translation = {
     loading: 'Orchestrating the application for you...',
     overwriteTitle: 'Override existing configuration?',
     overwriteMessage: 'Applying this prompt will override existing configuration.',
+    template: {
+      pythonDebugger: {
+        name: 'Python debugger',
+        description: 'A bot that can generate and debug your code based on your instruction',
+      },
+      translation: {
+        name: 'Translation',
+        description: 'A translator that can translate multiple languages',
+      },
+      professionalAnalyst: {
+        name: 'Professional analyst',
+        description: 'Extract insights, identify risk and distill key information from long reports into single memo',
+      },
+      excelFormulaExpert: {
+        name: 'Excel formula expert',
+        description: 'A chatbot that can help novice users understand, use and create Excel formulas based on user instructions',
+      },
+      travelPlanning: {
+        name: 'Travel planning',
+        description: 'The Travel Planning Assistant is an intelligent tool designed to help users effortlessly plan their trips',
+      },
+      SQLSorcerer: {
+        name: 'SQL sorcerer',
+        description: 'Transform everyday language into SQL queries',
+      },
+      GitGud: {
+        name: 'Git gud',
+        description: 'Generate appropriate Git commands based on user described version control actions',
+      },
+      meetingTakeaways: {
+        name: 'Meeting takeaways',
+        description: 'Distill meetings into concise summaries including discussion topics, key takeaways, and action items',
+      },
+      writingsPolisher: {
+        name: 'Writing polisher',
+        description: 'Use advanced copyediting techniques to improve your writings',
+      },
+    },
   },
   resetConfig: {
     title: 'Confirm reset?',
