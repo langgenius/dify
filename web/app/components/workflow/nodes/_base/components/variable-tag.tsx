@@ -26,6 +26,7 @@ const VariableTag = ({
 
     return nodes.find(node => node.id === valueSelector[0])
   }, [nodes, valueSelector])
+
   const variableName = valueSelector.slice(1).join('.')
 
   return (

@@ -20,6 +20,7 @@ type ConditionListProps = {
   onRemoveCondition: HandleRemoveCondition
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
+  numberVariables: NodeOutPutVar[]
 }
 const ConditionList = ({
   disabled,
@@ -29,6 +30,7 @@ const ConditionList = ({
   onRemoveCondition,
   nodesOutputVars,
   availableNodes,
+  numberVariables,
 }: ConditionListProps) => {
   const { conditions, logical_operator } = caseItem
 
@@ -62,6 +64,7 @@ const ConditionList = ({
             onRemoveCondition={onRemoveCondition}
             nodesOutputVars={nodesOutputVars}
             availableNodes={availableNodes}
+            numberVariables={numberVariables}
           />
         ))
       }

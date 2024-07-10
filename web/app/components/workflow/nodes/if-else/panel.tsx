@@ -31,6 +31,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
     readOnly,
     inputs,
     filterVar,
+    filterNumberVar,
     handleAddCase,
     handleRemoveCase,
     handleSortCase,
@@ -85,6 +86,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
                         onUpdateConditionLogicalOperator={handleUpdateConditionLogicalOperator}
                         nodesOutputVars={nodesOutputVars}
                         availableNodes={availableNodes}
+                        numberVariables={getAvailableVars(id, '', filterNumberVar)}
                       />
                     </div>
                   )

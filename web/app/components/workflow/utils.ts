@@ -14,6 +14,7 @@ import type {
   InputVar,
   Node,
   ToolWithProvider,
+  ValueSelector,
 } from './types'
 import { BlockEnum } from './types'
 import {
@@ -470,4 +471,11 @@ export const isEventTargetInputArea = (target: HTMLElement) => {
 
   if (target.contentEditable === 'true')
     return true
+}
+
+export const variableTransformer = (v: ValueSelector | string) => {
+  if (typeof v === 'string')
+    return v.replace(/^{{#|#}}$/g, '').split('.')
+
+  return `{{#${v.join('.')}#}}`
 }

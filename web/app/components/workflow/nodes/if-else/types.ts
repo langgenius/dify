@@ -1,3 +1,4 @@
+import type { VarType as NumberVarType } from '../tool/types'
 import type {
   CommonNodeType,
   ValueSelector,
@@ -35,6 +36,7 @@ export type Condition = {
   variable_selector: ValueSelector
   comparison_operator?: ComparisonOperator
   value: string
+  numberVarType?: NumberVarType
 }
 
 export type CaseItem = {

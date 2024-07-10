@@ -3,6 +3,7 @@ import {
   useState,
 } from 'react'
 import { RiDeleteBinLine } from '@remixicon/react'
+import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   ComparisonOperator,
   Condition,
@@ -10,6 +11,7 @@ import type {
   HandleUpdateCondition,
 } from '../../types'
 import { comparisonOperatorNotRequireValue } from '../../utils'
+import ConditionNumberInput from '../condition-number-input'
 import ConditionOperator from './condition-operator'
 import ConditionInput from './condition-input'
 import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
@@ -17,6 +19,7 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 type ConditionItemProps = {
@@ -27,6 +30,7 @@ type ConditionItemProps = {
   onUpdateCondition: HandleUpdateCondition
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
+  numberVariables: NodeOutPutVar[]
 }
 const ConditionItem = ({
   disabled,
@@ -36,6 +40,7 @@ const ConditionItem = ({
   onUpdateCondition,
   nodesOutputVars,
   availableNodes,
+  numberVariables,
 }: ConditionItemProps) => {
   const [isHovered, setIsHovered] = useState(false)
 
@@ -51,6 +56,15 @@ const ConditionItem = ({
     const newCondition = {
       ...condition,
       value,
+    }
+    onUpdateCondition(caseId, condition.id, newCondition)
+  }, [caseId, condition, onUpdateCondition])
+
+  const handleUpdateConditionNumberVarType = useCallback((numberVarType: NumberVarType) => {
+    const newCondition = {
+      ...condition,
+      numberVarType,
+      value: '',
     }
     onUpdateCondition(caseId, condition.id, newCondition)
   }, [caseId, condition, onUpdateCondition])
@@ -77,7 +91,7 @@ const ConditionItem = ({
           />
         </div>
         {
-          !comparisonOperatorNotRequireValue(condition.comparison_operator) && (
+          !comparisonOperatorNotRequireValue(condition.comparison_operator) && condition.varType !== VarType.number && (
             <div className='px-2 py-1 max-h-[100px] border-t border-t-divider-subtle overflow-y-auto'>
               <ConditionInput
                 disabled={disabled}
@@ -85,6 +99,19 @@ const ConditionItem = ({
                 onChange={handleUpdateConditionValue}
                 nodesOutputVars={nodesOutputVars}
                 availableNodes={availableNodes}
+              />
+            </div>
+          )
+        }
+        {
+          !comparisonOperatorNotRequireValue(condition.comparison_operator) && condition.varType === VarType.number && (
+            <div className='px-2 py-1 pt-[3px] border-t border-t-divider-subtle'>
+              <ConditionNumberInput
+                numberVarType={condition.numberVarType}
+                onNumberVarTypeChange={handleUpdateConditionNumberVarType}
+                value={condition.value}
+                onValueChange={handleUpdateConditionValue}
+                variables={numberVariables}
               />
             </div>
           )

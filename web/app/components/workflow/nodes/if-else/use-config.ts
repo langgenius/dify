@@ -42,6 +42,18 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     filterVar,
   })
 
+  const filterNumberVar = useCallback((varPayload: Var) => {
+    return varPayload.type === VarType.number
+  }, [])
+
+  const {
+    availableVars: availableNumberVars,
+    availableNodesWithParent: availableNumberNodesWithParent,
+  } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: filterNumberVar,
+  })
+
   const handleAddCase = useCallback(() => {
     const newInputs = produce(inputs, () => {
       if (inputs.cases) {
@@ -148,6 +160,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     readOnly,
     inputs,
     filterVar,
+    filterNumberVar,
     handleAddCase,
     handleRemoveCase,
     handleSortCase,
@@ -157,6 +170,8 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     handleUpdateConditionLogicalOperator,
     nodesOutputVars: availableVars,
     availableNodes: availableNodesWithParent,
+    nodesOutputNumberVars: availableNumberVars,
+    availableNumberNodes: availableNumberNodesWithParent,
   }
 }
 
