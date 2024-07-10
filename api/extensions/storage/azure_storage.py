@@ -1,5 +1,4 @@
 from collections.abc import Generator
-from contextlib import closing
 from datetime import datetime, timedelta, timezone
 
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
@@ -38,10 +37,9 @@ class AzureStorage(BaseStorage):
 
         def generate(filename: str = filename) -> Generator:
             blob = client.get_blob_client(container=self.bucket_name, blob=filename)
-            with closing(blob.download_blob()) as blob_stream:
-                while chunk := blob_stream.readall():
-                    yield chunk
-
+            blob_data = blob.download_blob()
+            for chunk in blob_data.chunks():
+                yield from chunk
         return generate()
 
     def download(self, filename, target_filepath):

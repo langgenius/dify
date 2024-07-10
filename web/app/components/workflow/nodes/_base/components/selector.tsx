@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useBoolean, useClickAway } from 'ahooks'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 type Item = {

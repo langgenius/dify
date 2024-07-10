@@ -1,9 +1,9 @@
 import type { FC } from 'react'
-import classNames from 'classnames'
 
 import data from '@emoji-mart/data'
 import { init } from 'emoji-mart'
 import style from './style.module.css'
+import classNames from '@/utils/classnames'
 
 init({ data })
 

@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import Field, PositiveInt
+from pydantic_settings import BaseSettings
 
 
-class OpenSearchConfig(BaseModel):
+class OpenSearchConfig(BaseSettings):
     """
     OpenSearch configs
     """
