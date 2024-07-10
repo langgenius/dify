@@ -149,12 +149,7 @@ class IfElseNode(BaseNode):
             path_list = var.strip().split('.')
             actual_value = variable_pool.get_variable_value(path_list)
             if actual_value is not None:
-                if actual_value_type == str:
-                    actual_value = str(actual_value)
-                elif actual_value_type == int:
-                    actual_value = int(actual_value)
-                actual_value = str(actual_value)
-                template = template.replace(f'{{{{#{var}#}}}}', actual_value)
+                template = template.replace(f'{{{{#{var}#}}}}', str(actual_value))
         return template
 
     def process_conditions(self, variable_pool: VariablePool, conditions: list[Condition]):
