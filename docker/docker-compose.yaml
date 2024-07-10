@@ -532,7 +532,7 @@ services:
       - opensearch
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.2
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.21
     container_name: elasticsearch
     hostname: elasticsearch
     environment:
