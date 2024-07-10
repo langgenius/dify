@@ -3,9 +3,11 @@ label:
   en_US: Qwen2-72B-Instruct-GPTQ-Int4
 model_type: llm
 features:
+  - multi-tool-call
   - agent-thought
+  - stream-tool-call
 model_properties:
-  mode: completion
+  mode: chat
   context_size: 8192
 parameter_rules:
   - name: temperature

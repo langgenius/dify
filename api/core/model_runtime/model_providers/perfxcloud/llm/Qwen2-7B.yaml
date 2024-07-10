@@ -3,7 +3,9 @@ label:
   en_US: Qwen2-7B
 model_type: llm
 features:
+  - multi-tool-call
   - agent-thought
+  - stream-tool-call
 model_properties:
   mode: completion
   context_size: 8192

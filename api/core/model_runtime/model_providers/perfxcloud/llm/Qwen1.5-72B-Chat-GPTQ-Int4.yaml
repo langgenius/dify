@@ -5,7 +5,7 @@ model_type: llm
 features:
   - agent-thought
 model_properties:
-  mode: completion
+  mode: chat
   context_size: 8192
 parameter_rules:
   - name: temperature

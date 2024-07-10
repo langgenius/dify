@@ -8,7 +8,6 @@ from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import (
     PromptMessage,
     PromptMessageTool,
-    SystemPromptMessage,
 )
 from core.model_runtime.model_providers.openai.llm.llm import OpenAILargeLanguageModel
 
@@ -20,14 +19,6 @@ class PerfXCloudLargeLanguageModel(OpenAILargeLanguageModel):
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         self._add_custom_parameters(credentials)
-
-        # yi-vl-plus not support system prompt yet.
-        if model == "yi-vl-plus":
-            prompt_message_except_system: list[PromptMessage] = []
-            for message in prompt_messages:
-                if not isinstance(message, SystemPromptMessage):
-                    prompt_message_except_system.append(message)
-            return super()._invoke(model, credentials, prompt_message_except_system, model_parameters, tools, stop, stream)
 
         return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream)
 
