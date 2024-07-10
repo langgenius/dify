@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import {
@@ -104,6 +104,12 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   ]
 
   const [instruction, setInstruction] = React.useState<string>('')
+  const handleChooseTemplate = useCallback((key: string) => {
+    return () => {
+      const template = t(`appDebug.generate.template.${key}.instruction`)
+      setInstruction(template)
+    }
+  }, [t])
   const isValid = () => {
     if (instruction.trim() === '') {
       Toast.notify({
@@ -188,9 +194,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   key={item.key}
                   Icon={item.icon}
                   text={t(`appDebug.generate.template.${item.key}.name`)}
-                  onClick={() => {
-                    // t(`appDebug.generate.template.${item.key}.description`
-                  }}
+                  onClick={handleChooseTemplate(item.key)}
                 />
               ))}
             </div>

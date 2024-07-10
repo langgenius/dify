@@ -217,39 +217,39 @@ const translation = {
     template: {
       pythonDebugger: {
         name: 'Python 代码助手',
-        description: '一个帮你写和纠错程序的机器人',
+        instruction: '一个帮你写和纠错程序的机器人',
       },
       translation: {
         name: '翻译机器人',
-        description: '一个可以翻译多种语言的翻译器',
+        instruction: '一个可以翻译多种语言的翻译器',
       },
       professionalAnalyst: {
         name: '职业分析师',
-        description: ' 从长篇报告中提取洞察、识别风险并提炼关键信息',
+        instruction: ' 从长篇报告中提取洞察、识别风险并提炼关键信息',
       },
       excelFormulaExpert: {
         name: 'Excel 公式专家',
-        description: '一个可以让小白用户理解、使用和创建',
+        instruction: '一个可以让小白用户理解、使用和创建',
       },
       travelPlanning: {
         name: '旅行规划助手',
-        description: '旅行规划助手是一个智能工具，旨在帮助用户轻松规划他们的旅行',
+        instruction: '旅行规划助手是一个智能工具，旨在帮助用户轻松规划他们的旅行',
       },
       SQLSorcerer: {
         name: 'SQL 生成',
-        description: '把自然语言转换成 SQL 查询语句',
+        instruction: '把自然语言转换成 SQL 查询语句',
       },
       GitGud: {
         name: 'Git 大师',
-        description: '从用户提出的版本管理需求生成合适的 Git 命令',
+        instruction: '从用户提出的版本管理需求生成合适的 Git 命令',
       },
       meetingTakeaways: {
         name: '总结会议纪要',
-        description: '将会议内容提炼总结，包括讨论主题、关键要点和待办事项',
+        instruction: '将会议内容提炼总结，包括讨论主题、关键要点和待办事项',
       },
       writingsPolisher: {
         name: '润色文章',
-        description: '用地道的编辑技巧改进我的文章',
+        instruction: '用地道的编辑技巧改进我的文章',
       },
     },
   },
