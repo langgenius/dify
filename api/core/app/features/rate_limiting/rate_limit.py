@@ -67,11 +67,11 @@ class RateLimit:
         if not request_id:
             request_id = RateLimit.gen_request_key()
 
-        redis_client.hset(self.active_requests_key, request_id, str(time.time()))
         active_requests_count = redis_client.hlen(self.active_requests_key)
-        if active_requests_count > self.max_active_requests:
+        if active_requests_count >= self.max_active_requests:
             raise AppInvokeQuotaExceededError("Too many requests. Please try again later. The current maximum "
                                               "concurrent requests allowed is {}.".format(self.max_active_requests))
+        redis_client.hset(self.active_requests_key, request_id, str(time.time()))
         return request_id
 
     def exit(self, request_id: str):

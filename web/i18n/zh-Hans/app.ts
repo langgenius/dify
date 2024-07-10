@@ -41,8 +41,6 @@ const translation = {
     advancedDescription: '工作流编排以工作流的形式编排聊天机器人，提供高度的自定义，包括编辑内置提示的能力。 它适合有经验的用户。',
     captionName: '图标 & 名称',
     appNamePlaceholder: '给你的应用起个名字',
-    appMaxActiveRequests: '最大活动请求数',
-    appMaxActiveRequestsPlaceholder: '应用程序的最大活动请求数，其中 0 表示无限制，应为非负整数。',
     captionDescription: '描述',
     appDescriptionPlaceholder: '输入应用的描述',
     useTemplate: '使用该模板',

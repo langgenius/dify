@@ -42,8 +42,6 @@ const translation = {
     advancedDescription: 'A Orquestração de Fluxo de Trabalho orquestra Chatbots na forma de fluxos de trabalho, oferecendo um alto grau de personalização, incluindo a capacidade de editar prompts integrados. É adequado para usuários experientes.',
     captionName: 'Ícone e nome do aplicativo',
     appNamePlaceholder: 'Dê um nome para o seu aplicativo',
-    appMaxActiveRequests: 'Máximo de requisições ativas',
-    appMaxActiveRequestsPlaceholder: 'O número máximo de requisições ativas para a aplicação, onde 0 significa ilimitado, deve ser um número inteiro não negativo.',
     captionDescription: 'Descrição',
     appDescriptionPlaceholder: 'Digite a descrição do aplicativo',
     useTemplate: 'Usar este modelo',

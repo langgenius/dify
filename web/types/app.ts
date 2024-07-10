@@ -293,8 +293,6 @@ export type App = {
   id: string
   /** Name */
   name: string
-  /** Max active requests */
-  max_active_requests: number
   /** Description */
   description: string
 

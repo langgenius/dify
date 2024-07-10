@@ -40,8 +40,6 @@ const translation = {
     advancedDescription: '워크플로우 오케스트레이션은 워크플로우 형식으로 챗봇을 오케스트레이션하며 내장된 프롬프트를 편집할 수 있는 고급 사용자 정의 기능을 제공합니다. 경험이 많은 사용자용입니다.',
     captionName: '앱 아이콘과 이름',
     appNamePlaceholder: '앱 이름을 입력하세요',
-    appMaxActiveRequests: '최대 활성 요청 수',
-    appMaxActiveRequestsPlaceholder: '애플리케이션의 최대 활성 요청 수. 0은 무제한을 의미하며, 음이 아닌 정수여야 합니다.',
     captionDescription: '설명',
     appDescriptionPlaceholder: '앱 설명을 입력하세요',
     useTemplate: '이 템플릿 사용',

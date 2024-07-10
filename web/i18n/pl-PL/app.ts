@@ -48,8 +48,6 @@ const translation = {
       'Orkiestracja przepływu pracy organizuje Chatboty w formie przepływów pracy, oferując wysoki stopień dostosowania, w tym możliwość edycji wbudowanych monitów. Jest odpowiednia dla doświadczonych użytkowników.',
     captionName: 'Ikona i nazwa aplikacji',
     appNamePlaceholder: 'Podaj nazwę swojej aplikacji',
-    appMaxActiveRequests: 'Maksymalna liczba aktywnych żądań',
-    appMaxActiveRequestsPlaceholder: 'Maksymalna liczba aktywnych żądań dla aplikacji, gdzie 0 oznacza brak limitu, powinna być liczbą nieujemną całkowitą.',
     captionDescription: 'Opis',
     appDescriptionPlaceholder: 'Wprowadź opis aplikacji',
     useTemplate: 'Użyj tego szablonu',
