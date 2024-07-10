@@ -1,0 +1,40 @@
+identity:
+  name: translate
+  author: Ron Liu
+  label:
+    en_US: Translate
+    zh_Hans: 翻译
+    pt_BR: Translate
+description:
+  human:
+    en_US: A tool for Google Translate
+    zh_Hans: Google 翻译
+    pt_BR: A tool for Google Translate
+  llm: A tool for Google Translate
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: Text content
+      zh_Hans: 文本内容
+      pt_BR: Text content
+    human_description:
+      en_US: Text content
+      zh_Hans: 需要翻译的文本内容
+      pt_BR: Text content
+    llm_description: Text content
+    form: llm
+  - name: dest
+    type: string
+    required: true
+    label:
+      en_US: destination language
+      zh_Hans: 目标语言
+      pt_BR: destination language
+    human_description:
+      en_US: The destination language you want to translate.
+      zh_Hans: 你想翻译的目标语言
+      pt_BR: The destination language you want to translate.
+    llm_description: The destination language you want to translate.
+    form: llm
