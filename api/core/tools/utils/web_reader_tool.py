@@ -69,6 +69,7 @@ def get_url(url: str, user_agent: str = None) -> str:
         return ExtractProcessor.load_from_url(url, return_text=True)
 
     response = requests.get(url, headers=headers, allow_redirects=True, timeout=(120, 300))
+    response.encoding = get_charset(response)
     a = extract_using_readabilipy(response.text)
 
     if not a['plain_text'] or not a['plain_text'].strip():
@@ -83,6 +84,29 @@ def get_url(url: str, user_agent: str = None) -> str:
     )
 
     return res
+
+
+def get_charset(response):
+    """Get or infer the encoding of the page. If not, it defaults to 'utf-8'."""
+    # Check the initial encoding and apparent encoding
+    encoding = response.encoding
+    if not encoding or re.match(r'ISO-|Windows-', encoding):
+        encoding = response.apparent_encoding
+    
+    # Attempt to infer encoding from the response text if still not determined
+    if not encoding or re.match(r'ISO-|Windows-', encoding):
+        match = re.search(r'charset=["\']?([-a-zA-Z0-9]+)', response.text[:2000], re.DOTALL | re.MULTILINE)
+        encoding = match.group(1) if match else 'utf-8'
+    
+    # Final fallback to utf-8
+    if not encoding:
+        encoding = 'utf-8'
+    
+    # Special case for Chinese encoding
+    if re.search(r'gb2312', encoding, re.I):
+        encoding = 'GBK'
+    
+    return encoding
 
 
 def get_url_from_newspaper3k(url: str) -> str:
