@@ -28,11 +28,11 @@ class IfElseNodeData(BaseNodeData):
         """
         Case entity representing a single logical condition group
         """
-        caseId: str
+        case_id: str
         logical_operator: Literal["and", "or"]
         conditions: list[Condition]
 
-    logical_operator: Optional[Literal["and", "or"]] = ["and", "or"]
+    logical_operator: Optional[Literal["and", "or"]] = "and"
     conditions: Optional[list[Condition]] = None
 
     cases: Optional[list[Case]] = None

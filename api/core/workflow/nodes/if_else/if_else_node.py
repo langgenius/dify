@@ -1,4 +1,3 @@
-import re
 from typing import Optional, cast
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
@@ -6,6 +5,7 @@ from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.if_else.entities import Condition, IfElseNodeData
+from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -51,7 +51,7 @@ class IfElseNode(BaseNode):
 
                     # Break if a case passes (logical short-circuit)
                     if final_result:
-                        selected_case_id = case.caseId  # Capture the ID of the passing case
+                        selected_case_id = case.case_id  # Capture the ID of the passing case
                         break
 
             else:
@@ -138,19 +138,7 @@ class IfElseNode(BaseNode):
         elif comparison_operator == "not null":
             return self._assert_not_null(actual_value)
         else:
-            pass
-
-    def resolve_template(self, template, variable_pool, actual_value_type):
-        if template is None:
-            return None
-        pattern = re.compile(r'\{\{#([^{}#]+)#\}\}')
-        matches = pattern.findall(template)
-        for var in matches:
-            path_list = var.strip().split('.')
-            actual_value = variable_pool.get_variable_value(path_list)
-            if actual_value is not None:
-                template = template.replace(f'{{{{#{var}#}}}}', str(actual_value))
-        return template
+            raise ValueError(f"Invalid comparison operator: {comparison_operator}")
 
     def process_conditions(self, variable_pool: VariablePool, conditions: list[Condition]):
         input_conditions = []
@@ -161,9 +149,19 @@ class IfElseNode(BaseNode):
                 variable_selector=condition.variable_selector
             )
 
-            # expected_value = condition.value
-            actual_value_type = type(actual_value)
-            expected_value = self.resolve_template(condition.value, variable_pool, actual_value_type)
+            variable_template_parser = VariableTemplateParser(template=condition.value)
+            expected_value = variable_template_parser.extract_variable_selectors()
+
+            variable_selectors = variable_template_parser.extract_variable_selectors()
+            if variable_selectors:
+                for variable_selector in variable_selectors:
+                    value = variable_pool.get_variable_value(
+                        variable_selector=variable_selector.value_selector
+                    )
+                    expected_value = variable_template_parser.format({variable_selector.variable: value})
+            else:
+                expected_value = condition.value
+
             comparison_operator = condition.comparison_operator
             input_conditions.append(
                 {
