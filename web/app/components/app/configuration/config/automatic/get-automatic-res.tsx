@@ -3,6 +3,17 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
+import {
+  RiDatabase2Line,
+  RiFileExcel2Line,
+  RiGitCommitLine,
+  RiNewspaperLine,
+  RiPresentationLine,
+  RiRoadMapLine,
+  RiTerminalBoxLine,
+  RiTranslate,
+  RiUser2Line,
+} from '@remixicon/react'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
@@ -55,39 +66,39 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   const tryList = [
     {
-      icon: Generator,
+      icon: RiTerminalBoxLine,
       key: 'pythonDebugger',
     },
     {
-      icon: Generator,
+      icon: RiTranslate,
       key: 'translation',
     },
     {
-      icon: Generator,
+      icon: RiPresentationLine,
       key: 'meetingTakeaways',
     },
     {
-      icon: Generator,
+      icon: RiNewspaperLine,
       key: 'writingsPolisher',
     },
     {
-      icon: Generator,
+      icon: RiUser2Line,
       key: 'professionalAnalyst',
     },
     {
-      icon: Generator,
+      icon: RiFileExcel2Line,
       key: 'excelFormulaExpert',
     },
     {
-      icon: Generator,
+      icon: RiRoadMapLine,
       key: 'travelPlanning',
     },
     {
-      icon: Generator,
+      icon: RiDatabase2Line,
       key: 'SQLSorcerer',
     },
     {
-      icon: Generator,
+      icon: RiGitCommitLine,
       key: 'GitGud',
     },
   ]
