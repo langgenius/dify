@@ -38,7 +38,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
                   {(condition.variable_selector?.length > 0 && condition.comparison_operator && (isEmptyRelatedOperator(condition.comparison_operator!) ? true : !!condition.value))
                     ? (
                       <ConditionValue
-                        variable={condition.variable_selector.slice(-1)[0]}
+                        variableSelector={condition.variable_selector}
                         operator={condition.comparison_operator}
                         value={condition.value}
                       />

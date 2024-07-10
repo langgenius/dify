@@ -10,6 +10,7 @@ import type {
 import { BlockEnum } from '@/app/components/workflow/types'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 type VariableTagProps = {
   valueSelector: ValueSelector
@@ -21,13 +22,13 @@ const VariableTag = ({
 }: VariableTagProps) => {
   const nodes = useNodes<CommonNodeType>()
   const node = useMemo(() => {
-    if (valueSelector[0] === 'sys')
+    if (isSystemVar(valueSelector))
       return nodes.find(node => node.data.type === BlockEnum.Start)
 
     return nodes.find(node => node.id === valueSelector[0])
   }, [nodes, valueSelector])
 
-  const variableName = valueSelector.slice(1).join('.')
+  const variableName = isSystemVar(valueSelector) ? valueSelector.slice(0).join('.') : valueSelector.slice(1).join('.')
 
   return (
     <div className='inline-flex items-center px-1.5 max-w-full h-6 text-xs rounded-md border-[0.5px] border-[rgba(16, 2440,0.08)] bg-white shadow-xs'>
