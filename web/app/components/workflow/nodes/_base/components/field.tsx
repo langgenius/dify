@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from 'classnames'
 import {
   RiArrowDownSLine,
   RiQuestionLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import type { DefaultTFuncReturn } from 'i18next'
+import cn from '@/utils/classnames'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type Props = {

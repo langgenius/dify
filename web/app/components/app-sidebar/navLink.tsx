@@ -1,8 +1,8 @@
 'use client'
 
 import { useSelectedLayoutSegment } from 'next/navigation'
-import classNames from 'classnames'
 import Link from 'next/link'
+import classNames from '@/utils/classnames'
 
 export type NavIcon = React.ComponentType<
 React.PropsWithoutRef<React.ComponentProps<'svg'>> & {

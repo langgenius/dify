@@ -3,7 +3,6 @@ import useSWR from 'swr'
 import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
 import React, { Fragment } from 'react'
-import classNames from 'classnames'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
@@ -11,6 +10,7 @@ import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Listbox, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/20/solid'
+import classNames from '@/utils/classnames'
 import RadioGroup from '@/app/components/app/configuration/config-vision/radio-group'
 import type { Item } from '@/app/components/base/select'
 import ConfigContext from '@/context/debug-configuration'
@@ -109,7 +109,7 @@ const VoiceParamConfig: FC = () => {
                                   'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
                                 )}
                               >
-                                <CheckIcon className="h-5 w-5" aria-hidden="true"/>
+                                <CheckIcon className="h-5 w-5" aria-hidden="true" />
                               </span>
                             )}
                           </>
@@ -174,7 +174,7 @@ const VoiceParamConfig: FC = () => {
                                   'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
                                 )}
                               >
-                                <CheckIcon className="h-5 w-5" aria-hidden="true"/>
+                                <CheckIcon className="h-5 w-5" aria-hidden="true" />
                               </span>
                             )}
                           </>

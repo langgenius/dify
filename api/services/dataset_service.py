@@ -57,27 +57,44 @@ class DatasetService:
 
     @staticmethod
     def get_datasets(page, per_page, provider="vendor", tenant_id=None, user=None, search=None, tag_ids=None):
-        query = Dataset.query.filter(Dataset.provider == provider, Dataset.tenant_id == tenant_id)
+        query = Dataset.query.filter(Dataset.provider == provider, Dataset.tenant_id == tenant_id).order_by(
+            Dataset.created_at.desc()
+        )
 
         if user:
+            # get permitted dataset ids
+            dataset_permission = DatasetPermission.query.filter_by(
+                account_id=user.id,
+                tenant_id=tenant_id
+            ).all()
+            permitted_dataset_ids = {dp.dataset_id for dp in dataset_permission} if dataset_permission else None
+
             if user.current_role == TenantAccountRole.DATASET_OPERATOR:
-                dataset_permission = DatasetPermission.query.filter_by(account_id=user.id).all()
-                if dataset_permission:
-                    dataset_ids = [dp.dataset_id for dp in dataset_permission]
-                    query = query.filter(Dataset.id.in_(dataset_ids))
+                # only show datasets that the user has permission to access
+                if permitted_dataset_ids:
+                    query = query.filter(Dataset.id.in_(permitted_dataset_ids))
                 else:
-                    query = query.filter(db.false())
+                    return [], 0
             else:
-                permission_filter = db.or_(
-                    Dataset.created_by == user.id,
-                    Dataset.permission == 'all_team_members',
-                    Dataset.permission == 'partial_members',
-                    Dataset.permission == 'only_me'
-                )
-                query = query.filter(permission_filter)
+                # show all datasets that the user has permission to access
+                if permitted_dataset_ids:
+                    query = query.filter(
+                        db.or_(
+                            Dataset.permission == 'all_team_members',
+                            db.and_(Dataset.permission == 'only_me', Dataset.created_by == user.id),
+                            db.and_(Dataset.permission == 'partial_members', Dataset.id.in_(permitted_dataset_ids))
+                        )
+                    )
+                else:
+                    query = query.filter(
+                        db.or_(
+                            Dataset.permission == 'all_team_members',
+                            db.and_(Dataset.permission == 'only_me', Dataset.created_by == user.id)
+                        )
+                    )
         else:
-            permission_filter = Dataset.permission == 'all_team_members'
-            query = query.filter(permission_filter)
+            # if no user, only show datasets that are shared with all team members
+            query = query.filter(Dataset.permission == 'all_team_members')
 
         if search:
             query = query.filter(Dataset.name.ilike(f'%{search}%'))
@@ -95,12 +112,6 @@ class DatasetService:
             max_per_page=100,
             error_out=False
         )
-
-        # check datasets permission,
-        if user and user.current_role != TenantAccountRole.DATASET_OPERATOR:
-            datasets.items, datasets.total = DatasetService.filter_datasets_by_permission(
-                user, datasets
-            )
 
         return datasets.items, datasets.total
 
@@ -341,22 +352,6 @@ class DatasetService:
     def get_related_apps(dataset_id: str):
         return AppDatasetJoin.query.filter(AppDatasetJoin.dataset_id == dataset_id) \
             .order_by(db.desc(AppDatasetJoin.created_at)).all()
-
-    @staticmethod
-    def filter_datasets_by_permission(user, datasets):
-        dataset_permission = DatasetPermission.query.filter_by(account_id=user.id).all()
-        permitted_dataset_ids = {dp.dataset_id for dp in dataset_permission} if dataset_permission else set()
-
-        filtered_datasets = [
-            dataset for dataset in datasets if
-            (dataset.permission == 'all_team_members') or
-            (dataset.permission == 'only_me' and dataset.created_by == user.id) or
-            (dataset.id in permitted_dataset_ids)
-        ]
-
-        filtered_count = len(filtered_datasets)
-
-        return filtered_datasets, filtered_count
 
 
 class DocumentService:
@@ -1586,12 +1581,13 @@ class DatasetPermissionService:
         return user_list
 
     @classmethod
-    def update_partial_member_list(cls, dataset_id, user_list):
+    def update_partial_member_list(cls, tenant_id, dataset_id, user_list):
         try:
             db.session.query(DatasetPermission).filter(DatasetPermission.dataset_id == dataset_id).delete()
             permissions = []
             for user in user_list:
                 permission = DatasetPermission(
+                    tenant_id=tenant_id,
                     dataset_id=dataset_id,
                     account_id=user['user_id'],
                 )

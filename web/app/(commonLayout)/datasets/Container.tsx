@@ -1,7 +1,7 @@
 'use client'
 
 // Libraries
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
@@ -31,10 +31,12 @@ const Container = () => {
   const { currentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
 
-  const options = [
-    { value: 'dataset', text: t('dataset.datasets') },
-    { value: 'api', text: t('dataset.datasetsApi') },
-  ]
+  const options = useMemo(() => {
+    return [
+      { value: 'dataset', text: t('dataset.datasets') },
+      ...(currentWorkspace.role === 'dataset_operator' ? [] : [{ value: 'api', text: t('dataset.datasetsApi') }]),
+    ]
+  }, [currentWorkspace.role, t])
 
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'dataset',

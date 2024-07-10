@@ -365,7 +365,7 @@ class ParameterExtractorNode(LLMNode):
             files=[],
             context='',
             memory_config=node_data.memory,
-            memory=memory,
+            memory=None,
             model_config=model_config
         )
 

@@ -4,10 +4,10 @@ import { useContext } from 'use-context-selector'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiMoreFill,
 } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'

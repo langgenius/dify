@@ -3,7 +3,7 @@ import type { ChangeEvent, FC, KeyboardEvent } from 'react'
 import { } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import AutosizeInput from 'react-18-input-autosize'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 import { X } from '@/app/components/base/icons/src/vender/line/general'
 import { useToastContext } from '@/app/components/base/toast'
 

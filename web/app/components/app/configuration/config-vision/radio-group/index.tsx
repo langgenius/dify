@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from 'classnames'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 
 type OPTION = {
   label: string

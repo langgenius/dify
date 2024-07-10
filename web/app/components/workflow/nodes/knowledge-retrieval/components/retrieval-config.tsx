@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { RiArrowDownSLine } from '@remixicon/react'
 import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
 import type { ModelConfig } from '../../../types'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React from 'react'
 import copy from 'copy-to-clipboard'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
@@ -16,6 +15,7 @@ import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
+import cn from '@/utils/classnames'
 import type { PromptRole, PromptVariable } from '@/models/debug'
 import {
   Clipboard,

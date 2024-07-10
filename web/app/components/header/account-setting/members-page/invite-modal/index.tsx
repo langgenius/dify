@@ -4,9 +4,9 @@ import { useContext } from 'use-context-selector'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { ReactMultiEmail } from 'react-multi-email'
-import cn from 'classnames'
-import s from './index.module.css'
 import RoleSelector from './role-selector'
+import s from './index.module.css'
+import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { inviteMember } from '@/service/common'
@@ -54,7 +54,7 @@ const InviteModal = ({
 
   return (
     <div className={cn(s.wrap)}>
-      <Modal overflowVisible isShow onClose={() => {}} className={cn(s.modal)}>
+      <Modal overflowVisible isShow onClose={() => { }} className={cn(s.modal)}>
         <div className='flex justify-between mb-2'>
           <div className='text-xl font-semibold text-gray-900'>{t('common.members.inviteTeamMember')}</div>
           <XMarkIcon className='w-4 h-4 cursor-pointer' onClick={onCancel} />
