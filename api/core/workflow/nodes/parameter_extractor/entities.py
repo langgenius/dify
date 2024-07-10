@@ -1,6 +1,6 @@
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.workflow.entities.base_node_data_entities import BaseNodeData
@@ -21,12 +21,13 @@ class ParameterConfig(BaseModel):
     """
     name: str
     type: Literal['string', 'number', 'bool', 'select', 'array[string]', 'array[number]', 'array[object]']
-    options: Optional[list[str]]
+    options: Optional[list[str]] = None
     description: str
     required: bool
 
-    @validator('name', pre=True, always=True)
-    def validate_name(cls, value):
+    @field_validator('name', mode='before')
+    @classmethod
+    def validate_name(cls, value) -> str:
         if not value:
             raise ValueError('Parameter name is required')
         if value in ['__reason', '__is_success']:
@@ -40,12 +41,13 @@ class ParameterExtractorNodeData(BaseNodeData):
     model: ModelConfig
     query: list[str]
     parameters: list[ParameterConfig]
-    instruction: Optional[str]
-    memory: Optional[MemoryConfig]
+    instruction: Optional[str] = None
+    memory: Optional[MemoryConfig] = None
     reasoning_mode: Literal['function_call', 'prompt']
 
-    @validator('reasoning_mode', pre=True, always=True)
-    def set_reasoning_mode(cls, v):
+    @field_validator('reasoning_mode', mode='before')
+    @classmethod
+    def set_reasoning_mode(cls, v) -> str:
         return v or 'function_call'
 
     def get_parameter_json_schema(self) -> dict:

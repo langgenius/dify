@@ -126,8 +126,8 @@ class DatasetDocumentSegmentApi(Resource):
             raise NotFound('Dataset not found.')
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
 
         try:
@@ -302,8 +302,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         ).first()
         if not segment:
             raise NotFound('Segment not found.')
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)

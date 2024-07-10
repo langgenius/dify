@@ -77,7 +77,7 @@ class PromptTransform:
             max_token_limit=max_token_limit,
             message_limit=memory_config.window.size
             if (memory_config.window.enabled
-               and memory_config.window.size is not None
-               and memory_config.window.size > 0)
-            else 10
+                and memory_config.window.size is not None
+                and memory_config.window.size > 0)
+            else None
         )

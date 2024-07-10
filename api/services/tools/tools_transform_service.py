@@ -4,8 +4,8 @@ from typing import Optional, Union
 
 from flask import current_app
 
-from core.model_runtime.entities.common_entities import I18nObject
 from core.tools.entities.api_entities import UserTool, UserToolProvider
+from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
@@ -81,11 +81,13 @@ class ToolTransformService:
             description=I18nObject(
                 en_US=provider_controller.identity.description.en_US,
                 zh_Hans=provider_controller.identity.description.zh_Hans,
+                pt_BR=provider_controller.identity.description.pt_BR,
             ),
             icon=provider_controller.identity.icon,
             label=I18nObject(
                 en_US=provider_controller.identity.label.en_US,
                 zh_Hans=provider_controller.identity.label.zh_Hans,
+                pt_BR=provider_controller.identity.label.pt_BR,
             ),
             type=ToolProviderType.BUILT_IN,
             masked_credentials={},

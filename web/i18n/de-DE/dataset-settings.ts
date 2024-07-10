@@ -14,7 +14,7 @@ const translation = {
     permissionsAllMember: 'Alle Teammitglieder',
     indexMethod: 'Indexierungsmethode',
     indexMethodHighQuality: 'Hohe Qualität',
-    indexMethodHighQualityTip: 'Ruft die Einbettungsschnittstelle von OpenAI für die Verarbeitung auf, um bei Benutzerabfragen eine höhere Genauigkeit zu bieten.',
+    indexMethodHighQualityTip: 'Den Embedding-Modell zur Verarbeitung aufrufen, um bei Benutzeranfragen eine höhere Genauigkeit zu bieten.',
     indexMethodEconomy: 'Ökonomisch',
     indexMethodEconomyTip: 'Verwendet Offline-Vektor-Engines, Schlagwortindizes usw., um die Genauigkeit ohne Tokenverbrauch zu reduzieren',
     embeddingModel: 'Einbettungsmodell',

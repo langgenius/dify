@@ -1,0 +1,48 @@
+identity:
+  name: delete_base_tables
+  author: Doug Lea
+  label:
+    en_US: Delete Base Tables
+    zh_Hans: 删除多维表格中的数据表
+description:
+  human:
+    en_US: Delete base tables
+    zh_Hans: |
+      删除多维表格中的数据表
+  llm: A tool for deleting a data table in a multidimensional table
+parameters:
+  - name: Authorization
+    type: string
+    required: true
+    label:
+      en_US: token
+      zh_Hans: 凭证
+    human_description:
+      en_US: API access token parameter, tenant_access_token or user_access_token
+      zh_Hans: API 的访问凭证参数，tenant_access_token 或 user_access_token
+    llm_description: API access token parameter, tenant_access_token or user_access_token
+    form: llm
+
+  - name: app_token
+    type: string
+    required: true
+    label:
+      en_US: app_token
+      zh_Hans: 多维表格
+    human_description:
+      en_US: bitable app token
+      zh_Hans: 多维表格的唯一标识符 app_token
+    llm_description: bitable app token
+    form: llm
+
+  - name: table_ids
+    type: string
+    required: true
+    label:
+      en_US: table_ids
+      zh_Hans: table_ids
+    human_description:
+      en_US: The ID list of the data tables to be deleted. Currently, a maximum of 50 data tables can be deleted at a time. The example is ["tbl1TkhyTWDkSoZ3","tblsRc9GRRXKqhvW"]
+      zh_Hans: 待删除数据表的id列表，当前一次操作最多支持50个数据表，示例为 ["tbl1TkhyTWDkSoZ3","tblsRc9GRRXKqhvW"]
+    llm_description: The ID list of the data tables to be deleted. Currently, a maximum of 50 data tables can be deleted at a time. The example is ["tbl1TkhyTWDkSoZ3","tblsRc9GRRXKqhvW"]
+    form: llm

@@ -3,13 +3,13 @@ import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import { useStore } from './store'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useNodesSyncDraft,
 } from './hooks'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import {
   FeaturesChoose,
   FeaturesPanel,
@@ -46,7 +46,7 @@ const Features = () => {
             className='flex items-center justify-center w-6 h-6 cursor-pointer'
             onClick={() => setShowFeaturesPanel(false)}
           >
-            <XClose className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='w-4 h-4 text-gray-500' />
           </div>
         </div>
       </div>

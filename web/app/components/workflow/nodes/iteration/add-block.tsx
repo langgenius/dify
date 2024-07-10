@@ -3,21 +3,25 @@ import {
   useCallback,
 } from 'react'
 import produce from 'immer'
-import cn from 'classnames'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import { useStoreApi } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import {
   generateNewNode,
 } from '../../utils'
 import {
+  WorkflowHistoryEvent,
   useAvailableBlocks,
   useNodesReadOnly,
+  useWorkflowHistory,
 } from '../../hooks'
 import { NODES_INITIAL_DATA } from '../../constants'
 import InsertBlock from './insert-block'
 import type { IterationNodeType } from './types'
+import cn from '@/utils/classnames'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { IterationStart } from '@/app/components/base/icons/src/vender/workflow'
 import type {
   OnSelectBlock,
@@ -40,6 +44,7 @@ const AddBlock = ({
   const { nodesReadOnly } = useNodesReadOnly()
   const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, true)
   const { availablePrevBlocks } = useAvailableBlocks(iterationNodeData.startNodeType, true)
+  const { saveStateToHistory } = useWorkflowHistory()
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     const {
@@ -76,7 +81,8 @@ const AddBlock = ({
       draft.push(newNode)
     })
     setNodes(newNodes)
-  }, [store, t, iterationNodeId])
+    saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
+  }, [store, t, iterationNodeId, saveStateToHistory])
 
   const renderTriggerElement = useCallback((open: boolean) => {
     return (
@@ -85,7 +91,7 @@ const AddBlock = ({
         `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
         open && '!bg-gray-50',
       )}>
-        <Plus className='mr-1 w-4 h-4' />
+        <RiAddLine className='mr-1 w-4 h-4' />
         {t('workflow.common.addBlock')}
       </div>
     )

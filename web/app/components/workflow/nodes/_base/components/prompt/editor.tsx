@@ -1,7 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useRef } from 'react'
-import cn from 'classnames'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
@@ -14,12 +16,15 @@ import type {
 
 import Wrap from '../editor/wrap'
 import { CodeLanguage } from '../../../code/types'
+import cn from '@/utils/classnames'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
+import {
+  Clipboard,
+  ClipboardCheck,
+} from '@/app/components/base/icons/src/vender/line/files'
 import s from '@/app/components/app/configuration/config-prompt/style.module.css'
-import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
@@ -27,6 +32,7 @@ import TooltipPlus from '@/app/components/base/tooltip-plus'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import Switch from '@/app/components/base/switch'
 import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
+import { useStore } from '@/app/components/workflow/store'
 
 type Props = {
   className?: string
@@ -82,6 +88,7 @@ const Editor: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
+  const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
 
   const isShowHistory = !isChatModel && isChatApp
 
@@ -151,7 +158,7 @@ const Editor: FC<Props> = ({
                   </TooltipPlus>
                 )}
                 {showRemove && (
-                  <Trash03 className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={onRemove} />
+                  <RiDeleteBinLine className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={onRemove} />
                 )}
                 {!isCopied
                   ? (
@@ -173,6 +180,7 @@ const Editor: FC<Props> = ({
               ? (
                 <div className={cn(isExpand ? 'grow' : 'max-h-[536px]', 'relative px-3 min-h-[56px]  overflow-y-auto')}>
                   <PromptEditor
+                    key={controlPromptEditorRerenderKey}
                     instanceId={instanceId}
                     compact
                     className='min-h-[56px]'

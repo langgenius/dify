@@ -5,13 +5,13 @@ import { useTranslation } from 'react-i18next'
 
 type IAppUnavailableProps = {
   code?: number
-  isUnknwonReason?: boolean
+  isUnknownReason?: boolean
   unknownReason?: string
 }
 
 const AppUnavailable: FC<IAppUnavailableProps> = ({
   code = 404,
-  isUnknwonReason,
+  isUnknownReason,
   unknownReason,
 }) => {
   const { t } = useTranslation()
@@ -22,7 +22,7 @@ const AppUnavailable: FC<IAppUnavailableProps> = ({
         style={{
           borderRight: '1px solid rgba(0,0,0,.3)',
         }}>{code}</h1>
-      <div className='text-sm'>{unknownReason || (isUnknwonReason ? t('share.common.appUnkonwError') : t('share.common.appUnavailable'))}</div>
+      <div className='text-sm'>{unknownReason || (isUnknownReason ? t('share.common.appUnkonwError') : t('share.common.appUnavailable'))}</div>
     </div>
   )
 }

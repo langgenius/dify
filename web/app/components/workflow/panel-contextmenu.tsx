@@ -2,51 +2,35 @@ import {
   memo,
   useRef,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import ShortcutsName from './shortcuts-name'
 import { useStore } from './store'
 import {
+  useDSL,
   useNodesInteractions,
   usePanelInteractions,
   useWorkflowStartRun,
 } from './hooks'
 import AddBlock from './operator/add-block'
-import { exportAppConfig } from '@/service/apps'
-import { useToastContext } from '@/app/components/base/toast'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { useOperator } from './operator/hooks'
+import cn from '@/utils/classnames'
 
 const PanelContextmenu = () => {
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const ref = useRef(null)
   const panelMenu = useStore(s => s.panelMenu)
   const clipboardElements = useStore(s => s.clipboardElements)
-  const appDetail = useAppStore(s => s.appDetail)
+  const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const { handleNodesPaste } = useNodesInteractions()
   const { handlePaneContextmenuCancel } = usePanelInteractions()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
+  const { handleAddNote } = useOperator()
+  const { handleExportDSL } = useDSL()
 
   useClickAway(() => {
     handlePaneContextmenuCancel()
   }, ref)
-
-  const onExport = async () => {
-    if (!appDetail)
-      return
-    try {
-      const { data } = await exportAppConfig(appDetail.id)
-      const a = document.createElement('a')
-      const file = new Blob([data], { type: 'application/yaml' })
-      a.href = URL.createObjectURL(file)
-      a.download = `${appDetail.name}.yml`
-      a.click()
-    }
-    catch (e) {
-      notify({ type: 'error', message: t('app.exportFailed') })
-    }
-  }
 
   const renderTrigger = () => {
     return (
@@ -80,6 +64,16 @@ const PanelContextmenu = () => {
         />
         <div
           className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
+          onClick={(e) => {
+            e.stopPropagation()
+            handleAddNote()
+            handlePaneContextmenuCancel()
+          }}
+        >
+          {t('workflow.nodes.note.addNote')}
+        </div>
+        <div
+          className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
           onClick={() => {
             handleStartWorkflowRun()
             handlePaneContextmenuCancel()
@@ -111,9 +105,15 @@ const PanelContextmenu = () => {
       <div className='p-1'>
         <div
           className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-          onClick={() => onExport()}
+          onClick={() => handleExportDSL()}
         >
           {t('app.export')}
+        </div>
+        <div
+          className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
+          onClick={() => setShowImportDSLModal(true)}
+        >
+          {t('workflow.common.importDSL')}
         </div>
       </div>
     </div>

@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { ReasoningModeType } from '../types'
 import Field from '../../_base/components/field'
+import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 

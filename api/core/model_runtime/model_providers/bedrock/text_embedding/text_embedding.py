@@ -49,8 +49,8 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
         bedrock_runtime = boto3.client(
             service_name='bedrock-runtime',
             config=client_config,
-            aws_access_key_id=credentials["aws_access_key_id"],
-            aws_secret_access_key=credentials["aws_secret_access_key"]
+            aws_access_key_id=credentials.get("aws_access_key_id"),
+            aws_secret_access_key=credentials.get("aws_secret_access_key")
         )
 
         embeddings = []
@@ -59,15 +59,15 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
         model_prefix = model.split('.')[0]
          
         if model_prefix == "amazon" :
-           for text in texts:
-              body = {
+            for text in texts:
+                body = {
                  "inputText": text,
-              }
-              response_body = self._invoke_bedrock_embedding(model, bedrock_runtime, body)
-              embeddings.extend([response_body.get('embedding')])
-              token_usage += response_body.get('inputTextTokenCount')
-           logger.warning(f'Total Tokens: {token_usage}')
-           result = TextEmbeddingResult(
+                }
+                response_body = self._invoke_bedrock_embedding(model, bedrock_runtime, body)
+                embeddings.extend([response_body.get('embedding')])
+                token_usage += response_body.get('inputTextTokenCount')
+            logger.warning(f'Total Tokens: {token_usage}')
+            result = TextEmbeddingResult(
                 model=model,
                 embeddings=embeddings,
                 usage=self._calc_response_usage(
@@ -75,20 +75,20 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
                     credentials=credentials,
                     tokens=token_usage
                 )
-           )
-           return result
-           
+            )
+            return result
+
         if model_prefix == "cohere" :
-           input_type = 'search_document' if len(texts) > 1 else 'search_query'
-           for text in texts:
-              body = {
+            input_type = 'search_document' if len(texts) > 1 else 'search_query'
+            for text in texts:
+                body = {
                  "texts": [text],
                  "input_type": input_type,
-              }
-              response_body = self._invoke_bedrock_embedding(model, bedrock_runtime, body)
-              embeddings.extend(response_body.get('embeddings'))
-              token_usage += len(text)
-           result = TextEmbeddingResult(
+                }
+                response_body = self._invoke_bedrock_embedding(model, bedrock_runtime, body)
+                embeddings.extend(response_body.get('embeddings'))
+                token_usage += len(text)
+            result = TextEmbeddingResult(
                 model=model,
                 embeddings=embeddings,
                 usage=self._calc_response_usage(
@@ -96,9 +96,9 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
                     credentials=credentials,
                     tokens=token_usage
                 )
-           )
-           return result
-        
+            )
+            return result
+
         #others
         raise ValueError(f"Got unknown model prefix {model_prefix} when handling block response")
 
@@ -148,7 +148,7 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
         """
         Create payload for bedrock api call depending on model provider
         """
-        payload = dict()
+        payload = {}
 
         if model_prefix == "amazon":
             payload['inputText'] = texts
@@ -183,7 +183,7 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
         )
 
         return usage
-    
+
     def _map_client_to_invoke_error(self, error_code: str, error_msg: str) -> type[InvokeError]:
         """
         Map client error to invoke error
@@ -212,9 +212,9 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
         content_type = 'application/json'
         try:
             response = bedrock_runtime.invoke_model(
-                body=json.dumps(body), 
-                modelId=model, 
-                accept=accept, 
+                body=json.dumps(body),
+                modelId=model,
+                accept=accept,
                 contentType=content_type
             )
             response_body = json.loads(response.get('body').read().decode('utf-8'))

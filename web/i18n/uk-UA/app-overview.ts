@@ -44,6 +44,15 @@ const translation = {
         webDescTip: 'Цей текст буде відображений на клієнтському боці, надаючи базові вказівки щодо використання додатка',
         webDescPlaceholder: 'Введіть опис веб-додатку',
         language: 'Мова',
+        workflow: {
+          title: 'Кроки робочого процесу',
+          show: 'Показати',
+          hide: 'Приховати',
+        },
+        chatColorTheme: 'Тема кольору чату',
+        chatColorThemeDesc: 'Встановіть тему кольору чат-бота',
+        chatColorThemeInverted: 'Інвертовано',
+        invalidHexMessage: 'Недійсне шістнадцяткове значення',
         more: {
           entry: 'Показати додаткові налаштування',
           copyright: 'Авторське право',

@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
-import cn from 'classnames'
+import { RiArrowDownSLine } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check, DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
@@ -44,7 +44,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
                 </div>
                 <div className=''>{t('app.typeSelector.all')}</div>
                 <div className='w-4 h-4 p-[1px]'>
-                  <ChevronDown className='w-3.5 h-3.5' />
+                  <RiArrowDownSLine className='w-3.5 h-3.5' />
                 </div>
               </>
             )}
@@ -100,7 +100,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
             }}>
               <ChatBot className='mr-2 w-4 h-4 text-[#1570EF]' />
               <div className='grow text-gray-700 text-[13px] font-medium leading-[18px]'>{t('app.typeSelector.chatbot')}</div>
-              {value === 'chatbot' && <Check className='w-4 h-4 text-primary-600'/>}
+              {value === 'chatbot' && <Check className='w-4 h-4 text-primary-600' />}
             </div>
             <div className='flex items-center pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-50' onClick={() => {
               onChange('agent')
@@ -108,7 +108,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
             }}>
               <CuteRobote className='mr-2 w-4 h-4 text-indigo-600' />
               <div className='grow text-gray-700 text-[13px] font-medium leading-[18px]'>{t('app.typeSelector.agent')}</div>
-              {value === 'agent' && <Check className='w-4 h-4 text-primary-600'/>}
+              {value === 'agent' && <Check className='w-4 h-4 text-primary-600' />}
             </div>
             <div className='flex items-center pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-50' onClick={() => {
               onChange('workflow')
@@ -116,7 +116,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
             }}>
               <Route className='mr-2 w-4 h-4 text-[#F79009]' />
               <div className='grow text-gray-700 text-[13px] font-medium leading-[18px]'>{t('app.typeSelector.workflow')}</div>
-              {value === 'workflow' && <Check className='w-4 h-4 text-primary-600'/>}
+              {value === 'workflow' && <Check className='w-4 h-4 text-primary-600' />}
             </div>
           </div>
         </PortalToFollowElemContent>

@@ -1,14 +1,21 @@
 import base64
 import json
+import logging
 import secrets
+from typing import Optional
 
 import click
 from flask import current_app
 from werkzeug.exceptions import NotFound
 
+from configs import dify_config
+from constants.languages import languages
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
+from events.app_event import app_was_created
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
@@ -17,6 +24,7 @@ from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
+from services.account_service import RegisterService, TenantService
 
 
 @click.command('reset-password', help='Reset the account password.')
@@ -57,7 +65,7 @@ def reset_password(email, new_password, password_confirm):
     account.password = base64_password_hashed
     account.password_salt = base64_salt
     db.session.commit()
-    click.echo(click.style('Congratulations!, password has been reset.', fg='green'))
+    click.echo(click.style('Congratulations! Password has been reset.', fg='green'))
 
 
 @click.command('reset-email', help='Reset the account email.')
@@ -105,7 +113,7 @@ def reset_encrypt_key_pair():
     After the reset, all LLM credentials will become invalid, requiring re-entry.
     Only support SELF_HOSTED mode.
     """
-    if current_app.config['EDITION'] != 'SELF_HOSTED':
+    if dify_config.EDITION != 'SELF_HOSTED':
         click.echo(click.style('Sorry, only support SELF_HOSTED mode.', fg='red'))
         return
 
@@ -263,15 +271,15 @@ def migrate_knowledge_vector_database():
                         skipped_count = skipped_count + 1
                         continue
                 collection_name = ''
-                if vector_type == "weaviate":
+                if vector_type == VectorType.WEAVIATE:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
-                        "type": 'weaviate',
+                        "type": VectorType.WEAVIATE,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == "qdrant":
+                elif vector_type == VectorType.QDRANT:
                     if dataset.collection_binding_id:
                         dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
                             filter(DatasetCollectionBinding.id == dataset.collection_binding_id). \
@@ -284,20 +292,20 @@ def migrate_knowledge_vector_database():
                         dataset_id = dataset.id
                         collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
-                        "type": 'qdrant',
+                        "type": VectorType.QDRANT,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
 
-                elif vector_type == "milvus":
+                elif vector_type == VectorType.MILVUS:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
-                        "type": 'milvus',
+                        "type": VectorType.MILVUS,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == "relyt":
+                elif vector_type == VectorType.RELYT:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
@@ -305,16 +313,40 @@ def migrate_knowledge_vector_database():
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == "pgvector":
+                elif vector_type == VectorType.TENCENT:
                     dataset_id = dataset.id
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
-                        "type": 'pgvector',
+                        "type": VectorType.TENCENT,
+                        "vector_store": {"class_prefix": collection_name}
+                    }
+                    dataset.index_struct = json.dumps(index_struct_dict)
+                elif vector_type == VectorType.PGVECTOR:
+                    dataset_id = dataset.id
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+                    index_struct_dict = {
+                        "type": VectorType.PGVECTOR,
+                        "vector_store": {"class_prefix": collection_name}
+                    }
+                    dataset.index_struct = json.dumps(index_struct_dict)
+                elif vector_type == VectorType.OPENSEARCH:
+                    dataset_id = dataset.id
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+                    index_struct_dict = {
+                        "type": VectorType.OPENSEARCH,
+                        "vector_store": {"class_prefix": collection_name}
+                    }
+                    dataset.index_struct = json.dumps(index_struct_dict)
+                elif vector_type == VectorType.ANALYTICDB:
+                    dataset_id = dataset.id
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+                    index_struct_dict = {
+                        "type": VectorType.ANALYTICDB,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
                 else:
-                    raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
+                    raise ValueError(f"Vector store {vector_type} is not supported.")
 
                 vector = Vector(dataset)
                 click.echo(f"Start to migrate dataset {dataset.id}.")
@@ -501,6 +533,115 @@ def add_qdrant_doc_id_index(field: str):
                     fg='green'))
 
 
+@click.command('create-tenant', help='Create account and tenant.')
+@click.option('--email', prompt=True, help='The email address of the tenant account.')
+@click.option('--language', prompt=True, help='Account language, default: en-US.')
+def create_tenant(email: str, language: Optional[str] = None):
+    """
+    Create tenant account
+    """
+    if not email:
+        click.echo(click.style('Sorry, email is required.', fg='red'))
+        return
+
+    # Create account
+    email = email.strip()
+
+    if '@' not in email:
+        click.echo(click.style('Sorry, invalid email address.', fg='red'))
+        return
+
+    account_name = email.split('@')[0]
+
+    if language not in languages:
+        language = 'en-US'
+
+    # generate random password
+    new_password = secrets.token_urlsafe(16)
+
+    # register account
+    account = RegisterService.register(
+        email=email,
+        name=account_name,
+        password=new_password,
+        language=language
+    )
+
+    TenantService.create_owner_tenant_if_not_exist(account)
+
+    click.echo(click.style('Congratulations! Account and tenant created.\n'
+                           'Account: {}\nPassword: {}'.format(email, new_password), fg='green'))
+
+
+@click.command('upgrade-db', help='upgrade the database')
+def upgrade_db():
+    click.echo('Preparing database migration...')
+    lock = redis_client.lock(name='db_upgrade_lock', timeout=60)
+    if lock.acquire(blocking=False):
+        try:
+            click.echo(click.style('Start database migration.', fg='green'))
+
+            # run db migration
+            import flask_migrate
+            flask_migrate.upgrade()
+
+            click.echo(click.style('Database migration successful!', fg='green'))
+
+        except Exception as e:
+            logging.exception(f'Database migration failed, error: {e}')
+        finally:
+            lock.release()
+    else:
+        click.echo('Database migration skipped')
+
+
+@click.command('fix-app-site-missing', help='Fix app related site missing issue.')
+def fix_app_site_missing():
+    """
+    Fix app related site missing issue.
+    """
+    click.echo(click.style('Start fix app related site missing issue.', fg='green'))
+
+    failed_app_ids = []
+    while True:
+        sql = """select apps.id as id from apps left join sites on sites.app_id=apps.id
+where sites.id is null limit 1000"""
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql))
+
+            processed_count = 0
+            for i in rs:
+                processed_count += 1
+                app_id = str(i.id)
+
+                if app_id in failed_app_ids:
+                    continue
+
+                try:
+                    app = db.session.query(App).filter(App.id == app_id).first()
+                    tenant = app.tenant
+                    if tenant:
+                        accounts = tenant.get_accounts()
+                        if not accounts:
+                            print("Fix app {} failed.".format(app.id))
+                            continue
+
+                        account = accounts[0]
+                        print("Fix app {} related site missing issue.".format(app.id))
+                        app_was_created.send(app, account=account)
+                except Exception as e:
+                    failed_app_ids.append(app_id)
+                    click.echo(click.style('Fix app {} related site missing issue failed!'.format(app_id), fg='red'))
+                    logging.exception(f'Fix app related site missing issue failed, error: {e}')
+                    continue
+
+            if not processed_count:
+                break
+
+
+    click.echo(click.style('Congratulations! Fix app related site missing issue successful!', fg='green'))
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
@@ -508,4 +649,6 @@ def register_commands(app):
     app.cli.add_command(vdb_migrate)
     app.cli.add_command(convert_to_agent_apps)
     app.cli.add_command(add_qdrant_doc_id_index)
-
+    app.cli.add_command(create_tenant)
+    app.cli.add_command(upgrade_db)
+    app.cli.add_command(fix_app_site_missing)

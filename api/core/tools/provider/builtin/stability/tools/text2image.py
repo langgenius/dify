@@ -11,7 +11,7 @@ class StableDiffusionTool(BuiltinTool, BaseStabilityAuthorization):
     """
     This class is responsible for providing the stable diffusion tool.
     """
-    model_endpoint_map = {
+    model_endpoint_map: dict[str, str] = {
         'sd3': 'https://api.stability.ai/v2beta/stable-image/generate/sd3',
         'sd3-turbo': 'https://api.stability.ai/v2beta/stable-image/generate/sd3',
         'core': 'https://api.stability.ai/v2beta/stable-image/generate/core',
@@ -23,7 +23,7 @@ class StableDiffusionTool(BuiltinTool, BaseStabilityAuthorization):
         """
         payload = {
             'prompt': tool_parameters.get('prompt', ''),
-            'aspect_radio': tool_parameters.get('aspect_radio', '16:9'),
+            'aspect_ratio': tool_parameters.get('aspect_ratio', '16:9') or tool_parameters.get('aspect_radio', '16:9'),
             'mode': 'text-to-image',
             'seed': tool_parameters.get('seed', 0),
             'output_format': 'png',

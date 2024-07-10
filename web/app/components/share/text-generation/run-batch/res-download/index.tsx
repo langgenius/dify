@@ -5,7 +5,7 @@ import {
   useCSVDownloader,
 } from 'react-papaparse'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vender/solid/general'
 import Button from '@/app/components/base/button'
 export type IResDownloadProps = {
@@ -31,7 +31,7 @@ const ResDownload: FC<IResDownloadProps> = ({
       }}
       data={values}
     >
-      <Button className={cn('flex items-center !h-8 space-x-2 bg-white !text-[13px] font-medium', isMobile ? '!p-0 !w-8 justify-center' : '!px-3')}>
+      <Button className={cn('space-x-2 bg-white', isMobile ? '!p-0 !w-8 justify-center' : '')}>
         <DownloadIcon className='w-4 h-4 text-[#155EEF]' />
         {!isMobile && <span className='text-[#155EEF]'>{t('common.operation.download')}</span>}
       </Button>

@@ -44,6 +44,15 @@ const translation = {
         webDescTip: 'Dieser Text wird auf der Clientseite angezeigt und bietet grundlegende Anleitungen zur Verwendung der Anwendung',
         webDescPlaceholder: 'Geben Sie die Beschreibung der WebApp ein',
         language: 'Sprache',
+        workflow: {
+          title: 'Workflow-Schritte',
+          show: 'Anzeigen',
+          hide: 'Verbergen',
+        },
+        chatColorTheme: 'Chat-Farbschema',
+        chatColorThemeDesc: 'Legen Sie das Farbschema des Chatbots fest',
+        chatColorThemeInverted: 'Invertiert',
+        invalidHexMessage: 'Ungültiger Hex-Wert',
         more: {
           entry: 'Mehr Einstellungen anzeigen',
           copyright: 'Urheberrecht',

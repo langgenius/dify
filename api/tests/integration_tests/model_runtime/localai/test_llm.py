@@ -13,11 +13,11 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.entities.model_entities import ParameterRule
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.model_providers.localai.llm.llm import LocalAILarguageModel
+from core.model_runtime.model_providers.localai.llm.llm import LocalAILanguageModel
 
 
 def test_validate_credentials_for_chat_model():
-    model = LocalAILarguageModel()
+    model = LocalAILanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
@@ -37,7 +37,7 @@ def test_validate_credentials_for_chat_model():
     )
 
 def test_invoke_completion_model():
-    model = LocalAILarguageModel()
+    model = LocalAILanguageModel()
 
     response = model.invoke(
         model='chinese-llama-2-7b',
@@ -65,7 +65,7 @@ def test_invoke_completion_model():
     assert response.usage.total_tokens > 0
 
 def test_invoke_chat_model():
-    model = LocalAILarguageModel()
+    model = LocalAILanguageModel()
 
     response = model.invoke(
         model='chinese-llama-2-7b',
@@ -93,7 +93,7 @@ def test_invoke_chat_model():
     assert response.usage.total_tokens > 0
 
 def test_invoke_stream_completion_model():
-    model = LocalAILarguageModel()
+    model = LocalAILanguageModel()
 
     response = model.invoke(
         model='chinese-llama-2-7b',
@@ -124,7 +124,7 @@ def test_invoke_stream_completion_model():
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
 def test_invoke_stream_chat_model():
-    model = LocalAILarguageModel()
+    model = LocalAILanguageModel()
 
     response = model.invoke(
         model='chinese-llama-2-7b',
@@ -155,7 +155,7 @@ def test_invoke_stream_chat_model():
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
 def test_get_num_tokens():
-    model = LocalAILarguageModel()
+    model = LocalAILanguageModel()
 
     num_tokens = model.get_num_tokens(
         model='????',

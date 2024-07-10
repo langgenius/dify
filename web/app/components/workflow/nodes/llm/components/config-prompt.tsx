@@ -5,11 +5,11 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
-import cn from 'classnames'
 import type { PromptItem, ValueSelector, Var, Variable } from '../../../types'
 import { EditionType, PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import ConfigPromptItem from './config-prompt-item'
+import cn from '@/utils/classnames'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'
 import { DragHandle } from '@/app/components/base/icons/src/vender/line/others'
@@ -210,7 +210,7 @@ const ConfigPrompt: FC<Props> = ({
             <Editor
               instanceId={`${nodeId}-chat-workflow-llm-prompt-editor`}
               title={<span className='capitalize'>{t(`${i18nPrefix}.prompt`)}</span>}
-              value={(payload as PromptItem).edition_type === EditionType.basic ? (payload as PromptItem).text : ((payload as PromptItem).jinja2_text || '')}
+              value={((payload as PromptItem).edition_type === EditionType.basic || !(payload as PromptItem).edition_type) ? (payload as PromptItem).text : ((payload as PromptItem).jinja2_text || '')}
               onChange={handleCompletionPromptChange}
               readOnly={readOnly}
               isChatModel={isChatModel}

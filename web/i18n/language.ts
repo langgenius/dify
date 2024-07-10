@@ -22,6 +22,7 @@ export type I18nText = {
   'zh_Hant': string
   'ro-RO': string
   'pl-PL': string
+  'hi-IN': string
 }
 
 export const languages = data.languages

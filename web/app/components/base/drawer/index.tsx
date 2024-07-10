@@ -1,9 +1,9 @@
 'use client'
-import cn from 'classnames'
 import { Dialog } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import Button from '../button'
+import cn from '@/utils/classnames'
 
 export type IDrawerProps = {
   title?: string
@@ -14,7 +14,6 @@ export type IDrawerProps = {
   mask?: boolean
   positionCenter?: boolean
   isOpen: boolean
-  // closable: boolean
   showClose?: boolean
   clickOutsideNotOpen?: boolean
   onClose: () => void

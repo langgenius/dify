@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Optional
 
 from flask import current_app
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.entities.provider_entities import QuotaConfiguration
@@ -60,6 +60,9 @@ class ProviderResponse(BaseModel):
     preferred_provider_type: ProviderType
     custom_configuration: CustomConfigurationResponse
     system_configuration: SystemConfigurationResponse
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
 
     def __init__(self, **data) -> None:
         super().__init__(**data)
@@ -139,6 +142,9 @@ class DefaultModelResponse(BaseModel):
     model_type: ModelType
     provider: SimpleProviderEntityResponse
 
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class ModelWithProviderEntityResponse(ModelWithProviderEntity):
     """
@@ -147,4 +153,4 @@ class ModelWithProviderEntityResponse(ModelWithProviderEntity):
     provider: SimpleProviderEntityResponse
 
     def __init__(self, model: ModelWithProviderEntity) -> None:
-        super().__init__(**model.dict())
+        super().__init__(**model.model_dump())
