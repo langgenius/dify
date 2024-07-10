@@ -54,11 +54,20 @@ from services.account_service import AccountService
 warnings.simplefilter("ignore", ResourceWarning)
 
 # fix windows platform
+# if os.name == "nt":
+#     os.system('tzutil /s "UTC"')
+# else:
+#     os.environ['TZ'] = 'UTC'
+#     time.tzset()
+
+# 修改时区 中国
+# fix windows platform
 if os.name == "nt":
-    os.system('tzutil /s "UTC"')
+    os.system('tzutil /s "China Standard Time"')
 else:
-    os.environ['TZ'] = 'UTC'
+    os.environ['TZ'] = 'Asia/Shanghai'
     time.tzset()
+
 
 
 class DifyApp(Flask):
@@ -300,4 +309,6 @@ def pool_stat():
 
 
 if __name__ == '__main__':
+    print('app.run之前')
     app.run(host='0.0.0.0', port=5001)
+    print('app.run之后')

@@ -46,4 +46,6 @@ def get_init_validate_status():
     
     return True
 
+# 对应接口 /api/console/init
+# 初始化验证
 api.add_resource(InitValidateAPI, '/init')
