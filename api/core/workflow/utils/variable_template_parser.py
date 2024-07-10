@@ -91,6 +91,7 @@ class VariableTemplateParser:
         def replacer(match):
             key = match.group(1)
             value = inputs.get(key, match.group(0))  # return original matched string if key not found
+            value = value.replace('\n', '\\n').replace('"', '\\"')  # replace the line breaks in the content with /n and the double quotes with /"
             # convert the value to string
             if isinstance(value, list | dict | bool | int | float):
                 value = str(value)
