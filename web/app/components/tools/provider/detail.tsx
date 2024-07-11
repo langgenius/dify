@@ -117,7 +117,7 @@ const ProviderDetail = ({
       provider: collection.name,
     })
     setIsDetailLoading(false)
-  }, [collection.name])
+  }, [collection.labels, collection.name])
   // workflow provider
   const [isShowEditWorkflowToolModal, setIsShowEditWorkflowToolModal] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {

@@ -8,7 +8,7 @@
 
 ### 消息返回
 
-Dify支持`文本` `链接` `图片` `文件BLOB` 等多种消息类型，你可以通过以下几个接口返回不同类型的消息给LLM和用户。
+Dify支持`文本` `链接` `图片` `文件BLOB` `JSON` 等多种消息类型，你可以通过以下几个接口返回不同类型的消息给LLM和用户。
 
 注意，在下面的接口中的部分参数将在后面的章节中介绍。
 
@@ -67,6 +67,18 @@ Dify支持`文本` `链接` `图片` `文件BLOB` 等多种消息类型，你可
         """
 ```
 
+#### JSON
+如果你需要返回一个格式化的JSON，可以使用以下接口。这通常用于workflow中的节点间的数据传递，当然agent模式中，大部分大模型也都能够阅读和理解JSON。
+
+- `object` 一个Python的字典对象，会被自动序列化为JSON
+
+```python
+    def create_json_message(self, object: dict) -> ToolInvokeMessage:
+        """
+            create a json message
+        """
+```
+
 ### 快捷工具
 
 在大模型应用中，我们有两种常见的需求：
@@ -97,8 +109,8 @@ Dify支持`文本` `链接` `图片` `文件BLOB` 等多种消息类型，你可
 ```python
     def get_url(self, url: str, user_agent: str = None) -> str:
         """
-            get url
-        """ the crawled result
+            get url from the crawled result
+        """ 
 ```
 
 ### 变量池

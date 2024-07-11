@@ -145,19 +145,25 @@ parameters: # Parameter list
 
 - The `identity` field is mandatory, it contains the basic information of the tool, including name, author, label, description, etc.
 - `parameters` Parameter list
-  - `name` Parameter name, unique, no duplication with other parameters
-  - `type` Parameter type, currently supports `string`, `number`, `boolean`, `select`, `secret-input` four types, corresponding to string, number, boolean, drop-down box, and encrypted input box, respectively. For sensitive information, we recommend using `secret-input` type
-  - `required` Required or not
+  - `name` (Mandatory) Parameter name, must be unique and not duplicate with other parameters.
+  - `type` (Mandatory) Parameter type, currently supports `string`, `number`, `boolean`, `select`, `secret-input` five types, corresponding to string, number, boolean, drop-down box, and encrypted input box, respectively. For sensitive information, we recommend using the `secret-input` type
+  - `label` (Mandatory) Parameter label, for frontend display
+  - `form` (Mandatory) Form type, currently supports `llm`, `form` two types.
+    - In an agent app, `llm` indicates that the parameter is inferred by the LLM itself, while `form` indicates that the parameter can be pre-set for the tool.
+    - In a workflow app, both `llm` and `form` need to be filled out by the front end, but the parameters of `llm` will be used as input variables for the tool node.
+  - `required` Indicates whether the parameter is required or not
     - In `llm` mode, if the parameter is required, the Agent is required to infer this parameter
     - In `form` mode, if the parameter is required, the user is required to fill in this parameter on the frontend before the conversation starts
   - `options` Parameter options
     - In `llm` mode, Dify will pass all options to LLM, LLM can infer based on these options
     - In `form` mode, when `type` is `select`, the frontend will display these options
   - `default` Default value
-  - `label` Parameter label, for frontend display
+  - `min` Minimum value, can be set when the parameter type is `number`.
+  - `max` Maximum value, can be set when the parameter type is `number`.
+  - `placeholder` The prompt text for input boxes. It can be set when the form type is `form`, and the parameter type is `string`, `number`, or `secret-input`. It supports multiple languages.
   - `human_description` Introduction for frontend display, supports multiple languages
   - `llm_description` Introduction passed to LLM, in order to make LLM better understand this parameter, we suggest to write as detailed information about this parameter as possible here, so that LLM can understand this parameter
-  - `form` Form type, currently supports `llm`, `form` two types, corresponding to Agent self-inference and frontend filling
+  
 
 ## 4. Add Tool Logic
 
@@ -196,7 +202,7 @@ The overall logic of the tool is in the `_invoke` method, this method accepts tw
 
 ### Return Data
 
-When the tool returns, you can choose to return one message or multiple messages, here we return one message, using `create_text_message` and `create_link_message` can create a text message or a link message.
+When the tool returns, you can choose to return one message or multiple messages, here we return one message, using `create_text_message` and `create_link_message` can create a text message or a link message. If you want to return multiple messages, you can use `[self.create_text_message('msg1'), self.create_text_message('msg2')]` to create a list of messages.
 
 ## 5. Add Provider Code
 
@@ -205,8 +211,6 @@ Finally, we need to create a provider class under the provider module to impleme
 Create `google.py` under the `google` module, the content is as follows.
 
 ```python
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
-from core.tools.tool.tool import Tool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.errors import ToolProviderCredentialValidationError
 

@@ -83,6 +83,12 @@ x-shared-env: &shared-api-worker-env
   MILVUS_USER: ${MILVUS_USER:-root}
   MILVUS_PASSWORD: ${MILVUS_PASSWORD:-Milvus}
   MILVUS_SECURE: ${MILVUS_SECURE:-false}
+  MYSCALE_HOST: ${MYSCALE_HOST:-myscale}
+  MYSCALE_PORT: ${MYSCALE_PORT:-8123}
+  MYSCALE_USER: ${MYSCALE_USER:-default}
+  MYSCALE_PASSWORD: ${MYSCALE_PASSWORD:-}
+  MYSCALE_DATABASE: ${MYSCALE_DATABASE:-dify}
+  MYSCALE_FTS_PARAMS: ${MYSCALE_FTS_PARAMS:-}
   RELYT_HOST: ${RELYT_HOST:-db}
   RELYT_PORT: ${RELYT_PORT:-5432}
   RELYT_USER: ${RELYT_USER:-postgres}
@@ -531,6 +537,21 @@ services:
       - opensearch-net
     depends_on:
       - opensearch
+
+  # MyScale vector database
+  myscale:
+    container_name: myscale
+    image: myscale/myscaledb:1.6
+    profiles:
+      - myscale
+    restart: always
+    tty: true
+    volumes:
+      - ./volumes/myscale/data:/var/lib/clickhouse
+      - ./volumes/myscale/log:/var/log/clickhouse-server
+      - ./volumes/myscale/config/users.d/custom_users_config.xml:/etc/clickhouse-server/users.d/custom_users_config.xml
+    ports:
+      - "${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}"
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
