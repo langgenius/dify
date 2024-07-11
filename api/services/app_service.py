@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from typing import cast
 
 import yaml
-from flask import current_app
 from configs import dify_config
 from flask_login import current_user
 from flask_sqlalchemy.pagination import Pagination
