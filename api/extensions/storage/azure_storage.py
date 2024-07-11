@@ -39,8 +39,8 @@ class AzureStorage(BaseStorage):
             blob = client.get_blob_client(container=self.bucket_name, blob=filename)
             blob_data = blob.download_blob()
             for chunk in blob_data.chunks():
-                yield from chunk
-        return generate()
+                yield chunk
+        return generate(filename)
 
     def download(self, filename, target_filepath):
         client = self._sync_client()
