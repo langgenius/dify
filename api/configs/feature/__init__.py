@@ -31,6 +31,10 @@ class AppExecutionConfig(BaseSettings):
         description='execution timeout in seconds for app execution',
         default=1200,
     )
+    APP_MAX_ACTIVE_REQUESTS: NonNegativeInt = Field(
+        description='max active request per app, 0 means unlimited',
+        default=0,
+    )
 
 
 class CodeExecutionSandboxConfig(BaseSettings):
@@ -394,6 +398,11 @@ class DataSetConfig(BaseSettings):
     CLEAN_DAY_SETTING: PositiveInt = Field(
         description='interval in days for cleaning up dataset',
         default=30,
+    )
+
+    DATASET_OPERATOR_ENABLED: bool = Field(
+        description='whether to enable dataset operator',
+        default=False,
     )
 
 

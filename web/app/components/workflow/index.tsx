@@ -21,6 +21,7 @@ import ReactFlow, {
   useNodesState,
   useOnViewportChange,
   useReactFlow,
+  useStoreApi,
 } from 'reactflow'
 import type {
   Viewport,
@@ -277,6 +278,15 @@ const Workflow: FC<WorkflowProps> = memo(({
     () => workflowHistoryShortcutsEnabled && handleHistoryForward(),
     { exactMatch: true, useCapture: true },
   )
+
+  const store = useStoreApi()
+  if (process.env.NODE_ENV === 'development') {
+    store.getState().onError = (code, message) => {
+      if (code === '002')
+        return
+      console.warn(message)
+    }
+  }
 
   return (
     <div

@@ -4,10 +4,10 @@ import {
   memo,
   useCallback,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '../../../../block-selector'
 import type { Param, ParamType } from '../../types'
+import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/workflow/store'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolParameter } from '@/app/components/tools/types'

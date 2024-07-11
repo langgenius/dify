@@ -1,7 +1,7 @@
 'use client'
 import React, { useEffect, useState } from 'react'
-import classNames from 'classnames'
 import { Switch as OriginalSwitch } from '@headlessui/react'
+import classNames from '@/utils/classnames'
 
 type SwitchProps = {
   onChange?: (value: boolean) => void

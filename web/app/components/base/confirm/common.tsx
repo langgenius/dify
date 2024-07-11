@@ -1,11 +1,11 @@
 import type { FC, ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiCloseLine,
   RiErrorWarningFill,
 } from '@remixicon/react'
 import s from './common.module.css'
+import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import Button from '@/app/components/base/button'

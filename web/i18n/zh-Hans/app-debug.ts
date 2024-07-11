@@ -319,6 +319,9 @@ const translation = {
       language: '语言',
       resolutionTooltip: '文本转语音音色支持语言。',
       voice: '音色',
+      autoPlay: '自动播放',
+      autoPlayEnabled: '开启',
+      autoPlayDisabled: '关闭',
     },
   },
   openingStatement: {

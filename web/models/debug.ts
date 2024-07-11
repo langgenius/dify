@@ -1,4 +1,4 @@
-import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem } from '@/types/app'
+import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
 export type Inputs = Record<string, string | number | object>
 
 export enum PromptMode {
@@ -79,6 +79,7 @@ export type TextToSpeechConfig = {
   enabled: boolean
   voice?: string
   language?: string
+  autoPlay?: TtsAutoPlay
 }
 
 export type CitationConfig = MoreLikeThisConfig

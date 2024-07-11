@@ -8,6 +8,7 @@ import type {
   ChatConfig,
   ChatItem,
 } from '../../types'
+import { useChatContext } from '../context'
 import Operation from './operation'
 import AgentContent from './agent-content'
 import BasicContent from './basic-content'
@@ -59,23 +60,25 @@ const Answer: FC<AnswerProps> = ({
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
-  const [containerWidth, setContainerWidth] = useState(0)
+  const [containerWidth] = useState(0)
   const [contentWidth, setContentWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
-  const getContainerWidth = () => {
-    if (containerRef.current)
-      setContainerWidth(containerRef.current?.clientWidth + 16)
-  }
+  const {
+    config: chatContextConfig,
+  } = useChatContext()
+
+  const voiceRef = useRef(chatContextConfig?.text_to_speech?.voice)
   const getContentWidth = () => {
     if (contentRef.current)
       setContentWidth(contentRef.current?.clientWidth)
   }
 
   useEffect(() => {
-    getContainerWidth()
-  }, [])
+    voiceRef.current = chatContextConfig?.text_to_speech?.voice
+  }
+  , [chatContextConfig?.text_to_speech?.voice])
 
   useEffect(() => {
     if (!responding)

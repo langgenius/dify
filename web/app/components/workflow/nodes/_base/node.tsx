@@ -9,7 +9,6 @@ import {
   useMemo,
   useRef,
 } from 'react'
-import cn from 'classnames'
 import {
   RiCheckboxCircleLine,
   RiErrorWarningLine,
@@ -32,6 +31,7 @@ import {
 import NodeResizer from './components/node-resizer'
 import NodeControl from './components/node-control'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
+import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 
 type BaseNodeProps = {

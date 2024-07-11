@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from 'classnames'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
 import Input from './input'
+import cn from '@/utils/classnames'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type Props = {

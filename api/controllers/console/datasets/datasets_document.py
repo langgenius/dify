@@ -229,7 +229,7 @@ class DatasetDocumentListApi(Resource):
             raise NotFound('Dataset not found.')
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        if not current_user.is_dataset_editor:
             raise Forbidden()
 
         try:
@@ -297,6 +297,11 @@ class DatasetInitApi(Resource):
         parser.add_argument('doc_metadata', type=str, required=False, nullable=True, location='json')
         parser.add_argument('doc_type', type=str, required=False, nullable=True, location='json')
         args = parser.parse_args()
+
+        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
         if args['indexing_technique'] == 'high_quality':
             try:
                 model_manager = ModelManager()
@@ -764,14 +769,18 @@ class DocumentStatusApi(DocumentResource):
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
+
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
 
-        document = self.get_document(dataset_id, document_id)
+        # check user's permission
+        DatasetService.check_dataset_permission(dataset, current_user)
 
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        document = self.get_document(dataset_id, document_id)
 
         indexing_cache_key = 'document_{}_indexing'.format(document.id)
         cache_result = redis_client.get(indexing_cache_key)
@@ -962,10 +971,11 @@ class DocumentRenameApi(DocumentResource):
     @account_initialization_required
     @marshal_with(document_fields)
     def post(self, dataset_id, document_id):
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+        if not current_user.is_dataset_editor:
             raise Forbidden()
-
+        dataset = DatasetService.get_dataset(dataset_id)
+        DatasetService.check_dataset_operator_permission(current_user, dataset)
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, nullable=False, location='json')
         args = parser.parse_args()

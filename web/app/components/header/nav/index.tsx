@@ -3,9 +3,9 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { useSelectedLayoutSegment } from 'next/navigation'
-import classNames from 'classnames'
 import type { INavSelectorProps } from './nav-selector'
 import NavSelector from './nav-selector'
+import classNames from '@/utils/classnames'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useStore as useAppStore } from '@/app/components/app/store'
 

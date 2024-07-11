@@ -1,11 +1,13 @@
 import {
   memo,
   useCallback,
+  useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import type { ToolWithProvider } from '../types'
+import IndexBar, { groupItems } from './index-bar'
 import type { ToolDefaultValue } from './types'
 import Tooltip from '@/app/components/base/tooltip'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
@@ -24,6 +26,9 @@ const Blocks = ({
   const { t } = useTranslation()
   const language = useGetLanguage()
 
+  const { letters, groups: groupedTools } = groupItems(tools, tool => tool.label[language][0])
+  const toolRefs = useRef({})
+
   const renderGroup = useCallback((toolWithProvider: ToolWithProvider) => {
     const list = toolWithProvider.tools
 
@@ -41,7 +46,7 @@ const Blocks = ({
               key={tool.name}
               selector={`workflow-block-tool-${tool.name}`}
               position='right'
-              className='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !bg-transparent !rounded-xl !shadow-lg'
+              className='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
               htmlContent={(
                 <div>
                   <BlockIcon
@@ -81,6 +86,18 @@ const Blocks = ({
     )
   }, [onSelect, language])
 
+  const renderLetterGroup = (letter) => {
+    const tools = groupedTools[letter]
+    return (
+      <div
+        key={letter}
+        ref={el => (toolRefs.current[letter] = el)}
+      >
+        {tools.map(renderGroup)}
+      </div>
+    )
+  }
+
   return (
     <div className='p-1 max-w-[320px] max-h-[464px] overflow-y-auto'>
       {
@@ -90,12 +107,11 @@ const Blocks = ({
       }
       {!tools.length && showWorkflowEmpty && (
         <div className='py-10'>
-          <Empty/>
+          <Empty />
         </div>
       )}
-      {
-        !!tools.length && tools.map(renderGroup)
-      }
+      {!!tools.length && letters.map(renderLetterGroup)}
+      {tools.length > 10 && <IndexBar letters={letters} itemRefs={toolRefs} />}
     </div>
   )
 }
