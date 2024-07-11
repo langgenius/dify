@@ -1,13 +1,12 @@
 import json
 from typing import IO, Optional
 
+import requests
+
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
-    InvokeBadRequestError,
     InvokeConnectionError,
     InvokeError,
-    InvokeRateLimitError,
-    InvokeServerUnavailableError,
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
@@ -85,21 +84,9 @@ class TencentSpeech2TextModel(Speech2TextModel):
         """
         return {
             InvokeConnectionError: [
-                InvokeConnectionError
-            ],
-            InvokeServerUnavailableError: [
-                InvokeServerUnavailableError
-            ],
-            InvokeRateLimitError: [
-                InvokeRateLimitError
+                requests.exceptions.ConnectionError
             ],
             InvokeAuthorizationError: [
-                InvokeAuthorizationError
-            ],
-            InvokeBadRequestError: [
-                InvokeBadRequestError,
-                KeyError,
-                ValueError
+                CredentialsValidateFailedError
             ]
         }
-

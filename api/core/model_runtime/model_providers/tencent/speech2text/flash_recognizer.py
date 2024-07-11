@@ -12,7 +12,6 @@ class Credential:
         self.secret_key = secret_key
 
 
-# 录音识别极速版使用
 class FlashRecognitionRequest:
     def __init__(self, voice_format="mp3", engine_type="16k_zh"):
         self.engine_type = engine_type
@@ -67,33 +66,32 @@ class FlashRecognitionRequest:
 
 
 class FlashRecognizer:
-    '''
-    reponse:  
-    字段名            类型
+    """
+    reponse:
     request_id        string
     status            Integer    
     message           String    
     audio_duration    Integer
     flash_result      Result Array
 
-    Result的结构体格式为:
+    Result:
     text              String
     channel_id        Integer
     sentence_list     Sentence Array
 
-    Sentence的结构体格式为:
+    Sentence:
     text              String
     start_time        Integer    
     end_time          Integer    
     speaker_id        Integer    
     word_list         Word Array
 
-    Word的类型为:
+    Word:
     word              String 
     start_time        Integer 
     end_time          Integer 
     stable_flag：     Integer 
-    '''
+    """
 
     def __init__(self, appid, credential):
         self.credential = credential
