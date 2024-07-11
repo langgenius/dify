@@ -744,8 +744,13 @@ class DocumentMetadataApi(DocumentResource):
         else:
             for key, value_type in metadata_schema.items():
                 value = doc_metadata.get(key)
-                if value is not None and isinstance(value, value_type):
-                    document.doc_metadata[key] = value
+                if value is not None:
+                    if isinstance(value, value_type):
+                        document.doc_metadata[key] = value
+                    elif is_convertible(value, value_type):
+                        document.doc_metadata[key] = value_type(value)
+                    else:
+                        document.doc_metadata[key] = None
 
         document.doc_type = doc_type
         document.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -756,6 +761,26 @@ class DocumentMetadataApi(DocumentResource):
             document_indexing_update_task.delay(document.dataset_id, document.id)
 
         return {'result': 'success', 'message': 'Document metadata updated.'}, 200
+
+
+# Adapt parameters to metadata types
+def adapt_metadata_type(value, to_type):
+    if value is not None:
+        if isinstance(value, to_type):
+            return value
+        elif is_convertible(value, to_type):
+            return to_type(value)
+    return None
+
+
+def is_convertible(value, to_type):
+    try:
+        # Attempts to convert a string to the specified type
+        to_type(value)
+        return True
+    except (ValueError, TypeError):
+        # Catch the conversion failure exception
+        return False
 
 
 class DocumentStatusApi(DocumentResource):
