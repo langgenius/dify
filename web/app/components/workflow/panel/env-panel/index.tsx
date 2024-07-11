@@ -1,25 +1,37 @@
 import {
   memo,
+  useCallback,
   useState,
 } from 'react'
 import cn from 'classnames'
 import { capitalize } from 'lodash-es'
+import {
+  useStoreApi,
+} from 'reactflow'
 import { RiAddLine, RiCloseLine, RiDeleteBinLine, RiEditLine, RiLock2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import Button from '@/app/components/base/button'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import VariableModal from '@/app/components/workflow/panel/env-panel/variable-modal'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type {
+  EnvironmentVariable,
+} from '@/app/components/workflow/types'
+import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 
 const EnvPanel = () => {
   const { t } = useTranslation()
+  const store = useStoreApi()
   const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
-  const envList = useStore(s => s.environmentVariables)
+  const envList = useStore(s => s.environmentVariables) as EnvironmentVariable[]
   const updateEnvList = useStore(s => s.setEnvironmentVariables)
 
   const [showVariableModal, setShowVariableModal] = useState(false)
   const [currentVar, setCurrentVar] = useState<EnvironmentVariable>()
+
+  const [showRemoveVarConfirm, setShowRemoveConfirm] = useState(false)
+  const [cacheForDelete, setCacheForDelete] = useState<EnvironmentVariable>()
 
   const handleSave = (env: EnvironmentVariable) => {
     if (!currentVar)
@@ -28,10 +40,44 @@ const EnvPanel = () => {
       updateEnvList(envList.map(e => e.name === currentVar.name ? env : e))
   }
 
-  const handleDelete = (env: EnvironmentVariable) => {
+  const getEffectedNodes = useCallback((env: EnvironmentVariable) => {
+    const { getNodes } = store.getState()
+    const allNodes = getNodes()
+    return findUsedVarNodes(
+      ['env', env.name],
+      allNodes,
+    )
+  }, [store])
+
+  const removeUsedVarInNodes = useCallback((env: EnvironmentVariable) => {
+    const { getNodes, setNodes } = store.getState()
+    const effectedNodes = getEffectedNodes(env)
+    const newNodes = getNodes().map((node) => {
+      if (effectedNodes.find(n => n.id === node.id))
+        return updateNodeVars(node, ['env', env.name], [])
+
+      return node
+    })
+    setNodes(newNodes)
+  }, [getEffectedNodes, store])
+
+  const handleDelete = useCallback((env: EnvironmentVariable) => {
+    removeUsedVarInNodes(env)
     updateEnvList(envList.filter(e => e.name !== env.name))
-    // #TODO ENV#: check usage
-  }
+    setCacheForDelete(undefined)
+    setShowRemoveConfirm(false)
+  }, [envList, removeUsedVarInNodes, updateEnvList])
+
+  const deleteCheck = useCallback((env: EnvironmentVariable) => {
+    const effectedNodes = getEffectedNodes(env)
+    if (effectedNodes.length > 0) {
+      setCacheForDelete(env)
+      setShowRemoveConfirm(true)
+    }
+    else {
+      handleDelete(env)
+    }
+  }, [getEffectedNodes, handleDelete])
 
   const secretValue = (value: string) => {
     return `${value.slice(0, 2)}********${value.slice(-2)}`
@@ -82,7 +128,7 @@ const EnvPanel = () => {
                   }}/>
                 </div>
                 <div className='p-1 rounded-lg cursor-pointer hover:bg-red-100 hover:text-red-600'>
-                  <RiDeleteBinLine className='w-4 h-4' onClick={() => handleDelete(env)} />
+                  <RiDeleteBinLine className='w-4 h-4' onClick={() => deleteCheck(env)} />
                 </div>
               </div>
             </div>
@@ -102,6 +148,11 @@ const EnvPanel = () => {
           />
         </div>
       )}
+      <RemoveEffectVarConfirm
+        isShow={showRemoveVarConfirm}
+        onCancel={() => setShowRemoveConfirm(false)}
+        onConfirm={() => cacheForDelete && handleDelete(cacheForDelete)}
+      />
     </div>
   )
 }
