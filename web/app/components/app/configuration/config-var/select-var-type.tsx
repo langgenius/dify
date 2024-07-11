@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React, { useState } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import cn from '@/utils/classnames'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import {
   PortalToFollowElem,

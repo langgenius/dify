@@ -16,12 +16,12 @@ class FeatureApi(Resource):
     @account_initialization_required
     @cloud_utm_record
     def get(self):
-        return FeatureService.get_features(current_user.current_tenant_id).dict()
+        return FeatureService.get_features(current_user.current_tenant_id).model_dump()
 
 
 class SystemFeatureApi(Resource):
     def get(self):
-        return FeatureService.get_system_features().dict()
+        return FeatureService.get_system_features().model_dump()
 
 
 api.add_resource(FeatureApi, '/features')

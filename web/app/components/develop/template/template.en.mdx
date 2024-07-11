@@ -60,9 +60,6 @@ The text generation application offers non-session support and is ideal for tran
           User identifier, used to define the identity of the end-user for retrieval and statistics.
           Should be uniquely defined by the developer within the application.
       </Property>
-      <Property name='conversation_id' type='string' key='conversation_id'>
-      Converation ID, to continue the conversation based on previous chat records, it is necessary to pass the previous message's conversation_id.
-      </Property>
       <Property name='files' type='array[object]' key='files'>
           File list, suitable for inputting files (images) combined with text understanding and answering questions, available only when the model supports Vision capability.
           - `type` (string) Supported type: `image` (currently only supports image type)
@@ -79,7 +76,6 @@ The text generation application offers non-session support and is ideal for tran
     ### ChatCompletionResponse
     Returns the complete App result, `Content-Type` is `application/json`.
     - `message_id` (string) Unique message ID
-    - `conversation_id` (string) Conversation ID
     - `mode` (string) App mode, fixed as `chat`
     - `answer` (string) Complete response content
     - `metadata` (object) Metadata
@@ -99,13 +95,11 @@ The text generation application offers non-session support and is ideal for tran
     - `event: message` LLM returns text chunk event, i.e., the complete text is output in a chunked fashion.
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
       - `message_id` (string) Unique message ID
-      - `conversation_id` (string) Conversation ID
       - `answer` (string) LLM returned text chunk content
       - `created_at` (int) Creation timestamp, e.g., 1705395332
     - `event: message_end` Message end event, receiving this event means streaming has ended.
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
       - `message_id` (string) Unique message ID
-      - `conversation_id` (string) Conversation ID
       - `metadata` (object) Metadata
         - `usage` (Usage) Model usage information
         - `retriever_resources` (array[RetrieverResource]) Citation and Attribution List
@@ -113,7 +107,6 @@ The text generation application offers non-session support and is ideal for tran
       When output content moderation is enabled, if the content is flagged, then the message content will be replaced with a preset reply through this event.
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
       - `message_id` (string) Unique message ID
-      - `conversation_id` (string) Conversation ID
       - `answer` (string) Replacement content (directly replaces all LLM reply text)
       - `created_at` (int) Creation timestamp, e.g., 1705395332
     - `event: error`
@@ -515,14 +508,19 @@ The text generation application offers non-session support and is ideal for tran
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=Hello Dify;user=abc-123;streaming=false`}>
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "text": "Hello Dify",\n    "user": "abc-123",\n    "streaming": false\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --form 'file=Hello Dify;user=abc-123;streaming=false'
+    curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "text": "Hello Dify",
+        "user": "abc-123",
+        "streaming": false
+    }'
     ```
-
+    
     </CodeGroup>
 
     <CodeGroup title="headers">

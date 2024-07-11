@@ -44,7 +44,7 @@ const Datasets = ({
   tags,
   keywords,
 }: Props) => {
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const { data, isLoading, setSize, mutate } = useSWRInfinite(
     (pageIndex: number, previousPageData: DataSetListResponse) => getKey(pageIndex, previousPageData, tags, keywords),
     fetchDatasets,
@@ -76,7 +76,7 @@ const Datasets = ({
 
   return (
     <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
-      { isCurrentWorkspaceManager && <NewDatasetCard ref={anchorRef} /> }
+      { isCurrentWorkspaceEditor && <NewDatasetCard ref={anchorRef} /> }
       {data?.map(({ data: datasets }) => datasets.map(dataset => (
         <DatasetCard key={dataset.id} dataset={dataset} onSuccess={mutate} />),
       ))}

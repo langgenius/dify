@@ -133,6 +133,7 @@ export type InputVar = {
   required: boolean
   hint?: string
   options?: string[]
+  value_selector?: ValueSelector
 }
 
 export type ModelConfig = {

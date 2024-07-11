@@ -2,6 +2,9 @@
 import React from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import RadioCard from '@/app/components/base/radio-card/simple'
@@ -19,7 +22,6 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import type { ModelConfig } from '@/app/components/workflow/types'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type Props = {
@@ -155,7 +157,7 @@ const ConfigContent: FC<Props> = ({
             <TooltipPlus
               popupContent={t('common.modelProvider.systemReasoningModel.tip')}
             >
-              <HelpCircle className='w-3.5 h-4.5 text-gray-400' />
+              <RiQuestionLine className='w-3.5 h-4.5 text-gray-400' />
             </TooltipPlus>
           </div>
           <ModelParameterModal

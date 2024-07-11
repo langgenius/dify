@@ -2,20 +2,23 @@
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
+import {
+  RiClipboardLine,
+} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { useParams } from 'next/navigation'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
 import { HashtagIcon } from '@heroicons/react/24/solid'
 import ResultTab from './result-tab'
+import cn from '@/utils/classnames'
 import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import AudioBtn from '@/app/components/base/audio-btn'
-import type { Feedbacktype } from '@/app/components/app/chat/type'
+import type { Feedbacktype } from '@/app/components/base/chat/chat/type'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
-import { Clipboard, File02 } from '@/app/components/base/icons/src/vender/line/files'
+import { File02 } from '@/app/components/base/icons/src/vender/line/files'
 import { Bookmark } from '@/app/components/base/icons/src/vender/line/general'
 import { Stars02 } from '@/app/components/base/icons/src/vender/line/weather'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -25,6 +28,7 @@ import EditReplyModal from '@/app/components/app/annotation/edit-annotation-moda
 import { useStore as useAppStore } from '@/app/components/app/store'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import type { SiteInfo } from '@/models/share'
 
 const MAX_DEPTH = 3
 
@@ -59,6 +63,7 @@ export type IGenerationItemProps = {
   contentClassName?: string
   footerClassName?: string
   hideProcessDetail?: boolean
+  siteInfo: SiteInfo | null
 }
 
 export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
@@ -68,7 +73,7 @@ export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
   children: React.ReactNode
 }) => (
   <div
-    className={cn(className, isDisabled ? 'border-gray-100 text-gray-300' : 'border-gray-200 text-gray-700 cursor-pointer hover:border-gray-300 hover:shadow-sm', 'flex items-center h-7 px-3 rounded-md border text-xs  font-medium')}
+    className={cn(isDisabled ? 'border-gray-100 text-gray-300' : 'border-gray-200 text-gray-700 cursor-pointer hover:border-gray-300 hover:shadow-sm', 'flex items-center h-7 px-3 rounded-md border text-xs  font-medium', className)}
     onClick={() => !isDisabled && onClick?.()}
   >
     {children}
@@ -110,6 +115,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   innerClassName,
   contentClassName,
   hideProcessDetail,
+  siteInfo,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -149,6 +155,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     installedAppId,
     controlClearMoreLikeThis,
     isWorkflow,
+    siteInfo,
   }
 
   const handleMoreLikeThis = async () => {
@@ -270,7 +277,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [currentTab, setCurrentTab] = useState<string>('DETAIL')
 
   return (
-    <div ref={ref} className={cn(className, isTop ? `rounded-xl border ${!isError ? 'border-gray-200 bg-white' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : 'rounded-br-xl !mt-0')}
+    <div ref={ref} className={cn(isTop ? `rounded-xl border ${!isError ? 'border-gray-200 bg-white' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : 'rounded-br-xl !mt-0', className)}
       style={isTop
         ? {
           boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
@@ -294,7 +301,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             }
             <div className={`flex ${contentClassName}`}>
               <div className='grow w-0'>
-                {workflowProcessData && (
+                {siteInfo && siteInfo.show_workflow_steps && workflowProcessData && (
                   <WorkflowProcessItem grayBg hideInfo data={workflowProcessData} expand={workflowProcessData.expand} hideProcessDetail={hideProcessDetail} />
                 )}
                 {workflowProcessData && !isError && (
@@ -334,7 +341,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         copy(JSON.stringify(copyContent))
                       Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
                     }}>
-                    <Clipboard className='w-3.5 h-3.5' />
+                    <RiClipboardLine className='w-3.5 h-3.5' />
                     {!isMobile && <div>{t('common.operation.copy')}</div>}
                   </SimpleBtn>
                 )}
@@ -421,8 +428,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   <>
                     <div className='ml-2 mr-2 h-[14px] w-[1px] bg-gray-200'></div>
                     <AudioBtn
-                      value={content}
-                      noCache={false}
+                      id={messageId!}
                       className={'mr-1'}
                     />
                   </>

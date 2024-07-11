@@ -162,6 +162,7 @@ export type ModelConfig = {
     enabled: boolean
     voice?: string
     language?: string
+    autoPlay?: TtsAutoPlay
   }
   retriever_resource: {
     enabled: boolean
@@ -248,6 +249,12 @@ export type SiteConfig = {
   title: string
   /** Application Description will be shown in the Client  */
   description: string
+  /** Define the color in hex for different elements of the chatbot, such as:
+   * The header, the button , etc.
+    */
+  chat_color_theme: string
+  /** Invert the color of the theme set in chat_color_theme */
+  chat_color_theme_inverted: boolean
   /** Author */
   author: string
   /** User Support Email Address */
@@ -276,6 +283,8 @@ export type SiteConfig = {
 
   icon: string
   icon_background: string
+
+  show_workflow_steps: boolean
 }
 
 /**
@@ -341,6 +350,11 @@ export enum TransferMethod {
   all = 'all',
   local_file = 'local_file',
   remote_url = 'remote_url',
+}
+
+export enum TtsAutoPlay {
+  enabled = 'enabled',
+  disabled = 'disabled',
 }
 
 export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']

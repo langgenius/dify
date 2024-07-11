@@ -34,12 +34,15 @@ import {
   useWorkflowStore,
 } from '../store'
 import {
+  CUSTOM_NODE,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useNodesExtraData } from './use-nodes-data'
 import { useWorkflowTemplate } from './use-workflow-template'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   fetchNodesDefaultConfigs,
@@ -69,6 +72,7 @@ export const useWorkflow = () => {
   const workflowStore = useWorkflowStore()
   const nodesExtraData = useNodesExtraData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { saveStateToHistory } = useWorkflowHistory()
 
   const setPanelWidth = useCallback((width: number) => {
     localStorage.setItem('workflow-node-panel-width', `${width}`)
@@ -88,7 +92,7 @@ export const useWorkflow = () => {
     const rankMap = {} as Record<string, Node>
 
     nodes.forEach((node) => {
-      if (!node.parentId) {
+      if (!node.parentId && node.type === CUSTOM_NODE) {
         const rank = layout.node(node.id).rank!
 
         if (!rankMap[rank]) {
@@ -103,7 +107,7 @@ export const useWorkflow = () => {
 
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
-        if (!node.parentId) {
+        if (!node.parentId && node.type === CUSTOM_NODE) {
           const nodeWithPosition = layout.node(node.id)
 
           node.position = {
@@ -120,10 +124,11 @@ export const useWorkflow = () => {
       y: 0,
       zoom,
     })
+    saveStateToHistory(WorkflowHistoryEvent.LayoutOrganize)
     setTimeout(() => {
       handleSyncWorkflowDraft()
     })
-  }, [store, reactflow, handleSyncWorkflowDraft, workflowStore])
+  }, [workflowStore, store, reactflow, saveStateToHistory, handleSyncWorkflowDraft])
 
   const getTreeLeafNodes = useCallback((nodeId: string) => {
     const {
@@ -345,6 +350,9 @@ export const useWorkflow = () => {
     if (targetNode.data.isIterationStart)
       return false
 
+    if (sourceNode.type === CUSTOM_NOTE_NODE || targetNode.type === CUSTOM_NOTE_NODE)
+      return false
+
     if (sourceNode && targetNode) {
       const sourceNodeAvailableNextNodes = nodesExtraData[sourceNode.data.type].availableNextNodes
       const targetNodeAvailablePrevNodes = [...nodesExtraData[targetNode.data.type].availablePrevNodes, BlockEnum.Start]
@@ -480,7 +488,9 @@ export const useWorkflowInit = () => {
                   nodes: nodesTemplate,
                   edges: edgesTemplate,
                 },
-                features: {},
+                features: {
+                  retriever_resource: { enabled: true },
+                },
               },
             }).then((res) => {
               workflowStore.getState().setDraftUpdatedAt(res.updated_at)

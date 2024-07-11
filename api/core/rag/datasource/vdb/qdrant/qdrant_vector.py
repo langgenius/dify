@@ -40,9 +40,9 @@ if TYPE_CHECKING:
 
 class QdrantConfig(BaseModel):
     endpoint: str
-    api_key: Optional[str]
+    api_key: Optional[str] = None
     timeout: float = 20
-    root_path: Optional[str]
+    root_path: Optional[str] = None
     grpc_port: int = 6334
     prefer_grpc: bool = False
 
@@ -128,7 +128,7 @@ class QdrantVector(BaseVector):
                 # create doc_id payload index
                 self._client.create_payload_index(collection_name, Field.DOC_ID.value,
                                                   field_schema=PayloadSchemaType.KEYWORD)
-                # creat full text index
+                # create full text index
                 text_index_params = TextIndexParams(
                     type=TextIndexType.TEXT,
                     tokenizer=TokenizerType.MULTILINGUAL,

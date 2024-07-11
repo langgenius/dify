@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import React, { useRef, useState } from 'react'
 import { useGetState, useInfiniteScroll } from 'ahooks'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import produce from 'immer'
 import TypeIcon from '../type-icon'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
@@ -94,7 +94,6 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       isShow={isShow}
       onClose={onClose}
       className='w-[400px]'
-      wrapperClassName='!z-[101]'
       title={t('appDebug.feature.dataSet.selectTitle')}
     >
       {!loaded && (
@@ -156,8 +155,8 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
             {selected.length > 0 && `${selected.length} ${t('appDebug.feature.dataSet.selected')}`}
           </div>
           <div className='flex space-x-2'>
-            <Button className='!w-24 !h-9' onClick={onClose}>{t('common.operation.cancel')}</Button>
-            <Button className='!w-24 !h-9' type='primary' onClick={handleSelect} disabled={hasNoData}>{t('common.operation.add')}</Button>
+            <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
+            <Button variant='primary' onClick={handleSelect} disabled={hasNoData}>{t('common.operation.add')}</Button>
           </div>
         </div>
       )}

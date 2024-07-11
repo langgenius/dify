@@ -259,7 +259,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
                 onClick={() => handleDataTypeChange(provider.key)}
               >
                 <div className={`
-                  mr-2 w-4 h-4 rounded-full border 
+                  mr-2 w-4 h-4 rounded-full border
                   ${localeData.type === provider.key ? 'border-[5px] border-primary-600' : 'border border-gray-300'}`} />
                 {provider.name}
               </div>
@@ -354,13 +354,12 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       <div className='flex items-center justify-end'>
         <Button
           onClick={onCancel}
-          className='mr-2 text-sm font-medium'
+          className='mr-2'
         >
           {t('common.operation.cancel')}
         </Button>
         <Button
-          type='primary'
-          className='text-sm font-medium'
+          variant='primary'
           onClick={handleSave}
           disabled={localeData.type === 'openai_moderation' && !openaiProviderConfiged}
         >

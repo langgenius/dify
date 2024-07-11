@@ -1,6 +1,6 @@
 'use client'
-import cn from 'classnames'
 import { useState } from 'react'
+import cn from '@/utils/classnames'
 
 type AvatarProps = {
   name: string

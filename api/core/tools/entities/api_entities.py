@@ -13,7 +13,7 @@ class UserTool(BaseModel):
     name: str # identifier
     label: I18nObject # label
     description: I18nObject
-    parameters: Optional[list[ToolParameter]]
+    parameters: Optional[list[ToolParameter]] = None
     labels: list[str] = None
 
 UserToolProviderTypeLiteral = Optional[Literal[
@@ -28,8 +28,8 @@ class UserToolProvider(BaseModel):
     icon: str
     label: I18nObject # label
     type: ToolProviderType
-    masked_credentials: dict = None
-    original_credentials: dict = None
+    masked_credentials: Optional[dict] = None
+    original_credentials: Optional[dict] = None
     is_team_authorization: bool = False
     allow_delete: bool = True
     tools: list[UserTool] = None

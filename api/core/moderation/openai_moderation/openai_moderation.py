@@ -41,7 +41,7 @@ class OpenAIModeration(Moderation):
         return ModerationOutputsResult(flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response)
 
     def _is_violated(self, inputs: dict):
-        text = '\n'.join(inputs.values())
+        text = '\n'.join(str(inputs.values()))
         model_manager = ModelManager()
         model_instance = model_manager.get_model_instance(
             tenant_id=self.tenant_id,

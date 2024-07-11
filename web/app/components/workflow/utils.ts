@@ -14,14 +14,18 @@ import type {
   InputVar,
   Node,
   ToolWithProvider,
+  ValueSelector,
 } from './types'
 import { BlockEnum } from './types'
 import {
+  CUSTOM_NODE,
   ITERATION_NODE_Z_INDEX,
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from './constants'
 import type { QuestionClassifierNodeType } from './nodes/question-classifier/types'
+import type { IfElseNodeType } from './nodes/if-else/types'
+import { branchNameCorrect } from './nodes/if-else/utils'
 import type { ToolNodeType } from './nodes/tool/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
@@ -105,23 +109,29 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
   }, {} as Record<string, string[]>)
 
   return nodes.map((node) => {
-    node.type = 'custom'
+    if (!node.type)
+      node.type = CUSTOM_NODE
 
     const connectedEdges = getConnectedEdges([node], edges)
     node.data._connectedSourceHandleIds = connectedEdges.filter(edge => edge.source === node.id).map(edge => edge.sourceHandle || 'source')
     node.data._connectedTargetHandleIds = connectedEdges.filter(edge => edge.target === node.id).map(edge => edge.targetHandle || 'target')
 
     if (node.data.type === BlockEnum.IfElse) {
-      node.data._targetBranches = [
-        {
-          id: 'true',
-          name: 'IS TRUE',
-        },
-        {
-          id: 'false',
-          name: 'IS FALSE',
-        },
-      ]
+      const nodeData = node.data as IfElseNodeType
+
+      if (!nodeData.cases && nodeData.logical_operator && nodeData.conditions) {
+        (node.data as IfElseNodeType).cases = [
+          {
+            case_id: 'true',
+            logical_operator: nodeData.logical_operator,
+            conditions: nodeData.conditions,
+          },
+        ]
+      }
+      node.data._targetBranches = branchNameCorrect([
+        ...(node.data as IfElseNodeType).cases.map(item => ({ id: item.case_id, name: '' })),
+        { id: 'false', name: '' },
+      ])
     }
 
     if (node.data.type === BlockEnum.QuestionClassifier) {
@@ -182,6 +192,7 @@ export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
         _connectedNodeIsSelected: edge.source === selectedNode.id || edge.target === selectedNode.id,
       } as any
     }
+
     return edge
   })
 }
@@ -189,7 +200,7 @@ export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
 export const getLayoutByDagre = (originNodes: Node[], originEdges: Edge[]) => {
   const dagreGraph = new dagre.graphlib.Graph()
   dagreGraph.setDefaultEdgeLabel(() => ({}))
-  const nodes = cloneDeep(originNodes).filter(node => !node.parentId)
+  const nodes = cloneDeep(originNodes).filter(node => !node.parentId && node.type === CUSTOM_NODE)
   const edges = cloneDeep(originEdges).filter(edge => !edge.data?.isInIteration)
   dagreGraph.setGraph({
     rankdir: 'LR',
@@ -280,10 +291,10 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
   return nodesConnectedSourceOrTargetHandleIdsMap
 }
 
-export const generateNewNode = ({ data, position, id, zIndex, ...rest }: Omit<Node, 'id'> & { id?: string }) => {
+export const generateNewNode = ({ data, position, id, zIndex, type, ...rest }: Omit<Node, 'id'> & { id?: string }) => {
   return {
     id: id || `${Date.now()}`,
-    type: 'custom',
+    type: type || CUSTOM_NODE,
     data,
     position,
     targetPosition: Position.Left,
@@ -460,4 +471,11 @@ export const isEventTargetInputArea = (target: HTMLElement) => {
 
   if (target.contentEditable === 'true')
     return true
+}
+
+export const variableTransformer = (v: ValueSelector | string) => {
+  if (typeof v === 'string')
+    return v.replace(/^{{#|#}}$/g, '').split('.')
+
+  return `{{#${v.join('.')}#}}`
 }

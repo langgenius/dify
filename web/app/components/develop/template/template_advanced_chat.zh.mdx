@@ -679,7 +679,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ### Response
     - `data` (array[object]) 会话列表
       - `id`  (string) 会话 ID
-      - `name`  (string) 会话名称，默认为会话中用户最开始问题的截取。
+      - `name`  (string) 会话名称，默认由大语言模型生成。
       - `inputs` (array[object]) 用户输入参数。
       - `introduction` (string) 开场白
       - `created_at` (timestamp) 创建时间
@@ -911,14 +911,19 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=你好Dify;user=abc-123;streaming=false`}>
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "text": "你好Dify",\n    "user": "abc-123",\n    "streaming": false\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --form 'file=你好Dify;user=abc-123;streaming=false'
+    curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "text": "你好Dify",
+        "user": "abc-123",
+        "streaming": false
+    }'
     ```
-
+    
     </CodeGroup>
 
     <CodeGroup title="headers">

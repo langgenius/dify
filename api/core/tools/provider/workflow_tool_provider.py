@@ -2,7 +2,7 @@ from typing import Optional
 
 from core.app.app_config.entities import VariableEntity
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.model_runtime.entities.common_entities import I18nObject
+from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolDescription,
     ToolIdentity,

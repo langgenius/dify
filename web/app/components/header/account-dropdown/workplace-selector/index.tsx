@@ -2,8 +2,8 @@ import { Fragment } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { Menu, Transition } from '@headlessui/react'
-import cn from 'classnames'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import { switchWorkspace } from '@/service/common'
 import { useWorkspacesContext } from '@/context/workspace-context'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -69,7 +69,7 @@ const WorkplaceSelector = () => {
               <Menu.Items
                 className={cn(
                   `
-                    absolute top-[1px] min-w-[200px] z-10 bg-white border-[0.5px] border-gray-200
+                    absolute top-[1px] min-w-[200px] max-h-[70vh] overflow-y-scroll z-10 bg-white border-[0.5px] border-gray-200
                     divide-y divide-gray-100 origin-top-right rounded-xl
                   `,
                   s.popup,

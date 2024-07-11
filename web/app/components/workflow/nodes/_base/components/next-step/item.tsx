@@ -45,8 +45,9 @@ const Item = ({
   const renderTrigger = useCallback((open: boolean) => {
     return (
       <Button
+        size='small'
         className={`
-          hidden group-hover:flex px-2 py-0 h-6 bg-white text-xs text-gray-700 font-medium rounded-md
+          hidden group-hover:flex
           ${open && '!bg-gray-100 !flex'}
         `}
       >

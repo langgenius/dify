@@ -73,6 +73,16 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
             datasetId={datasetId}
             dataSourceType={documentDetail.data_source_type}
             notionPages={[currentPage]}
+            websitePages={[
+              {
+                title: documentDetail.name,
+                source_url: documentDetail.data_source_info?.url,
+                markdown: '',
+                description: '',
+              },
+            ]}
+            fireCrawlJobId={documentDetail.data_source_info?.job_id}
+            crawlOptions={documentDetail.data_source_info}
             indexingType={indexingTechnique || ''}
             isSetting
             documentDetail={documentDetail}

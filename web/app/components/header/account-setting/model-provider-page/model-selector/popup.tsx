@@ -1,5 +1,8 @@
 import type { FC } from 'react'
 import { useState } from 'react'
+import {
+  RiSearchLine,
+} from '@remixicon/react'
 import type {
   DefaultModel,
   Model,
@@ -7,7 +10,6 @@ import type {
 } from '../declarations'
 import { useLanguage } from '../hooks'
 import PopupItem from './popup-item'
-import { SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type PopupProps = {
@@ -47,7 +49,7 @@ const Popup: FC<PopupProps> = ({
           flex items-center pl-[9px] pr-[10px] h-8 rounded-lg border
           ${searchText ? 'bg-white border-gray-300 shadow-xs' : 'bg-gray-100 border-transparent'}
         `}>
-          <SearchLg
+          <RiSearchLine
             className={`
               shrink-0 mr-[7px] w-[14px] h-[14px]
               ${searchText ? 'text-gray-500' : 'text-gray-400'}

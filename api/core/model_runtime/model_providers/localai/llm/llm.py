@@ -73,7 +73,7 @@ class LocalAILanguageModel(LargeLanguageModel):
 
         def tokens(text: str):
             """
-                We cloud not determine which tokenizer to use, cause the model is customized.
+                We could not determine which tokenizer to use, cause the model is customized.
                 So we use gpt2 tokenizer to calculate the num tokens for convenience.
             """
             return self._get_num_tokens_by_gpt2(text)

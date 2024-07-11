@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounce, useGetState } from 'ahooks'
-import cn from 'classnames'
 import produce from 'immer'
 import { LinkExternal02, Settings01 } from '../../base/icons/src/vender/line/general'
 import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
@@ -11,6 +10,7 @@ import { AuthHeaderPrefix, AuthType } from '../types'
 import GetSchema from './get-schema'
 import ConfigCredentials from './config-credentials'
 import TestApi from './test-api'
+import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
@@ -240,7 +240,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                           <td className="p-2 pl-3">{getPath(item.server_url)}</td>
                           <td className="p-2 pl-3 w-[62px]">
                             <Button
-                              className='!h-6 !px-2 text-xs font-medium text-gray-700 whitespace-nowrap'
+                              size='small'
                               onClick={() => {
                                 setCurrTool(item)
                                 setIsShowTestApi(true)
@@ -302,12 +302,12 @@ const EditCustomCollectionModal: FC<Props> = ({
             <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 shrink-0 flex py-4 px-6 rounded-b-[10px] bg-gray-50 border-t border-black/5')} >
               {
                 isEdit && (
-                  <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onRemove}>{t('common.operation.remove')}</Button>
+                  <Button onClick={onRemove} className='text-red-500 border-red-50 hover:border-red-500'>{t('common.operation.delete')}</Button>
                 )
               }
               <div className='flex space-x-2 '>
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700 bg-white' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+                <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
+                <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
               </div>
             </div>
           </div>

@@ -14,7 +14,7 @@ class CodeNodeData(BaseNodeData):
     """
     class Output(BaseModel):
         type: Literal['string', 'number', 'object', 'array[string]', 'array[number]', 'array[object]']
-        children: Optional[dict[str, 'Output']]
+        children: Optional[dict[str, 'Output']] = None
 
     variables: list[VariableSelector]
     code_language: Literal[CodeLanguage.PYTHON3, CodeLanguage.JAVASCRIPT]

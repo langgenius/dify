@@ -19,6 +19,8 @@ export type AppContextValue = {
   currentWorkspace: ICurrentWorkspace
   isCurrentWorkspaceManager: boolean
   isCurrentWorkspaceOwner: boolean
+  isCurrentWorkspaceEditor: boolean
+  isCurrentWorkspaceDatasetOperator: boolean
   mutateCurrentWorkspace: VoidFunction
   pageContainerRef: React.RefObject<HTMLDivElement>
   langeniusVersionInfo: LangGeniusVersionResponse
@@ -59,6 +61,8 @@ const AppContext = createContext<AppContextValue>({
   currentWorkspace: initialWorkspaceInfo,
   isCurrentWorkspaceManager: false,
   isCurrentWorkspaceOwner: false,
+  isCurrentWorkspaceEditor: false,
+  isCurrentWorkspaceDatasetOperator: false,
   mutateUserProfile: () => { },
   mutateCurrentWorkspace: () => { },
   pageContainerRef: createRef(),
@@ -86,6 +90,8 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const [currentWorkspace, setCurrentWorkspace] = useState<ICurrentWorkspace>(initialWorkspaceInfo)
   const isCurrentWorkspaceManager = useMemo(() => ['owner', 'admin'].includes(currentWorkspace.role), [currentWorkspace.role])
   const isCurrentWorkspaceOwner = useMemo(() => currentWorkspace.role === 'owner', [currentWorkspace.role])
+  const isCurrentWorkspaceEditor = useMemo(() => ['owner', 'admin', 'editor'].includes(currentWorkspace.role), [currentWorkspace.role])
+  const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
   const updateUserProfileAndVersion = useCallback(async () => {
     if (userProfileResponse && !userProfileResponse.bodyUsed) {
       const result = await userProfileResponse.json()
@@ -121,6 +127,8 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       currentWorkspace,
       isCurrentWorkspaceManager,
       isCurrentWorkspaceOwner,
+      isCurrentWorkspaceEditor,
+      isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
     }}>
       <div className='flex flex-col h-full overflow-y-auto'>

@@ -58,7 +58,8 @@ class ToolParameterConverter:
                             return float(value)
                         else:
                             return int(value)
-
+                case ToolParameter.ToolParameterType.FILE:
+                    return value
                 case _:
                     return str(value)
 
