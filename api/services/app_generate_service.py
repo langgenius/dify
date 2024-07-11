@@ -89,8 +89,8 @@ class AppGenerateService:
     def _get_max_active_requests(app_model: App) -> int:
         max_active_requests = app_model.max_active_requests
         if app_model.max_active_requests is None:
-            from flask import current_app
-            max_active_requests = int(current_app.config['APP_MAX_ACTIVE_REQUESTS'])
+            from configs import dify_config
+            max_active_requests = int(dify_config.APP_MAX_ACTIVE_REQUESTS)
         return max_active_requests
 
     @classmethod

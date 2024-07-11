@@ -5,6 +5,7 @@ from typing import cast
 
 import yaml
 from flask import current_app
+from configs import dify_config
 from flask_login import current_user
 from flask_sqlalchemy.pagination import Pagination
 
@@ -446,7 +447,7 @@ class AppService:
             # get all tools
             tools = agent_config.get('tools', [])
 
-        url_prefix = (current_app.config.get("CONSOLE_API_URL")
+        url_prefix = (dify_config.CONSOLE_API_URL
                       + "/console/api/workspaces/current/tool-provider/builtin/")
 
         for tool in tools:

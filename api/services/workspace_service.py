@@ -1,5 +1,5 @@
 
-from flask import current_app
+from configs import dify_config
 from flask_login import current_user
 
 from extensions.ext_database import db
@@ -35,7 +35,7 @@ class WorkspaceService:
 
         if can_replace_logo and TenantService.has_roles(tenant, 
         [TenantAccountJoinRole.OWNER, TenantAccountJoinRole.ADMIN]):
-            base_url = current_app.config.get('FILES_URL')
+            base_url = dify_config.FILES_URL
             replace_webapp_logo = f'{base_url}/files/workspaces/{tenant.id}/webapp-logo' if tenant.custom_config_dict.get('replace_webapp_logo') else None
             remove_webapp_brand = tenant.custom_config_dict.get('remove_webapp_brand', False)
 
