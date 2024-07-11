@@ -1,0 +1,69 @@
+nohup: ignoring input
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/pydub/utils.py:170: RuntimeWarning: Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work
+  warn("Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work", RuntimeWarning)
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/celery/platforms.py:829: SecurityWarning: You're running the worker with superuser privileges: this is
+absolutely not recommended!
+
+Please specify a different user using the --uid option.
+
+User information: uid=0 euid=0 gid=0 egid=0
+
+  warnings.warn(SecurityWarning(ROOT_DISCOURAGED.format(
+ 
+ -------------- celery@VM-4-5-ubuntu v5.3.6 (emerald-rush)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-107-generic-x86_64-with-glibc2.35 2024-07-09 14:04:41
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         app:0x7f627ef6b850
+- ** ---------- .> transport:   redis://:**@localhost:6379/1
+- ** ---------- .> results:     postgresql://postgres:**@localhost:5432/dify
+- *** --- * --- .> concurrency: 1 (gevent)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> dataset          exchange=dataset(direct) key=dataset
+                .> generation       exchange=generation(direct) key=generation
+                .> mail             exchange=mail(direct) key=mail
+                .> ops_trace        exchange=ops_trace(direct) key=ops_trace
+
+[tasks]
+  . schedule.clean_embedding_cache_task.clean_embedding_cache_task
+  . schedule.clean_unused_datasets_task.clean_unused_datasets_task
+  . tasks.add_document_to_index_task.add_document_to_index_task
+  . tasks.annotation.add_annotation_to_index_task.add_annotation_to_index_task
+  . tasks.annotation.batch_import_annotations_task.batch_import_annotations_task
+  . tasks.annotation.delete_annotation_index_task.delete_annotation_index_task
+  . tasks.annotation.disable_annotation_reply_task.disable_annotation_reply_task
+  . tasks.annotation.enable_annotation_reply_task.enable_annotation_reply_task
+  . tasks.annotation.update_annotation_to_index_task.update_annotation_to_index_task
+  . tasks.batch_create_segment_to_index_task.batch_create_segment_to_index_task
+  . tasks.clean_dataset_task.clean_dataset_task
+  . tasks.clean_document_task.clean_document_task
+  . tasks.clean_notion_document_task.clean_notion_document_task
+  . tasks.deal_dataset_vector_index_task.deal_dataset_vector_index_task
+  . tasks.delete_segment_from_index_task.delete_segment_from_index_task
+  . tasks.disable_segment_from_index_task.disable_segment_from_index_task
+  . tasks.document_indexing_sync_task.document_indexing_sync_task
+  . tasks.document_indexing_task.document_indexing_task
+  . tasks.document_indexing_update_task.document_indexing_update_task
+  . tasks.duplicate_document_indexing_task.duplicate_document_indexing_task
+  . tasks.enable_segment_to_index_task.enable_segment_to_index_task
+  . tasks.mail_invite_member_task.send_invite_member_mail_task
+  . tasks.ops_trace_task.process_trace_tasks
+  . tasks.recover_document_indexing_task.recover_document_indexing_task
+  . tasks.remove_app_and_related_data_task.remove_app_and_related_data_task
+  . tasks.remove_document_from_index_task.remove_document_from_index_task
+  . tasks.retry_document_indexing_task.retry_document_indexing_task
+  . tasks.sync_website_document_indexing_task.sync_website_document_indexing_task
+
+[2024-07-09 14:04:42,014: INFO/MainProcess] Connected to redis://:**@localhost:6379/1
+[2024-07-09 14:04:42,019: INFO/MainProcess] mingle: searching for neighbors
+[2024-07-09 14:04:43,033: INFO/MainProcess] mingle: all alone
+[2024-07-09 14:04:43,050: INFO/MainProcess] celery@VM-4-5-ubuntu ready.
+[2024-07-09 14:04:43,055: INFO/MainProcess] pidbox: Connected to redis://:**@localhost:6379/1.
+[2024-07-11 01:23:47,449: INFO/MainProcess] Task tasks.remove_document_from_index_task.remove_document_from_index_task[942d2e6f-e544-4055-803c-f29627155935] received
+[2024-07-11 01:23:47,452: INFO/MainProcess] [32mStart remove document segments from index: 15ea07dc-977a-438a-992a-9520811ef35c[0m
+[2024-07-11 01:23:47,546: INFO/MainProcess] [32mDocument removed from index: 15ea07dc-977a-438a-992a-9520811ef35c latency: 0.0940210570115596[0m
+[2024-07-11 01:23:47,565: INFO/MainProcess] Task tasks.remove_document_from_index_task.remove_document_from_index_task[942d2e6f-e544-4055-803c-f29627155935] succeeded in 0.11369841801933944s: None

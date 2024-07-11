@@ -1,0 +1,56 @@
+nohup: ignoring input
+
+> dify-web@0.6.12-fix1 start
+> cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js
+
+  ▲ Next.js 14.2.4
+  - Local:        http://localhost:3000
+  - Network:      http://0.0.0.0:3000
+
+ ✓ Starting...
+ ✓ Ready in 114ms
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *
+Invalid languages: *

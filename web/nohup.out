@@ -1,0 +1,506 @@
+
+> dify-web@0.6.12-fix1 start
+> cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js
+
+  ▲ Next.js 14.2.4
+  - Local:        http://localhost:3000
+  - Network:      http://0.0.0.0:3000
+
+ ✓ Starting...
+ ✓ Ready in 138ms
+
+> dify-web@0.6.12-fix1 start
+> cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js
+
+ ⨯ Failed to start server
+Error: listen EADDRINUSE: address already in use 0.0.0.0:3000
+    at Server.setupListenHandle [as _listen2] (node:net:1872:16)
+    at listenInCluster (node:net:1920:12)
+    at doListen (node:net:2075:7)
+    at process.processTicksAndRejections (node:internal/process/task_queues:83:21) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '0.0.0.0',
+  port: 3000
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}
+ ⨯ Error: Cannot find module '/home/lighthouse/dify/web/.next/standalone/.next/server/pages/_error.js'
+Require stack:
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js
+- /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js
+- /home/lighthouse/dify/web/.next/standalone/server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1144:15)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:55:36
+    at Module._load (node:internal/modules/cjs/loader:985:27)
+    at Module.require (node:internal/modules/cjs/loader:1235:19)
+    at mod.require (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require-hook.js:65:28)
+    at require (node:internal/modules/helpers:176:18)
+    at requirePage (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js:109:84)
+    at /home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:84
+    at async loadComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/load-components.js:98:26)
+    at async NextNodeServer.findPageComponentsImpl (/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js:710:36) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/require.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next-server.js',
+    '/home/lighthouse/dify/web/.next/standalone/node_modules/next/dist/server/next.js',
+    '/home/lighthouse/dify/web/.next/standalone/server.js'
+  ]
+}

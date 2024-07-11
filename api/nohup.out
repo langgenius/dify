@@ -1,0 +1,348 @@
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/pydub/utils.py:170: RuntimeWarning: Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work
+  warn("Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work", RuntimeWarning)
+2024-07-04 14:26:15,855.855 WARNING [MainThread] [ext_mail.py:50] - MAIL_TYPE is not set
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/celery/platforms.py:829: SecurityWarning: You're running the worker with superuser privileges: this is
+absolutely not recommended!
+
+Please specify a different user using the --uid option.
+
+User information: uid=0 euid=0 gid=0 egid=0
+
+  warnings.warn(SecurityWarning(ROOT_DISCOURAGED.format(
+ 
+ -------------- celery@VM-4-5-ubuntu v5.3.6 (emerald-rush)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-107-generic-x86_64-with-glibc2.35 2024-07-04 14:26:17
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         app:0x7f4b4b4a77c0
+- ** ---------- .> transport:   redis://:**@localhost:6379/1
+- ** ---------- .> results:     postgresql://postgres:**@localhost:5432/dify
+- *** --- * --- .> concurrency: 1 (gevent)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> dataset          exchange=dataset(direct) key=dataset
+                .> generation       exchange=generation(direct) key=generation
+                .> mail             exchange=mail(direct) key=mail
+                .> ops_trace        exchange=ops_trace(direct) key=ops_trace
+
+[tasks]
+  . schedule.clean_embedding_cache_task.clean_embedding_cache_task
+  . schedule.clean_unused_datasets_task.clean_unused_datasets_task
+  . tasks.add_document_to_index_task.add_document_to_index_task
+  . tasks.annotation.add_annotation_to_index_task.add_annotation_to_index_task
+  . tasks.annotation.batch_import_annotations_task.batch_import_annotations_task
+  . tasks.annotation.delete_annotation_index_task.delete_annotation_index_task
+  . tasks.annotation.disable_annotation_reply_task.disable_annotation_reply_task
+  . tasks.annotation.enable_annotation_reply_task.enable_annotation_reply_task
+  . tasks.annotation.update_annotation_to_index_task.update_annotation_to_index_task
+  . tasks.batch_create_segment_to_index_task.batch_create_segment_to_index_task
+  . tasks.clean_dataset_task.clean_dataset_task
+  . tasks.clean_document_task.clean_document_task
+  . tasks.clean_notion_document_task.clean_notion_document_task
+  . tasks.deal_dataset_vector_index_task.deal_dataset_vector_index_task
+  . tasks.delete_segment_from_index_task.delete_segment_from_index_task
+  . tasks.disable_segment_from_index_task.disable_segment_from_index_task
+  . tasks.document_indexing_sync_task.document_indexing_sync_task
+  . tasks.document_indexing_task.document_indexing_task
+  . tasks.document_indexing_update_task.document_indexing_update_task
+  . tasks.duplicate_document_indexing_task.duplicate_document_indexing_task
+  . tasks.enable_segment_to_index_task.enable_segment_to_index_task
+  . tasks.mail_invite_member_task.send_invite_member_mail_task
+  . tasks.ops_trace_task.process_trace_tasks
+  . tasks.recover_document_indexing_task.recover_document_indexing_task
+  . tasks.remove_app_and_related_data_task.remove_app_and_related_data_task
+  . tasks.remove_document_from_index_task.remove_document_from_index_task
+  . tasks.retry_document_indexing_task.retry_document_indexing_task
+  . tasks.sync_website_document_indexing_task.sync_website_document_indexing_task
+
+[2024-07-04 14:26:17,380: INFO/MainProcess] Connected to redis://:**@localhost:6379/1
+[2024-07-04 14:26:17,385: INFO/MainProcess] mingle: searching for neighbors
+[2024-07-04 14:26:18,397: INFO/MainProcess] mingle: all alone
+[2024-07-04 14:26:18,413: INFO/MainProcess] celery@VM-4-5-ubuntu ready.
+[2024-07-04 14:26:18,417: INFO/MainProcess] pidbox: Connected to redis://:**@localhost:6379/1.
+
+Restarting celery worker (/home/lighthouse/dify/api/.venv/bin/celery -A app.celery worker -P gevent -c 1 -Q dataset,generation,mail,ops_trace --loglevel INFO)
+
+worker: Warm shutdown (MainProcess)
+[2024-07-04 14:50:29,088: WARNING/MainProcess] Traceback (most recent call last):
+[2024-07-04 14:50:29,089: WARNING/MainProcess]   File "src/gevent/_waiter.py", line 122, in gevent._gevent_c_waiter.Waiter.switch
+[2024-07-04 14:50:29,089: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/celery/worker/pidbox.py", line 118, in loop
+    connection.drain_events(timeout=1.0)
+[2024-07-04 14:50:29,089: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/kombu/connection.py", line 341, in drain_events
+    return self.transport.drain_events(self.connection, **kwargs)
+[2024-07-04 14:50:29,089: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/kombu/transport/virtual/base.py", line 997, in drain_events
+    get(self._deliver, timeout=timeout)
+[2024-07-04 14:50:29,089: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/kombu/transport/redis.py", line 591, in get
+    ret = self.handle_event(fileno, event)
+[2024-07-04 14:50:29,089: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/kombu/transport/redis.py", line 573, in handle_event
+    return self.on_readable(fileno), self
+[2024-07-04 14:50:29,089: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/kombu/transport/redis.py", line 569, in on_readable
+    chan.handlers[type]()
+[2024-07-04 14:50:29,089: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/kombu/transport/redis.py", line 913, in _receive
+    ret.append(self._receive_one(c))
+[2024-07-04 14:50:29,089: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/kombu/transport/redis.py", line 923, in _receive_one
+    response = c.parse_response()
+[2024-07-04 14:50:29,090: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/redis/client.py", line 837, in parse_response
+    response = self._execute(conn, try_read)
+[2024-07-04 14:50:29,090: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/redis/client.py", line 813, in _execute
+    return conn.retry.call_with_retry(
+[2024-07-04 14:50:29,090: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/redis/retry.py", line 49, in call_with_retry
+    fail(error)
+[2024-07-04 14:50:29,090: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/redis/client.py", line 815, in <lambda>
+    lambda error: self._disconnect_raise_connect(conn, error),
+[2024-07-04 14:50:29,090: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/redis/client.py", line 802, in _disconnect_raise_connect
+    raise error
+[2024-07-04 14:50:29,090: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/redis/retry.py", line 46, in call_with_retry
+    return do()
+[2024-07-04 14:50:29,090: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/redis/client.py", line 814, in <lambda>
+    lambda: command(*args, **kwargs),
+[2024-07-04 14:50:29,090: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/redis/client.py", line 835, in try_read
+    return conn.read_response(disconnect_on_error=False, push_request=True)
+[2024-07-04 14:50:29,090: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/redis/connection.py", line 512, in read_response
+    response = self._parser.read_response(disable_decoding=disable_decoding)
+[2024-07-04 14:50:29,090: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/redis/_parsers/hiredis.py", line 124, in read_response
+    self.read_from_socket()
+[2024-07-04 14:50:29,090: WARNING/MainProcess]   File "/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/redis/_parsers/hiredis.py", line 86, in read_from_socket
+    raise ConnectionError(SERVER_CLOSED_CONNECTION_ERROR)
+[2024-07-04 14:50:29,090: WARNING/MainProcess] redis.exceptions.ConnectionError: Connection closed by server.
+[2024-07-04 14:50:29,091: WARNING/MainProcess] 2024-07-04T14:50:29Z
+[2024-07-04 14:50:29,091: WARNING/MainProcess]  
+[2024-07-04 14:50:29,091: WARNING/MainProcess] <built-in method switch of gevent._gevent_c_greenlet_primitives.TrackedRawGreenlet object at 0x7f4b4b1bb600> failed with ConnectionError
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/pydub/utils.py:170: RuntimeWarning: Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work
+  warn("Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work", RuntimeWarning)
+2024-07-04 14:50:46,423.423 WARNING [MainThread] [ext_mail.py:50] - MAIL_TYPE is not set
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/celery/platforms.py:829: SecurityWarning: You're running the worker with superuser privileges: this is
+absolutely not recommended!
+
+Please specify a different user using the --uid option.
+
+User information: uid=0 euid=0 gid=0 egid=0
+
+  warnings.warn(SecurityWarning(ROOT_DISCOURAGED.format(
+ 
+ -------------- celery@VM-4-5-ubuntu v5.3.6 (emerald-rush)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-107-generic-x86_64-with-glibc2.35 2024-07-04 14:50:48
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         app:0x7f39e6dec040
+- ** ---------- .> transport:   redis://:**@localhost:6379/1
+- ** ---------- .> results:     postgresql://postgres:**@localhost:5432/dify
+- *** --- * --- .> concurrency: 1 (gevent)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> dataset          exchange=dataset(direct) key=dataset
+                .> generation       exchange=generation(direct) key=generation
+                .> mail             exchange=mail(direct) key=mail
+                .> ops_trace        exchange=ops_trace(direct) key=ops_trace
+
+[tasks]
+  . schedule.clean_embedding_cache_task.clean_embedding_cache_task
+  . schedule.clean_unused_datasets_task.clean_unused_datasets_task
+  . tasks.add_document_to_index_task.add_document_to_index_task
+  . tasks.annotation.add_annotation_to_index_task.add_annotation_to_index_task
+  . tasks.annotation.batch_import_annotations_task.batch_import_annotations_task
+  . tasks.annotation.delete_annotation_index_task.delete_annotation_index_task
+  . tasks.annotation.disable_annotation_reply_task.disable_annotation_reply_task
+  . tasks.annotation.enable_annotation_reply_task.enable_annotation_reply_task
+  . tasks.annotation.update_annotation_to_index_task.update_annotation_to_index_task
+  . tasks.batch_create_segment_to_index_task.batch_create_segment_to_index_task
+  . tasks.clean_dataset_task.clean_dataset_task
+  . tasks.clean_document_task.clean_document_task
+  . tasks.clean_notion_document_task.clean_notion_document_task
+  . tasks.deal_dataset_vector_index_task.deal_dataset_vector_index_task
+  . tasks.delete_segment_from_index_task.delete_segment_from_index_task
+  . tasks.disable_segment_from_index_task.disable_segment_from_index_task
+  . tasks.document_indexing_sync_task.document_indexing_sync_task
+  . tasks.document_indexing_task.document_indexing_task
+  . tasks.document_indexing_update_task.document_indexing_update_task
+  . tasks.duplicate_document_indexing_task.duplicate_document_indexing_task
+  . tasks.enable_segment_to_index_task.enable_segment_to_index_task
+  . tasks.mail_invite_member_task.send_invite_member_mail_task
+  . tasks.ops_trace_task.process_trace_tasks
+  . tasks.recover_document_indexing_task.recover_document_indexing_task
+  . tasks.remove_app_and_related_data_task.remove_app_and_related_data_task
+  . tasks.remove_document_from_index_task.remove_document_from_index_task
+  . tasks.retry_document_indexing_task.retry_document_indexing_task
+  . tasks.sync_website_document_indexing_task.sync_website_document_indexing_task
+
+[2024-07-04 14:50:48,731: ERROR/MainProcess] consumer: Cannot connect to redis://:**@localhost:6379/1: Error 111 connecting to localhost:6379. Connection refused..
+Trying again in 2.00 seconds... (1/100)
+
+[2024-07-04 14:50:50,735: ERROR/MainProcess] consumer: Cannot connect to redis://:**@localhost:6379/1: Error 111 connecting to localhost:6379. Connection refused..
+Trying again in 4.00 seconds... (2/100)
+
+[2024-07-04 14:50:54,741: ERROR/MainProcess] consumer: Cannot connect to redis://:**@localhost:6379/1: Error 111 connecting to localhost:6379. Connection refused..
+Trying again in 6.00 seconds... (3/100)
+
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/pydub/utils.py:170: RuntimeWarning: Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work
+  warn("Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work", RuntimeWarning)
+2024-07-04 15:04:08,120.120 WARNING [MainThread] [ext_mail.py:50] - MAIL_TYPE is not set
+ * Debug mode: on
+2024-07-04 15:04:10,350.350 INFO [MainThread] [_internal.py:97] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://10.0.4.5:5001
+2024-07-04 15:04:10,351.351 INFO [MainThread] [_internal.py:97] - [33mPress CTRL+C to quit[0m
+2024-07-04 15:04:10,352.352 INFO [MainThread] [_internal.py:97] -  * Restarting with stat
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/pydub/utils.py:170: RuntimeWarning: Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work
+  warn("Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work", RuntimeWarning)
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/pydub/utils.py:170: RuntimeWarning: Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work
+  warn("Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work", RuntimeWarning)
+2024-07-04 15:04:21,304.304 WARNING [MainThread] [ext_mail.py:50] - MAIL_TYPE is not set
+2024-07-04 15:04:22,598.598 WARNING [MainThread] [_internal.py:97] -  * Debugger is active!
+2024-07-04 15:04:22,660.660 INFO [MainThread] [_internal.py:97] -  * Debugger PIN: 453-417-242
+2024-07-04 15:04:25,069.069 WARNING [MainThread] [ext_mail.py:50] - MAIL_TYPE is not set
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/celery/platforms.py:829: SecurityWarning: You're running the worker with superuser privileges: this is
+absolutely not recommended!
+
+Please specify a different user using the --uid option.
+
+User information: uid=0 euid=0 gid=0 egid=0
+
+  warnings.warn(SecurityWarning(ROOT_DISCOURAGED.format(
+ 
+ -------------- celery@VM-4-5-ubuntu v5.3.6 (emerald-rush)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-107-generic-x86_64-with-glibc2.35 2024-07-04 15:04:26
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         app:0x7f278014b880
+- ** ---------- .> transport:   redis://:**@localhost:6379/1
+- ** ---------- .> results:     postgresql://postgres:**@localhost:5432/dify
+- *** --- * --- .> concurrency: 1 (gevent)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> dataset          exchange=dataset(direct) key=dataset
+                .> generation       exchange=generation(direct) key=generation
+                .> mail             exchange=mail(direct) key=mail
+                .> ops_trace        exchange=ops_trace(direct) key=ops_trace
+
+[tasks]
+  . schedule.clean_embedding_cache_task.clean_embedding_cache_task
+  . schedule.clean_unused_datasets_task.clean_unused_datasets_task
+  . tasks.add_document_to_index_task.add_document_to_index_task
+  . tasks.annotation.add_annotation_to_index_task.add_annotation_to_index_task
+  . tasks.annotation.batch_import_annotations_task.batch_import_annotations_task
+  . tasks.annotation.delete_annotation_index_task.delete_annotation_index_task
+  . tasks.annotation.disable_annotation_reply_task.disable_annotation_reply_task
+  . tasks.annotation.enable_annotation_reply_task.enable_annotation_reply_task
+  . tasks.annotation.update_annotation_to_index_task.update_annotation_to_index_task
+  . tasks.batch_create_segment_to_index_task.batch_create_segment_to_index_task
+  . tasks.clean_dataset_task.clean_dataset_task
+  . tasks.clean_document_task.clean_document_task
+  . tasks.clean_notion_document_task.clean_notion_document_task
+  . tasks.deal_dataset_vector_index_task.deal_dataset_vector_index_task
+  . tasks.delete_segment_from_index_task.delete_segment_from_index_task
+  . tasks.disable_segment_from_index_task.disable_segment_from_index_task
+  . tasks.document_indexing_sync_task.document_indexing_sync_task
+  . tasks.document_indexing_task.document_indexing_task
+  . tasks.document_indexing_update_task.document_indexing_update_task
+  . tasks.duplicate_document_indexing_task.duplicate_document_indexing_task
+  . tasks.enable_segment_to_index_task.enable_segment_to_index_task
+  . tasks.mail_invite_member_task.send_invite_member_mail_task
+  . tasks.ops_trace_task.process_trace_tasks
+  . tasks.recover_document_indexing_task.recover_document_indexing_task
+  . tasks.remove_app_and_related_data_task.remove_app_and_related_data_task
+  . tasks.remove_document_from_index_task.remove_document_from_index_task
+  . tasks.retry_document_indexing_task.retry_document_indexing_task
+  . tasks.sync_website_document_indexing_task.sync_website_document_indexing_task
+
+[2024-07-04 15:04:26,760: INFO/MainProcess] Connected to redis://:**@localhost:6379/1
+[2024-07-04 15:04:26,765: INFO/MainProcess] mingle: searching for neighbors
+[2024-07-04 15:04:27,785: INFO/MainProcess] mingle: all alone
+[2024-07-04 15:04:27,805: INFO/MainProcess] celery@VM-4-5-ubuntu ready.
+[2024-07-04 15:04:27,813: INFO/MainProcess] pidbox: Connected to redis://:**@localhost:6379/1.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/pydub/utils.py:170: RuntimeWarning: Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work
+  warn("Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work", RuntimeWarning)
+2024-07-04 15:07:42,893.893 WARNING [MainThread] [ext_mail.py:50] - MAIL_TYPE is not set
+ * Debug mode: on
+Address already in use
+Port 5001 is in use by another program. Either identify and stop that program, or start the server with a different port.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/pydub/utils.py:170: RuntimeWarning: Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work
+  warn("Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work", RuntimeWarning)
+2024-07-04 15:08:47,817.817 WARNING [MainThread] [ext_mail.py:50] - MAIL_TYPE is not set
+ * Debug mode: on
+Address already in use
+Port 5001 is in use by another program. Either identify and stop that program, or start the server with a different port.
+None of PyTorch, TensorFlow >= 2.0, or Flax have been found. Models won't be available and only tokenizers, configuration and file/data utilities can be used.
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/pydub/utils.py:170: RuntimeWarning: Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work
+  warn("Couldn't find ffmpeg or avconv - defaulting to ffmpeg, but may not work", RuntimeWarning)
+2024-07-04 15:10:08,160.160 WARNING [MainThread] [ext_mail.py:50] - MAIL_TYPE is not set
+/home/lighthouse/dify/api/.venv/lib/python3.10/site-packages/celery/platforms.py:829: SecurityWarning: You're running the worker with superuser privileges: this is
+absolutely not recommended!
+
+Please specify a different user using the --uid option.
+
+User information: uid=0 euid=0 gid=0 egid=0
+
+  warnings.warn(SecurityWarning(ROOT_DISCOURAGED.format(
+ 
+ -------------- celery@VM-4-5-ubuntu v5.3.6 (emerald-rush)
+--- ***** ----- 
+-- ******* ---- Linux-5.15.0-107-generic-x86_64-with-glibc2.35 2024-07-04 15:10:09
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         app:0x7f699819f880
+- ** ---------- .> transport:   redis://:**@localhost:6379/1
+- ** ---------- .> results:     postgresql://postgres:**@localhost:5432/dify
+- *** --- * --- .> concurrency: 1 (gevent)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> dataset          exchange=dataset(direct) key=dataset
+                .> generation       exchange=generation(direct) key=generation
+                .> mail             exchange=mail(direct) key=mail
+                .> ops_trace        exchange=ops_trace(direct) key=ops_trace
+
+[tasks]
+  . schedule.clean_embedding_cache_task.clean_embedding_cache_task
+  . schedule.clean_unused_datasets_task.clean_unused_datasets_task
+  . tasks.add_document_to_index_task.add_document_to_index_task
+  . tasks.annotation.add_annotation_to_index_task.add_annotation_to_index_task
+  . tasks.annotation.batch_import_annotations_task.batch_import_annotations_task
+  . tasks.annotation.delete_annotation_index_task.delete_annotation_index_task
+  . tasks.annotation.disable_annotation_reply_task.disable_annotation_reply_task
+  . tasks.annotation.enable_annotation_reply_task.enable_annotation_reply_task
+  . tasks.annotation.update_annotation_to_index_task.update_annotation_to_index_task
+  . tasks.batch_create_segment_to_index_task.batch_create_segment_to_index_task
+  . tasks.clean_dataset_task.clean_dataset_task
+  . tasks.clean_document_task.clean_document_task
+  . tasks.clean_notion_document_task.clean_notion_document_task
+  . tasks.deal_dataset_vector_index_task.deal_dataset_vector_index_task
+  . tasks.delete_segment_from_index_task.delete_segment_from_index_task
+  . tasks.disable_segment_from_index_task.disable_segment_from_index_task
+  . tasks.document_indexing_sync_task.document_indexing_sync_task
+  . tasks.document_indexing_task.document_indexing_task
+  . tasks.document_indexing_update_task.document_indexing_update_task
+  . tasks.duplicate_document_indexing_task.duplicate_document_indexing_task
+  . tasks.enable_segment_to_index_task.enable_segment_to_index_task
+  . tasks.mail_invite_member_task.send_invite_member_mail_task
+  . tasks.ops_trace_task.process_trace_tasks
+  . tasks.recover_document_indexing_task.recover_document_indexing_task
+  . tasks.remove_app_and_related_data_task.remove_app_and_related_data_task
+  . tasks.remove_document_from_index_task.remove_document_from_index_task
+  . tasks.retry_document_indexing_task.retry_document_indexing_task
+  . tasks.sync_website_document_indexing_task.sync_website_document_indexing_task
+
+[2024-07-04 15:10:09,711: INFO/MainProcess] Connected to redis://:**@localhost:6379/1
+[2024-07-04 15:10:09,727: INFO/MainProcess] mingle: searching for neighbors
+[2024-07-04 15:10:10,747: INFO/MainProcess] mingle: all alone
+[2024-07-04 15:10:10,762: INFO/MainProcess] celery@VM-4-5-ubuntu ready.
+[2024-07-04 15:10:10,771: INFO/MainProcess] pidbox: Connected to redis://:**@localhost:6379/1.
+2024-07-04 15:10:32,808.808 INFO [Thread-2 (process_request_thread)] [_internal.py:97] - 183.57.17.13 - - [04/Jul/2024 15:10:32] "[33mGET / HTTP/1.1[0m" 404 -
+
+worker: Warm shutdown (MainProcess)
+
+worker: Warm shutdown (MainProcess)
