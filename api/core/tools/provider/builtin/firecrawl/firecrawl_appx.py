@@ -66,7 +66,7 @@ class FirecrawlApp:
     ):
         endpoint = f'{self.base_url}/v0/crawl'
         headers = self._prepare_headers(idempotency_key)
-        data = {'url': url, **kwargs}
+        data = {'url': url, **kwargs['params']}
         response = self._request('POST', endpoint, data, headers)
         if response is None:
             raise HTTPError("Failed to initiate crawl after multiple retries")
