@@ -6,6 +6,7 @@ from flask import Flask, current_app
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.rerank.constants.rerank_mode import RerankMode
 from core.rag.retrieval.retrival_methods import RetrievalMethod
 from extensions.ext_database import db
 from models.dataset import Dataset
@@ -150,7 +151,9 @@ class RetrievalService:
 
                 if documents:
                     if reranking_model and retrival_method == RetrievalMethod.SEMANTIC_SEARCH:
-                        data_post_processor = DataPostProcessor(str(dataset.tenant_id), reranking_model, False)
+                        data_post_processor = DataPostProcessor(str(dataset.tenant_id),
+                                                                RerankMode.RERANKING_MODEL.value,
+                                                                reranking_model, None, False)
                         all_documents.extend(data_post_processor.invoke(
                             query=query,
                             documents=documents,
@@ -182,7 +185,9 @@ class RetrievalService:
                 )
                 if documents:
                     if reranking_model and retrival_method == RetrievalMethod.FULL_TEXT_SEARCH:
-                        data_post_processor = DataPostProcessor(str(dataset.tenant_id), reranking_model, False)
+                        data_post_processor = DataPostProcessor(str(dataset.tenant_id),
+                                                                RerankMode.RERANKING_MODEL.value,
+                                                                reranking_model, None, False)
                         all_documents.extend(data_post_processor.invoke(
                             query=query,
                             documents=documents,

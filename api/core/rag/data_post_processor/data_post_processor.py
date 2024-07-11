@@ -6,8 +6,8 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.data_post_processor.reorder import ReorderRunner
 from core.rag.models.document import Document
 from core.rag.rerank.constants.rerank_mode import RerankMode
-from core.rag.rerank.entity.weight import Weights
-from core.rag.rerank.rerank_model import RerankRunner, RerankModelRunner
+from core.rag.rerank.entity.weight import Weights, VectorSetting, KeywordSetting
+from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.rerank.weight_rerank import WeightRerankRunner
 
 
@@ -16,7 +16,7 @@ class DataPostProcessor:
     """
 
     def __init__(self, tenant_id: str, reranking_mode: str,
-                 reranking_model: dict, weights: dict,
+                 reranking_model: dict, weights: Optional[dict] = None,
                  reorder_enabled: bool = False):
         self.rerank_runner = self._get_rerank_runner(reranking_mode, reranking_model, weights, tenant_id)
         self.reorder_runner = self._get_reorder_runner(reorder_enabled)
@@ -32,13 +32,20 @@ class DataPostProcessor:
         return documents
 
     def _get_rerank_runner(self, reranking_mode: str, reranking_model: dict, weights: dict,
-                           tenant_id: str) -> Optional[RerankRunner | WeightRerankRunner]:
+                           tenant_id: str) -> Optional[RerankModelRunner | WeightRerankRunner]:
         if reranking_mode == RerankMode.WEIGHTED_SCORE.value:
             return WeightRerankRunner(
+                tenant_id,
                 Weights(
                     weight_type=weights['weight_type'],
-                    vector_weight=weights['vector_weight'],
-                    rerank_weight=weights['rerank_weight']
+                    vector_setting=VectorSetting(
+                        vector_weight=weights['vector_setting']['vector_weight'],
+                        embedding_provider_name=weights['vector_setting']['embedding_provider_name'],
+                        embedding_model_name=weights['vector_setting']['embedding_model_name'],
+                    ),
+                    keyword_setting=KeywordSetting(
+                        keyword_weight=weights['keyword_setting']['keyword_weight'],
+                    )
                 )
             )
         elif reranking_mode == RerankMode.RERANKING_MODEL.value:

@@ -1,16 +1,21 @@
 from typing import Optional
 
-from numba import np
+import numpy as np
 
+from core.embedding.cached_embedding import CacheEmbedding
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.models.document import Document
-from core.rag.rerank.entity.weight import Weights
+from core.rag.rerank.entity.weight import Weights, VectorSetting
 from rank_bm25 import BM25Okapi
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 
 class WeightRerankRunner:
 
-    def __init__(self, weights: Weights) -> None:
+    def __init__(self, tenant_id: str, weights: Weights) -> None:
+        self.tenant_id = tenant_id
         self.weights = weights
 
     def run(self, query: str, documents: list[Document], score_threshold: Optional[float] = None,
@@ -39,22 +44,17 @@ class WeightRerankRunner:
         rerank_documents = []
         query_bm25_scores = self._calculate_bm25(query, documents)
 
-        query_vector_scores = self._calculate_cosine(query, documents)
-        for document in documents:
+        query_vector_scores = self._calculate_cosine(self.tenant_id, query, documents, self.weights.vector_setting)
+        for document, query_bm25_score, query_vector_score in zip(documents, query_bm25_scores, query_vector_scores):
             # format document
-            rerank_document = Document(
-                page_content=result.text,
-                metadata={
-                    "doc_id": documents[result.index].metadata['doc_id'],
-                    "doc_hash": documents[result.index].metadata['doc_hash'],
-                    "document_id": documents[result.index].metadata['document_id'],
-                    "dataset_id": documents[result.index].metadata['dataset_id'],
-                    'score': result.score
-                }
-            )
-            rerank_documents.append(rerank_document)
-
-        return rerank_documents
+            score = self.weights.vector_setting.vector_weight * query_vector_score + \
+                    self.weights.keyword_setting.keyword_weight * query_bm25_score
+            if score_threshold and score < score_threshold:
+                continue
+            document.metadata['score'] = score
+            rerank_documents.append(document)
+        rerank_documents = sorted(rerank_documents, key=lambda x: x.metadata['score'], reverse=True)
+        return rerank_documents[:top_n] if top_n else rerank_documents
 
     def _calculate_bm25(self, query: str, documents: list[Document]) -> list[float]:
         """
@@ -71,14 +71,40 @@ class WeightRerankRunner:
             # get the document keywords
             document_keywords = keyword_table_handler.extract_keywords(document.page_content, None)
             document.metadata['keywords'] = document_keywords
-            documents_keywords.append(document)
+            documents_keywords.append(document_keywords)
         # build bm25 model
         bm25 = BM25Okapi(documents_keywords)
         query_bm25_scores = bm25.get_scores(query_keywords)
 
-        return query_bm25_scores
+        # normalize BM25 scores to the range [0, 1]
+        max_score = max(query_bm25_scores)
+        min_score = min(query_bm25_scores)
 
-    def _calculate_cosine(self, query: str, documents: list[Document]) -> list[float]:
+        normalized_query_bm25_scores = [(score - min_score) / (max_score - min_score) if max_score != min_score else 0 for score in
+                             query_bm25_scores]
+
+        # 初始化TfidfVectorizer
+        vectorizer = TfidfVectorizer()
+
+        # 拟合文档并转换文档关键词
+        tfidf_matrix = vectorizer.fit_transform(documents_keywords)
+
+        # 将查询转换为TF-IDF向量
+        query_tfidf = vectorizer.transform([query])
+
+        # 获取词汇表
+        feature_names = vectorizer.get_feature_names_out()
+
+        # 打印查询的TF-IDF值
+        query_tfidf_values = query_tfidf.toarray()[0]
+        for word, tfidf_value in zip(feature_names, query_tfidf_values):
+            if tfidf_value > 0:
+                print(f"Query word: {word}, TF-IDF value: {tfidf_value:.4f}")
+
+        return normalized_query_bm25_scores
+
+    def _calculate_cosine(self, tenant_id: str, query: str, documents: list[Document],
+                          vector_setting: VectorSetting) -> list[float]:
         """
         Calculate Cosine scores
         :param query: search query
@@ -87,16 +113,27 @@ class WeightRerankRunner:
         :return:
         """
         query_vector_scores = []
-        query_vector =
+
+        model_manager = ModelManager()
+
+        embedding_model = model_manager.get_model_instance(
+            tenant_id=tenant_id,
+            provider=vector_setting.embedding_provider_name,
+            model_type=ModelType.TEXT_EMBEDDING,
+            model=vector_setting.embedding_model_name
+
+        )
+        cache_embedding = CacheEmbedding(embedding_model)
+        query_vector = cache_embedding.embed_query(query)
         for document in documents:
             # calculate cosine similarity
             if 'score' in document.metadata:
                 query_vector_scores.append(document.metadata['score'])
             else:
-                vector = document.metadata['vector']
+                content_vector = document.metadata['vector']
                 # transform to NumPy
-                vec1 = np.array(vec1)
-                vec2 = np.array(vec2)
+                vec1 = np.array(query_vector)
+                vec2 = np.array(document.metadata['vector'])
 
                 # calculate dot product
                 dot_product = np.dot(vec1, vec2)
@@ -109,4 +146,4 @@ class WeightRerankRunner:
                 cosine_sim = dot_product / (norm_vec1 * norm_vec2)
                 query_vector_scores.append(cosine_sim)
 
-         return query_vector_scores
+        return query_vector_scores
