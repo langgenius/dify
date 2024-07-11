@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from 'classnames'
 import { RiDeleteBinLine } from '@remixicon/react'
+import cn from '@/utils/classnames'
 
 type Props = {
   className?: string

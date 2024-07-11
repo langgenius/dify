@@ -134,6 +134,7 @@ class AppApi(Resource):
         parser.add_argument('description', type=str, location='json')
         parser.add_argument('icon', type=str, location='json')
         parser.add_argument('icon_background', type=str, location='json')
+        parser.add_argument('max_active_requests', type=int, location='json')
         args = parser.parse_args()
 
         app_service = AppService()
@@ -190,6 +191,10 @@ class AppExportApi(Resource):
     @get_app_model
     def get(self, app_model):
         """Export app"""
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
         app_service = AppService()
 
         return {

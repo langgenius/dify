@@ -13,7 +13,6 @@
             "jinja": true,
             "env": {
                 "FLASK_APP": "app.py",
-                "FLASK_DEBUG": "1",
                 "GEVENT_SUPPORT": "True"
             },
             "args": [

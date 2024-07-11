@@ -107,7 +107,7 @@ const generateImageComponent = async (entry, pathList) => {
 // DON NOT EDIT IT MANUALLY
 
 import * as React from 'react'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 import s from './<%= fileName %>.module.css'
 
 const Icon = React.forwardRef<HTMLSpanElement, React.DetailedHTMLProps<React.HTMLAttributes<HTMLSpanElement>, HTMLSpanElement>>((

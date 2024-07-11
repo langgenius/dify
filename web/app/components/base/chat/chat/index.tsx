@@ -11,7 +11,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { debounce } from 'lodash-es'
-import classNames from 'classnames'
 import { useShallow } from 'zustand/react/shallow'
 import type {
   ChatConfig,
@@ -25,6 +24,7 @@ import Answer from './answer'
 import ChatInput from './chat-input'
 import TryToAsk from './try-to-ask'
 import { ChatContextProvider } from './context'
+import classNames from '@/utils/classnames'
 import type { Emoji } from '@/app/components/tools/types'
 import Button from '@/app/components/base/button'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'

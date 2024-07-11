@@ -1,11 +1,12 @@
 'use client'
-import cn from 'classnames'
+import React from 'react'
 import Script from 'next/script'
 import { useSystemFeaturesStore } from '../components/system-features-initor/store'
 import Forms from './forms'
 import Header from './_header'
 import style from './page.module.css'
 import UserSSOForm from './userSSOForm'
+import cn from '@/utils/classnames'
 import { IS_CE_EDITION } from '@/config'
 
 const SignIn = () => {

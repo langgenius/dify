@@ -388,6 +388,7 @@ const translation = {
           url: '이미지 URL',
           upload_file_id: '업로드된 파일 ID',
         },
+        json: '도구로 생성된 JSON',
       },
     },
     questionClassifiers: {

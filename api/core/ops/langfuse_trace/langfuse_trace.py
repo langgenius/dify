@@ -107,9 +107,21 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         # through workflow_run_id get all_nodes_execution
         workflow_nodes_executions = (
-            db.session.query(WorkflowNodeExecution)
+            db.session.query(
+                WorkflowNodeExecution.id,
+                WorkflowNodeExecution.tenant_id,
+                WorkflowNodeExecution.app_id,
+                WorkflowNodeExecution.title,
+                WorkflowNodeExecution.node_type,
+                WorkflowNodeExecution.status,
+                WorkflowNodeExecution.inputs,
+                WorkflowNodeExecution.outputs,
+                WorkflowNodeExecution.created_at,
+                WorkflowNodeExecution.elapsed_time,
+                WorkflowNodeExecution.process_data,
+                WorkflowNodeExecution.execution_metadata,
+            )
             .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
-            .order_by(WorkflowNodeExecution.index.desc())
             .all()
         )
 

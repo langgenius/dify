@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { RiCloseLine } from '@remixicon/react'
 import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
 import NodePanel from './node'
+import cn from '@/utils/classnames'
 import type { NodeTracing } from '@/types/workflow'
 const i18nPrefix = 'workflow.singleRun'
 

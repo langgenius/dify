@@ -40,4 +40,8 @@
   .btn-ghost {
     @apply bg-transparent hover:bg-gray-200 border-transparent shadow-none text-gray-700;
   }
+
+  .btn-tertiary {
+    @apply bg-[#F2F4F7] hover:bg-[#E9EBF0] border-transparent shadow-none text-gray-700;
+  }
 }

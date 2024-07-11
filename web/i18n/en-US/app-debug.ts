@@ -323,6 +323,9 @@ const translation = {
       language: 'Language',
       resolutionTooltip: 'Text-to-speech voice support language。',
       voice: 'Voice',
+      autoPlay: 'Auto Play',
+      autoPlayEnabled: 'Turn On',
+      autoPlayDisabled: 'Turn Off',
     },
   },
   openingStatement: {

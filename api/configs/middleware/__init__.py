@@ -1,13 +1,16 @@
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic import Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic_settings import BaseSettings
 
 from configs.middleware.cache.redis_config import RedisConfig
 from configs.middleware.storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from configs.middleware.storage.amazon_s3_storage_config import S3StorageConfig
 from configs.middleware.storage.azure_blob_storage_config import AzureBlobStorageConfig
 from configs.middleware.storage.google_cloud_storage_config import GoogleCloudStorageConfig
+from configs.middleware.storage.oci_storage_config import OCIStorageConfig
 from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
+from configs.middleware.vdb.analyticdb_config import AnalyticdbConfig
 from configs.middleware.vdb.chroma_config import ChromaConfig
 from configs.middleware.vdb.milvus_config import MilvusConfig
 from configs.middleware.vdb.opensearch_config import OpenSearchConfig
@@ -21,7 +24,7 @@ from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
 
 
-class StorageConfig(BaseModel):
+class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
         description='storage type,'
                     ' default to `local`,'
@@ -35,14 +38,14 @@ class StorageConfig(BaseModel):
     )
 
 
-class VectorStoreConfig(BaseModel):
+class VectorStoreConfig(BaseSettings):
     VECTOR_STORE: Optional[str] = Field(
         description='vector store type',
         default=None,
     )
 
 
-class KeywordStoreConfig(BaseModel):
+class KeywordStoreConfig(BaseSettings):
     KEYWORD_STORE: str = Field(
         description='keyword store type',
         default='jieba',
@@ -80,6 +83,11 @@ class DatabaseConfig:
         default='',
     )
 
+    DB_EXTRAS: str = Field(
+        description='db extras options. Example: keepalives_idle=60&keepalives=1',
+        default='',
+    )
+
     SQLALCHEMY_DATABASE_URI_SCHEME: str = Field(
         description='db uri scheme',
         default='postgresql',
@@ -88,7 +96,12 @@ class DatabaseConfig:
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
-        db_extras = f"?client_encoding={self.DB_CHARSET}" if self.DB_CHARSET else ""
+        db_extras = (
+            f"{self.DB_EXTRAS}&client_encoding={self.DB_CHARSET}"
+            if self.DB_CHARSET
+            else self.DB_EXTRAS
+        ).strip("&")
+        db_extras = f"?{db_extras}" if db_extras else ""
         return (f"{self.SQLALCHEMY_DATABASE_URI_SCHEME}://"
                 f"{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}"
                 f"{db_extras}")
@@ -113,7 +126,7 @@ class DatabaseConfig:
         default=False,
     )
 
-    SQLALCHEMY_ECHO: bool = Field(
+    SQLALCHEMY_ECHO: bool | str = Field(
         description='whether to enable SqlAlchemy echo',
         default=False,
     )
@@ -143,7 +156,7 @@ class CeleryConfig(DatabaseConfig):
 
     @computed_field
     @property
-    def CELERY_RESULT_BACKEND(self) -> str:
+    def CELERY_RESULT_BACKEND(self) -> str | None:
         return 'db+{}'.format(self.SQLALCHEMY_DATABASE_URI) \
             if self.CELERY_BACKEND == 'database' else self.CELERY_BROKER_URL
 
@@ -167,9 +180,11 @@ class MiddlewareConfig(
     GoogleCloudStorageConfig,
     TencentCloudCOSStorageConfig,
     S3StorageConfig,
+    OCIStorageConfig,
 
     # configs of vdb and vdb providers
     VectorStoreConfig,
+    AnalyticdbConfig,
     ChromaConfig,
     MilvusConfig,
     OpenSearchConfig,

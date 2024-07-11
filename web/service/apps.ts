@@ -120,6 +120,7 @@ export const generationIntroduction: Fetcher<GenerationIntroductionResponse, { u
 }
 
 export const fetchAppVoices: Fetcher<AppVoicesListResponse, { appId: string; language?: string }> = ({ appId, language }) => {
+  language = language || 'en-US'
   return get<AppVoicesListResponse>(`apps/${appId}/text-to-audio/voices?language=${language}`)
 }
 

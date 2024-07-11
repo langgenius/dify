@@ -1,0 +1,42 @@
+provider: perfxcloud
+label:
+  en_US: PerfXCloud
+  zh_Hans: PerfXCloud
+description:
+  en_US: PerfXCloud (Pengfeng Technology) is an AI development and deployment platform tailored for developers and enterprises, providing reasoning capabilities for multiple models.
+  zh_Hans: PerfXCloud（澎峰科技）为开发者和企业量身打造的AI开发和部署平台，提供多种模型的的推理能力。
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#e3f0ff"
+help:
+  title:
+    en_US: Get your API Key from PerfXCloud
+    zh_Hans: 从 PerfXCloud 获取 API Key
+  url:
+    en_US: https://cloud.perfxlab.cn/panel/token
+supported_model_types:
+  - llm
+  - text-embedding
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
+    - variable: endpoint_url
+      label:
+        zh_Hans: 自定义 API endpoint 地址
+        en_US: Custom API endpoint URL
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: Base URL, e.g. https://cloud.perfxlab.cn/v1
+        en_US: Base URL, e.g. https://cloud.perfxlab.cn/v1

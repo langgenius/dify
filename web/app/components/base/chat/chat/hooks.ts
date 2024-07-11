@@ -6,6 +6,8 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
+import { useParams, usePathname } from 'next/navigation'
+import { v4 as uuidV4 } from 'uuid'
 import type {
   ChatConfig,
   ChatItem,
@@ -20,6 +22,7 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import type { Annotation } from '@/models/log'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -91,7 +94,8 @@ export const useChat = (
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
   const checkPromptVariables = useCheckPromptVariables()
-
+  const params = useParams()
+  const pathname = usePathname()
   useEffect(() => {
     setAutoFreeze(false)
     return () => {
@@ -262,6 +266,19 @@ export const useChat = (
     let isAgentMode = false
     let hasSetResponseId = false
 
+    let ttsUrl = ''
+    let ttsIsPublic = false
+    if (params.token) {
+      ttsUrl = '/text-to-audio'
+      ttsIsPublic = true
+    }
+    else if (params.appId) {
+      if (pathname.search('explore/installed') > -1)
+        ttsUrl = `/installed-apps/${params.appId}/text-to-audio`
+      else
+        ttsUrl = `/apps/${params.appId}/text-to-audio`
+    }
+    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => {})
     ssePost(
       url,
       {
@@ -529,6 +546,15 @@ export const useChat = (
               ...responseItem,
             }
           }))
+        },
+        onTTSChunk: (messageId: string, audio: string) => {
+          if (!audio || audio === '')
+            return
+          player.playAudioWithAudio(audio, true)
+          AudioPlayerManager.getInstance().resetMsgId(messageId)
+        },
+        onTTSEnd: (messageId: string, audio: string) => {
+          player.playAudioWithAudio(audio, false)
         },
       })
     return true

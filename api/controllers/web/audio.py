@@ -19,7 +19,7 @@ from controllers.web.error import (
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from models.model import App
+from models.model import App, AppMode
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -69,16 +69,35 @@ class AudioApi(WebApiResource):
 
 class TextApi(WebApiResource):
     def post(self, app_model: App, end_user):
+        from flask_restful import reqparse
         try:
+            parser = reqparse.RequestParser()
+            parser.add_argument('message_id', type=str, required=False, location='json')
+            parser.add_argument('voice', type=str, location='json')
+            parser.add_argument('streaming', type=bool, location='json')
+            args = parser.parse_args()
+
+            message_id = args.get('message_id')
+            if (app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]
+                    and app_model.workflow
+                    and app_model.workflow.features_dict):
+                text_to_speech = app_model.workflow.features_dict.get('text_to_speech')
+                voice = args.get('voice') if args.get('voice') else text_to_speech.get('voice')
+            else:
+                try:
+                    voice = args.get('voice') if args.get(
+                        'voice') else app_model.app_model_config.text_to_speech_dict.get('voice')
+                except Exception:
+                    voice = None
+
             response = AudioService.transcript_tts(
                 app_model=app_model,
-                text=request.form['text'],
+                message_id=message_id,
                 end_user=end_user.external_user_id,
-                voice=request.form['voice'] if request.form.get('voice') else None,
-                streaming=False
+                voice=voice
             )
 
-            return {'data': response.data.decode('latin1')}
+            return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
             raise AppUnavailableError()

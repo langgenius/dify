@@ -1,8 +1,8 @@
 import React from 'react'
-import cn from 'classnames'
 import Header from '../signin/_header'
 import style from '../signin/page.module.css'
 import ActivateForm from './activateForm'
+import cn from '@/utils/classnames'
 
 const Activate = () => {
   return (
