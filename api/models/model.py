@@ -74,6 +74,7 @@ class App(db.Model):
     is_public = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     is_universal = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     tracing = db.Column(db.Text, nullable=True)
+    max_active_requests = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 

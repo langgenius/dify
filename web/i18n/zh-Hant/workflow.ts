@@ -387,6 +387,7 @@ const translation = {
           url: '圖片鏈接',
           upload_file_id: '上傳文件ID',
         },
+        json: '工具生成的JSON',
       },
     },
     questionClassifiers: {

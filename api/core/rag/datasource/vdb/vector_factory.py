@@ -57,6 +57,9 @@ class Vector:
             case VectorType.MILVUS:
                 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
                 return MilvusVectorFactory
+            case VectorType.MYSCALE:
+                from core.rag.datasource.vdb.myscale.myscale_vector import MyScaleVectorFactory
+                return MyScaleVectorFactory
             case VectorType.PGVECTOR:
                 from core.rag.datasource.vdb.pgvector.pgvector import PGVectorFactory
                 return PGVectorFactory
