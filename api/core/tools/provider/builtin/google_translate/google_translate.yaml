@@ -4,11 +4,9 @@ identity:
   label:
     en_US: Google Translate
     zh_Hans: 谷歌翻译
-    pt_BR: Google Translate
   description:
     en_US: Translate text using Google
     zh_Hans: 使用 Google 进行翻译
-    pt_BR: Translate text using Google
   icon: icon.svg
   tags:
     - utilities

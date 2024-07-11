@@ -179,8 +179,6 @@ zhipuai = "1.0.7"
 ############################################################
 # Tool dependencies required by tool implementations
 ############################################################
-py-trans = "^0.6.1"
-aiofiles = "^24.1.0"
 
 [tool.poetry.group.tool.dependencies]
 arxiv = "2.1.0"
