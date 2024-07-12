@@ -17,7 +17,7 @@ class GoogleTranslate(BuiltinTool):
         content = tool_parameters.get('content', '')
         if not content:
             return self.create_text_message('Invalid parameter content')
-        
+
         dest = tool_parameters.get('dest', '')
         if not dest:
             return self.create_text_message('Invalid parameter destination language')
@@ -43,7 +43,8 @@ class GoogleTranslate(BuiltinTool):
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             }
 
-            response_json = requests.get(url, params=params, headers=headers).json()
+            response_json = requests.get(
+                url, params=params, headers=headers).json()
             result = response_json[0]
             translated_text = ''.join([item[0] for item in result if item[0]])
             return str(translated_text)
