@@ -8,8 +8,16 @@ if [[ "${MIGRATION_ENABLED}" == "true" ]]; then
 fi
 
 if [[ "${MODE}" == "worker" ]]; then
-  celery -A app.celery worker -P ${CELERY_WORKER_CLASS:-gevent} -c ${CELERY_WORKER_AMOUNT:-1} --loglevel INFO \
-    -Q ${CELERY_QUEUES:-dataset,generation,mail,ops_trace,app_deletion}
+  if [ "${CELERY_AUTO_SCALE,,}" = "true" ]; then
+    MAX_WORKERS=${CELERY_MAX_WORKERS:-4}
+    MIN_WORKERS=${CELERY_MIN_WORKERS:-1}
+    CONCURRENCY_OPTION="--autoscale=${MAX_WORKERS},${MIN_WORKERS}"
+  else
+    CONCURRENCY_OPTION="-c ${CELERY_WORKER_AMOUNT:-1}"
+  fi
+
+  celery -A app.celery worker -P ${CELERY_WORKER_CLASS:-gevent} $CONCURRENCY_OPTION --loglevel INFO \
+    -Q ${CELERY_QUEUES:-dataset,generation,mail}
 elif [[ "${MODE}" == "beat" ]]; then
   celery -A app.celery beat --loglevel INFO
 else
