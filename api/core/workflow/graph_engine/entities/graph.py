@@ -22,6 +22,12 @@ class GraphParallel(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     """random uuid parallel id"""
 
+    start_from_node_id: str
+    """start from node id"""
+
+    end_to_node_id: Optional[str] = None
+    """end to node id"""
+
     parent_parallel_id: Optional[str] = None
     """parent parallel id if exists"""
 
@@ -32,6 +38,9 @@ class Graph(BaseModel):
 
     node_ids: list[str] = Field(default_factory=list)
     """graph node ids"""
+
+    node_id_config_mapping: dict[str, dict] = Field(default_factory=list)
+    """node configs mapping (node id: node config)"""
 
     edge_mapping: dict[str, list[GraphEdge]] = Field(default_factory=dict)
     """graph edge mapping (source node id: edges)"""
@@ -102,6 +111,7 @@ class Graph(BaseModel):
 
         # fetch nodes that have no predecessor node
         root_node_configs = []
+        all_node_id_config_mapping: dict[str, dict] = {}
         for node_config in node_configs:
             node_id = node_config.get('id')
             if not node_id:
@@ -109,6 +119,8 @@ class Graph(BaseModel):
 
             if node_id not in target_edge_ids:
                 root_node_configs.append(node_config)
+
+            all_node_id_config_mapping[node_id] = node_config
 
         root_node_ids = [node_config.get('id') for node_config in root_node_configs]
 
@@ -129,6 +141,8 @@ class Graph(BaseModel):
             node_id=root_node_id
         )
 
+        node_id_config_mapping = {node_id: all_node_id_config_mapping[node_id] for node_id in node_ids}
+
         # init parallel mapping
         parallel_mapping: dict[str, GraphParallel] = {}
         node_parallel_mapping: dict[str, str] = {}
@@ -143,6 +157,7 @@ class Graph(BaseModel):
         graph = cls(
             root_node_id=root_node_id,
             node_ids=node_ids,
+            node_id_config_mapping=node_id_config_mapping,
             edge_mapping=edge_mapping,
             parallel_mapping=parallel_mapping,
             node_parallel_mapping=node_parallel_mapping
@@ -243,7 +258,10 @@ class Graph(BaseModel):
                 if all(node_id in node_parallel_mapping for node_id in parallel_node_ids):
                     parent_parallel_id = node_parallel_mapping[parallel_node_ids[0]]
 
-                parallel = GraphParallel(parent_parallel_id=parent_parallel_id)
+                parallel = GraphParallel(
+                    start_from_node_id=start_node_id,
+                    parent_parallel_id=parent_parallel_id
+                )
                 parallel_mapping[parallel.id] = parallel
 
                 in_branch_node_ids = cls._fetch_all_node_ids_in_parallels(
@@ -252,9 +270,19 @@ class Graph(BaseModel):
                 )
 
                 # collect all branches node ids
+                end_to_node_id: Optional[str] = None
                 for branch_node_id, node_ids in in_branch_node_ids.items():
                     for node_id in node_ids:
                         node_parallel_mapping[node_id] = parallel.id
+
+                        if not end_to_node_id and edge_mapping.get(node_id):
+                            node_edges = edge_mapping[node_id]
+                            target_node_id = node_edges[0].target_node_id
+                            if node_parallel_mapping.get(target_node_id) == parent_parallel_id:
+                                end_to_node_id = target_node_id
+
+                if end_to_node_id:
+                    parallel.end_to_node_id = end_to_node_id
 
         for graph_edge in target_node_edges:
             cls._recursively_add_parallels(

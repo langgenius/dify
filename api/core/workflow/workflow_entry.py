@@ -16,7 +16,6 @@ from core.workflow.entities.workflow_entities import WorkflowNodeAndResult, Work
 from core.workflow.entities.workflow_runtime_state import WorkflowRuntimeState
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.run_condition import RunCondition
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.base_node import BaseIterationNode, BaseNode, UserFrom
@@ -24,7 +23,6 @@ from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
-from core.workflow.nodes.iterable_node import IterableNodeMixin
 from core.workflow.nodes.iteration.entities import IterationState
 from core.workflow.nodes.iteration.iteration_node import IterationNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
@@ -151,103 +149,6 @@ class WorkflowEntry:
         )
 
         return rst
-
-    def _recursively_add_edges(self, graph: Graph,
-                               source_node_config: dict,
-                               edges_mapping: dict,
-                               nodes_mapping: dict,
-                               root_node_configs: list[dict]) -> None:
-        """
-        Add edges
-
-        :param source_node_config: source node config
-        :param edges_mapping: edges mapping
-        :param nodes_mapping: nodes mapping
-        :param root_node_configs: root node configs
-        """
-        source_node_id = source_node_config.get('id')
-        if not source_node_id:
-            return
-
-        for edge_config in edges_mapping.get(source_node_id, []):
-            target_node_id = edge_config.get('target')
-            if not target_node_id:
-                continue
-
-            target_node_config = nodes_mapping.get(target_node_id)
-            if not target_node_config:
-                continue
-
-            sub_graph: Optional[Graph] = None
-            target_node_type: NodeType = NodeType.value_of(target_node_config.get('data', {}).get('type'))
-            target_node_cls = None
-            if target_node_type:
-                target_node_cls = node_classes.get(target_node_type)
-                if not target_node_cls:
-                    raise Exception(f'Node class not found for node type: {target_node_type}')
-
-            if target_node_cls and issubclass(target_node_cls, IterableNodeMixin):
-                # find iteration/loop sub nodes that have no predecessor node
-                sub_graph_root_node_config = None
-                for root_node_config in root_node_configs:
-                    if root_node_config.get('parentId') == target_node_id:
-                        sub_graph_root_node_config = root_node_config
-                        break
-
-                if sub_graph_root_node_config:
-                    # create sub graph run condition
-                    iterable_node_cls: IterableNodeMixin = cast(IterableNodeMixin, target_node_cls)
-                    sub_graph_run_condition = RunCondition(
-                        type='condition',
-                        conditions=iterable_node_cls.get_conditions(
-                            node_config=target_node_config
-                        )
-                    )
-
-                    # create sub graph
-                    sub_graph = Graph.init(
-                        root_node_config=sub_graph_root_node_config,
-                        run_condition=sub_graph_run_condition
-                    )
-
-                    self._recursively_add_edges(
-                        graph=sub_graph,
-                        source_node_config=sub_graph_root_node_config,
-                        edges_mapping=edges_mapping,
-                        nodes_mapping=nodes_mapping,
-                        root_node_configs=root_node_configs
-                    )
-
-                    # add edge from end node to first node of sub graph
-                    sub_graph_root_node_id = sub_graph.root_node.id
-                    for leaf_node in sub_graph.get_leaf_nodes():
-                        leaf_node.add_child(sub_graph_root_node_id)
-
-            # parse run condition
-            run_condition = None
-            if edge_config.get('sourceHandle'):
-                run_condition = RunCondition(
-                    type='branch_identify',
-                    branch_identify=edge_config.get('sourceHandle')
-                )
-
-            # add edge
-            graph.add_edge(
-                edge_config=edge_config,
-                source_node_config=source_node_config,
-                target_node_config=target_node_config,
-                target_node_sub_graph=sub_graph,
-                run_condition=run_condition
-            )
-
-            # recursively add edges
-            self._recursively_add_edges(
-                graph=graph,
-                source_node_config=target_node_config,
-                edges_mapping=edges_mapping,
-                nodes_mapping=nodes_mapping,
-                root_node_configs=root_node_configs
-            )
 
     def _run_workflow(self, graph_config: dict,
                       workflow_runtime_state: WorkflowRuntimeState,

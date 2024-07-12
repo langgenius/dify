@@ -1,4 +1,3 @@
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -19,7 +18,7 @@ class GraphRuntimeState(BaseModel):
 
     variable_pool: VariablePool
 
-    start_at: Optional[float] = None
+    start_at: float
     total_tokens: int = 0
     node_run_steps: int = 0
 
