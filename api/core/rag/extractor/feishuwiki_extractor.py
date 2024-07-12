@@ -3,6 +3,7 @@ import logging
 from typing import Optional
 
 import requests
+from langchain_text_splitters import MarkdownTextSplitter
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -10,7 +11,6 @@ from extensions.ext_database import db
 from libs.oauth_data_source import FeishuWikiOAuth
 from models.dataset import Document as DocumentModel
 from models.source import DataSourceOauthBinding
-from langchain_text_splitters import MarkdownTextSplitter
 
 logger = logging.getLogger(__name__)
 
