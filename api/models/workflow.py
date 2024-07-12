@@ -3,8 +3,7 @@ from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional, Union
 
-from flask_login import current_user
-
+import contexts
 from core.app.variables import (
     SecretVariable,
     Variable,
@@ -122,7 +121,7 @@ class Workflow(db.Model):
     updated_by = db.Column(StringUUID)
     updated_at = db.Column(db.DateTime)
     # TODO: update this field to sqlalchemy column after frontend update.
-    _environment_variables = '{}'
+    _environment_variables = '{"token": {"name": "token", "value": "SFlCUklEOlfCobLe/lmU+c2evAQ1qA/W/YnuBcWqNTxC5+IkUTNtEDotk1Cd9Du31kOI4gOqPSsCqWs+SoO+cxbJ8loftgsyCbrHKmEQS3Ki6/05XFeY1iKR4AgUAPFrfLyWwjc5ztZIPEnzL30T+NPm6rlm/x/7Wlsw0B59HQcImFB9pRzI6JXBXmY4ZYlXdBH1zfWZkHRn2MQO372O6WPfuT8XMgBSjnX95/tUfyupQIplEjEyAiOaLwVmZNvtQ1757IcRYq7AIh35e8XVFCPMYK9B9jIv1zoOh3MZc8+B0v79yi3XseFXW74yoV9ufqbRELqUpcQfimGQDXFoyMOn4fd6letd97DjT41jNbsOZGlR16SqBbv9nnw4lHnEkOalC6XFspO9e81EAg7/QQ==", "value_type": "secret"}}'
 
     @property
     def created_by_account(self):
@@ -191,15 +190,14 @@ class Workflow(db.Model):
     @property
     def environment_variables(self) -> Sequence[Variable]:
         # FIXME: get current user from flask context, may not a good way.
-        if current_user is None:
-            raise ValueError('current user is not found')
+        user = contexts.current_user.get()
 
         environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
         results = [variable_factory.from_mapping(v) for v in environment_variables_dict.values()]
         # decrypt secret variables value
         decrypt_func = (
             lambda var: var.model_copy(
-                update={'value': encrypter.decrypt_token(tenant_id=current_user.current_tenant_id, token=var.value)}
+                update={'value': encrypter.decrypt_token(tenant_id=user.current_tenant_id, token=var.value)}
             )
             if isinstance(var, SecretVariable)
             else var
@@ -210,8 +208,7 @@ class Workflow(db.Model):
     @environment_variables.setter
     def environment_variables(self, vars: Sequence[Variable]):
         # FIXME: get current user from flask context, may not a good way.
-        if current_user is None:
-            raise ValueError('current user is not found')
+        user = contexts.current_user.get()
 
         previous_vars = {var.name: var for var in self.environment_variables}
         new_vars: list[Variable] = []
@@ -220,7 +217,7 @@ class Workflow(db.Model):
                 var = previous_vars[var.name]
             elif var.name not in previous_vars and isinstance(var, SecretVariable):
                 var = var.model_copy(
-                    update={'value': encrypter.encrypt_token(tenant_id=current_user.current_tenant_id, token=var.value)}
+                    update={'value': encrypter.encrypt_token(tenant_id=user.current_tenant_id, token=var.value)}
                 )
             new_vars.append(var)
         environment_variables_json = json.dumps(
