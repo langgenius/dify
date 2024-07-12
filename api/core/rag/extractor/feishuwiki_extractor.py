@@ -3,7 +3,6 @@ import logging
 from typing import Optional
 
 import requests
-from langchain_text_splitters import MarkdownTextSplitter
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -14,9 +13,6 @@ from models.source import DataSourceOauthBinding
 
 logger = logging.getLogger(__name__)
 
-DOCUMENT_RAW_CONTENT_URL = "https://open.larkoffice.com/open-apis/docx/v1/documents/{document_id}/raw_content"
-DOCUMENT_BLOCK_CONTENT_URL = "https://open.larkoffice.com/open-apis/docx/v1/documents/{document_id}/blocks/{block_id}"
-DOCUMENT_ALL_BLOCK_URL = "https://open.larkoffice.com/open-apis/docx/v1/documents/{document_id}/blocks"
 FEISHU_WIKI_NODE_URL = "https://open.larkoffice.com/open-apis/wiki/v2/spaces/get_node"
 FEISHU_PLUGIN_DOMAIN = "https://bytesec.bytedance.com/lark-plugin"
 
@@ -40,9 +36,7 @@ class FeishuWikiExtractor(BaseExtractor):
         )
         if self._feishu_obj_type == "docx":
             md_content = self.get_document_markdown_content(self._feishu_obj_token)
-            markdown_splitter = MarkdownTextSplitter(chunk_size=200, chunk_overlap=10)
-            docs = markdown_splitter.create_documents([md_content])
-            return docs
+            return [Document(page_content=md_content)]
         else:
             raise ValueError("feishu obj type not supported")
 
@@ -89,7 +83,7 @@ class FeishuWikiExtractor(BaseExtractor):
             "token": self._feishu_obj_token,
             "obj_type": self._feishu_obj_type,
         }
-        response = requests.get(url=FEISHU_WIKI_NODE_URL, params=params, headers=headers, timeout=30)
+        response = requests.get(url=FEISHU_WIKI_NODE_URL, params=params, headers=headers, timeout=(60,120))
         response_json = response.json()
         if not response.ok:
             raise Exception(
