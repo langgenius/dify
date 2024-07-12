@@ -1,7 +1,7 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
@@ -16,22 +16,23 @@ import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
-import cn from '@/utils/classnames'
 
 type CreateFromDSLModalProps = {
   show: boolean
   onSuccess?: () => void
   onClose: () => void
   activeTab?: string
+  dslUrl?: string
 }
 
-const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = 'from-file' }: CreateFromDSLModalProps) => {
+const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = 'from-file', dslUrl }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [currentFile, setDSLFile] = useState<File>()
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
+  const [dslUrlValue, setDslUrlValue] = useState(dslUrl)
 
   const readFile = (file: File) => {
     const reader = new FileReader()
@@ -90,15 +91,28 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = 'from-file' 
     },
   ]
 
+  const buttonDisabled = useMemo(() => {
+    if (isAppsFull)
+      return true
+    if (currentTab === 'from-file')
+      return !currentFile
+    if (currentTab === 'from-url')
+      return !dslUrlValue
+    return false
+  }, [isAppsFull, currentTab, currentFile, dslUrlValue])
+
   return (
     <Modal
       className='p-0 w-[520px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
       isShow={show}
       onClose={() => { }}
     >
-      <div className='flex items-center justify-between pt-3 pl-6 pr-5 text-text-primary title-2xl-semi-bold'>
+      <div className='flex items-center justify-between pt-6 pl-6 pr-5 pb-3 text-text-primary title-2xl-semi-bold'>
         {t('app.createFromConfigFile')}
-        <div className='flex items-center w-8 h-8 cursor-pointer'>
+        <div
+          className='flex items-center w-8 h-8 cursor-pointer'
+          onClick={() => onClose()}
+        >
           <RiCloseLine className='w-5 h-5 text-text-tertiary' />
         </div>
       </div>
@@ -107,13 +121,15 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = 'from-file' 
           tabs.map(tab => (
             <div
               key={tab.key}
-              className={cn(
-                'border-[2px] cursor-pointer',
-                currentTab === tab.key && 'text-text-primary',
-              )}
+              className='relative flex items-center h-full cursor-pointer'
               onClick={() => setCurrentTab(tab.key)}
             >
               {tab.label}
+              {
+                currentTab === tab.key && (
+                  <div className='absolute bottom-0 w-full h-[2px] bg-util-colors-blue-brand-blue-brand-600'></div>
+                )
+              }
             </div>
           ))
         }
@@ -133,16 +149,23 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = 'from-file' 
             <div>
               <div className='mb-1 system-md-semibold leading6'>DSL URL</div>
               <input
+                placeholder='Paste DSL link here'
                 className='px-2 w-full h-8 border border-components-input-border-active bg-components-input-bg-active rounded-lg outline-none appearance-none placeholder:text-components-input-text-placeholder system-sm-regular'
+                value={dslUrlValue}
+                onChange={e => setDslUrlValue(e.target.value)}
               />
             </div>
           )
         }
       </div>
-      {isAppsFull && <AppsFull loc='app-create-dsl' />}
-      <div className='pt-6 flex justify-end'>
+      {isAppsFull && (
+        <div className='px-6'>
+          <AppsFull className='mt-0' loc='app-create-dsl' />
+        </div>
+      )}
+      <div className='flex justify-end px-6 py-5'>
         <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-        <Button disabled={isAppsFull || !currentFile} variant="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
+        <Button disabled={buttonDisabled} variant="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
       </div>
     </Modal>
   )
