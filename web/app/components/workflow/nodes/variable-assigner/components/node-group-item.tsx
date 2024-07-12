@@ -2,7 +2,6 @@ import {
   memo,
   useMemo,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import { useStore } from '../../../store'
@@ -21,6 +20,7 @@ import { filterVar } from '../utils'
 import AddVariable from './add-variable'
 import NodeVariableItem from './node-variable-item'
 import { isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 type GroupItem = {

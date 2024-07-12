@@ -264,7 +264,7 @@ class ModelInstance:
             user=user
         )
 
-    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, streaming: bool, user: Optional[str] = None) \
+    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None) \
             -> str:
         """
         Invoke large language tts model
@@ -287,8 +287,7 @@ class ModelInstance:
             content_text=content_text,
             user=user,
             tenant_id=tenant_id,
-            voice=voice,
-            streaming=streaming
+            voice=voice
         )
 
     def _round_robin_invoke(self, function: Callable, *args, **kwargs):

@@ -2,7 +2,6 @@ import {
   memo,
   useRef,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import ShortcutsName from './shortcuts-name'
@@ -15,6 +14,7 @@ import {
 } from './hooks'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
+import cn from '@/utils/classnames'
 
 const PanelContextmenu = () => {
   const { t } = useTranslation()

@@ -5,7 +5,6 @@ import {
   // useRef,
   useState,
 } from 'react'
-import cn from 'classnames'
 import {
   RiClipboardLine,
   RiCloseLine,
@@ -27,6 +26,7 @@ import { SimpleBtn } from '../../app/text-generate/item'
 import Toast from '../../base/toast'
 import IterationResultPanel from '../run/iteration-result-panel'
 import InputsPanel from './inputs-panel'
+import cn from '@/utils/classnames'
 import Loading from '@/app/components/base/loading'
 import type { NodeTracing } from '@/types/workflow'
 

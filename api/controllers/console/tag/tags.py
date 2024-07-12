@@ -36,7 +36,7 @@ class TagListApi(Resource):
     @account_initialization_required
     def post(self):
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -68,7 +68,7 @@ class TagUpdateDeleteApi(Resource):
     def patch(self, tag_id):
         tag_id = str(tag_id)
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -109,8 +109,8 @@ class TagBindingCreateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+        if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -134,8 +134,8 @@ class TagBindingDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+        if not (current_user.is_editor or current_user.is_dataset_editor):
             raise Forbidden()
 
         parser = reqparse.RequestParser()

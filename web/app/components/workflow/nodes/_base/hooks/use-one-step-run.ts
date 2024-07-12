@@ -337,6 +337,7 @@ const useOneStepRun = <T>({
           variable: item.variable,
           type: InputVarType.textInput,
           required: true,
+          value_selector: item.value_selector,
         }
       }
       return {

@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'

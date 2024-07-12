@@ -388,6 +388,7 @@ const translation = {
           url: 'URL зображення',
           upload_file_id: 'ID завантаженого файлу',
         },
+        json: 'JSON, згенерований інструментом',
       },
     },
     questionClassifiers: {

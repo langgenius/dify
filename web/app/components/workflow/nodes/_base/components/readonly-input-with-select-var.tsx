@@ -12,6 +12,7 @@ import { Env } from '@/app/components/base/icons/src/vender/line/others'
 type Props = {
   nodeId: string
   value: string
+  className?: string
 }
 
 const VAR_PLACEHOLDER = '@#!@#!'
@@ -19,6 +20,7 @@ const VAR_PLACEHOLDER = '@#!@#!'
 const ReadonlyInputWithSelectVar: FC<Props> = ({
   nodeId,
   value,
+  className,
 }) => {
   const { getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const availableNodes = getBeforeNodesInSameBranchIncludeParent(nodeId)
@@ -70,7 +72,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
   })()
 
   return (
-    <div className='break-all text-xs'>
+    <div className={cn('break-all text-xs', className)}>
       {res}
     </div>
   )

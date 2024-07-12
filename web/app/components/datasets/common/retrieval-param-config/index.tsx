@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import { RETRIEVE_METHOD } from '@/types/app'
