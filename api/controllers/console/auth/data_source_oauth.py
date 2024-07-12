@@ -46,8 +46,10 @@ class OAuthDataSource(Resource):
             return {'error': 'Invalid provider'}, 400
 
         if provider == 'notion':
-            if current_app.config.get('NOTION_INTEGRATION_TYPE') == 'internal':
-                internal_secret = current_app.config.get('NOTION_INTERNAL_SECRET')
+            if dify_config.NOTION_INTEGRATION_TYPE == 'internal':
+                internal_secret = dify_config.NOTION_INTERNAL_SECRET
+                if not internal_secret:
+                    return {'error': 'Internal secret is not set'},
                 oauth_provider.save_internal_access_token(internal_secret)
                 return {'data': ''}
             else:
