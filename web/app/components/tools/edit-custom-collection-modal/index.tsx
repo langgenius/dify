@@ -17,6 +17,7 @@ import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppIcon from '@/app/components/base/app-icon'
 import { parseParamsSchema } from '@/service/tools'
 import LabelSelector from '@/app/components/tools/labels/selector'
+import Toast from '@/app/components/base/toast'
 
 const fieldNameClassNames = 'py-2 leading-5 text-sm font-medium text-gray-900'
 type Props = {
@@ -136,6 +137,21 @@ const EditCustomCollectionModal: FC<Props> = ({
       draft.labels = labels
     })
 
+    let errorMessage = ''
+    if (!postData.provider)
+      errorMessage = t('common.errorMsg.fieldRequired', { field: t('tools.createTool.name') })
+
+    if (!postData.schema)
+      errorMessage = t('common.errorMsg.fieldRequired', { field: t('tools.createTool.schema') })
+
+    if (errorMessage) {
+      Toast.notify({
+        type: 'error',
+        message: errorMessage,
+      })
+      return
+    }
+
     if (isAdd) {
       onAdd?.(postData)
       return
@@ -175,7 +191,7 @@ const EditCustomCollectionModal: FC<Props> = ({
           <div className='flex flex-col h-full'>
             <div className='grow h-0 overflow-y-auto px-6 py-3 space-y-4'>
               <div>
-                <div className={fieldNameClassNames}>{t('tools.createTool.name')}</div>
+                <div className={fieldNameClassNames}>{t('tools.createTool.name')} <span className='ml-1 text-red-500'>*</span></div>
                 <div className='flex items-center justify-between gap-3'>
                   <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.content} background={emoji.background} />
                   <input
@@ -195,7 +211,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               <div className='select-none'>
                 <div className='flex justify-between items-center'>
                   <div className='flex items-center'>
-                    <div className={fieldNameClassNames}>{t('tools.createTool.schema')}</div>
+                    <div className={fieldNameClassNames}>{t('tools.createTool.schema')}<span className='ml-1 text-red-500'>*</span></div>
                     <div className='mx-2 w-px h-3 bg-black/5'></div>
                     <a
                       href="https://swagger.io/specification/"

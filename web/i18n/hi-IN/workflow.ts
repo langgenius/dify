@@ -405,6 +405,7 @@ const translation = {
           url: 'इमेज यूआरएल',
           upload_file_id: 'अपलोड फ़ाइल आईडी',
         },
+        json: 'उपकरण द्वारा उत्पन्न JSON',
       },
     },
     questionClassifiers: {
