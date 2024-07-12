@@ -38,7 +38,7 @@ const NodeVariableItem = ({
       )}
       <div className='flex items-center text-primary-600'>
         {!isEnv && <Variable02 className='shrink-0 w-3.5 h-3.5 text-primary-500' />}
-        {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-[#7839EE]' />}
+        {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
         <div className={cn('max-w-[75px] truncate ml-0.5 text-xs font-medium', isEnv && 'text-gray-900')} title={varName}>{varName}</div>
       </div>
     </div>

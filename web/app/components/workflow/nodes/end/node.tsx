@@ -67,7 +67,7 @@ const Node: FC<NodeProps<EndNodeType>> = ({
               )}
               <div className='flex items-center text-primary-600'>
                 {!isEnv && <Variable02 className='shrink-0 w-3.5 h-3.5 text-primary-500' />}
-                {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-[#7839EE]' />}
+                {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
                 <div className={cn('max-w-[50px] ml-0.5 text-xs font-medium truncate', isEnv && '!max-w-[70px] text-gray-900')}>{varName}</div>
               </div>
             </div>

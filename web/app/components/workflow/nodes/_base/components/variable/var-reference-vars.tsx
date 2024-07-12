@@ -105,7 +105,7 @@ const Item: FC<ItemProps> = ({
         >
           <div className='flex items-center w-0 grow'>
             {!isEnv && <Variable02 className='shrink-0 w-3.5 h-3.5 text-primary-500' />}
-            {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-[#7839EE]' />}
+            {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
             <div title={itemData.variable} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{!isEnv ? itemData.variable : itemData.variable.replace('env.', '')}</div>
           </div>
           <div className='ml-1 shrink-0 text-xs font-normal text-gray-500 capitalize'>{itemData.type}</div>

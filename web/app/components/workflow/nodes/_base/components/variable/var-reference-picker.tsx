@@ -296,7 +296,7 @@ const VarReferencePicker: FC<Props> = ({
                           )}
                           <div className='flex items-center text-primary-600'>
                             {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
-                            {isEnv && <Env className='w-3.5 h-3.5 text-[#7839EE]' />}
+                            {isEnv && <Env className='w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
                             <div className={cn('ml-0.5 text-xs font-medium truncate', isEnv && '!text-gray-900')} title={varName} style={{
                               maxWidth: maxVarNameWidth,
                             }}>{varName}</div>

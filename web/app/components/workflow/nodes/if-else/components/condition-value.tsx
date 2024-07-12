@@ -44,7 +44,7 @@ const ConditionValue = ({
   return (
     <div className='flex items-center px-1 h-6 rounded-md bg-workflow-block-parma-bg'>
       {!isENV(variableSelector) && <Variable02 className='shrink-0 mr-1 w-3.5 h-3.5 text-text-accent' />}
-      {isENV(variableSelector) && <Env className='shrink-0 mr-1 w-3.5 h-3.5 text-_util-colors-violet-violet-600' />}
+      {isENV(variableSelector) && <Env className='shrink-0 mr-1 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
       <div
         className={cn(
           'shrink-0  truncate text-xs font-medium text-text-accent',

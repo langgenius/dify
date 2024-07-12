@@ -56,7 +56,7 @@ const DSLExportConfirmModal = ({
               <tr key={env.name}>
                 <td className={cn('h-7 pl-3 border-r text-xs leading-4 font-medium', index + 1 !== envList.length && 'border-b')}>
                   <div className='flex gap-1 items-center w-[200px]'>
-                    <Env className='shrink-0 w-4 h-4 text-[#7839EE]' />
+                    <Env className='shrink-0 w-4 h-4 text-util-colors-violet-violet-600' />
                     <div className='text-gray-900 truncate'>{env.name}</div>
                     <div className='shrink-0 text-gray-500'>Secret</div>
                     <RiLock2Line className='shrink-0 w-3 h-3 text-gray-500' />

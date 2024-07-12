@@ -53,7 +53,7 @@ const VariableTag = ({
           <Variable02 className='shrink-0 mr-0.5 w-3.5 h-3.5 text-text-accent' />
         </>
       )}
-      {isEnv && <Env className='shrink-0 mr-0.5 w-3.5 h-3.5 text-_util-colors-violet-violet-600' />}
+      {isEnv && <Env className='shrink-0 mr-0.5 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
       <div
         className={cn('truncate text-text-accent font-medium', isEnv && 'text-text-secondary')}
         title={variableName}

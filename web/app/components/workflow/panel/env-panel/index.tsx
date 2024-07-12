@@ -115,7 +115,7 @@ const EnvPanel = () => {
           >
             <div className='flex items-center justify-between'>
               <div className='grow flex gap-1 items-center'>
-                <Env className='w-4 h-4 text-[#7839EE]' />
+                <Env className='w-4 h-4 text-util-colors-violet-violet-600' />
                 <div className='text-[13px] leading-4 text-gray-900 font-medium'>{env.name}</div>
                 <div className='text-xs leading-4 text-gray-500 font-medium'>{capitalize(env.value_type)}</div>
                 {env.value_type === 'secret' && <RiLock2Line className='w-3 h-3 text-gray-500' />}
