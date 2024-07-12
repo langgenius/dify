@@ -318,6 +318,9 @@ const translation = {
       language: '語言',
       resolutionTooltip: '文字轉語音音色支援語言。',
       voice: '音色',
+      autoPlay: '自動播放',
+      autoPlayEnabled: '開啟',
+      autoPlayDisabled: '關閉',
     },
   },
   openingStatement: {

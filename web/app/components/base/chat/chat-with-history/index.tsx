@@ -11,7 +11,6 @@ import {
 import { useChatWithHistory } from './hooks'
 import Sidebar from './sidebar'
 import HeaderInMobile from './header-in-mobile'
-import ConfigPanel from './config-panel'
 import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
@@ -62,7 +61,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   }
 
   return (
-    <div className={`h-full flex bg-white ${className} ${isMobile && 'flex-col'}`}>
+    <div className={`h-full flex  ${className} ${isMobile && 'flex-col'}`}>
       {
         !isMobile && (
           <Sidebar />
@@ -74,13 +73,13 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
         )
       }
       <div className={`grow overflow-hidden ${showConfigPanelBeforeChat && !appPrevChatList.length && 'flex items-center justify-center'}`}>
-        {
-          showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatList.length && (
-            <div className={`flex w-full items-center justify-center h-full ${isMobile && 'px-4'}`}>
-              <ConfigPanel />
-            </div>
-          )
-        }
+        {/* { */}
+        {/*  showConfigPanelBeforeChat && !appChatListDataLoading && !appPrevChatList.length && ( */}
+        {/*    <div className={`flex w-full items-center justify-center h-full ${isMobile && 'px-4'}`}> */}
+        {/*      <ConfigPanel /> */}
+        {/*    </div> */}
+        {/*  ) */}
+        {/* } */}
         {
           appChatListDataLoading && chatReady && (
             <Loading type='app' />

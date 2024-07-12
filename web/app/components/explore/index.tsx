@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import ExploreContext from '@/context/explore-context'
 import Sidebar from '@/app/components/explore/sidebar'
@@ -16,8 +17,9 @@ const Explore: FC<IExploreProps> = ({
   children,
 }) => {
   const { t } = useTranslation()
+  const router = useRouter()
   const [controlUpdateInstalledApps, setControlUpdateInstalledApps] = useState(0)
-  const { userProfile } = useAppContext()
+  const { userProfile, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [hasEditPermission, setHasEditPermission] = useState(false)
   const [installedApps, setInstalledApps] = useState<InstalledApp[]>([])
 
@@ -32,8 +34,13 @@ const Explore: FC<IExploreProps> = ({
     })()
   }, [])
 
+  useEffect(() => {
+    if (isCurrentWorkspaceDatasetOperator)
+      return router.replace('/datasets')
+  }, [isCurrentWorkspaceDatasetOperator])
+
   return (
-    <div className='flex h-full overflow-hidden bg-gray-100 border-t border-gray-200'>
+    <div className='flex h-full overflow-hidden border-t border-gray-200'>
       <ExploreContext.Provider
         value={
           {
@@ -46,7 +53,7 @@ const Explore: FC<IExploreProps> = ({
         }
       >
         <Sidebar controlUpdateInstalledApps={controlUpdateInstalledApps} />
-        <div className='w-0 grow'>
+        <div className='w-full'>
           {children}
         </div>
       </ExploreContext.Provider>

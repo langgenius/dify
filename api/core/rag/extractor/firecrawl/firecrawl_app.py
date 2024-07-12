@@ -46,7 +46,6 @@ class FirecrawlApp:
             raise Exception(f'Failed to scrape URL. Status code: {response.status_code}')
 
     def crawl_url(self, url, params=None) -> str:
-        start_time = time.time()
         headers = self._prepare_headers()
         json_data = {'url': url}
         if params:

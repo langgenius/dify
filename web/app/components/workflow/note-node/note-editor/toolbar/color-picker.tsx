@@ -2,9 +2,9 @@ import {
   memo,
   useState,
 } from 'react'
-import cn from 'classnames'
 import { NoteTheme } from '../../types'
 import { THEME_MAP } from '../../constants'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

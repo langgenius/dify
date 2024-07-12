@@ -34,6 +34,7 @@ type ProviderContextState = {
   onPlanInfoChanged: () => void
   enableReplaceWebAppLogo: boolean
   modelLoadBalancingEnabled: boolean
+  datasetOperatorEnabled: boolean
 }
 const ProviderContext = createContext<ProviderContextState>({
   modelProviders: [],
@@ -47,12 +48,14 @@ const ProviderContext = createContext<ProviderContextState>({
       buildApps: 12,
       teamMembers: 1,
       annotatedResponse: 1,
+      documentsUploadQuota: 50,
     },
     total: {
       vectorSpace: 200,
       buildApps: 50,
       teamMembers: 1,
       annotatedResponse: 10,
+      documentsUploadQuota: 500,
     },
   },
   isFetchedPlan: false,
@@ -60,6 +63,7 @@ const ProviderContext = createContext<ProviderContextState>({
   onPlanInfoChanged: () => { },
   enableReplaceWebAppLogo: false,
   modelLoadBalancingEnabled: false,
+  datasetOperatorEnabled: false,
 })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -86,6 +90,7 @@ export const ProviderContextProvider = ({
   const [enableBilling, setEnableBilling] = useState(true)
   const [enableReplaceWebAppLogo, setEnableReplaceWebAppLogo] = useState(false)
   const [modelLoadBalancingEnabled, setModelLoadBalancingEnabled] = useState(false)
+  const [datasetOperatorEnabled, setDatasetOperatorEnabled] = useState(false)
 
   const fetchPlan = async () => {
     const data = await fetchCurrentPlanInfo()
@@ -98,6 +103,8 @@ export const ProviderContextProvider = ({
     }
     if (data.model_load_balancing_enabled)
       setModelLoadBalancingEnabled(true)
+    if (data.dataset_operator_enabled)
+      setDatasetOperatorEnabled(true)
   }
   useEffect(() => {
     fetchPlan()
@@ -115,6 +122,7 @@ export const ProviderContextProvider = ({
       onPlanInfoChanged: fetchPlan,
       enableReplaceWebAppLogo,
       modelLoadBalancingEnabled,
+      datasetOperatorEnabled,
     }}>
       {children}
     </ProviderContext.Provider>

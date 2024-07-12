@@ -11,7 +11,6 @@ import {
   RiCloseLine,
   RiPlayLargeLine,
 } from '@remixicon/react'
-import cn from 'classnames'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import NextStep from './components/next-step'
@@ -22,6 +21,7 @@ import {
   TitleInput,
 } from './components/title-description-input'
 import { useResizePanel } from './hooks/use-resize-panel'
+import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   WorkflowHistoryEvent,
@@ -107,7 +107,7 @@ const BasePanel: FC<BasePanelProps> = ({
       </div>
       <div
         ref={containerRef}
-        className={cn('relative h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+        className={cn('h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
           width: `${panelWidth}px`,
         }}

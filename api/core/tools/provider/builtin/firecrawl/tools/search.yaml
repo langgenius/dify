@@ -1,0 +1,23 @@
+identity:
+  name: search
+  author: ahasasjeb
+  label:
+    en_US: Search
+    zh_Hans: 搜索
+description:
+  human:
+    en_US: Search, and output in Markdown format
+    zh_Hans: 搜索，并且以Markdown格式输出
+  llm: This tool can perform online searches and convert the results to Markdown format.
+parameters:
+  - name: keyword
+    type: string
+    required: true
+    label:
+      en_US: keyword
+      zh_Hans: 关键词
+    human_description:
+      en_US: Input keywords to use Firecrawl API for search.
+      zh_Hans: 输入关键词即可使用Firecrawl API进行搜索。
+    llm_description: Efficiently extract keywords from user text.
+    form: llm

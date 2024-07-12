@@ -179,6 +179,8 @@ const translation = {
     normalTip: '只能使用应用程序，不能建立应用程序',
     editor: '编辑',
     editorTip: '能够建立并编辑应用程序，不能管理团队设置',
+    datasetOperator: '知识库管理员',
+    datasetOperatorTip: '只能管理知识库',
     inviteTeamMember: '添加团队成员',
     inviteTeamMemberTip: '对方在登录后可以访问你的团队数据。',
     email: '邮箱',

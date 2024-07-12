@@ -3,10 +3,10 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import cn from 'classnames'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
 import ConfigFirecrawlModal from './config-firecrawl-modal'
+import cn from '@/utils/classnames'
 import { fetchDataSources, removeDataSourceApiKeyBinding } from '@/service/datasets'
 
 import type {
@@ -77,7 +77,7 @@ const DataSourceWebsite: FC<Props> = () => {
           logo: ({ className }: { className: string }) => (
             <div className={cn(className, 'flex items-center justify-center w-5 h-5 bg-white border border-gray-100 text-xs font-medium text-gray-500 rounded ml-3')}>🔥</div>
           ),
-          name: 'FireCrawl',
+          name: 'Firecrawl',
           isActive: true,
         }))}
         onRemove={handleRemove(DataSourceProvider.fireCrawl)}

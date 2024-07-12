@@ -1,0 +1,16 @@
+.customBrainLogo{
+    margin: 0 auto;
+    @apply mb-2;
+}
+
+.customBrain{
+    position: absolute;
+    top: 29%;
+    left: 50%;
+    transform: translate(-38%, -50%);
+    @apply text-center w-full;
+}
+
+.customBrain h4{
+    padding: 0 20%;
+}

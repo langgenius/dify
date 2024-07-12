@@ -12,6 +12,8 @@ const translation = {
     permissions: '可见权限',
     permissionsOnlyMe: '只有我',
     permissionsAllMember: '所有团队成员',
+    permissionsInvitedMembers: '部分团队成员',
+    me: '（你）',
     indexMethod: '索引模式',
     indexMethodHighQuality: '高质量',
     indexMethodHighQualityTip: '调用 Embedding 模型进行处理，以在用户查询时提供更高的准确度。',

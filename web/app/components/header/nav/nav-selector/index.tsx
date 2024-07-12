@@ -1,7 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { Fragment, useCallback } from 'react'
-import cn from 'classnames'
 import {
   RiAddLine,
   RiArrowDownSLine,
@@ -10,6 +9,7 @@ import {
 import { Menu, Transition } from '@headlessui/react'
 import { useRouter } from 'next/navigation'
 import { debounce } from 'lodash-es'
+import cn from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
 import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
@@ -82,7 +82,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                         router.push(nav.link)
                       }} title={nav.name}>
                         <div className='relative w-6 h-6 mr-2 rounded-md'>
-                          <AppIcon size='tiny' icon={nav.icon} background={nav.icon_background}/>
+                          <AppIcon size='tiny' icon={nav.icon} background={nav.icon_background} />
                           {!!nav.mode && (
                             <span className={cn(
                               'absolute w-3.5 h-3.5 -bottom-0.5 -right-0.5 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm',
@@ -113,7 +113,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                   ))
                 }
               </div>
-              {!isApp && (
+              {!isApp && isCurrentWorkspaceEditor && (
                 <Menu.Button className='p-1 w-full'>
                   <div onClick={() => onCreate('')} className={cn(
                     'flex items-center gap-2 px-3 py-[6px] rounded-lg cursor-pointer hover:bg-gray-100',
@@ -138,7 +138,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                             <RiAddLine className='w-4 h-4 text-gray-500' />
                           </div>
                           <div className='grow text-left font-normal text-[14px] text-gray-700'>{createText}</div>
-                          <RiArrowRightSLine className='shrink-0 w-3.5 h-3.5  text-gray-500'/>
+                          <RiArrowRightSLine className='shrink-0 w-3.5 h-3.5  text-gray-500' />
                         </div>
                       </Menu.Button>
                       <Transition

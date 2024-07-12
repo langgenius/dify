@@ -3,7 +3,6 @@ import {
   useRef,
 } from 'react'
 import { useKeyPress } from 'ahooks'
-import cn from 'classnames'
 import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -12,6 +11,7 @@ import {
   useWorkflowInteractions,
 } from '../../hooks'
 import ChatWrapper from './chat-wrapper'
+import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 
