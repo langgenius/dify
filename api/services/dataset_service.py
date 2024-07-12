@@ -6,10 +6,10 @@ import time
 import uuid
 from typing import Optional
 
-from flask import current_app
 from flask_login import current_user
 from sqlalchemy import func
 
+from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -650,7 +650,7 @@ class DocumentService:
                 elif document_data["data_source"]["type"] == "website_crawl":
                     website_info = document_data["data_source"]['info_list']['website_info_list']
                     count = len(website_info['urls'])
-                batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
+                batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                 if count > batch_upload_limit:
                     raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
@@ -1028,7 +1028,7 @@ class DocumentService:
             elif document_data["data_source"]["type"] == "website_crawl":
                 website_info = document_data["data_source"]['info_list']['website_info_list']
                 count = len(website_info['urls'])
-            batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
+            batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 

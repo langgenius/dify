@@ -4,8 +4,8 @@ from os import path
 from typing import Optional
 
 import requests
-from flask import current_app
 
+from configs import dify_config
 from constants.languages import languages
 from extensions.ext_database import db
 from models.model import App, RecommendedApp
@@ -25,7 +25,7 @@ class RecommendedAppService:
         :param language: language
         :return:
         """
-        mode = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_MODE', 'remote')
+        mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         if mode == 'remote':
             try:
                 result = cls._fetch_recommended_apps_from_dify_official(language)
@@ -104,7 +104,7 @@ class RecommendedAppService:
         :param language: language
         :return:
         """
-        domain = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN', 'https://tmpl.dify.ai')
+        domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f'{domain}/apps?language={language}'
         response = requests.get(url, timeout=(3, 10))
         if response.status_code != 200:
@@ -134,7 +134,7 @@ class RecommendedAppService:
         :param app_id: app id
         :return:
         """
-        mode = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_MODE', 'remote')
+        mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         if mode == 'remote':
             try:
                 result = cls._fetch_recommended_app_detail_from_dify_official(app_id)
@@ -157,7 +157,7 @@ class RecommendedAppService:
         :param app_id: App ID
         :return:
         """
-        domain = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN', 'https://tmpl.dify.ai')
+        domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f'{domain}/apps/{app_id}'
         response = requests.get(url, timeout=(3, 10))
         if response.status_code != 200:
