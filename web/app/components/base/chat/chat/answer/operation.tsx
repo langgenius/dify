@@ -4,10 +4,10 @@ import {
   useMemo,
   useState,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type { ChatItem } from '../../types'
 import { useChatContext } from '../context'
+import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import AudioBtn from '@/app/components/base/audio-btn'
@@ -117,11 +117,11 @@ const Operation: FC<OperationProps> = ({
             )}
             {(config?.text_to_speech?.enabled) && (
               <>
-                <div className='mx-1 w-[1px] h-[14px] bg-gray-200'/>
+                <div className='mx-1 w-[1px] h-[14px] bg-gray-200' />
                 <AudioBtn
+                  id={id}
                   value={content}
                   noCache={false}
-                  voice={config?.text_to_speech?.voice}
                   className='hidden group-hover:block'
                 />
               </>

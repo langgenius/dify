@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import { useUnmount } from 'ahooks'
 import React, { useCallback, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import cn from 'classnames'
 import {
   RiDashboard2Fill,
   RiDashboard2Line,
@@ -17,6 +16,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/app/store'
 import AppSideBar from '@/app/components/app-sidebar'
 import type { NavIcon } from '@/app/components/app-sidebar/navLink'

@@ -6,13 +6,14 @@ from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from typing import Any, Optional
 
-from flask import current_app
 from sqlalchemy import func
 from werkzeug.exceptions import Unauthorized
 
+from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import redis_client
+from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
@@ -29,13 +30,21 @@ from services.errors.account import (
     LinkAccountIntegrateError,
     MemberNotInTenantError,
     NoPermissionError,
+    RateLimitExceededError,
     RoleAlreadyAssignedError,
     TenantNotFound,
 )
 from tasks.mail_invite_member_task import send_invite_member_mail_task
+from tasks.mail_reset_password_task import send_reset_password_mail_task
 
 
 class AccountService:
+
+    reset_password_rate_limiter = RateLimiter(
+        prefix="reset_password_rate_limit",
+        max_attempts=5,
+        time_window=60 * 60
+    )
 
     @staticmethod
     def load_user(user_id: str) -> Account:
@@ -71,7 +80,7 @@ class AccountService:
         payload = {
             "user_id": account.id,
             "exp": datetime.now(timezone.utc).replace(tzinfo=None) + exp,
-            "iss": current_app.config['EDITION'],
+            "iss": dify_config.EDITION,
             "sub": 'Console API Passport',
         }
 
@@ -222,8 +231,32 @@ class AccountService:
             return None
         return AccountService.load_user(account_id)
 
+    @classmethod
+    def send_reset_password_email(cls, account):
+        if cls.reset_password_rate_limiter.is_rate_limited(account.email):
+            raise RateLimitExceededError(f"Rate limit exceeded for email: {account.email}. Please try again later.")
+
+        token = TokenManager.generate_token(account, 'reset_password')
+        send_reset_password_mail_task.delay(
+            language=account.interface_language,
+            to=account.email,
+            token=token
+        )
+        cls.reset_password_rate_limiter.increment_rate_limit(account.email)
+        return token
+
+    @classmethod
+    def revoke_reset_password_token(cls, token: str):
+        TokenManager.revoke_token(token, 'reset_password')
+
+    @classmethod
+    def get_reset_password_data(cls, token: str) -> Optional[dict[str, Any]]:
+        return TokenManager.get_token_data(token, 'reset_password')
+
+
 def _get_login_cache_key(*, account_id: str, token: str):
     return f"account_login:{account_id}:{token}"
+
 
 class TenantService:
 
@@ -325,6 +358,28 @@ class TenantService:
                 TenantAccountJoin, Account.id == TenantAccountJoin.account_id
             )
             .filter(TenantAccountJoin.tenant_id == tenant.id)
+        )
+
+        # Initialize an empty list to store the updated accounts
+        updated_accounts = []
+
+        for account, role in query:
+            account.role = role
+            updated_accounts.append(account)
+
+        return updated_accounts
+
+    @staticmethod
+    def get_dataset_operator_members(tenant: Tenant) -> list[Account]:
+        """Get dataset admin members"""
+        query = (
+            db.session.query(Account, TenantAccountJoin.role)
+            .select_from(Account)
+            .join(
+                TenantAccountJoin, Account.id == TenantAccountJoin.account_id
+            )
+            .filter(TenantAccountJoin.tenant_id == tenant.id)
+            .filter(TenantAccountJoin.role == 'dataset_operator')
         )
 
         # Initialize an empty list to store the updated accounts
@@ -469,7 +524,7 @@ class RegisterService:
             TenantService.create_owner_tenant_if_not_exist(account)
 
             dify_setup = DifySetup(
-                version=current_app.config['CURRENT_VERSION']
+                version=dify_config.CURRENT_VERSION
             )
             db.session.add(dify_setup)
             db.session.commit()
@@ -504,7 +559,7 @@ class RegisterService:
 
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
-            if current_app.config['EDITION'] != 'SELF_HOSTED':
+            if dify_config.EDITION != 'SELF_HOSTED':
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
 
                 TenantService.create_tenant_member(tenant, account, role='owner')
@@ -568,7 +623,7 @@ class RegisterService:
             'email': account.email,
             'workspace_id': tenant.id,
         }
-        expiryHours = current_app.config['INVITE_EXPIRY_HOURS']
+        expiryHours = dify_config.INVITE_EXPIRY_HOURS
         redis_client.setex(
             cls._get_invitation_token_key(token),
             expiryHours * 60 * 60,

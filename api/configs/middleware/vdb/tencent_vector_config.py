@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import Field, NonNegativeInt, PositiveInt
+from pydantic_settings import BaseSettings
 
 
-class TencentVectorDBConfig(BaseModel):
+class TencentVectorDBConfig(BaseSettings):
     """
     Tencent Vector configs
     """
@@ -24,7 +25,7 @@ class TencentVectorDBConfig(BaseModel):
     )
 
     TENCENT_VECTOR_DB_USERNAME: Optional[str] = Field(
-        description='Tencent Vector password',
+        description='Tencent Vector username',
         default=None,
     )
 
@@ -38,7 +39,7 @@ class TencentVectorDBConfig(BaseModel):
         default=1,
     )
 
-    TENCENT_VECTOR_DB_REPLICAS: PositiveInt = Field(
+    TENCENT_VECTOR_DB_REPLICAS: NonNegativeInt = Field(
         description='Tencent Vector replicas',
         default=2,
     )

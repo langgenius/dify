@@ -3,9 +3,9 @@ import { useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useUnmount } from 'ahooks'
-import cn from 'classnames'
 import { RiAddLine } from '@remixicon/react'
 import { useStore as useTagStore } from './store'
+import cn from '@/utils/classnames'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
@@ -156,7 +156,7 @@ const Panel = (props: PanelProps) => {
               <Checkbox
                 className='shrink-0'
                 checked={selectedTagIDs.includes(tag.id)}
-                onCheck={() => {}}
+                onCheck={() => { }}
               />
               <div title={tag.name} className='grow text-sm text-gray-700 leading-5 truncate'>{tag.name}</div>
             </div>
@@ -170,7 +170,7 @@ const Panel = (props: PanelProps) => {
               <Checkbox
                 className='shrink-0'
                 checked={selectedTagIDs.includes(tag.id)}
-                onCheck={() => {}}
+                onCheck={() => { }}
               />
               <div title={tag.name} className='grow text-sm text-gray-700 leading-5 truncate'>{tag.name}</div>
             </div>

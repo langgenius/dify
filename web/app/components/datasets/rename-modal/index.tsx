@@ -1,12 +1,12 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
-import cn from 'classnames'
 import { useState } from 'react'
 import { RiCloseLine } from '@remixicon/react'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
+import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
