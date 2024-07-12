@@ -40,7 +40,7 @@ services:
       # The default value is 300 seconds.
       FILES_ACCESS_TIMEOUT: 300
       # The maximum number of active requests for the application, where 0 means unlimited, should be a non-negative integer.
-      APP_MAX_ACTIVE_REQUESTS: ${FILES_ACCESS_TIMEOUT:-0}
+      APP_MAX_ACTIVE_REQUESTS: 0
       # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
       MIGRATION_ENABLED: 'true'
       # The configurations of postgres database connection.
