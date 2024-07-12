@@ -452,7 +452,6 @@ class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
         res = []
         for node in nodes:
             queue = [node]
-            index = 1
             while queue:
                 level, size = [], len(queue)
                 for _ in range(size):
@@ -467,7 +466,6 @@ class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
                             "obj_token": node["obj_token"],
                             "obj_type": node["obj_type"],
                             "space_id": node["space_id"],
-                            "level": index,
                         })
                     has_child = node["has_child"]
                     if has_child:
@@ -475,7 +473,6 @@ class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
                         child_nodes = self.get_feishu_wiki_nodes(space_id, "", node_token)
                         queue.extend(child_nodes)
                 res.extend(level)
-                index += 1
         return res
 
     def get_feishu_wiki_nodes(self, space_id: str, page_token: str = "", parent_node_token: str = "",
