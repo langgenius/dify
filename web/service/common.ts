@@ -315,3 +315,13 @@ export const updateDataSourceFeishuAction: Fetcher<CommonResponse, { url: string
 export const fetchFeishuConnection: Fetcher<{ data: string }, string> = (url) => {
   return get(url) as Promise<{ data: string }>
 }
+
+export const sendForgotPasswordEmail: Fetcher<CommonResponse, { url: string; body: { email: string } }> = ({ url, body }) =>
+  post<CommonResponse>(url, { body })
+
+export const verifyForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boolean; email: string }, { url: string; body: { token: string } }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse & { is_valid: boolean; email: string }>
+}
+
+export const changePasswordWithToken: Fetcher<CommonResponse, { url: string; body: { token: string; new_password: string; password_confirm: string } }> = ({ url, body }) =>
+  post<CommonResponse>(url, { body })

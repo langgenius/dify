@@ -27,7 +27,7 @@ const LocaleLayout = ({
   const locale = getLocaleOnServer()
 
   return (
-    <html lang={locale ?? 'en'} className="h-full">
+    <html lang={locale ?? 'en'} className="h-full" data-theme="light">
       <head>
         <meta name="theme-color" content="#FFFFFF" />
         <meta name="mobile-web-app-capable" content="yes" />

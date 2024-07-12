@@ -6,6 +6,7 @@ from flask_login import current_user
 from flask_restful import Resource
 from werkzeug.exceptions import Forbidden
 
+from configs import dify_config
 from controllers.console import api
 from libs.login import login_required
 from libs.oauth_data_source import FeishuWikiOAuth, NotionOAuth
@@ -16,19 +17,18 @@ from ..wraps import account_initialization_required
 
 def get_oauth_providers():
     with current_app.app_context():
-        notion_oauth = NotionOAuth(client_id=current_app.config.get('NOTION_CLIENT_ID'),
-                                   client_secret=current_app.config.get(
-                                       'NOTION_CLIENT_SECRET'),
-                                   redirect_uri=current_app.config.get(
-                                       'CONSOLE_API_URL') + '/console/api/oauth/data-source/callback/notion')
+        OAUTH_PROVIDERS = {}
 
-        feishuwiki_oauth = FeishuWikiOAuth(app_id=current_app.config.get('FEISHU_APP_ID'),
-                                           app_secret=current_app.config.get('FEISHU_APP_SECRET'))
+        if dify_config.NOTION_CLIENT_ID and dify_config.NOTION_CLIENT_SECRET:
+            notion_oauth = NotionOAuth(client_id=dify_config.NOTION_CLIENT_ID,
+                                       client_secret=dify_config.NOTION_CLIENT_SECRET,
+                                       redirect_uri=dify_config.CONSOLE_API_URL + '/console/api/oauth/data-source/callback/notion')
+            OAUTH_PROVIDERS['notion'] = notion_oauth
 
-        OAUTH_PROVIDERS = {
-            'notion': notion_oauth,
-            'feishuwiki': feishuwiki_oauth,
-        }
+        if dify_config.FEISHU_APP_ID and dify_config.FEISHU_APP_SECRET:
+            feishuwiki_client = FeishuWikiOAuth(app_id=dify_config.FEISHU_APP_ID,
+                                                app_secret=dify_config.FEISHU_APP_SECRET)
+            OAUTH_PROVIDERS['feishuwiki'] = feishuwiki_client
 
         return OAUTH_PROVIDERS
 
@@ -59,6 +59,7 @@ class OAuthDataSource(Resource):
 
 
 
+
 class OAuthDataSourceCallback(Resource):
     def get(self, provider: str):
         OAUTH_DATASOURCE_PROVIDERS = get_oauth_providers()
@@ -69,13 +70,13 @@ class OAuthDataSourceCallback(Resource):
         if 'code' in request.args:
             code = request.args.get('code')
 
-            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?type=notion&code={code}')
+            return redirect(f'{dify_config.CONSOLE_WEB_URL}?type=notion&code={code}')
         elif 'error' in request.args:
             error = request.args.get('error')
 
-            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?type=notion&error={error}')
+            return redirect(f'{dify_config.CONSOLE_WEB_URL}?type=notion&error={error}')
         else:
-            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?type=notion&error=Access denied')
+            return redirect(f'{dify_config.CONSOLE_WEB_URL}?type=notion&error=Access denied')
         
 
 class OAuthDataSourceBinding(Resource):

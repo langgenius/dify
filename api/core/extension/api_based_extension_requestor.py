@@ -1,7 +1,6 @@
-import os
-
 import requests
 
+from configs import dify_config
 from models.api_based_extension import APIBasedExtensionPoint
 
 
@@ -31,10 +30,10 @@ class APIBasedExtensionRequestor:
         try:
             # proxy support for security
             proxies = None
-            if os.environ.get("SSRF_PROXY_HTTP_URL") and os.environ.get("SSRF_PROXY_HTTPS_URL"):
+            if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
                 proxies = {
-                    'http': os.environ.get("SSRF_PROXY_HTTP_URL"),
-                    'https': os.environ.get("SSRF_PROXY_HTTPS_URL"),
+                    'http': dify_config.SSRF_PROXY_HTTP_URL,
+                    'https': dify_config.SSRF_PROXY_HTTPS_URL,
                 }
 
             response = requests.request(

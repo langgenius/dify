@@ -2,8 +2,8 @@ import {
   memo,
   useEffect,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import cn from '@/utils/classnames'
 // import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'

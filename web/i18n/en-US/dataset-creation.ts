@@ -45,7 +45,7 @@ const translation = {
     feishuSyncTitle: 'Lark is not connected',
     feishuSyncTip: 'To sync with Lark, connection to Lark must be established first.',
     connect: 'Go to connect',
-    button: 'next',
+    button: 'Next',
     emptyDatasetCreation: 'I want to create an empty Knowledge',
     modal: {
       title: 'Create an empty Knowledge',

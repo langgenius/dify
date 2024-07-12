@@ -5,7 +5,6 @@ import type {
 import { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import type {
   DefaultModel,
   FormValue,
@@ -21,6 +20,7 @@ import type { ParameterValue } from './parameter-item'
 import Trigger from './trigger'
 import type { TriggerProps } from './trigger'
 import PresetsParameter from './presets-parameter'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

@@ -1,31 +1,33 @@
 'use client'
-import { useEffect, useState } from 'react'
-import type { Dispatch } from 'react'
+import { useState } from 'react'
+import { useMount } from 'ahooks'
 import { useContext } from 'use-context-selector'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
-import PermissionsRadio from '../permissions-radio'
+import PermissionSelector from '../permission-selector'
 import IndexMethodRadio from '../index-method-radio'
+import cn from '@/utils/classnames'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 import { updateDatasetSetting } from '@/service/datasets'
-import type { DataSet, DataSetListResponse } from '@/models/datasets'
+import type { DataSetListResponse } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { type RetrievalConfig } from '@/types/app'
-import { useModalContext } from '@/context/modal-context'
+import { useAppContext } from '@/context/app-context'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
   useModelList,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { fetchMembers } from '@/service/common'
+import type { Member } from '@/models/common'
 
 const rowClass = `
   flex justify-between py-4 flex-wrap gap-y-2
@@ -36,11 +38,6 @@ const labelClass = `
 const inputClass = `
   w-full max-w-[480px] px-3 bg-gray-100 text-sm text-gray-800 rounded-lg outline-none appearance-none
 `
-const useInitialValue: <T>(depend: T, dispatch: Dispatch<T>) => void = (depend, dispatch) => {
-  useEffect(() => {
-    dispatch(depend)
-  }, [depend])
-}
 
 const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
   if (!pageIndex || previousPageData.has_more)
@@ -52,12 +49,14 @@ const Form = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { mutate } = useSWRConfig()
+  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const { dataset: currentDataset, mutateDatasetRes: mutateDatasets } = useContext(DatasetDetailContext)
-  const { setShowAccountSettingModal } = useModalContext()
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState(currentDataset?.name ?? '')
   const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
+  const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset?.partial_member_list || [])
+  const [memberList, setMemberList] = useState<Member[]>([])
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
@@ -77,6 +76,18 @@ const Form = () => {
     currentModel: isRerankDefaultModelVaild,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+
+  const getMembers = async () => {
+    const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
+    if (!accounts)
+      setMemberList([])
+    else
+      setMemberList(accounts)
+  }
+
+  useMount(() => {
+    getMembers()
+  })
 
   const handleSave = async () => {
     if (loading)
@@ -104,7 +115,7 @@ const Form = () => {
     })
     try {
       setLoading(true)
-      await updateDatasetSetting({
+      const requestParams = {
         datasetId: currentDataset!.id,
         body: {
           name,
@@ -118,7 +129,16 @@ const Form = () => {
           embedding_model: embeddingModel.model,
           embedding_model_provider: embeddingModel.provider,
         },
-      })
+      } as any
+      if (permission === 'partial_members') {
+        requestParams.body.partial_member_list = selectedMemberIDs.map((id) => {
+          return {
+            user_id: id,
+            role: memberList.find(member => member.id === id)?.role,
+          }
+        })
+      }
+      await updateDatasetSetting(requestParams)
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       if (mutateDatasets) {
         await mutateDatasets()
@@ -132,11 +152,6 @@ const Form = () => {
       setLoading(false)
     }
   }
-
-  useInitialValue<string>(currentDataset?.name ?? '', setName)
-  useInitialValue<string>(currentDataset?.description ?? '', setDescription)
-  useInitialValue<DataSet['permission'] | undefined>(currentDataset?.permission, setPermission)
-  useInitialValue<DataSet['indexing_technique'] | undefined>(currentDataset?.indexing_technique, setIndexMethod)
 
   return (
     <div className='w-full sm:w-[800px] p-4 sm:px-16 sm:py-6'>
@@ -174,10 +189,13 @@ const Form = () => {
           <div>{t('datasetSettings.form.permissions')}</div>
         </div>
         <div className='w-full sm:w-[480px]'>
-          <PermissionsRadio
-            disable={!currentDataset?.embedding_available}
-            value={permission}
+          <PermissionSelector
+            disabled={!currentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
+            permission={permission}
+            value={selectedMemberIDs}
             onChange={v => setPermission(v)}
+            onMemberSelect={setSelectedMemberIDs}
+            memberList={memberList}
           />
         </div>
       </div>

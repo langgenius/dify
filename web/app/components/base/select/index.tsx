@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import React, { Fragment, useEffect, useState } from 'react'
 import { Combobox, Listbox, Transition } from '@headlessui/react'
-import classNames from 'classnames'
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import { useTranslation } from 'react-i18next'
+import classNames from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -191,6 +191,7 @@ const SimpleSelect: FC<ISelectProps> = ({
                   onClick={(e) => {
                     e.stopPropagation()
                     setSelectedItem(null)
+                    onSelect({ value: null })
                   }}
                   className="h-5 w-5 text-gray-400 cursor-pointer"
                   aria-hidden="false"
