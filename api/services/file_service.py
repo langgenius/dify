@@ -4,11 +4,11 @@ import uuid
 from collections.abc import Generator
 from typing import Union
 
-from configs import dify_config
 from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
+from configs import dify_config
 from core.file.upload_file_parser import UploadFileParser
 from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_database import db

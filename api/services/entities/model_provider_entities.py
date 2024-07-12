@@ -1,9 +1,9 @@
 from enum import Enum
 from typing import Optional
 
-from configs import dify_config
 from pydantic import BaseModel, ConfigDict
 
+from configs import dify_config
 from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.entities.provider_entities import QuotaConfiguration
 from core.model_runtime.entities.common_entities import I18nObject

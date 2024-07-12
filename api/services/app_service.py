@@ -4,10 +4,10 @@ from datetime import datetime, timezone
 from typing import cast
 
 import yaml
-from configs import dify_config
 from flask_login import current_user
 from flask_sqlalchemy.pagination import Pagination
 
+from configs import dify_config
 from constants.model_template import default_app_templates
 from core.agent.entities import AgentToolEntity
 from core.app.features.rate_limiting import RateLimit

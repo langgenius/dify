@@ -4,8 +4,8 @@ from os import path
 from typing import Optional
 
 import requests
-from configs import dify_config
 
+from configs import dify_config
 from constants.languages import languages
 from extensions.ext_database import db
 from models.model import App, RecommendedApp

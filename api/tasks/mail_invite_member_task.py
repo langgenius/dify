@@ -4,8 +4,8 @@ import time
 import click
 from celery import shared_task
 from flask import render_template
-from configs import dify_config
 
+from configs import dify_config
 from extensions.ext_mail import mail
 
 

@@ -1,6 +1,6 @@
-from configs import dify_config
 from pydantic import BaseModel, ConfigDict
 
+from configs import dify_config
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
