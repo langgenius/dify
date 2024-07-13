@@ -69,7 +69,7 @@ const Form = () => {
         inputsForms.map(form => (
           <div
             key={form.variable}
-            className={`flex mb-3 last-of-type:mb-0 text-sm text-gray-900 ${isMobile && '!flex-wrap'}`}
+            className={`flex mb-3 last-of-type:mb-0 text-base text-gray-900 ${isMobile && '!flex-wrap'}`}
           >
             <div className={`shrink-0 mr-2 py-2 w-[128px] ${isMobile && '!w-full'}`}>{form.label}</div>
             {renderField(form)}

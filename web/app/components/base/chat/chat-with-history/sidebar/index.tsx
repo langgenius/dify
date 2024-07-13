@@ -79,7 +79,7 @@ const Sidebar = () => {
       <div className='shrink-0 p-4'>
         <Button
           variant='secondary-accent'
-          className='justify-start w-full'
+          className='justify-start w-full text-base'
           onClick={handleNewConversation}
         >
           <Edit05 className='mr-2 w-4 h-4' />

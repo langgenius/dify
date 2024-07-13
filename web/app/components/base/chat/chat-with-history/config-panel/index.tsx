@@ -63,7 +63,7 @@ const ConfigPanel = () => {
             !showConfigPanelBeforeChat && collapsed && (
               <>
                 <Star06 className='mr-1 mt-1 w-4 h-4 text-indigo-600' />
-                <div className='grow py-[3px] text-[13px] text-indigo-600 leading-[18px] font-medium'>
+                <div className='grow py-[3px] text-[14px] text-indigo-600 leading-[18px] font-medium'>
                   {t('share.chat.configStatusDes')}
                 </div>
                 <Button
@@ -82,7 +82,7 @@ const ConfigPanel = () => {
             !showConfigPanelBeforeChat && !collapsed && (
               <>
                 <Star06 className='mr-1 mt-1 w-4 h-4 text-indigo-600' />
-                <div className='grow py-[3px] text-[13px] text-indigo-600 leading-[18px] font-medium'>
+                <div className='grow py-[3px] text-[14px] text-indigo-600 leading-[18px] font-medium'>
                   {t('share.chat.privatePromptConfigTitle')}
                 </div>
               </>
@@ -132,7 +132,7 @@ const ConfigPanel = () => {
       </div>
       {
         showConfigPanelBeforeChat && (site || customConfig) && (
-          <div className='mt-4 flex flex-wrap justify-between items-center py-2 text-xs text-gray-400'>
+          <div className='mt-4 flex flex-wrap justify-between items-center py-2 text-base text-gray-400'>
             {site?.privacy_policy
               ? <div className={`flex items-center ${isMobile && 'w-full justify-end'}`}>{t('share.chat.privacyPolicyLeft')}
                 <a

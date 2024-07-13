@@ -6,7 +6,6 @@ import type {
 } from '../types'
 import { useChat } from '../chat/hooks'
 import { useChatWithHistoryContext } from './context'
-import Header from './header'
 import ConfigPanel from './config-panel'
 import {
   fetchSuggestedQuestions,
@@ -115,10 +114,11 @@ const ChatWrapper = () => {
     }
 
     return (
-      <Header
-        isMobile={isMobile}
-        title={currentConversationItem?.name || ''}
-      />
+      <></>
+      // <Header
+      //   isMobile={isMobile}
+      //   title={currentConversationItem?.name || ''}
+      // />
     )
   }, [
     currentConversationId,
