@@ -15,6 +15,7 @@ from fields.app_fields import (
     app_pagination_fields,
 )
 from libs.login import login_required
+from services.app_dsl_service import AppDslService
 from services.app_service import AppService
 
 ALLOW_CREATE_APP_MODES = ['chat', 'agent-chat', 'advanced-chat', 'workflow', 'completion']
@@ -97,8 +98,12 @@ class AppImportApi(Resource):
         parser.add_argument('icon_background', type=str, location='json')
         args = parser.parse_args()
 
-        app_service = AppService()
-        app = app_service.import_app(current_user.current_tenant_id, args['data'], args, current_user)
+        app = AppDslService.import_and_create_new_app(
+            tenant_id=current_user.current_tenant_id,
+            data=args['data'],
+            args=args,
+            account=current_user
+        )
 
         return app, 201
 
@@ -177,9 +182,13 @@ class AppCopyApi(Resource):
         parser.add_argument('icon_background', type=str, location='json')
         args = parser.parse_args()
 
-        app_service = AppService()
-        data = app_service.export_app(app_model)
-        app = app_service.import_app(current_user.current_tenant_id, data, args, current_user)
+        data = AppDslService.export_dsl(app_model=app_model)
+        app = AppDslService.import_and_create_new_app(
+            tenant_id=current_user.current_tenant_id,
+            data=data,
+            args=args,
+            account=current_user
+        )
 
         return app, 201
 
@@ -195,10 +204,8 @@ class AppExportApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
-        app_service = AppService()
-
         return {
-            "data": app_service.export_app(app_model)
+            "data": AppDslService.export_dsl(app_model=app_model)
         }
 
 
