@@ -108,6 +108,36 @@ class AppImportApi(Resource):
         return app, 201
 
 
+class AppImportFromUrlApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(app_detail_fields_with_site)
+    @cloud_edition_billing_resource_check('apps')
+    def post(self):
+        """Import app from url"""
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('url', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('name', type=str, location='json')
+        parser.add_argument('description', type=str, location='json')
+        parser.add_argument('icon', type=str, location='json')
+        parser.add_argument('icon_background', type=str, location='json')
+        args = parser.parse_args()
+
+        app = AppDslService.import_and_create_new_app_from_url(
+            tenant_id=current_user.current_tenant_id,
+            url=args['url'],
+            args=args,
+            account=current_user
+        )
+
+        return app, 201
+
+
 class AppApi(Resource):
 
     @setup_required
@@ -329,6 +359,7 @@ class AppTraceApi(Resource):
 
 api.add_resource(AppListApi, '/apps')
 api.add_resource(AppImportApi, '/apps/import')
+api.add_resource(AppImportFromUrlApi, '/apps/import/url')
 api.add_resource(AppApi, '/apps/<uuid:app_id>')
 api.add_resource(AppCopyApi, '/apps/<uuid:app_id>/copy')
 api.add_resource(AppExportApi, '/apps/<uuid:app_id>/export')

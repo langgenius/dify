@@ -1,5 +1,6 @@
 import logging
 
+import httpx
 import yaml  # type: ignore
 
 from events.app_event import app_model_config_was_updated, app_was_created
@@ -18,6 +19,36 @@ dsl_to_dify_version_mapping: dict[str, str] = {
 
 
 class AppDslService:
+    @classmethod
+    def import_and_create_new_app_from_url(cls, tenant_id: str, url: str, args: dict, account: Account) -> App:
+        """
+        Import app dsl from url and create new app
+        :param tenant_id: tenant id
+        :param url: import url
+        :param args: request args
+        :param account: Account instance
+        """
+        try:
+            max_size = 10 * 1024 * 1024  # 10MB
+            with httpx.stream("GET", url, follow_redirects=True) as response:
+                response.raise_for_status()
+                total_size = 0
+                content = b""
+                for chunk in response.iter_bytes():
+                    total_size += len(chunk)
+                    if total_size > max_size:
+                        raise ValueError("File size exceeds the limit of 10MB")
+                    content += chunk
+        except Exception as e:
+            raise ValueError(f"Failed to fetch DSL from url: {e}")
+
+        if not content:
+            raise ValueError("Empty content from url")
+
+        data = content.decode("utf-8")
+
+        return cls.import_and_create_new_app(tenant_id, data, args, account)
+
     @classmethod
     def import_and_create_new_app(cls, tenant_id: str, data: str, args: dict, account: Account) -> App:
         """
