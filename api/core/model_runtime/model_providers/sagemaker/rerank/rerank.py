@@ -126,7 +126,7 @@ class SageMakerRerankModel(RerankModel):
         :return:
         """
         try:
-            self.invoke(
+            self._invoke(
                 model=model,
                 credentials=credentials,
                 query="What is the capital of the United States?",
