@@ -30,7 +30,8 @@ class AppDslService:
         """
         try:
             max_size = 10 * 1024 * 1024  # 10MB
-            with httpx.stream("GET", url, follow_redirects=True) as response:
+            timeout = httpx.Timeout(10.0)
+            with httpx.stream("GET", url, follow_redirects=True, timeout=timeout) as response:
                 response.raise_for_status()
                 total_size = 0
                 content = b""
@@ -39,13 +40,20 @@ class AppDslService:
                     if total_size > max_size:
                         raise ValueError("File size exceeds the limit of 10MB")
                     content += chunk
+        except httpx.HTTPStatusError as http_err:
+            raise ValueError(f"HTTP error occurred: {http_err}")
+        except httpx.RequestError as req_err:
+            raise ValueError(f"Request error occurred: {req_err}")
         except Exception as e:
-            raise ValueError(f"Failed to fetch DSL from url: {e}")
+            raise ValueError(f"Failed to fetch DSL from URL: {e}")
 
         if not content:
             raise ValueError("Empty content from url")
 
-        data = content.decode("utf-8")
+        try:
+            data = content.decode("utf-8")
+        except UnicodeDecodeError as e:
+            raise ValueError(f"Error decoding content: {e}")
 
         return cls.import_and_create_new_app(tenant_id, data, args, account)
 
