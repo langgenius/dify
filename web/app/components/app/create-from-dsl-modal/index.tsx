@@ -10,12 +10,16 @@ import Uploader from './uploader'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
-import { importApp } from '@/service/apps'
+import {
+  importApp,
+  importAppFromUrl,
+} from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
+import cn from '@/utils/classnames'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -25,7 +29,12 @@ type CreateFromDSLModalProps = {
   dslUrl?: string
 }
 
-const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = 'from-file', dslUrl }: CreateFromDSLModalProps) => {
+enum CreateFromDSLModalTab {
+  FROM_FILE = 'from-file',
+  FROM_URL = 'from-url',
+}
+
+const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDSLModalTab.FROM_FILE, dslUrl = '' }: CreateFromDSLModalProps) => {
   const { push } = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -57,15 +66,26 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = 'from-file',
 
   const isCreatingRef = useRef(false)
   const onCreate: MouseEventHandler = async () => {
+    if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
+      return
+    if (currentTab === CreateFromDSLModalTab.FROM_URL && !dslUrlValue)
+      return
     if (isCreatingRef.current)
       return
     isCreatingRef.current = true
-    if (!currentFile)
-      return
     try {
-      const app = await importApp({
-        data: fileContent || '',
-      })
+      let app
+
+      if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
+        app = await importApp({
+          data: fileContent || '',
+        })
+      }
+      if (currentTab === CreateFromDSLModalTab.FROM_URL) {
+        app = await importAppFromUrl({
+          url: dslUrlValue || '',
+        })
+      }
       if (onSuccess)
         onSuccess()
       if (onClose)
@@ -82,21 +102,21 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = 'from-file',
 
   const tabs = [
     {
-      key: 'from-file',
-      label: 'from dsl file',
+      key: CreateFromDSLModalTab.FROM_FILE,
+      label: t('app.importFromDSLFile'),
     },
     {
-      key: 'from-url',
-      label: 'from url',
+      key: CreateFromDSLModalTab.FROM_URL,
+      label: t('app.importFromDSLUrl'),
     },
   ]
 
   const buttonDisabled = useMemo(() => {
     if (isAppsFull)
       return true
-    if (currentTab === 'from-file')
+    if (currentTab === CreateFromDSLModalTab.FROM_FILE)
       return !currentFile
-    if (currentTab === 'from-url')
+    if (currentTab === CreateFromDSLModalTab.FROM_URL)
       return !dslUrlValue
     return false
   }, [isAppsFull, currentTab, currentFile, dslUrlValue])
@@ -108,7 +128,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = 'from-file',
       onClose={() => { }}
     >
       <div className='flex items-center justify-between pt-6 pl-6 pr-5 pb-3 text-text-primary title-2xl-semi-bold'>
-        {t('app.createFromConfigFile')}
+        {t('app.importFromDSL')}
         <div
           className='flex items-center w-8 h-8 cursor-pointer'
           onClick={() => onClose()}
@@ -121,7 +141,10 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = 'from-file',
           tabs.map(tab => (
             <div
               key={tab.key}
-              className='relative flex items-center h-full cursor-pointer'
+              className={cn(
+                'relative flex items-center h-full cursor-pointer',
+                currentTab === tab.key && 'text-text-primary',
+              )}
               onClick={() => setCurrentTab(tab.key)}
             >
               {tab.label}
@@ -136,7 +159,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = 'from-file',
       </div>
       <div className='px-6 py-4'>
         {
-          currentTab === 'from-file' && (
+          currentTab === CreateFromDSLModalTab.FROM_FILE && (
             <Uploader
               className='mt-0'
               file={currentFile}
@@ -145,11 +168,11 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = 'from-file',
           )
         }
         {
-          currentTab === 'from-url' && (
+          currentTab === CreateFromDSLModalTab.FROM_URL && (
             <div>
               <div className='mb-1 system-md-semibold leading6'>DSL URL</div>
               <input
-                placeholder='Paste DSL link here'
+                placeholder={t('app.importFromDSLUrlPlaceholder') || ''}
                 className='px-2 w-full h-8 border border-components-input-border-active bg-components-input-bg-active rounded-lg outline-none appearance-none placeholder:text-components-input-text-placeholder system-sm-regular'
                 value={dslUrlValue}
                 onChange={e => setDslUrlValue(e.target.value)}

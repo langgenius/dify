@@ -1,6 +1,7 @@
 'use client'
 
 import { forwardRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import CreateAppTemplateDialog from '@/app/components/app/create-app-dialog'
 import CreateAppModal from '@/app/components/app/create-app-modal'
@@ -16,6 +17,9 @@ export type CreateAppCardProps = {
 const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuccess }, ref) => {
   const { t } = useTranslation()
   const { onPlanInfoChanged } = useProviderContext()
+  const searchParams = useSearchParams()
+
+  console.log(searchParams.get('aaa'), 's')
 
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showNewAppModal, setShowNewAppModal] = useState(false)
