@@ -121,7 +121,7 @@ class Workflow(db.Model):
     updated_by = db.Column(StringUUID)
     updated_at = db.Column(db.DateTime)
     # TODO: update this field to sqlalchemy column after frontend update.
-    _environment_variables = '{"token": {"name": "token", "value": "SFlCUklEOlfCobLe/lmU+c2evAQ1qA/W/YnuBcWqNTxC5+IkUTNtEDotk1Cd9Du31kOI4gOqPSsCqWs+SoO+cxbJ8loftgsyCbrHKmEQS3Ki6/05XFeY1iKR4AgUAPFrfLyWwjc5ztZIPEnzL30T+NPm6rlm/x/7Wlsw0B59HQcImFB9pRzI6JXBXmY4ZYlXdBH1zfWZkHRn2MQO372O6WPfuT8XMgBSjnX95/tUfyupQIplEjEyAiOaLwVmZNvtQ1757IcRYq7AIh35e8XVFCPMYK9B9jIv1zoOh3MZc8+B0v79yi3XseFXW74yoV9ufqbRELqUpcQfimGQDXFoyMOn4fd6letd97DjT41jNbsOZGlR16SqBbv9nnw4lHnEkOalC6XFspO9e81EAg7/QQ==", "value_type": "secret"}}'
+    _environment_variables = '{}'
 
     @property
     def created_by_account(self):
