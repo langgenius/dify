@@ -349,7 +349,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
         document = self.get_document(dataset_id, document_id)
 
         if document.indexing_status in ['completed', 'error']:
-            raise DocumentAlreadyFinishedError()
+            indexing_runner.calculate_tokens(document)
 
         data_process_rule = document.dataset_process_rule
         data_process_rule_dict = data_process_rule.to_dict()
