@@ -2,10 +2,10 @@ import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FixedSizeList as List, areEqual } from 'react-window'
 import type { ListChildComponentProps } from 'react-window'
-import cn from 'classnames'
 import Checkbox from '../../checkbox'
 import NotionIcon from '../../notion-icon'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 
 type PageSelectorProps = {

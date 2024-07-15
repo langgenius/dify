@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import CheckboxWithLabel from './base/checkbox-with-label'
 import CrawledResultItem from './crawled-result-item'
+import cn from '@/utils/classnames'
 import type { CrawlResultItem } from '@/models/datasets'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'

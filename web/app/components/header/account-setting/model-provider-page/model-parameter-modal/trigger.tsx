@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { RiArrowDownSLine } from '@remixicon/react'
 import type {
   Model,
@@ -11,6 +10,7 @@ import { MODEL_STATUS_TEXT } from '../declarations'
 import { useLanguage } from '../hooks'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
+import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'

@@ -9,7 +9,6 @@ import {
 } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import cn from 'classnames'
 import {
   RiErrorWarningFill,
 } from '@remixicon/react'
@@ -20,6 +19,7 @@ import {
   DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND,
   UPDATE_WORKFLOW_NODES_MAP,
 } from './index'
+import cn from '@/utils/classnames'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -88,7 +88,7 @@ const WorkflowVariableBlockComponent = ({
             </div>
           )
         }
-        <div className='shrink-0 mx-0.5 text-xs font-medium text-gray-500 truncate' title={node?.title} style={{
+        <div className='shrink-0 mx-0.5 max-w-[60px] text-xs font-medium text-gray-500 truncate' title={node?.title} style={{
         }}>{node?.title}</div>
         <Line3 className='mr-0.5 text-gray-300'></Line3>
       </div>

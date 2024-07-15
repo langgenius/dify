@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
 import Tooltip from '../../base/tooltip'
+import cn from '@/utils/classnames'
 import type { Credential } from '@/app/components/tools/types'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'

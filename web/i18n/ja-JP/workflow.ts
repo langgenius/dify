@@ -389,6 +389,7 @@ const translation = {
           url: '画像URL',
           upload_file_id: 'アップロードファイルID',
         },
+        json: 'ツールで生成されたJSON',
       },
     },
     questionClassifiers: {

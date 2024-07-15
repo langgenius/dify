@@ -93,12 +93,12 @@ class DatasetRetrieverTool(Tool):
         """
         query = tool_parameters.get('query')
         if not query:
-            return self.create_text_message(text='please input query')
+            yield self.create_text_message(text='please input query')
+        else:
+            # invoke dataset retriever tool
+            result = self.retrival_tool._run(query=query)
 
-        # invoke dataset retriever tool
-        result = self.retrival_tool._run(query=query)
-
-        yield self.create_text_message(text=result)
+            yield self.create_text_message(text=result)
 
     def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any]) -> None:
         """
