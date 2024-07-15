@@ -76,5 +76,5 @@ class AgentEntity(BaseModel):
     model: str
     strategy: Strategy
     prompt: Optional[AgentPromptEntity] = None
-    tools: list[AgentToolEntity] = None
+    tools: Optional[list[AgentToolEntity]] = None
     max_iteration: int = 5
