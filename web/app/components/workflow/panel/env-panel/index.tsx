@@ -86,53 +86,53 @@ const EnvPanel = () => {
   return (
     <div
       className={cn(
-        'relative flex flex-col w-[400px] bg-gray-50 rounded-l-2xl h-full border border-black/2',
+        'relative flex flex-col w-[400px] bg-components-panel-bg-alt rounded-l-2xl h-full border border-components-panel-border',
       )}
     >
-      <div className='shrink-0 flex items-center justify-between p-4 pb-0 font-semibold text-gray-900'>
+      <div className='shrink-0 flex items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold'>
         {t('workflow.env.envPanelTitle')}
         <div className='flex items-center'>
           <div
             className='flex items-center justify-center w-6 h-6 cursor-pointer'
             onClick={() => setShowEnvPanel(false)}
           >
-            <RiCloseLine className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
           </div>
         </div>
       </div>
-      <div className='shrink-0 py-1 px-4 text-[13px] leading-4 text-gray-500'>{t('workflow.env.envDescription')}</div>
+      <div className='shrink-0 py-1 px-4 system-sm-regular text-text-tertiary'>{t('workflow.env.envDescription')}</div>
       <div className='shrink-0 px-4 pt-2 pb-3'>
         <Button variant='primary' onClick={() => setShowVariableModal(true)}>
           <RiAddLine className='mr-1 w-4 h-4' />
-          <span className='text-[13px] font-medium'>{t('workflow.env.envPanelButton')}</span>
+          <span className='system-sm-medium'>{t('workflow.env.envPanelButton')}</span>
         </Button>
       </div>
       <div className='grow px-4 rounded-b-2xl overflow-y-auto'>
         {envList.map(env => (
           <div
             key={env.name}
-            className='mb-1 px-2.5 py-2 bg-white rounded-lg border-[0.5px] border-black/8 shadow-xs'
+            className='mb-1 px-2.5 py-2 bg-components-panel-on-panel-item-bg radius-md border-[0.5px] border-components-panel-border-subtle shadow-xs'
           >
             <div className='flex items-center justify-between'>
               <div className='grow flex gap-1 items-center'>
                 <Env className='w-4 h-4 text-util-colors-violet-violet-600' />
-                <div className='text-[13px] leading-4 text-gray-900 font-medium'>{env.name}</div>
-                <div className='text-xs leading-4 text-gray-500 font-medium'>{capitalize(env.value_type)}</div>
-                {env.value_type === 'secret' && <RiLock2Line className='w-3 h-3 text-gray-500' />}
+                <div className='text-text-primary system-sm-medium'>{env.name}</div>
+                <div className='text-text-tertiary system-xs-medium'>{capitalize(env.value_type)}</div>
+                {env.value_type === 'secret' && <RiLock2Line className='w-3 h-3 text-text-tertiary' />}
               </div>
-              <div className='shrink-0 flex gap-1 items-center text-gray-500'>
-                <div className='p-1 rounded-lg cursor-pointer hover:bg-gray-200 hover:text-gray-700'>
+              <div className='shrink-0 flex gap-1 items-center text-text-tertiary'>
+                <div className='p-1 radius-md cursor-pointer hover:bg-state-base-hover hover:text-text-secondary'>
                   <RiEditLine className='w-4 h-4' onClick={() => {
                     setCurrentVar(env)
                     setShowVariableModal(true)
                   }}/>
                 </div>
-                <div className='p-1 rounded-lg cursor-pointer hover:bg-red-100 hover:text-red-600'>
+                <div className='p-1 radius-md cursor-pointer hover:bg-state-destructive-hover hover:text-text-destructive'>
                   <RiDeleteBinLine className='w-4 h-4' onClick={() => deleteCheck(env)} />
                 </div>
               </div>
             </div>
-            <div className='text-xs text-gray-500 leading-4 truncate'>{env.value_type !== 'secret' ? env.value : secretValue(env.value)}</div>
+            <div className='text-text-tertiary system-xs-regular truncate'>{env.value_type !== 'secret' ? env.value : secretValue(env.value)}</div>
           </div>
         ))}
       </div>

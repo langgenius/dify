@@ -1,8 +1,8 @@
 'use client'
 import React, { useState } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine, RiLock2Line } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import Modal from '@/app/components/base/modal'
 import Checkbox from '@/app/components/base/checkbox'
@@ -39,31 +39,31 @@ const DSLExportConfirmModal = ({
       onClose={() => { }}
       className={cn('max-w-[480px] w-[480px]')}
     >
-      <div className='relative pb-6 text-xl font-medium leading-[30px] text-gray-900'>{t('workflow.env.export.title')}</div>
+      <div className='relative pb-6 title-2xl-semi-bold text-text-primary'>{t('workflow.env.export.title')}</div>
       <div className='absolute right-6 top-6 p-2 cursor-pointer' onClick={onClose}>
-        <RiCloseLine className='w-4 h-4 text-gray-500' />
+        <RiCloseLine className='w-4 h-4 text-text-tertiary' />
       </div>
       <div className='relative'>
-        <table className='w-full border-separate border-spacing-0 border border-gray-200 rounded-lg text-xs shadow-xs'>
-          <thead className='text-gray-500'>
+        <table className='w-full border-separate border-spacing-0 border border-divider-regular radius-md shadow-xs'>
+          <thead className='system-xs-medium-uppercase text-text-tertiary'>
             <tr>
-              <td width={220} className='h-7 pl-3 border-r border-b border-gray-200'>NAME</td>
-              <td className='h-7 pl-3 border-b border-gray-200'>VALUE</td>
+              <td width={220} className='h-7 pl-3 border-r border-b border-divider-regular'>NAME</td>
+              <td className='h-7 pl-3 border-b border-divider-regular'>VALUE</td>
             </tr>
           </thead>
           <tbody>
             {envList.map((env, index) => (
               <tr key={env.name}>
-                <td className={cn('h-7 pl-3 border-r text-xs leading-4 font-medium', index + 1 !== envList.length && 'border-b')}>
+                <td className={cn('h-7 pl-3 border-r system-xs-medium', index + 1 !== envList.length && 'border-b')}>
                   <div className='flex gap-1 items-center w-[200px]'>
                     <Env className='shrink-0 w-4 h-4 text-util-colors-violet-violet-600' />
-                    <div className='text-gray-900 truncate'>{env.name}</div>
-                    <div className='shrink-0 text-gray-500'>Secret</div>
-                    <RiLock2Line className='shrink-0 w-3 h-3 text-gray-500' />
+                    <div className='text-text-primary truncate'>{env.name}</div>
+                    <div className='shrink-0 text-text-tertiary'>Secret</div>
+                    <RiLock2Line className='shrink-0 w-3 h-3 text-text-tertiary' />
                   </div>
                 </td>
                 <td className={cn('h-7 pl-3', index + 1 !== envList.length && 'border-b')}>
-                  <div className='text-xs text-gray-600 leading-4 truncate'>{secretValue(env.value)}</div>
+                  <div className='system-xs-regular text-text-secondary truncate'>{secretValue(env.value)}</div>
                 </td>
               </tr>
             ))}
@@ -76,7 +76,7 @@ const DSLExportConfirmModal = ({
           checked={exportSecrets}
           onCheck={() => setExportSecrets(!exportSecrets)}
         />
-        <div className='text-gray-900 text-xs font-medium cursor-pointer' onClick={() => setExportSecrets(!exportSecrets)}>{t('workflow.env.export.checkbox')}</div>
+        <div className='text-text-primary system-sm-medium cursor-pointer' onClick={() => setExportSecrets(!exportSecrets)}>{t('workflow.env.export.checkbox')}</div>
       </div>
       <div className='flex flex-row-reverse pt-6'>
         {!exportSecrets && (

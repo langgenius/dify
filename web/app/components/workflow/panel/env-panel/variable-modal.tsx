@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import { RiCloseLine } from '@remixicon/react'
@@ -8,6 +7,7 @@ import Button from '@/app/components/base/button'
 import { ToastContext } from '@/app/components/base/toast'
 import { useStore } from '@/app/components/workflow/store'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import cn from '@/utils/classnames'
 
 export type ModalPropsType = {
   env?: EnvironmentVariable
@@ -67,47 +67,45 @@ const VariableModal = ({
   return (
     <div
       ref={ref}
-      className={cn(
-        'flex flex-col w-[360px] bg-white rounded-2xl h-full border-[0.5px] border-black/2 shadow-2xl',
-      )}
+      className={cn('flex flex-col w-[360px] bg-components-panel-bg rounded-2xl h-full border-[0.5px] border-components-panel-border shadow-2xl')}
     >
-      <div className='shrink-0 flex items-center justify-between p-4 pb-0 font-semibold text-gray-900'>
+      <div className='shrink-0 flex items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold'>
         {!env ? t('workflow.env.modal.title') : t('workflow.env.modal.editTitle')}
         <div className='flex items-center'>
           <div
             className='flex items-center justify-center w-6 h-6 cursor-pointer'
             onClick={onClose}
           >
-            <RiCloseLine className='w-4 h-4 text-gray-500' />
+            <RiCloseLine className='w-4 h-4 text-text-tertiary' />
           </div>
         </div>
       </div>
       <div className='px-4 py-2'>
         {/* type */}
         <div className='mb-4'>
-          <div className='mb-1 text-[13px] leading-6 text-gray-700 font-semibold'>{t('workflow.env.modal.type')}</div>
+          <div className='mb-1 text-text-secondary system-sm-semibold'>{t('workflow.env.modal.type')}</div>
           <div className='flex gap-2'>
             <div className={cn(
-              'w-[106px] flex items-center justify-center p-2 rounded-lg bg-gray-50 border border-gray-100 text-[13px] leading-4 text-gray-700 cursor-pointer hover:shadow-xs hover:bg-white hover:border-gray-300',
-              type === 'string' && 'text-gray-900 font-medium border-[1.5px] shadow-xs !bg-white border-primary-600 hover:!border-primary-600',
+              'w-[106px] flex items-center justify-center p-2 radius-md bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary system-sm-regular cursor-pointer hover:shadow-xs hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
+              type === 'string' && 'text-text-primary system-sm-medium border-[1.5px] shadow-xs bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border hover:border-components-option-card-option-selected-border',
             )} onClick={() => setType('string')}>String</div>
             <div className={cn(
-              'w-[106px] flex items-center justify-center p-2 rounded-lg bg-gray-50 border border-gray-100 text-[13px] leading-4 text-gray-700 cursor-pointer hover:shadow-xs hover:bg-white hover:border-gray-300',
-              type === 'number' && 'text-gray-900 font-medium border-[1.5px] shadow-xs !bg-white border-primary-600 hover:!border-primary-600',
+              'w-[106px] flex items-center justify-center p-2 radius-md bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary system-sm-regular cursor-pointer hover:shadow-xs hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
+              type === 'number' && 'text-text-primary font-medium border-[1.5px] shadow-xs bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border hover:border-components-option-card-option-selected-border',
             )} onClick={() => setType('number')}>Number</div>
             <div className={cn(
-              'w-[106px] flex items-center justify-center p-2 rounded-lg bg-gray-50 border border-gray-100 text-[13px] leading-4 text-gray-700 cursor-pointer hover:shadow-xs hover:bg-white hover:border-gray-300',
-              type === 'secret' && 'text-gray-900 font-medium border-[1.5px] shadow-xs !bg-white border-primary-600 hover:!border-primary-600',
+              'w-[106px] flex items-center justify-center p-2 radius-md bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary system-sm-regular cursor-pointer hover:shadow-xs hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
+              type === 'secret' && 'text-text-primary font-medium border-[1.5px] shadow-xs bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border hover:border-components-option-card-option-selected-border',
             )} onClick={() => setType('secret')}>Secret</div>
           </div>
         </div>
         {/* name */}
         <div className='mb-4'>
-          <div className='mb-1 text-[13px] leading-6 text-gray-700 font-semibold'>{t('workflow.env.modal.name')}</div>
+          <div className='mb-1 text-text-secondary system-sm-semibold'>{t('workflow.env.modal.name')}</div>
           <div className='flex'>
             <input
               tabIndex={0}
-              className='block px-3 w-full h-9 bg-gray-100 text-sm rounded-lg border border-transparent appearance-none outline-none caret-primary-600 hover:border-[rgba(0,0,0,0.08)] hover:bg-gray-50 focus:bg-white focus:border-gray-300 focus:shadow-xs placeholder:text-sm placeholder:text-gray-400'
+              className='block px-3 w-full h-9 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
               placeholder={t('workflow.env.modal.namePlaceholder') || ''}
               value={name}
               onChange={e => handleNameChange(e.target.value)}
@@ -117,11 +115,11 @@ const VariableModal = ({
         </div>
         {/* value */}
         <div className='mb-4'>
-          <div className='mb-1 text-[13px] leading-6 text-gray-700 font-semibold'>{t('workflow.env.modal.value')}</div>
+          <div className='mb-1 text-text-secondary system-sm-semibold'>{t('workflow.env.modal.value')}</div>
           <div className='flex'>
             <input
               tabIndex={0}
-              className='block px-3 w-full h-9 bg-gray-100 text-sm rounded-lg border border-transparent appearance-none outline-none caret-primary-600 hover:border-[rgba(0,0,0,0.08)] hover:bg-gray-50 focus:bg-white focus:border-gray-300 focus:shadow-xs placeholder:text-sm placeholder:text-gray-400'
+              className='block px-3 w-full h-9 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
               placeholder={t('workflow.env.modal.valuePlaceholder') || ''}
               value={value}
               onChange={e => setValue(e.target.value)}
