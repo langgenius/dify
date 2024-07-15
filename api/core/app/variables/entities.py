@@ -24,6 +24,7 @@ class VariableType(str, Enum):
     ARRAY_OBJECT = 'array[object]'
     ARRAY_FILE = 'array[file]'
 
+
 class Variable(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -41,36 +42,30 @@ class Variable(BaseModel):
             raise ValueError("Cannot modify 'value_type'")
         return value
 
+    def to_markdown(self) -> str:
+        return str(self.value)
+
 
 class TextVariable(Variable):
     value_type: VariableType = VariableType.TEXT
     value: str
-
-    def __str__(self) -> str:
-        return self.value
 
 
 class FloatVariable(Variable):
     value_type: VariableType = VariableType.NUMBER
     value: float
 
-    def __str__(self) -> str:
-        return str(self.value)
-
 
 class IntegerVariable(Variable):
     value_type: VariableType = VariableType.NUMBER
     value: int
-
-    def __str__(self) -> str:
-        return str(self.value)
 
 
 class ObjectVariable(Variable):
     value_type: VariableType = VariableType.OBJECT
     value: Mapping[str, Variable]
 
-    def __str__(self) -> str:
+    def to_markdown(self) -> str:
         return json.dumps(self.model_dump()['value'], ensure_ascii=False)
 
 
@@ -78,12 +73,15 @@ class ArrayVariable(Variable):
     value_type: VariableType = VariableType.ARRAY
     value: Sequence[Variable]
 
+    def to_markdown(self) -> str:
+        return ' '.join([item.to_markdown() for item in self.value])
+
 
 class FileVariable(Variable):
     value_type: VariableType = VariableType.FILE
     value: FileVar
 
-    def __str__(self) -> str:
+    def to_markdown(self) -> str:
         return self.value.to_markdown()
 
 
@@ -91,5 +89,5 @@ class SecretVariable(Variable):
     value_type: VariableType = VariableType.SECRET
     value: str
 
-    def __str__(self) -> str:
+    def to_markdown(self) -> str:
         return encrypter.obfuscated_token(self.value)
