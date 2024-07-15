@@ -1,3 +1,4 @@
+import contextvars
 import logging
 import os
 import threading
@@ -126,7 +127,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         worker_thread = threading.Thread(target=self._generate_worker, kwargs={
             'flask_app': current_app._get_current_object(),
             'application_generate_entity': application_generate_entity,
-            'queue_manager': queue_manager
+            'queue_manager': queue_manager,
+            'context': contextvars.copy_context()
         })
 
         worker_thread.start()
@@ -204,7 +206,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
     def _generate_worker(self, flask_app: Flask,
                          application_generate_entity: WorkflowAppGenerateEntity,
-                         queue_manager: AppQueueManager) -> None:
+                         queue_manager: AppQueueManager,
+                         context: contextvars.Context) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -212,6 +215,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param queue_manager: queue manager
         :return:
         """
+        for var, val in context.items():
+            var.set(val)
         with flask_app.app_context():
             try:
                 # workflow app

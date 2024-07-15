@@ -20,7 +20,8 @@ class IterationNode(BaseIterationNode):
         """
         Run the node.
         """
-        iterator = variable_pool.get_any(cast(IterationNodeData, self.node_data).iterator_selector)
+        self.node_data = cast(IterationNodeData, self.node_data)
+        iterator = variable_pool.get_any(self.node_data.iterator_selector)
 
         if not isinstance(iterator, list):
             raise ValueError(f"Invalid iterator value: {iterator}, please provide a list.")

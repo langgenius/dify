@@ -336,14 +336,13 @@ class HttpExecutor:
         if variable_pool:
             variable_value_mapping = {}
             for variable_selector in variable_selectors:
-                value = str(variable_pool.get_any(variable_selector.value_selector))
-
-                if value is None:
+                variable = variable_pool.get(variable_selector.value_selector)
+                if variable is None:
                     raise ValueError(f'Variable {variable_selector.variable} not found')
-
-                if escape_quotes and isinstance(value, str):
-                    value = value.replace('"', '\\"')
-
+                if escape_quotes and isinstance(variable.value, str):
+                    value = variable.value.replace('"', '\\"')
+                else:
+                    value = variable.value
                 variable_value_mapping[variable_selector.variable] = value
 
             return variable_template_parser.format(variable_value_mapping), variable_selectors

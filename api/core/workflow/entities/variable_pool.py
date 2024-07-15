@@ -77,6 +77,9 @@ class VariablePool:
         if len(selector) < 2:
             raise ValueError('Invalid selector')
 
+        if value is None:
+            return
+
         if not isinstance(value, Variable):
             v = variable_factory.build_anonymous_variable(value)
         else:

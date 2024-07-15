@@ -11,7 +11,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 class IfElseNode(BaseNode):
     _node_data_cls = IfElseNodeData
-    node_type = NodeType.IF_ELSE
+    _node_type = NodeType.IF_ELSE
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
@@ -20,7 +20,7 @@ class IfElseNode(BaseNode):
         :return:
         """
         node_data = self.node_data
-        node_data = cast(self._node_data_cls, node_data)
+        node_data = cast(IfElseNodeData, node_data)
 
         node_inputs = {
             "conditions": []
@@ -143,9 +143,8 @@ class IfElseNode(BaseNode):
         group_result = []
 
         for condition in conditions:
-            actual_value = variable_pool.get_any(
-                condition.variable_selector
-            )
+            variable = variable_pool.get(condition.variable_selector)
+            actual_value = variable.value if variable else None
 
             if condition.value is not None:
                 variable_template_parser = VariableTemplateParser(template=condition.value)
@@ -153,9 +152,8 @@ class IfElseNode(BaseNode):
                 variable_selectors = variable_template_parser.extract_variable_selectors()
                 if variable_selectors:
                     for variable_selector in variable_selectors:
-                        value = variable_pool.get_any(
-                            variable_selector.value_selector
-                        )
+                        variable = variable_pool.get(variable_selector.value_selector)
+                        value = variable.value if variable else None
                         expected_value = variable_template_parser.format({variable_selector.variable: value})
                 else:
                     expected_value = condition.value
