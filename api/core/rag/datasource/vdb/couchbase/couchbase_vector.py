@@ -68,11 +68,8 @@ class CouchbaseVector(BaseVector):
         self._cluster.wait_until_ready(timedelta(seconds=5))
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
-        metadatas = [d.metadata for d in texts]
-        print('creating collection')
         index_id = str(uuid.uuid4()).replace('-','')
         self._create_collection(uuid=index_id,vector_length=len(embeddings[0]))
-        print('created collection')
         self.add_texts(texts, embeddings)
 
     def _create_collection(self, vector_length: int, uuid: str):
@@ -81,7 +78,6 @@ class CouchbaseVector(BaseVector):
             collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
             if redis_client.get(collection_exist_cache_key):
                 return
-            print('creating collection')
             if self._collection_exists(self._collection_name):
                 return
             manager = self._bucket.collections()
@@ -219,7 +215,6 @@ class CouchbaseVector(BaseVector):
                     uuids, texts, embeddings, metadatas
                 )
         ]
-        print('adding texts')
         for doc,id in zip(documents_to_insert,uuids):
             result = self._scope.collection(self._collection_name).upsert(id,doc)
 
@@ -230,33 +225,24 @@ class CouchbaseVector(BaseVector):
         
         return doc_ids
 
-
     def text_exists(self, id: str) -> bool:
         # Use a parameterized query for safety and correctness
         query = f"SELECT COUNT(1) AS count FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name} WHERE META().id = $doc_id"
         # Pass the id as a parameter to the query
         result = self._cluster.query(query, named_parameters={"doc_id": id})
         for row in result:
-            print(row)
             return row['count'] > 0
         return False  # Return False if no rows are returned
 
-
     def delete_by_ids(self, ids: list[str]) -> None:
-        print(ids)
         query = f"""
             DELETE FROM `{self._bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
             WHERE META().id IN $doc_ids;
             """
         try:
-            result = self._cluster.query(query, named_parameters={'doc_ids': ids})
-            for row in result.rows():
-                print(row)
+            self._cluster.query(query, named_parameters={'doc_ids': ids})
         except Exception as e:
             print(e)
-
-        print('this ran delete by ids')
-            
 
     def delete_by_document_id(self, document_id: str):
         query = f"""
@@ -264,7 +250,6 @@ class CouchbaseVector(BaseVector):
                 WHERE id = $doc_id;
                 """
         self._cluster.query(query,named_parameters={'doc_id':document_id})
-        print('running delete by document id')
 
     # def get_ids_by_metadata_field(self, key: str, value: str):
     #     query = f"""
@@ -275,31 +260,22 @@ class CouchbaseVector(BaseVector):
     #     return [row['id'] for row in result.rows()]
 
     
-    def delete_by_metadata_field(self, key: str, value: str) -> None:
-        query = f"""
-            DELETE FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
-            WHERE metadata.{key} = {value};
-            """
-        self._cluster.query(query)
-        print('ran delete by metadata field')
+    # def delete_by_metadata_field(self, key: str, value: str) -> None:
+    #     query = f"""
+    #         DELETE FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
+    #         WHERE metadata.{key} = {value};
+    #         """
+    #     self._cluster.query(query)
         
     def search_by_vector(
             self,
             query_vector: list[float],
             **kwargs: Any
     ) -> list[Document]:
-        
-        
-
 
         top_k = kwargs.get("top_k", 5)
         score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
 
-        print("Limit: ", top_k)
-        print('Score min: ', score_threshold)
-        print('Vector size: ', len(query_vector))
-        print(self._collection_name)
-        
         search_req = search.SearchRequest.create(
             VectorSearch.from_vector_query(
                 VectorQuery(
@@ -320,18 +296,13 @@ class CouchbaseVector(BaseVector):
             docs = []
             # Parse the results
             for row in search_iter.rows():
-                print(row)
                 text = row.fields.pop('text')
                 metadata = self._format_metadata(row.fields)
-                print(metadata)
                 score = row.score
-                print('\n', score, '\n')
                 metadata['score'] = score
                 doc = Document(page_content=text, metadata=metadata)
                 if score >= score_threshold:
                     docs.append(doc)
-            print('There are ',len(docs))
-            print(search_iter.metadata().metrics())
         except Exception as e:
             raise ValueError(f"Search failed with error: {e}")
 
@@ -342,7 +313,6 @@ class CouchbaseVector(BaseVector):
             **kwargs: Any
     ) -> list[Document]:
         top_k=kwargs.get('top_k', 2)
-        print(top_k)
         try:
             CBrequest = search.SearchRequest.create(search.QueryStringQuery('text:'+query))
             search_iter = self._scope.search(self._collection_name + '_search',
@@ -352,12 +322,9 @@ class CouchbaseVector(BaseVector):
             
             docs = []
             for row in search_iter.rows():
-                print(row)
                 text = row.fields.pop('text')
                 metadata = self._format_metadata(row.fields)
-                print(metadata)
                 score = row.score
-                print('\n', score, '\n')
                 metadata['score'] = score
                 doc = Document(page_content=text, metadata=metadata)
                 docs.append(doc)
@@ -370,7 +337,6 @@ class CouchbaseVector(BaseVector):
     def delete(self):
         manager = self._bucket.collections()
         scopes = manager.get_all_scopes()
-        print('trying to delete yay')
 
 
         for scope in scopes:
