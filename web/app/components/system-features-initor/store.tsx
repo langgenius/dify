@@ -12,7 +12,7 @@ export const useSystemFeaturesStore = create<StateAndAction>(set => ({
     sso_enforced_for_signin_protocol: '',
     sso_enforced_for_web: false,
     sso_enforced_for_web_protocol: '',
-    expired_at: 11,
+    expired_at: 0,
   },
   setSystemFeatures: features => set({ systemFeatures: features }),
 }))
