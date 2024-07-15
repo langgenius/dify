@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Optional
 
 import click
 from celery import shared_task
@@ -12,7 +13,7 @@ from models.model import UploadFile
 
 
 @shared_task(queue='dataset')
-def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_id: str):
+def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_id: Optional[str]):
     """
     Clean document when document deleted.
     :param document_id: document id
@@ -47,7 +48,10 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                 UploadFile.id == file_id
             ).first()
             if file:
-                storage.delete(file.key)
+                try:
+                    storage.delete(file.key)
+                except Exception:
+                    logging.exception("Delete file failed when document deleted, file_id: {}".format(file_id))
                 db.session.delete(file)
                 db.session.commit()
 
