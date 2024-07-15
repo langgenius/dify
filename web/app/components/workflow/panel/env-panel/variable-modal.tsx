@@ -69,7 +69,7 @@ const VariableModal = ({
       ref={ref}
       className={cn('flex flex-col w-[360px] bg-components-panel-bg rounded-2xl h-full border-[0.5px] border-components-panel-border shadow-2xl')}
     >
-      <div className='shrink-0 flex items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold'>
+      <div className='shrink-0 flex items-center justify-between mb-3 p-4 pb-0 text-text-primary system-xl-semibold'>
         {!env ? t('workflow.env.modal.title') : t('workflow.env.modal.editTitle')}
         <div className='flex items-center'>
           <div
@@ -114,7 +114,7 @@ const VariableModal = ({
           </div>
         </div>
         {/* value */}
-        <div className='mb-4'>
+        <div className=''>
           <div className='mb-1 text-text-secondary system-sm-semibold'>{t('workflow.env.modal.value')}</div>
           <div className='flex'>
             <input
