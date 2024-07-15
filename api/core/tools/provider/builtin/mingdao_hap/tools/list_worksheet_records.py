@@ -132,6 +132,9 @@ class ListWorksheetRecordsTool(BuiltinTool):
             fields.append({'fieldId': 'ctime', 'fieldName': 'Created Time'})
             schema['ctime'] = {'typeId': 16, 'options': {}}
             field_names.append("Created Time")
+        fields.append({'fieldId':'rowid', 'fieldName': 'Record Row ID'})
+        schema['rowid'] = {'typeId': 2, 'options': {}}
+        field_names.append("Record Row ID")
         return fields, schema, '|'+'|'.join(field_names)+'|\n|'+'---|'*len(field_names)
     
     def get_real_type_id(self, control: dict) -> int:

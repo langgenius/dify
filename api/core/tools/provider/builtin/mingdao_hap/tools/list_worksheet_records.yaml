@@ -55,7 +55,7 @@ parameters:
     human_description:
       en_US: A comma-separated list of field IDs whose data to retrieve. If not provided, all fields' data will be fetched
       zh_Hans: 要获取记录数据的字段 ID，多个 ID 间用英文逗号隔开，不传此参数则将获取所有字段的数据
-    llm_description: This optional parameter lets you specify a comma-separated list of field IDs. When provided, only the data associated with these fields will be included in the response. If this parameter is omitted, the API will return data for all fields by default. 
+    llm_description: This optional parameter lets you specify a comma-separated list of field IDs. Unless the user explicitly requests to output the specified field in the question, this parameter should usually be omitted. If this parameter is omitted, the API will return data for all fields by default. When provided, only the data associated with these fields will be included in the response. 
     form: llm
 
   - name: filters
