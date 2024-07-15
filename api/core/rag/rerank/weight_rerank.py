@@ -1,3 +1,5 @@
+import math
+from collections import Counter
 from typing import Optional
 
 import numpy as np
@@ -72,36 +74,92 @@ class WeightRerankRunner:
             document_keywords = keyword_table_handler.extract_keywords(document.page_content, None)
             document.metadata['keywords'] = document_keywords
             documents_keywords.append(document_keywords)
-        # build bm25 model
-        bm25 = BM25Okapi(documents_keywords)
-        query_bm25_scores = bm25.get_scores(query_keywords)
+        # # build bm25 model
+        # bm25 = BM25Okapi(documents_keywords)
+        # query_bm25_scores = bm25.get_scores(query_keywords)
+        #
+        # # normalize BM25 scores to the range [0, 1]
+        # max_score = max(query_bm25_scores)
+        # min_score = min(query_bm25_scores)
+        #
+        # normalized_query_bm25_scores = [(score - min_score) / (max_score - min_score) if max_score != min_score else 0 for score in
+        #                      query_bm25_scores]
 
-        # normalize BM25 scores to the range [0, 1]
-        max_score = max(query_bm25_scores)
-        min_score = min(query_bm25_scores)
+        # 计算查询关键词的词频(TF)
+        query_keyword_counts = Counter(query_keywords)
 
-        normalized_query_bm25_scores = [(score - min_score) / (max_score - min_score) if max_score != min_score else 0 for score in
-                             query_bm25_scores]
+        # 总文档数
+        total_documents = len(documents)
 
-        # 初始化TfidfVectorizer
-        vectorizer = TfidfVectorizer()
+        # 计算所有文档中的关键词IDF
+        all_keywords = set()
+        for document_keywords in documents_keywords:
+            all_keywords.update(document_keywords)
 
-        # 拟合文档并转换文档关键词
-        tfidf_matrix = vectorizer.fit_transform(documents_keywords)
+        keyword_idf = {}
+        for keyword in all_keywords:
+            # 统计包含该关键词的文档数
+            doc_count_containing_keyword = sum(1 for doc_keywords in documents_keywords if keyword in doc_keywords)
+            # 计算IDF值
+            keyword_idf[keyword] = math.log((1 + total_documents) / (1 + doc_count_containing_keyword)) + 1
 
-        # 将查询转换为TF-IDF向量
-        query_tfidf = vectorizer.transform([query])
+        # 计算查询的TF-IDF值
+        query_tfidf = {}
 
-        # 获取词汇表
-        feature_names = vectorizer.get_feature_names_out()
+        for keyword, count in query_keyword_counts.items():
+            tf = count
+            idf = keyword_idf.get(keyword, 0)
+            query_tfidf[keyword] = tf * idf
 
-        # 打印查询的TF-IDF值
-        query_tfidf_values = query_tfidf.toarray()[0]
-        for word, tfidf_value in zip(feature_names, query_tfidf_values):
-            if tfidf_value > 0:
-                print(f"Query word: {word}, TF-IDF value: {tfidf_value:.4f}")
+        # 计算每个文档的TF-IDF值
+        documents_tfidf = []
+        for document_keywords in documents_keywords:
+            document_keyword_counts = Counter(document_keywords)
+            s = 1e-9
+            q = 1e-9
+            for k, v in query_keyword_counts.items():
+                if k in document_keyword_counts:
+                    s += v  # * dtwt[k]
+            for k, v in query_keyword_counts.items():
+                q += v  # * v
+            # d = 1e-9
+            # for k, v in dtwt.items():
+            #    d += v * v
+            score = s / q / max(1, math.sqrt(
+                math.log10(max(len(query_keyword_counts.keys()), len(document_keyword_counts.keys())))))
+            print(f"ragflow similarity: {score}")
+            document_tfidf = {}
+            for keyword, count in document_keyword_counts.items():
+                tf = count
+                idf = keyword_idf.get(keyword, 0)
+                document_tfidf[keyword] = tf * idf
+            documents_tfidf.append(document_tfidf)
 
-        return normalized_query_bm25_scores
+        # 计算查询TF-IDF值与每个文档TF-IDF值的相似度
+        def cosine_similarity(vec1, vec2):
+            intersection = set(vec1.keys()) & set(vec2.keys())
+            numerator = sum([vec1[x] * vec2[x] for x in intersection])
+
+            sum1 = sum([vec1[x] ** 2 for x in vec1.keys()])
+            sum2 = sum([vec2[x] ** 2 for x in vec2.keys()])
+            denominator = math.sqrt(sum1) * math.sqrt(sum2)
+
+            if not denominator:
+                return 0.0
+            else:
+                return float(numerator) / denominator
+
+        # 计算相似度
+        similarities = []
+        for document_tfidf in documents_tfidf:
+            similarity = cosine_similarity(query_tfidf, document_tfidf)
+            similarities.append(similarity)
+
+        # 打印每个文档的相似度
+        for idx, similarity in enumerate(similarities):
+            print(f"Document {idx + 1} similarity: {similarity}")
+
+        return similarities
 
     def _calculate_cosine(self, tenant_id: str, query: str, documents: list[Document],
                           vector_setting: VectorSetting) -> list[float]:

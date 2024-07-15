@@ -14,6 +14,7 @@ from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskName
 from core.ops.utils import measure_time
+from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_model import RerankModelRunner
@@ -132,8 +133,9 @@ class DatasetRetrieval:
                 app_id, tenant_id, user_id, user_from,
                 available_datasets, query, retrieve_config.top_k,
                 retrieve_config.score_threshold,
-                retrieve_config.reranking_model.get('reranking_provider_name'),
-                retrieve_config.reranking_model.get('reranking_model_name'),
+                retrieve_config.rerank_mode,
+                retrieve_config.reranking_model,
+                retrieve_config.weights,
                 message_id,
             )
 
@@ -272,7 +274,8 @@ class DatasetRetrieval:
                         retrival_method=retrival_method, dataset_id=dataset.id,
                         query=query,
                         top_k=top_k, score_threshold=score_threshold,
-                        reranking_model=reranking_model
+                        reranking_model=reranking_model,
+                        weights=retrieval_model_config.get('weights', None),
                     )
                 self._on_query(query, [dataset_id], app_id, user_from, user_id)
 
@@ -292,8 +295,9 @@ class DatasetRetrieval:
             query: str,
             top_k: int,
             score_threshold: float,
-            reranking_provider_name: str,
-            reranking_model_name: str,
+            reranking_mode: str,
+            reranking_model: Optional[dict] = None,
+            weights: Optional[dict] = None,
             message_id: Optional[str] = None,
     ):
         threads = []
@@ -312,21 +316,15 @@ class DatasetRetrieval:
         for thread in threads:
             thread.join()
         # do rerank for searched documents
-        model_manager = ModelManager()
-        rerank_model_instance = model_manager.get_model_instance(
-            tenant_id=tenant_id,
-            provider=reranking_provider_name,
-            model_type=ModelType.RERANK,
-            model=reranking_model_name
-        )
-
-        rerank_runner = RerankModelRunner(rerank_model_instance)
+        data_post_processor = DataPostProcessor(tenant_id, reranking_mode,
+                                                reranking_model, weights, False)
 
         with measure_time() as timer:
-            all_documents = rerank_runner.run(
-                query, all_documents,
-                score_threshold,
-                top_k
+            all_documents = data_post_processor.invoke(
+                query=query,
+                documents=all_documents,
+                score_threshold=score_threshold,
+                top_n=top_k
             )
         self._on_query(query, dataset_ids, app_id, user_from, user_id)
 
@@ -420,7 +418,8 @@ class DatasetRetrieval:
                                                           score_threshold=retrieval_model['score_threshold']
                                                           if retrieval_model['score_threshold_enabled'] else None,
                                                           reranking_model=retrieval_model['reranking_model']
-                                                          if retrieval_model['reranking_enable'] else None
+                                                          if retrieval_model['reranking_enable'] else None,
+                                                          weights=retrieval_model.get('weights', None),
                                                           )
 
                     all_documents.extend(documents)
