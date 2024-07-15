@@ -29,7 +29,7 @@ type CreateFromDSLModalProps = {
   dslUrl?: string
 }
 
-enum CreateFromDSLModalTab {
+export enum CreateFromDSLModalTab {
   FROM_FILE = 'from-file',
   FROM_URL = 'from-url',
 }
