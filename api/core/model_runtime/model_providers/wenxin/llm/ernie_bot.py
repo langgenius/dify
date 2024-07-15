@@ -138,6 +138,7 @@ class ErnieBotModel:
         'ernie-lite-8k-0922': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/eb-instant',
         'ernie-lite-8k-0308': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-lite-8k',
         'ernie-character-8k-0321': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-char-8k',
+        'ernie-4.0-tutbo-8k-preview': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-4.0-turbo-8k-preview',
     }
 
     function_calling_supports = [
@@ -149,6 +150,7 @@ class ErnieBotModel:
         'ernie-3.5-4k-0205',
         'ernie-3.5-128k',
         'ernie-4.0-8k'
+        'ernie-4.0-turbo-8k-preview'
     ]
 
     api_key: str = ''
