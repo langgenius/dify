@@ -336,7 +336,7 @@ class HttpExecutor:
         if variable_pool:
             variable_value_mapping = {}
             for variable_selector in variable_selectors:
-                value = str(variable_pool.get(variable_selector.value_selector))
+                value = str(variable_pool.get_any(variable_selector.value_selector))
 
                 if value is None:
                     raise ValueError(f'Variable {variable_selector.variable} not found')

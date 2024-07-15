@@ -3,7 +3,7 @@ from typing import Any
 
 from core.file.file_obj import FileVar
 
-from .eneities import (
+from .entities import (
     ArrayVariable,
     FileVariable,
     FloatVariable,

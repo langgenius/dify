@@ -20,7 +20,7 @@ class VariableAggregatorNode(BaseNode):
 
         if not node_data.advanced_settings or not node_data.advanced_settings.group_enabled:
             for variable in node_data.variables:
-                value = variable_pool.get(variable)
+                value = variable_pool.get_any(variable)
 
                 if value is not None:
                     outputs = {
@@ -34,7 +34,7 @@ class VariableAggregatorNode(BaseNode):
         else:
             for group in node_data.advanced_settings.groups:
                 for variable in group.variables:
-                    value = variable_pool.get(variable)
+                    value = variable_pool.get_any(variable)
 
                     if value is not None:
                         outputs[group.group_name] = {

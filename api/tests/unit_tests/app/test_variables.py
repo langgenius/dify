@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.app.variables import FloatVariable, IntegerVariable, SecretVariable, TextVariable, variable_factory
-from core.app.variables.eneities import VariableType
+from core.app.variables.entities import VariableType
 
 
 def test_text_variable():

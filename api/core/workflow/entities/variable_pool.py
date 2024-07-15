@@ -3,6 +3,8 @@ from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional, Union
 
+from typing_extensions import deprecated
+
 from core.app.variables import ArrayVariable, ObjectVariable, Variable, variable_factory
 from core.file.file_obj import FileVar
 from core.workflow.entities.node_entities import SystemVariable
@@ -83,7 +85,28 @@ class VariablePool:
         hash_key = hash(tuple(selector[1:]))
         self._variable_dictionary[selector[0]][hash_key] = v
 
-    def get(self, selector: Sequence[str], /):
+    def get(self, selector: Sequence[str], /) -> Variable | None:
+        """
+        Retrieves the value from the variable pool based on the given selector.
+
+        Args:
+            selector (Sequence[str]): The selector used to identify the variable.
+
+        Returns:
+            Any: The value associated with the given selector.
+
+        Raises:
+            ValueError: If the selector is invalid.
+        """
+        if len(selector) < 2:
+            raise ValueError('Invalid selector')
+        hash_key = hash(tuple(selector[1:]))
+        value = self._variable_dictionary[selector[0]].get(hash_key)
+
+        return value
+
+    @deprecated('This method is deprecated, use `get` instead.')
+    def get_any(self, selector: Sequence[str], /) -> Any | None:
         """
         Retrieves the value from the variable pool based on the given selector.
 
@@ -106,9 +129,7 @@ class VariablePool:
         if isinstance(value, ArrayVariable):
             return [element.value for element in value.value]
         if isinstance(value, ObjectVariable):
-            return {
-                k: v.value for k, v in value.value.items()
-            }
+            return {k: v.value for k, v in value.value.items()}
         return value.value if value else None
 
     def remove(self, selector: Sequence[str], /):

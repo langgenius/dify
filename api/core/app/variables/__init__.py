@@ -1,4 +1,4 @@
-from .eneities import (
+from .entities import (
     ArrayVariable,
     FileVariable,
     FloatVariable,

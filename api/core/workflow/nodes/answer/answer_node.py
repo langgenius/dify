@@ -38,9 +38,7 @@ class AnswerNode(BaseNode):
             if part.type == "var":
                 part = cast(VarGenerateRouteChunk, part)
                 value_selector = part.value_selector
-                value = variable_pool.get(
-                    value_selector
-                )
+                value = variable_pool.get_any(value_selector)
 
                 text = ''
                 if isinstance(value, str | int | float):
