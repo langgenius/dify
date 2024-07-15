@@ -11,7 +11,7 @@ description:
   llm: A tool to get fields information of the specific worksheet.
 parameters:
   - name: appkey
-    type: string
+    type: secret-input
     required: true
     label:
       en_US: App Key
@@ -23,7 +23,7 @@ parameters:
     form: llm
 
   - name: sign
-    type: string
+    type: secret-input
     required: true
     label:
       en_US: Sign

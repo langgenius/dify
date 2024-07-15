@@ -11,7 +11,7 @@ description:
   llm: A tool to list worksheets info within an application, imported parameter is AppKey and Sign of the application.
 parameters:
   - name: appkey
-    type: string
+    type: secret-input
     required: true
     label:
       en_US: App Key
@@ -23,7 +23,7 @@ parameters:
     form: llm
 
   - name: sign
-    type: string
+    type: secret-input
     required: true
     label:
       en_US: Sign

@@ -11,7 +11,7 @@ description:
   llm: A tool to modify existing information within a particular record of a worksheet by referencing its unique identifier.
 parameters:
   - name: appkey
-    type: string
+    type: secret-input
     required: true
     label:
       en_US: App Key
@@ -23,7 +23,7 @@ parameters:
     form: llm
 
   - name: sign
-    type: string
+    type: secret-input
     required: true
     label:
       en_US: Sign

@@ -11,7 +11,7 @@ description:
   llm: A tool for extracting statistical pivot table data from a specific worksheet, providing summarized information for analysis and reporting purposes.
 parameters:
   - name: appkey
-    type: string
+    type: secret-input
     required: true
     label:
       en_US: App Key
@@ -23,7 +23,7 @@ parameters:
     form: llm
 
   - name: sign
-    type: string
+    type: secret-input
     required: true
     label:
       en_US: Sign
