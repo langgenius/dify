@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Optional, cast
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
@@ -138,13 +139,12 @@ class IfElseNode(BaseNode):
         else:
             raise ValueError(f"Invalid comparison operator: {comparison_operator}")
 
-    def process_conditions(self, variable_pool: VariablePool, conditions: list[Condition]):
+    def process_conditions(self, variable_pool: VariablePool, conditions: Sequence[Condition]):
         input_conditions = []
         group_result = []
 
         for condition in conditions:
-            variable = variable_pool.get(condition.variable_selector)
-            actual_value = variable.value if variable else None
+            actual_variable = variable_pool.get_any(condition.variable_selector)
 
             if condition.value is not None:
                 variable_template_parser = VariableTemplateParser(template=condition.value)
@@ -163,13 +163,13 @@ class IfElseNode(BaseNode):
             comparison_operator = condition.comparison_operator
             input_conditions.append(
                 {
-                    "actual_value": actual_value,
+                    "actual_value": actual_variable,
                     "expected_value": expected_value,
                     "comparison_operator": comparison_operator
                 }
             )
 
-            result = self.evaluate_condition(actual_value, expected_value, comparison_operator)
+            result = self.evaluate_condition(actual_variable, expected_value, comparison_operator)
             group_result.append(result)
 
         return input_conditions, group_result
