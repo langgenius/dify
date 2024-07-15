@@ -2,10 +2,10 @@ import datetime
 import time
 
 import click
-from flask import current_app
 from werkzeug.exceptions import NotFound
 
 import app
+from configs import dify_config
 from extensions.ext_database import db
 from models.dataset import Embedding
 
@@ -13,7 +13,7 @@ from models.dataset import Embedding
 @app.celery.task(queue='dataset')
 def clean_embedding_cache_task():
     click.echo(click.style('Start clean embedding cache.', fg='green'))
-    clean_days = int(current_app.config.get('CLEAN_DAY_SETTING'))
+    clean_days = int(dify_config.CLEAN_DAY_SETTING)
     start_at = time.perf_counter()
     thirty_days_ago = datetime.datetime.now() - datetime.timedelta(days=clean_days)
     page = 1
