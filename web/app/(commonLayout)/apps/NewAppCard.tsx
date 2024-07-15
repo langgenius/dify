@@ -22,7 +22,7 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
   const { onPlanInfoChanged } = useProviderContext()
   const searchParams = useSearchParams()
   const { replace } = useRouter()
-  const dslUrl = searchParams.get('dslUrl') || undefined
+  const dslUrl = searchParams.get('remoteInstallUrl') || undefined
 
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showNewAppModal, setShowNewAppModal] = useState(false)
