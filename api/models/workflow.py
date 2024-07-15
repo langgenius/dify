@@ -122,6 +122,7 @@ class Workflow(db.Model):
     updated_at = db.Column(db.DateTime)
     # TODO: update this field to sqlalchemy column after frontend update.
     _environment_variables = '{}'
+    # _environment_variables = db.Column(db.String, nullable=False, server_default='{}')
 
     @property
     def created_by_account(self):

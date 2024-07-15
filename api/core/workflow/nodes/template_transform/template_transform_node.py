@@ -45,8 +45,7 @@ class TemplateTransformNode(BaseNode):
         variables = {}
         for variable_selector in node_data.variables:
             variable_name = variable_selector.variable
-            variable = variable_pool.get(variable_selector.value_selector)
-            value = variable.value if variable else None
+            value = variable_pool.get_any(variable_selector.value_selector)
             variables[variable_name] = value
         # Run code
         try:

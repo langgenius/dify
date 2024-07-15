@@ -112,8 +112,8 @@ class ToolNode(BaseNode):
                 if input.type == 'mixed':
                     result[parameter_name] = self._format_variable_template(input.value, variable_pool)
                 elif input.type == 'variable':
-                    variable = variable_pool.get(input.value)
-                    result[parameter_name] = variable.value if variable else None
+                    value = variable_pool.get_any(input.value)
+                    result[parameter_name] = value
                 elif input.type == 'constant':
                     result[parameter_name] = input.value
 
@@ -126,14 +126,15 @@ class ToolNode(BaseNode):
         inputs = {}
         template_parser = VariableTemplateParser(template)
         for selector in template_parser.extract_variable_selectors():
-            variable = variable_pool.get(selector.variable)
-            inputs[selector.variable] = variable.value if variable else None
+            value = variable_pool.get_any(selector.variable)
+            inputs[selector.variable] = value
         
         return template_parser.format(inputs)
     
     def _fetch_files(self, variable_pool: VariablePool) -> list[FileVar]:
+        # FIXME: ensure this is a ArrayVariable contains FileVariable.
         variable = variable_pool.get(['sys', SystemVariable.FILES.value])
-        return variable.value if variable else []
+        return [file_var.value for file_var in variable.value] if variable else []
 
     def _convert_tool_messages(self, messages: list[ToolInvokeMessage]) -> tuple[str, list[FileVar]]:
         """

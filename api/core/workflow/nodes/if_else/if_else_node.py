@@ -152,8 +152,7 @@ class IfElseNode(BaseNode):
                 variable_selectors = variable_template_parser.extract_variable_selectors()
                 if variable_selectors:
                     for variable_selector in variable_selectors:
-                        variable = variable_pool.get(variable_selector.value_selector)
-                        value = variable.value if variable else None
+                        value = variable_pool.get_any(variable_selector.value_selector)
                         expected_value = variable_template_parser.format({variable_selector.variable: value})
                 else:
                     expected_value = condition.value
