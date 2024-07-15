@@ -20,7 +20,7 @@ parameters:
       en_US: The AppKey parameter for the HAP application, typically found in the application's API documentation.
       zh_Hans: HAP 应用的 AppKey 参数，可以从应用 API 文档中查找到
     llm_description: the AppKey parameter for the HAP application
-    form: llm
+    form: form
 
   - name: sign
     type: secret-input
@@ -32,7 +32,7 @@ parameters:
       en_US: The Sign parameter for the HAP application
       zh_Hans: HAP 应用的 Sign 参数
     llm_description: the Sign parameter for the HAP application
-    form: llm
+    form: form
 
   - name: worksheet_id
     type: string
@@ -87,4 +87,4 @@ parameters:
       en_US: The address for the privately deployed HAP server.
       zh_Hans: 私有部署 HAP 服务器地址，公有云无需填写
     llm_description: the address for the privately deployed HAP server.
-    form: llm
+    form: form
