@@ -524,7 +524,14 @@ class DocumentService:
     @staticmethod
     def delete_document(document):
         # trigger document_was_deleted signal
-        document_was_deleted.send(document.id, dataset_id=document.dataset_id, doc_form=document.doc_form)
+        file_id = None
+        if document.data_source_type == 'upload_file':
+            if document.data_source_info:
+                data_source_info = document.data_source_info_dict
+                if data_source_info and 'upload_file_id' in data_source_info:
+                    file_id = data_source_info['upload_file_id']
+        document_was_deleted.send(document.id, dataset_id=document.dataset_id,
+                                  doc_form=document.doc_form, file_id=file_id)
 
         db.session.delete(document)
         db.session.commit()
