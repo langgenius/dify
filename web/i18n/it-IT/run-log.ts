@@ -1,29 +1,29 @@
 const translation = {
-  input: "INPUT",
-  result: "RISULTATO",
-  detail: "DETTAGLIO",
-  tracing: "TRACCIAMENTO",
+  input: 'INPUT',
+  result: 'RISULTATO',
+  detail: 'DETTAGLIO',
+  tracing: 'TRACCIAMENTO',
   resultPanel: {
-    status: "STATO",
-    time: "TEMPO TRASCORSO",
-    tokens: "TOKEN TOTALI",
+    status: 'STATO',
+    time: 'TEMPO TRASCORSO',
+    tokens: 'TOKEN TOTALI',
   },
   meta: {
-    title: "METADATI",
-    status: "Stato",
-    version: "Versione",
-    executor: "Esecutore",
-    startTime: "Ora di Inizio",
-    time: "Tempo Trascorso",
-    tokens: "Token Totali",
-    steps: "Fasi Eseguite",
+    title: 'METADATI',
+    status: 'Stato',
+    version: 'Versione',
+    executor: 'Esecutore',
+    startTime: 'Ora di Inizio',
+    time: 'Tempo Trascorso',
+    tokens: 'Token Totali',
+    steps: 'Fasi Eseguite',
   },
   resultEmpty: {
-    title: "Questa esecuzione ha prodotto solo output in formato JSON,",
-    tipLeft: "per favore vai al ",
-    link: "pannello dei dettagli",
-    tipRight: " per visualizzarlo.",
+    title: 'Questa esecuzione ha prodotto solo output in formato JSON,',
+    tipLeft: 'per favore vai al ',
+    link: 'pannello dei dettagli',
+    tipRight: ' per visualizzarlo.',
   },
-};
+}
 
-export default translation;
+export default translation
