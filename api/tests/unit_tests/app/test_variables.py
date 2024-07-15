@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.app.variables import FloatVariable, IntegerVariable, SecretVariable, TextVariable, variable_factory
+from core.app.variables.eneities import VariableType
 
 
 def test_text_variable():
@@ -54,7 +55,7 @@ def test_frozen_variables():
 
 def test_variable_value_type_immutable():
     with pytest.raises(ValidationError):
-        TextVariable(value_type='not text', name='text', value='text')
+        TextVariable(value_type=VariableType.ARRAY, name='text', value='text')
 
     with pytest.raises(ValidationError):
         TextVariable.model_validate({
@@ -65,12 +66,12 @@ def test_variable_value_type_immutable():
 
     var = IntegerVariable(name='integer', value=42)
     with pytest.raises(ValidationError):
-        IntegerVariable(value_type='new_value_type', name=var.name, value=var.value)
+        IntegerVariable(value_type=VariableType.ARRAY, name=var.name, value=var.value)
 
     var = FloatVariable(name='float', value=3.14)
     with pytest.raises(ValidationError):
-        FloatVariable(value_type='new_value_type', name=var.name, value=var.value)
+        FloatVariable(value_type=VariableType.ARRAY, name=var.name, value=var.value)
 
     var = SecretVariable(name='secret', value='secret_value')
     with pytest.raises(ValidationError):
-        SecretVariable(value_type='new_value_type', name=var.name, value=var.value)
+        SecretVariable(value_type=VariableType.ARRAY, name=var.name, value=var.value)

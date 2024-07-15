@@ -38,8 +38,8 @@ class AnswerNode(BaseNode):
             if part.type == "var":
                 part = cast(VarGenerateRouteChunk, part)
                 value_selector = part.value_selector
-                value = variable_pool.get_variable_value(
-                    variable_selector=value_selector
+                value = variable_pool.get(
+                    value_selector
                 )
 
                 text = ''

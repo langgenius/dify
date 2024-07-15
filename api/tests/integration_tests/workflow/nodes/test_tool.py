@@ -7,7 +7,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 def test_tool_variable_invoke():
     pool = VariablePool(system_variables={}, user_inputs={})
-    pool.append_variable(node_id='1', variable_key_list=['123', 'args1'], value='1+1')
+    pool.add(['1', '123', 'args1'], '1+1')
 
     node = ToolNode(
         tenant_id='1',
@@ -46,7 +46,7 @@ def test_tool_variable_invoke():
 
 def test_tool_mixed_invoke():
     pool = VariablePool(system_variables={}, user_inputs={})
-    pool.append_variable(node_id='1', variable_key_list=['args1'], value='1+1')
+    pool.add(['1', 'args1'], '1+1')
 
     node = ToolNode(
         tenant_id='1',

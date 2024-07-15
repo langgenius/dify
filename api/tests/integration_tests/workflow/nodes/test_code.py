@@ -56,8 +56,8 @@ def test_execute_code(setup_code_executor_mock):
 
     # construct variable pool
     pool = VariablePool(system_variables={}, user_inputs={})
-    pool.append_variable(node_id='1', variable_key_list=['123', 'args1'], value=1)
-    pool.append_variable(node_id='1', variable_key_list=['123', 'args2'], value=2)
+    pool.add(['1', '123', 'args1'], 1)
+    pool.add(['1', '123', 'args2'], 2)
     
     # execute node
     result = node.run(pool)
@@ -110,8 +110,8 @@ def test_execute_code_output_validator(setup_code_executor_mock):
 
     # construct variable pool
     pool = VariablePool(system_variables={}, user_inputs={})
-    pool.append_variable(node_id='1', variable_key_list=['123', 'args1'], value=1)
-    pool.append_variable(node_id='1', variable_key_list=['123', 'args2'], value=2)
+    pool.add(['1', '123', 'args1'], 1)
+    pool.add(['1', '123', 'args2'], 2)
     
     # execute node
     result = node.run(pool)

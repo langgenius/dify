@@ -143,8 +143,8 @@ class IfElseNode(BaseNode):
         group_result = []
 
         for condition in conditions:
-            actual_value = variable_pool.get_variable_value(
-                variable_selector=condition.variable_selector
+            actual_value = variable_pool.get(
+                condition.variable_selector
             )
 
             if condition.value is not None:
@@ -153,8 +153,8 @@ class IfElseNode(BaseNode):
                 variable_selectors = variable_template_parser.extract_variable_selectors()
                 if variable_selectors:
                     for variable_selector in variable_selectors:
-                        value = variable_pool.get_variable_value(
-                            variable_selector=variable_selector.value_selector
+                        value = variable_pool.get(
+                            variable_selector.value_selector
                         )
                         expected_value = variable_template_parser.format({variable_selector.variable: value})
                 else:

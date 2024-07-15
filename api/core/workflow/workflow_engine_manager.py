@@ -631,7 +631,7 @@ class WorkflowEngineManager:
         nodes = [node for node in nodes if node.get('data', {}).get('iteration_id') == current_iteration_node.node_id]
 
         for node in nodes:
-            workflow_run_state.variable_pool.clear_node_variables(node_id=node.get('id'))
+            workflow_run_state.variable_pool.remove((node.get('id'),))
     
     def _workflow_iteration_completed(self, *, current_iteration_node: BaseIterationNode,
                                         workflow_run_state: WorkflowRunState, 
@@ -896,10 +896,8 @@ class WorkflowEngineManager:
         :param variable_value: variable value
         :return:
         """
-        variable_pool.append_variable(
-            node_id=node_id,
-            variable_key_list=variable_key_list,
-            value=variable_value
+        variable_pool.add(
+            [node_id] + variable_key_list, variable_value
         )
 
         # if variable_value is a dict, then recursively append variables
@@ -987,8 +985,4 @@ class WorkflowEngineManager:
                     value = new_value
 
             # append variable and value to variable pool
-            variable_pool.append_variable(
-                node_id=variable_node_id,
-                variable_key_list=variable_key_list,
-                value=value
-            )
+            variable_pool.add([variable_node_id]+variable_key_list, value)

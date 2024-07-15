@@ -24,8 +24,8 @@ class EndNode(BaseNode):
 
         outputs = {}
         for variable_selector in output_variables:
-            value = variable_pool.get_variable_value(
-                variable_selector=variable_selector.value_selector
+            value = variable_pool.get(
+                variable_selector.value_selector
             )
 
             outputs[variable_selector.variable] = value

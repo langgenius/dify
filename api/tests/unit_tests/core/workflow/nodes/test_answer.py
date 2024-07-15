@@ -32,8 +32,8 @@ def test_execute_answer():
         SystemVariable.FILES: [],
         SystemVariable.USER_ID: 'aaa'
     }, user_inputs={})
-    pool.append_variable(node_id='start', variable_key_list=['weather'], value='sunny')
-    pool.append_variable(node_id='llm', variable_key_list=['text'], value='You are a helpful AI.')
+    pool.add(['start', 'weather'], 'sunny')
+    pool.add(['llm', 'text'], 'You are a helpful AI.')
 
     # Mock db.session.close()
     db.session.close = MagicMock()

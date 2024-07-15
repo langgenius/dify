@@ -1,5 +1,6 @@
 from unittest import mock
 
+import contexts
 from core.app.variables import FloatVariable, IntegerVariable, SecretVariable, TextVariable
 from models.workflow import Workflow
 
@@ -12,6 +13,8 @@ def test_environment_variables():
     mock_user.username = 'testuser'
     mock_user.current_tenant_id = 'tenant_id'
 
+    contexts.current_user.set(mock_user)
+
     # Create a Workflow instance
     workflow = Workflow()
 
@@ -22,7 +25,6 @@ def test_environment_variables():
     variable4 = FloatVariable.model_validate({'name': 'var4', 'value': 3.14})
 
     with (
-        mock.patch('flask_login.utils._get_user', mock_user),
         mock.patch('core.helper.encrypter.encrypt_token', return_value='encrypted_token'),
         mock.patch('core.helper.encrypter.decrypt_token', return_value='secret'),
     ):
@@ -41,6 +43,8 @@ def test_to_dict():
     mock_user.username = 'testuser'
     mock_user.current_tenant_id = 'tenant_id'
 
+    contexts.current_user.set(mock_user)
+
     # Create a Workflow instance
     workflow = Workflow(
         graph='{}',
@@ -50,7 +54,6 @@ def test_to_dict():
     # Create some EnvironmentVariable instances
 
     with (
-        mock.patch('flask_login.utils._get_user', mock_user),
         mock.patch('core.helper.encrypter.encrypt_token', return_value='encrypted_token'),
         mock.patch('core.helper.encrypter.decrypt_token', return_value='secret'),
     ):
