@@ -1,4 +1,5 @@
 from .eneities import (
+    ArrayVariable,
     FileVariable,
     FloatVariable,
     IntegerVariable,
@@ -15,5 +16,6 @@ __all__ = [
     'SecretVariable',
     'FileVariable',
     'TextVariable',
+    'ArrayVariable',
     'Variable',
 ]
