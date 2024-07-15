@@ -17,46 +17,16 @@ from core.workflow.entities.workflow_runtime_state import WorkflowRuntimeState
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.graph_engine import GraphEngine
-from core.workflow.nodes.answer.answer_node import AnswerNode
-from core.workflow.nodes.base_node import BaseIterationNode, BaseNode, UserFrom
-from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.end.end_node import EndNode
-from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
-from core.workflow.nodes.if_else.if_else_node import IfElseNode
+from core.workflow.nodes.base_node import BaseIterationNode, BaseNode, UserFrom, node_classes
 from core.workflow.nodes.iteration.entities import IterationState
-from core.workflow.nodes.iteration.iteration_node import IterationNode
-from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from core.workflow.nodes.llm.entities import LLMNodeData
-from core.workflow.nodes.llm.llm_node import LLMNode
-from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
-from core.workflow.nodes.tool.tool_node import ToolNode
-from core.workflow.nodes.variable_aggregator.variable_aggregator_node import VariableAggregatorNode
 from extensions.ext_database import db
 from models.workflow import (
     Workflow,
     WorkflowNodeExecutionStatus,
+    WorkflowType,
 )
-
-node_classes = {
-    NodeType.START: StartNode,
-    NodeType.END: EndNode,
-    NodeType.ANSWER: AnswerNode,
-    NodeType.LLM: LLMNode,
-    NodeType.KNOWLEDGE_RETRIEVAL: KnowledgeRetrievalNode,
-    NodeType.IF_ELSE: IfElseNode,
-    NodeType.CODE: CodeNode,
-    NodeType.TEMPLATE_TRANSFORM: TemplateTransformNode,
-    NodeType.QUESTION_CLASSIFIER: QuestionClassifierNode,
-    NodeType.HTTP_REQUEST: HttpRequestNode,
-    NodeType.TOOL: ToolNode,
-    NodeType.VARIABLE_AGGREGATOR: VariableAggregatorNode,
-    NodeType.VARIABLE_ASSIGNER: VariableAggregatorNode,  # original name of VARIABLE_AGGREGATOR
-    NodeType.ITERATION: IterationNode,
-    NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode
-}
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +85,8 @@ class WorkflowEntry:
         graph_engine = GraphEngine(
             tenant_id=workflow.tenant_id,
             app_id=workflow.app_id,
+            workflow_type=WorkflowType.value_of(workflow.type),
+            workflow_id=workflow.id,
             user_id=user_id,
             user_from=user_from,
             invoke_from=invoke_from,
@@ -692,7 +664,7 @@ class WorkflowEntry:
         # add steps
         workflow_run_state.workflow_node_steps += 1
 
-    def  _workflow_iteration_next(self, graph: dict,
+    def _workflow_iteration_next(self, graph: dict,
                                  current_iteration_node: BaseIterationNode,
                                  workflow_run_state: WorkflowRunState,
                                  callbacks: list[BaseWorkflowCallback] = None) -> None:

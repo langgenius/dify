@@ -3,15 +3,16 @@ from collections.abc import Generator
 from copy import deepcopy
 from typing import Optional, cast
 
+from pydantic import BaseModel
+
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import QuotaUnit
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.file.file_obj import FileVar
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     PromptMessage,
@@ -23,9 +24,12 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
+from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.graph_engine.entities.event import NodeRunRetrieverResourceEvent
 from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.event import RunCompletedEvent, RunEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.llm.entities import (
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
@@ -43,13 +47,13 @@ class LLMNode(BaseNode):
     _node_data_cls = LLMNodeData
     node_type = NodeType.LLM
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> Generator[RunEvent, None, None]:
         """
         Run node
-        :param variable_pool: variable pool
         :return:
         """
         node_data = cast(LLMNodeData, deepcopy(self.node_data))
+        variable_pool = self.graph_runtime_state.variable_pool
 
         node_inputs = None
         process_data = None
@@ -76,10 +80,17 @@ class LLMNode(BaseNode):
                 node_inputs['#files#'] = [file.to_dict() for file in files]
 
             # fetch context value
-            context = self._fetch_context(node_data, variable_pool)
+            generator = self._fetch_context(node_data, variable_pool)
+            context = None
+            for event in generator:
+                if isinstance(event, RunRetrieverResourceEvent):
+                    context = event.context
+                    yield NodeRunRetrieverResourceEvent(
+                        retriever_resources=event.retriever_resources
+                    )
 
             if context:
-                node_inputs['#context#'] = context
+                node_inputs['#context#'] = context  # type: ignore
 
             # fetch model config
             model_instance, model_config = self._fetch_model_config(node_data.model)
@@ -90,7 +101,7 @@ class LLMNode(BaseNode):
             # fetch prompt messages
             prompt_messages, stop = self._fetch_prompt_messages(
                 node_data=node_data,
-                query=variable_pool.get_variable_value(['sys', SystemVariable.QUERY.value])
+                query=variable_pool.get_variable_value(['sys', SystemVariable.QUERY.value])  # type: ignore
                 if node_data.memory else None,
                 query_prompt_template=node_data.memory.query_prompt_template if node_data.memory else None,
                 inputs=inputs,
@@ -109,41 +120,57 @@ class LLMNode(BaseNode):
             }
 
             # handle invoke result
-            result_text, usage = self._invoke_llm(
+            generator = self._invoke_llm(
                 node_data_model=node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop
             )
+
+            result_text = ''
+            usage = LLMUsage.empty_usage()
+            for event in generator:
+                if isinstance(event, RunStreamChunkEvent):
+                    yield event
+                elif isinstance(event, ModelInvokeCompleted):
+                    result_text = event.text
+                    usage = event.usage
+                    break
         except Exception as e:
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                error=str(e),
-                inputs=node_inputs,
-                process_data=process_data
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    error=str(e),
+                    inputs=node_inputs,
+                    process_data=process_data
+                )
             )
+            return
 
         outputs = {
             'text': result_text,
             'usage': jsonable_encoder(usage)
         }
 
-        return NodeRunResult(
-            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs=node_inputs,
-            process_data=process_data,
-            outputs=outputs,
-            metadata={
-                NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
-                NodeRunMetadataKey.CURRENCY: usage.currency
-            }
+        yield RunCompletedEvent(
+            run_result=NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                inputs=node_inputs,
+                process_data=process_data,
+                outputs=outputs,
+                metadata={
+                    NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                    NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
+                    NodeRunMetadataKey.CURRENCY: usage.currency
+                }
+            )
         )
 
     def _invoke_llm(self, node_data_model: ModelConfig,
                     model_instance: ModelInstance,
                     prompt_messages: list[PromptMessage],
-                    stop: list[str]) -> tuple[str, LLMUsage]:
+                    stop: Optional[list[str]] = None) \
+            -> Generator[RunStreamChunkEvent | "ModelInvokeCompleted", None, None]:
         """
         Invoke large language model
         :param node_data_model: node data model
@@ -163,30 +190,41 @@ class LLMNode(BaseNode):
         )
 
         # handle invoke result
-        text, usage = self._handle_invoke_result(
+        generator = self._handle_invoke_result(
             invoke_result=invoke_result
         )
+
+        usage = LLMUsage.empty_usage()
+        for event in generator:
+            yield event
+            if isinstance(event, ModelInvokeCompleted):
+                usage = event.usage
 
         # deduct quota
         self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
 
-        return text, usage
-
-    def _handle_invoke_result(self, invoke_result: Generator) -> tuple[str, LLMUsage]:
+    def _handle_invoke_result(self, invoke_result: LLMResult | Generator) \
+            -> Generator[RunStreamChunkEvent | "ModelInvokeCompleted", None, None]:
         """
         Handle invoke result
         :param invoke_result: invoke result
         :return:
         """
+        if isinstance(invoke_result, LLMResult):
+            return
+
         model = None
-        prompt_messages = []
+        prompt_messages: list[PromptMessage] = []
         full_text = ''
         usage = None
         for result in invoke_result:
             text = result.delta.message.content
             full_text += text
 
-            self.publish_text_chunk(text=text, value_selector=[self.node_id, 'text'])
+            yield RunStreamChunkEvent(
+                chunk_content=text,
+                from_variable_selector=[self.node_id, 'text']
+            )
 
             if not model:
                 model = result.model
@@ -200,11 +238,14 @@ class LLMNode(BaseNode):
         if not usage:
             usage = LLMUsage.empty_usage()
 
-        return full_text, usage
-    
-    def _transform_chat_messages(self, 
-        messages: list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
-    ) -> list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate:
+        yield ModelInvokeCompleted(
+            text=full_text,
+            usage=usage
+        )
+
+    def _transform_chat_messages(self,
+                                 messages: list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
+                                 ) -> list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate:
         """
         Transform chat messages
 
@@ -213,13 +254,13 @@ class LLMNode(BaseNode):
         """
 
         if isinstance(messages, LLMNodeCompletionModelPromptTemplate):
-            if messages.edition_type == 'jinja2':
+            if messages.edition_type == 'jinja2' and messages.jinja2_text:
                 messages.text = messages.jinja2_text
 
             return messages
 
         for message in messages:
-            if message.edition_type == 'jinja2':
+            if message.edition_type == 'jinja2' and message.jinja2_text:
                 message.text = message.jinja2_text
 
         return messages
@@ -249,13 +290,13 @@ class LLMNode(BaseNode):
                 # check if it's a context structure
                 if 'metadata' in d and '_source' in d['metadata'] and 'content' in d:
                     return d['content']
-                
+
                 # else, parse the dict
                 try:
                     return json.dumps(d, ensure_ascii=False)
                 except Exception:
                     return str(d)
-                
+
             if isinstance(value, str):
                 value = value
             elif isinstance(value, list):
@@ -319,7 +360,7 @@ class LLMNode(BaseNode):
 
                 inputs[variable_selector.variable] = variable_value
 
-        return inputs
+        return inputs  # type: ignore
 
     def _fetch_files(self, node_data: LLMNodeData, variable_pool: VariablePool) -> list[FileVar]:
         """
@@ -337,7 +378,7 @@ class LLMNode(BaseNode):
 
         return files
 
-    def _fetch_context(self, node_data: LLMNodeData, variable_pool: VariablePool) -> Optional[str]:
+    def _fetch_context(self, node_data: LLMNodeData, variable_pool: VariablePool) -> Generator[RunEvent, None, None]:
         """
         Fetch context
         :param node_data: node data
@@ -353,7 +394,10 @@ class LLMNode(BaseNode):
         context_value = variable_pool.get_variable_value(node_data.context.variable_selector)
         if context_value:
             if isinstance(context_value, str):
-                return context_value
+                yield RunRetrieverResourceEvent(
+                    retriever_resources=[],
+                    context=context_value
+                )
             elif isinstance(context_value, list):
                 context_str = ''
                 original_retriever_resource = []
@@ -370,17 +414,10 @@ class LLMNode(BaseNode):
                         if retriever_resource:
                             original_retriever_resource.append(retriever_resource)
 
-                if self.callbacks and original_retriever_resource:
-                    for callback in self.callbacks:
-                        callback.on_event(
-                            event=QueueRetrieverResourcesEvent(
-                                retriever_resources=original_retriever_resource
-                            )
-                        )
-
-                return context_str.strip()
-
-        return None
+                yield RunRetrieverResourceEvent(
+                    retriever_resources=original_retriever_resource,
+                    context=context_str.strip()
+                )
 
     def _convert_to_original_retriever_resource(self, context_dict: dict) -> Optional[dict]:
         """
@@ -561,7 +598,8 @@ class LLMNode(BaseNode):
             if not isinstance(prompt_message.content, str):
                 prompt_message_content = []
                 for content_item in prompt_message.content:
-                    if vision_enabled and content_item.type == PromptMessageContentType.IMAGE and isinstance(content_item, ImagePromptMessageContent):
+                    if vision_enabled and content_item.type == PromptMessageContentType.IMAGE and isinstance(
+                            content_item, ImagePromptMessageContent):
                         # Override vision config if LLM node has vision config
                         if vision_detail:
                             content_item.detail = ImagePromptMessageContent.DETAIL(vision_detail)
@@ -633,13 +671,13 @@ class LLMNode(BaseNode):
             db.session.commit()
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: LLMNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
         """
         Extract variable selector to variable mapping
         :param node_data: node data
         :return:
         """
-
+        node_data = cast(LLMNodeData, node_data)
         prompt_template = node_data.prompt_template
 
         variable_selectors = []
@@ -727,3 +765,11 @@ class LLMNode(BaseNode):
                 }
             }
         }
+
+
+class ModelInvokeCompleted(BaseModel):
+    """
+    Model invoke completed
+    """
+    text: str
+    usage: LLMUsage

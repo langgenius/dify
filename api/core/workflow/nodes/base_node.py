@@ -1,33 +1,17 @@
 from abc import ABC, abstractmethod
-from enum import Enum
+from collections.abc import Generator
 from typing import Optional
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunResult, NodeType, UserFrom
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
+from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.workflow.nodes.event import RunCompletedEvent, RunEvent
 from core.workflow.nodes.iterable_node import IterableNodeMixin
-
-
-class UserFrom(Enum):
-    """
-    User from
-    """
-    ACCOUNT = "account"
-    END_USER = "end-user"
-
-    @classmethod
-    def value_of(cls, value: str) -> "UserFrom":
-        """
-        Value of
-        :param value: value
-        :return:
-        """
-        for item in cls:
-            if item.value == value:
-                return item
-        raise ValueError(f"Invalid value: {value}")
+from models.workflow import WorkflowType
 
 
 class BaseNode(ABC):
@@ -36,64 +20,66 @@ class BaseNode(ABC):
 
     tenant_id: str
     app_id: str
+    workflow_type: WorkflowType
     workflow_id: str
     user_id: str
     user_from: UserFrom
     invoke_from: InvokeFrom
-
     workflow_call_depth: int
+    graph: Graph
+    graph_runtime_state: GraphRuntimeState
+    previous_node_id: Optional[str] = None
 
     node_id: str
     node_data: BaseNodeData
-    node_run_result: Optional[NodeRunResult] = None
 
-    callbacks: list[BaseWorkflowCallback]
-
-    def __init__(self, tenant_id: str,
-                 app_id: str,
-                 workflow_id: str,
-                 user_id: str,
-                 user_from: UserFrom,
-                 invoke_from: InvokeFrom,
+    def __init__(self,
                  config: dict,
-                 callbacks: list[BaseWorkflowCallback] = None,
-                 workflow_call_depth: int = 0) -> None:
-        self.tenant_id = tenant_id
-        self.app_id = app_id
-        self.workflow_id = workflow_id
-        self.user_id = user_id
-        self.user_from = user_from
-        self.invoke_from = invoke_from
-        self.workflow_call_depth = workflow_call_depth
+                 graph_init_params: GraphInitParams,
+                 graph: Graph,
+                 graph_runtime_state: GraphRuntimeState,
+                 previous_node_id: Optional[str] = None) -> None:
+        self.tenant_id = graph_init_params.tenant_id
+        self.app_id = graph_init_params.app_id
+        self.workflow_type = graph_init_params.workflow_type
+        self.workflow_id = graph_init_params.workflow_id
+        self.user_id = graph_init_params.user_id
+        self.user_from = graph_init_params.user_from
+        self.invoke_from = graph_init_params.invoke_from
+        self.workflow_call_depth = graph_init_params.call_depth
+        self.graph = graph
+        self.graph_runtime_state = graph_runtime_state
+        self.previous_node_id = previous_node_id
 
-        self.node_id = config.get("id")
-        if not self.node_id:
+        node_id = config.get("id")
+        if not node_id:
             raise ValueError("Node ID is required.")
 
+        self.node_id = node_id
         self.node_data = self._node_data_cls(**config.get("data", {}))
-        self.callbacks = callbacks or []
 
     @abstractmethod
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) \
+            -> NodeRunResult | Generator[RunEvent, None, None]:
         """
         Run node
-        :param variable_pool: variable pool
         :return:
         """
         raise NotImplementedError
 
-    def run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def run(self) -> Generator[RunEvent, None, None]:
         """
         Run node entry
-        :param variable_pool: variable pool
         :return:
         """
-        result = self._run(
-            variable_pool=variable_pool
-        )
+        result = self._run()
 
-        self.node_run_result = result
-        return result
+        if isinstance(result, NodeRunResult):
+            yield RunCompletedEvent(
+                run_result=result
+            )
+        else:
+            yield from result
 
     def publish_text_chunk(self, text: str, value_selector: list[str] = None) -> None:
         """
@@ -102,13 +88,13 @@ class BaseNode(ABC):
         :param value_selector: value selector
         :return:
         """
+        # TODO remove callbacks
         if self.callbacks:
             for callback in self.callbacks:
                 callback.on_node_text_chunk(
                     node_id=self.node_id,
                     text=text,
                     metadata={
-                        "node_type": self.node_type,
                         "value_selector": value_selector
                     }
                 )

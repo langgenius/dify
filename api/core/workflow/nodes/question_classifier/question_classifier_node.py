@@ -5,6 +5,7 @@ from typing import Optional, Union, cast
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -16,7 +17,7 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.nodes.llm.llm_node import LLMNode
+from core.workflow.nodes.llm.llm_node import LLMNode, ModelInvokeCompleted
 from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
 from core.workflow.nodes.question_classifier.template_prompts import (
     QUESTION_CLASSIFIER_ASSISTANT_PROMPT_1,
@@ -36,9 +37,10 @@ class QuestionClassifierNode(LLMNode):
     _node_data_cls = QuestionClassifierNodeData
     node_type = NodeType.QUESTION_CLASSIFIER
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         node_data: QuestionClassifierNodeData = cast(self._node_data_cls, self.node_data)
         node_data = cast(QuestionClassifierNodeData, node_data)
+        variable_pool = self.graph_runtime_state.variable_pool
 
         # extract variables
         query = variable_pool.get_variable_value(variable_selector=node_data.query_variable_selector)
@@ -62,12 +64,21 @@ class QuestionClassifierNode(LLMNode):
         )
 
         # handle invoke result
-        result_text, usage = self._invoke_llm(
+        generator = self._invoke_llm(
             node_data_model=node_data.model,
             model_instance=model_instance,
             prompt_messages=prompt_messages,
             stop=stop
         )
+
+        result_text = ''
+        usage = LLMUsage.empty_usage()
+        for event in generator:
+            if isinstance(event, ModelInvokeCompleted):
+                result_text = event.text
+                usage = event.usage
+                break
+
         category_name = node_data.classes[0].name
         category_id = node_data.classes[0].id
         try:

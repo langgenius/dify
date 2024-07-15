@@ -8,48 +8,37 @@ from core.workflow.graph_engine.entities.run_condition import RunCondition
 
 
 class GraphEdge(BaseModel):
-    source_node_id: str
-    """source node id"""
-
-    target_node_id: str
-    """target node id"""
-
-    run_condition: Optional[RunCondition] = None
-    """condition to run the edge"""
+    source_node_id: str = Field(..., description="source node id")
+    target_node_id: str = Field(..., description="target node id")
+    run_condition: Optional[RunCondition] = Field(None, description="run condition")
 
 
 class GraphParallel(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    """random uuid parallel id"""
-
-    start_from_node_id: str
-    """start from node id"""
-
-    end_to_node_id: Optional[str] = None
-    """end to node id"""
-
-    parent_parallel_id: Optional[str] = None
-    """parent parallel id if exists"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="random uuid parallel id")
+    start_from_node_id: str = Field(..., description="start from node id")
+    parent_parallel_id: Optional[str] = Field(None, description="parent parallel id")
+    end_to_node_id: Optional[str] = Field(None, description="end to node id")
 
 
 class Graph(BaseModel):
-    root_node_id: str
-    """root node id of the graph"""
-
-    node_ids: list[str] = Field(default_factory=list)
-    """graph node ids"""
-
-    node_id_config_mapping: dict[str, dict] = Field(default_factory=list)
-    """node configs mapping (node id: node config)"""
-
-    edge_mapping: dict[str, list[GraphEdge]] = Field(default_factory=dict)
-    """graph edge mapping (source node id: edges)"""
-
-    parallel_mapping: dict[str, GraphParallel] = Field(default_factory=dict)
-    """graph parallel mapping (parallel id: parallel)"""
-
-    node_parallel_mapping: dict[str, str] = Field(default_factory=dict)
-    """graph node parallel mapping (node id: parallel id)"""
+    root_node_id: str = Field(..., description="root node id of the graph")
+    node_ids: list[str] = Field(default_factory=list, description="graph node ids")
+    node_id_config_mapping: dict[str, dict] = Field(
+        default_factory=list,
+        description="node configs mapping (node id: node config)"
+    )
+    edge_mapping: dict[str, list[GraphEdge]] = Field(
+        default_factory=dict,
+        description="graph edge mapping (source node id: edges)"
+    )
+    parallel_mapping: dict[str, GraphParallel] = Field(
+        default_factory=dict,
+        description="graph parallel mapping (parallel id: parallel)"
+    )
+    node_parallel_mapping: dict[str, str] = Field(
+        default_factory=dict,
+        description="graph node parallel mapping (node id: parallel id)"
+    )
 
     @classmethod
     def init(cls,
