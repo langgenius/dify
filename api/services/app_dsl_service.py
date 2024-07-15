@@ -31,7 +31,7 @@ class AppDslService:
         try:
             max_size = 10 * 1024 * 1024  # 10MB
             timeout = httpx.Timeout(10.0)
-            with httpx.stream("GET", url, follow_redirects=True, timeout=timeout) as response:
+            with httpx.stream("GET", url.strip(), follow_redirects=True, timeout=timeout) as response:
                 response.raise_for_status()
                 total_size = 0
                 content = b""
