@@ -140,8 +140,12 @@ parameters: # 参数列表
 
 - `identity` 字段是必须的，它包含了工具的基本信息，包括名称、作者、标签、描述等
 - `parameters` 参数列表
-    - `name` 参数名称，唯一，不允许和其他参数重名
-    - `type` 参数类型，目前支持`string`、`number`、`boolean`、`select`、`secret-input` 五种类型，分别对应字符串、数字、布尔值、下拉框、加密输入框，对于敏感信息，我们建议使用`secret-input`类型
+    - `name` （必填）参数名称，唯一，不允许和其他参数重名
+    - `type` （必填）参数类型，目前支持`string`、`number`、`boolean`、`select`、`secret-input` 五种类型，分别对应字符串、数字、布尔值、下拉框、加密输入框，对于敏感信息，我们建议使用`secret-input`类型
+    - `label`（必填）参数标签，用于前端展示
+    - `form` （必填）表单类型，目前支持`llm`、`form`两种类型
+        - 在Agent应用中，`llm`表示该参数LLM自行推理，`form`表示要使用该工具可提前设定的参数
+        - 在workflow应用中，`llm`和`form`均需要前端填写，但`llm`的参数会做为工具节点的输入变量
     - `required` 是否必填
         - 在`llm`模式下，如果参数为必填，则会要求Agent必须要推理出这个参数
         - 在`form`模式下，如果参数为必填，则会要求用户在对话开始前在前端填写这个参数
@@ -149,10 +153,12 @@ parameters: # 参数列表
         - 在`llm`模式下，Dify会将所有选项传递给LLM，LLM可以根据这些选项进行推理
         - 在`form`模式下，`type`为`select`时，前端会展示这些选项
     - `default` 默认值
-    - `label` 参数标签，用于前端展示
+    - `min` 最小值，当参数类型为`number`时可以设定
+    - `max` 最大值，当参数类型为`number`时可以设定
     - `human_description` 用于前端展示的介绍，支持多语言
+    - `placeholder` 字段输入框的提示文字，在表单类型为`form`，参数类型为`string`、`number`、`secret-input`时，可以设定，支持多语言
     - `llm_description` 传递给LLM的介绍，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
-    - `form` 表单类型，目前支持`llm`、`form`两种类型，分别对应Agent自行推理和前端填写
+
 
 ## 4. 准备工具代码
 当完成工具的配置以后，我们就可以开始编写工具代码了，主要用于实现工具的逻辑。
@@ -176,7 +182,6 @@ class GoogleSearchTool(BuiltinTool):
         query = tool_parameters['query']
         result_type = tool_parameters['result_type']
         api_key = self.runtime.credentials['serpapi_api_key']
-        # TODO: search with serpapi
         result = SerpAPI(api_key).run(query, result_type=result_type)
 
         if result_type == 'text':
@@ -188,7 +193,7 @@ class GoogleSearchTool(BuiltinTool):
 工具的整体逻辑都在`_invoke`方法中，这个方法接收两个参数：`user_id`和`tool_parameters`，分别表示用户ID和工具参数
 
 ### 返回数据
-在工具返回时，你可以选择返回一个消息或者多个消息，这里我们返回一个消息，使用`create_text_message`和`create_link_message`可以创建一个文本消息或者一个链接消息。
+在工具返回时，你可以选择返回一条消息或者多个消息，这里我们返回一条消息，使用`create_text_message`和`create_link_message`可以创建一条文本消息或者一条链接消息。如需返回多条消息，可以使用列表构建，例如`[self.create_text_message('msg1'), self.create_text_message('msg2')]`
 
 ## 5. 准备供应商代码
 最后，我们需要在供应商模块下创建一个供应商类，用于实现供应商的凭据验证逻辑，如果凭据验证失败，将会抛出`ToolProviderCredentialValidationError`异常。
@@ -196,8 +201,6 @@ class GoogleSearchTool(BuiltinTool):
 在`google`模块下创建`google.py`，内容如下。
 
 ```python
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
-from core.tools.tool.tool import Tool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 from core.tools.errors import ToolProviderCredentialValidationError
 

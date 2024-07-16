@@ -1,7 +1,10 @@
 {
   "name": "dify-web",
-  "version": "0.6.12-fix1",
+  "version": "0.6.14",
   "private": true,
+  "engines": {
+    "node": ">=18.17.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -56,6 +59,7 @@
     "negotiator": "^0.6.3",
     "next": "^14.1.1",
     "next-nprogress-bar": "^2.3.8",
+    "pinyin-pro": "^3.23.0",
     "qrcode.react": "^3.1.0",
     "qs": "^6.11.1",
     "rc-textarea": "^1.5.2",
@@ -87,6 +91,7 @@
     "sharp": "^0.33.2",
     "sortablejs": "^1.15.0",
     "swr": "^2.1.0",
+    "tailwind-merge": "^2.4.0",
     "use-context-selector": "^1.4.1",
     "uuid": "^9.0.1",
     "zod": "^3.23.6",
@@ -122,9 +127,13 @@
     "lint-staged": "^13.2.2",
     "postcss": "^8.4.31",
     "sass": "^1.61.0",
-    "tailwindcss": "^3.3.3",
+    "tailwindcss": "^3.4.4",
     "typescript": "4.9.5",
     "uglify-js": "^3.17.4"
+  },
+  "resolutions": {
+    "@types/react": "~18.2.0",
+    "@types/react-dom": "~18.2.0"
   },
   "lint-staged": {
     "**/*.js?(x)": [
@@ -133,12 +142,5 @@
     "**/*.ts?(x)": [
       "eslint --fix"
     ]
-  },
-  "engines": {
-    "node": ">=18.17.0"
-  },
-  "resolutions": {
-    "@types/react": "~18.2.0",
-    "@types/react-dom": "~18.2.0"
   }
 }

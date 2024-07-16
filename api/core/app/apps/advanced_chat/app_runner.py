@@ -255,6 +255,12 @@ class AdvancedChatAppRunner(AppRunner):
                 )
                 index += 1
                 time.sleep(0.01)
+        else:
+            queue_manager.publish(
+                QueueTextChunkEvent(
+                    text=text
+                ), PublishFrom.APPLICATION_MANAGER
+            )
 
         queue_manager.publish(
             QueueStopEvent(stopped_by=stopped_by),

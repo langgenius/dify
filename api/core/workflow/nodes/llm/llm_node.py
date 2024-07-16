@@ -386,10 +386,10 @@ class LLMNode(BaseNode):
         :return:
         """
         if not node_data.context.enabled:
-            return None
+            return
 
         if not node_data.context.variable_selector:
-            return None
+            return
 
         context_value = variable_pool.get_variable_value(node_data.context.variable_selector)
         if context_value:

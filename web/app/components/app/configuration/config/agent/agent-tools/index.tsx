@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import {
@@ -12,6 +11,7 @@ import {
 } from '@remixicon/react'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
 import SettingBuiltInTool from './setting-built-in-tool'
+import cn from '@/utils/classnames'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Tooltip from '@/app/components/base/tooltip'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'

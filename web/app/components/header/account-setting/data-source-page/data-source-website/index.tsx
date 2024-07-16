@@ -3,10 +3,10 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import cn from 'classnames'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
 import ConfigFirecrawlModal from './config-firecrawl-modal'
+import cn from '@/utils/classnames'
 import { fetchDataSources, removeDataSourceApiKeyBinding } from '@/service/datasets'
 
 import type {

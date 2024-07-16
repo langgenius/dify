@@ -1,5 +1,5 @@
-import cn from 'classnames'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import type { DataSourceNotionPage } from '@/models/common'
 
 type IconTypes = 'workspace' | 'page'

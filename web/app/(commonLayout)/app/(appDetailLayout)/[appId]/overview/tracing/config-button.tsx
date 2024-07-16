@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import type { PopupProps } from './config-popup'
 import ConfigPopup from './config-popup'
+import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import {

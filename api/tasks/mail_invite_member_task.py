@@ -3,8 +3,9 @@ import time
 
 import click
 from celery import shared_task
-from flask import current_app, render_template
+from flask import render_template
 
+from configs import dify_config
 from extensions.ext_mail import mail
 
 
@@ -29,7 +30,7 @@ def send_invite_member_mail_task(language: str, to: str, token: str, inviter_nam
 
     # send invite member mail using different languages
     try:
-        url = f'{current_app.config.get("CONSOLE_WEB_URL")}/activate?token={token}'
+        url = f'{dify_config.CONSOLE_WEB_URL}/activate?token={token}'
         if language == 'zh-Hans':
             html_content = render_template('invite_member_mail_template_zh-CN.html',
                                            to=to,
