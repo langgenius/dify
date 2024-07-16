@@ -54,7 +54,7 @@ class StepfunLargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 else [],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size', 4096)),
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size', 8000)),
                 ModelPropertyKey.MODE: LLMMode.CHAT.value,
             },
             parameter_rules=[
@@ -69,7 +69,7 @@ class StepfunLargeLanguageModel(OAIAPICompatLargeLanguageModel):
                     use_template='max_tokens',
                     default=512,
                     min=1,
-                    max=int(credentials.get('max_tokens', 4096)),
+                    max=int(credentials.get('max_tokens', 1024)),
                     label=I18nObject(en_US='Max Tokens', zh_Hans='最大标记'),
                     type=ParameterType.INT,
                 ),
@@ -117,7 +117,6 @@ class StepfunLargeLanguageModel(OAIAPICompatLargeLanguageModel):
                             "type": "image_url",
                             "image_url": {
                                 "url": message_content.data,
-                                "detail": message_content.detail.value
                             }
                         }
                         sub_messages.append(sub_message_dict)
