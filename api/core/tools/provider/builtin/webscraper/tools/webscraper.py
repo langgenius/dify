@@ -1,4 +1,5 @@
 from typing import Any, Union
+import cloudscraper
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolInvokeError
@@ -21,6 +22,11 @@ class WebscraperTool(BuiltinTool):
 
             # get webpage
             result = self.get_url(url, user_agent=user_agent)
+            if result.startswith("URL returned status code 403"):
+                # anti-bot page, use cloudscraper
+                scraper = cloudscraper.create_scraper()
+                headers = {'User-Agent': user_agent} if user_agent else {}
+                result = scraper.get(url, headers=headers).text
 
             if tool_parameters.get('generate_summary'):
                 # summarize and return
