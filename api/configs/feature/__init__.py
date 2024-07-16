@@ -437,7 +437,7 @@ class ImageFormatConfig(BaseSettings):
 
 
 class CeleryBeatConfig(BaseSettings):
-    CELERY_BEAT_SCHEDULER_TIME: str = Field(
+    CELERY_BEAT_SCHEDULER_TIME: int = Field(
         description='the time of the celery scheduler, default to 1 day',
         default=1,
     )
