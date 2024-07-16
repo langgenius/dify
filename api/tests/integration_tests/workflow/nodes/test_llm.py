@@ -12,7 +12,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers import ModelProviderFactory
 from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.nodes.base_node import UserFrom
+from core.workflow.entities.node_entities import UserFrom
 from core.workflow.nodes.llm.llm_node import LLMNode
 from extensions.ext_database import db
 from models.provider import ProviderType

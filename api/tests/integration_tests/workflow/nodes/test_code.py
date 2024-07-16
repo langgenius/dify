@@ -4,7 +4,7 @@ import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.nodes.base_node import UserFrom
+from core.workflow.entities.node_entities import UserFrom
 from core.workflow.nodes.code.code_node import CodeNode
 from models.workflow import WorkflowNodeExecutionStatus
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock

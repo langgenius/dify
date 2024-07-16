@@ -14,7 +14,6 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrival_methods import RetrievalMethod
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from extensions.ext_database import db
@@ -37,11 +36,11 @@ class KnowledgeRetrievalNode(BaseNode):
     _node_data_cls = KnowledgeRetrievalNodeData
     node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
-        node_data: KnowledgeRetrievalNodeData = cast(self._node_data_cls, self.node_data)
+    def _run(self) -> NodeRunResult:
+        node_data = cast(KnowledgeRetrievalNodeData, self.node_data)
 
         # extract variables
-        query = variable_pool.get_variable_value(variable_selector=node_data.query_variable_selector)
+        query = self.graph_runtime_state.variable_pool.get_variable_value(variable_selector=node_data.query_variable_selector)
         variables = {
             'query': query
         }

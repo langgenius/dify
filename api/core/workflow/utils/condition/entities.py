@@ -14,6 +14,4 @@ class Condition(BaseModel):
         # for number
         "=", "≠", ">", "<", "≥", "≤", "null", "not null"
     ]
-    value_type: Literal["string", "value_selector"] = "string"
     value: Optional[str] = None
-    value_selector: Optional[list[str]] = None

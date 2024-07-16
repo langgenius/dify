@@ -2,7 +2,6 @@ from typing import cast
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.end.entities import EndNodeData
 from models.workflow import WorkflowNodeExecutionStatus
@@ -12,19 +11,18 @@ class EndNode(BaseNode):
     _node_data_cls = EndNodeData
     node_type = NodeType.END
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         """
         Run node
-        :param variable_pool: variable pool
         :return:
         """
         node_data = self.node_data
-        node_data = cast(self._node_data_cls, node_data)
+        node_data = cast(EndNodeData, node_data)
         output_variables = node_data.outputs
 
         outputs = {}
         for variable_selector in output_variables:
-            value = variable_pool.get_variable_value(
+            value = self.graph_runtime_state.variable_pool.get_variable_value(
                 variable_selector=variable_selector.value_selector
             )
 

@@ -49,14 +49,16 @@ class HttpRequestNode(BaseNode):
             },
         }
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         node_data: HttpRequestNodeData = cast(HttpRequestNodeData, self.node_data)
 
         # init http executor
         http_executor = None
         try:
             http_executor = HttpExecutor(
-                node_data=node_data, timeout=self._get_request_timeout(node_data), variable_pool=variable_pool
+                node_data=node_data,
+                timeout=self._get_request_timeout(node_data),
+                variable_pool=self.graph_runtime_state.variable_pool
             )
 
             # invoke http executor

@@ -9,7 +9,7 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.event import RunCompletedEvent, RunEvent
-from core.workflow.nodes.iterable_node import IterableNodeMixin
+from core.workflow.nodes.iterable_node_mixin import IterableNodeMixin
 
 
 class BaseNode(ABC):
@@ -104,21 +104,19 @@ class BaseNode(ABC):
 
 class BaseIterationNode(BaseNode, IterableNodeMixin):
     @abstractmethod
-    def _run(self, variable_pool: VariablePool) -> BaseIterationState:
+    def _run(self) -> BaseIterationState:
         """
         Run node
-        :param variable_pool: variable pool
         :return:
         """
         raise NotImplementedError
 
-    def run(self, variable_pool: VariablePool) -> BaseIterationState:
+    def run(self) -> BaseIterationState:
         """
         Run node entry
-        :param variable_pool: variable pool
         :return:
         """
-        return self._run(variable_pool=variable_pool)
+        return self._run(variable_pool=self.graph_runtime_state.variable_pool)
 
     def get_next_iteration(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
         """

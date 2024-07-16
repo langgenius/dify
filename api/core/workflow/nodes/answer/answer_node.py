@@ -21,10 +21,9 @@ class AnswerNode(BaseNode):
     _node_data_cls = AnswerNodeData
     node_type = NodeType.ANSWER
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         """
         Run node
-        :param variable_pool: variable pool
         :return:
         """
         node_data = self.node_data
@@ -38,7 +37,7 @@ class AnswerNode(BaseNode):
             if part.type == "var":
                 part = cast(VarGenerateRouteChunk, part)
                 value_selector = part.value_selector
-                value = variable_pool.get_variable_value(
+                value = self.graph_runtime_state.variable_pool.get_variable_value(
                     variable_selector=value_selector
                 )
 

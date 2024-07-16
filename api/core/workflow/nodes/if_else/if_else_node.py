@@ -4,6 +4,7 @@ from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.if_else.entities import IfElseNodeData
+from core.workflow.utils.condition.processor import ConditionProcessor
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -30,11 +31,16 @@ class IfElseNode(BaseNode):
         input_conditions = []
         final_result = False
         selected_case_id = None
+        condition_processor = ConditionProcessor()
         try:
             # Check if the new cases structure is used
             if node_data.cases:
                 for case in node_data.cases:
-                    input_conditions, group_result = self.process_conditions(self.graph_runtime_state.variable_pool, case.conditions)
+                    input_conditions, group_result = condition_processor.process_conditions(
+                        variable_pool=self.graph_runtime_state.variable_pool,
+                        conditions=case.conditions
+                    )
+
                     # Apply the logical operator for the current case
                     final_result = all(group_result) if case.logical_operator == "and" else any(group_result)
 
@@ -53,7 +59,10 @@ class IfElseNode(BaseNode):
 
             else:
                 # Fallback to old structure if cases are not defined
-                input_conditions, group_result = self.process_conditions(variable_pool, node_data.conditions)
+                input_conditions, group_result = condition_processor.process_conditions(
+                    variable_pool=self.graph_runtime_state.variable_pool,
+                    conditions=node_data.conditions
+                )
 
                 final_result = all(group_result) if node_data.logical_operator == "and" else any(group_result)
 

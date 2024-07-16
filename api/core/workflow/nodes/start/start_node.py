@@ -1,7 +1,6 @@
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.start.entities import StartNodeData
 from models.workflow import WorkflowNodeExecutionStatus
@@ -11,17 +10,16 @@ class StartNode(BaseNode):
     _node_data_cls = StartNodeData
     node_type = NodeType.START
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         """
         Run node
-        :param variable_pool: variable pool
         :return:
         """
         # Get cleaned inputs
-        cleaned_inputs = variable_pool.user_inputs
+        cleaned_inputs = self.graph_runtime_state.variable_pool.user_inputs
 
-        for var in variable_pool.system_variables:
-            cleaned_inputs['sys.' + var.value] = variable_pool.system_variables[var]
+        for var in self.graph_runtime_state.variable_pool.system_variables:
+            cleaned_inputs['sys.' + var.value] = self.graph_runtime_state.variable_pool.system_variables[var]
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,

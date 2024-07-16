@@ -17,7 +17,7 @@ class IterationNode(BaseIterationNode):
     _node_data_cls = IterationNodeData
     _node_type = NodeType.ITERATION
 
-    def _run(self, variable_pool: VariablePool) -> BaseIterationState:
+    def _run(self) -> BaseIterationState:
         """
         Run the node.
         """
@@ -32,7 +32,7 @@ class IterationNode(BaseIterationNode):
             iterator_length=len(iterator) if iterator is not None else 0
         ))
         
-        self._set_current_iteration_variable(variable_pool, state)
+        self._set_current_iteration_variable(self.graph_runtime_state.variable_pool, state)
         return state
 
     def _get_next_iteration(self, variable_pool: VariablePool, state: IterationState) -> NodeRunResult | str:

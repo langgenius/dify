@@ -3,6 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, model_validator
 
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -40,7 +41,7 @@ class GraphRunFailedEvent(BaseGraphEvent):
 
 
 class BaseNodeEvent(GraphEngineEvent):
-    node_id: str = Field(..., description="node id")
+    route_node_state: RouteNodeState = Field(..., description="route node state")
     parallel_id: Optional[str] = Field(None, description="parallel id if node is in parallel")
     # iteration_id: Optional[str] = Field(None, description="iteration id if node is in iteration")
 
@@ -60,21 +61,11 @@ class NodeRunRetrieverResourceEvent(BaseNodeEvent):
 
 
 class NodeRunSucceededEvent(BaseNodeEvent):
-    run_result: NodeRunResult = Field(..., description="run result")
+    pass
 
 
 class NodeRunFailedEvent(BaseNodeEvent):
-    run_result: NodeRunResult = Field(
-        default=NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED),
-        description="run result"
-    )
-    reason: str = Field("", description="failed reason")
-
-    @model_validator(mode='before')
-    def init_reason(cls, values: dict) -> dict:
-        if not values.get("reason"):
-            values["reason"] = values.get("run_result").error or "Unknown error"
-        return values
+    pass
 
 
 ###########################################

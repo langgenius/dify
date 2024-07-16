@@ -23,7 +23,7 @@ class ToolNode(BaseNode):
     _node_data_cls = ToolNodeData
     _node_type = NodeType.TOOL
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         """
         Run the tool node
         """
@@ -52,7 +52,7 @@ class ToolNode(BaseNode):
             )
         
         # get parameters
-        parameters = self._generate_parameters(variable_pool, node_data, tool_runtime)
+        parameters = self._generate_parameters(self.graph_runtime_state.variable_pool, node_data, tool_runtime)
 
         try:
             messages = ToolEngine.workflow_invoke(
@@ -136,7 +136,8 @@ class ToolNode(BaseNode):
         
         return files
 
-    def _convert_tool_messages(self, messages: list[ToolInvokeMessage]) -> tuple[str, list[FileVar]]:
+    def _convert_tool_messages(self, messages: list[ToolInvokeMessage]) \
+            -> tuple[str, list[FileVar], list[dict]]:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
         """

@@ -66,12 +66,12 @@ class ParameterExtractorNode(LLMNode):
             }
         }
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         """
         Run the node.
         """
         node_data = cast(ParameterExtractorNodeData, self.node_data)
-        query = variable_pool.get_variable_value(node_data.query)
+        query = self.graph_runtime_state.variable_pool.get_variable_value(node_data.query)
         if not query:
             raise ValueError("Input variable content not found or is empty")
 
@@ -91,17 +91,20 @@ class ParameterExtractorNode(LLMNode):
             raise ValueError("Model schema not found")
 
         # fetch memory
-        memory = self._fetch_memory(node_data.memory, variable_pool, model_instance)
+        memory = self._fetch_memory(node_data.memory, self.graph_runtime_state.variable_pool, model_instance)
 
         if set(model_schema.features or []) & {ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL} \
             and node_data.reasoning_mode == 'function_call':
             # use function call 
             prompt_messages, prompt_message_tools = self._generate_function_call_prompt(
-                node_data, query, variable_pool, model_config, memory
+                node_data, query, self.graph_runtime_state.variable_pool, model_config, memory
             )
         else:
             # use prompt engineering
-            prompt_messages = self._generate_prompt_engineering_prompt(node_data, query, variable_pool, model_config,
+            prompt_messages = self._generate_prompt_engineering_prompt(node_data,
+                                                                       query,
+                                                                       self.graph_runtime_state.variable_pool,
+                                                                       model_config,
                                                                        memory)
             prompt_message_tools = []
 

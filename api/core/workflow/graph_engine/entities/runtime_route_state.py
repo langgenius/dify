@@ -16,7 +16,7 @@ class RouteNodeState(BaseModel):
         FAILED = "failed"
         PAUSED = "paused"
 
-    state_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     """node state id"""
 
     node_id: str
@@ -45,11 +45,15 @@ class RouteNodeState(BaseModel):
 
 
 class RuntimeRouteState(BaseModel):
-    routes: dict[str, list[str]] = Field(default_factory=dict)
-    """graph state routes (source_node_state_id: target_node_state_id)"""
+    routes: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="graph state routes (source_node_state_id: target_node_state_id)"
+    )
 
-    node_state_mapping: dict[str, RouteNodeState] = Field(default_factory=dict)
-    """node state mapping (route_node_state_id: route_node_state)"""
+    node_state_mapping: dict[str, RouteNodeState] = Field(
+        default_factory=dict,
+        description="node state mapping (route_node_state_id: route_node_state)"
+    )
 
     def create_node_state(self, node_id: str) -> RouteNodeState:
         """
@@ -58,7 +62,7 @@ class RuntimeRouteState(BaseModel):
         :param node_id: node id
         """
         state = RouteNodeState(node_id=node_id, start_at=datetime.now(timezone.utc).replace(tzinfo=None))
-        self.node_state_mapping[state.state_id] = state
+        self.node_state_mapping[state.id] = state
         return state
 
     def add_route(self, source_node_state_id: str, target_node_state_id: str) -> None:

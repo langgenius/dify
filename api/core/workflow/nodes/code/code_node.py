@@ -42,14 +42,13 @@ class CodeNode(BaseNode):
 
         return code_provider.get_default_config()
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         """
         Run code
-        :param variable_pool: variable pool
         :return:
         """
         node_data = self.node_data
-        node_data: CodeNodeData = cast(self._node_data_cls, node_data)
+        node_data = cast(CodeNodeData, node_data)
 
         # Get code language
         code_language = node_data.code_language
@@ -59,7 +58,7 @@ class CodeNode(BaseNode):
         variables = {}
         for variable_selector in node_data.variables:
             variable = variable_selector.variable
-            value = variable_pool.get_variable_value(
+            value = self.graph_runtime_state.variable_pool.get_variable_value(
                 variable_selector=variable_selector.value_selector
             )
 

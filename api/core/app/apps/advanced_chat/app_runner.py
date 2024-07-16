@@ -15,7 +15,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent, QueueTextChunkEvent
 from core.moderation.base import ModerationException
 from core.workflow.entities.node_entities import SystemVariable
-from core.workflow.nodes.base_node import UserFrom
+from core.workflow.entities.node_entities import UserFrom
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
 from models.model import App, Conversation, EndUser, Message

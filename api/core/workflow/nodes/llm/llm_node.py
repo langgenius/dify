@@ -27,7 +27,6 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.graph_engine.entities.event import NodeRunRetrieverResourceEvent
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.event import RunCompletedEvent, RunEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.llm.entities import (
@@ -85,9 +84,7 @@ class LLMNode(BaseNode):
             for event in generator:
                 if isinstance(event, RunRetrieverResourceEvent):
                     context = event.context
-                    yield NodeRunRetrieverResourceEvent(
-                        retriever_resources=event.retriever_resources
-                    )
+                    yield event
 
             if context:
                 node_inputs['#context#'] = context  # type: ignore
@@ -170,7 +167,7 @@ class LLMNode(BaseNode):
                     model_instance: ModelInstance,
                     prompt_messages: list[PromptMessage],
                     stop: Optional[list[str]] = None) \
-            -> Generator["RunStreamChunkEvent | ModelInvokeCompleted", None, None]:
+            -> Generator[RunEvent, None, None]:
         """
         Invoke large language model
         :param node_data_model: node data model
@@ -204,7 +201,7 @@ class LLMNode(BaseNode):
         self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
 
     def _handle_invoke_result(self, invoke_result: LLMResult | Generator) \
-            -> Generator["RunStreamChunkEvent | ModelInvokeCompleted", None, None]:
+            -> Generator[RunEvent, None, None]:
         """
         Handle invoke result
         :param invoke_result: invoke result
