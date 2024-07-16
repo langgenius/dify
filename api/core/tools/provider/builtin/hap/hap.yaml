@@ -6,9 +6,9 @@ identity:
     zh_Hans: HAP
     pt_BR: HAP
   description:
-    en_US: "A hyper application platform integrating diverse capabilities"
-    zh_Hans: "一个融合多元能力的超级应用平台"
-    pt_BR: "Uma plataforma de hiper aplicações integrando diversas capacidades"
+    en_US: "Hyper application platform that is particularly friendly to AI"
+    zh_Hans: "对 AI 特别友好的超级应用平台"
+    pt_BR: "Plataforma de aplicação hiper que é particularmente amigável à IA"
   icon: icon.svg
   tags:
     - productivity
