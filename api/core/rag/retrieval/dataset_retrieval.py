@@ -28,7 +28,7 @@ from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
 
 default_retrieval_model = {
-    'search_method': RetrievalMethod.SEMANTIC_SEARCH,
+    'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
     'reranking_enable': False,
     'reranking_model': {
         'reranking_provider_name': '',
@@ -464,7 +464,7 @@ class DatasetRetrieval:
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             # get retrieval model config
             default_retrieval_model = {
-                'search_method': RetrievalMethod.SEMANTIC_SEARCH,
+                'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
                 'reranking_enable': False,
                 'reranking_model': {
                     'reranking_provider_name': '',
